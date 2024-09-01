@@ -1,0 +1,10 @@
+{
+	"singleQuote": true,
+	"trailingComma": "none",
+	"useTabs": true,
+	"tabWidth": 3,
+	"semi": false,
+	"printWidth": 120,
+	"endOfLine": "auto",
+	"plugins": ["prettier-plugin-organize-imports"]
+}
