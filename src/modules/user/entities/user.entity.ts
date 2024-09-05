@@ -1,47 +1,30 @@
-import { compareSync, genSaltSync, hashSync } from 'bcrypt'
+import { Databases } from '@/common/constants/global.enum'
+import { BaseAbstractEntity } from '@/modules/_base/base.abstract.entity'
 import 'dotenv/config'
-import {
-	BeforeInsert,
-	Column,
-	CreateDateColumn,
-	Entity,
-	Index,
-	PrimaryGeneratedColumn,
-	UpdateDateColumn
-} from 'typeorm'
+import { Column, Entity, Index } from 'typeorm'
 
-@Entity('users')
-export class UserEntity {
-	@PrimaryGeneratedColumn()
-	id: number
-
+@Entity('ts_user', { database: Databases.SYSCLOUD })
+export class UserEntity extends BaseAbstractEntity {
 	@Index({ unique: true })
-	@Column({ length: 50 })
+	@Column({ name: 'user_code', type: 'nvarchar', length: 20 })
 	username: string
 
-	@Column({ length: 100 })
+	@Column({ name: 'user_password', length: 20 })
 	password: string
 
-	@Column({ length: 100 })
-	display_name: string
+	@Index({ unique: true })
+	@Column({ type: 'nvarchar', length: 20 })
+	employee_code: string
 
-	@CreateDateColumn({ type: 'datetime' })
-	created_at: Date
-
-	@UpdateDateColumn({ type: 'datetime' })
-	updated_at: Date
-
-	@BeforeInsert()
-	hashPassword() {
-		console.log(this.password)
-		this.password = hashSync(this.password, genSaltSync(+process.env.SALT_ROUND))
-	}
+	@Column()
+	remember_token: string
 
 	authenticate(password: string) {
-		return compareSync(password, this.password)
+		return this.password === password
 	}
 
 	constructor(user: Partial<UserEntity>) {
+		super()
 		Object.assign(this, user)
 	}
 }

@@ -8,7 +8,6 @@ export const User = createParamDecorator(
 		if (!user) {
 			return null
 		}
-		console.log(user)
 		return property ? user[property] : user
 	}
 )

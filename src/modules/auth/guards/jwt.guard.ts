@@ -1,14 +1,16 @@
-import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common'
+import { CACHE_MANAGER } from '@nestjs/cache-manager'
+import { CanActivate, ExecutionContext, Inject, Injectable, UnauthorizedException } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { JwtService } from '@nestjs/jwt'
+import { Cache } from 'cache-manager'
 import { Request } from 'express'
 
 @Injectable()
 export class JwtGuard implements CanActivate {
 	constructor(
+		@Inject(CACHE_MANAGER) private cacheManager: Cache,
 		private jwtService: JwtService,
 		private readonly configService: ConfigService
-		// private readonly tokenService: TokenService
 	) {}
 
 	async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -22,7 +24,8 @@ export class JwtGuard implements CanActivate {
 			const payload = await this.jwtService.verifyAsync(token, {
 				secret: this.configService.get('JWT_SECRET')
 			})
-			// await this.tokenService.checkRevokedToken(new mongoose.Types.ObjectId(payload._id), token)
+			const cachedToken = await this.cacheManager.get(`token:${payload.keyid}`)
+			if (!cachedToken) throw new UnauthorizedException()
 			request['user'] = payload
 		} catch {
 			throw new UnauthorizedException()

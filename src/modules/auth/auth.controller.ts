@@ -1,23 +1,9 @@
-import { CurrentUser } from '@/common/decorators/current-user.decorator'
-import { ResponseMessage } from '@/common/decorators/response-message.decorator'
-import { AllExceptionsFilter } from '@/common/filters/exceptions.filter'
-import { TransformInterceptor } from '@/common/interceptors/transform.interceptor'
+import { ApiHelper } from '@/common/decorators/api.decorator'
+import { User } from '@/common/decorators/user.decorator'
 import { ZodValidationPipe } from '@/common/pipes/zod-validation.pipe'
-import {
-	Body,
-	Controller,
-	Get,
-	HttpCode,
-	HttpStatus,
-	Patch,
-	Post,
-	UseFilters,
-	UseGuards,
-	UseInterceptors,
-	UsePipes
-} from '@nestjs/common'
+import { Controller, Get, HttpStatus, Param, Post, UseGuards, UsePipes } from '@nestjs/common'
 import { AuthService } from './auth.service'
-import { loginValidator, UpdateProfileDTO, updateProfileValidator } from './dto/auth.dto'
+import { loginValidator } from './dto/auth.dto'
 import { JwtGuard } from './guards/jwt.guard'
 import { LocalAuthGuard } from './guards/local-auth.guard'
 
@@ -28,32 +14,21 @@ export class AuthController {
 	@Post('login')
 	@UseGuards(LocalAuthGuard)
 	@UsePipes(new ZodValidationPipe(loginValidator))
-	@UseFilters(AllExceptionsFilter)
-	@UseInterceptors(TransformInterceptor)
-	@HttpCode(HttpStatus.OK)
-	@ResponseMessage('Logged in successfully')
-	async login(@CurrentUser() user) {
+	@ApiHelper(HttpStatus.OK, { i18nKey: 'common.ok' })
+	async login(@User() user) {
 		return await this.authService.login(user)
 	}
 
-	@Get('profile')
-	@UseGuards(JwtGuard)
-	@UseFilters(AllExceptionsFilter)
-	@UseInterceptors(TransformInterceptor)
-	@HttpCode(HttpStatus.OK)
-	@ResponseMessage('Successfully')
-	async getProfile(@CurrentUser() user) {
-		return user
+	@Get('refresh-token/:id')
+	@ApiHelper(HttpStatus.OK, { i18nKey: 'common.ok' })
+	async refreshToken(@Param('id') id: number) {
+		return await this.authService.refreshToken(id)
 	}
 
-	@Patch('profile/update')
+	@Post('logout')
 	@UseGuards(JwtGuard)
-	@UsePipes(new ZodValidationPipe(updateProfileValidator))
-	@UseFilters(AllExceptionsFilter)
-	@UseInterceptors(TransformInterceptor)
-	@HttpCode(HttpStatus.CREATED)
-	@ResponseMessage('Updated profile')
-	async updateProfile(@CurrentUser('id') userId: number, @Body() payload: UpdateProfileDTO) {
-		return await this.authService.updateProfile(userId, payload)
+	@ApiHelper(HttpStatus.OK, { i18nKey: 'common.ok' })
+	async logout(@User('keyid') userId) {
+		return await this.authService.logout(userId)
 	}
 }
