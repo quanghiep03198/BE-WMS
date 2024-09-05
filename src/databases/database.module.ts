@@ -1,34 +1,24 @@
+import { Databases, DataSources } from '@/common/constants/global.enum'
+import { defaultDataSourceOptions } from '@/configs/database.config'
 import { Module } from '@nestjs/common'
-import { ConfigModule, ConfigService } from '@nestjs/config'
-import { TypeOrmModule, TypeOrmModuleOptions } from '@nestjs/typeorm'
-import { join } from 'path'
+import { TypeOrmModule } from '@nestjs/typeorm'
 
 @Module({
 	imports: [
-		TypeOrmModule.forRootAsync({
-			imports: [ConfigModule],
-			inject: [ConfigService<NodeJS.ProcessEnv>],
-			useFactory: (configService: ConfigService<NodeJS.ProcessEnv>): TypeOrmModuleOptions => {
-				return {
-					type: 'mssql',
-					host: configService.get('DB_HOST', 'localhost'),
-					port: Number(configService.get('DB_PORT', '1433')),
-					username: configService.get('DB_USERNAME', 'root'),
-					password: configService.get('DB_PASSWORD', ''),
-					entities: [join(__dirname, '**', '*.entity.{ts,js}')],
-					migrations: [join(__dirname, '/migrations/**/*{.ts,.js}')],
-					autoLoadEntities: true,
-					options: {
-						trustServerCertificate: Boolean(configService.get('DB_TRUST_SERVER_CERTIFICATE')),
-						encrypt: false,
-						enableArithAbort: true
-					},
-
-					database: 'local_dev',
-					synchronize: true,
-					connectionTimeout: 5000
-				}
-			}
+		TypeOrmModule.forRoot({
+			name: DataSources.DATALAKE,
+			database: Databases.DATALAKE,
+			...defaultDataSourceOptions
+		}),
+		TypeOrmModule.forRoot({
+			name: DataSources.SYSCLOUD,
+			database: Databases.SYSCLOUD,
+			...defaultDataSourceOptions
+		}),
+		TypeOrmModule.forRoot({
+			name: DataSources.ERP,
+			database: Databases.ERP,
+			...defaultDataSourceOptions
 		})
 	]
 })
