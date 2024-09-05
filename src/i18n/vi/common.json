@@ -1,0 +1,11 @@
+{
+	"ok": "Thành công",
+	"created": "Tạo mới thành công",
+	"updated": "Cập nhật thành công",
+	"deleted": "Đã xóa thành công",
+	"not_found": "Bản ghi không tồn tại",
+	"unprocessable_entity": "Dữ liệu không hợp lệ",
+	"unauthorized": "Xác thực tài khoản thất bại",
+	"forbidden": "Không có quyền truy cập",
+	"internal_server_error": "Lỗi server"
+}
