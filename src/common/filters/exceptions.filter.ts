@@ -1,5 +1,7 @@
+import { Environment } from '@/configs/app.config'
 import { ArgumentsHost, Catch, ExceptionFilter, HttpException, HttpStatus } from '@nestjs/common'
 import { HttpAdapterHost } from '@nestjs/core'
+import { FileLogger } from '../helpers/file-logger.helper'
 
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
@@ -20,6 +22,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
 			timestamp: new Date().toISOString(),
 			path: httpAdapter.getRequestUrl(ctx.getRequest())
 		}
+		if (process.env.NODE_ENV === Environment.DEVELOPMENT) FileLogger.error(exception)
 		httpAdapter.reply(ctx.getResponse(), responseBody, httpStatus)
 	}
 }
