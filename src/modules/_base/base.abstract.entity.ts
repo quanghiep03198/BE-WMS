@@ -1,4 +1,4 @@
-import { RecordStatus } from '@/common/constants/global.enum'
+import { RecordStatus } from '@/databases/constants'
 import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm'
 
 @Entity()

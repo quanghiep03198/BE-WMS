@@ -1,11 +1,11 @@
-import { DataSources } from '@/common/constants/global.enum'
+import { DATA_LAKE_CONNECTION } from '@/databases/constants'
 import { InjectDataSource } from '@nestjs/typeorm'
 import { DataSource, EntitySubscriberInterface, EventSubscriber, InsertEvent } from 'typeorm'
 import { WarehouseEntity } from '../warehouse.entity'
 
 @EventSubscriber()
 export class WarehouseSubscriber implements EntitySubscriberInterface<WarehouseEntity> {
-	constructor(@InjectDataSource(DataSources.DATALAKE) dataSource: DataSource) {
+	constructor(@InjectDataSource(DATA_LAKE_CONNECTION) dataSource: DataSource) {
 		dataSource.subscribers.push(this)
 	}
 

@@ -2,22 +2,22 @@ import { Injectable } from '@nestjs/common'
 import { readFileSync } from 'fs'
 import { join } from 'path'
 import { DataSource } from 'typeorm'
-import { DynamicDataSourceService } from '../_shared/services/dynamic-datasource.service'
+import { DynamicDataSourceService } from '../_shared/dynamic-datasource.service'
 
 @Injectable()
 export class RFIDService {
-	constructor(private dynamicDataSourceService: DynamicDataSourceService) {}
+	private dataSource: DataSource
 
-	async findUnstoredEPC(dataSource: DataSource) {
-		return await Promise.all([
-			this.findWhereNotInStock(dataSource),
-			this.retrieveOrderSizing(dataSource),
-			this.getOrderQuantity(dataSource)
-		])
+	constructor(protected dynamicDataSourceService: DynamicDataSourceService) {
+		this.dataSource = dynamicDataSourceService._datasource
 	}
 
-	private async findWhereNotInStock(dataSource: DataSource) {
-		return await dataSource
+	async findUnstoredEPC() {
+		return await Promise.all([this.findWhereNotInStock(), this.retrieveOrderSizing(), this.getOrderQuantity()])
+	}
+
+	private async findWhereNotInStock() {
+		return await this.dataSource
 			.createQueryBuilder()
 			.select(['DISTINCT i.EPC_Code AS epc_code', "ISNULL(ISNULL(i.mo_no_actual, i.mo_no), 'Unknown') AS mo_no"])
 			.from('DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet', 'i')
@@ -28,17 +28,17 @@ export class RFIDService {
 			.getRawMany()
 	}
 
-	private async retrieveOrderSizing(dataSource: DataSource) {
+	private async retrieveOrderSizing() {
 		const query = readFileSync(join(__dirname, 'sql', 'size-qty.sql')).toString()
-		return await dataSource.query(query)
+		return await this.dataSource.query(query)
 	}
 
-	private async getOrderQuantity(dataSource: DataSource) {
+	private async getOrderQuantity() {
 		const query = readFileSync(join(__dirname, 'sql', 'order-qty.sql'), 'utf8').toString()
-		return await dataSource.query(query)
+		return await this.dataSource.query(query)
 	}
 
-	async updateStock(dataSource: DataSource, payload) {
-		return await dataSource.createQueryBuilder()
+	async updateStock(payload) {
+		return await this.dataSource.manager.createQueryBuilder()
 	}
 }

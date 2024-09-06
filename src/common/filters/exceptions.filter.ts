@@ -1,6 +1,6 @@
-import { Environment } from '@/configs/app.config'
 import { ArgumentsHost, Catch, ExceptionFilter, HttpException, HttpStatus } from '@nestjs/common'
 import { HttpAdapterHost } from '@nestjs/core'
+import { Environment } from '../constants'
 import { FileLogger } from '../helpers/file-logger.helper'
 
 @Catch()

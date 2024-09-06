@@ -1,9 +1,9 @@
-import { Databases } from '@/common/constants/global.enum'
+import { DATABASE_DATA_LAKE } from '@/databases/constants'
 import { BaseAbstractEntity } from '@/modules/_base/base.abstract.entity'
 import { Column, Entity } from 'typeorm'
-import { WarehouseStorageTypes } from '../constants/enums'
+import { WarehouseStorageTypes } from '../constants'
 
-@Entity('dv_warehouseccodedet', { database: Databases.DATALAKE })
+@Entity('dv_warehouseccodedet', { database: DATABASE_DATA_LAKE })
 export class StorageLocationEntity extends BaseAbstractEntity {
 	@Column({ type: 'varchar', length: 20 })
 	storage_num: string

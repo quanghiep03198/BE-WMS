@@ -1,4 +1,4 @@
-import { DataSources } from '@/common/constants/global.enum'
+import { SYSCLOUD_CONNECTION } from '@/databases/constants'
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm'
@@ -22,11 +22,11 @@ type AvatarGenerateOptions = {
 @Injectable()
 export class UserService extends BaseAbstractService<UserEntity> {
 	constructor(
-		@InjectDataSource(DataSources.SYSCLOUD)
+		@InjectDataSource(SYSCLOUD_CONNECTION)
 		private syscloudDataSource: DataSource,
-		@InjectRepository(UserEntity, DataSources.SYSCLOUD)
+		@InjectRepository(UserEntity, SYSCLOUD_CONNECTION)
 		private userRepository: Repository<UserEntity>,
-		@InjectRepository(EmployeeEntity, DataSources.SYSCLOUD)
+		@InjectRepository(EmployeeEntity, SYSCLOUD_CONNECTION)
 		private employeeRepository: Repository<EmployeeEntity>,
 		private configService: ConfigService
 	) {

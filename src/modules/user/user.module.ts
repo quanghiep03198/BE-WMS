@@ -1,4 +1,4 @@
-import { DataSources } from '@/common/constants/global.enum'
+import { SYSCLOUD_CONNECTION } from '@/databases/constants'
 import { Module } from '@nestjs/common'
 import { TypeOrmModule } from '@nestjs/typeorm'
 import { EmployeeEntity } from './entities/employee.entity'
@@ -7,7 +7,7 @@ import { UserController } from './user.controller'
 import { UserService } from './user.service'
 
 @Module({
-	imports: [TypeOrmModule.forFeature([UserEntity, EmployeeEntity], DataSources.SYSCLOUD)],
+	imports: [TypeOrmModule.forFeature([UserEntity, EmployeeEntity], SYSCLOUD_CONNECTION)],
 	providers: [UserService],
 	controllers: [UserController],
 	exports: [UserService]

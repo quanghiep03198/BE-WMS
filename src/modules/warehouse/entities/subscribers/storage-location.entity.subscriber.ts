@@ -1,11 +1,11 @@
-import { DataSources } from '@/common/constants/global.enum'
+import { DATA_LAKE_CONNECTION } from '@/databases/constants'
 import { InjectDataSource } from '@nestjs/typeorm'
 import { DataSource, EntitySubscriberInterface, EventSubscriber, InsertEvent } from 'typeorm'
 import { StorageLocationEntity } from '../storage-location.entity'
 
 @EventSubscriber()
 export class StorageLocationSubscriber implements EntitySubscriberInterface<StorageLocationEntity> {
-	constructor(@InjectDataSource(DataSources.DATALAKE) dataSource: DataSource) {
+	constructor(@InjectDataSource(DATA_LAKE_CONNECTION) dataSource: DataSource) {
 		dataSource.subscribers.push(this)
 	}
 

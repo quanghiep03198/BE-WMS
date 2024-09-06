@@ -17,7 +17,7 @@ async function bootstrap() {
 		app.use(
 			morgan('dev', {
 				stream: {
-					write: (str) => Logger.log(str.replace(/\n$/, ''))
+					write: (str) => Logger.log(str.replace(/\n$/, ''), 'HTTP')
 				}
 			})
 		)

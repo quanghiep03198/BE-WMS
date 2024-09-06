@@ -1,6 +1,6 @@
-import { FactoryCodes } from '@/common/constants/global.enum'
 import { UseBaseAPI } from '@/common/decorators/base-api.decorator'
 import { BadRequestException, Controller, Get, Headers, HttpStatus, UnprocessableEntityException } from '@nestjs/common'
+import { FactoryCodes } from './constants'
 import { DepartmentService } from './department.service'
 
 @Controller('department')

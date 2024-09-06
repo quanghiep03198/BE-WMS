@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { InventoryStorageType, RFIDActions } from '../constants/rfid.enum'
+import { InventoryStorageType, RFIDActions } from '../constants'
 
 type UpdateStockPayload = {
 	rfid_status: RFIDActions

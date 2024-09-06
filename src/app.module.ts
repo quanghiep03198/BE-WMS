@@ -1,13 +1,11 @@
-import { Logger, Module, OnModuleInit } from '@nestjs/common'
+import { Module, OnModuleInit } from '@nestjs/common'
 import { ConfigModule, ConfigService } from '@nestjs/config'
-import { redisStore } from 'cache-manager-redis-store'
-import { AcceptLanguageResolver, CookieResolver, HeaderResolver, I18nModule, QueryResolver } from 'nestjs-i18n'
-import path from 'path'
-import { configValidator } from './configs/app.config'
+import { AcceptLanguageResolver, HeaderResolver, I18nModule, QueryResolver } from 'nestjs-i18n'
+import { internalConfigs, validateConfig } from './configs/app.config'
 import { DatabaseModule } from './databases/database.module'
-import { DynamicDataSourceService } from './modules/_shared/services/dynamic-datasource.service'
+import { DynamicDataSourceService } from './modules/_shared/dynamic-datasource.service'
 // Feature modules
-import { CacheModule, CacheStore } from '@nestjs/cache-manager'
+import { CacheModule, CacheOptions } from '@nestjs/cache-manager'
 import { RedisClientOptions } from 'redis'
 import { FileLogger } from './common/helpers/file-logger.helper'
 import { AuthModule } from './modules/auth/auth.module'
@@ -18,52 +16,30 @@ import { WarehouseModule } from './modules/warehouse/warehouse.module'
 
 @Module({
 	imports: [
+		// * Core modules
 		ConfigModule.forRoot({
-			envFilePath: '.env',
+			envFilePath: ['.env'],
 			isGlobal: true,
-			load: [],
-			validate: (env) =>
-				configValidator
-					.parseAsync(env)
-					.then((env) => env)
-					.catch((error) => Logger.error(error))
+			load: [internalConfigs],
+			validate: validateConfig
 		}),
 		I18nModule.forRootAsync({
-			imports: [ConfigModule],
 			inject: [ConfigService],
-			useFactory: async (configService: ConfigService) => {
-				return {
-					fallbackLanguage: configService.get('FALLBACK_LANGUAGE'),
-					loaderOptions: {
-						path: path.join(__dirname, '/i18n/'),
-						watch: true
-					},
-					typesOutputPath: path.join(__dirname, '../src/generated/i18n.generated.ts'),
-					resolvers: [
-						{ use: QueryResolver, options: ['lang'] },
-						new HeaderResolver(['Accept-Language']),
-						new CookieResolver(),
-						AcceptLanguageResolver
-					]
-				}
-			}
+			useFactory: (configService: ConfigService) => configService.getOrThrow('i18n'),
+			resolvers: [
+				{ use: QueryResolver, options: ['lng'] },
+				new HeaderResolver(['X-Language']),
+				AcceptLanguageResolver
+			]
 		}),
-		CacheModule.registerAsync<RedisClientOptions>({
+		CacheModule.registerAsync({
 			isGlobal: true,
-			imports: [ConfigModule],
 			inject: [ConfigService],
-			useFactory: async (configService: ConfigService) => {
-				return {
-					store: redisStore as unknown as CacheStore,
-					socket: {
-						host: configService.get('REDIS_HOST'),
-						port: Number(configService.get('REDIS_PORT'))
-					},
-					max: 1000
-				}
-			}
+			useFactory: (configService: ConfigService) =>
+				configService.getOrThrow<CacheOptions<RedisClientOptions>>('cache')
 		}),
 		DatabaseModule,
+		// * Feature modules
 		AuthModule,
 		UserModule,
 		WarehouseModule,

@@ -1,9 +1,9 @@
-import { Databases } from '@/common/constants/global.enum'
+import { DATABASE_DATA_LAKE } from '@/databases/constants'
 import { BaseAbstractEntity } from '@/modules/_base/base.abstract.entity'
 import { Column, Entity, Index } from 'typeorm'
-import { WarehouseTypes } from '../constants/enums'
+import { WarehouseTypes } from '../constants'
 
-@Entity('dv_warehouseccodemst', { database: Databases.DATALAKE })
+@Entity('dv_warehouseccodemst', { database: DATABASE_DATA_LAKE })
 export class WarehouseEntity extends BaseAbstractEntity {
 	@Index({ unique: true })
 	@Column({ length: 20 })

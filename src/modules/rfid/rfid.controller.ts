@@ -14,24 +14,19 @@ import {
 	UsePipes
 } from '@nestjs/common'
 import { interval, map } from 'rxjs'
-import { DynamicDataSourceService } from '../_shared/services/dynamic-datasource.service'
 import { JwtGuard } from '../auth/guards/jwt.guard'
 import { UpdateStockDTO, updateStockValidator } from './dto/rfid.dto'
 import { RFIDService } from './rfid.service'
 
 @Controller('rfid')
 export class RFIDController {
-	constructor(
-		private rfidService: RFIDService,
-		private dynamicDataSourceService: DynamicDataSourceService
-	) {}
+	constructor(private rfidService: RFIDService) {}
 
 	@Sse('read-epc')
 	@UseGuards(JwtGuard)
 	@UseFilters(AllExceptionsFilter)
 	async retrieveEPC() {
-		const dataSource = this.dynamicDataSourceService.getDataSource()
-		const responseData = await this.rfidService.findUnstoredEPC(dataSource)
+		const responseData = await this.rfidService.findUnstoredEPC()
 		return interval(1000).pipe(map(() => ({ data: responseData })))
 	}
 
@@ -42,7 +37,6 @@ export class RFIDController {
 	@UseInterceptors(TransformInterceptor)
 	@HttpCode(HttpStatus.CREATED)
 	async updateStock(@Body() payload: UpdateStockDTO) {
-		const dataSource = this.dynamicDataSourceService.getDataSource()
-		return await this.rfidService.updateStock(dataSource, payload)
+		return await this.rfidService.updateStock(payload)
 	}
 }

@@ -1,24 +1,46 @@
-import { Databases, DataSources } from '@/common/constants/global.enum'
-import { defaultDataSourceOptions } from '@/configs/database.config'
 import { Module } from '@nestjs/common'
-import { TypeOrmModule } from '@nestjs/typeorm'
+import { ConfigService } from '@nestjs/config'
+import { TypeOrmModule, TypeOrmModuleAsyncOptions } from '@nestjs/typeorm'
+import {
+	DATA_LAKE_CONNECTION,
+	DATABASE_DATA_LAKE,
+	DATABASE_ERP,
+	DATABASE_SYSCLOUD,
+	ERP_CONNECTION,
+	SYSCLOUD_CONNECTION
+} from './constants'
 
 @Module({
 	imports: [
-		TypeOrmModule.forRoot({
-			name: DataSources.DATALAKE,
-			database: Databases.DATALAKE,
-			...defaultDataSourceOptions
+		TypeOrmModule.forRootAsync({
+			name: DATA_LAKE_CONNECTION,
+			inject: [ConfigService],
+			useFactory: (configService: ConfigService) => {
+				return {
+					database: DATABASE_DATA_LAKE,
+					...configService.getOrThrow<TypeOrmModuleAsyncOptions>('database')
+				}
+			}
 		}),
-		TypeOrmModule.forRoot({
-			name: DataSources.SYSCLOUD,
-			database: Databases.SYSCLOUD,
-			...defaultDataSourceOptions
+		TypeOrmModule.forRootAsync({
+			name: SYSCLOUD_CONNECTION,
+			inject: [ConfigService],
+			useFactory: (configService: ConfigService) => {
+				return {
+					database: DATABASE_SYSCLOUD,
+					...configService.getOrThrow<TypeOrmModuleAsyncOptions>('database')
+				}
+			}
 		}),
-		TypeOrmModule.forRoot({
-			name: DataSources.ERP,
-			database: Databases.ERP,
-			...defaultDataSourceOptions
+		TypeOrmModule.forRootAsync({
+			name: ERP_CONNECTION,
+			inject: [ConfigService],
+			useFactory: (configService: ConfigService) => {
+				return {
+					database: DATABASE_ERP,
+					...configService.getOrThrow<TypeOrmModuleAsyncOptions>('database')
+				}
+			}
 		})
 	]
 })

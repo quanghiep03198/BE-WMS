@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { WarehouseStorageTypes } from '../constants/enums'
+import { WarehouseStorageTypes } from '../constants'
 
 export const createStorageLocationValidator = z.object({
 	storage_name: z

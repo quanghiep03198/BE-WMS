@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { WarehouseTypes } from '../constants/enums'
+import { WarehouseTypes } from '../constants'
 
 export const createWarehouseValidator = z.object({
 	warehouse_name: z.string().trim().min(1, { message: 'This field is required' }),
