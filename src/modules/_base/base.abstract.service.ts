@@ -18,7 +18,7 @@ export abstract class BaseAbstractService<Entity extends BaseAbstractEntity> imp
 	}
 
 	async findOneById(id: number): Promise<Entity> {
-		return await this.repository.findOneBy({ keyid: id } as FindOptionsWhere<Entity>)
+		return await this.repository.findOneBy({ id: id } as FindOptionsWhere<Entity>)
 	}
 
 	async updateOneById(id: number, partialEntity: QueryDeepPartialEntity<Entity>) {

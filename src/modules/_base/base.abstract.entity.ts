@@ -3,8 +3,8 @@ import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateCol
 
 @Entity()
 export abstract class BaseAbstractEntity {
-	@PrimaryGeneratedColumn({ type: 'int' })
-	keyid: number
+	@PrimaryGeneratedColumn({ name: 'keyid', type: 'int' })
+	id: number
 
 	@Column({ type: 'nvarchar', length: 50, default: null })
 	user_code_created: string
@@ -18,8 +18,8 @@ export abstract class BaseAbstractEntity {
 	@UpdateDateColumn({ type: 'datetime' })
 	updated: Date
 
-	@Column({ type: 'varchar', length: 1, enum: RecordStatus, default: RecordStatus.ACTIVE })
-	isactive: RecordStatus
+	@Column({ name: 'isactive', type: 'varchar', length: 1, enum: RecordStatus, default: RecordStatus.ACTIVE })
+	is_active: RecordStatus
 
 	@Column({ type: 'nvarchar', length: 255, default: null })
 	remark: string
