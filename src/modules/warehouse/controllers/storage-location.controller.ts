@@ -1,4 +1,4 @@
-import { ApiHelper } from '@/common/decorators/api.decorator'
+import { UseBaseAPI } from '@/common/decorators/base-api.decorator'
 import { ZodValidationPipe } from '@/common/pipes/zod-validation.pipe'
 import { JwtGuard } from '@/modules/auth/guards/jwt.guard'
 import {
@@ -32,7 +32,7 @@ export class StorageLocationController {
 	@Post()
 	@UseGuards(JwtGuard)
 	@UsePipes(new ZodValidationPipe(createStorageLocationValidator))
-	@ApiHelper(HttpStatus.CREATED, { i18nKey: 'common.created' })
+	@UseBaseAPI(HttpStatus.CREATED, { i18nKey: 'common.created' })
 	async createStorageLocation(
 		@Headers('X-User-Company') factoryCode: string,
 		@Body() payload: CreateStorageLocationDTO
@@ -47,15 +47,15 @@ export class StorageLocationController {
 
 	@Get(':warehouseCode')
 	@UseGuards(JwtGuard)
-	@ApiHelper(HttpStatus.OK, { i18nKey: 'common.ok' })
+	@UseBaseAPI(HttpStatus.OK, { i18nKey: 'common.ok' })
 	async getStorageLocationByWarhouse(@Param('warehouseCode') warehouseCode: string) {
-		return await this.storageLocationService.findAllByWarehouse(warehouseCode)
+		return await this.storageLocationService.findByWarehouse(warehouseCode)
 	}
 
 	@Patch(':id')
 	@UseGuards(JwtGuard)
 	@UsePipes(new ZodValidationPipe(updateStorageLocationValidator))
-	@ApiHelper(HttpStatus.CREATED, { i18nKey: 'common.updated' })
+	@UseBaseAPI(HttpStatus.CREATED, { i18nKey: 'common.updated' })
 	async updateStorageLocation(@Param('id') id: string, @Body() payload: CreateStorageLocationDTO) {
 		return await this.storageLocationService.updateOneById(+id, payload)
 	}
@@ -63,7 +63,7 @@ export class StorageLocationController {
 	@Delete()
 	@UseGuards(JwtGuard)
 	@UsePipes(new ZodValidationPipe(deleteStorageLocationValidator))
-	@ApiHelper(HttpStatus.NO_CONTENT, { i18nKey: 'common.deleted' })
+	@UseBaseAPI(HttpStatus.NO_CONTENT, { i18nKey: 'common.deleted' })
 	async deleteStorageLocation(@Body() payload: DeleteStorageLocationDTO) {
 		return await this.storageLocationService.deleteMany(payload.id)
 	}

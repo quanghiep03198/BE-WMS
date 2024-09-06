@@ -19,6 +19,6 @@ export class WarehouseService extends BaseAbstractService<WarehouseEntity> {
 	}
 
 	async deleteMany(ids: Array<number>) {
-		return await this.warehouseRepository.delete({ keyid: In(ids) })
+		return await this.warehouseRepository.delete({ id: In(ids) })
 	}
 }

@@ -1,4 +1,4 @@
-import { ApiHelper } from '@/common/decorators/api.decorator'
+import { UseBaseAPI } from '@/common/decorators/base-api.decorator'
 import { ZodValidationPipe } from '@/common/pipes/zod-validation.pipe'
 import { JwtGuard } from '@/modules/auth/guards/jwt.guard'
 import {
@@ -30,7 +30,7 @@ export class WarehouseController {
 	constructor(private warehouseService: WarehouseService) {}
 	@Get()
 	@UseGuards(JwtGuard)
-	@ApiHelper(HttpStatus.OK, { i18nKey: 'common.ok' })
+	@UseBaseAPI(HttpStatus.OK, { i18nKey: 'common.ok' })
 	async getWarehouses(@Headers('X-User-Company') cofactorCode: string) {
 		return await this.warehouseService.findAllByFactory(cofactorCode)
 	}
@@ -38,7 +38,7 @@ export class WarehouseController {
 	@Post()
 	@UseGuards(JwtGuard)
 	@UsePipes(new ZodValidationPipe(createWarehouseValidator))
-	@ApiHelper(HttpStatus.CREATED, { i18nKey: 'common.created' })
+	@UseBaseAPI(HttpStatus.CREATED, { i18nKey: 'common.created' })
 	async createWarehouse(@Headers('X-User-Company') factoryCode: string, @Body() payload: CreateWarehouseDTO) {
 		const data = new WarehouseEntity({ ...payload, cofactory_code: factoryCode })
 		return await this.warehouseService.insertOne(data)
@@ -47,7 +47,7 @@ export class WarehouseController {
 	@Patch(':id')
 	@UseGuards(JwtGuard)
 	@UsePipes(new ZodValidationPipe(updateWarehouseValidator))
-	@ApiHelper(HttpStatus.CREATED, { i18nKey: 'common.updated' })
+	@UseBaseAPI(HttpStatus.CREATED, { i18nKey: 'common.updated' })
 	async updateWarehouse(@Param('id') id: string, @Body() payload: UpdateWarehouseDTO) {
 		return await this.warehouseService.updateOneById(+id, payload)
 	}
@@ -55,7 +55,7 @@ export class WarehouseController {
 	@Delete()
 	@UseGuards(JwtGuard)
 	@UsePipes(new ZodValidationPipe(deleteWarehouseValidator))
-	@ApiHelper(HttpStatus.NO_CONTENT, { i18nKey: 'common.deleted' })
+	@UseBaseAPI(HttpStatus.NO_CONTENT, { i18nKey: 'common.deleted' })
 	async deleteWarehouses(@Body() payload: DeleteWarehouseDTO) {
 		return await this.warehouseService.deleteMany(payload.id)
 	}

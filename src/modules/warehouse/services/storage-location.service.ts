@@ -14,11 +14,11 @@ export class StorageLocationService extends BaseAbstractService<StorageLocationE
 		super(storageLocationRepository)
 	}
 
-	async findAllByWarehouse(warehouseCode: string) {
-		return await this.storageLocationRepository.findOneBy({ warehouse_num: warehouseCode })
+	async findByWarehouse(warehouseCode: string) {
+		return await this.storageLocationRepository.findBy({ warehouse_num: warehouseCode })
 	}
 
-	async deleteMany(ids: Array<number>) {
-		return await this.storageLocationRepository.delete({ keyid: In(ids) })
+	async deleteMany(id: Array<number>) {
+		return await this.storageLocationRepository.delete({ id: In(id) })
 	}
 }
