@@ -1,13 +1,16 @@
 import { DataSources } from '@/common/constants/global.enum'
-import { ConflictException, Injectable } from '@nestjs/common'
+import { ConflictException, Injectable, NotFoundException } from '@nestjs/common'
+import { ConfigService } from '@nestjs/config'
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm'
+import { genSaltSync, hashSync } from 'bcrypt'
 import { stringify } from 'querystring'
 import { DataSource, Repository } from 'typeorm'
-import { RegisterDTO } from './dto/user.dto'
+import { BaseAbstractService } from '../_base/base.abstract.service'
+import { ChangePasswordDTO, RegisterDTO, UpdateProfileDTO } from './dto/user.dto'
 import { EmployeeEntity } from './entities/employee.entity'
 import { UserEntity } from './entities/user.entity'
 
-type TAvatarGenOptions = {
+type AvatarGenerateOptions = {
 	name: string
 	background?: string
 	color?: string
@@ -17,13 +20,18 @@ type TAvatarGenOptions = {
 }
 
 @Injectable()
-export class UserService {
+export class UserService extends BaseAbstractService<UserEntity> {
 	constructor(
 		@InjectDataSource(DataSources.SYSCLOUD)
-		private readonly syscloudDataSource: DataSource,
+		private syscloudDataSource: DataSource,
 		@InjectRepository(UserEntity, DataSources.SYSCLOUD)
-		private readonly userRepository: Repository<UserEntity>
-	) {}
+		private userRepository: Repository<UserEntity>,
+		@InjectRepository(EmployeeEntity, DataSources.SYSCLOUD)
+		private employeeRepository: Repository<EmployeeEntity>,
+		private configService: ConfigService
+	) {
+		super(userRepository)
+	}
 
 	async createUser(payload: RegisterDTO) {
 		const user = await this.userRepository.findOne({ where: { username: payload.username } })
@@ -32,12 +40,14 @@ export class UserService {
 		return await this.userRepository.save(newUser) // Save sẽ kích hoạt BeforeInsert
 	}
 
-	async getProfile(id: number) {
+	async getProfile(id: number): Promise<UserEntity> {
 		const user = await this.userRepository
 			.createQueryBuilder('u')
 			.select([
 				'u.keyid AS id',
+				'u.password AS password',
 				'e.employee_name AS display_name',
+				'e.employee_code AS employee_code',
 				'e.email AS email',
 				'e.phone AS phone',
 				'ISNULL(u.isadmin, 0) AS isadmin'
@@ -46,7 +56,11 @@ export class UserService {
 			.where('u.keyid = :id', { id })
 			.getRawOne()
 
-		return { ...user, picture: this.generateAvatar({ name: user?.display_name }) }
+		return {
+			...user,
+			password: hashSync(user.password, genSaltSync(+this.configService.get('SALT_ROUND'))),
+			picture: this.generateAvatar({ name: user?.display_name })
+		}
 	}
 
 	async findUserByUsername(username: string) {
@@ -72,6 +86,16 @@ export class UserService {
 		return await this.userRepository.update(userId, { remember_token: token })
 	}
 
+	async updateProfile(employeeCode: string, payload: UpdateProfileDTO) {
+		const userProfile = await this.employeeRepository.findOneBy({ employee_code: employeeCode })
+		if (!userProfile) throw new NotFoundException('User could not be found')
+		return await this.employeeRepository.save({ ...userProfile, ...payload })
+	}
+
+	async changePassword(userId: number, payload: ChangePasswordDTO) {
+		return await this.userRepository.update(userId, payload)
+	}
+
 	private generateAvatar({
 		background = '#525252',
 		color = '#fafafa',
@@ -79,7 +103,7 @@ export class UserService {
 		bold = true,
 		format = 'svg',
 		name
-	}: TAvatarGenOptions) {
+	}: AvatarGenerateOptions) {
 		const BASE_AVATAR_URL = 'https://ui-avatars.com/api/'
 		return (
 			BASE_AVATAR_URL +

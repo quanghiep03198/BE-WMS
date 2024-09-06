@@ -19,6 +19,9 @@ export class UserEntity extends BaseAbstractEntity {
 	@Column()
 	remember_token: string
 
+	@Column({ type: 'bit', default: 0 })
+	isadmin: boolean
+
 	authenticate(password: string) {
 		return this.password === password
 	}
