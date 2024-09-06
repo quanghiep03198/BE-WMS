@@ -1,9 +1,10 @@
 import { Module } from '@nestjs/common'
-import { RfidController } from './rfid.controller'
-import { RfidService } from './rfid.service'
+import { DynamicDataSourceService } from '../_shared/services/dynamic-datasource.service'
+import { RFIDController } from './rfid.controller'
+import { RFIDService } from './rfid.service'
 
 @Module({
-	controllers: [RfidController],
-	providers: [RfidService]
+	controllers: [RFIDController],
+	providers: [RFIDService, DynamicDataSourceService]
 })
-export class RfidModule {}
+export class RFIDModule {}

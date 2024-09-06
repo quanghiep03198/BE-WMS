@@ -1,15 +1,15 @@
 import { Test, TestingModule } from '@nestjs/testing'
-import { RfidService } from './rfid.service'
+import { RFIDService } from '../rfid.service'
 
-describe('RfidService', () => {
-	let service: RfidService
+describe('RFIDService', () => {
+	let service: RFIDService
 
 	beforeEach(async () => {
 		const module: TestingModule = await Test.createTestingModule({
-			providers: [RfidService]
+			providers: [RFIDService]
 		}).compile()
 
-		service = module.get<RfidService>(RfidService)
+		service = module.get<RFIDService>(RFIDService)
 	})
 
 	it('should be defined', () => {

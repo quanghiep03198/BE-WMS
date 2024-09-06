@@ -1,15 +1,15 @@
 import { Test, TestingModule } from '@nestjs/testing'
-import { RfidController } from './rfid.controller'
+import { RFIDController } from '../rfid.controller'
 
-describe('RfidController', () => {
-	let controller: RfidController
+describe('RFIDController', () => {
+	let controller: RFIDController
 
 	beforeEach(async () => {
 		const module: TestingModule = await Test.createTestingModule({
-			controllers: [RfidController]
+			controllers: [RFIDController]
 		}).compile()
 
-		controller = module.get<RfidController>(RfidController)
+		controller = module.get<RFIDController>(RFIDController)
 	})
 
 	it('should be defined', () => {
