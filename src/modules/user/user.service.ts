@@ -44,16 +44,16 @@ export class UserService extends BaseAbstractService<UserEntity> {
 		const user = await this.userRepository
 			.createQueryBuilder('u')
 			.select([
-				'u.keyid AS id',
+				'u.id AS id',
 				'u.password AS password',
+				'u.role AS role',
 				'e.employee_name AS display_name',
 				'e.employee_code AS employee_code',
 				'e.email AS email',
-				'e.phone AS phone',
-				'ISNULL(u.isadmin, 0) AS isadmin'
+				'e.phone AS phone'
 			])
 			.innerJoin(EmployeeEntity, 'e', 'u.employee_code = e.employee_code')
-			.where('u.keyid = :id', { id })
+			.where('u.id = :id', { id })
 			.getRawOne()
 
 		return {
@@ -76,7 +76,7 @@ export class UserService extends BaseAbstractService<UserEntity> {
 			.innerJoin('ts_employeedept', 'ed', 'ed.employee_code = e.employee_code')
 			.innerJoin('ts_dept', 'd', 'd.dept_code = ed.dept_code')
 			.innerJoin('ts_factory', 'f', 'f.factory_code = d.company_code')
-			.where('u.keyid = :id', { id: userId })
+			.where('u.id = :id', { id: userId })
 			.andWhere('f.factory_extcode <> :factoryCode', { factoryCode: 'GL5' })
 			.orderBy('factory_extcode', 'ASC')
 			.getRawMany()

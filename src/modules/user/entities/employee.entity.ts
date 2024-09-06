@@ -5,7 +5,7 @@ import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm'
 @Entity('ts_employee', { database: Databases.SYSCLOUD })
 export class EmployeeEntity extends BaseAbstractEntity {
 	@PrimaryGeneratedColumn()
-	keyid: number
+	id: number
 
 	@Column({ type: 'nvarchar', length: 100 })
 	employee_name: string

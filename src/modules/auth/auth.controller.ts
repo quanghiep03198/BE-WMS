@@ -28,7 +28,7 @@ export class AuthController {
 	@Post('logout')
 	@UseGuards(JwtGuard)
 	@UseBaseAPI(HttpStatus.OK, { i18nKey: 'common.ok' })
-	async logout(@User('keyid') userId) {
+	async logout(@User('id') userId) {
 		return await this.authService.logout(userId)
 	}
 }

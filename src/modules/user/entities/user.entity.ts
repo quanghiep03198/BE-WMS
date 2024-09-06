@@ -1,9 +1,9 @@
-import { Databases } from '@/common/constants/global.enum'
+import { Databases, UserRoles } from '@/common/constants/global.enum'
 import { BaseAbstractEntity } from '@/modules/_base/base.abstract.entity'
 import 'dotenv/config'
 import { Column, Entity, Index } from 'typeorm'
 
-@Entity('ts_user', { database: Databases.SYSCLOUD })
+@Entity('ts_user', { database: Databases.SYSCLOUD, synchronize: true })
 export class UserEntity extends BaseAbstractEntity {
 	@Index({ unique: true })
 	@Column({ name: 'user_code', type: 'nvarchar', length: 20 })
@@ -19,8 +19,8 @@ export class UserEntity extends BaseAbstractEntity {
 	@Column()
 	remember_token: string
 
-	@Column({ type: 'bit', default: 0 })
-	isadmin: boolean
+	@Column({ name: 'isadmin', type: 'varchar', length: 20, enum: UserRoles, default: UserRoles.USER })
+	role: UserRoles
 
 	authenticate(password: string) {
 		return this.password === password

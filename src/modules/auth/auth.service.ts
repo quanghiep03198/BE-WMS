@@ -1,9 +1,9 @@
-import { UserRoles } from '@/common/constants/global.enum'
 import { CACHE_MANAGER } from '@nestjs/cache-manager'
 import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { JwtService } from '@nestjs/jwt'
 import { Cache } from 'cache-manager'
+import { pick } from 'lodash'
 import { UserEntity } from '../user/entities/user.entity'
 import { UserService } from '../user/user.service'
 import { LoginDTO } from './dto/auth.dto'
@@ -31,17 +31,16 @@ export class AuthService {
 	}
 
 	async login(payload: UserEntity) {
-		const userId = payload.keyid
-		const token = await this.generateToken({ keyid: userId, employeeCode: payload.employee_code })
+		const userId = payload.id
+		const token = await this.generateToken(pick)
 		const ttl = 60 * 1000 * 60 + 30 * 1000 // 1h + 30s
 		await this.cacheManager.set(`token:${userId}`, token, ttl)
 		const user = await this.userService.getProfile(userId)
-		user['role'] = user.isadmin ? UserRoles.ADMIN : UserRoles.USER
 		return { user, token }
 	}
 
 	async refreshToken(userId: number) {
-		const refreshToken = await this.generateToken({ keyid: userId })
+		const refreshToken = await this.generateToken({ id: userId })
 		await this.cacheManager.set(`token:${userId}`, refreshToken)
 		return refreshToken
 	}

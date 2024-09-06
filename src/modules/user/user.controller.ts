@@ -27,7 +27,7 @@ export class UserController {
 	@Get('profile')
 	@UseGuards(JwtGuard)
 	@UseBaseAPI(HttpStatus.OK, { i18nKey: 'common.ok' })
-	async getProfile(@User('keyid') userId) {
+	async getProfile(@User('id') userId) {
 		return await this.userService.getProfile(userId)
 	}
 
@@ -43,14 +43,14 @@ export class UserController {
 	@UseGuards(JwtGuard)
 	@UsePipes(new ZodValidationPipe(changePasswordValidator))
 	@UseBaseAPI(HttpStatus.OK, { i18nKey: 'common.ok' })
-	async changePassword(@User('keyid') userId: number, @Body() payload: ChangePasswordDTO) {
+	async changePassword(@User('id') userId: number, @Body() payload: ChangePasswordDTO) {
 		return await this.userService.changePassword(userId, payload)
 	}
 
 	@Get('companies')
 	@UseGuards(JwtGuard)
 	@UseBaseAPI(HttpStatus.OK, { i18nKey: 'common.ok' })
-	async getUserFactory(@User('keyid') id: number) {
+	async getUserFactory(@User('id') id: number) {
 		return await this.userService.getUserCompany(+id)
 	}
 }
