@@ -32,15 +32,17 @@ export class AuthService {
 
 	async login(payload: UserEntity) {
 		const userId = payload.id
-		const token = await this.generateToken(pick)
 		const ttl = 60 * 1000 * 60 + 30 * 1000 // 1h + 30s
-		await this.cacheManager.set(`token:${userId}`, token, ttl)
 		const user = await this.userService.getProfile(userId)
+		const token = await this.generateToken(pick(user, ['id', 'employee_code', 'role']))
+		await this.cacheManager.set(`token:${userId}`, token, ttl)
 		return { user, token }
 	}
 
 	async refreshToken(userId: number) {
-		const refreshToken = await this.generateToken({ id: userId })
+		const user = await this.userService.findOneById(userId)
+		if (!user) throw new NotFoundException('User could not be found')
+		const refreshToken = await this.generateToken(pick(user, ['id', 'employee_code', 'role']))
 		await this.cacheManager.set(`token:${userId}`, refreshToken)
 		return refreshToken
 	}
