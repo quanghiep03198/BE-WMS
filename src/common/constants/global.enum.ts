@@ -1,6 +1,22 @@
+export enum Environment {
+	DEVELOPMENT = 'development',
+	PRODUCTION = 'production'
+}
+
 export enum RecordStatus {
 	ACTIVE = 'Y',
 	INACTIVE = 'N'
+}
+
+export enum UserRoles {
+	ADMIN = 'ADMIN',
+	USER = 'USER'
+}
+
+export enum Languages {
+	VIETNAMESE = 'vn',
+	ENGLISH = 'en',
+	CHINESE = 'cn'
 }
 
 export enum Databases {
