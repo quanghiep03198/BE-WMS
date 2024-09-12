@@ -4,7 +4,7 @@ import { ZodValidationPipe } from '@/common/pipes/zod-validation.pipe'
 import { Controller, Get, HttpStatus, Param, Post, UseGuards, UsePipes } from '@nestjs/common'
 import { AuthService } from './auth.service'
 import { loginValidator } from './dto/auth.dto'
-import { JwtGuard } from './guards/jwt.guard'
+import { JwtAuthGuard } from './guards/jwt-auth.guard'
 import { LocalAuthGuard } from './guards/local-auth.guard'
 
 @Controller()
@@ -26,7 +26,7 @@ export class AuthController {
 	}
 
 	@Post('logout')
-	@UseGuards(JwtGuard)
+	@UseGuards(JwtAuthGuard)
 	@UseBaseAPI(HttpStatus.OK, { i18nKey: 'common.ok' })
 	async logout(@User('id') userId) {
 		return await this.authService.logout(userId)

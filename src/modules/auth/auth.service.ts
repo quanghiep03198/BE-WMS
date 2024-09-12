@@ -1,11 +1,10 @@
 import { CACHE_MANAGER } from '@nestjs/cache-manager'
 import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common'
-import { ConfigService } from '@nestjs/config'
 import { JwtService } from '@nestjs/jwt'
 import { Cache } from 'cache-manager'
 import { pick } from 'lodash'
 import { UserEntity } from '../user/entities/user.entity'
-import { UserService } from '../user/user.service'
+import { UserService } from '../user/services/user.service'
 import { LoginDTO } from './dto/auth.dto'
 
 @Injectable()
@@ -13,15 +12,8 @@ export class AuthService {
 	constructor(
 		@Inject(CACHE_MANAGER) private cacheManager: Cache,
 		private jwtService: JwtService,
-		private configService: ConfigService,
 		private userService: UserService
 	) {}
-
-	private async generateToken(payload: any) {
-		return await this.jwtService.signAsync(payload, {
-			secret: this.configService.get('JWT_SECRET')
-		})
-	}
 
 	async validateUser(payload: LoginDTO) {
 		const user = await this.userService.findUserByUsername(payload.username)
@@ -34,22 +26,26 @@ export class AuthService {
 		const userId = payload.id
 		const ttl = 60 * 1000 * 60 + 30 * 1000 // 1h + 30s
 		const user = await this.userService.getProfile(userId)
-		const token = await this.generateToken(pick(user, ['id', 'employee_code', 'role']))
-		await this.cacheManager.set(`token:${userId}`, token, ttl)
+		const token = await this.jwtService.signAsync(pick(user, ['id', 'employee_code', 'role']))
+		await this.cacheManager.set(this.takeCacheTokenKey(userId), token, ttl)
 		return { user, token }
 	}
 
 	async refreshToken(userId: number) {
 		const user = await this.userService.findOneById(userId)
 		if (!user) throw new NotFoundException('User could not be found')
-		const refreshToken = await this.generateToken(pick(user, ['id', 'employee_code', 'role']))
-		await this.cacheManager.set(`token:${userId}`, refreshToken)
+		const refreshToken = await this.jwtService.signAsync(pick(user, ['id', 'employee_code', 'role']))
+		await this.cacheManager.set(this.takeCacheTokenKey(userId), refreshToken)
 		return refreshToken
 	}
 
 	async logout(userId: number) {
 		// Revoke cached token
-		await this.cacheManager.del(`token:${userId}`)
+		await this.cacheManager.del(this.takeCacheTokenKey(userId))
 		return null
+	}
+
+	private takeCacheTokenKey(userId: number) {
+		return `token:${userId}`
 	}
 }

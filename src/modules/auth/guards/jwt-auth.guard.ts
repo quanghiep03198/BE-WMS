@@ -6,7 +6,7 @@ import { Cache } from 'cache-manager'
 import { Request } from 'express'
 
 @Injectable()
-export class JwtGuard implements CanActivate {
+export class JwtAuthGuard implements CanActivate {
 	constructor(
 		@Inject(CACHE_MANAGER) private cacheManager: Cache,
 		private jwtService: JwtService,
@@ -19,7 +19,6 @@ export class JwtGuard implements CanActivate {
 		if (!token) {
 			throw new UnauthorizedException()
 		}
-
 		try {
 			const payload = await this.jwtService.verifyAsync(token, {
 				secret: this.configService.get('JWT_SECRET')
