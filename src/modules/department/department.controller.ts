@@ -14,4 +14,10 @@ export class DepartmentController {
 		if (!Object.values(FactoryCodes).includes) throw new UnprocessableEntityException('Invalid factory code')
 		return await this.departmentService.getWarehouseDepartments(factoryCode)
 	}
+
+	@Get('shaping-product-line')
+	@UseBaseAPI(HttpStatus.OK, { i18nKey: 'common.ok' })
+	async getShapingDepartment(@Headers('X-User-Company') factoryCode: string) {
+		return await this.departmentService.getShapingDepartment(factoryCode)
+	}
 }
