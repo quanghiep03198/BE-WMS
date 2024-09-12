@@ -8,6 +8,10 @@
 			{
 				"include": "i18n/**/*",
 				"watchAssets": true
+			},
+			{
+				"include": "modules/**/sql/*.sql",
+				"watchAssets": true
 			}
 		],
 		"deleteOutDir": true,
