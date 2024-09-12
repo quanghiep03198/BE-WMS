@@ -38,6 +38,7 @@
 		"dotenv": "^16.4.5",
 		"helmet": "^7.1.0",
 		"lodash": "^4.17.21",
+		"lz-string": "^1.5.0",
 		"morgan": "^1.10.0",
 		"mssql": "^10.0.4",
 		"nestjs-i18n": "^10.4.5",
@@ -52,6 +53,8 @@
 		"zod": "^3.23.8"
 	},
 	"devDependencies": {
+		"@automock/adapters.nestjs": "^2.1.0",
+		"@automock/jest": "^2.1.0",
 		"@commitlint/cli": "^19.4.1",
 		"@commitlint/config-conventional": "^19.4.1",
 		"@nestjs/cli": "^10.0.0",
@@ -93,21 +96,11 @@
 		"webpack-node-externals": "^3.0.0"
 	},
 	"jest": {
-		"moduleFileExtensions": [
-			"js",
-			"json",
-			"ts"
-		],
-		"rootDir": "src",
-		"testRegex": ".*\\.spec\\.ts$",
 		"transform": {
-			"^.+\\.(t|j)s$": "ts-jest"
-		},
-		"collectCoverageFrom": [
-			"**/*.(t|j)s"
-		],
-		"coverageDirectory": "../coverage",
-		"testEnvironment": "node"
+			"^.+\\.(t|j)s?$": [
+				"@swc/jest"
+			]
+		}
 	},
 	"lint-staged": {
 		"*.ts": [
