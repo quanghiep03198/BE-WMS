@@ -4,8 +4,10 @@
 	"updated": "Updated",
 	"deleted": "Deleted",
 	"not_found": "Record could not be found",
-	"unprocessable_entity": "Unprocessable Entity",
+	"unprocessable_entity": "Unprocessable entity",
 	"unauthorized": "Unauthorized",
 	"forbidden": "Forbidden",
-	"internal_server_error": "Internal Server Error"
+	"conflict": "Conflict",
+	"internal_server_error": "Internal server error",
+	"unavailable_service": "Unavailable service"
 }

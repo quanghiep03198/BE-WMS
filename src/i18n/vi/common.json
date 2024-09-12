@@ -7,5 +7,7 @@
 	"unprocessable_entity": "Dữ liệu không hợp lệ",
 	"unauthorized": "Xác thực tài khoản thất bại",
 	"forbidden": "Không có quyền truy cập",
-	"internal_server_error": "Lỗi server"
+	"conflict": "Xung đột dữ liệu",
+	"internal_server_error": "Lỗi Server",
+	"unavailable_service": "Tính năng không khả dụng"
 }
