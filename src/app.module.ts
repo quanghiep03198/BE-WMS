@@ -3,9 +3,10 @@ import { ConfigModule, ConfigService } from '@nestjs/config'
 import { AcceptLanguageResolver, HeaderResolver, I18nModule, QueryResolver } from 'nestjs-i18n'
 import { internalConfigs, validateConfig } from './configs/app.config'
 import { DatabaseModule } from './databases/database.module'
-import { DynamicDataSourceService } from './modules/_shared/dynamic-datasource.service'
+// Middlewres
 // Feature modules
 import { CacheModule, CacheOptions } from '@nestjs/cache-manager'
+import { ThrottlerModule } from '@nestjs/throttler'
 import { RedisClientOptions } from 'redis'
 import { FileLogger } from './common/helpers/file-logger.helper'
 import { AuthModule } from './modules/auth/auth.module'
@@ -38,6 +39,10 @@ import { WarehouseModule } from './modules/warehouse/warehouse.module'
 			useFactory: (configService: ConfigService) =>
 				configService.getOrThrow<CacheOptions<RedisClientOptions>>('cache')
 		}),
+		ThrottlerModule.forRootAsync({
+			inject: [ConfigService],
+			useFactory: (configService: ConfigService) => configService.getOrThrow('throttler')
+		}),
 		DatabaseModule,
 		// * Feature modules
 		AuthModule,
@@ -47,7 +52,7 @@ import { WarehouseModule } from './modules/warehouse/warehouse.module'
 		DepartmentModule
 	],
 	controllers: [],
-	providers: [DynamicDataSourceService]
+	providers: []
 })
 export class AppModule implements OnModuleInit {
 	onModuleInit() {
