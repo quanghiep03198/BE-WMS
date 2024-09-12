@@ -20,7 +20,10 @@ export class UserEntity extends BaseAbstractEntity {
 	@Column()
 	remember_token: string
 
-	@Column({ name: 'isadmin', type: 'varchar', length: 20, enum: UserRoles, default: UserRoles.USER })
+	@Column({ name: 'isadmin', type: 'bit', default: 0 })
+	is_admin: boolean
+
+	@Column({ type: 'nvarchar', length: 20, enum: UserRoles, default: UserRoles.USER })
 	role: UserRoles
 
 	authenticate(password: string) {

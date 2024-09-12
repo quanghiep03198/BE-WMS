@@ -1,14 +1,14 @@
-import { SYSCLOUD_CONNECTION } from '@/databases/constants'
+import { DATA_SOURCE_SYSCLOUD } from '@/databases/constants'
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm'
 import { genSaltSync, hashSync } from 'bcrypt'
 import { stringify } from 'querystring'
 import { DataSource, Repository } from 'typeorm'
-import { BaseAbstractService } from '../_base/base.abstract.service'
-import { ChangePasswordDTO, RegisterDTO, UpdateProfileDTO } from './dto/user.dto'
-import { EmployeeEntity } from './entities/employee.entity'
-import { UserEntity } from './entities/user.entity'
+import { BaseAbstractService } from '../../_base/base.abstract.service'
+import { ChangePasswordDTO, RegisterDTO, UpdateProfileDTO } from '../dto/user.dto'
+import { EmployeeEntity } from '../entities/employee.entity'
+import { UserEntity } from '../entities/user.entity'
 
 type AvatarGenerateOptions = {
 	name: string
@@ -22,11 +22,11 @@ type AvatarGenerateOptions = {
 @Injectable()
 export class UserService extends BaseAbstractService<UserEntity> {
 	constructor(
-		@InjectDataSource(SYSCLOUD_CONNECTION)
+		@InjectDataSource(DATA_SOURCE_SYSCLOUD)
 		private syscloudDataSource: DataSource,
-		@InjectRepository(UserEntity, SYSCLOUD_CONNECTION)
+		@InjectRepository(UserEntity, DATA_SOURCE_SYSCLOUD)
 		private userRepository: Repository<UserEntity>,
-		@InjectRepository(EmployeeEntity, SYSCLOUD_CONNECTION)
+		@InjectRepository(EmployeeEntity, DATA_SOURCE_SYSCLOUD)
 		private employeeRepository: Repository<EmployeeEntity>,
 		private configService: ConfigService
 	) {
