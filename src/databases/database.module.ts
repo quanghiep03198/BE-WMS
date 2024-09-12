@@ -2,18 +2,18 @@ import { Module } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { TypeOrmModule, TypeOrmModuleAsyncOptions } from '@nestjs/typeorm'
 import {
-	DATA_LAKE_CONNECTION,
+	DATA_SOURCE_ERP,
+	DATA_SOURCE_SYSCLOUD,
 	DATABASE_DATA_LAKE,
 	DATABASE_ERP,
 	DATABASE_SYSCLOUD,
-	ERP_CONNECTION,
-	SYSCLOUD_CONNECTION
+	DATASOURCE_DATA_LAKE
 } from './constants'
 
 @Module({
 	imports: [
 		TypeOrmModule.forRootAsync({
-			name: DATA_LAKE_CONNECTION,
+			name: DATASOURCE_DATA_LAKE,
 			inject: [ConfigService],
 			useFactory: (configService: ConfigService) => {
 				return {
@@ -23,7 +23,7 @@ import {
 			}
 		}),
 		TypeOrmModule.forRootAsync({
-			name: SYSCLOUD_CONNECTION,
+			name: DATA_SOURCE_SYSCLOUD,
 			inject: [ConfigService],
 			useFactory: (configService: ConfigService) => {
 				return {
@@ -33,7 +33,7 @@ import {
 			}
 		}),
 		TypeOrmModule.forRootAsync({
-			name: ERP_CONNECTION,
+			name: DATA_SOURCE_ERP,
 			inject: [ConfigService],
 			useFactory: (configService: ConfigService) => {
 				return {

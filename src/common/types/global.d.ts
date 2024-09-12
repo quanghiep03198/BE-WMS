@@ -1,18 +1,22 @@
+import { TypeOrmModuleOptions } from '@nestjs/typeorm'
+
 export declare global {
 	namespace NodeJS {
 		interface ProcessEnv {
-			readonly NODE_ENV: 'development' | 'production' | 'test'
-			readonly PORT: string
-			readonly DB_TYPE: 'mysql' | 'mariadb' | 'postgres' | 'cockroachdb' | 'sqlite' | 'mssql' | 'oracle' | 'mongodb'
-			readonly DB_HOST: string
-			readonly DB_USERNAME: string
-			readonly DB_PASSWORD: string
-			readonly DB_PORT: string
-			readonly DB_TRUST_SERVER_CERTIFICATE: string
-			readonly REDIS_HOST: string
-			readonly REDIS_PORT: string
-			readonly SALT_ROUND: string
-			readonly JWT_SECRET: string
+			NODE_ENV: 'development' | 'production' | 'test'
+			PORT: string
+			THROTTLER_TTL: string
+			THROTTLER_LIMIT: string
+			DB_TYPE: TypeOrmModuleOptions['type']
+			DB_HOST: string
+			DB_USERNAME: string
+			DB_PASSWORD: string
+			DB_PORT: string
+			DB_TRUST_SERVER_CERTIFICATE: string
+			REDIS_HOST: string
+			REDIS_PORT: string
+			SALT_ROUND: string
+			JWT_SECRET: string
 		}
 	}
 }

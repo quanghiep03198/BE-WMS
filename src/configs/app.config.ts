@@ -1,8 +1,10 @@
 import { Environment, Languages } from '@/common/constants'
 import { CacheOptions } from '@nestjs/cache-manager'
 import { Logger } from '@nestjs/common'
+import { ThrottlerOptions } from '@nestjs/throttler'
 import { TypeOrmModuleOptions } from '@nestjs/typeorm'
 import { redisStore } from 'cache-manager-redis-store'
+import 'dotenv/config'
 import { I18nOptions } from 'nestjs-i18n'
 import path from 'path'
 import { z } from 'zod'
@@ -16,11 +18,29 @@ export const configValidator = z.object({
 		.refine((value) => !isNaN(+value))
 		.transform((value) => +value),
 	FALLBACK_LANGUAGE: z.nativeEnum(Languages),
+	THROTTLER_TTL: z
+		.string()
+		.trim()
+		.min(1)
+		.refine((value) => !isNaN(+value))
+		.transform((value) => +value),
+	THROTTLER_LIMIT: z
+		.string()
+		.trim()
+		.min(1)
+		.refine((value) => !isNaN(+value))
+		.transform((value) => Number(value)),
 	DB_TYPE: z.string().trim().min(1),
 	DB_HOST: z.string().trim().min(1),
 	DB_USERNAME: z.string().trim().min(1),
 	DB_PASSWORD: z.string().trim().min(1),
 	DB_PORT: z
+		.string()
+		.trim()
+		.min(1)
+		.refine((value) => !isNaN(+value))
+		.transform((value) => Number(value)),
+	DB_CONNECTION_TIMEOUT: z
 		.string()
 		.trim()
 		.min(1)
@@ -81,8 +101,13 @@ export const internalConfigs = () => ({
 		options: {
 			trustServerCertificate: Boolean(process.env.DB_TRUST_SERVER_CERTIFICATE),
 			encrypt: false,
-			enableArithAbort: true
+			enableArithAbort: true,
+			connectTimeout: Number(process.env.DB_CONNECTION_TIMEOUT)
 		},
 		synchronize: false
-	} satisfies Partial<TypeOrmModuleOptions>
+	} satisfies Partial<TypeOrmModuleOptions>,
+	throttler: {
+		ttl: +process.env.THROTTLER_TTL,
+		limit: +process.env.THROTTLER_LIMIT
+	} satisfies ThrottlerOptions
 })
