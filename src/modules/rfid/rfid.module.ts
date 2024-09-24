@@ -1,14 +1,14 @@
-import { DATA_LAKE_CONNECTION } from '@/databases/constants'
+import { DATASOURCE_DATA_LAKE } from '@/databases/constants'
 import { Module } from '@nestjs/common'
 import { TypeOrmModule } from '@nestjs/typeorm'
-import { DynamicDataSourceService } from '../_shared/dynamic-datasource.service'
+import { RFIDCustomerEntity } from './entities/rfid-customer.entity'
 import { RFIDInventoryEntity } from './entities/rfid-inventory.entity'
 import { RFIDController } from './rfid.controller'
 import { RFIDService } from './rfid.service'
 
 @Module({
-	imports: [TypeOrmModule.forFeature([RFIDInventoryEntity], DATA_LAKE_CONNECTION)],
+	imports: [TypeOrmModule.forFeature([RFIDInventoryEntity, RFIDCustomerEntity], DATASOURCE_DATA_LAKE)],
 	controllers: [RFIDController],
-	providers: [RFIDService, DynamicDataSourceService]
+	providers: [RFIDService]
 })
 export class RFIDModule {}

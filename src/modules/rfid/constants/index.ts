@@ -1,4 +1,4 @@
-export enum RFIDActions {
+export enum InventoryActions {
 	INBOUND = 'A',
 	OUTBOUND = 'B'
 }

@@ -8,7 +8,7 @@ import { AppModule } from './app.module'
 
 async function bootstrap() {
 	try {
-		const app = await NestFactory.create(AppModule)
+		const app = await NestFactory.create(AppModule, { abortOnError: false })
 		const configService = app.get(ConfigService)
 		app.setGlobalPrefix('/api')
 		app.enableVersioning({ type: VersioningType.URI })
@@ -27,7 +27,7 @@ async function bootstrap() {
 				threshold: 10 * 1024
 			})
 		)
-		await app.listen(+configService.getOrThrow('PORT', { infer: true }), async () => {
+		await app.listen(+configService.get('PORT'), configService.get('HOST'), async () => {
 			const URL = await app.getUrl()
 			Logger.log(URL, 'Server')
 		})

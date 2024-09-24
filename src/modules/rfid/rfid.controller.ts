@@ -1,42 +1,75 @@
-import { AllExceptionsFilter } from '@/common/filters/exceptions.filter'
-import { TransformInterceptor } from '@/common/interceptors/transform.interceptor'
+import { UseAuth } from '@/common/decorators/auth.decorator'
+import { UseBaseAPI } from '@/common/decorators/base-api.decorator'
 import { ZodValidationPipe } from '@/common/pipes/zod-validation.pipe'
 import {
 	Body,
 	Controller,
-	HttpCode,
+	DefaultValuePipe,
+	Delete,
+	Get,
 	HttpStatus,
+	Param,
+	ParseIntPipe,
 	Patch,
+	Query,
 	Sse,
-	UseFilters,
 	UseGuards,
-	UseInterceptors,
 	UsePipes
 } from '@nestjs/common'
-import { interval, map } from 'rxjs'
-import { JwtGuard } from '../auth/guards/jwt.guard'
-import { UpdateStockDTO, updateStockValidator } from './dto/rfid.dto'
+import { catchError, from, interval, map, of, switchMap } from 'rxjs'
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard'
+import { ExchangeEpcDTO, exchangeEpcValidator, UpdateStockDTO, updateStockValidator } from './dto/rfid.dto'
 import { RFIDService } from './rfid.service'
 
 @Controller('rfid')
 export class RFIDController {
 	constructor(private rfidService: RFIDService) {}
 
-	@Sse('read-epc')
-	@UseGuards(JwtGuard)
-	@UseFilters(AllExceptionsFilter)
-	async retrieveEPC() {
-		const responseData = await this.rfidService.findUnstoredEPC()
-		return interval(1000).pipe(map(() => ({ data: responseData })))
+	@Sse('fetch-epc')
+	@UseGuards(JwtAuthGuard)
+	findUnstoredItems() {
+		return interval(1000).pipe(
+			switchMap(() =>
+				from(this.rfidService.fetchItems({ page: 1 })).pipe(
+					catchError((error) => {
+						console.error(error.message)
+						return of({ error: error.message })
+					})
+				)
+			),
+			map((data) => ({ data }))
+		)
+	}
+
+	@Get('fetch-next-epc')
+	@UseAuth()
+	@UseBaseAPI(HttpStatus.OK, 'Ok')
+	async fetchNextItems(
+		@Query('page', new DefaultValuePipe(2), ParseIntPipe) page: number,
+		@Query('filter', new DefaultValuePipe('')) filter: string
+	) {
+		return await this.rfidService.fetchItems({ page, filter })
 	}
 
 	@Patch('update-stock')
-	@UseGuards(JwtGuard)
+	@UseAuth()
 	@UsePipes(new ZodValidationPipe(updateStockValidator))
-	@UseFilters(AllExceptionsFilter)
-	@UseInterceptors(TransformInterceptor)
-	@HttpCode(HttpStatus.CREATED)
+	@UseBaseAPI(HttpStatus.CREATED, { i18nKey: 'common.updated' })
 	async updateStock(@Body() payload: UpdateStockDTO) {
 		return await this.rfidService.updateStock(payload)
+	}
+
+	@Patch('exchange-epc')
+	@UsePipes(new ZodValidationPipe(exchangeEpcValidator))
+	@UseBaseAPI(HttpStatus.CREATED, { i18nKey: 'common.updated' })
+	async exchangeEpc(@Body() payload: ExchangeEpcDTO) {
+		return await this.rfidService.exchangeEpc(payload)
+	}
+
+	@Delete('delete-unexpected-order/:order')
+	@UseAuth()
+	@UseBaseAPI(HttpStatus.CREATED, { i18nKey: 'common.updated' })
+	async deleteUnexpectedOrder(@Param('order') orderCode: string) {
+		return await this.rfidService.deleteUnexpectedOrder(orderCode)
 	}
 }
