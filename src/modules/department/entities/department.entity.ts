@@ -2,7 +2,7 @@ import { DATABASE_SYSCLOUD } from '@/databases/constants'
 import { BaseAbstractEntity } from '@/modules/_base/base.abstract.entity'
 import { Column, Entity } from 'typeorm'
 
-@Entity('dv_Deptmst', { database: DATABASE_SYSCLOUD })
+@Entity('dv_Deptmst', { database: DATABASE_SYSCLOUD, synchronize: false })
 export class DepartmentEntity extends BaseAbstractEntity {
 	@Column({ name: 'ERP_dept_code' })
 	dept_code: string
