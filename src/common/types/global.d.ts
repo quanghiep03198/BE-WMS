@@ -31,6 +31,7 @@ export declare global {
 			REDIS_PORT: string
 			SALT_ROUND: string
 			JWT_SECRET: string
+			JWT_EXPIRES: string
 		}
 	}
 }

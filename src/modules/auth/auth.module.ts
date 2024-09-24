@@ -14,7 +14,7 @@ import { LocalStrategy } from './strategies/local.strategy'
 			global: true,
 			inject: [ConfigService],
 			useFactory: (configService: ConfigService) => ({
-				expiresIn: '15s',
+				expiresIn: configService.getOrThrow('JWT_EXPIRES'),
 				secret: configService.getOrThrow('JWT_SECRET')
 			})
 		})

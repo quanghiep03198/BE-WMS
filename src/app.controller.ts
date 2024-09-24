@@ -3,7 +3,7 @@ import { UseBaseAPI } from './common/decorators/base-api.decorator'
 
 @Controller()
 export class AppController {
-	@Get()
+	@Get('welcome')
 	@UseBaseAPI(HttpStatus.OK, 'Ok')
 	welcome() {
 		return 'Hello World!'

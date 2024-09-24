@@ -54,7 +54,8 @@ export const configValidator = z.object({
 		.min(1)
 		.refine((value) => !isNaN(+value))
 		.transform((value) => Number(value)),
-	JWT_SECRET: z.string().trim().min(1)
+	JWT_SECRET: z.string().trim().min(1),
+	JWT_EXPIRES: z.string().trim().min(1).or(z.number().positive())
 })
 
 export const validateConfig = async (config: Record<string, any>) => {
