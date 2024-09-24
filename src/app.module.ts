@@ -6,6 +6,7 @@ import { DatabaseModule } from './databases/database.module'
 import { CacheModule, CacheOptions } from '@nestjs/cache-manager'
 import { ThrottlerModule } from '@nestjs/throttler'
 import { RedisClientOptions } from 'redis'
+import { AppController } from './app.controller'
 import { FileLogger } from './common/helpers/file-logger.helper'
 import { appConfigFactory } from './configs/app.config'
 import { validateConfig } from './configs/app.config.validator'
@@ -51,7 +52,7 @@ import { WarehouseModule } from './modules/warehouse/warehouse.module'
 		RFIDModule,
 		DepartmentModule
 	],
-	controllers: [],
+	controllers: [AppController],
 	providers: []
 })
 export class AppModule implements OnModuleInit {
