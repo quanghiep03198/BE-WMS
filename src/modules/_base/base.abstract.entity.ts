@@ -1,5 +1,6 @@
-import { RecordStatus } from '@/databases/constants'
+import { format } from 'date-fns'
 import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm'
+import { RecordStatus } from '../../databases/constants'
 
 @Entity()
 export abstract class BaseAbstractEntity {
@@ -12,7 +13,7 @@ export abstract class BaseAbstractEntity {
 	@Column({ type: 'nvarchar', length: 50, default: null })
 	user_code_updated: string
 
-	@CreateDateColumn({ type: 'datetime' })
+	@CreateDateColumn({ type: 'datetime', default: format(new Date(), 'yyyy-MM-dd HH:mm:ss') })
 	created: Date
 
 	@UpdateDateColumn({ type: 'datetime' })

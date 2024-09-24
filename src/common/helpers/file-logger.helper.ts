@@ -1,6 +1,7 @@
 import { format } from 'date-fns'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { resolve } from 'node:path'
+import { isPrimtive } from './common.helper'
 
 export class FileLogger {
 	protected static logDirPath: string = resolve('logs')
@@ -23,6 +24,8 @@ export class FileLogger {
 
 	protected static format(type: 'Error' | 'Debug' | 'Log', ctx: any) {
 		const timestamp: string = format(new Date(), 'yyyy-MM-dd HH:mm:ss')
+		if (!isPrimtive(ctx)) ctx = JSON.stringify(ctx, null, 3)
+
 		return `[${timestamp}] ${type}: ${ctx}\n`
 	}
 
