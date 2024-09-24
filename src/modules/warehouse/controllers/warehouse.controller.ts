@@ -1,6 +1,6 @@
 import { UseBaseAPI } from '@/common/decorators/base-api.decorator'
 import { ZodValidationPipe } from '@/common/pipes/zod-validation.pipe'
-import { JwtGuard } from '@/modules/auth/guards/jwt.guard'
+import { JwtAuthGuard } from '@/modules/auth/guards/jwt-auth.guard'
 import {
 	Body,
 	Controller,
@@ -29,14 +29,14 @@ import { WarehouseService } from '../services/warehouse.service'
 export class WarehouseController {
 	constructor(private warehouseService: WarehouseService) {}
 	@Get()
-	@UseGuards(JwtGuard)
+	@UseGuards(JwtAuthGuard)
 	@UseBaseAPI(HttpStatus.OK, { i18nKey: 'common.ok' })
 	async getWarehouses(@Headers('X-User-Company') cofactorCode: string) {
 		return await this.warehouseService.findAllByFactory(cofactorCode)
 	}
 
 	@Post()
-	@UseGuards(JwtGuard)
+	@UseGuards(JwtAuthGuard)
 	@UsePipes(new ZodValidationPipe(createWarehouseValidator))
 	@UseBaseAPI(HttpStatus.CREATED, { i18nKey: 'common.created' })
 	async createWarehouse(@Headers('X-User-Company') factoryCode: string, @Body() payload: CreateWarehouseDTO) {
@@ -45,7 +45,7 @@ export class WarehouseController {
 	}
 
 	@Patch(':id')
-	@UseGuards(JwtGuard)
+	@UseGuards(JwtAuthGuard)
 	@UsePipes(new ZodValidationPipe(updateWarehouseValidator))
 	@UseBaseAPI(HttpStatus.CREATED, { i18nKey: 'common.updated' })
 	async updateWarehouse(@Param('id') id: string, @Body() payload: UpdateWarehouseDTO) {
@@ -53,7 +53,7 @@ export class WarehouseController {
 	}
 
 	@Delete()
-	@UseGuards(JwtGuard)
+	@UseGuards(JwtAuthGuard)
 	@UsePipes(new ZodValidationPipe(deleteWarehouseValidator))
 	@UseBaseAPI(HttpStatus.NO_CONTENT, { i18nKey: 'common.deleted' })
 	async deleteWarehouses(@Body() payload: DeleteWarehouseDTO) {

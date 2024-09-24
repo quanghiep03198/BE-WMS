@@ -18,14 +18,18 @@ export class WarehouseEntity extends BaseAbstractEntity {
 	@Column({ length: 10 })
 	cofactory_code: string
 
-	@Column({ type: 'bit' })
+	@Column({ type: 'bit', default: false })
 	is_default: boolean
 
-	@Column({ type: 'bit' })
+	@Column({ type: 'bit', default: false })
 	is_disable: boolean
 
 	@Column({ name: 'wa_area', type: 'numeric' })
 	area: number
+
+	// * Skip relationship
+	// @OneToMany(() => StorageLocationEntity, (storage) => storage.warehouse)
+	// storage_locations: StorageLocationEntity[]
 
 	constructor(warehouse: Partial<WarehouseEntity>) {
 		super()

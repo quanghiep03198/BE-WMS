@@ -1,4 +1,4 @@
-import { DATA_LAKE_CONNECTION } from '@/databases/constants'
+import { DATASOURCE_DATA_LAKE } from '@/databases/constants'
 import { BaseAbstractService } from '@/modules/_base/base.abstract.service'
 import { Injectable } from '@nestjs/common'
 import { InjectRepository } from '@nestjs/typeorm'
@@ -8,13 +8,19 @@ import { WarehouseEntity } from '../entities/warehouse.entity'
 @Injectable()
 export class WarehouseService extends BaseAbstractService<WarehouseEntity> {
 	constructor(
-		@InjectRepository(WarehouseEntity, DATA_LAKE_CONNECTION)
+		@InjectRepository(WarehouseEntity, DATASOURCE_DATA_LAKE)
 		private warehouseRepository: Repository<WarehouseEntity>
 	) {
 		super(warehouseRepository)
 	}
 	async findAllByFactory(cofactoryCode: string) {
-		return await this.warehouseRepository.findBy({ cofactory_code: cofactoryCode })
+		return await this.warehouseRepository.find({
+			where: { cofactory_code: cofactoryCode },
+			cache: {
+				id: `warehouse-factory-${cofactoryCode}`,
+				milliseconds: 60_000
+			}
+		})
 	}
 
 	async deleteMany(ids: Array<number>) {

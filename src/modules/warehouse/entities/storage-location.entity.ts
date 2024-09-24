@@ -23,6 +23,10 @@ export class StorageLocationEntity extends BaseAbstractEntity {
 	@Column({ type: 'varchar', length: 10 })
 	cofactory_code: string
 
+	// * Skip relationship
+	// @ManyToOne(() => WarehouseEntity, (warehouse) => warehouse.storage_locations)
+	// warehouse: WarehouseEntity
+
 	constructor(storageLocation: Partial<StorageLocationEntity>) {
 		super()
 		Object.assign(this, storageLocation)

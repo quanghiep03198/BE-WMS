@@ -1,6 +1,6 @@
 import { UseBaseAPI } from '@/common/decorators/base-api.decorator'
 import { ZodValidationPipe } from '@/common/pipes/zod-validation.pipe'
-import { JwtGuard } from '@/modules/auth/guards/jwt.guard'
+import { JwtAuthGuard } from '@/modules/auth/guards/jwt-auth.guard'
 import {
 	BadRequestException,
 	Body,
@@ -30,7 +30,7 @@ export class StorageLocationController {
 	constructor(private storageLocationService: StorageLocationService) {}
 
 	@Post()
-	@UseGuards(JwtGuard)
+	@UseGuards(JwtAuthGuard)
 	@UsePipes(new ZodValidationPipe(createStorageLocationValidator))
 	@UseBaseAPI(HttpStatus.CREATED, { i18nKey: 'common.created' })
 	async createStorageLocation(
@@ -46,14 +46,14 @@ export class StorageLocationController {
 	}
 
 	@Get(':warehouseCode')
-	@UseGuards(JwtGuard)
+	@UseGuards(JwtAuthGuard)
 	@UseBaseAPI(HttpStatus.OK, { i18nKey: 'common.ok' })
 	async getStorageLocationByWarhouse(@Param('warehouseCode') warehouseCode: string) {
 		return await this.storageLocationService.findByWarehouse(warehouseCode)
 	}
 
 	@Patch(':id')
-	@UseGuards(JwtGuard)
+	@UseGuards(JwtAuthGuard)
 	@UsePipes(new ZodValidationPipe(updateStorageLocationValidator))
 	@UseBaseAPI(HttpStatus.CREATED, { i18nKey: 'common.updated' })
 	async updateStorageLocation(@Param('id') id: string, @Body() payload: CreateStorageLocationDTO) {
@@ -61,7 +61,7 @@ export class StorageLocationController {
 	}
 
 	@Delete()
-	@UseGuards(JwtGuard)
+	@UseGuards(JwtAuthGuard)
 	@UsePipes(new ZodValidationPipe(deleteStorageLocationValidator))
 	@UseBaseAPI(HttpStatus.NO_CONTENT, { i18nKey: 'common.deleted' })
 	async deleteStorageLocation(@Body() payload: DeleteStorageLocationDTO) {
