@@ -1,10 +1,10 @@
 /* eslint-disable prefer-const */
-import { FileLogger } from '@/common/helpers/file-logger.helper'
 import {
 	BadRequestException,
 	Inject,
 	Injectable,
 	InternalServerErrorException,
+	Logger,
 	OnModuleDestroy,
 	Scope
 } from '@nestjs/common'
@@ -77,8 +77,8 @@ export class RFIDService implements OnModuleDestroy {
 			])
 			return { epcs, orders, sizes }
 		} catch (error) {
-			console.log(error)
-			return error
+			await this.dataSource.destroy()
+			throw new InternalServerErrorException(error)
 		}
 	}
 
@@ -148,15 +148,16 @@ export class RFIDService implements OnModuleDestroy {
 	}
 
 	async deleteUnexpectedOrder(orderCode: string) {
+		console.log(orderCode)
 		await this.ensureDataSourceInitialized()
 		const queryRunner = this.dataSource.createQueryRunner()
 		await queryRunner.startTransaction()
 		try {
-			await Promise.all([
-				queryRunner.manager.delete(RFIDInventoryEntity, { mo_no: orderCode }),
-				queryRunner.manager.delete(RFIDCustomerEntity, { mo_no: orderCode })
-			])
+			await queryRunner.manager.delete(RFIDInventoryEntity, { mo_no: orderCode })
+			await queryRunner.manager.delete(RFIDCustomerEntity, { mo_no: orderCode })
+			await queryRunner.commitTransaction()
 		} catch (error) {
+			Logger.error(error.message)
 			await queryRunner.rollbackTransaction()
 			throw new InternalServerErrorException(error)
 		} finally {
@@ -165,7 +166,6 @@ export class RFIDService implements OnModuleDestroy {
 	}
 
 	async exchangeEpc(payload: ExchangeEpcDTO) {
-		FileLogger.debug(payload)
 		await this.ensureDataSourceInitialized()
 		const epcToExchange = await this.dataSource
 			.getRepository(RFIDInventoryEntity)

@@ -69,7 +69,7 @@ export class RFIDController {
 
 	@Delete('delete-unexpected-order/:order')
 	@UseAuth()
-	@UseBaseAPI(HttpStatus.CREATED, { i18nKey: 'common.updated' })
+	@UseBaseAPI(HttpStatus.NO_CONTENT, { i18nKey: 'common.updated' })
 	async deleteUnexpectedOrder(@Param('order') orderCode: string) {
 		return await this.rfidService.deleteUnexpectedOrder(orderCode)
 	}
