@@ -7,6 +7,7 @@ import {
 	DefaultValuePipe,
 	Delete,
 	Get,
+	Headers,
 	HttpStatus,
 	Param,
 	ParseIntPipe,
@@ -27,8 +28,8 @@ export class RFIDController {
 
 	@Sse('fetch-epc')
 	@UseGuards(JwtAuthGuard)
-	findUnstoredItems() {
-		return interval(1000).pipe(
+	findUnstoredItems(@Headers('X-Polling-Duration') pollingDuration: number) {
+		return interval(pollingDuration ?? 500).pipe(
 			switchMap(() =>
 				from(this.rfidService.fetchItems({ page: 1 })).pipe(
 					catchError((error) => {
