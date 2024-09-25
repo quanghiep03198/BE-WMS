@@ -27,6 +27,7 @@ export declare global {
 			DB_PASSWORD: string
 			DB_PORT: string
 			DB_TRUST_SERVER_CERTIFICATE: string
+			DB_CONNECTION_TIMEOUT: string
 			REDIS_HOST: string
 			REDIS_PORT: string
 			SALT_ROUND: string
