@@ -29,7 +29,7 @@ jobs:
       steps:
          - name: 'Delete previous deployments'
            shell: bash
-           run: pm2 delete "wms-server-node" || echo "No previous deployments. Skipping deletion."
+           run: pm2 delete ecosystem.config.js || echo "No previous deployments. Skipping deletion."
 
          - name: Checkout code
            uses: actions/checkout@v4
@@ -49,8 +49,8 @@ jobs:
 
          - name: Build Nest application
            shell: bash
-           run: env-cmd -f ./.env npm run build
+           run: npm run build
 
          - name: Restart PM2 process
            shell: bash
-           run: pm2 start ./dist/main.js --name "wms-server-node"
+           run: pm2 start ecosystem.config.js
