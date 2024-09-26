@@ -14,13 +14,16 @@ export class WarehouseService extends BaseAbstractService<WarehouseEntity> {
 		super(warehouseRepository)
 	}
 	async findAllByFactory(cofactoryCode: string) {
-		return await this.warehouseRepository.find({
-			where: { cofactory_code: cofactoryCode },
-			cache: {
-				id: `warehouse-factory-${cofactoryCode}`,
-				milliseconds: 60_000
-			}
-		})
+		return await this.warehouseRepository
+			.createQueryBuilder()
+			.where({
+				cofactory_code: cofactoryCode
+			})
+			.getMany()
+	}
+
+	async findOneByWarehouseCode(warehouseCode: string) {
+		return await this.warehouseRepository.findOneBy({ warehouse_num: warehouseCode })
 	}
 
 	async deleteMany(ids: Array<number>) {

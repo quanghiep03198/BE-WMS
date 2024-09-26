@@ -35,6 +35,13 @@ export class WarehouseController {
 		return await this.warehouseService.findAllByFactory(cofactorCode)
 	}
 
+	@Get(':warehouseCode')
+	@UseGuards(JwtAuthGuard)
+	@UseBaseAPI(HttpStatus.OK, { i18nKey: 'common.ok' })
+	async getOneByWarehouseCode(@Param('warehouseCode') cofactorCode: string) {
+		return await this.warehouseService.findOneByWarehouseCode(cofactorCode)
+	}
+
 	@Post()
 	@UseGuards(JwtAuthGuard)
 	@UsePipes(new ZodValidationPipe(createWarehouseValidator))

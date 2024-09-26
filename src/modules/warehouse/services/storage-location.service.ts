@@ -14,8 +14,8 @@ export class StorageLocationService extends BaseAbstractService<StorageLocationE
 		super(storageLocationRepository)
 	}
 
-	async findByWarehouse(warehouseCode: string) {
-		return await this.storageLocationRepository.findBy({ warehouse_num: warehouseCode })
+	async findByWarehouse(warehouseCode: string, factoryCode: string) {
+		return await this.storageLocationRepository.findBy({ warehouse_num: warehouseCode, cofactory_code: factoryCode })
 	}
 
 	async deleteMany(id: Array<number>) {

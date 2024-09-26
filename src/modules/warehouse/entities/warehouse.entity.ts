@@ -1,4 +1,5 @@
 import { DATABASE_DATA_LAKE } from '@/databases/constants'
+import { BoolBitTransformer } from '@/databases/transformers/bool.transformer'
 import { BaseAbstractEntity } from '@/modules/_base/base.abstract.entity'
 import { Column, Entity, Index } from 'typeorm'
 import { WarehouseTypes } from '../constants'
@@ -18,11 +19,14 @@ export class WarehouseEntity extends BaseAbstractEntity {
 	@Column({ length: 10 })
 	cofactory_code: string
 
-	@Column({ type: 'bit', default: false })
-	is_default: boolean
+	@Column({ name: 'wa_dept_code' })
+	dept_code: string
 
-	@Column({ type: 'bit', default: false })
-	is_disable: boolean
+	@Column({ type: 'bit', transformer: [new BoolBitTransformer()] })
+	is_default: Bit | boolean
+
+	@Column({ type: 'bit', transformer: [new BoolBitTransformer()] })
+	is_disable: Bit | boolean
 
 	@Column({ name: 'wa_area', type: 'numeric' })
 	area: number

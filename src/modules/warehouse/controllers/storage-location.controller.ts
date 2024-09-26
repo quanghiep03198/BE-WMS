@@ -48,8 +48,11 @@ export class StorageLocationController {
 	@Get(':warehouseCode')
 	@UseGuards(JwtAuthGuard)
 	@UseBaseAPI(HttpStatus.OK, { i18nKey: 'common.ok' })
-	async getStorageLocationByWarhouse(@Param('warehouseCode') warehouseCode: string) {
-		return await this.storageLocationService.findByWarehouse(warehouseCode)
+	async getStorageLocationByWarhouse(
+		@Headers('X-User-Company') factoryCode: string,
+		@Param('warehouseCode') warehouseCode: string
+	) {
+		return await this.storageLocationService.findByWarehouse(warehouseCode, factoryCode)
 	}
 
 	@Patch(':id')
