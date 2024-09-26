@@ -10,56 +10,47 @@ on:
    workflow_dispatch:
 
 jobs:
-   # sonarcloud:
-   #    runs-on: ubuntu-latest
-   #    steps:
-   #       - uses: actions/checkout@v4
-   #         with:
-   #            fetch-depth: 0 # Shallow clones should be disabled for a better relevancy of analysis
-   #       - name: Analyze with SonarCloud
-   #         uses: SonarSource/sonarcloud-github-action@master
-   #         env:
-   #            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # Needed to get PR information, if any
-   #            SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-
-   # test:
-   #    runs-on: ubuntu-latest
-   #    needs: sonarcloud
-   #    steps:
-   #       - name: Checkout code
-   #         uses: actions/checkout@v4
-
-   #       - name: Set up Node.js
-   #         uses: actions/setup-node@v4
-   #         with:
-   #            node-version: 20
-   #            cache: npm
-
-   #       - name: Install dependencies
-   #         run: npm ci
-
-   #       - name: Unit testing
-   #         run: npm run test
+   sonarcloud:
+      name: SonarCloud
+      runs-on: ubuntu-latest
+      steps:
+         - uses: actions/checkout@v4
+           with:
+              fetch-depth: 0 # Shallow clones should be disabled for a better relevancy of analysis
+         - name: SonarCloud Scan
+           uses: SonarSource/sonarcloud-github-action@master
+           env:
+              GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # Needed to get PR information, if any
+              SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
    deploy:
+      name: Deploy
       runs-on: self-hosted
       steps:
-         - name: Pull latest code from Github
+         - name: 'Delete previous deployments'
+           shell: bash
+           run: pm2 delete "wms-server-node" || echo "No previous deployments. Skipping deletion."
+
+         - name: Checkout code
            uses: actions/checkout@v4
 
          - name: Load environment variables
            shell: bash
            run: |
-              echo "${{ secrets.ENV_VARS }}" > .env
-              cat .env
+              echo "${{ secrets.ENV_VARIABLE }}" > .env
+
+         - name: Set up Node.js
+           uses: actions/setup-node@v4
+           with:
+              node-version: '20.x'
 
          - name: Install dependencies
            run: npm ci
 
          - name: Build Nest application
+           shell: bash
            run: npm run build
 
          - name: Restart PM2 process
-           run: |
-              pm2 delete 'wms-api'
-              pm2 start ecosystem.config.js
+           shell: bash
+           run: pm2 start ./dist/main.js --name "wms-server-node"
