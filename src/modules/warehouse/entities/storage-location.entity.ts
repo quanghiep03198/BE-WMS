@@ -23,6 +23,11 @@ export class StorageLocationEntity extends BaseAbstractEntity {
 	@Column({ type: 'varchar', length: 10 })
 	cofactory_code: string
 
+	@Column({ type: 'bit', default: 0 })
+	is_disable: boolean
+
+	@Column({ type: 'bit', default: 0 })
+	is_default: boolean
 	// * Skip relationship
 	// @ManyToOne(() => WarehouseEntity, (warehouse) => warehouse.storage_locations)
 	// warehouse: WarehouseEntity
