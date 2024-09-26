@@ -49,7 +49,7 @@ jobs:
 
          - name: Build Nest application
            shell: bash
-           run: npm run build
+           run: env-cmd -f ./.env npm run build
 
          - name: Restart PM2 process
            shell: bash
