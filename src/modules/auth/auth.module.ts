@@ -13,10 +13,14 @@ import { LocalStrategy } from './strategies/local.strategy'
 		JwtModule.registerAsync({
 			global: true,
 			inject: [ConfigService],
-			useFactory: (configService: ConfigService) => ({
-				expiresIn: configService.getOrThrow('JWT_EXPIRES'),
-				secret: configService.getOrThrow('JWT_SECRET')
-			})
+			useFactory: (configService: ConfigService) => {
+				return {
+					secret: configService.getOrThrow('JWT_SECRET'),
+					signOptions: {
+						expiresIn: configService.getOrThrow('JWT_EXPIRES')
+					}
+				}
+			}
 		})
 	],
 	controllers: [AuthController],

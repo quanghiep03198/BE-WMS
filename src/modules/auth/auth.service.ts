@@ -15,6 +15,8 @@ export class AuthService {
 		private userService: UserService
 	) {}
 
+	private TOKEN_CACHE_TTL = 60 * 1000 * 60 + 30 * 1000
+
 	async validateUser(payload: LoginDTO) {
 		const user = await this.userService.findUserByUsername(payload.username)
 		if (!user) throw new NotFoundException('User could not be found')
@@ -24,10 +26,9 @@ export class AuthService {
 
 	async login(payload: UserEntity) {
 		const userId = payload.id
-		const ttl = 60 * 1000 * 60 + 30 * 1000 // 1h + 30s
 		const user = await this.userService.getProfile(userId)
 		const token = await this.jwtService.signAsync(pick(user, ['id', 'employee_code', 'role']))
-		await this.cacheManager.set(this.takeCacheTokenKey(userId), token, ttl)
+		await this.cacheManager.set(`token:${userId}`, token, this.TOKEN_CACHE_TTL)
 		return { user, token }
 	}
 
@@ -35,17 +36,13 @@ export class AuthService {
 		const user = await this.userService.findOneById(userId)
 		if (!user) throw new NotFoundException('User could not be found')
 		const refreshToken = await this.jwtService.signAsync(pick(user, ['id', 'employee_code', 'role']))
-		await this.cacheManager.set(this.takeCacheTokenKey(userId), refreshToken)
+		await this.cacheManager.set(`token:${userId}`, refreshToken, this.TOKEN_CACHE_TTL)
 		return refreshToken
 	}
 
 	async logout(userId: number) {
-		// Revoke cached token
-		await this.cacheManager.del(this.takeCacheTokenKey(userId))
+		// * Revoke cached token
+		await this.cacheManager.del(`token:${userId}`)
 		return null
-	}
-
-	private takeCacheTokenKey(userId: number) {
-		return `token:${userId}`
 	}
 }
