@@ -14,12 +14,7 @@ export class WarehouseService extends BaseAbstractService<WarehouseEntity> {
 		super(warehouseRepository)
 	}
 	async findAllByFactory(cofactoryCode: string) {
-		return await this.warehouseRepository
-			.createQueryBuilder()
-			.where({
-				cofactory_code: cofactoryCode
-			})
-			.getMany()
+		return await this.warehouseRepository.findBy({ cofactory_code: cofactoryCode })
 	}
 
 	async findOneByWarehouseCode(warehouseCode: string) {
