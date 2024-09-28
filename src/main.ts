@@ -1,4 +1,4 @@
-import { Logger, VersioningType } from '@nestjs/common'
+import { Logger, RequestMethod, VersioningType } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { NestFactory } from '@nestjs/core'
 import compression from 'compression'
@@ -10,7 +10,7 @@ async function bootstrap() {
 	try {
 		const app = await NestFactory.create(AppModule, { abortOnError: false })
 		const configService = app.get(ConfigService)
-		app.setGlobalPrefix('/api')
+		app.setGlobalPrefix('/api', { exclude: [{ path: '/', method: RequestMethod.GET }] })
 		app.enableVersioning({ type: VersioningType.URI })
 		app.enableCors()
 		app.use(helmet())

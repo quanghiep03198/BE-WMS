@@ -34,11 +34,12 @@ import { WarehouseModule } from './modules/warehouse/warehouse.module'
 				AcceptLanguageResolver
 			]
 		}),
-		CacheModule.registerAsync({
+		CacheModule.registerAsync<RedisClientOptions>({
 			isGlobal: true,
 			inject: [ConfigService],
-			useFactory: (configService: ConfigService) =>
-				configService.getOrThrow<CacheOptions<RedisClientOptions>>('cache')
+			useFactory: (configService: ConfigService) => {
+				return configService.getOrThrow<CacheOptions<RedisClientOptions>>('cache')
+			}
 		}),
 		ThrottlerModule.forRootAsync({
 			inject: [ConfigService],
