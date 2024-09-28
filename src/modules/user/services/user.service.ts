@@ -43,15 +43,13 @@ export class UserService extends BaseAbstractService<UserEntity> {
 	async getProfile(id: number): Promise<UserEntity> {
 		const user = await this.userRepository
 			.createQueryBuilder('u')
-			.select([
-				'u.id AS id',
-				'u.password AS password',
-				'u.role AS role',
-				'e.employee_name AS display_name',
-				'e.employee_code AS employee_code',
-				'e.email AS email',
-				'e.phone AS phone'
-			])
+			.select('u.id', 'id')
+			.addSelect('u.password', 'password')
+			.addSelect('u.role', 'role')
+			.addSelect('e.employee_name', 'display_name')
+			.addSelect('e.employee_code', 'employee_code')
+			.addSelect('e.email', 'email')
+			.addSelect('e.phone', 'phone')
 			.innerJoin(EmployeeEntity, 'e', 'u.employee_code = e.employee_code')
 			.where('u.id = :id', { id })
 			.getRawOne()
