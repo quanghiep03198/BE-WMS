@@ -8,9 +8,14 @@ import { IBaseService } from './base.service.interface'
 export abstract class BaseAbstractService<Entity extends BaseAbstractEntity> implements IBaseService<Entity> {
 	protected constructor(private repository: Repository<Entity>) {}
 
-	async insertOne(payload: unknown & Entity) {
+	async insertOne(payload: Entity) {
 		const newRecord = this.repository.create(payload)
 		return await this.repository.save(newRecord)
+	}
+
+	async insertMany(payload: Entity[]) {
+		const newRecords = this.repository.create(payload)
+		return await this.repository.insert(newRecords as any) // TODO: need fix type
 	}
 
 	async findAll(): Promise<Entity[]> {
