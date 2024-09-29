@@ -9,11 +9,11 @@ WITH
 	(
 		SELECT
 			DISTINCT EPC_Code,
-			ISNULL(ISNULL(mo_no_actual, mo_no), @UnknownValue) AS mo_no
+			COALESCE(mo_no_actual, mo_no, @UnknownValue) AS mo_no
 		FROM
 			DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet 
 		WHERE
-		EPC_Code NOT LIKE '303429%'
+		EPC_Code NOT LIKE @IgnorePattern
 			AND rfid_status IS NULL
 			AND record_time >= FORMAT(GETDATE(), 'yyyy-MM-dd')
 			AND mo_no NOT IN ('13D05B006')

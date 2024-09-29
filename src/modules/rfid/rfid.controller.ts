@@ -14,11 +14,9 @@ import {
 	Patch,
 	Query,
 	Sse,
-	UseGuards,
 	UsePipes
 } from '@nestjs/common'
 import { catchError, from, interval, map, of, switchMap } from 'rxjs'
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard'
 import { ExchangeEpcDTO, exchangeEpcValidator, UpdateStockDTO, updateStockValidator } from './dto/rfid.dto'
 import { RFIDService } from './rfid.service'
 
@@ -27,9 +25,12 @@ export class RFIDController {
 	constructor(private rfidService: RFIDService) {}
 
 	@Sse('fetch-epc')
-	@UseGuards(JwtAuthGuard)
-	findUnstoredItems(@Headers('X-Polling-Duration') pollingDuration: number) {
-		return interval(pollingDuration ?? 500).pipe(
+	@UseAuth()
+	fetchLatestData(@Headers('X-Polling-Duration') pollingDuration: number) {
+		const FALLBACK_POLLING_DURATION = 500
+		const duration = pollingDuration ?? FALLBACK_POLLING_DURATION
+
+		return interval(duration).pipe(
 			switchMap(() =>
 				from(this.rfidService.fetchItems({ page: 1 })).pipe(
 					catchError((error) => {
@@ -44,12 +45,12 @@ export class RFIDController {
 
 	@Get('fetch-next-epc')
 	@UseAuth()
-	@UseBaseAPI(HttpStatus.OK, 'Ok')
+	@UseBaseAPI(HttpStatus.OK, { i18nKey: 'common.ok' })
 	async fetchNextItems(
 		@Query('page', new DefaultValuePipe(2), ParseIntPipe) page: number,
 		@Query('filter', new DefaultValuePipe('')) filter: string
 	) {
-		return await this.rfidService.fetchItems({ page, filter })
+		return await this.rfidService.findWhereNotInStock({ page, filter })
 	}
 
 	@Patch('update-stock')
@@ -61,6 +62,7 @@ export class RFIDController {
 	}
 
 	@Patch('exchange-epc')
+	@UseAuth()
 	@UsePipes(new ZodValidationPipe(exchangeEpcValidator))
 	@UseBaseAPI(HttpStatus.CREATED, { i18nKey: 'common.updated' })
 	async exchangeEpc(@Body() payload: ExchangeEpcDTO) {

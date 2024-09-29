@@ -37,9 +37,9 @@ SELECT
 	ISNULL(ma.size_numcode, @UnknownValue) AS size_numcode,
 	COUNT(DISTINCT d.EPC_Code) AS count
 FROM rfidmatchmst_cust ma
-	JOIN InvRFIDrecorddet d 
+	JOIN InvRFIDrecorddet d
 	ON d.mo_no = ma.mo_no
-	AND d.EPC_Code = ma.EPC_Code
+		AND d.EPC_Code = ma.EPC_Code
 GROUP BY ma.mat_code, ma.size_numcode, ma.mo_no
 ORDER BY count DESC
 -- END
