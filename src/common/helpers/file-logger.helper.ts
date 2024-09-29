@@ -1,7 +1,7 @@
 import { format } from 'date-fns'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { resolve } from 'node:path'
-import { isPrimtive } from './common.helper'
+import { isPrimtive } from '../utils/common.util'
 
 export class FileLogger {
 	protected static logDirPath: string = resolve('logs')
