@@ -3,9 +3,8 @@ import { ConfigModule, ConfigService } from '@nestjs/config'
 import { AcceptLanguageResolver, HeaderResolver, I18nModule, QueryResolver } from 'nestjs-i18n'
 import { DatabaseModule } from './databases/database.module'
 // Feature modules
-import { CacheModule, CacheOptions } from '@nestjs/cache-manager'
+import { CacheModule } from '@nestjs/cache-manager'
 import { ThrottlerModule } from '@nestjs/throttler'
-import { RedisClientOptions } from 'redis'
 import { AppController } from './app.controller'
 import { FileLogger } from './common/helpers/file-logger.helper'
 import { appConfigFactory } from './configs/app.config'
@@ -34,13 +33,7 @@ import { WarehouseModule } from './modules/warehouse/warehouse.module'
 				AcceptLanguageResolver
 			]
 		}),
-		CacheModule.registerAsync<RedisClientOptions>({
-			isGlobal: true,
-			inject: [ConfigService],
-			useFactory: (configService: ConfigService) => {
-				return configService.getOrThrow<CacheOptions<RedisClientOptions>>('cache')
-			}
-		}),
+		CacheModule.register({ isGlobal: true }),
 		ThrottlerModule.forRootAsync({
 			inject: [ConfigService],
 			useFactory: (configService: ConfigService) => configService.getOrThrow('throttler')
