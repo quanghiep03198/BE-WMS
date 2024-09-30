@@ -14,11 +14,19 @@ export class WarehouseService extends BaseAbstractService<WarehouseEntity> {
 		super(warehouseRepository)
 	}
 	async findAllByFactory(cofactoryCode: string) {
-		return await this.warehouseRepository.findBy({ cofactory_code: cofactoryCode })
+		return await this.warehouseRepository
+			.createQueryBuilder('warehouse')
+			.leftJoinAndSelect('warehouse.storage_locations', 'storage')
+			.select(['warehouse', 'storage.id', 'storage.storage_num', 'storage.storage_name'])
+			.where('warehouse.cofactory_code = :cofactoryCode', { cofactoryCode: cofactoryCode })
+			.getMany()
 	}
 
 	async findOneByWarehouseCode(warehouseCode: string) {
-		return await this.warehouseRepository.findOneBy({ warehouse_num: warehouseCode })
+		return await this.warehouseRepository.findOne({
+			where: { warehouse_num: warehouseCode },
+			relations: { storage_locations: true }
+		})
 	}
 
 	async deleteMany(ids: Array<number>) {

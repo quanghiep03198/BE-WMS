@@ -1,8 +1,9 @@
 import { DATABASE_DATA_LAKE } from '@/databases/constants'
 import { BoolBitTransformer } from '@/databases/transformers/bool.transformer'
 import { BaseAbstractEntity } from '@/modules/_base/base.abstract.entity'
-import { Column, Entity } from 'typeorm'
+import { Column, Entity, JoinColumn, ManyToOne } from 'typeorm'
 import { WarehouseStorageTypes } from '../constants'
+import { WarehouseEntity } from './warehouse.entity'
 
 @Entity('dv_warehouseccodedet', { database: DATABASE_DATA_LAKE, synchronize: true })
 export class StorageLocationEntity extends BaseAbstractEntity {
@@ -29,9 +30,10 @@ export class StorageLocationEntity extends BaseAbstractEntity {
 
 	@Column({ type: 'bit', default: 0, transformer: new BoolBitTransformer() })
 	is_disable: Bit | boolean
-	// * Skip relationship
-	// @ManyToOne(() => WarehouseEntity, (warehouse) => warehouse.storage_locations)
-	// warehouse: WarehouseEntity
+
+	@ManyToOne(() => WarehouseEntity, (warehouse) => warehouse.storage_locations)
+	@JoinColumn({ name: 'warehouse_num', referencedColumnName: 'warehouse_num' })
+	warehouse: WarehouseEntity
 
 	constructor(storageLocation: Partial<StorageLocationEntity>) {
 		super()

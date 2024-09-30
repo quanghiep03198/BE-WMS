@@ -1,8 +1,9 @@
 import { DATABASE_DATA_LAKE } from '@/databases/constants'
 import { BoolBitTransformer } from '@/databases/transformers/bool.transformer'
 import { BaseAbstractEntity } from '@/modules/_base/base.abstract.entity'
-import { Column, Entity, Index } from 'typeorm'
+import { Column, Entity, Index, OneToMany } from 'typeorm'
 import { WarehouseTypes } from '../constants'
+import { StorageLocationEntity } from './storage-location.entity'
 
 @Entity('dv_warehouseccodemst', { database: DATABASE_DATA_LAKE })
 export class WarehouseEntity extends BaseAbstractEntity {
@@ -32,8 +33,8 @@ export class WarehouseEntity extends BaseAbstractEntity {
 	area: number
 
 	// * Skip relationship
-	// @OneToMany(() => StorageLocationEntity, (storage) => storage.warehouse)
-	// storage_locations: StorageLocationEntity[]
+	@OneToMany(() => StorageLocationEntity, (storage) => storage.warehouse)
+	storage_locations: StorageLocationEntity[]
 
 	constructor(warehouse: Partial<WarehouseEntity>) {
 		super()
