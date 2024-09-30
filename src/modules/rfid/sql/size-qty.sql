@@ -10,7 +10,7 @@ WITH
 	(
 		SELECT
 			DISTINCT EPC_Code,
-			ISNULL(ISNULL(mo_no_actual, mo_no), @UnknownValue) AS mo_no
+			COALESCE(mo_no_actual, mo_no, @UnknownValue) AS mo_no
 		FROM
 			DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet
 		WHERE
@@ -24,7 +24,7 @@ WITH
 	(
 		SELECT
 			DISTINCT EPC_Code,
-			ISNULL(ISNULL(mo_no_actual, mo_no), @UnknownValue) AS mo_no,
+			COALESCE(mo_no_actual, mo_no, @UnknownValue) AS mo_no,
 			mat_code,
 			ISNULL(size_numcode, @UnknownValue) AS size_numcode
 		FROM DV_DATA_LAKE.dbo.dv_rfidmatchmst_cust ma
@@ -40,7 +40,7 @@ FROM rfidmatchmst_cust ma
 	JOIN InvRFIDrecorddet d
 	ON d.mo_no = ma.mo_no
 		AND d.EPC_Code = ma.EPC_Code
-GROUP BY ma.mat_code, ma.size_numcode, ma.mo_no
+GROUP BY ma.mo_no, ma.mat_code, ma.size_numcode
 ORDER BY count DESC
 -- END
 

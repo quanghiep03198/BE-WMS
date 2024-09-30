@@ -117,15 +117,16 @@ export class RFIDService implements OnModuleDestroy {
 			.addSelect('COALESCE(cust.size_numcode, :fallbackValue)', 'size_numcode')
 			.addSelect('COUNT(DISTINCT inv.epc)', 'count')
 			.from(RFIDCustomerEntity, 'cust')
-			.innerJoin(
+			.leftJoin(
 				RFIDInventoryEntity,
 				'inv',
 				'inv.epc = cust.epc AND COALESCE(inv.mo_no_actual, inv.mo_no, :fallbackValue) = COALESCE(cust.mo_no_actual, cust.mo_no, :fallbackValue)' // Ensure the join condition is correct
 			)
-			.where('inv.epc NOT LIKE :ignoreEpcPattern')
-			.andWhere('inv.rfid_status IS NULL')
+			.where('inv.rfid_status IS NULL')
 			.andWhere('inv.record_time >= :today')
+			.andWhere('inv.epc NOT LIKE :ignoreEpcPattern')
 			.andWhere('COALESCE(inv.mo_no_actual, inv.mo_no, :fallbackValue) NOT IN (:...ignoredOrders)')
+			.andWhere('COALESCE(cust.mo_no_actual, cust.mo_no, :fallbackValue) NOT IN (:...ignoredOrders)')
 			.groupBy('COALESCE(cust.mo_no_actual, cust.mo_no, :fallbackValue)')
 			.addGroupBy('cust.mat_code')
 			.addGroupBy('COALESCE(cust.size_numcode, :fallbackValue)')
@@ -187,6 +188,7 @@ export class RFIDService implements OnModuleDestroy {
 
 	async exchangeEpc(payload: ExchangeEpcDTO) {
 		await this.ensureDataSourceInitialized()
+		Logger.debug(JSON.stringify(payload, null, 2))
 		const epcToExchange = await this.dataSource
 			.getRepository(RFIDInventoryEntity)
 			.createQueryBuilder('inv')
@@ -203,8 +205,9 @@ export class RFIDService implements OnModuleDestroy {
 			.andWhere('cust.mo_no_actual IS NULL')
 			.limit(payload.quantity)
 			.getRawMany()
+		Logger.debug(JSON.stringify(epcToExchange, null, 2))
 
-		// return data
+		// return epcToExchange
 		const queryRunner = this.dataSource.createQueryRunner()
 		const criteria: FindOptionsWhere<RFIDCustomerEntity | RFIDInventoryEntity> = {
 			epc: In(epcToExchange.map((item) => item.epc))
@@ -213,10 +216,10 @@ export class RFIDService implements OnModuleDestroy {
 
 		await queryRunner.startTransaction()
 		try {
-			await Promise.all([
-				queryRunner.manager.update(RFIDCustomerEntity, criteria, update),
-				queryRunner.manager.update(RFIDInventoryEntity, criteria, update)
-			])
+			await queryRunner.manager.update(RFIDCustomerEntity, criteria, update)
+			await queryRunner.manager.update(RFIDInventoryEntity, criteria, update)
+			// await Promise.all([
+			// ])
 			await queryRunner.commitTransaction()
 		} catch (e) {
 			Logger.error(e.message)
