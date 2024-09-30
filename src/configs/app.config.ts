@@ -41,16 +41,7 @@ export const appConfigFactory: ConfigFactory = () => ({
 			connectTimeout: Number(process.env.DB_CONNECTION_TIMEOUT)
 		},
 		synchronize: false,
-		cache: {
-			type: 'redis',
-			options: {
-				socket: {
-					host: process.env.REDIS_HOST,
-					port: +process.env.REDIS_PORT
-				}
-			},
-			ignoreErrors: true
-		}
+		cache: true
 	} satisfies TypeOrmModuleOptions,
 	throttler: {
 		ttl: +process.env.THROTTLER_TTL,
