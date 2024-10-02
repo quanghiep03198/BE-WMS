@@ -46,6 +46,10 @@ export class RFIDService implements OnModuleDestroy {
 		await this.dataSource.destroy()
 	}
 
+	/**
+	 * @private
+	 * @description Ensure database connection is established everytime the service is called
+	 */
 	private async ensureDataSourceInitialized() {
 		if (!this.dataSource.isInitialized) await this.dataSource.initialize()
 	}
@@ -83,8 +87,10 @@ export class RFIDService implements OnModuleDestroy {
 					return qb.andWhere('COALESCE(inv.mo_no_actual, inv.mo_no, :fallbackValue) = :filter', { filter })
 				})
 			)
-			.setParameter('fallbackValue', this.FALLBACK_VALUE)
-			.setParameter('ignoredOrders', this.IGNORE_ORDERS)
+			.setParameters({
+				fallbackValue: this.FALLBACK_VALUE,
+				ignoredOrders: this.IGNORE_ORDERS
+			})
 
 		const [data, totalDocs] = await Promise.all([
 			queryBuilder
@@ -131,10 +137,12 @@ export class RFIDService implements OnModuleDestroy {
 			.addGroupBy('cust.mat_code')
 			.addGroupBy('COALESCE(cust.size_numcode, :fallbackValue)')
 			.orderBy('count', 'DESC')
-			.setParameter('today', format(new Date(), 'yyyy-MM-dd'))
-			.setParameter('fallbackValue', this.FALLBACK_VALUE)
-			.setParameter('ignoreEpcPattern', this.IGNORE_EPC_PATTERN)
-			.setParameter('ignoredOrders', this.IGNORE_ORDERS)
+			.setParameters({
+				today: format(new Date(), 'yyyy-MM-dd'),
+				fallbackValue: this.FALLBACK_VALUE,
+				ignoreEpcPattern: this.IGNORE_EPC_PATTERN,
+				ignoredOrders: this.IGNORE_ORDERS
+			})
 			.getRawMany()
 	}
 
@@ -150,18 +158,27 @@ export class RFIDService implements OnModuleDestroy {
 			.andWhere('COALESCE(inv.mo_no_actual, inv.mo_no, :fallbackValue) NOT IN (:...ignoredOrders)')
 			.groupBy('COALESCE(inv.mo_no_actual, inv.mo_no, :fallbackValue)')
 			.orderBy('count', 'DESC')
-			.setParameter('today', format(new Date(), 'yyyy-MM-dd'))
-			.setParameter('fallbackValue', this.FALLBACK_VALUE)
-			.setParameter('ignoreEpcPattern', this.IGNORE_EPC_PATTERN)
-			.setParameter('ignoredOrders', this.IGNORE_ORDERS)
+			.setParameters({
+				today: format(new Date(), 'yyyy-MM-dd'),
+				fallbackValue: this.FALLBACK_VALUE,
+				ignoreEpcPattern: this.IGNORE_EPC_PATTERN,
+				ignoredOrders: this.IGNORE_ORDERS
+			})
 			.getRawMany()
+	}
+
+	async getManufacturingOrderDetail() {
+		await this.ensureDataSourceInitialized()
+		const [sizes, orders] = await Promise.all([this.getOrderSizes(), this.getOrderQuantity()])
+
+		return { sizes, orders }
 	}
 
 	async updateStock(payload: UpdateStockDTO) {
 		await this.ensureDataSourceInitialized()
 		return await this.dataSource.getRepository(RFIDInventoryEntity).update(
 			{
-				mo_no: payload.mo_no,
+				mo_no: payload.mo_no ?? IsNull(),
 				rfid_status: IsNull(),
 				record_time: MoreThanOrEqual(format(new Date(), 'yyyy-MM-dd'))
 			},
@@ -174,8 +191,25 @@ export class RFIDService implements OnModuleDestroy {
 		const queryRunner = this.dataSource.createQueryRunner()
 		await queryRunner.startTransaction()
 		try {
-			await queryRunner.manager.delete(RFIDInventoryEntity, { mo_no: orderCode })
-			await queryRunner.manager.delete(RFIDCustomerEntity, { mo_no: orderCode })
+			// Xóa từ RFIDInventoryEntity với điều kiện OR
+			await queryRunner.manager
+				.createQueryBuilder()
+				.delete()
+				.from(RFIDInventoryEntity)
+				.where('mo_no = :orderCode')
+				.orWhere('mo_no_actual = :orderCode')
+				.setParameter('orderCode', orderCode)
+				.execute()
+
+			// Xóa từ RFIDCustomerEntity với điều kiện OR
+			await queryRunner.manager
+				.createQueryBuilder()
+				.delete()
+				.from(RFIDCustomerEntity)
+				.where('mo_no = :orderCode')
+				.orWhere('mo_no_actual = :orderCode')
+				.setParameter('orderCode', orderCode)
+				.execute()
 			await queryRunner.commitTransaction()
 		} catch (error) {
 			Logger.error(error.message)
@@ -195,14 +229,24 @@ export class RFIDService implements OnModuleDestroy {
 			.select('cust.epc AS epc')
 			.innerJoin(RFIDCustomerEntity, 'cust', 'inv.epc = cust.epc AND inv.mo_no = cust.mo_no')
 			.where('inv.rfid_status IS NULL')
-			.andWhere('inv.record_time >= :today', { today: format(new Date(), 'yyyy-MM-dd') })
-			.andWhere('inv.mo_no = :manufacturingOrder', { manufacturingOrder: payload.mo_no })
-			.andWhere('cust.mo_no = :manufacturingOrder', { manufacturingOrder: payload.mo_no })
+			.andWhere('inv.record_time >= :today')
+			.andWhere('inv.epc NOT LIKE :ignoreEpcPattern')
+			.andWhere('cust.epc NOT LIKE :ignoreEpcPattern')
+			.andWhere('COALESCE(inv.mo_no_actual, inv.mo_no, :fallbackValue) NOT IN (:...ignoredOrders)')
+			.andWhere('COALESCE(cust.mo_no_actual, inv.mo_no, :fallbackValue) NOT IN (:...ignoredOrders)')
+			.andWhere('COALESCE(inv.mo_no_actual, inv.mo_no, :fallbackValue) = :manufacturingOrder')
+			.andWhere('COALESCE(cust.mo_no_actual, cust.mo_no, :fallbackValue) = :manufacturingOrder')
 			.andWhere('cust.mat_code = :finishedProductionCode', { finishedProductionCode: payload.mat_code })
 			.andWhere('cust.size_numcode = :sizeNumCode', { sizeNumCode: payload.size_numcode })
-			// ? Not sure if this is needed
-			.andWhere('inv.mo_no_actual IS NULL')
-			.andWhere('cust.mo_no_actual IS NULL')
+			.setParameters({
+				today: format(new Date(), 'yyyy-MM-dd'),
+				manufacturingOrder: payload.mo_no,
+				finishedProductionCode: payload.mat_code,
+				sizeNumCode: payload.size_numcode,
+				fallbackValue: this.FALLBACK_VALUE,
+				ignoreEpcPattern: this.IGNORE_EPC_PATTERN,
+				ignoredOrders: this.IGNORE_ORDERS
+			})
 			.limit(payload.quantity)
 			.getRawMany()
 		Logger.debug(JSON.stringify(epcToExchange, null, 2))
@@ -218,8 +262,6 @@ export class RFIDService implements OnModuleDestroy {
 		try {
 			await queryRunner.manager.update(RFIDCustomerEntity, criteria, update)
 			await queryRunner.manager.update(RFIDInventoryEntity, criteria, update)
-			// await Promise.all([
-			// ])
 			await queryRunner.commitTransaction()
 		} catch (e) {
 			Logger.error(e.message)

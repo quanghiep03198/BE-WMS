@@ -7,7 +7,7 @@ export const updateStockValidator = z
 		rfid_use: z.nativeEnum(InventoryStorageType, { required_error: 'Required' }),
 		dept_code: z.string().optional(),
 		storage: z.string().optional(),
-		mo_no: z.string({ required_error: 'Required' }).min(1, { message: 'Required' })
+		mo_no: z.string({ required_error: 'Required' }).min(1, { message: 'Required' }).nullable()
 	})
 	.superRefine((values, ctx) => {
 		if (values.rfid_status === InventoryActions.INBOUND) {
@@ -27,7 +27,8 @@ export const exchangeEpcValidator = z.object({
 	mo_no_actual: z.string({ required_error: 'Required' }).min(1, { message: 'Required' }),
 	size_numcode: z.string({ required_error: 'Required' }).min(1, { message: 'Required' }),
 	mat_code: z.string({ required_error: 'Required' }).min(1, { message: 'Required' }),
-	quantity: z.number({ required_error: 'Required' }).positive()
+	quantity: z.number({ required_error: 'Required' }).positive(),
+	override: z.boolean().default(false)
 })
 
 export type UpdateStockDTO = z.infer<typeof updateStockValidator>

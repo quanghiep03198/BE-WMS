@@ -43,6 +43,13 @@ export class RFIDController {
 		)
 	}
 
+	@Get('manufacturing-order-detail')
+	@UseAuth()
+	@UseBaseAPI(HttpStatus.OK, { i18nKey: 'common.ok' })
+	async getManufacturingOrderDetail() {
+		return this.rfidService.getManufacturingOrderDetail()
+	}
+
 	@Get('fetch-next-epc')
 	@UseAuth()
 	@UseBaseAPI(HttpStatus.OK, { i18nKey: 'common.ok' })
