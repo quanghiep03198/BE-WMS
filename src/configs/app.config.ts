@@ -1,4 +1,4 @@
-import { CacheOptions } from '@nestjs/cache-manager'
+import { CacheModuleOptions } from '@nestjs/cache-manager'
 import { ConfigFactory } from '@nestjs/config'
 import { ThrottlerOptions } from '@nestjs/throttler'
 import { TypeOrmModuleOptions } from '@nestjs/typeorm'
@@ -11,11 +11,9 @@ import { RedisClientOptions } from 'redis'
 export const appConfigFactory: ConfigFactory = () => ({
 	cache: {
 		store: redisStore,
-		socket: {
-			host: process.env.REDIS_HOST,
-			port: +process.env.REDIS_PORT
-		}
-	} satisfies CacheOptions<RedisClientOptions>,
+		host: process.env.REDIS_HOST,
+		port: +process.env.REDIS_PORT
+	} as CacheModuleOptions<RedisClientOptions>,
 	i18n: {
 		fallbackLanguage: process.env.FALLBACK_LANGUAGE,
 		loaderOptions: {
