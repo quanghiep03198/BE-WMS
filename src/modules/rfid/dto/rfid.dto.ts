@@ -22,14 +22,30 @@ export const updateStockValidator = z
 		}
 	})
 
-export const exchangeEpcValidator = z.object({
-	mo_no: z.string({ required_error: 'Required' }).min(1, { message: 'Required' }),
-	mo_no_actual: z.string({ required_error: 'Required' }).min(1, { message: 'Required' }),
-	size_numcode: z.string({ required_error: 'Required' }).min(1, { message: 'Required' }),
-	mat_code: z.string({ required_error: 'Required' }).min(1, { message: 'Required' }),
-	quantity: z.number({ required_error: 'Required' }).positive(),
-	override: z.boolean().default(false)
-})
+export const exchangeEpcValidator = z
+	.object({
+		mo_no: z.string({ required_error: 'Required' }).min(1, { message: 'Required' }),
+		mo_no_actual: z.string({ required_error: 'Required' }).min(1, { message: 'Required' }),
+		size_numcode: z.string({ required_error: 'Required' }).min(1, { message: 'Required' }).optional(),
+		mat_code: z.string({ required_error: 'Required' }).min(1, { message: 'Required' }).optional(),
+		quantity: z.number({ required_error: 'Required' }).positive().optional(),
+		multi: z.boolean().default(false)
+	})
+	.superRefine((values, ctx) => {
+		if (!values.multi) {
+			if (!values.size_numcode) {
+				ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['size_numcode'], message: 'Required' })
+			}
+			if (!values.mat_code) {
+				ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['mat_code'], message: 'Required' })
+			}
+			if (!values.quantity) {
+				ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['quantity'], message: 'Required' })
+			}
+		} else {
+			return true
+		}
+	})
 
 export type UpdateStockDTO = z.infer<typeof updateStockValidator>
 export type ExchangeEpcDTO = z.infer<typeof exchangeEpcValidator>

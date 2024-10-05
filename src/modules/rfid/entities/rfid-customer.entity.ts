@@ -1,9 +1,10 @@
 import { DATABASE_DATA_LAKE } from '@/databases/constants'
 import { BaseAbstractEntity } from '@/modules/_base/base.abstract.entity'
-import { Column, Entity } from 'typeorm'
+import { Column, Entity, Index } from 'typeorm'
 
 @Entity('dv_rfidmatchmst_cust', { database: DATABASE_DATA_LAKE, synchronize: false })
 export class RFIDCustomerEntity extends BaseAbstractEntity {
+	@Index()
 	@Column({ name: 'EPC_Code' })
 	epc: string
 
@@ -13,10 +14,12 @@ export class RFIDCustomerEntity extends BaseAbstractEntity {
 	@Column({ type: 'nvarchar', length: 50, nullable: true })
 	or_custpo: string
 
+	@Index()
 	@Column({ type: 'nvarchar', length: 20 })
 	mo_no: string
 
-	@Column({ type: 'nvarchar', length: 20, nullable: true })
+	@Index()
+	@Column({ name: 'mo_no_actual', type: 'nvarchar', length: 20, nullable: true })
 	mo_no_actual: string
 
 	@Column({ type: 'nvarchar', length: 20, nullable: true })
@@ -25,12 +28,14 @@ export class RFIDCustomerEntity extends BaseAbstractEntity {
 	@Column({ type: 'nvarchar', length: 20 })
 	size_code: string
 
+	@Index()
 	@Column({ type: 'nvarchar', length: 20 })
 	size_numcode: string
 
 	@Column({ type: 'numeric' })
 	size_qty: string
 
+	@Index()
 	@Column({ type: 'nvarchar', length: 20 })
 	mat_code: string
 

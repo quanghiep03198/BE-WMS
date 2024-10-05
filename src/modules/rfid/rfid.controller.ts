@@ -50,6 +50,13 @@ export class RFIDController {
 		return this.rfidService.getManufacturingOrderDetail()
 	}
 
+	@Get('search-customer-order')
+	@UseAuth()
+	@UseBaseAPI(HttpStatus.OK, { i18nKey: 'common.ok' })
+	async searchCustomerOrder(@Query('searchTerm', new DefaultValuePipe('')) searchTerm: string) {
+		return await this.rfidService.searchCustomerOrder(searchTerm)
+	}
+
 	@Get('fetch-next-epc')
 	@UseAuth()
 	@UseBaseAPI(HttpStatus.OK, { i18nKey: 'common.ok' })

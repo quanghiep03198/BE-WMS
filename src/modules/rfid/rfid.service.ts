@@ -11,8 +11,9 @@ import { ConfigService } from '@nestjs/config'
 import { REQUEST } from '@nestjs/core'
 import { format } from 'date-fns'
 import { Request } from 'express'
+import { readFileSync } from 'fs'
 import { omit, pick } from 'lodash'
-import path from 'path'
+import path, { join } from 'path'
 import { Brackets, DataSource, FindOptionsWhere, In, IsNull, Like, MoreThanOrEqual, Not } from 'typeorm'
 import { SqlServerConnectionOptions } from 'typeorm/driver/sqlserver/SqlServerConnectionOptions'
 import { ExchangeEpcDTO, UpdateStockDTO } from './dto/rfid.dto'
@@ -25,6 +26,7 @@ export class RFIDService implements OnModuleDestroy {
 
 	private readonly IGNORE_ORDERS: Array<string> = ['13D05B006']
 	private readonly IGNORE_EPC_PATTERN = '303429%'
+	// private readonly BOX_LINER_EPC = '3312D%'
 	private readonly LIMIT_FETCH_DOCS = 50
 	private readonly FALLBACK_VALUE = 'Unknown'
 
@@ -123,7 +125,7 @@ export class RFIDService implements OnModuleDestroy {
 			.addSelect('COALESCE(cust.size_numcode, :fallbackValue)', 'size_numcode')
 			.addSelect('COUNT(DISTINCT inv.epc)', 'count')
 			.from(RFIDCustomerEntity, 'cust')
-			.leftJoin(
+			.innerJoin(
 				RFIDInventoryEntity,
 				'inv',
 				'inv.epc = cust.epc AND COALESCE(inv.mo_no_actual, inv.mo_no, :fallbackValue) = COALESCE(cust.mo_no_actual, cust.mo_no, :fallbackValue)' // Ensure the join condition is correct
@@ -136,13 +138,28 @@ export class RFIDService implements OnModuleDestroy {
 			.groupBy('COALESCE(cust.mo_no_actual, cust.mo_no, :fallbackValue)')
 			.addGroupBy('cust.mat_code')
 			.addGroupBy('COALESCE(cust.size_numcode, :fallbackValue)')
-			.orderBy('count', 'DESC')
+			.orderBy('size_numcode', 'ASC')
 			.setParameters({
 				today: format(new Date(), 'yyyy-MM-dd'),
 				fallbackValue: this.FALLBACK_VALUE,
 				ignoreEpcPattern: this.IGNORE_EPC_PATTERN,
 				ignoredOrders: this.IGNORE_ORDERS
 			})
+			.getRawMany()
+	}
+
+	async searchCustomerOrder(searchTerm: string) {
+		return await this.dataSource
+			.getRepository(RFIDCustomerEntity)
+			.createQueryBuilder('cust')
+			.select('COALESCE(cust.mo_no_actual, cust.mo_no)', 'mo_no')
+			.innerJoin(
+				RFIDInventoryEntity,
+				'inv',
+				'inv.epc = cust.epc AND COALESCE(cust.mo_no_actual, cust.mo_no) = COALESCE(inv.mo_no_actual, inv.mo_no)'
+			)
+			.where({ epc: Like(searchTerm) })
+			.limit(5)
 			.getRawMany()
 	}
 
@@ -196,9 +213,16 @@ export class RFIDService implements OnModuleDestroy {
 				.createQueryBuilder()
 				.delete()
 				.from(RFIDInventoryEntity)
-				.where('mo_no = :orderCode')
-				.orWhere('mo_no_actual = :orderCode')
-				.setParameter('orderCode', orderCode)
+				.where({ rfid_status: IsNull() })
+				.andWhere({ record_time: MoreThanOrEqual(format(new Date(), 'yyyy-MM-dd')) })
+				.where(
+					new Brackets((qb) => {
+						if (orderCode === this.FALLBACK_VALUE) return qb.where({ mo_no: IsNull() })
+						return qb.where({ mo_no: orderCode }).orWhere({
+							mo_no_actual: orderCode
+						})
+					})
+				)
 				.execute()
 
 			// Xóa từ RFIDCustomerEntity với điều kiện OR
@@ -206,9 +230,15 @@ export class RFIDService implements OnModuleDestroy {
 				.createQueryBuilder()
 				.delete()
 				.from(RFIDCustomerEntity)
-				.where('mo_no = :orderCode')
-				.orWhere('mo_no_actual = :orderCode')
-				.setParameter('orderCode', orderCode)
+				.where(
+					new Brackets((qb) => {
+						if (orderCode === this.FALLBACK_VALUE) return qb.where({ mo_no: IsNull() })
+						return qb.where({ mo_no: orderCode }).orWhere({
+							mo_no_actual: orderCode
+						})
+					})
+				)
+
 				.execute()
 			await queryRunner.commitTransaction()
 		} catch (error) {
@@ -220,14 +250,25 @@ export class RFIDService implements OnModuleDestroy {
 		}
 	}
 
-	async exchangeEpc(payload: ExchangeEpcDTO) {
-		await this.ensureDataSourceInitialized()
-		Logger.debug(JSON.stringify(payload, null, 2))
-		const epcToExchange = await this.dataSource
+	private async getAllExchangableEpc(payload: Pick<ExchangeEpcDTO, 'mo_no' | 'mo_no_actual'>) {
+		const { mo_no, mo_no_actual } = payload
+		const query = readFileSync(join(__dirname, './sql/exchangable-orders.sql'), 'utf8').toString()
+		return await this.dataSource.query(query, [mo_no, mo_no_actual])
+	}
+
+	private async getExchangableEpcBySize(payload: ExchangeEpcDTO) {
+		return await this.dataSource
 			.getRepository(RFIDInventoryEntity)
 			.createQueryBuilder('inv')
 			.select('cust.epc AS epc')
-			.innerJoin(RFIDCustomerEntity, 'cust', 'inv.epc = cust.epc AND inv.mo_no = cust.mo_no')
+			.innerJoin(
+				RFIDCustomerEntity,
+				'cust',
+				`
+					inv.epc = cust.epc 
+					AND COALESCE(inv.mo_no_actual, inv.mo_no, :fallbackValue) = COALESCE(cust.mo_no_actual, cust.mo_no, :fallbackValue)
+				`
+			)
 			.where('inv.rfid_status IS NULL')
 			.andWhere('inv.record_time >= :today')
 			.andWhere('inv.epc NOT LIKE :ignoreEpcPattern')
@@ -249,9 +290,14 @@ export class RFIDService implements OnModuleDestroy {
 			})
 			.limit(payload.quantity)
 			.getRawMany()
-		Logger.debug(JSON.stringify(epcToExchange, null, 2))
+	}
 
-		// return epcToExchange
+	async exchangeEpc(payload: ExchangeEpcDTO) {
+		await this.ensureDataSourceInitialized()
+		const epcToExchange = payload.multi
+			? await this.getAllExchangableEpc(payload)
+			: await this.getExchangableEpcBySize(payload)
+
 		const queryRunner = this.dataSource.createQueryRunner()
 		const criteria: FindOptionsWhere<RFIDCustomerEntity | RFIDInventoryEntity> = {
 			epc: In(epcToExchange.map((item) => item.epc))
