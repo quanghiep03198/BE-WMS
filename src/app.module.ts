@@ -5,6 +5,7 @@ import { DatabaseModule } from './databases/database.module'
 // Feature modules
 import { CacheModule } from '@nestjs/cache-manager'
 import { ThrottlerModule } from '@nestjs/throttler'
+import { RedisClientOptions } from 'redis'
 import { AppController } from './app.controller'
 import { FileLogger } from './common/helpers/file-logger.helper'
 import { appConfigFactory } from './configs/app.config'
@@ -33,7 +34,11 @@ import { WarehouseModule } from './modules/warehouse/warehouse.module'
 				AcceptLanguageResolver
 			]
 		}),
-		CacheModule.register({ isGlobal: true }),
+		CacheModule.registerAsync<RedisClientOptions>({
+			isGlobal: true,
+			inject: [ConfigService],
+			useFactory: (configService: ConfigService) => configService.getOrThrow('cache')
+		}),
 		ThrottlerModule.forRootAsync({
 			inject: [ConfigService],
 			useFactory: (configService: ConfigService) => configService.getOrThrow('throttler')
