@@ -2,6 +2,7 @@ import { UseAuth } from '@/common/decorators/auth.decorator'
 import { UseBaseAPI } from '@/common/decorators/base-api.decorator'
 import { ZodValidationPipe } from '@/common/pipes/zod-validation.pipe'
 import {
+	BadRequestException,
 	Body,
 	Controller,
 	DefaultValuePipe,
@@ -21,6 +22,7 @@ import { ExchangeEpcDTO, exchangeEpcValidator, UpdateStockDTO, updateStockValida
 import { RFIDService } from './rfid.service'
 
 @Controller('rfid')
+// @UseInterceptors(TenancyInterceptor)
 export class RFIDController {
 	constructor(private rfidService: RFIDService) {}
 
@@ -50,11 +52,15 @@ export class RFIDController {
 		return this.rfidService.getManufacturingOrderDetail()
 	}
 
-	@Get('search-customer-order')
+	@Get('search-exchangable-order')
 	@UseAuth()
 	@UseBaseAPI(HttpStatus.OK, { i18nKey: 'common.ok' })
-	async searchCustomerOrder(@Query('searchTerm', new DefaultValuePipe('')) searchTerm: string) {
-		return await this.rfidService.searchCustomerOrder(searchTerm)
+	async searchCustomerOrder(
+		@Query('target') orderTarget: string,
+		@Query('search', new DefaultValuePipe('')) searchTerm: string
+	) {
+		if (!orderTarget) throw new BadRequestException('Order target is required')
+		return await this.rfidService.searchCustomerOrder(orderTarget, searchTerm)
 	}
 
 	@Get('fetch-next-epc')
@@ -85,7 +91,7 @@ export class RFIDController {
 
 	@Delete('delete-unexpected-order/:order')
 	@UseAuth()
-	@UseBaseAPI(HttpStatus.NO_CONTENT, { i18nKey: 'common.updated' })
+	@UseBaseAPI(HttpStatus.NO_CONTENT, { i18nKey: 'common.deleted' })
 	async deleteUnexpectedOrder(@Param('order') orderCode: string) {
 		return await this.rfidService.deleteUnexpectedOrder(orderCode)
 	}
