@@ -20,12 +20,12 @@ jobs:
          - name: SonarCloud Scan
            uses: SonarSource/sonarcloud-github-action@master
            env:
-              GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # Needed to get PR information, if any
+              GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
               SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
-   deploy:
-      name: Deploy
-      runs-on: self-hosted
+   deploy-server-19:
+      name: Deploy to server 19
+      runs-on: [self-hosted, 'Server-19']
       steps:
          - name: 'Delete previous deployments'
            shell: bash
@@ -37,7 +37,39 @@ jobs:
          - name: Load environment variables
            shell: bash
            run: |
-              echo "${{ secrets.ENV_VARIABLE }}" > .env
+              echo "${{ secrets.ENV_VARIABLE_SVR19 }}" > .env
+
+         - name: Set up Node.js
+           uses: actions/setup-node@v4
+           with:
+              node-version: '20.x'
+
+         - name: Install dependencies
+           run: npm ci
+
+         - name: Build Nest application
+           shell: bash
+           run: npm run build
+
+         - name: Restart PM2 process
+           shell: bash
+           run: pm2 start ecosystem.config.js
+
+   deploy-server-51:
+      name: Deploy to server 51
+      runs-on: [self-hosted, 'Server-51']
+      steps:
+         - name: 'Delete previous deployments'
+           shell: bash
+           run: pm2 delete ecosystem.config.js || echo "No previous deployments. Skipping deletion."
+
+         - name: Checkout code
+           uses: actions/checkout@v4
+
+         - name: Load environment variables
+           shell: bash
+           run: |
+              echo "${{ secrets.ENV_VARIABLE_SVR51 }}" > .env
 
          - name: Set up Node.js
            uses: actions/setup-node@v4
