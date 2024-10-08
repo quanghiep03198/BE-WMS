@@ -1,86 +1,114 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# Warehouse Management API
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+This is a **RESTful API** for a **Warehouse Management System** built with **NestJS**. The API allows you to manage product inventories, monitor stock levels, and handle various warehouse operations. The project integrates **SQL Server** as the primary database using **TypeORM** and uses **Redis** for caching and performance optimization.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://coveralls.io/github/nestjs/nest?branch=master" target="_blank"><img src="https://coveralls.io/repos/github/nestjs/nest/badge.svg?branch=master#9" alt="Coverage" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+## Table of Contents
 
-## Description
+-  [Features](#features)
+-  [Tech Stack](#tech-stack)
+-  [Getting Started](#getting-started)
+-  [Configuration](#configuration)
+-  [Running the Application](#running-the-application)
+-  [Contributing](#contributing)
+-  [License](#license)
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+## Features
 
-## Project setup
+-  **Product Management**: Create, update, delete, and list products.
+-  **Inventory Management**: Track stock levels, update quantities, and monitor stock movements.
+-  **Order Processing**: Manage incoming and outgoing orders, including validations.
+-  **Warehouse Zones**: Manage different storage zones and sections within the warehouse.
+-  **Redis Caching**: Improve API performance by caching frequently accessed data.
+-  **Database Transactions**: Ensure data integrity using SQL Server and TypeORM.
+-  **Authentication and Authorization**: Secure API endpoints using JWT authentication (optional).
+
+## Tech Stack
+
+-  **Languages**: [Typescript](https://www.typescriptlang.org/) / [Node.js](https://nodejs.org/docs/latest/api/)
+-  **Framework**: [NestJS](https://nestjs.com/)
+-  **Database**: [Microsoft SQL Server](https://www.microsoft.com/en-us/sql-server/sql-server-2022)
+-  **Cache**: [Redis](https://redis.io/docs/latest/)
+-  **ORM**: [TypeORM](https://typeorm.io/)
+-  **Authentication**: [JSON Web Tokens](https://jwt.io/)
+-  **Validation**: [Zod](https://zod.dev/)
+
+## Getting Started
+
+### Prerequisites
+
+Before you begin, ensure you have the following installed:
+
+-  **Node.js** (v18.x or higher)
+-  **SQL Server** (Local or remote instance)
+-  **Redis** (Local or remote instance)
+-  **NPM** or **Yarn**
+
+### Installation
+
+1. Clone the repository:
 
 ```bash
-$ npm install
+git clone https://github.com/quanghiep03198/BE-WMS.git <dir_name>
+
+cd <dir_name>
 ```
 
-## Compile and run the project
+2. Install the dependencies:
 
 ```bash
-# development
-$ npm run start
-
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
+ npm install
 ```
 
-## Run tests
+3. Set up your SQL Server and Redis instances.
+
+### Configuration
+
+The application uses environment variables for configuration. Create a .env file in the root of the project and add the following environment variables from _env.example_:
 
 ```bash
-# unit tests
-$ npm run test
-
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
+cp .env.example .env
 ```
 
-## Resources
+### Database Migration
 
-Check out a few resources that may come in handy when working with NestJS:
+To initialize the database schema using TypeORM, run:
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+```bash
+npm run migration:run
+```
 
-## Support
+This will create the necessary tables and relationships in SQL Server.
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+### Running the Application
 
-## Stay in touch
+To start the development server:
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+```bash
+npm run start:dev
+```
+
+The API will now be available at http://localhost:3001.
+
+### Running Tests
+
+To run the unit tests:
+
+```bash
+npm run test:cov
+```
+
+###Contributing
+If you'd like to contribute to this project, please follow the contribution guidelines. We welcome all contributions, from minor fixes to new features.
+
+## Branching Strategy
+
+-  **main**: Production-ready code.
+-  **develop**: Development branch for the next release.
+-  **feat/\***: Developing feature branch
+-  **fix/\***: Needed fix branch
+
+Create a feature branch for any new features or bug fixes.
 
 ## License
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
-# BE-WMS
+This project is licensed under the MIT License. See the LICENSE file for more details.
