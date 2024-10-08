@@ -9,7 +9,11 @@ export enum Environment {
 	PRODUCTION = 'production'
 }
 
-export enum CommonRequestHeader {
-	DATABASE_HOST = 'x-data-host',
-	USER_COMPANY = 'x-user-company'
+export enum Tenant {
+	DEV = 'tenant-development',
+	MAIN = 'tenant-main',
+	VN_PRIAMRY = 'tenant-vn-primary',
+	VN_SECONDARY = 'tenant-vn-secondary',
+	KM_PRIMARY = 'tenant-cam-primary',
+	KM_SECONDARY = 'tenant-cam-secondary'
 }

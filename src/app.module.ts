@@ -13,6 +13,7 @@ import { validateConfig } from './configs/app.config.validator'
 import { AuthModule } from './modules/auth/auth.module'
 import { DepartmentModule } from './modules/department/department.module'
 import { RFIDModule } from './modules/rfid/rfid.module'
+import { TenancyModule } from './modules/tenancy/tenancy.module'
 import { UserModule } from './modules/user/user.module'
 import { WarehouseModule } from './modules/warehouse/warehouse.module'
 
@@ -49,7 +50,8 @@ import { WarehouseModule } from './modules/warehouse/warehouse.module'
 		UserModule,
 		WarehouseModule,
 		RFIDModule,
-		DepartmentModule
+		DepartmentModule,
+		TenancyModule
 	],
 	controllers: [AppController],
 	providers: []
