@@ -195,39 +195,42 @@ export class RFIDService {
 	 * @private
 	 */
 	private async getExchangableEpcBySize(payload: ExchangeEpcDTO) {
-		return await this.dataSource
-			.getRepository(RFIDInventoryEntity)
-			.createQueryBuilder('inv')
-			.select('cust.epc AS epc')
-			.innerJoin(
-				RFIDCustomerEntity,
-				'cust',
-				/* SQL */ `
-					inv.epc = cust.epc 
-					AND COALESCE(inv.mo_no_actual, inv.mo_no, :fallbackValue) = COALESCE(cust.mo_no_actual, cust.mo_no, :fallbackValue)
-				`
-			)
-			.where('inv.rfid_status IS NULL')
-			.andWhere('inv.record_time >= :today')
-			.andWhere('inv.epc NOT LIKE :ignoreEpcPattern')
-			.andWhere('cust.epc NOT LIKE :ignoreEpcPattern')
-			.andWhere('COALESCE(inv.mo_no_actual, inv.mo_no, :fallbackValue) NOT IN (:...ignoredOrders)')
-			.andWhere('COALESCE(cust.mo_no_actual, inv.mo_no, :fallbackValue) NOT IN (:...ignoredOrders)')
-			.andWhere('COALESCE(inv.mo_no_actual, inv.mo_no, :fallbackValue) = :manufacturingOrder')
-			.andWhere('COALESCE(cust.mo_no_actual, cust.mo_no, :fallbackValue) = :manufacturingOrder')
-			.andWhere('cust.mat_code = :finishedProductionCode', { finishedProductionCode: payload.mat_code })
-			.andWhere('cust.size_numcode = :sizeNumCode', { sizeNumCode: payload.size_numcode })
-			.setParameters({
-				today: format(new Date(), 'yyyy-MM-dd'),
-				manufacturingOrder: payload.mo_no,
-				finishedProductionCode: payload.mat_code,
-				sizeNumCode: payload.size_numcode,
-				fallbackValue: this.FALLBACK_VALUE,
-				ignoreEpcPattern: this.IGNORE_EPC_PATTERN,
-				ignoredOrders: this.IGNORE_ORDERS
-			})
-			.limit(payload.quantity)
-			.getRawMany()
+		Logger.debug(JSON.stringify(payload, null, 2))
+		try {
+			return await this.dataSource
+				.getRepository(RFIDInventoryEntity)
+				.createQueryBuilder('inv')
+				.select('cust.epc', 'epc')
+				.innerJoin(
+					RFIDCustomerEntity,
+					'cust',
+					/* SQL */ `inv.epc = cust.epc AND COALESCE(inv.mo_no_actual, inv.mo_no, :fallbackValue) = COALESCE(cust.mo_no_actual, cust.mo_no, :fallbackValue)
+					`
+				)
+				.where('inv.rfid_status IS NULL')
+				.andWhere('inv.record_time >= :today')
+				.andWhere('inv.epc NOT LIKE :ignoreEpcPattern')
+				.andWhere('cust.epc NOT LIKE :ignoreEpcPattern')
+				.andWhere('COALESCE(inv.mo_no_actual, inv.mo_no, :fallbackValue) NOT IN (:...ignoredOrders)')
+				.andWhere('COALESCE(cust.mo_no_actual, inv.mo_no, :fallbackValue) NOT IN (:...ignoredOrders)')
+				.andWhere('COALESCE(inv.mo_no_actual, inv.mo_no, :fallbackValue) = :manufacturingOrder')
+				.andWhere('COALESCE(cust.mo_no_actual, cust.mo_no, :fallbackValue) = :manufacturingOrder')
+				.andWhere('cust.mat_code = :finishedProductionCode', { finishedProductionCode: payload.mat_code })
+				.andWhere('cust.size_numcode = :sizeNumCode', { sizeNumCode: payload.size_numcode })
+				.setParameters({
+					today: format(new Date(), 'yyyy-MM-dd'),
+					manufacturingOrder: payload.mo_no,
+					finishedProductionCode: payload.mat_code,
+					sizeNumCode: payload.size_numcode,
+					fallbackValue: this.FALLBACK_VALUE,
+					ignoreEpcPattern: this.IGNORE_EPC_PATTERN,
+					ignoredOrders: this.IGNORE_ORDERS
+				})
+				.limit(payload.quantity)
+				.getRawMany()
+		} catch (error) {
+			Logger.error(error.message)
+		}
 	}
 
 	async exchangeEpc(payload: ExchangeEpcDTO) {
