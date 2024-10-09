@@ -12,6 +12,7 @@ import { appConfigFactory } from './configs/app.config'
 import { validateConfig } from './configs/app.config.validator'
 import { AuthModule } from './modules/auth/auth.module'
 import { DepartmentModule } from './modules/department/department.module'
+import { PackingModule } from './modules/packing/packing.module'
 import { RFIDModule } from './modules/rfid/rfid.module'
 import { TenancyModule } from './modules/tenancy/tenancy.module'
 import { UserModule } from './modules/user/user.module'
@@ -50,6 +51,7 @@ import { WarehouseModule } from './modules/warehouse/warehouse.module'
 		UserModule,
 		WarehouseModule,
 		RFIDModule,
+		PackingModule,
 		DepartmentModule,
 		TenancyModule
 	],
