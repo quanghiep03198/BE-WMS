@@ -2,7 +2,7 @@ import { FileLogger } from '@/common/helpers/file-logger.helper'
 import { Injectable, InternalServerErrorException, Logger, Scope } from '@nestjs/common'
 import { format } from 'date-fns'
 import { readFileSync } from 'fs'
-import { omit, pick } from 'lodash'
+import { chunk, omit, pick } from 'lodash'
 import { join } from 'path'
 import { Brackets, DataSource, FindOptionsWhere, In, IsNull, Like, MoreThanOrEqual, Not } from 'typeorm'
 import { TenancyService } from '../tenancy/tenancy.service'
@@ -156,12 +156,13 @@ export class RFIDService {
 	async deleteUnexpectedOrder(orderCode: string) {
 		const queryRunner = this.dataSource.createQueryRunner()
 		await queryRunner.startTransaction()
-		Logger.debug(orderCode)
 		try {
 			await queryRunner.manager.query(
-				/* SQL */ `DELETE FROM DV_DATA_LAKE.dbo.UHF_RFID_TEST WHERE epc IN (
-									SELECT EPC_Code AS epc FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet
-									WHERE mo_no = @0)`,
+				/* SQL */ `
+					DELETE FROM DV_DATA_LAKE.dbo.UHF_RFID_TEST WHERE epc IN (
+						SELECT EPC_Code AS epc FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet
+						WHERE mo_no = @0)
+					`,
 				[orderCode]
 			)
 			await queryRunner.manager
@@ -234,21 +235,28 @@ export class RFIDService {
 			? await this.getAllExchangableEpc(payload)
 			: await this.getExchangableEpcBySize(payload)
 
-		Logger.debug(JSON.stringify(epcToExchange, null, 2))
 		const queryRunner = this.dataSource.createQueryRunner()
-		const criteria: FindOptionsWhere<RFIDCustomerEntity | RFIDInventoryEntity> = {
-			epc: In(epcToExchange.map((item) => item.epc))
-		}
 
 		FileLogger.debug(epcToExchange)
 		const update = pick(payload, 'mo_no_actual')
 
+		const BATCH_SIZE = 2000
+		const epcBatches = chunk(
+			epcToExchange.map((item) => item.epc),
+			BATCH_SIZE
+		)
+
 		await queryRunner.startTransaction()
 		try {
-			await Promise.all([
-				queryRunner.manager.update(RFIDCustomerEntity, criteria, update),
-				queryRunner.manager.update(RFIDInventoryEntity, criteria, update)
-			])
+			for (const epcBatch of epcBatches) {
+				const criteria: FindOptionsWhere<RFIDCustomerEntity | RFIDInventoryEntity> = {
+					epc: In(epcBatch) // Sử dụng nhóm EPC hiện tại
+				}
+				await Promise.all([
+					queryRunner.manager.update(RFIDCustomerEntity, criteria, update),
+					queryRunner.manager.update(RFIDInventoryEntity, criteria, update)
+				])
+			}
 			await queryRunner.commitTransaction()
 		} catch (e) {
 			Logger.error(e.message)
