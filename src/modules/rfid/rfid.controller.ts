@@ -1,18 +1,15 @@
-import { UseAuth } from '@/common/decorators/auth.decorator'
-import { UseBaseAPI } from '@/common/decorators/base-api.decorator'
+import { AuthGuard } from '@/common/decorators/auth.decorator'
+import { Api, HttpMethod } from '@/common/decorators/base-api.decorator'
 import { ZodValidationPipe } from '@/common/pipes/zod-validation.pipe'
 import {
 	BadRequestException,
 	Body,
 	Controller,
 	DefaultValuePipe,
-	Delete,
-	Get,
 	Headers,
 	HttpStatus,
 	Param,
 	ParseIntPipe,
-	Patch,
 	Query,
 	Sse,
 	UsePipes
@@ -27,7 +24,7 @@ export class RFIDController {
 	constructor(private rfidService: RFIDService) {}
 
 	@Sse('fetch-epc')
-	@UseAuth()
+	@AuthGuard()
 	fetchLatestData(@Headers('X-Polling-Duration') pollingDuration: number) {
 		const FALLBACK_POLLING_DURATION = 500
 		const duration = pollingDuration ?? FALLBACK_POLLING_DURATION
@@ -45,16 +42,20 @@ export class RFIDController {
 		)
 	}
 
-	@Get('manufacturing-order-detail')
-	@UseAuth()
-	@UseBaseAPI(HttpStatus.OK, { i18nKey: 'common.ok' })
+	@Api({
+		endpoint: 'manufacturing-order-detail',
+		method: HttpMethod.GET
+	})
+	@AuthGuard()
 	async getManufacturingOrderDetail() {
 		return this.rfidService.getManufacturingOrderDetail()
 	}
 
-	@Get('search-exchangable-order')
-	@UseAuth()
-	@UseBaseAPI(HttpStatus.OK, { i18nKey: 'common.ok' })
+	@Api({
+		endpoint: 'search-exchangable-order',
+		method: HttpMethod.GET
+	})
+	@AuthGuard()
 	async searchCustomerOrder(
 		@Query('target') orderTarget: string,
 		@Query('search', new DefaultValuePipe('')) searchTerm: string
@@ -63,9 +64,11 @@ export class RFIDController {
 		return await this.rfidService.searchCustomerOrder(orderTarget, searchTerm)
 	}
 
-	@Get('fetch-next-epc')
-	@UseAuth()
-	@UseBaseAPI(HttpStatus.OK, { i18nKey: 'common.ok' })
+	@Api({
+		endpoint: 'fetch-next-epc',
+		method: HttpMethod.GET
+	})
+	@AuthGuard()
 	async fetchNextItems(
 		@Query('page', new DefaultValuePipe(2), ParseIntPipe) page: number,
 		@Query('filter', new DefaultValuePipe('')) filter: string
@@ -73,25 +76,37 @@ export class RFIDController {
 		return await this.rfidService.findWhereNotInStock({ page, filter })
 	}
 
-	@Patch('update-stock')
-	@UseAuth()
+	@Api({
+		endpoint: 'update-stock',
+		method: HttpMethod.PATCH,
+		statusCode: HttpStatus.CREATED,
+		message: { i18nKey: 'common.updated' }
+	})
+	@AuthGuard()
 	@UsePipes(new ZodValidationPipe(updateStockValidator))
-	@UseBaseAPI(HttpStatus.CREATED, { i18nKey: 'common.updated' })
 	async updateStock(@Body() payload: UpdateStockDTO) {
 		return await this.rfidService.updateStock(payload)
 	}
 
-	@Patch('exchange-epc')
-	@UseAuth()
+	@Api({
+		endpoint: 'exchange-epc',
+		method: HttpMethod.PATCH,
+		statusCode: HttpStatus.CREATED,
+		message: { i18nKey: 'common.updated' }
+	})
+	@AuthGuard()
 	@UsePipes(new ZodValidationPipe(exchangeEpcValidator))
-	@UseBaseAPI(HttpStatus.CREATED, { i18nKey: 'common.updated' })
 	async exchangeEpc(@Body() payload: ExchangeEpcDTO) {
 		return await this.rfidService.exchangeEpc(payload)
 	}
 
-	@Delete('delete-unexpected-order/:order')
-	@UseAuth()
-	@UseBaseAPI(HttpStatus.NO_CONTENT, { i18nKey: 'common.deleted' })
+	@Api({
+		endpoint: 'delete-unexpected-order/:order',
+		method: HttpMethod.DELETE,
+		statusCode: HttpStatus.NO_CONTENT,
+		message: { i18nKey: 'common.deleted' }
+	})
+	@AuthGuard()
 	async deleteUnexpectedOrder(@Param('order') orderCode: string) {
 		return await this.rfidService.deleteUnexpectedOrder(orderCode)
 	}

@@ -1,10 +1,9 @@
-import { Controller, Get, HttpStatus } from '@nestjs/common'
-import { UseBaseAPI } from './common/decorators/base-api.decorator'
+import { Controller } from '@nestjs/common'
+import { Api, HttpMethod } from './common/decorators/base-api.decorator'
 
 @Controller()
 export class AppController {
-	@Get()
-	@UseBaseAPI(HttpStatus.OK, { i18nKey: 'common.ok' })
+	@Api({ method: HttpMethod.GET })
 	welcome() {
 		return 'Hello World'
 	}

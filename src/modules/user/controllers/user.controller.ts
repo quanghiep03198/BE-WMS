@@ -1,8 +1,8 @@
-import { UseBaseAPI } from '@/common/decorators/base-api.decorator'
+import { AuthGuard } from '@/common/decorators/auth.decorator'
+import { Api, HttpMethod } from '@/common/decorators/base-api.decorator'
 import { User } from '@/common/decorators/user.decorator'
 import { ZodValidationPipe } from '@/common/pipes/zod-validation.pipe'
-import { JwtAuthGuard } from '@/modules/auth/guards/jwt-auth.guard'
-import { Body, Controller, Get, HttpStatus, Patch, Post, UseGuards, UsePipes } from '@nestjs/common'
+import { Body, Controller, HttpStatus, UsePipes } from '@nestjs/common'
 import {
 	ChangePasswordDTO,
 	changePasswordValidator,
@@ -17,39 +17,49 @@ import { UserService } from '../services/user.service'
 export class UserController {
 	constructor(private readonly userService: UserService) {}
 
-	@Post('register')
+	@Api({
+		endpoint: 'register',
+		method: HttpMethod.POST,
+		statusCode: HttpStatus.CREATED,
+		message: { i18nKey: 'common.created' }
+	})
 	@UsePipes(new ZodValidationPipe(registerValidator))
-	@UseBaseAPI(HttpStatus.OK, { i18nKey: 'common.created' })
 	async register(@Body() payload: RegisterDTO) {
 		return await this.userService.createUser(payload)
 	}
 
-	@Get('profile')
-	@UseGuards(JwtAuthGuard)
-	@UseBaseAPI(HttpStatus.OK, { i18nKey: 'common.ok' })
+	@Api({ endpoint: 'profile', method: HttpMethod.GET })
+	@AuthGuard()
 	async getProfile(@User('id') userId) {
 		return await this.userService.getProfile(userId)
 	}
 
-	@Patch('profile/update')
-	@UseGuards(JwtAuthGuard)
+	@Api({
+		endpoint: 'profile/update',
+		method: HttpMethod.PATCH,
+		statusCode: HttpStatus.CREATED,
+		message: { i18nKey: 'common.updated' }
+	})
+	@AuthGuard()
 	@UsePipes(new ZodValidationPipe(updateProfileValidator))
-	@UseBaseAPI(HttpStatus.OK, { i18nKey: 'common.ok' })
 	async updateProfile(@User('employee_code') employeeCode: string, @Body() payload: UpdateProfileDTO) {
 		return await this.userService.updateProfile(employeeCode, payload)
 	}
 
-	@Patch('change-password')
-	@UseGuards(JwtAuthGuard)
+	@Api({
+		endpoint: 'change-password',
+		method: HttpMethod.PATCH,
+		statusCode: HttpStatus.CREATED,
+		message: { i18nKey: 'common.updated' }
+	})
+	@AuthGuard()
 	@UsePipes(new ZodValidationPipe(changePasswordValidator))
-	@UseBaseAPI(HttpStatus.OK, { i18nKey: 'common.ok' })
 	async changePassword(@User('id') userId: number, @Body() payload: ChangePasswordDTO) {
 		return await this.userService.changePassword(userId, payload)
 	}
 
-	@Get('companies')
-	@UseGuards(JwtAuthGuard)
-	@UseBaseAPI(HttpStatus.OK, { i18nKey: 'common.ok' })
+	@Api({ endpoint: 'companies', method: HttpMethod.GET })
+	@AuthGuard()
 	async getUserFactory(@User('id') id: number) {
 		return await this.userService.getUserCompany(+id)
 	}

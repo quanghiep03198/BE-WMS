@@ -1,33 +1,39 @@
-import { UseBaseAPI } from '@/common/decorators/base-api.decorator'
+import { AuthGuard } from '@/common/decorators/auth.decorator'
+import { Api, HttpMethod } from '@/common/decorators/base-api.decorator'
 import { User } from '@/common/decorators/user.decorator'
 import { ZodValidationPipe } from '@/common/pipes/zod-validation.pipe'
-import { Controller, Get, HttpStatus, Param, Post, UseGuards, UsePipes } from '@nestjs/common'
+import { Controller, Param, UseGuards, UsePipes } from '@nestjs/common'
 import { AuthService } from './auth.service'
 import { loginValidator } from './dto/auth.dto'
-import { JwtAuthGuard } from './guards/jwt-auth.guard'
 import { LocalAuthGuard } from './guards/local-auth.guard'
 
 @Controller()
 export class AuthController {
 	constructor(private authService: AuthService) {}
 
-	@Post('login')
+	@Api({
+		endpoint: 'login',
+		method: HttpMethod.POST
+	})
 	@UseGuards(LocalAuthGuard)
 	@UsePipes(new ZodValidationPipe(loginValidator))
-	@UseBaseAPI(HttpStatus.OK, { i18nKey: 'common.ok' })
 	async login(@User() user) {
 		return await this.authService.login(user)
 	}
 
-	@Get('refresh-token/:id')
-	@UseBaseAPI(HttpStatus.OK, { i18nKey: 'common.ok' })
+	@Api({
+		endpoint: 'refresh-token/:id',
+		method: HttpMethod.GET
+	})
 	async refreshToken(@Param('id') id: number) {
 		return await this.authService.refreshToken(id)
 	}
 
-	@Post('logout')
-	@UseGuards(JwtAuthGuard)
-	@UseBaseAPI(HttpStatus.OK, { i18nKey: 'common.ok' })
+	@Api({
+		endpoint: 'logout',
+		method: HttpMethod.POST
+	})
+	@AuthGuard()
 	async logout(@User('id') userId) {
 		return await this.authService.logout(userId)
 	}

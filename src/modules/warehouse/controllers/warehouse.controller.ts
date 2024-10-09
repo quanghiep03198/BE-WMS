@@ -1,19 +1,7 @@
-import { UseBaseAPI } from '@/common/decorators/base-api.decorator'
+import { AuthGuard } from '@/common/decorators/auth.decorator'
+import { Api, HttpMethod } from '@/common/decorators/base-api.decorator'
 import { ZodValidationPipe } from '@/common/pipes/zod-validation.pipe'
-import { JwtAuthGuard } from '@/modules/auth/guards/jwt-auth.guard'
-import {
-	Body,
-	Controller,
-	Delete,
-	Get,
-	Headers,
-	HttpStatus,
-	Param,
-	Patch,
-	Post,
-	UseGuards,
-	UsePipes
-} from '@nestjs/common'
+import { Body, Controller, Headers, HttpStatus, Param, UsePipes } from '@nestjs/common'
 import {
 	CreateWarehouseDTO,
 	createWarehouseValidator,
@@ -28,41 +16,52 @@ import { WarehouseService } from '../services/warehouse.service'
 @Controller('warehouse')
 export class WarehouseController {
 	constructor(private warehouseService: WarehouseService) {}
-	@Get()
-	@UseGuards(JwtAuthGuard)
-	@UseBaseAPI(HttpStatus.OK, { i18nKey: 'common.ok' })
+	@Api({ method: HttpMethod.GET })
+	@AuthGuard()
 	async getWarehouses(@Headers('X-User-Company') cofactorCode: string) {
 		return await this.warehouseService.findAllByFactory(cofactorCode)
 	}
 
-	@Get(':warehouseCode')
-	@UseGuards(JwtAuthGuard)
-	@UseBaseAPI(HttpStatus.OK, { i18nKey: 'common.ok' })
+	@Api({
+		endpoint: ':warehouseCode',
+		method: HttpMethod.GET
+	})
+	@AuthGuard()
 	async getOneByWarehouseCode(@Param('warehouseCode') cofactorCode: string) {
 		return await this.warehouseService.findOneByWarehouseCode(cofactorCode)
 	}
 
-	@Post()
-	@UseGuards(JwtAuthGuard)
+	@Api({
+		method: HttpMethod.POST,
+		statusCode: HttpStatus.CREATED,
+		message: { i18nKey: 'common.created' }
+	})
+	@AuthGuard()
 	@UsePipes(new ZodValidationPipe(createWarehouseValidator))
-	@UseBaseAPI(HttpStatus.CREATED, { i18nKey: 'common.created' })
 	async createWarehouse(@Headers('X-User-Company') factoryCode: string, @Body() payload: CreateWarehouseDTO) {
 		const data = new WarehouseEntity({ ...payload, cofactory_code: factoryCode })
 		return await this.warehouseService.insertOne(data)
 	}
 
-	@Patch(':id')
-	@UseGuards(JwtAuthGuard)
+	@Api({
+		endpoint: ':id',
+		method: HttpMethod.PATCH,
+		statusCode: HttpStatus.CREATED,
+		message: { i18nKey: 'common.updated' }
+	})
+	@AuthGuard()
 	@UsePipes(new ZodValidationPipe(updateWarehouseValidator))
-	@UseBaseAPI(HttpStatus.CREATED, { i18nKey: 'common.updated' })
 	async updateWarehouse(@Param('id') id: string, @Body() payload: UpdateWarehouseDTO) {
 		return await this.warehouseService.updateOneById(+id, payload)
 	}
 
-	@Delete()
-	@UseGuards(JwtAuthGuard)
+	@Api({
+		method: HttpMethod.DELETE,
+		statusCode: HttpStatus.NO_CONTENT,
+		message: { i18nKey: 'common.deleted' }
+	})
+	@AuthGuard()
 	@UsePipes(new ZodValidationPipe(deleteWarehouseValidator))
-	@UseBaseAPI(HttpStatus.NO_CONTENT, { i18nKey: 'common.deleted' })
 	async deleteWarehouses(@Body() payload: DeleteWarehouseDTO) {
 		return await this.warehouseService.deleteMany(payload.id)
 	}
