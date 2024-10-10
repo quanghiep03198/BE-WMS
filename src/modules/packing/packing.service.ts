@@ -2,7 +2,6 @@ import { DATASOURCE_DATA_LAKE } from '@/databases/constants'
 import { Injectable, NotFoundException } from '@nestjs/common'
 import { InjectRepository } from '@nestjs/typeorm'
 import { Repository } from 'typeorm'
-import { PaginationOptionsDTO } from '../_shared/schemas/pagination.schema'
 import { UpdatePackingWeightDTO } from './dto/update-packing.dto'
 import { PackingEntity } from './entities/packing.entity'
 
@@ -17,7 +16,7 @@ export class PackingService {
 		return seriesNumber.slice(11, -1)
 	}
 
-	async getPackingWeightList({ page, limit }: PaginationOptionsDTO) {
+	async getPackingWeightList({ page, limit }: PaginationParams) {
 		const [data, totalDocs] = await this.packingRepository.findAndCount({
 			take: limit,
 			skip: (page - 1) * limit

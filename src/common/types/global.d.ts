@@ -1,12 +1,14 @@
 import { DataSourceOptions } from 'typeorm'
 
 export declare global {
-	type Pagination<T = unknown> = {
+	interface PaginationParams {
+		limit: number
+		page: number
+	}
+	interface Pagination<T = unknown> extends PaginationParams {
 		data: Array<T>
 		hasNextPage: boolean
 		hasPrevPage: boolean
-		limit: number
-		page: number
 		totalDocs: number
 		totalPages: number
 	}
