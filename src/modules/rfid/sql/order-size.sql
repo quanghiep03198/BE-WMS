@@ -1,4 +1,5 @@
 DECLARE @IgnorePattern NVARCHAR(10) = '303429%';
+DECLARE @InternalEpcPattern NVARCHAR(10) = 'E28%';
 DECLARE @FallbackValue NVARCHAR(10) = 'Unknown';
 
 WITH OrderSizesDetail AS (
@@ -12,6 +13,7 @@ WITH OrderSizesDetail AS (
         ON inv.EPC_Code = ma.EPC_Code
         AND COALESCE(inv.mo_no_actual, inv.mo_no, @FallbackValue) = COALESCE(ma.mo_no_actual, ma.mo_no, @FallbackValue)
     WHERE inv.EPC_Code NOT LIKE @IgnorePattern
+        AND inv.EPC_Code NOT LIKE @InternalEpcPattern
         AND inv.rfid_status IS NULL
         AND inv.record_time >= CAST(GETDATE() AS DATE)  -- Optimized date comparison
         AND COALESCE(inv.mo_no_actual, inv.mo_no, @FallbackValue) NOT IN ('13D05B006')
@@ -24,4 +26,4 @@ SELECT
     COUNT(DISTINCT EPC_Code) AS count
 FROM OrderSizesDetail
 GROUP BY mo_no, mat_code, size_numcode
-ORDER BY size_numcode ASC, mo_no ASC ;
+ORDER BY mat_code ASC, size_numcode ASC;

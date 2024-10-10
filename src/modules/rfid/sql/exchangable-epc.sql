@@ -1,5 +1,5 @@
-DECLARE @UnknownValue NVARCHAR(10);
-SET @UnknownValue = 'Unknown';
+DECLARE @UnknownValue NVARCHAR(10) = 'Unknown';
+DECLARE @InternalEpcPattern NVARCHAR(10) = 'E28%';
 
 WITH
     combined_datalist
@@ -15,6 +15,7 @@ WITH
             ON inv.EPC_Code = cust.EPC_Code
                 AND COALESCE(inv.mo_no_actual, inv.mo_no,  @UnknownValue) = COALESCE(cust.mo_no_actual, cust.mo_no,  @UnknownValue)
         WHERE COALESCE(inv.mo_no_actual, inv.mo_no,  @UnknownValue) IN (@0, @1)
+            AND inv.EPC_Code NOT LIKE @InternalEpcPattern
     )
 SELECT DISTINCT d1.mo_no, d1.epc, d1.mat_code, d1.size_numcode
 FROM combined_datalist d1
