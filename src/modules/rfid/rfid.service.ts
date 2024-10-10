@@ -122,6 +122,8 @@ export class RFIDService {
 			.andWhere(/* SQL */ `cust1.mo_no <> cust2.mo_no`)
 			.andWhere(/* SQL */ `cust2.mo_no LIKE :searchTerm`, { searchTerm: `%${searchTerm}%` })
 			.groupBy(/* SQL */ `cust2.mo_no`)
+			.limit(5)
+			.getRawMany()
 	}
 
 	/**
