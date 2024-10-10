@@ -102,7 +102,17 @@ export class RFIDService {
 	}
 
 	async searchCustomerOrder(orderTarget: string, searchTerm: string) {
-		const queryBuilder = this.dataSource
+		if (orderTarget === this.FALLBACK_VALUE)
+			return await this.dataSource
+				.getRepository(RFIDCustomerEntity)
+				.createQueryBuilder()
+				.select(/* SQL */ 'mo_no')
+				.where(/* SQL */ `mo_no LIKE :searchTerm`, { searchTerm: `%${searchTerm}%` })
+				.groupBy('mo_no')
+				.limit(5)
+				.getRawMany()
+
+		return await this.dataSource
 			.createQueryBuilder()
 			.select(/* SQL */ `cust2.mo_no`, 'mo_no')
 			.from(RFIDCustomerEntity, 'cust1')
@@ -112,8 +122,6 @@ export class RFIDService {
 			.andWhere(/* SQL */ `cust1.mo_no <> cust2.mo_no`)
 			.andWhere(/* SQL */ `cust2.mo_no LIKE :searchTerm`, { searchTerm: `%${searchTerm}%` })
 			.groupBy(/* SQL */ `cust2.mo_no`)
-
-		return await queryBuilder.getRawMany()
 	}
 
 	/**
@@ -192,6 +200,15 @@ export class RFIDService {
 	 */
 	private async getAllExchangableEpc(payload: Pick<ExchangeEpcDTO, 'mo_no' | 'mo_no_actual'>) {
 		const { mo_no, mo_no_actual } = payload
+		if (mo_no === this.FALLBACK_VALUE)
+			return await this.dataSource
+				.getRepository(RFIDInventoryEntity)
+				.createQueryBuilder('inv')
+				.select('inv.epc', 'epc')
+				.where({ mo_no: IsNull() })
+				.andWhere({ rfid_status: IsNull() })
+				.andWhere({ record_time: MoreThanOrEqual(format(new Date(), 'yyyy-MM-dd')) })
+				.getRawMany()
 		const query = readFileSync(join(__dirname, './sql/exchangable-epc.sql'), 'utf-8').toString()
 		return await this.dataSource.query(query, [mo_no, mo_no_actual])
 	}
