@@ -10,12 +10,12 @@ import {
 	UpdateWarehouseDTO,
 	updateWarehouseValidator
 } from '../dto/warehouse.dto'
-import { WarehouseEntity } from '../entities/warehouse.entity'
 import { WarehouseService } from '../services/warehouse.service'
 
 @Controller('warehouse')
 export class WarehouseController {
 	constructor(private warehouseService: WarehouseService) {}
+
 	@Api({ method: HttpMethod.GET })
 	@AuthGuard()
 	async getWarehouses(@Headers('X-User-Company') cofactorCode: string) {
@@ -39,8 +39,8 @@ export class WarehouseController {
 	@AuthGuard()
 	@UsePipes(new ZodValidationPipe(createWarehouseValidator))
 	async createWarehouse(@Headers('X-User-Company') factoryCode: string, @Body() payload: CreateWarehouseDTO) {
-		const data = new WarehouseEntity({ ...payload, cofactory_code: factoryCode })
-		return await this.warehouseService.insertOne(data)
+		// const data = new WarehouseEntity()
+		return await this.warehouseService.insertOne({ ...payload, cofactory_code: factoryCode } as any)
 	}
 
 	@Api({
