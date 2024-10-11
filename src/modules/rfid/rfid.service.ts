@@ -1,9 +1,9 @@
 import { Injectable, InternalServerErrorException, Scope } from '@nestjs/common'
 import { format } from 'date-fns'
 import { readFileSync } from 'fs'
-import { chunk, omit, pick } from 'lodash'
+import { chunk, isEmpty, omit, pick } from 'lodash'
 import { join } from 'path'
-import { Brackets, DataSource, FindOptionsWhere, In, IsNull, MoreThanOrEqual } from 'typeorm'
+import { Brackets, DataSource, FindOptionsWhere, In, IsNull, Like, MoreThanOrEqual } from 'typeorm'
 import { TenancyService } from '../tenancy/tenancy.service'
 import { ExchangeEpcDTO, UpdateStockDTO } from './dto/rfid.dto'
 import { RFIDCustomerEntity } from './entities/rfid-customer.entity'
@@ -71,8 +71,8 @@ export class RFIDService {
 
 		const [data, totalDocs] = await Promise.all([
 			queryBuilder
-				.orderBy('inv.record_time', 'DESC')
-				.addOrderBy('inv.epc', 'ASC')
+				.orderBy(/* SQL */ `inv.record_time`, 'DESC')
+				.addOrderBy(/* SQL */ `inv.epc`, 'ASC')
 				.take(this.LIMIT_FETCH_DOCS)
 				.skip((page - 1) * this.LIMIT_FETCH_DOCS)
 				.getRawMany(),
@@ -106,8 +106,8 @@ export class RFIDService {
 			return await this.dataSource
 				.getRepository(RFIDCustomerEntity)
 				.createQueryBuilder()
-				.select(/* SQL */ 'mo_no')
-				.where(/* SQL */ `mo_no LIKE :searchTerm`, { searchTerm: `%${searchTerm}%` })
+				.select('mo_no')
+				.where({ mo_no: Like(searchTerm) })
 				.groupBy('mo_no')
 				.limit(5)
 				.getRawMany()
@@ -120,7 +120,13 @@ export class RFIDService {
 			.where(/* SQL */ `cust1.mat_code = cust2.mat_code`)
 			.andWhere(/* SQL */ `cust1.mo_no = :orderTarget`, { orderTarget })
 			.andWhere(/* SQL */ `cust1.mo_no <> cust2.mo_no`)
-			.andWhere(/* SQL */ `cust2.mo_no LIKE :searchTerm`, { searchTerm: `%${searchTerm}%` })
+			.andWhere(
+				new Brackets((qb) => {
+					if (!isEmpty(searchTerm))
+						return qb.andWhere(/* SQL */ `cust2.mo_no LIKE :searchTerm`, { searchTerm: `%${searchTerm}%` })
+					return qb
+				})
+			)
 			.groupBy(/* SQL */ `cust2.mo_no`)
 			.limit(5)
 			.getRawMany()
@@ -200,7 +206,7 @@ export class RFIDService {
 	/**
 	 * @private
 	 */
-	private async getAllExchangableEpc(payload: Pick<ExchangeEpcDTO, 'mo_no' | 'mo_no_actual'>) {
+	public async getAllExchangableEpc(payload: Pick<ExchangeEpcDTO, 'mo_no' | 'mo_no_actual'>) {
 		const { mo_no, mo_no_actual } = payload
 		if (mo_no === this.FALLBACK_VALUE)
 			return await this.dataSource

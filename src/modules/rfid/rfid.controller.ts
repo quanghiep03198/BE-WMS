@@ -19,7 +19,6 @@ import { ExchangeEpcDTO, exchangeEpcValidator, UpdateStockDTO, updateStockValida
 import { RFIDService } from './rfid.service'
 
 @Controller('rfid')
-// @UseInterceptors(TenancyInterceptor)
 export class RFIDController {
 	constructor(private rfidService: RFIDService) {}
 
@@ -33,7 +32,6 @@ export class RFIDController {
 			switchMap(() =>
 				from(this.rfidService.fetchItems({ page: 1 })).pipe(
 					catchError((error) => {
-						console.error(error.message)
 						return of({ error: error.message })
 					})
 				)
