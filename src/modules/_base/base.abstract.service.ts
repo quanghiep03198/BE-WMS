@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common'
-import { DeleteResult, FindOptionsWhere, Repository } from 'typeorm'
+import { DeepPartial, DeleteResult, FindOptionsWhere, Repository } from 'typeorm'
 import { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity'
 import { BaseAbstractEntity } from './base.abstract.entity'
 import { IBaseService } from './base.service.interface'
@@ -8,7 +8,7 @@ import { IBaseService } from './base.service.interface'
 export abstract class BaseAbstractService<Entity extends BaseAbstractEntity> implements IBaseService<Entity> {
 	protected constructor(private repository: Repository<Entity>) {}
 
-	async insertOne(payload: Entity) {
+	async insertOne(payload: DeepPartial<Entity>) {
 		const newRecord = this.repository.create(payload)
 		return await this.repository.save(newRecord)
 	}
