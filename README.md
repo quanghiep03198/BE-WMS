@@ -1,6 +1,11 @@
-# Warehouse Management API
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=quanghiep03198_BE-WMS&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=quanghiep03198_BE-WMS)
 
-This is a **RESTful API** for a **Warehouse Management System** built with **NestJS**. The API allows you to manage product inventories, monitor stock levels, and handle various warehouse operations. The project integrates **SQL Server** as the primary database using **TypeORM** and uses **Redis** for caching and performance optimization.
+# Warehouse Management API 
+
+[![SonarCloud](https://sonarcloud.io/images/project_badges/sonarcloud-black.svg)](https://sonarcloud.io/summary/new_code?id=quanghiep03198_BE-WMS)
+
+This is a **RESTful API** for a **Warehouse Management System** built with **NestJS**. The API allows you to manage product inventories, monitor stock levels, and handle various warehouse operations. <br/> The project integrates **SQL Server** as the primary database using **TypeORM** and uses **Redis** for caching and performance optimization.
+
 
 ## Table of Contents
 
@@ -97,7 +102,7 @@ To run the unit tests:
 npm run test:cov
 ```
 
-###Contributing
+##Contributing
 If you'd like to contribute to this project, please follow the contribution guidelines. We welcome all contributions, from minor fixes to new features.
 
 ## Branching Strategy
