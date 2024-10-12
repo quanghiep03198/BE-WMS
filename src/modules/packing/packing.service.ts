@@ -1,7 +1,7 @@
 import { DATASOURCE_DATA_LAKE } from '@/databases/constants'
 import { Injectable, NotFoundException } from '@nestjs/common'
 import { InjectRepository } from '@nestjs/typeorm'
-import { Repository } from 'typeorm'
+import { Brackets, Repository } from 'typeorm'
 import { UpdatePackingWeightDTO } from './dto/update-packing.dto'
 import { PackingEntity } from './entities/packing.entity'
 
@@ -16,18 +16,19 @@ export class PackingService {
 		return seriesNumber.slice(11, -1)
 	}
 
-	async getPackingWeightList({ page, limit }: PaginationParams) {
-		const [data, totalDocs] = await this.packingRepository.findAndCount({
-			take: limit,
-			skip: (page - 1) * limit
-		})
-		const totalPages = Math.ceil(totalDocs / limit)
-		if (page < 1 || page > totalPages) {
-			throw new NotFoundException('Page not found')
-		}
-		const hasNextPage = totalPages > page
-		const hasPrevPage = page > 1
-		return { data, totalDocs, totalPages, hasNextPage, hasPrevPage, ...{ page, limit } }
+	async getPackingWeightList(scanId?: string) {
+		return await this.packingRepository
+			.createQueryBuilder('p')
+			.select('p.Scan_id', 'scan_id')
+			.addSelect('p.Weight', 'weight')
+			.where(
+				new Brackets((qb) => {
+					if (scanId) {
+						return qb.where('series_number LIKE :scanId', { scanId: this.extractSeriesNumber(scanId) })
+					} else return qb
+				})
+			)
+			.getRawMany()
 	}
 
 	async getOneByScanId(scanId: string) {

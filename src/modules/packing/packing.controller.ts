@@ -1,6 +1,6 @@
 import { Api, HttpMethod } from '@/common/decorators/base-api.decorator'
 import { ZodValidationPipe } from '@/common/pipes/zod-validation.pipe'
-import { Body, Controller, DefaultValuePipe, HttpStatus, Param, ParseIntPipe, Query, UsePipes } from '@nestjs/common'
+import { Body, Controller, HttpStatus, Param, Query, UsePipes } from '@nestjs/common'
 import { UpdatePackingWeightDTO, updatePackingWeightValidator } from './dto/update-packing.dto'
 import { PackingService } from './packing.service'
 
@@ -8,16 +8,12 @@ import { PackingService } from './packing.service'
 export class PackingController {
 	constructor(private readonly packingService: PackingService) {}
 
-	// @Get('weight-list')
 	@Api({
 		endpoint: 'weight-list',
 		method: HttpMethod.GET
 	})
-	async getPackingWeightList(
-		@Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
-		@Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number
-	) {
-		return await this.packingService.getPackingWeightList({ page, limit })
+	async getPackingWeightList(@Query('scan_id') scanId: string | null) {
+		return await this.packingService.getPackingWeightList(scanId)
 	}
 
 	@Api({
