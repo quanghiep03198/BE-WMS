@@ -3,7 +3,7 @@ import { format } from 'date-fns'
 import { readFileSync } from 'fs'
 import { chunk, isEmpty, omit, pick } from 'lodash'
 import { join } from 'path'
-import { Brackets, DataSource, FindOptionsWhere, In, IsNull, Like, MoreThanOrEqual } from 'typeorm'
+import { Brackets, DataSource, FindOptionsWhere, In, IsNull, MoreThanOrEqual } from 'typeorm'
 import { TenancyService } from '../tenancy/tenancy.service'
 import { ExchangeEpcDTO, UpdateStockDTO } from './dto/rfid.dto'
 import { RFIDCustomerEntity } from './entities/rfid-customer.entity'
@@ -102,15 +102,16 @@ export class RFIDService {
 	}
 
 	async searchCustomerOrder(orderTarget: string, searchTerm: string) {
-		if (orderTarget === this.FALLBACK_VALUE)
+		if (orderTarget === this.FALLBACK_VALUE) {
 			return await this.dataSource
-				.getRepository(RFIDCustomerEntity)
 				.createQueryBuilder()
-				.select('mo_no')
-				.where({ mo_no: Like(searchTerm) })
+				.select('cust.mo_no')
+				.from('DV_DATA_LAKE.dbo.dv_RFIDrecordmst_cust', 'cust')
+				.where(/* SQL */ `cust.mo_no LIKE :searchTerm`, { searchTerm: `%${searchTerm}%` })
 				.groupBy('mo_no')
 				.limit(5)
 				.getRawMany()
+		}
 
 		return await this.dataSource
 			.createQueryBuilder()
