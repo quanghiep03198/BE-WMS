@@ -1,4 +1,4 @@
-import { Injectable, InternalServerErrorException, Scope } from '@nestjs/common'
+import { Injectable, InternalServerErrorException, Logger, Scope } from '@nestjs/common'
 import { format } from 'date-fns'
 import { readFileSync } from 'fs'
 import { chunk, isEmpty, omit, pick } from 'lodash'
@@ -103,11 +103,12 @@ export class RFIDService {
 
 	async searchCustomerOrder(orderTarget: string, searchTerm: string) {
 		if (orderTarget === this.FALLBACK_VALUE) {
+			Logger.debug(1)
 			return await this.dataSource
+				.getRepository(RFIDCustomerEntity)
 				.createQueryBuilder()
-				.select('cust.mo_no')
-				.from('DV_DATA_LAKE.dbo.dv_RFIDrecordmst_cust', 'cust')
-				.where(/* SQL */ `cust.mo_no LIKE :searchTerm`, { searchTerm: `%${searchTerm}%` })
+				.select('mo_no')
+				.where(/* SQL */ `mo_no LIKE :searchTerm`, { searchTerm: `%${searchTerm}%` })
 				.groupBy('mo_no')
 				.limit(5)
 				.getRawMany()
