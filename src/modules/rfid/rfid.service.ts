@@ -166,14 +166,25 @@ export class RFIDService {
 	}
 
 	async updateStock(payload: UpdateStockDTO) {
-		return await this.dataSource.getRepository(RFIDInventoryEntity).update(
-			{
-				mo_no: payload.mo_no ?? IsNull(),
-				rfid_status: IsNull(),
-				record_time: MoreThanOrEqual(format(new Date(), 'yyyy-MM-dd'))
-			},
-			omit(payload, 'mo_no')
-		)
+		return await this.dataSource
+			.getRepository(RFIDInventoryEntity)
+			.createQueryBuilder()
+			.update()
+			.set(omit(payload, 'mo_no'))
+			.where(`COALESCE(mo_no_actual, mo_no, :fallbackValue) = :mo_no`, {
+				mo_no: payload.mo_no,
+				fallbackValue: this.FALLBACK_VALUE
+			})
+			.execute()
+
+		// .update(
+		// 	{
+		// 		mo_no: payload.mo_no ?? IsNull(),
+		// 		rfid_status: IsNull(),
+		// 		record_time: MoreThanOrEqual(format(new Date(), 'yyyy-MM-dd'))
+		// 	},
+		// 	omit(payload, 'mo_no')
+		// )
 	}
 
 	async deleteUnexpectedOrder(orderCode: string) {
