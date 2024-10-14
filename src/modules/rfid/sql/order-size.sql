@@ -7,6 +7,7 @@ WITH OrderSizesDetail AS (
         inv.EPC_Code,
         COALESCE(inv.mo_no_actual, inv.mo_no, @FallbackValue) AS mo_no,
         COALESCE(ma.mat_code, @FallbackValue) AS mat_code,
+        COALESCE(ma.shoestyle_codefactory, @FallbackValue) AS shoes_style_code_factory,
         ISNULL(ma.size_numcode, @FallbackValue) AS size_numcode
     FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet inv
     LEFT JOIN DV_DATA_LAKE.dbo.dv_rfidmatchmst_cust ma
@@ -22,8 +23,9 @@ WITH OrderSizesDetail AS (
 SELECT
     mo_no,
     mat_code,
+    shoes_style_code_factory,
     size_numcode,
     COUNT(DISTINCT EPC_Code) AS count
 FROM OrderSizesDetail
-GROUP BY mo_no, mat_code, size_numcode
+GROUP BY mo_no, mat_code, shoes_style_code_factory, size_numcode
 ORDER BY mat_code ASC, size_numcode ASC;

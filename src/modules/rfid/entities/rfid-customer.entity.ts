@@ -4,8 +4,8 @@ import { Column, Entity, Index } from 'typeorm'
 
 @Entity('dv_rfidmatchmst_cust', { database: DATABASE_DATA_LAKE, synchronize: false })
 export class RFIDCustomerEntity extends BaseAbstractEntity {
-	@Index()
 	@Column({ name: 'EPC_Code' })
+	@Index()
 	epc: string
 
 	@Column({ type: 'nvarchar', length: 20, nullable: true })
@@ -14,12 +14,12 @@ export class RFIDCustomerEntity extends BaseAbstractEntity {
 	@Column({ type: 'nvarchar', length: 50, nullable: true })
 	or_custpo: string
 
-	@Index()
 	@Column({ type: 'nvarchar', length: 20 })
+	@Index()
 	mo_no: string
 
-	@Index()
 	@Column({ name: 'mo_no_actual', type: 'nvarchar', length: 20, nullable: true })
+	@Index()
 	mo_no_actual: string
 
 	@Column({ type: 'nvarchar', length: 20, nullable: true })
@@ -28,21 +28,22 @@ export class RFIDCustomerEntity extends BaseAbstractEntity {
 	@Column({ type: 'nvarchar', length: 20 })
 	size_code: string
 
-	@Index()
 	@Column({ type: 'nvarchar', length: 20 })
+	@Index()
 	size_numcode: string
 
 	@Column({ type: 'numeric' })
 	size_qty: string
 
-	@Index()
 	@Column({ type: 'nvarchar', length: 20 })
+	@Index()
 	mat_code: string
 
 	@Column({ type: 'nvarchar', length: 100 })
 	cust_shoes_style: string
 
 	@Column({ name: 'shoestyle_codefactory', length: 20 })
+	@Index()
 	shoes_style_code_factory: string
 
 	@Column({ type: 'nvarchar', length: 10 })

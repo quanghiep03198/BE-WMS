@@ -2,7 +2,6 @@ import { AuthGuard } from '@/common/decorators/auth.decorator'
 import { Api, HttpMethod } from '@/common/decorators/base-api.decorator'
 import { ZodValidationPipe } from '@/common/pipes/zod-validation.pipe'
 import {
-	BadRequestException,
 	Body,
 	Controller,
 	DefaultValuePipe,
@@ -54,12 +53,8 @@ export class RFIDController {
 		method: HttpMethod.GET
 	})
 	@AuthGuard()
-	async searchCustomerOrder(
-		@Query('target') orderTarget: string,
-		@Query('search', new DefaultValuePipe('')) searchTerm: string
-	) {
-		if (!orderTarget) throw new BadRequestException('Order target is required')
-		return await this.rfidService.searchCustomerOrder(orderTarget, searchTerm)
+	async searchCustomerOrder(@Query('search', new DefaultValuePipe('')) searchTerm: string) {
+		return await this.rfidService.searchCustomerOrder(searchTerm)
 	}
 
 	@Api({
