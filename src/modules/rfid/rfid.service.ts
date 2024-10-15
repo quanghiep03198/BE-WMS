@@ -111,8 +111,8 @@ export class RFIDService {
 		await queryRunner.startTransaction()
 		try {
 			await queryRunner.manager.query(
-				/* SQL */ `DELETE FROM DV_DATA_LAKE.dbo.UHF_RFID_TEST WHERE EPC_Code IN (
-						SELECT EPC_Code FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet
+				/* SQL */ `DELETE FROM DV_DATA_LAKE.dbo.UHF_RFID_TEST WHERE epc IN (
+						SELECT EPC_Code as epc FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet
 						WHERE COALESCE(mo_no_actual, mo_no) = @0)`,
 				[orderCode]
 			)
