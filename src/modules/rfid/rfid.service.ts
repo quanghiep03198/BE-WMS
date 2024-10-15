@@ -19,11 +19,6 @@ export class RFIDService {
 	private readonly LIMIT_FETCH_DOCS = 50
 	private readonly FALLBACK_VALUE = 'Unknown'
 
-	/**
-	 * TODO: Add this ignore EPC pattern to Agency service of SQL Server
-	 * private readonly BOX_LINER_EPC = '3312D%'
-	 */
-
 	constructor(protected tenacyService: TenancyService) {
 		this.dataSource = tenacyService.dataSource
 	}
@@ -102,7 +97,7 @@ export class RFIDService {
 			.createQueryBuilder()
 			.update()
 			.set(omit(payload, 'mo_no'))
-			.where(`COALESCE(mo_no_actual, mo_no, :fallbackValue) = :mo_no`, {
+			.where(/* SQL */ `COALESCE(mo_no_actual, mo_no, :fallbackValue) = :mo_no`, {
 				mo_no: payload.mo_no,
 				fallbackValue: this.FALLBACK_VALUE
 			})
@@ -110,15 +105,15 @@ export class RFIDService {
 	}
 
 	async deleteUnexpectedOrder(orderCode: string) {
+		if (orderCode === this.FALLBACK_VALUE) return // * Only delete defined manufacturing order
+
 		const queryRunner = this.dataSource.createQueryRunner()
 		await queryRunner.startTransaction()
 		try {
 			await queryRunner.manager.query(
-				/* SQL */ `
-					DELETE FROM DV_DATA_LAKE.dbo.UHF_RFID_TEST WHERE epc IN (
-						SELECT EPC_Code AS epc FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet
-						WHERE mo_no = @0)
-					`,
+				/* SQL */ `DELETE FROM DV_DATA_LAKE.dbo.UHF_RFID_TEST WHERE EPC_Code IN (
+						SELECT EPC_Code FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet
+						WHERE COALESCE(mo_no_actual, mo_no) = @0)`,
 				[orderCode]
 			)
 			await queryRunner.manager
@@ -128,7 +123,6 @@ export class RFIDService {
 				.where({ mo_no: orderCode })
 				.orWhere({ mo_no_actual: orderCode })
 				.execute()
-
 			await queryRunner.commitTransaction()
 		} catch (error) {
 			await queryRunner.rollbackTransaction()
@@ -157,7 +151,7 @@ export class RFIDService {
 	async searchCustomerOrder(searchTerm: string) {
 		return await this.dataSource.query(
 			/* SQL */ `SELECT DISTINCT TOP 5 mo_no AS mo_no
-				FROM DV_DATA_LAKE.dbo.[dv_RFIDrecordmst_cust]
+				FROM DV_DATA_LAKE.dbo.dv_RFIDrecordmst_cust
 				WHERE mo_no LIKE CONCAT('%', @0, '%')`,
 			[searchTerm]
 		)
@@ -249,7 +243,7 @@ export class RFIDService {
 				'cust',
 				/* SQL */ `inv.epc = cust.epc AND COALESCE(inv.mo_no_actual, inv.mo_no, :fallbackValue) = COALESCE(cust.mo_no_actual, cust.mo_no, :fallbackValue)`
 			)
-			.where('inv.rfid_status IS NULL')
+			.where(/* SQL */ `inv.rfid_status IS NULL`)
 			.andWhere(/* SQL */ `inv.record_time >= :today`)
 			.andWhere(/* SQL */ `inv.epc NOT LIKE :ignoreEpcPattern`)
 			.andWhere(/* SQL */ `inv.epc NOT LIKE :internalEpcPattern`)
