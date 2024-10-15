@@ -32,12 +32,16 @@ export class UserService extends BaseAbstractService<UserEntity> {
 	) {
 		super(userRepository)
 	}
-
+	/**
+	 * @deprecated
+	 * @param payload
+	 * @returns
+	 */
 	async createUser(payload: RegisterDTO) {
 		const user = await this.userRepository.findOne({ where: { username: payload.username } })
 		if (user) throw new ConflictException('User already exists')
-		const newUser = this.userRepository.create(payload) // Tạo thực thể User từ payload
-		return await this.userRepository.save(newUser) // Save sẽ kích hoạt BeforeInsert
+		const newUser = this.userRepository.create(payload)
+		return await this.userRepository.save(newUser)
 	}
 
 	async getProfile(id: number): Promise<UserEntity> {

@@ -17,17 +17,6 @@ import { UserService } from '../services/user.service'
 export class UserController {
 	constructor(private readonly userService: UserService) {}
 
-	@Api({
-		endpoint: 'register',
-		method: HttpMethod.POST,
-		statusCode: HttpStatus.CREATED,
-		message: { i18nKey: 'common.created' }
-	})
-	@UsePipes(new ZodValidationPipe(registerValidator))
-	async register(@Body() payload: RegisterDTO) {
-		return await this.userService.createUser(payload)
-	}
-
 	@Api({ endpoint: 'profile', method: HttpMethod.GET })
 	@AuthGuard()
 	async getProfile(@User('id') userId) {
@@ -62,5 +51,19 @@ export class UserController {
 	@AuthGuard()
 	async getUserFactory(@User('id') id: number) {
 		return await this.userService.getUserCompany(+id)
+	}
+
+	/**
+	 * @deprecated
+	 */
+	@Api({
+		endpoint: 'register',
+		method: HttpMethod.POST,
+		statusCode: HttpStatus.CREATED,
+		message: { i18nKey: 'common.created' }
+	})
+	@UsePipes(new ZodValidationPipe(registerValidator))
+	async register(@Body() payload: RegisterDTO) {
+		return await this.userService.createUser(payload)
 	}
 }
