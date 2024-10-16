@@ -1,4 +1,5 @@
-import { Injectable, InternalServerErrorException, Scope } from '@nestjs/common'
+import { FileLogger } from '@/common/helpers/file-logger.helper'
+import { Injectable, InternalServerErrorException, NotFoundException, Scope } from '@nestjs/common'
 import { format } from 'date-fns'
 import { readFileSync } from 'fs'
 import { chunk, omit, pick } from 'lodash'
@@ -150,9 +151,12 @@ export class RFIDService {
 
 	async searchCustomerOrder(searchTerm: string) {
 		return await this.dataSource.query(
-			/* SQL */ `SELECT DISTINCT TOP 5 mo_no AS mo_no
-				FROM DV_DATA_LAKE.dbo.dv_RFIDrecordmst_cust
-				WHERE mo_no LIKE CONCAT('%', @0, '%')`,
+			/* SQL */ `WITH datalist as (
+					SELECT DISTINCT mo_no
+					FROM DV_DATA_LAKE.dbo.dv_RFIDrecordmst_cust
+					UNION ALL SELECT DISTINCT mo_no
+					FROM DV_DATA_LAKE.dbo.dv_rfidmatchmst_cust
+				) SELECT DISTINCT TOP 5 * FROM datalist WHERE mo_no LIKE CONCAT('%', @0, '%')`,
 			[searchTerm]
 		)
 	}
@@ -162,6 +166,10 @@ export class RFIDService {
 			? await this.getAllExchangableEpc(payload)
 			: await this.getExchangableEpcBySize(payload)
 
+		if (epcToExchange.length === 0) {
+			throw new NotFoundException('No matching EPC')
+		}
+
 		const queryRunner = this.dataSource.createQueryRunner()
 		const update = pick(payload, 'mo_no_actual')
 
@@ -170,6 +178,8 @@ export class RFIDService {
 			epcToExchange.map((item) => item.epc),
 			BATCH_SIZE
 		)
+		FileLogger.debug(payload.mo_no.split(','))
+		// return
 		await queryRunner.startTransaction()
 		try {
 			for (const epcBatch of epcBatches) {
