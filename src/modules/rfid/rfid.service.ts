@@ -4,7 +4,7 @@ import { format } from 'date-fns'
 import { readFileSync } from 'fs'
 import { chunk, omit, pick } from 'lodash'
 import { join } from 'path'
-import { Brackets, DataSource, FindOptionsWhere, In, IsNull, Like, MoreThanOrEqual } from 'typeorm'
+import { Brackets, DataSource, FindOptionsWhere, In, IsNull, Like, MoreThanOrEqual, Not } from 'typeorm'
 import { TenancyService } from '../tenancy/tenancy.service'
 import { ExchangeEpcDTO, UpdateStockDTO } from './dto/rfid.dto'
 import { RFIDCustomerEntity } from './entities/rfid-customer.entity'
@@ -143,6 +143,7 @@ export class RFIDService {
 				.where({ mo_no: IsNull() })
 				.andWhere({ rfid_status: IsNull() })
 				.andWhere({ record_time: MoreThanOrEqual(format(new Date(), 'yyyy-MM-dd')) })
+				.andWhere({ epc: Not(Like(this.INTERNAL_EPC_PATTERN)) })
 				.limit(payload.quantity)
 				.getRawMany()
 		const query = readFileSync(join(__dirname, './sql/exchangable-epc.sql'), 'utf-8').toString()
