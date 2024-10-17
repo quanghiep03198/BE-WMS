@@ -150,15 +150,30 @@ export class RFIDService {
 		return await this.tenacyService.dataSource.query(query, [mo_no, mo_no_actual])
 	}
 
-	async searchCustomerOrder(searchTerm: string) {
+	async searchCustomerOrder(factoryCode: string, searchTerm: string) {
+		const factoryCodeRef = new Map([
+			['VA1', 'A'],
+			['VB1', 'B'],
+			['VB2', 'C'],
+			['CA1', 'D']
+		])
+
+		// * Republic of China year
+		const REPUBLIC_OF_CHINA_YEAR_START = 1911
+		const currentRepublicOfChinaYear = new Date().getFullYear() - REPUBLIC_OF_CHINA_YEAR_START
+		const orderCodePrefix = currentRepublicOfChinaYear.toString().slice(1) + factoryCodeRef.get(factoryCode)
+
 		return await this.datasource.query(
-			/* SQL */ `WITH datalist as (
-					SELECT DISTINCT mo_no
-					FROM DV_DATA_LAKE.dbo.dv_RFIDrecordmst_cust
-					UNION ALL SELECT DISTINCT mo_no
-					FROM DV_DATA_LAKE.dbo.dv_rfidmatchmst_cust
-				) SELECT DISTINCT TOP 5 * FROM datalist WHERE mo_no LIKE CONCAT('%', @0, '%')`,
-			[searchTerm]
+			/* SQL */ `
+					WITH datalist as (
+						SELECT DISTINCT mo_no
+						FROM DV_DATA_LAKE.dbo.dv_RFIDrecordmst_cust
+						UNION ALL SELECT DISTINCT mo_no
+						FROM DV_DATA_LAKE.dbo.dv_rfidmatchmst_cust
+					) SELECT DISTINCT TOP 5 * FROM datalist 
+					WHERE mo_no LIKE CONCAT('%', @0, '%')
+					AND mo_no LIKE CONCAT(@1, '%')`,
+			[searchTerm, orderCodePrefix]
 		)
 	}
 

@@ -53,8 +53,11 @@ export class RFIDController {
 		method: HttpMethod.GET
 	})
 	@AuthGuard()
-	async searchCustomerOrder(@Query('search', new DefaultValuePipe('')) searchTerm: string) {
-		return await this.rfidService.searchCustomerOrder(searchTerm)
+	async searchCustomerOrder(
+		@Headers('X-User-Company') factoryCode: string,
+		@Query('search', new DefaultValuePipe('')) searchTerm: string
+	) {
+		return await this.rfidService.searchCustomerOrder(factoryCode, searchTerm)
 	}
 
 	@Api({
