@@ -16,25 +16,7 @@ import {
 } from '@nestjs/common'
 import { AllExceptionsFilter } from '../filters/exceptions.filter'
 import { TransformInterceptor } from '../interceptors/transform.interceptor'
-import { ResponseMessage } from './response-message.decorator'
-
-/**
- * @deprecated
- * @param statusCode
- * @param message
- * @returns
- */
-export const UseBaseAPI = (
-	statusCode: HttpStatus,
-	message: string | { i18nKey: I18nPath; bindings?: Record<string, any> }
-) => {
-	return applyDecorators(
-		UseFilters(AllExceptionsFilter),
-		UseInterceptors(TransformInterceptor),
-		HttpCode(statusCode),
-		ResponseMessage(message)
-	)
-}
+import { PluralI18nPath, ResponseMessage } from './response-message.decorator'
 
 export enum HttpMethod {
 	GET = RequestMethod.GET,
@@ -50,7 +32,7 @@ interface ApiOptions {
 	endpoint?: string
 	method: HttpMethod
 	statusCode?: HttpStatus
-	message?: string | { i18nKey: I18nPath; bindings?: Record<string, any> }
+	message?: (I18nPath & string) | PluralI18nPath
 }
 
 export const BASE_ROUTE = '' as const
@@ -59,7 +41,7 @@ export const Api = ({
 	endpoint = BASE_ROUTE,
 	method,
 	statusCode = HttpStatus.OK,
-	message = { i18nKey: 'common.ok' }
+	message = 'common.ok'
 }: ApiOptions) => {
 	const HttpRequest = (route: string) => {
 		switch (method) {

@@ -1,4 +1,4 @@
-import { ResponseMessageKey } from '@/common/decorators/response-message.decorator'
+import { PluralI18nPath, ResponseMessageKey } from '@/common/decorators/response-message.decorator'
 import { I18nPath } from '@/generated/i18n.generated'
 import { CallHandler, ExecutionContext, Injectable, NestInterceptor } from '@nestjs/common'
 import { HttpAdapterHost, Reflector } from '@nestjs/core'
@@ -19,10 +19,7 @@ export class TransformInterceptor<T> implements NestInterceptor<T, Response<T>> 
 	) {}
 	intercept(context: ExecutionContext, next: CallHandler): Observable<Response<T>> {
 		const responseMessage =
-			this.reflector.get<string | { i18nKey: I18nPath; bindings?: Record<string, any> }>(
-				ResponseMessageKey,
-				context.getHandler()
-			) ?? ''
+			this.reflector.get<string | PluralI18nPath | I18nPath>(ResponseMessageKey, context.getHandler()) ?? ''
 		const { httpAdapter } = this.httpAdapterHost
 		const message = typeof responseMessage === 'string' ? responseMessage : responseMessage.i18nKey
 		const messageBindings = typeof responseMessage === 'string' ? {} : responseMessage.bindings
