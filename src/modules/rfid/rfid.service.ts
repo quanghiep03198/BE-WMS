@@ -93,16 +93,20 @@ export class RFIDService {
 	}
 
 	async updateStock(payload: UpdateStockDTO) {
-		return await this.tenacyService.dataSource
-			.getRepository(RFIDInventoryEntity)
-			.createQueryBuilder()
-			.update()
-			.set(omit(payload, 'mo_no'))
-			.where(/* SQL */ `COALESCE(mo_no_actual, mo_no, :fallbackValue) = :mo_no`, {
+		const repository = this.tenacyService.dataSource.getRepository(RFIDInventoryEntity)
+		const updatePayload = omit(payload, 'mo_no')
+		const queryBuilder = repository.createQueryBuilder().update().set(updatePayload)
+
+		if (!payload.mo_no) {
+			queryBuilder.where({ mo_no: IsNull() })
+		} else {
+			queryBuilder.where(/* SQL */ `COALESCE(mo_no_actual, mo_no, :fallbackValue) = :mo_no`, {
 				mo_no: payload.mo_no,
 				fallbackValue: this.FALLBACK_VALUE
 			})
-			.execute()
+		}
+
+		return await queryBuilder.execute()
 	}
 
 	async deleteUnexpectedOrder(orderCode: string) {
