@@ -1,4 +1,3 @@
-import { FileLogger } from '@/common/helpers/file-logger.helper'
 import { Injectable, InternalServerErrorException, NotFoundException, Scope } from '@nestjs/common'
 import { format } from 'date-fns'
 import { readFileSync } from 'fs'
@@ -179,8 +178,7 @@ export class RFIDService {
 			epcToExchange.map((item) => item.epc),
 			BATCH_SIZE
 		)
-		FileLogger.debug(payload.mo_no.split(','))
-		// return
+
 		await queryRunner.startTransaction()
 		try {
 			for (const epcBatch of epcBatches) {

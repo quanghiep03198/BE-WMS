@@ -21,7 +21,7 @@ import { RFIDService } from './rfid.service'
 export class RFIDController {
 	constructor(private rfidService: RFIDService) {}
 
-	@Sse('fetch-epc/latest')
+	@Sse('fetch-epc/sse')
 	@AuthGuard()
 	fetchLatestData(@Headers('X-Polling-Duration') pollingDuration: number) {
 		const FALLBACK_POLLING_DURATION = 500
@@ -58,7 +58,7 @@ export class RFIDController {
 	}
 
 	@Api({
-		endpoint: 'fetch-epc/manual',
+		endpoint: 'fetch-epc',
 		method: HttpMethod.GET
 	})
 	@AuthGuard()
