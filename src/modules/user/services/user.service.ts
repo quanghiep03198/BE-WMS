@@ -23,12 +23,12 @@ type AvatarGenerateOptions = {
 export class UserService extends BaseAbstractService<UserEntity> {
 	constructor(
 		@InjectDataSource(DATA_SOURCE_SYSCLOUD)
-		private syscloudDataSource: DataSource,
+		private readonly syscloudDataSource: DataSource,
 		@InjectRepository(UserEntity, DATA_SOURCE_SYSCLOUD)
-		private userRepository: Repository<UserEntity>,
+		private readonly userRepository: Repository<UserEntity>,
 		@InjectRepository(EmployeeEntity, DATA_SOURCE_SYSCLOUD)
-		private employeeRepository: Repository<EmployeeEntity>,
-		private configService: ConfigService
+		private readonly employeeRepository: Repository<EmployeeEntity>,
+		private readonly configService: ConfigService
 	) {
 		super(userRepository)
 	}
