@@ -146,7 +146,7 @@ export class RFIDService {
 				.select('inv.epc', 'epc')
 				.where({ mo_no: IsNull() })
 				.andWhere({ rfid_status: IsNull() })
-				.andWhere({ record_time: MoreThanOrEqual(format(new Date(), 'yyyy-MM-dd')) })
+				.andWhere({ record_time: MoreThanOrEqual(new Date()) })
 				.andWhere({ epc: Not(Like(this.INTERNAL_EPC_PATTERN)) })
 				.limit(payload.quantity)
 				.getRawMany()
@@ -223,9 +223,11 @@ export class RFIDService {
 	 * @private
 	 */
 	private async checkInvalidEpcExist() {
-		return await this.tenancyService.dataSource
-			.getRepository(RFIDInventoryEntity)
-			.existsBy({ epc: Like(this.INTERNAL_EPC_PATTERN) })
+		return await this.tenancyService.dataSource.getRepository(RFIDInventoryEntity).existsBy({
+			epc: Like(this.INTERNAL_EPC_PATTERN),
+			record_time: MoreThanOrEqual(new Date()),
+			rfid_status: IsNull()
+		})
 	}
 
 	/**
