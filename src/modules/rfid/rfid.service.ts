@@ -1,3 +1,4 @@
+import { FileLogger } from '@/common/helpers/file-logger.helper'
 import { DATASOURCE_DATA_LAKE } from '@/databases/constants'
 import { Injectable, InternalServerErrorException, NotFoundException, Scope } from '@nestjs/common'
 import { InjectDataSource } from '@nestjs/typeorm'
@@ -145,9 +146,10 @@ export class RFIDService {
 				.createQueryBuilder('inv')
 				.select('inv.epc', 'epc')
 				.where({ mo_no: IsNull() })
-				.andWhere({ rfid_status: IsNull() })
-				.andWhere({ record_time: MoreThanOrEqual(new Date()) })
+				.andWhere({ mo_no_actual: IsNull() })
 				.andWhere({ epc: Not(Like(this.INTERNAL_EPC_PATTERN)) })
+				.andWhere({ rfid_status: IsNull() })
+				.andWhere({ record_time: MoreThanOrEqual(format(new Date(), 'yyyy-MM-dd')) })
 				.limit(payload.quantity)
 				.getRawMany()
 		const query = readFileSync(join(__dirname, './sql/exchangable-epc.sql'), 'utf-8').toString()
@@ -185,7 +187,7 @@ export class RFIDService {
 		const epcToExchange = payload.multi
 			? await this.getAllExchangableEpc(payload)
 			: await this.getExchangableEpcBySize(payload)
-
+		FileLogger.debug(epcToExchange)
 		if (epcToExchange.length === 0) {
 			throw new NotFoundException('No matching EPC')
 		}
@@ -225,7 +227,7 @@ export class RFIDService {
 	private async checkInvalidEpcExist() {
 		return await this.tenancyService.dataSource.getRepository(RFIDInventoryEntity).existsBy({
 			epc: Like(this.INTERNAL_EPC_PATTERN),
-			record_time: MoreThanOrEqual(new Date()),
+			record_time: MoreThanOrEqual(format(new Date(), 'yyyy-MM-dd')),
 			rfid_status: IsNull()
 		})
 	}
