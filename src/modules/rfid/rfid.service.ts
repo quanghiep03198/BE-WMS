@@ -21,7 +21,7 @@ export class RFIDService {
 
 	constructor(
 		@InjectDataSource(DATASOURCE_DATA_LAKE) private readonly datasource: DataSource,
-		private readonly tenacyService: TenancyService
+		private readonly tenancyService: TenancyService
 	) {}
 
 	async fetchItems({ page, filter }: { page: number; filter?: string }) {
@@ -40,7 +40,7 @@ export class RFIDService {
 	}
 
 	async findWhereNotInStock({ page, filter }: { page: number; filter?: string }) {
-		const queryBuilder = this.tenacyService.dataSource
+		const queryBuilder = this.tenancyService.dataSource
 			.getRepository(RFIDInventoryEntity)
 			.createQueryBuilder('inv')
 			.select(/* SQL */ `inv.epc`, 'epc')
@@ -93,7 +93,7 @@ export class RFIDService {
 	}
 
 	async updateStock(payload: UpdateStockDTO) {
-		const repository = this.tenacyService.dataSource.getRepository(RFIDInventoryEntity)
+		const repository = this.tenancyService.dataSource.getRepository(RFIDInventoryEntity)
 		const updatePayload = omit(payload, 'mo_no')
 		const queryBuilder = repository.createQueryBuilder().update().set(updatePayload)
 
@@ -112,7 +112,7 @@ export class RFIDService {
 	async deleteUnexpectedOrder(orderCode: string) {
 		if (orderCode === this.FALLBACK_VALUE) return // * Only delete defined manufacturing order
 
-		const queryRunner = this.tenacyService.dataSource.createQueryRunner()
+		const queryRunner = this.tenancyService.dataSource.createQueryRunner()
 		await queryRunner.startTransaction()
 		try {
 			await queryRunner.manager.query(
@@ -140,7 +140,7 @@ export class RFIDService {
 	async getAllExchangableEpc(payload: Pick<ExchangeEpcDTO, 'mo_no' | 'mo_no_actual' | 'quantity'>) {
 		const { mo_no, mo_no_actual } = payload
 		if (mo_no === this.FALLBACK_VALUE)
-			return await this.tenacyService.dataSource
+			return await this.tenancyService.dataSource
 				.getRepository(RFIDInventoryEntity)
 				.createQueryBuilder('inv')
 				.select('inv.epc', 'epc')
@@ -151,7 +151,7 @@ export class RFIDService {
 				.limit(payload.quantity)
 				.getRawMany()
 		const query = readFileSync(join(__dirname, './sql/exchangable-epc.sql'), 'utf-8').toString()
-		return await this.tenacyService.dataSource.query(query, [mo_no, mo_no_actual])
+		return await this.tenancyService.dataSource.query(query, [mo_no, mo_no_actual])
 	}
 
 	async searchCustomerOrder(factoryCode: string, searchTerm: string) {
@@ -190,7 +190,7 @@ export class RFIDService {
 			throw new NotFoundException('No matching EPC')
 		}
 
-		const queryRunner = this.tenacyService.dataSource.createQueryRunner()
+		const queryRunner = this.tenancyService.dataSource.createQueryRunner()
 		const update = pick(payload, 'mo_no_actual')
 
 		const BATCH_SIZE = 2000
@@ -223,7 +223,7 @@ export class RFIDService {
 	 * @private
 	 */
 	private async checkInvalidEpcExist() {
-		return await this.tenacyService.dataSource
+		return await this.tenancyService.dataSource
 			.getRepository(RFIDInventoryEntity)
 			.existsBy({ epc: Like(this.INTERNAL_EPC_PATTERN) })
 	}
@@ -234,14 +234,14 @@ export class RFIDService {
 	private async getOrderSizes() {
 		// * Execute raw query is faster than query builder
 		const query = readFileSync(join(__dirname, './sql/order-size.sql'), 'utf-8').toString()
-		return await this.tenacyService.dataSource.query(query)
+		return await this.tenancyService.dataSource.query(query)
 	}
 
 	/**
 	 * @private
 	 */
 	private async getOrderQuantity() {
-		return await this.tenacyService.dataSource
+		return await this.tenancyService.dataSource
 			.getRepository(RFIDInventoryEntity)
 			.createQueryBuilder('inv')
 			.select(/* SQL */ `COALESCE(inv.mo_no_actual, inv.mo_no, :fallbackValue)`, 'mo_no')
@@ -265,7 +265,7 @@ export class RFIDService {
 	 * @private
 	 */
 	private async getExchangableEpcBySize(payload: ExchangeEpcDTO) {
-		return await this.tenacyService.dataSource
+		return await this.tenancyService.dataSource
 			.getRepository(RFIDInventoryEntity)
 			.createQueryBuilder('inv')
 			.select(/* SQL */ `cust.epc`, 'epc')
