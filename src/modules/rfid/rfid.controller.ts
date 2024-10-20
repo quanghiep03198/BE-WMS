@@ -66,7 +66,7 @@ export class RFIDController {
 	})
 	@AuthGuard()
 	async fetchNextItems(
-		@Query('page', new DefaultValuePipe(2), ParseIntPipe) page: number,
+		@Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
 		@Query('filter', new DefaultValuePipe('')) filter: string
 	) {
 		return await this.rfidService.findWhereNotInStock({ page, filter })
