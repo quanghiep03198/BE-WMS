@@ -1,7 +1,7 @@
 import { AuthGuard } from '@/common/decorators/auth.decorator'
 import { Api, HttpMethod } from '@/common/decorators/base-api.decorator'
 import { BadRequestException, Controller, Headers, UnprocessableEntityException } from '@nestjs/common'
-import { FactoryCodes } from './constants'
+import { FactoryCode } from './constants'
 import { DepartmentService } from './department.service'
 
 @Controller('department')
@@ -15,7 +15,7 @@ export class DepartmentController {
 	@AuthGuard()
 	async getWarehouseDepartments(@Headers('X-User-Company') factoryCode: string) {
 		if (!factoryCode) throw new BadRequestException('Factory code is required')
-		if (!Object.values(FactoryCodes).includes) throw new UnprocessableEntityException('Invalid factory code')
+		if (!Object.values(FactoryCode).includes) throw new UnprocessableEntityException('Invalid factory code')
 		return await this.departmentService.getWarehouseDepartments(factoryCode)
 	}
 
