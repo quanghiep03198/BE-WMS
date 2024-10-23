@@ -1,12 +1,14 @@
-import { FileLogger } from '@/common/helpers/file-logger.helper'
 import { DATASOURCE_DATA_LAKE } from '@/databases/constants'
-import { Injectable, InternalServerErrorException, NotFoundException, Scope } from '@nestjs/common'
+import { CACHE_MANAGER } from '@nestjs/cache-manager'
+import { Inject, Injectable, InternalServerErrorException, NotFoundException, Scope } from '@nestjs/common'
 import { InjectDataSource } from '@nestjs/typeorm'
+import { Cache } from 'cache-manager'
 import { format } from 'date-fns'
 import { readFileSync } from 'fs'
 import { chunk, omit, pick } from 'lodash'
 import { join } from 'path'
 import { Brackets, DataSource, FindOptionsWhere, In, IsNull, Like, MoreThanOrEqual, Not } from 'typeorm'
+import { FactoryCodeOrderRef } from '../department/constants'
 import { TenancyService } from '../tenancy/tenancy.service'
 import { ExchangeEpcDTO, UpdateStockDTO } from './dto/rfid.dto'
 import { RFIDCustomerEntity } from './entities/rfid-customer.entity'
@@ -17,11 +19,11 @@ export class RFIDService {
 	private readonly IGNORE_ORDERS: Array<string> = ['13D05B006']
 	private readonly IGNORE_EPC_PATTERN = '303429%'
 	private readonly INTERNAL_EPC_PATTERN = 'E28%'
-	private readonly LIMIT_FETCH_DOCS = 50
 	private readonly FALLBACK_VALUE = 'Unknown'
 
 	constructor(
 		@InjectDataSource(DATASOURCE_DATA_LAKE) private readonly datasource: DataSource,
+		@Inject(CACHE_MANAGER) cacheManager: Cache,
 		private readonly tenancyService: TenancyService
 	) {}
 
@@ -35,12 +37,13 @@ export class RFIDService {
 			])
 			return { epcs, orders, sizes, has_invalid_epc }
 		} catch (error) {
-			// await this.dataSource.destroy()
 			throw new InternalServerErrorException(error)
 		}
 	}
 
 	async findWhereNotInStock({ page, filter }: { page: number; filter?: string }) {
+		const LIMIT_FETCH_DOCS = 50
+
 		const queryBuilder = this.tenancyService.dataSource
 			.getRepository(RFIDInventoryEntity)
 			.createQueryBuilder('inv')
@@ -69,20 +72,20 @@ export class RFIDService {
 			queryBuilder
 				.orderBy(/* SQL */ `inv.record_time`, 'DESC')
 				.addOrderBy(/* SQL */ `inv.epc`, 'ASC')
-				.take(this.LIMIT_FETCH_DOCS)
-				.skip((page - 1) * this.LIMIT_FETCH_DOCS)
+				.take(LIMIT_FETCH_DOCS)
+				.skip((page - 1) * LIMIT_FETCH_DOCS)
 				.getRawMany(),
 			queryBuilder.getCount()
 		])
 
-		const totalPages = Math.ceil(totalDocs / this.LIMIT_FETCH_DOCS)
+		const totalPages = Math.ceil(totalDocs / LIMIT_FETCH_DOCS)
 
 		return {
 			data,
 			hasNextPage: page < totalPages,
 			hasPrevPage: page > 1,
 			totalDocs,
-			limit: this.LIMIT_FETCH_DOCS,
+			limit: LIMIT_FETCH_DOCS,
 			page,
 			totalPages
 		}
@@ -157,24 +160,30 @@ export class RFIDService {
 	}
 
 	async searchCustomerOrder(factoryCode: string, searchTerm: string) {
-		const factoryCodeRef = new Map([
-			['VA1', 'A'],
-			['VB1', 'B'],
-			['VB2', 'C'],
-			['CA1', 'D']
-		])
+		/**
+		 * @description Start year of Republic of China (Taiwan)
+		 * @constant {number}
+		 */
+		const ROC_ESTABLISHMENT_YEAR = 1911
 
-		// * Republic of China year
-		const REPUBLIC_OF_CHINA_YEAR_START = 1911
-		const currentRepublicOfChinaYear = new Date().getFullYear() - REPUBLIC_OF_CHINA_YEAR_START
-		const orderCodePrefix = currentRepublicOfChinaYear.toString().slice(1) + factoryCodeRef.get(factoryCode)
+		/**
+		 * @description Current year of Republic of China
+		 * @var {number}
+		 */
+		const currentRepublicOfChinaYear = new Date().getFullYear() - ROC_ESTABLISHMENT_YEAR
+
+		/**
+		 * @description Prefix of manufacturing order code
+		 * @var {string}
+		 */
+		const orderCodePrefix = currentRepublicOfChinaYear.toString().slice(1) + FactoryCodeOrderRef[factoryCode]
 
 		return await this.datasource.query(
 			/* SQL */ `
 					WITH datalist as (
-						SELECT DISTINCT mo_no
+						SELECT mo_no
 						FROM DV_DATA_LAKE.dbo.dv_RFIDrecordmst_cust
-						UNION ALL SELECT DISTINCT mo_no
+						UNION ALL SELECT mo_no
 						FROM DV_DATA_LAKE.dbo.dv_rfidmatchmst_cust
 					) SELECT DISTINCT TOP 5 * FROM datalist 
 					WHERE mo_no LIKE CONCAT('%', @0, '%')
@@ -187,7 +196,7 @@ export class RFIDService {
 		const epcToExchange = payload.multi
 			? await this.getAllExchangableEpc(payload)
 			: await this.getExchangableEpcBySize(payload)
-		FileLogger.debug(epcToExchange)
+
 		if (epcToExchange.length === 0) {
 			throw new NotFoundException('No matching EPC')
 		}
@@ -219,6 +228,13 @@ export class RFIDService {
 		} finally {
 			await queryRunner.release()
 		}
+	}
+
+	/**
+	 * TODO: Implement pulling data from third-party API
+	 */
+	private async pullLatestCustomerData() {
+		// const
 	}
 
 	/**
