@@ -12,8 +12,10 @@ export enum Environment {
 export enum Tenant {
 	DEV = 'tenant-development',
 	MAIN = 'tenant-main',
-	VN_PRIAMRY = 'tenant-vn-primary',
-	VN_SECONDARY = 'tenant-vn-secondary',
-	KM_PRIMARY = 'tenant-cam-primary',
-	KM_SECONDARY = 'tenant-cam-secondary'
+	VN_LIANYING_PRIMARY = 'tenant-lianying-primary',
+	VN_LIANYING_SECONDARY = 'tenant-lianying-secondary',
+	VN_LIANSHUN_1 = 'tenant-lianshun1-secondary',
+	VN_LIANSHUN_2 = 'tenant-lianshun2-primary',
+	KM_1 = 'tenant-cambodia-primary',
+	KM_2 = 'tenant-cambodia-secondary'
 }

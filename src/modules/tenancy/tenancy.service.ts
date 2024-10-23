@@ -5,6 +5,7 @@ import { ConfigService } from '@nestjs/config'
 import { REQUEST } from '@nestjs/core'
 import { Request } from 'express'
 import { DataSource } from 'typeorm'
+import { FactoryCode } from '../department/constants'
 import { ITenancy } from './tenancy.interface'
 
 @Injectable({ scope: Scope.REQUEST })
@@ -17,32 +18,37 @@ export class TenancyService implements OnModuleDestroy {
 	private readonly tenants: Array<ITenancy> = [
 		{
 			id: Tenant.DEV,
-			location: 'Vietnam',
+			factories: [FactoryCode.GL1, FactoryCode.GL3, FactoryCode.GL4],
 			host: this.configService.get('TENANT_DEV')
 		},
 		{
 			id: Tenant.MAIN,
-			location: 'Vietnam',
+			factories: [FactoryCode.GL1, FactoryCode.GL3, FactoryCode.GL4],
 			host: this.configService.get('TENANT_MAIN')
 		},
 		{
-			id: Tenant.VN_PRIAMRY,
-			location: 'Vietnam',
-			host: this.configService.get('TENANT_VN_PRIMARY')
+			id: Tenant.VN_LIANYING_PRIMARY,
+			factories: [FactoryCode.GL1],
+			host: this.configService.get('TENANT_VN_LIANYING_PRIMARY')
 		},
 		{
-			id: Tenant.VN_SECONDARY,
-			location: 'Vietnam',
-			host: this.configService.get('TENANT_VN_SECONDARY')
+			id: Tenant.VN_LIANYING_SECONDARY,
+			factories: [FactoryCode.GL1],
+			host: this.configService.get('TENANT_VN_LIANYING_SECONDARY')
 		},
 		{
-			id: Tenant.KM_PRIMARY,
-			location: 'Cambodia',
-			host: this.configService.get('TENANT_KM_PRIMARY')
+			id: Tenant.VN_LIANSHUN_2,
+			factories: [FactoryCode.GL3],
+			host: this.configService.get('TENANT_VN_LIANSHUN_2')
 		},
 		{
-			id: Tenant.KM_SECONDARY,
-			location: 'Cambodia',
+			id: Tenant.KM_1,
+			factories: [FactoryCode.GL4],
+			host: this.configService.get<string>('TENANT_KM_PRIMARY' satisfies keyof NodeJS.ProcessEnv)
+		},
+		{
+			id: Tenant.KM_2,
+			factories: [FactoryCode.GL4],
 			host: this.configService.get('TENANT_KM_SECONDARY')
 		}
 	]
@@ -63,13 +69,13 @@ export class TenancyService implements OnModuleDestroy {
 		return tenant
 	}
 
-	public getTenantsByFactory(cofactoryCode: string) {
+	public getTenantsByFactory(factoryCode: FactoryCode) {
 		return (() => {
 			switch (true) {
-				case VIETNAM_FACTORY_CODE.test(cofactoryCode):
-					return this.tenants.filter((tenancy) => tenancy.location === 'Vietnam')
-				case CAMBODIA_FACTORY_CODE.test(cofactoryCode):
-					return this.tenants.filter((tenancy) => tenancy.location === 'Cambodia')
+				case VIETNAM_FACTORY_CODE.test(factoryCode):
+					return this.tenants.filter((tenant) => tenant.factories.includes(factoryCode))
+				case CAMBODIA_FACTORY_CODE.test(factoryCode):
+					return this.tenants.filter((tenant) => tenant.factories.includes(factoryCode))
 				// * Add more case if there still have other reader hosts
 				default:
 					throw new NotFoundException('No available tenant')

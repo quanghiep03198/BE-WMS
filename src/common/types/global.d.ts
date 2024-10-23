@@ -21,8 +21,10 @@ export declare global {
 		interface ProcessEnv {
 			NODE_ENV: 'development' | 'production' | 'test'
 			PORT: string
+			// * Throttler
 			THROTTLER_TTL: string
 			THROTTLER_LIMIT: string
+			// * Database
 			DB_TYPE: DataSourceOptions['type']
 			DB_HOST: string
 			DB_USERNAME: string
@@ -30,9 +32,29 @@ export declare global {
 			DB_PORT: string
 			DB_TRUST_SERVER_CERTIFICATE: string
 			DB_CONNECTION_TIMEOUT: string
+			// * Third-party API
+			THIRD_PARTY_OAUTH_API_URL: string
+			THIRD_PARTY_API_URL: string
+			GL1_CLIENT_ID: string
+			GL1_CLIENT_SECRET: string
+			GL3_CLIENT_ID: string
+			GL3_CLIENT_SECRET: string
+			GL4_CLIENT_ID: string
+			GL4_CLIENT_SECRET: string
+			// * Tenancy
+			TENANT_DEV: string
+			TENANT_MAIN: string
+			TENANT_VN_LIANYING_PRIMARY: string
+			TENANT_VN_LIANYING_SECONDARY: string
+			TENANT_VN_LIANSHUN_2: string
+			TENANT_KM_PRIMARY: string
+			TENANT_KM_SECONDARY: string
+			// * Redis
 			REDIS_HOST: string
 			REDIS_PORT: string
+			// * Bcrypt
 			SALT_ROUND: string
+			// * Jwt
 			JWT_SECRET: string
 			JWT_EXPIRES: string
 		}
