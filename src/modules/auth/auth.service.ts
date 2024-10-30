@@ -3,6 +3,7 @@ import { BadRequestException, Inject, Injectable, NotFoundException } from '@nes
 import { JwtService } from '@nestjs/jwt'
 import { Cache } from 'cache-manager'
 import { pick } from 'lodash'
+import { I18nContext, I18nService } from 'nestjs-i18n'
 import { UserEntity } from '../user/entities/user.entity'
 import { UserService } from '../user/services/user.service'
 import { LoginDTO } from './dto/auth.dto'
@@ -12,15 +13,17 @@ export class AuthService {
 	constructor(
 		@Inject(CACHE_MANAGER) private cacheManager: Cache,
 		private jwtService: JwtService,
-		private userService: UserService
+		private userService: UserService,
+		private i18n: I18nService
 	) {}
 
 	private TOKEN_CACHE_TTL = 60 * 1000 * 60 + 30 * 1000
 
 	async validateUser(payload: LoginDTO) {
 		const user = await this.userService.findUserByUsername(payload.username)
-		if (!user) throw new NotFoundException('User could not be found')
-		if (!user.authenticate(payload.password)) throw new BadRequestException('Password is incorrect')
+		if (!user) throw new NotFoundException(this.i18n.t('auth.user_not_found', { lang: I18nContext.current().lang }))
+		if (!user.authenticate(payload.password))
+			throw new BadRequestException(this.i18n.t('auth.incorrect_password', { lang: I18nContext.current().lang }))
 		return user
 	}
 

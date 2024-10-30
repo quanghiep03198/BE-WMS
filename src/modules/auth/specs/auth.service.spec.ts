@@ -22,6 +22,7 @@ describe('AuthService', () => {
 					provide: CACHE_MANAGER,
 					useValue: {
 						set: jest.fn(),
+						get: jest.fn(),
 						del: jest.fn()
 					}
 				},
