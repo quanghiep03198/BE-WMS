@@ -44,7 +44,7 @@ export class TenancyService implements OnModuleDestroy {
 		{
 			id: Tenant.KM_1,
 			factories: [FactoryCode.GL4],
-			host: this.configService.get<string>('TENANT_KM_PRIMARY' satisfies keyof NodeJS.ProcessEnv)
+			host: this.configService.get<string>('TENANT_KM_PRIMARY')
 		},
 		{
 			id: Tenant.KM_2,
@@ -63,7 +63,7 @@ export class TenancyService implements OnModuleDestroy {
 		return this.request.dataSource
 	}
 
-	public getOneById(id: string) {
+	public findOneById(id: string) {
 		const tenant = this.tenants.find((tenancy) => tenancy.id === id)
 		if (!tenant) throw new NotFoundException('No available tenant')
 		return tenant

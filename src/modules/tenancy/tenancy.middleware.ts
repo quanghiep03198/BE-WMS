@@ -18,7 +18,7 @@ export class TenacyMiddleware implements NestMiddleware {
 		if (!tenantId) {
 			throw new BadRequestException('Tenant ID is required')
 		}
-		const tenant = this.tenancyService.getOneById(tenantId.toString())
+		const tenant = this.tenancyService.findOneById(tenantId.toString())
 		const dataSource = new DataSource({
 			...this.configService.getOrThrow<SqlServerConnectionOptions>('database'),
 			entities: [resolve(join(__dirname, '../**/*.entity.{ts,js}'))],
