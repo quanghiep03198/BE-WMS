@@ -1,6 +1,5 @@
 import { ArgumentsHost, Catch, ExceptionFilter, HttpException, HttpStatus } from '@nestjs/common'
 import { HttpAdapterHost } from '@nestjs/core'
-import { Environment } from '../constants'
 import { FileLogger } from '../helpers/file-logger.helper'
 
 @Catch()
@@ -8,7 +7,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
 	constructor(private readonly httpAdapterHost: HttpAdapterHost) {}
 
 	/**
-	 *	@description Bắt tất cả các exceptions được throw
+	 *	@description Catch all exceptions and log the error
 	 * @param {HttpException | Error} exception
 	 * @param {ArgumentsHost} host
 	 */
@@ -22,7 +21,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
 			timestamp: new Date().toISOString(),
 			path: httpAdapter.getRequestUrl(ctx.getRequest())
 		}
-		if (process.env.NODE_ENV === Environment.DEVELOPMENT) FileLogger.error(exception)
+		if (httpStatus === HttpStatus.INTERNAL_SERVER_ERROR) FileLogger.error(exception)
 		httpAdapter.reply(ctx.getResponse(), responseBody, httpStatus)
 	}
 }
