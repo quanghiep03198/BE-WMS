@@ -4,6 +4,7 @@ import { AcceptLanguageResolver, HeaderResolver, I18nModule, QueryResolver } fro
 import { DatabaseModule } from './databases/database.module'
 // Feature modules
 import { CacheModule } from '@nestjs/cache-manager'
+import { EventEmitterModule } from '@nestjs/event-emitter'
 import { ThrottlerModule } from '@nestjs/throttler'
 import { RedisClientOptions } from 'redis'
 import { AppController } from './app.controller'
@@ -15,6 +16,7 @@ import { DepartmentModule } from './modules/department/department.module'
 import { PackingModule } from './modules/packing/packing.module'
 import { RFIDModule } from './modules/rfid/rfid.module'
 import { TenancyModule } from './modules/tenancy/tenancy.module'
+import { ThirdPartyApiModule } from './modules/third-party-api/third-party.module'
 import { UserModule } from './modules/user/user.module'
 import { WarehouseModule } from './modules/warehouse/warehouse.module'
 
@@ -45,6 +47,15 @@ import { WarehouseModule } from './modules/warehouse/warehouse.module'
 			inject: [ConfigService],
 			useFactory: (configService: ConfigService) => configService.getOrThrow('throttler')
 		}),
+		EventEmitterModule.forRoot({
+			wildcard: false,
+			delimiter: '.',
+			newListener: false,
+			removeListener: false,
+			maxListeners: 10,
+			verboseMemoryLeak: false,
+			ignoreErrors: false
+		}),
 		DatabaseModule,
 		// * Feature modules
 		AuthModule,
@@ -52,8 +63,10 @@ import { WarehouseModule } from './modules/warehouse/warehouse.module'
 		WarehouseModule,
 		RFIDModule,
 		PackingModule,
+		TenancyModule,
 		DepartmentModule,
-		TenancyModule
+		ThirdPartyApiModule
+		// OrderModule,
 	],
 	controllers: [AppController],
 	providers: []
