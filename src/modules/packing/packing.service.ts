@@ -24,7 +24,7 @@ export class PackingService {
 			.where(
 				new Brackets((qb) => {
 					if (scanId) {
-						return qb.where('series_number LIKE :scanId', { scanId: this.extractSeriesNumber(scanId) })
+						return qb.where('series_number = :scanId', { scanId: this.extractSeriesNumber(scanId) })
 					} else return qb
 				})
 			)
