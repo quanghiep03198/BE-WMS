@@ -1,5 +1,5 @@
+import { Api, HttpMethod } from '@/common/decorators/api.decorator'
 import { AuthGuard } from '@/common/decorators/auth.decorator'
-import { Api, HttpMethod } from '@/common/decorators/base-api.decorator'
 import { User } from '@/common/decorators/user.decorator'
 import { ZodValidationPipe } from '@/common/pipes/zod-validation.pipe'
 import { Body, Controller, HttpStatus, UsePipes } from '@nestjs/common'

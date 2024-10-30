@@ -1,5 +1,5 @@
 import { Controller } from '@nestjs/common'
-import { Api, HttpMethod } from './common/decorators/base-api.decorator'
+import { Api, HttpMethod } from './common/decorators/api.decorator'
 
 @Controller()
 export class AppController {

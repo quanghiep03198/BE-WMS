@@ -35,14 +35,12 @@ interface ApiOptions {
 	message?: (I18nPath & string) | PluralI18nPath
 }
 
-export const BASE_ROUTE = '' as const
-
-export const Api = ({
-	endpoint = BASE_ROUTE,
-	method,
-	statusCode = HttpStatus.OK,
-	message = 'common.ok'
-}: ApiOptions) => {
+/**
+ * Decorator that marks a method as an API endpoint.
+ *
+ * @publicApi
+ */
+export const Api = ({ endpoint = '', method, statusCode = HttpStatus.OK, message = 'common.ok' }: ApiOptions) => {
 	const HttpRequest = (route: string) => {
 		switch (method) {
 			case HttpMethod.GET:

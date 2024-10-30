@@ -1,7 +1,8 @@
+import { Api } from '@/common/decorators/api.decorator'
 import { AuthGuard } from '@/common/decorators/auth.decorator'
-import { Api } from '@/common/decorators/base-api.decorator'
 import { ZodValidationPipe } from '@/common/pipes/zod-validation.pipe'
 import { BadRequestException, Body, Controller, Headers, HttpStatus, Param, UsePipes } from '@nestjs/common'
+import { HttpMethod } from '../../../common/decorators/api.decorator'
 import {
 	CreateStorageLocationDTO,
 	createStorageLocationValidator,
@@ -10,7 +11,6 @@ import {
 	updateStorageLocationValidator
 } from '../dto/storage-location.dto'
 import { StorageLocationEntity } from '../entities/storage-location.entity'
-import { HttpMethod } from './../../../common/decorators/base-api.decorator'
 import { StorageLocationService } from './../services/storage-location.service'
 
 @Controller('warehouse/storage-detail')
