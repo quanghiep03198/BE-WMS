@@ -42,9 +42,12 @@ export class RFIDController {
 			throw new BadRequestException('Factory code is required')
 		}
 		const syncProcessFlag = await this.cacheManager.get(`sync_process:${factoryCode}`)
+		// * Prevent multiple sync process
 		if (!syncProcessFlag) {
 			await this.cacheManager.set(`sync_process:${factoryCode}`, true, 60 * 1000 * 60)
+			// * Authenticate third party API
 			const isAuthenticated = await this.thirdPartyApiService.authenticate(factoryCode)
+			// * Fetch third party API
 			if (isAuthenticated) this.rfidService.fetchThirdPartyApi()
 		}
 

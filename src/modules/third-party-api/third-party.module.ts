@@ -38,7 +38,7 @@ export class ThirdPartyApiModule implements OnModuleInit {
 
 		this.httpService.axiosRef.interceptors.response.use(
 			<T>(response: AxiosResponse<T>) => {
-				return response
+				return response.data
 			},
 			async (error: AxiosError) => {
 				const originalRequest: InternalAxiosRequestConfig = error.config
