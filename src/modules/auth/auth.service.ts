@@ -12,9 +12,9 @@ import { LoginDTO } from './dto/auth.dto'
 export class AuthService {
 	constructor(
 		@Inject(CACHE_MANAGER) private cacheManager: Cache,
-		private jwtService: JwtService,
-		private userService: UserService,
-		private i18n: I18nService
+		private readonly jwtService: JwtService,
+		private readonly userService: UserService,
+		private readonly i18n: I18nService
 	) {}
 
 	private TOKEN_CACHE_TTL = 60 * 1000 * 60 + 30 * 1000
