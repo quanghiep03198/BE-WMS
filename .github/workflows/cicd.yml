@@ -27,10 +27,6 @@ jobs:
       name: Deploy to server 19
       runs-on: [self-hosted, 'Server-19']
       steps:
-         - name: 'Delete previous deployments'
-           shell: bash
-           run: pm2 delete ecosystem.config.js || echo "No previous deployments. Skipping deletion."
-
          - name: Checkout code
            uses: actions/checkout@v4
 
@@ -54,10 +50,6 @@ jobs:
       name: Deploy to server 51
       runs-on: [self-hosted, 'Server-51']
       steps:
-         - name: 'Delete previous deployments'
-           shell: bash
-           run: pm2 delete ecosystem.config.js || echo "No previous deployments. Skipping deletion."
-
          - name: Checkout code
            uses: actions/checkout@v4
 
@@ -75,4 +67,4 @@ jobs:
 
          - name: Restart PM2 process
            shell: bash
-           run: pm2 start ecosystem.config.js
+           run: pm2 restart ecosystem.config.js
