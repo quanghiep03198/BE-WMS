@@ -8,6 +8,7 @@ import { InjectDataSource } from '@nestjs/typeorm'
 import { Cache } from 'cache-manager'
 import { Request } from 'express'
 import { chunk, omit, pick } from 'lodash'
+import { I18nContext, I18nService } from 'nestjs-i18n'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { Brackets, DataSource, FindOptionsWhere, In, IsNull, Like } from 'typeorm'
@@ -32,7 +33,8 @@ export class RFIDService {
 		private readonly rfidRepository: RFIDRepository,
 		private readonly eventEmitter: EventEmitter2,
 		private readonly tenancyService: TenancyService,
-		private readonly configService: ConfigService
+		private readonly configService: ConfigService,
+		private readonly i18n: I18nService
 	) {}
 
 	async fetchItems({ page, filter }: RFIDSearchParams) {
@@ -184,7 +186,7 @@ export class RFIDService {
 			: await this.rfidRepository.getExchangableEpcBySize(payload)
 
 		if (epcToExchange.length === 0) {
-			throw new NotFoundException('No matching EPC')
+			throw new NotFoundException(this.i18n.t('rfid.errors.no_matching_epc', { lang: I18nContext.current().lang }))
 		}
 
 		const update = pick(payload, 'mo_no_actual')
