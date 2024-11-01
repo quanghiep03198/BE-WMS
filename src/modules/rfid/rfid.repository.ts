@@ -49,9 +49,9 @@ export class RFIDRepository {
 			.groupBy(
 				/* SQL */ `COALESCE(inv.mo_no_actual, inv.mo_no, cust.mo_no_actual, cust.mo_no, :fallbackValue), COALESCE(cust.mat_code, :fallbackValue), COALESCE(cust.shoestyle_codefactory, :fallbackValue), ISNULL(cust.size_numcode, :fallbackValue)`
 			)
-			.orderBy('mo_no', 'ASC')
-			.addOrderBy('mat_code', 'ASC')
+			.orderBy('mat_code', 'ASC')
 			.addOrderBy('size_numcode', 'ASC')
+			.addOrderBy('mo_no', 'ASC')
 			.setParameters({
 				excludedEpcPattern: EXCLUDED_EPC_PATTERN,
 				internalEpcPattern: INTERNAL_EPC_PATTERN,

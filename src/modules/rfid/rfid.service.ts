@@ -1,6 +1,7 @@
+import { FileLogger } from '@/common/helpers/file-logger.helper'
 import { DATASOURCE_DATA_LAKE } from '@/databases/constants'
 import { CACHE_MANAGER } from '@nestjs/cache-manager'
-import { Inject, Injectable, InternalServerErrorException, Logger, NotFoundException, Scope } from '@nestjs/common'
+import { Inject, Injectable, InternalServerErrorException, NotFoundException, Scope } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { REQUEST } from '@nestjs/core'
 import { EventEmitter2, OnEvent } from '@nestjs/event-emitter'
@@ -319,14 +320,12 @@ export class RFIDService {
 				])
 			}
 			await queryRunner.commitTransaction()
-			// * Clear cache sync flag after synchronized with customer data
-			await this.cacheManager.del(`sync_process:${e.params.factoryCode}`)
-			Logger.log('Synchronized with customer data successfully', 'syncWithCustomerData')
 		} catch (error) {
-			Logger.error(error.message)
+			FileLogger.error(error.message)
 			await queryRunner.rollbackTransaction()
 			throw new InternalServerErrorException(error)
 		} finally {
+			// * Clear cache sync flag after synchronized with customer data
 			await this.cacheManager.del(`sync_process:${e.params.factoryCode}`)
 			await queryRunner.release()
 		}
