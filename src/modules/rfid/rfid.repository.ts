@@ -88,7 +88,7 @@ export class RFIDRepository {
 	 */
 	async getAllExchangableEpc(payload: Pick<ExchangeEpcDTO, 'mo_no' | 'mo_no_actual' | 'quantity'>) {
 		const { mo_no, mo_no_actual } = payload
-		if (mo_no === FALLBACK_VALUE)
+		if (mo_no === FALLBACK_VALUE) {
 			return await this.tenancyService.dataSource
 				.getRepository(RFIDInventoryEntity)
 				.createQueryBuilder('inv')
@@ -97,9 +97,9 @@ export class RFIDRepository {
 				.andWhere({ mo_no_actual: IsNull() })
 				.andWhere({ epc: Not(Like(INTERNAL_EPC_PATTERN)) })
 				.andWhere({ rfid_status: IsNull() })
-				.andWhere({ record_time: MoreThanOrEqual(format(new Date(), 'yyyy-MM-dd')) })
 				.limit(payload.quantity)
 				.getRawMany()
+		}
 
 		const subQuery = this.tenancyService.dataSource
 			.getRepository(RFIDCustomerEntity)

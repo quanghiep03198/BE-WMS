@@ -204,7 +204,7 @@ export class RFIDService {
 				const unknownCustomerEpc = await queryRunner.manager
 					.getRepository(RFIDCustomerEntity)
 					.createQueryBuilder('cust')
-					.select(/* SQL */ `TOP ${payload.quantity} cust1.*`)
+					.select(/* SQL */ `TOP ${payload.quantity} cust.*`)
 					.innerJoin(RFIDInventoryEntity, 'inv', /* SQL */ `cust.epc = inv.epc`)
 					.where(
 						new Brackets((qb) => {
