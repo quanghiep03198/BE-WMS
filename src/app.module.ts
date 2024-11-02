@@ -13,6 +13,7 @@ import { appConfigFactory } from './configs/app.config'
 import { validateConfig } from './configs/app.config.validator'
 import { AuthModule } from './modules/auth/auth.module'
 import { DepartmentModule } from './modules/department/department.module'
+import { OrderModule } from './modules/order/order.module'
 import { PackingModule } from './modules/packing/packing.module'
 import { RFIDModule } from './modules/rfid/rfid.module'
 import { TenancyModule } from './modules/tenancy/tenancy.module'
@@ -65,8 +66,8 @@ import { WarehouseModule } from './modules/warehouse/warehouse.module'
 		PackingModule,
 		TenancyModule,
 		DepartmentModule,
-		ThirdPartyApiModule
-		// OrderModule,
+		ThirdPartyApiModule,
+		OrderModule
 	],
 	controllers: [AppController],
 	providers: []
