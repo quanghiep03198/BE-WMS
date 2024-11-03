@@ -17,7 +17,7 @@ import { OrderModule } from './modules/order/order.module'
 import { PackingModule } from './modules/packing/packing.module'
 import { RFIDModule } from './modules/rfid/rfid.module'
 import { TenancyModule } from './modules/tenancy/tenancy.module'
-import { ThirdPartyApiModule } from './modules/third-party-api/third-party.module'
+import { ThirdPartyApiModule } from './modules/third-party-api/third-party-api.module'
 import { UserModule } from './modules/user/user.module'
 import { WarehouseModule } from './modules/warehouse/warehouse.module'
 

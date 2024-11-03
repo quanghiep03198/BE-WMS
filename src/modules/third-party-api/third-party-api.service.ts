@@ -7,13 +7,13 @@ import { AxiosRequestConfig } from 'axios'
 import { Cache } from 'cache-manager'
 import { uniqBy } from 'lodash'
 import { FactoryCode } from '../department/constants'
-import { FETCH_CUSTOMER_DATA, FETCH_CUSTOMER_DATA_SUCCESSFULLY } from './constants'
+import { ThirdPartyApiEvent } from './constants'
 import {
 	FetchThirdPartyApiEvent,
 	OAuth2Credentials,
 	OAuth2TokenResponse,
-	SyncDataUpdater,
-	SyncEvent,
+	SyncEventData,
+	SyncEventPayload,
 	ThirdPartyApiResponseData
 } from './third-party-api.interface'
 
@@ -52,17 +52,16 @@ export class ThirdPartyApiService {
 		this.cacheManager.set(`third_party_token:${factoryCode}`, accessToken, expiresIn)
 	}
 
-	async getTokenByFactory(factoryCode: string): Promise<string | null> {
+	public async getTokenByFactory(factoryCode: string): Promise<string | null> {
 		return await this.cacheManager.get(`third_party_token:${factoryCode}`)
 	}
 
-	async authenticate(factoryCode: string): Promise<boolean> {
+	private async authenticate(factoryCode: string): Promise<boolean> {
 		try {
 			const accessToken = await this.cacheManager.get(`third_party_token:${factoryCode}`)
 			if (!accessToken) {
 				const oauth2TokenResponse = await this.fetchOauth2Token(factoryCode)
 				this.setTokenByFactory(factoryCode, oauth2TokenResponse.access_token, oauth2TokenResponse.expires_in)
-				return true
 			}
 			return true
 		} catch {
@@ -71,7 +70,7 @@ export class ThirdPartyApiService {
 		}
 	}
 
-	async fetchOauth2Token(factoryCode: string): Promise<OAuth2TokenResponse> {
+	public async fetchOauth2Token(factoryCode: string): Promise<OAuth2TokenResponse> {
 		try {
 			const credentials = this.getCredentialsByFactory(factoryCode)
 			return await this.httpService.axiosRef.request<URLSearchParams, OAuth2TokenResponse>({
@@ -111,8 +110,10 @@ export class ThirdPartyApiService {
 		}
 	}
 
-	@OnEvent(FETCH_CUSTOMER_DATA, { async: true })
-	async pullCustomerDataByFactory(e: FetchThirdPartyApiEvent) {
+	@OnEvent(ThirdPartyApiEvent.DISPATCH)
+	protected async pullCustomerDataByFactory(e: FetchThirdPartyApiEvent) {
+		await this.authenticate(e.params.factoryCode)
+
 		const data = await Promise.all(
 			e.data.map(async (item) => {
 				return await this.getCustomerEpcData({
@@ -124,19 +125,15 @@ export class ThirdPartyApiService {
 			})
 		)
 
-		const eventData: Pick<SyncDataUpdater, 'matchEpcPattern' | 'updater'>[] = uniqBy(data, 'commandNumber').map(
-			(item) => ({
-				matchEpcPattern: item.epc.slice(0, 22),
-				updater: {
-					mo_no: item.commandNumber,
-					size_numcode: item.sizeNumber
-				}
-			})
-		)
+		const eventData: Array<SyncEventData> = uniqBy(data, (item) => item.epc.slice(0, 22)).map((item) => ({
+			epc: item.epc,
+			mo_no: item.commandNumber,
+			size_numcode: item.sizeNumber
+		}))
 
-		await this.eventEmitter.emitAsync(FETCH_CUSTOMER_DATA_SUCCESSFULLY, {
+		this.eventEmitter.emit(ThirdPartyApiEvent.SUCCESS, {
 			data: eventData,
 			params: e.params
-		} satisfies SyncEvent)
+		} satisfies SyncEventPayload)
 	}
 }
