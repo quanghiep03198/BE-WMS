@@ -1,4 +1,4 @@
-import { DATASOURCE_DATA_LAKE } from '@/databases/constants'
+import { DATA_SOURCE_DATA_LAKE } from '@/databases/constants'
 import { Module } from '@nestjs/common'
 import { TypeOrmModule } from '@nestjs/typeorm'
 import { StorageLocationController } from './controllers/storage-location.controller'
@@ -11,7 +11,7 @@ import { StorageLocationSubscriber } from './subscribers/storage-location.entity
 import { WarehouseSubscriber } from './subscribers/warehouse.entity.subscriber'
 
 @Module({
-	imports: [TypeOrmModule.forFeature([WarehouseEntity, StorageLocationEntity], DATASOURCE_DATA_LAKE)],
+	imports: [TypeOrmModule.forFeature([WarehouseEntity, StorageLocationEntity], DATA_SOURCE_DATA_LAKE)],
 	controllers: [WarehouseController, StorageLocationController],
 	providers: [WarehouseService, WarehouseSubscriber, StorageLocationService, StorageLocationSubscriber]
 })

@@ -1,4 +1,4 @@
-import { DATASOURCE_DATA_LAKE } from '@/databases/constants'
+import { DATA_SOURCE_DATA_LAKE } from '@/databases/constants'
 import { Injectable, NotFoundException } from '@nestjs/common'
 import { InjectRepository } from '@nestjs/typeorm'
 import { Brackets, Repository } from 'typeorm'
@@ -8,7 +8,7 @@ import { PackingEntity } from './entities/packing.entity'
 @Injectable()
 export class PackingService {
 	constructor(
-		@InjectRepository(PackingEntity, DATASOURCE_DATA_LAKE)
+		@InjectRepository(PackingEntity, DATA_SOURCE_DATA_LAKE)
 		private readonly packingRepository: Repository<PackingEntity>
 	) {}
 

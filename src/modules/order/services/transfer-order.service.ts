@@ -1,4 +1,4 @@
-import { DATA_SOURCE_ERP, DATASOURCE_DATA_LAKE } from '@/databases/constants'
+import { DATA_SOURCE_DATA_LAKE, DATA_SOURCE_ERP } from '@/databases/constants'
 import { ConflictException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common'
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm'
 import { readFileSync } from 'fs'
@@ -13,9 +13,9 @@ import { ITransferOrderDatalistParams } from '../interfaces/transfer-order.inter
 @Injectable()
 export class TransferOrderService {
 	constructor(
-		@InjectRepository(TransferOrderEntity, DATASOURCE_DATA_LAKE)
+		@InjectRepository(TransferOrderEntity, DATA_SOURCE_DATA_LAKE)
 		private readonly transferOrderRepository: Repository<TransferOrderEntity>,
-		@InjectDataSource(DATASOURCE_DATA_LAKE) private readonly dataSourceDL: DataSource,
+		@InjectDataSource(DATA_SOURCE_DATA_LAKE) private readonly dataSourceDL: DataSource,
 		@InjectDataSource(DATA_SOURCE_ERP) private readonly dataSourceERP: DataSource
 	) {}
 
