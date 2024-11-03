@@ -1,21 +1,24 @@
 import { Injectable } from '@nestjs/common'
 import { format } from 'date-fns'
 import { IsNull, Like, MoreThanOrEqual, Not } from 'typeorm'
-import { TenancyService } from '../tenancy/tenancy.service'
-import { EXCLUDED_EPC_PATTERN, EXCLUDED_ORDERS, FALLBACK_VALUE, INTERNAL_EPC_PATTERN } from './constants'
-import { ExchangeEpcDTO } from './dto/rfid.dto'
-import { RFIDCustomerEntity } from './entities/rfid-customer.entity'
-import { RFIDInventoryEntity } from './entities/rfid-inventory.entity'
+import { TenancyService } from '../../tenancy/tenancy.service'
+import { EXCLUDED_EPC_PATTERN, EXCLUDED_ORDERS, FALLBACK_VALUE, INTERNAL_EPC_PATTERN } from '../constants'
+import { ExchangeEpcDTO } from '../dto/rfid.dto'
+import { FPInventoryEntity } from '../entities/fp-inventory.entity'
+import { RFIDCustomerEntity } from '../entities/rfid-customer.entity'
 
+/**
+ * @description Repository for Finished Production Inventory (FPI)
+ */
 @Injectable()
-export class RFIDRepository {
+export class FPInventoryRepository {
 	constructor(private readonly tenancyService: TenancyService) {}
 
 	/**
 	 * @description Check if there is any invalid EPC exist
 	 */
 	async checkInvalidEpcExist() {
-		return await this.tenancyService.dataSource.getRepository(RFIDInventoryEntity).existsBy({
+		return await this.tenancyService.dataSource.getRepository(FPInventoryEntity).existsBy({
 			epc: Like(INTERNAL_EPC_PATTERN),
 			record_time: MoreThanOrEqual(format(new Date(), 'yyyy-MM-dd')),
 			rfid_status: IsNull()
@@ -27,7 +30,7 @@ export class RFIDRepository {
 	 */
 	async getOrderSizes() {
 		return await this.tenancyService.dataSource
-			.getRepository(RFIDInventoryEntity)
+			.getRepository(FPInventoryEntity)
 			.createQueryBuilder('inv')
 			.select([
 				/* SQL */ `COALESCE(inv.mo_no_actual, inv.mo_no, cust.mo_no_actual, cust.mo_no, :fallbackValue) AS mo_no`,
@@ -58,6 +61,7 @@ export class RFIDRepository {
 				fallbackValue: FALLBACK_VALUE,
 				excludedOrders: EXCLUDED_ORDERS
 			})
+			.maxExecutionTime(1000)
 			.getRawMany()
 	}
 
@@ -66,7 +70,7 @@ export class RFIDRepository {
 	 */
 	async getOrderQuantity() {
 		return await this.tenancyService.dataSource
-			.getRepository(RFIDInventoryEntity)
+			.getRepository(FPInventoryEntity)
 			.createQueryBuilder('inv')
 			.select(/* SQL */ `COALESCE(inv.mo_no_actual, inv.mo_no, :fallbackValue)`, 'mo_no')
 			.addSelect(/* SQL */ `COUNT(DISTINCT inv.epc)`, 'count')
@@ -80,6 +84,7 @@ export class RFIDRepository {
 				excludedEpcPattern: EXCLUDED_EPC_PATTERN,
 				excludedOrders: EXCLUDED_ORDERS
 			})
+			.maxExecutionTime(1000)
 			.getRawMany()
 	}
 
@@ -90,7 +95,7 @@ export class RFIDRepository {
 		const { mo_no, mo_no_actual } = payload
 		if (mo_no === FALLBACK_VALUE) {
 			return await this.tenancyService.dataSource
-				.getRepository(RFIDInventoryEntity)
+				.getRepository(FPInventoryEntity)
 				.createQueryBuilder('inv')
 				.select('inv.epc', 'epc')
 				.where({ mo_no: IsNull() })
@@ -111,7 +116,7 @@ export class RFIDRepository {
 			})
 
 		const queryBuilder = this.tenancyService.dataSource
-			.getRepository(RFIDInventoryEntity)
+			.getRepository(FPInventoryEntity)
 			.createQueryBuilder('inv')
 			.select('inv.EPC_Code', 'epc')
 			.where(`inv.EPC_Code IN (${subQuery.getQuery()})`)
@@ -128,7 +133,7 @@ export class RFIDRepository {
 	 */
 	async getExchangableEpcBySize(payload: ExchangeEpcDTO) {
 		return await this.tenancyService.dataSource
-			.getRepository(RFIDInventoryEntity)
+			.getRepository(FPInventoryEntity)
 			.createQueryBuilder('inv')
 			.select(/* SQL */ `cust.epc`, 'epc')
 			.innerJoin(

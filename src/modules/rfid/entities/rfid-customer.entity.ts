@@ -12,7 +12,7 @@ export class RFIDCustomerEntity extends BaseAbstractEntity {
 	or_no: string
 
 	@Column({ type: 'nvarchar', length: 50, nullable: true })
-	or_custpo: string
+	or_cust_po: string
 
 	@Column({ type: 'nvarchar', length: 20 })
 	@Index()

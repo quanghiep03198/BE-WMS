@@ -18,38 +18,34 @@ import {
 } from '@nestjs/common'
 import { Cache } from 'cache-manager'
 import { catchError, from, interval, map, of, switchMap } from 'rxjs'
-import { ThirdPartyApiService } from '../third-party-api/third-party.service'
-import { ExchangeEpcDTO, exchangeEpcValidator, UpdateStockDTO, updateStockValidator } from './dto/rfid.dto'
-import { RFIDService } from './rfid.service'
+import { ThirdPartyApiService } from '../../third-party-api/third-party-api.service'
+import { ExchangeEpcDTO, exchangeEpcValidator, UpdateStockDTO, updateStockValidator } from '../dto/rfid.dto'
+import { FPIService } from '../services/fp-inventory.service'
 
-@Controller('rfid')
-export class RFIDController {
+/**
+ * @description Controller for Finished Production Inventory (FPI)
+ */
+@Controller('rfid/fp-inventory')
+export class FPInventoryController {
 	constructor(
 		@Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
 		private readonly thirdPartyApiService: ThirdPartyApiService,
-		private rfidService: RFIDService
+		private rfidService: FPIService
 	) {}
 
-	@Sse('fetch-epc/sse')
+	@Sse('sse')
 	@AuthGuard()
 	async fetchLatestData(
 		@Headers('X-User-Company') factoryCode: string,
 		@Headers('X-Polling-Duration') pollingDuration: number
 	) {
-		const FALLBACK_POLLING_DURATION = 500
+		const FALLBACK_POLLING_DURATION: number = 500
 		const duration = pollingDuration ?? FALLBACK_POLLING_DURATION
 		if (!factoryCode) {
 			throw new BadRequestException('Factory code is required')
 		}
-		const syncProcessFlag = await this.cacheManager.get(`sync_process:${factoryCode}`)
-		// * Prevent multiple sync process
-		if (!syncProcessFlag) {
-			await this.cacheManager.set(`sync_process:${factoryCode}`, true, 60 * 1000 * 60)
-			// * Authenticate third party API
-			const isAuthenticated = await this.thirdPartyApiService.authenticate(factoryCode)
-			// * Fetch third party API
-			if (isAuthenticated) this.rfidService.fetchThirdPartyApi()
-		}
+
+		await this.rfidService.syncDataWithThirdPartyApi()
 
 		return interval(duration).pipe(
 			switchMap(() =>
