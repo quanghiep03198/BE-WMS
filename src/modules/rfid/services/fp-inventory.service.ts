@@ -326,49 +326,47 @@ export class FPIService {
 					join(__dirname, '../sql/order-information.sql'),
 					'utf-8'
 				).toString()
-				const orderInformation = await this.datasource.query<Partial<RFIDCustomerEntity>[]>(orderInformationQuery, [
-					item.mo_no
-				])
-				const epcToUpsert = await queryRunner.manager
-					.getRepository(FPInventoryEntity)
-					.createQueryBuilder('inv')
-					.select(/* SQL */ `inv.epc`, 'EPC_Code')
-					.where(/* SQL */ `inv.mo_no IS NULL`)
-					.andWhere(/* SQL */ `inv.rfid_status IS NULL`)
-					.andWhere(/* SQL */ `LEFT(inv.epc, :matchEpcCharLen) = :matchEpcPattern`)
-					.setParameters({
-						matchEpcCharLen: MATCH_EPC_CHAR_LEN,
-						matchEpcPattern: item.epc.slice(0, 22)
-					})
-					.getRawMany<Record<'epc', string>>()
-				await Promise.all([
-					queryRunner.manager
-						.createQueryBuilder()
-						.insert()
-						.into(RFIDCustomerEntity)
-						.values(
-							epcToUpsert.map((data) => ({
-								...orderInformation[0],
-								...omit(item, 'epc'),
-								epc: data.epc
-							}))
-						)
-						.orUpdate(
-							['mo_no', 'mo_noseq', 'or_no', 'or_cust_po', 'shoes_style_code_factory', 'size_code', 'mat_code'],
-							['epc']
-						)
-						.execute(),
-
+				const [orderInformation, epcToUpsert] = await Promise.all([
+					this.datasource.query<Partial<RFIDCustomerEntity>[]>(orderInformationQuery, [item.mo_no]),
 					queryRunner.manager
 						.getRepository(FPInventoryEntity)
-						.createQueryBuilder()
-						.update()
-						.set({ mo_no: item.mo_no })
-						.where(/* SQL */ `EPC_Code LIKE :matchEpcPattern`, { matchEpcPattern: `${item.epc.slice(0, 22)}%` })
-						.andWhere(/* SQL */ `mo_no IS NULL`)
-						.andWhere(/* SQL */ `rfid_status IS NULL`)
-						.execute()
+						.createQueryBuilder('inv')
+						.select(/* SQL */ `inv.epc`)
+						.where(/* SQL */ `inv.mo_no IS NULL`)
+						.andWhere(/* SQL */ `inv.rfid_status IS NULL`)
+						.andWhere(/* SQL */ `inv.epc = :epc`, { epc: item.epc })
+						.getRawOne<Record<'epc', string>>()
 				])
+
+				const upsertRFIDCustQueryBuilder = !!epcToUpsert
+					? queryRunner.manager
+							.getRepository(RFIDCustomerEntity)
+							.createQueryBuilder('cust')
+							.update()
+							.set({
+								...orderInformation[0],
+								...omit(item, 'epc')
+							})
+							.where(/* SQL */ `cust.epc = :epc`, { epc: epcToUpsert.epc })
+					: queryRunner.manager
+							.createQueryBuilder()
+							.insert()
+							.into(RFIDCustomerEntity)
+							.values({
+								...orderInformation[0],
+								...item
+							})
+
+				const updateRFIDInvQueryBuilder = queryRunner.manager
+					.getRepository(FPInventoryEntity)
+					.createQueryBuilder('inv')
+					.update()
+					.set({ mo_no: item.mo_no })
+					.where(/* SQL */ `inv.epc = :epc`, { epc: item.epc })
+					.andWhere(/* SQL */ `inv.mo_no IS NULL`)
+					.andWhere(/* SQL */ `inv.rfid_status IS NULL`)
+
+				await Promise.all([upsertRFIDCustQueryBuilder.execute(), updateRFIDInvQueryBuilder.execute()])
 			}
 			await queryRunner.commitTransaction()
 		} catch (error) {
