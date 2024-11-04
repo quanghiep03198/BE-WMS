@@ -12,7 +12,13 @@ export enum InventoryStorageType {
 	RECYCLING = 'F'
 }
 
+export enum ProducingProcess {
+	HALF_FINISHED = 'IH',
+	CUTTING = 'FC'
+}
+
 export const EXCLUDED_ORDERS: Array<string> = ['13D05B006']
 export const EXCLUDED_EPC_PATTERN: string = '303429%'
 export const INTERNAL_EPC_PATTERN: string = 'E28%'
 export const FALLBACK_VALUE: string = 'Unknown'
+export const MATCH_EPC_CHAR_LEN = 22

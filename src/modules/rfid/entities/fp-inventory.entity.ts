@@ -4,7 +4,7 @@ import { Column, Entity, Index } from 'typeorm'
 import { InventoryActions, InventoryStorageType } from '../constants'
 
 @Entity('dv_InvRFIDrecorddet', { database: DATABASE_DATA_LAKE, synchronize: true })
-export class RFIDInventoryEntity extends BaseAbstractEntity {
+export class FPInventoryEntity extends BaseAbstractEntity {
 	@Column({ name: 'stationNO' })
 	station_no: string
 
@@ -42,7 +42,7 @@ export class RFIDInventoryEntity extends BaseAbstractEntity {
 	@Column({ type: 'numeric', default: 0 })
 	quantity: number
 
-	constructor(item: Partial<RFIDInventoryEntity>) {
+	constructor(item: Partial<FPInventoryEntity>) {
 		super()
 		Object.assign(this, item)
 	}

@@ -1,4 +1,4 @@
-import { DATASOURCE_DATA_LAKE } from '@/databases/constants'
+import { DATA_SOURCE_DATA_LAKE } from '@/databases/constants'
 import { BaseAbstractService } from '@/modules/_base/base.abstract.service'
 import { Injectable } from '@nestjs/common'
 import { InjectRepository } from '@nestjs/typeorm'
@@ -8,7 +8,7 @@ import { WarehouseEntity } from '../entities/warehouse.entity'
 @Injectable()
 export class WarehouseService extends BaseAbstractService<WarehouseEntity> {
 	constructor(
-		@InjectRepository(WarehouseEntity, DATASOURCE_DATA_LAKE)
+		@InjectRepository(WarehouseEntity, DATA_SOURCE_DATA_LAKE)
 		private warehouseRepository: Repository<WarehouseEntity>
 	) {
 		super(warehouseRepository)

@@ -1,4 +1,4 @@
-import { DATASOURCE_DATA_LAKE } from '@/databases/constants'
+import { DATA_SOURCE_DATA_LAKE } from '@/databases/constants'
 import { Test, TestingModule } from '@nestjs/testing'
 import { getRepositoryToken } from '@nestjs/typeorm'
 import { DeleteResult, Repository } from 'typeorm'
@@ -32,11 +32,11 @@ describe('WarehouseService', () => {
 			providers: [
 				WarehouseService,
 				{
-					provide: getRepositoryToken(WarehouseEntity, DATASOURCE_DATA_LAKE),
+					provide: getRepositoryToken(WarehouseEntity, DATA_SOURCE_DATA_LAKE),
 					useFactory: mockWarehouseRepository
 				},
 				{
-					provide: getRepositoryToken(StorageLocationEntity, DATASOURCE_DATA_LAKE),
+					provide: getRepositoryToken(StorageLocationEntity, DATA_SOURCE_DATA_LAKE),
 					useFactory: mockStorageLocationRepository
 				}
 			]
@@ -44,10 +44,10 @@ describe('WarehouseService', () => {
 
 		service = await module.resolve<WarehouseService>(WarehouseService)
 		warehouseRepository = await module.resolve<Repository<WarehouseEntity>>(
-			getRepositoryToken(WarehouseEntity, DATASOURCE_DATA_LAKE)
+			getRepositoryToken(WarehouseEntity, DATA_SOURCE_DATA_LAKE)
 		)
 		storageLocationRepository = await module.resolve<Repository<StorageLocationEntity>>(
-			getRepositoryToken(StorageLocationEntity, DATASOURCE_DATA_LAKE)
+			getRepositoryToken(StorageLocationEntity, DATA_SOURCE_DATA_LAKE)
 		)
 	})
 

@@ -2,9 +2,8 @@ SELECT
 	a.mo_no AS mo_no,
 	a.mo_noseq AS mo_noseq,
 	a.or_no AS or_no,
-	or1.or_custpo,
+	or1.or_custpo AS or_cust_po,
 	d.shoestyle_codefactory AS shoes_style_code_factory,
-	-- d.shoestyle_code AS shoes_style_code,
 	os.size_code AS size_code,
 	c.mat_code AS mat_code
 FROM
