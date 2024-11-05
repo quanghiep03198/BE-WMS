@@ -14,19 +14,19 @@ export class TransferOrderDetailEntity extends BaseAbstractEntity {
 	or_no: string
 
 	@Column()
-	trans_num: string
+	trans_num: number
 
 	@Column()
 	sno_qty: number
 
 	@Column()
-	or_qtyperpacking: string
+	or_qtyperpacking: number
 
 	@Column()
-	kg_nostart: string
+	kg_nostart: number
 
 	@Column()
-	kg_noend: string
+	kg_noend: number
 
 	// common columns that should be defined for an order
 }
