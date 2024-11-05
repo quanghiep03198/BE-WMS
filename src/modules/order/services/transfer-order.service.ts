@@ -1,11 +1,18 @@
 import { DATA_SOURCE_DATA_LAKE, DATA_SOURCE_ERP } from '@/databases/constants'
-import { ConflictException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common'
+import { StorageLocationEntity } from '@/modules/warehouse/entities/storage-location.entity'
+import { WarehouseEntity } from '@/modules/warehouse/entities/warehouse.entity'
+import { ConflictException, Injectable, InternalServerErrorException, Logger, NotFoundException } from '@nestjs/common'
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm'
+import { format } from 'date-fns'
 import { readFileSync } from 'fs'
-import { chunk, pick } from 'lodash'
 import { join } from 'path'
 import { DataSource, In, Repository } from 'typeorm'
-import { CreateTransferOrderDTO, DeleteTransferOrderDTO, UpdateTransferOrderDTO } from '../dto/transfer-order.dto'
+import {
+	CreateTransferOrderDTO,
+	DeleteTransferOrderDTO,
+	getTransferOrderDetailValidatorDTO,
+	UpdateTransferOrderDTO
+} from '../dto/transfer-order.dto'
 import { TransferOrderDetailEntity } from '../entities/transfer-order-detail.entity'
 import { TransferOrderEntity } from '../entities/transfer-order.entity'
 import { ITransferOrderDatalistParams } from '../interfaces/transfer-order.interface'
@@ -15,22 +22,41 @@ export class TransferOrderService {
 	constructor(
 		@InjectRepository(TransferOrderEntity, DATA_SOURCE_DATA_LAKE)
 		private readonly transferOrderRepository: Repository<TransferOrderEntity>,
+		@InjectRepository(TransferOrderDetailEntity, DATA_SOURCE_DATA_LAKE)
+		private readonly transferOrderDetailRepository: Repository<TransferOrderDetailEntity>,
 		@InjectDataSource(DATA_SOURCE_DATA_LAKE) private readonly dataSourceDL: DataSource,
 		@InjectDataSource(DATA_SOURCE_ERP) private readonly dataSourceERP: DataSource
 	) {}
 
 	async getTransferOrderByFactory(factoryCode: string) {
-		return await this.transferOrderRepository.findBy({ cofactory_code: factoryCode })
+		const queryBuilder = this.dataSourceDL
+			.getRepository(TransferOrderEntity)
+			.createQueryBuilder('t')
+			.leftJoin(StorageLocationEntity, 's1', 't.or_location = s1.storage_num')
+			.leftJoin(StorageLocationEntity, 's2', 't.new_location = s2.storage_num')
+			.leftJoin(WarehouseEntity, 'w1', 't.or_warehouse = w1.warehouse_num')
+			.leftJoin(WarehouseEntity, 'w2', 't.new_warehouse = w2.warehouse_num')
+			.where('t.cofactory_code = :factoryCode', { factoryCode })
+
+		const result = await queryBuilder
+			.select([
+				't.*',
+				's1.storage_name AS or_storage_name',
+				's2.storage_name AS new_storage_name',
+				'w1.warehouse_name AS or_warehouse_name',
+				'w2.warehouse_name AS new_warehouse_name'
+			])
+			.getRawMany()
+
+		return result
 	}
 
 	async getTransferOrderDatalist(params: ITransferOrderDatalistParams) {
+		Logger.debug(params)
 		const query = readFileSync(join(__dirname, '../sql/pack-list.sql'), 'utf-8').toString()
-		return await this.dataSourceDL.query(query, [
-			params.time_range.from,
-			params.time_range.to,
-			params.customer_brand,
-			params.factory_code
-		])
+		const startDate = format(params.time_range.from, 'yyyy-MM-dd')
+		const endDate = format(params.time_range.to, 'yyyy-MM-dd')
+		return await this.dataSourceERP.query(query, [startDate, endDate, params.customer_brand, params.factory_code])
 	}
 
 	async searchCustomerBrand(searchTerm: string) {
@@ -46,52 +72,110 @@ export class TransferOrderService {
 	}
 
 	async createTransferOrder(factoryCode: string, payload: CreateTransferOrderDTO) {
-		// Check if payload has any order existed
+		const orderNos = payload.map((item) => item.or_no)
 		const hasAnyOrderExisted = await this.transferOrderRepository.existsBy({
-			or_no: In(payload.map((item) => item.or_no))
+			or_no: In(orderNos)
 		})
 
 		if (hasAnyOrderExisted) throw new ConflictException('Order already existed')
 
-		const queryRunner = await this.dataSourceDL.createQueryRunner()
-
-		const transferOrderPayload = payload.map((item) => ({ ...item, cofactory_code: factoryCode }))
-
-		const batchData = chunk(transferOrderPayload, 1000)
+		const queryRunner = this.dataSourceDL.createQueryRunner()
+		const transferOrderPayload = payload.map((item) => ({
+			...item,
+			cofactory_code: factoryCode
+		}))
 
 		await queryRunner.startTransaction()
+
 		try {
 			const createdTransferOrders = []
 			for (const item of transferOrderPayload) {
 				const newOrder = this.transferOrderRepository.create(item)
-				const createdOrder = await this.transferOrderRepository.save(newOrder)
+				const createdOrder = await queryRunner.manager.save(newOrder)
 				createdTransferOrders.push(createdOrder)
-				// await queryRunner.manager.createQueryBuilder().insert().into(TransferOrderEntity).values(transferOrderPayload).execute()
 			}
-			const newTransferOrderDetail = await queryRunner.manager
+
+			await queryRunner.manager
 				.createQueryBuilder()
 				.insert()
 				.into(TransferOrderDetailEntity)
-				.values(createdTransferOrders.map((item) => pick(item, ['transfer_order_code', 'or_no'])))
+				.values(
+					createdTransferOrders.map((item) => ({
+						transfer_order_code: item.transfer_order_code,
+						or_no: item.or_no
+					}))
+				)
+				.execute()
 
 			await queryRunner.commitTransaction()
+			return createdTransferOrders
 		} catch (error) {
-			queryRunner.rollbackTransaction()
+			await queryRunner.rollbackTransaction()
 			throw new InternalServerErrorException(error.message)
 		} finally {
 			await queryRunner.release()
 		}
-		const transferOrder = this.transferOrderRepository.create(payload)
-		return await this.transferOrderRepository.save(transferOrder)
 	}
 
-	async updateTransferOrder(id: number, payload: UpdateTransferOrderDTO) {
-		const transferOrder = await this.transferOrderRepository.findOneBy({ id })
+	async updateTransferOrder(transfer_order_code: string, payload: UpdateTransferOrderDTO) {
+		const transferOrder = await this.transferOrderDetailRepository.findOneBy({ transfer_order_code })
+
+		console.log(transferOrder, 'transferOrdertransferOrder')
+
 		if (!transferOrder) throw new NotFoundException('Transfer order could not be found')
-		return await this.transferOrderRepository.update({ id }, payload)
+		return await this.transferOrderDetailRepository.update({ transfer_order_code }, payload as any)
 	}
 
-	async deleteTransferOrder(payload: DeleteTransferOrderDTO) {
-		return await this.transferOrderRepository.delete({ id: In(payload) })
+	async updateTransferOrderApprove(transfer_order_code: string, payload: UpdateTransferOrderDTO) {
+		const transferOrder = await this.transferOrderRepository.findOneBy({ transfer_order_code })
+
+		console.log(transferOrder, 'transferOrdertransferOrder')
+
+		if (!transferOrder) throw new NotFoundException('Transfer order could not be found')
+		return await this.transferOrderRepository.update({ transfer_order_code }, payload)
+	}
+
+	async deleteTransferOrder(payload: DeleteTransferOrderDTO | any) {
+		const deleteDetailsResult = await this.transferOrderDetailRepository.delete({
+			transfer_order_code: In(payload.transfer_order_code)
+		})
+
+		if (deleteDetailsResult.affected === 0) {
+			throw new NotFoundException(`No transfer order details found for codes: ${payload.transfer_order_code}`)
+		}
+
+		const deleteMasterResult = await this.transferOrderRepository.delete({
+			transfer_order_code: In(payload.transfer_order_code)
+		})
+
+		if (deleteMasterResult.affected === 0) {
+			throw new NotFoundException(`No transfer orders found for codes: ${payload.transfer_order_code}`)
+		}
+
+		return {
+			message: 'Transfer orders and their details deleted successfully.',
+			deletedOrders: deleteMasterResult.affected,
+			deletedDetails: deleteDetailsResult.affected
+		}
+	}
+
+	async getDetail(id: getTransferOrderDetailValidatorDTO) {
+		return await this.transferOrderDetailRepository.findOne({ where: { transfer_order_code: id } })
+	}
+
+	async updateMulti(payload: any) {
+		const index = 'transfer_order_code'
+		console.log(payload)
+
+		const updatePromises = payload.map(async (item) => {
+			console.log(item, 'itemitem')
+			if (!item[index]) {
+				throw new Error(`Missing ${index} in item: ${JSON.stringify(item)}`)
+			}
+
+			return await this.transferOrderRepository.update({ [index]: item[index] }, item)
+		})
+
+		return await Promise.all(updatePromises)
 	}
 }
