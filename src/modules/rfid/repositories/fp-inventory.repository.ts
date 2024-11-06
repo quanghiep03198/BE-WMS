@@ -3,7 +3,7 @@ import { format } from 'date-fns'
 import { IsNull, Like, MoreThanOrEqual, Not } from 'typeorm'
 import { TenancyService } from '../../tenancy/tenancy.service'
 import { EXCLUDED_EPC_PATTERN, EXCLUDED_ORDERS, FALLBACK_VALUE, INTERNAL_EPC_PATTERN } from '../constants'
-import { ExchangeEpcDTO } from '../dto/rfid.dto'
+import { ExchangeEpcDTO } from '../dto/fp-inventory.dto'
 import { FPInventoryEntity } from '../entities/fp-inventory.entity'
 import { RFIDCustomerEntity } from '../entities/rfid-customer.entity'
 
@@ -11,7 +11,7 @@ import { RFIDCustomerEntity } from '../entities/rfid-customer.entity'
  * @description Repository for Finished Production Inventory (FPI)
  */
 @Injectable()
-export class FPInventoryRepository {
+export class FPIRespository {
 	constructor(private readonly tenancyService: TenancyService) {}
 
 	/**
@@ -110,8 +110,12 @@ export class FPInventoryRepository {
 			.getRepository(RFIDCustomerEntity)
 			.createQueryBuilder('cust1')
 			.select('cust1.EPC_Code')
-			.innerJoin(RFIDCustomerEntity, 'cust2', 'cust1.mat_code = cust2.mat_code AND cust1.mo_no <> cust2.mo_no')
-			.where('COALESCE(cust1.mo_no_actual, cust1.mo_no) IN (:...ordersToExchange)', {
+			.innerJoin(
+				RFIDCustomerEntity,
+				'cust2',
+				/* SQL */ `cust1.mat_code = cust2.mat_code AND cust1.mo_no <> cust2.mo_no`
+			)
+			.where(/* SQL */ `COALESCE(cust1.mo_no_actual, cust1.mo_no) IN (:...ordersToExchange)`, {
 				ordersToExchange: mo_no.split(',').map((m) => m.trim())
 			})
 

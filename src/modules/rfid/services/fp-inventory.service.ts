@@ -1,5 +1,5 @@
 import { FileLogger } from '@/common/helpers/file-logger.helper'
-import { DATABASE_DATA_LAKE, DATA_SOURCE_DATA_LAKE } from '@/databases/constants'
+import { DATABASE_DATA_LAKE, DATA_SOURCE_DATA_LAKE, RecordStatus } from '@/databases/constants'
 import { CACHE_MANAGER } from '@nestjs/cache-manager'
 import { Inject, Injectable, InternalServerErrorException, NotFoundException, Scope } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
@@ -7,6 +7,7 @@ import { REQUEST } from '@nestjs/core'
 import { EventEmitter2, OnEvent } from '@nestjs/event-emitter'
 import { InjectDataSource } from '@nestjs/typeorm'
 import { Cache } from 'cache-manager'
+import { format } from 'date-fns'
 import { Request } from 'express'
 import { chunk, omit, pick } from 'lodash'
 import { I18nContext, I18nService } from 'nestjs-i18n'
@@ -25,22 +26,22 @@ import {
 	INTERNAL_EPC_PATTERN,
 	MATCH_EPC_CHAR_LEN
 } from '../constants'
-import { ExchangeEpcDTO, UpdateStockDTO } from '../dto/rfid.dto'
+import { ExchangeEpcDTO, UpdateStockDTO } from '../dto/fp-inventory.dto'
 import { FPInventoryEntity } from '../entities/fp-inventory.entity'
 import { RFIDCustomerEntity } from '../entities/rfid-customer.entity'
-import { FPInventoryRepository } from '../repositories/fp-inventory.repository'
+import { FPIRespository } from '../repositories/fp-inventory.repository'
 import { RFIDSearchParams } from '../rfid.interface'
 
 /**
  * @description Service for Finished Production Inventory (FPI)
  */
 @Injectable({ scope: Scope.REQUEST })
-export class FPIService {
+export class FPInventoryService {
 	constructor(
 		@InjectDataSource(DATA_SOURCE_DATA_LAKE) private readonly datasource: DataSource,
 		@Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
 		@Inject(REQUEST) private readonly request: Request,
-		private readonly rfidRepository: FPInventoryRepository,
+		private readonly rfidRepository: FPIRespository,
 		private readonly eventEmitter: EventEmitter2,
 		private readonly tenancyService: TenancyService,
 		private readonly configService: ConfigService,
@@ -289,7 +290,7 @@ export class FPIService {
 
 		const distinctEpc = unknownCustomerEpc.map((item) => item.epc)
 		// * Set cache flag to prevent multiple sync process
-		await this.cacheManager.set(`sync_process:${factoryCode}`, true, 60 * 1000 * 60)
+		await this.cacheManager.set(`sync_process:${factoryCode}`, true, 60 * 1000 * 5)
 
 		this.eventEmitter.emit(ThirdPartyApiEvent.DISPATCH, {
 			params: { tenantId, factoryCode },
@@ -299,6 +300,7 @@ export class FPIService {
 
 	@OnEvent(ThirdPartyApiEvent.SUCCESS)
 	protected async syncWithCustomerData(e: SyncEventPayload) {
+		FileLogger.debug(e.data)
 		// * Intialize datasource
 		const tenant = this.tenancyService.findOneById(e.params.tenantId)
 		const dataSource = new DataSource({
@@ -326,6 +328,7 @@ export class FPIService {
 					join(__dirname, '../sql/order-information.sql'),
 					'utf-8'
 				).toString()
+
 				const [orderInformation, epcToUpsert] = await Promise.all([
 					this.datasource.query<Partial<RFIDCustomerEntity>[]>(orderInformationQuery, [item.mo_no]),
 					queryRunner.manager
@@ -347,12 +350,23 @@ export class FPIService {
 								...orderInformation[0],
 								...omit(item, 'epc')
 							})
-							.where(/* SQL */ `cust.epc = :epc`, { epc: epcToUpsert.epc })
+							.where(/* SQL */ `EPC_Code = :epc`, { epc: epcToUpsert.epc })
 					: queryRunner.manager
 							.createQueryBuilder()
 							.insert()
 							.into(RFIDCustomerEntity)
 							.values({
+								is_active: RecordStatus.ACTIVE,
+								created: format(new Date(), 'yyyy-MM-dd HH:mm:ss'),
+								size_qty: 1,
+								ri_type: 'A',
+								ri_foot: 'A',
+								ri_cancel: false,
+								factory_code_orders: e.params.factoryCode,
+								factory_name_orders: e.params.factoryCode,
+								factory_code_produce: e.params.factoryCode,
+								factory_name_produce: e.params.factoryCode,
+								ri_date: format(new Date(), 'yyyy-MM-dd HH:mm:ss'),
 								...orderInformation[0],
 								...item
 							})
@@ -362,9 +376,9 @@ export class FPIService {
 					.createQueryBuilder('inv')
 					.update()
 					.set({ mo_no: item.mo_no })
-					.where(/* SQL */ `inv.epc = :epc`, { epc: item.epc })
-					.andWhere(/* SQL */ `inv.mo_no IS NULL`)
-					.andWhere(/* SQL */ `inv.rfid_status IS NULL`)
+					.where(/* SQL */ `EPC_Code = :epc`, { epc: item.epc })
+					.andWhere(/* SQL */ `mo_no IS NULL`)
+					.andWhere(/* SQL */ `rfid_status IS NULL`)
 
 				await Promise.all([upsertRFIDCustQueryBuilder.execute(), updateRFIDInvQueryBuilder.execute()])
 			}

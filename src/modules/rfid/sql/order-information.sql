@@ -5,6 +5,8 @@ SELECT
 	or1.or_custpo AS or_cust_po,
 	d.shoestyle_codefactory AS shoes_style_code_factory,
 	os.size_code AS size_code,
+	k.cust_shoestyle1 AS cust_shoes_style,
+	-- d.shoestyle_code AS cust_shoes_style,
 	c.mat_code AS mat_code
 FROM
 	wuerp_vnrd.dbo.ta_manufacturdet AS a

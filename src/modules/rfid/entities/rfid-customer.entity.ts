@@ -2,7 +2,7 @@ import { DATABASE_DATA_LAKE } from '@/databases/constants'
 import { BaseAbstractEntity } from '@/modules/_base/base.abstract.entity'
 import { Column, Entity, Index } from 'typeorm'
 
-@Entity('dv_rfidmatchmst_cust', { database: DATABASE_DATA_LAKE, synchronize: false })
+@Entity('dv_rfidmatchmst_cust', { database: DATABASE_DATA_LAKE, synchronize: true })
 export class RFIDCustomerEntity extends BaseAbstractEntity {
 	@Column({ name: 'EPC_Code' })
 	@Index()
@@ -11,7 +11,7 @@ export class RFIDCustomerEntity extends BaseAbstractEntity {
 	@Column({ type: 'nvarchar', length: 20, nullable: true })
 	or_no: string
 
-	@Column({ type: 'nvarchar', length: 50, nullable: true })
+	@Column({ name: 'or_custpo', type: 'nvarchar', length: 50, nullable: true })
 	or_cust_po: string
 
 	@Column({ type: 'nvarchar', length: 20 })
@@ -32,8 +32,8 @@ export class RFIDCustomerEntity extends BaseAbstractEntity {
 	@Index()
 	size_numcode: string
 
-	@Column({ type: 'numeric' })
-	size_qty: string
+	@Column({ type: 'numeric', default: 1 })
+	size_qty: number
 
 	@Column({ type: 'nvarchar', length: 20 })
 	@Index()
@@ -46,13 +46,13 @@ export class RFIDCustomerEntity extends BaseAbstractEntity {
 	@Index()
 	shoes_style_code_factory: string
 
-	@Column({ type: 'nvarchar', length: 10 })
+	@Column({ type: 'nvarchar', length: 10, default: 'A' })
 	ri_type: string
 
-	@Column({ type: 'nvarchar', length: 10 })
+	@Column({ type: 'nvarchar', length: 10, default: 'A' })
 	ri_foot: string
 
-	@Column({ type: 'datetime' })
+	@Column({ type: 'datetime', default: new Date() })
 	ri_date: Date
 
 	@Column({ type: 'bit', default: false })
