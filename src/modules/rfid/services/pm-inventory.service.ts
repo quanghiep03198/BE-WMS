@@ -104,7 +104,7 @@ export class PMInventoryService {
 				.createQueryBuilder()
 				.delete()
 				.from(PMInventoryEntity)
-				.where({ mo_no: orderCode })
+				.where({ mo_no: orderCode !== 'null' ? orderCode : IsNull() })
 				.execute()
 
 			console.log(rs1)
