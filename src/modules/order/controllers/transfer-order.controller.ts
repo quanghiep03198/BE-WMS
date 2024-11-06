@@ -1,7 +1,7 @@
 import { Api, HttpMethod } from '@/common/decorators/api.decorator'
 import { AuthGuard } from '@/common/decorators/auth.decorator'
 import { Body, Controller, Headers, HttpStatus, Param, Query } from '@nestjs/common'
-import { CreateTransferOrderDTO, DeleteTransferOrderDTO, UpdateTransferOrderDTO } from '../dto/transfer-order.dto'
+import { CreateTransferOrderDTO, DeleteTransferOrderDTO } from '../dto/transfer-order.dto'
 import { ITransferOrderDatalistParams } from '../interfaces/transfer-order.interface'
 import { TransferOrderService } from '../services/transfer-order.service'
 
@@ -70,7 +70,6 @@ export class TransferOrderController {
 		@Param('transfer_order_code') transfer_order_code: string,
 		@Body() storeTransferOrderDto: any
 	) {
-
 		return await this.transferOrderService.updateTransferOrder(transfer_order_code, storeTransferOrderDto)
 	}
 
@@ -80,12 +79,11 @@ export class TransferOrderController {
 		@Param('transfer_order_code') transfer_order_code: string,
 		@Body() storeTransferOrderDto: any
 	) {
-
 		return await this.transferOrderService.updateTransferOrderApprove(transfer_order_code, storeTransferOrderDto)
 	}
 
 	@Api({ endpoint: 'update-multi', method: HttpMethod.PATCH })
-    async updateMulti(@Body() payload: any) {
-		return await this.transferOrderService.updateMulti(payload.payload);
-    }
+	async updateMulti(@Body() payload: any) {
+		return await this.transferOrderService.updateMulti(payload.payload)
+	}
 }
