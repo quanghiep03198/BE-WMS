@@ -12,7 +12,7 @@ export enum InventoryStorageType {
 	RECYCLING = 'F'
 }
 
-export enum ProducingProcess {
+export enum ProducingProcessSuffix {
 	HALF_FINISHED = 'IH',
 	CUTTING = 'FC'
 }

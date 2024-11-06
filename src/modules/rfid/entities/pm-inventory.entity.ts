@@ -19,12 +19,12 @@ export class PMInventoryEntity extends BaseAbstractEntity {
 	@Column({ name: 'FC_server_code', type: 'nvarchar', length: 10 })
 	server_code: string
 
-	@Column({ name: 'rfid_status', type: 'nvarchar', length: 10 })
+	@Column({ type: 'nvarchar', length: 10 })
 	rfid_status: 'A' & string
 
-	@Column()
+	@Column({ type: 'nvarchar', length: 10 })
 	inoutbound_type: string
 
-	@Column()
+	@Column({ type: 'nvarchar', length: 10 })
 	type_storage: string
 }
