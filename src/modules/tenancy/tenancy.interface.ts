@@ -5,6 +5,7 @@ import { FactoryCode } from '../department/constants'
 
 export interface ITenancy {
 	id: Tenant
+	default?: boolean
 	factories: Array<FactoryCode>
 	host: string
 }

@@ -28,6 +28,7 @@ export class TenancyService implements OnModuleDestroy {
 		},
 		{
 			id: Tenant.VN_LIANYING_PRIMARY,
+			default: true,
 			factories: [FactoryCode.GL1],
 			host: this.configService.get('TENANT_VN_LIANYING_PRIMARY')
 		},
@@ -38,11 +39,13 @@ export class TenancyService implements OnModuleDestroy {
 		},
 		{
 			id: Tenant.VN_LIANSHUN_2,
+			default: true,
 			factories: [FactoryCode.GL3],
 			host: this.configService.get('TENANT_VN_LIANSHUN_2')
 		},
 		{
 			id: Tenant.KM_1,
+			default: true,
 			factories: [FactoryCode.GL4],
 			host: this.configService.get<string>('TENANT_KM_PRIMARY')
 		},
@@ -54,7 +57,7 @@ export class TenancyService implements OnModuleDestroy {
 	]
 
 	onModuleDestroy() {
-		if (this.dataSource && typeof this.dataSource.destroy === 'function') {
+		if (typeof this.request?.dataSource?.destroy === 'function') {
 			this.dataSource.destroy()
 		}
 	}
@@ -81,5 +84,9 @@ export class TenancyService implements OnModuleDestroy {
 					throw new NotFoundException('No available tenant')
 			}
 		})()
+	}
+
+	public getDefaultTenantByFactory(factoryCode: FactoryCode) {
+		return this.tenants.find((tenant) => tenant.factories.includes(factoryCode) && tenant.default)
 	}
 }
