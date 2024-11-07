@@ -1,7 +1,7 @@
 import { Api, HttpMethod } from '@/common/decorators/api.decorator'
 import { AuthGuard } from '@/common/decorators/auth.decorator'
 import { ZodValidationPipe } from '@/common/pipes/zod-validation.pipe'
-import { Body, Controller, Headers, HttpStatus, Param, UsePipes } from '@nestjs/common'
+import { Body, Controller, Headers, HttpStatus, Param } from '@nestjs/common'
 import {
 	CreateWarehouseDTO,
 	createWarehouseValidator,
@@ -37,9 +37,10 @@ export class WarehouseController {
 		message: { i18nKey: 'common.created' }
 	})
 	@AuthGuard()
-	@UsePipes(new ZodValidationPipe(createWarehouseValidator))
-	async createWarehouse(@Headers('X-User-Company') factoryCode: string, @Body() payload: CreateWarehouseDTO) {
-		// const data = new WarehouseEntity()
+	async createWarehouse(
+		@Headers('X-User-Company') factoryCode: string,
+		@Body(new ZodValidationPipe(createWarehouseValidator)) payload: CreateWarehouseDTO
+	) {
 		return await this.warehouseService.insertOne({ ...payload, cofactory_code: factoryCode } as any)
 	}
 
@@ -50,8 +51,10 @@ export class WarehouseController {
 		message: { i18nKey: 'common.updated' }
 	})
 	@AuthGuard()
-	@UsePipes(new ZodValidationPipe(updateWarehouseValidator))
-	async updateWarehouse(@Param('id') id: string, @Body() payload: UpdateWarehouseDTO) {
+	async updateWarehouse(
+		@Param('id') id: string,
+		@Body(new ZodValidationPipe(updateWarehouseValidator)) payload: UpdateWarehouseDTO
+	) {
 		return await this.warehouseService.updateOneById(+id, payload)
 	}
 
@@ -61,8 +64,7 @@ export class WarehouseController {
 		message: { i18nKey: 'common.deleted' }
 	})
 	@AuthGuard()
-	@UsePipes(new ZodValidationPipe(deleteWarehouseValidator))
-	async deleteWarehouses(@Body() payload: DeleteWarehouseDTO) {
+	async deleteWarehouses(@Body(new ZodValidationPipe(deleteWarehouseValidator)) payload: DeleteWarehouseDTO) {
 		return await this.warehouseService.deleteMany(payload.id)
 	}
 }

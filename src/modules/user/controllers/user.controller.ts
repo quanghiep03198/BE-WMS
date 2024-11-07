@@ -2,7 +2,7 @@ import { Api, HttpMethod } from '@/common/decorators/api.decorator'
 import { AuthGuard } from '@/common/decorators/auth.decorator'
 import { User } from '@/common/decorators/user.decorator'
 import { ZodValidationPipe } from '@/common/pipes/zod-validation.pipe'
-import { Body, Controller, HttpStatus, UsePipes } from '@nestjs/common'
+import { Body, Controller, HttpStatus } from '@nestjs/common'
 import {
 	ChangePasswordDTO,
 	changePasswordValidator,
@@ -30,8 +30,10 @@ export class UserController {
 		message: { i18nKey: 'common.updated' }
 	})
 	@AuthGuard()
-	@UsePipes(new ZodValidationPipe(updateProfileValidator))
-	async updateProfile(@User('employee_code') employeeCode: string, @Body() payload: UpdateProfileDTO) {
+	async updateProfile(
+		@User('employee_code') employeeCode: string,
+		@Body(new ZodValidationPipe(updateProfileValidator)) payload: UpdateProfileDTO
+	) {
 		return await this.userService.updateProfile(employeeCode, payload)
 	}
 
@@ -42,8 +44,10 @@ export class UserController {
 		message: { i18nKey: 'common.updated' }
 	})
 	@AuthGuard()
-	@UsePipes(new ZodValidationPipe(changePasswordValidator))
-	async changePassword(@User('id') userId: number, @Body() payload: ChangePasswordDTO) {
+	async changePassword(
+		@User('id') userId: number,
+		@Body(new ZodValidationPipe(changePasswordValidator)) payload: ChangePasswordDTO
+	) {
 		return await this.userService.changePassword(userId, payload)
 	}
 
@@ -62,8 +66,8 @@ export class UserController {
 		statusCode: HttpStatus.CREATED,
 		message: { i18nKey: 'common.created' }
 	})
-	@UsePipes(new ZodValidationPipe(registerValidator))
-	async register(@Body() payload: RegisterDTO) {
-		return await this.userService.createUser(payload)
+	async register(@Body(new ZodValidationPipe(registerValidator)) payload: RegisterDTO) {
+		console.log(payload)
+		// return await this.userService.createUser(payload)
 	}
 }

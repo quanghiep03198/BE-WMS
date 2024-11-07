@@ -1,7 +1,7 @@
 import { Api } from '@/common/decorators/api.decorator'
 import { AuthGuard } from '@/common/decorators/auth.decorator'
 import { ZodValidationPipe } from '@/common/pipes/zod-validation.pipe'
-import { BadRequestException, Body, Controller, Headers, HttpStatus, Param, UsePipes } from '@nestjs/common'
+import { BadRequestException, Body, Controller, Headers, HttpStatus, Param } from '@nestjs/common'
 import { HttpMethod } from '../../../common/decorators/api.decorator'
 import {
 	CreateStorageLocationDTO,
@@ -23,10 +23,9 @@ export class StorageLocationController {
 		message: { i18nKey: 'common.created' }
 	})
 	@AuthGuard()
-	@UsePipes(new ZodValidationPipe(createStorageLocationValidator))
 	async createStorageLocation(
 		@Headers('X-User-Company') factoryCode: string,
-		@Body() payload: CreateStorageLocationDTO
+		@Body(new ZodValidationPipe(createStorageLocationValidator)) payload: CreateStorageLocationDTO
 	) {
 		if (!factoryCode) throw new BadRequestException('Factory code is required')
 		const data = new StorageLocationEntity({
@@ -55,8 +54,10 @@ export class StorageLocationController {
 		message: { i18nKey: 'common.updated' }
 	})
 	@AuthGuard()
-	@UsePipes(new ZodValidationPipe(updateStorageLocationValidator))
-	async updateStorageLocation(@Param('id') id: string, @Body() payload: CreateStorageLocationDTO) {
+	async updateStorageLocation(
+		@Param('id') id: string,
+		@Body(new ZodValidationPipe(updateStorageLocationValidator)) payload: CreateStorageLocationDTO
+	) {
 		return await this.storageLocationService.updateOneById(+id, payload)
 	}
 
@@ -66,8 +67,9 @@ export class StorageLocationController {
 		message: { i18nKey: 'common.deleted' }
 	})
 	@AuthGuard()
-	@UsePipes(new ZodValidationPipe(deleteStorageLocationValidator))
-	async deleteStorageLocation(@Body() payload: DeleteStorageLocationDTO) {
+	async deleteStorageLocation(
+		@Body(new ZodValidationPipe(deleteStorageLocationValidator)) payload: DeleteStorageLocationDTO
+	) {
 		return await this.storageLocationService.deleteMany(payload.id)
 	}
 }

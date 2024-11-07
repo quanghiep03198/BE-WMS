@@ -1,6 +1,6 @@
 import { Api, HttpMethod } from '@/common/decorators/api.decorator'
 import { ZodValidationPipe } from '@/common/pipes/zod-validation.pipe'
-import { Body, Controller, HttpStatus, Param, Query, UsePipes } from '@nestjs/common'
+import { Body, Controller, HttpStatus, Param, Query } from '@nestjs/common'
 import { UpdatePackingWeightDTO, updatePackingWeightValidator } from './dto/update-packing.dto'
 import { PackingService } from './packing.service'
 
@@ -30,8 +30,10 @@ export class PackingController {
 		statusCode: HttpStatus.CREATED,
 		message: { i18nKey: 'common.updated' }
 	})
-	@UsePipes(new ZodValidationPipe(updatePackingWeightValidator))
-	async updatePackingWeight(@Param('scanId') scanId: string, @Body() payload: UpdatePackingWeightDTO) {
+	async updatePackingWeight(
+		@Param('scanId') scanId: string,
+		@Body(new ZodValidationPipe(updatePackingWeightValidator)) payload: UpdatePackingWeightDTO
+	) {
 		return await this.packingService.updatePackingWeight(scanId, payload)
 	}
 }

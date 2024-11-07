@@ -1,8 +1,11 @@
 import { z } from 'zod'
 
 export const registerValidator = z.object({
-	username: z.string().min(1, { message: 'Username is required' }),
-	password: z.string().min(1, { message: 'Password is required' }),
+	username: z.string({ required_error: 'Username is required' }).min(1, { message: 'Username is required' }),
+	password: z
+		.string({ required_error: 'Password is required' })
+		.min(1, { message: 'Password is required' })
+		.refine((value) => value.length >= 6, { message: 'Password must be at least 6 characters' }),
 	display_name: z.string().min(1, { message: 'Display name is required' }),
 	employee_code: z.string().min(1, { message: 'Employee code is required' })
 })

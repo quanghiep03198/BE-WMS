@@ -13,8 +13,7 @@ import {
 	Logger,
 	ParseIntPipe,
 	Query,
-	Sse,
-	UsePipes
+	Sse
 } from '@nestjs/common'
 import { catchError, from, interval, map, of, switchMap } from 'rxjs'
 import { ProducingProcessSuffix } from '../constants'
@@ -67,8 +66,7 @@ export class PMInventoryController {
 		method: HttpMethod.PATCH
 	})
 	@AuthGuard()
-	@UsePipes(new ZodValidationPipe(updateStockValidator))
-	async updateStock(@Body() payload: UpdateStockDTO) {
+	async updateStock(@Body(new ZodValidationPipe(updateStockValidator)) payload: UpdateStockDTO) {
 		FileLogger.debug(payload)
 		return await this.pmInventoryService.updateStock(payload)
 	}

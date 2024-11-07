@@ -11,8 +11,7 @@ import {
 	Param,
 	ParseIntPipe,
 	Query,
-	Sse,
-	UsePipes
+	Sse
 } from '@nestjs/common'
 import { catchError, from, interval, map, of, switchMap } from 'rxjs'
 import { ExchangeEpcDTO, exchangeEpcValidator, UpdateStockDTO, updateStockValidator } from '../dto/fp-inventory.dto'
@@ -91,8 +90,7 @@ export class FPInventoryController {
 		message: 'common.updated'
 	})
 	@AuthGuard()
-	@UsePipes(new ZodValidationPipe(updateStockValidator))
-	async updateStock(@Body() payload: UpdateStockDTO) {
+	async updateStock(@Body(new ZodValidationPipe(updateStockValidator)) payload: UpdateStockDTO) {
 		return await this.fpiService.updateStock(payload)
 	}
 
@@ -103,8 +101,7 @@ export class FPInventoryController {
 		message: 'common.updated'
 	})
 	@AuthGuard()
-	@UsePipes(new ZodValidationPipe(exchangeEpcValidator))
-	async exchangeEpc(@Body() payload: ExchangeEpcDTO) {
+	async exchangeEpc(@Body(new ZodValidationPipe(exchangeEpcValidator)) payload: ExchangeEpcDTO) {
 		return await this.fpiService.exchangeEpc(payload)
 	}
 
