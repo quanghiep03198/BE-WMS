@@ -15,6 +15,7 @@ import {
 } from '@nestjs/common'
 import { catchError, from, interval, map, of, switchMap } from 'rxjs'
 import { ExchangeEpcDTO, exchangeEpcValidator, UpdateStockDTO, updateStockValidator } from '../dto/fp-inventory.dto'
+import { SearchCustOrderParams } from '../rfid.interface'
 import { FPInventoryService } from '../services/fp-inventory.service'
 
 /**
@@ -66,9 +67,16 @@ export class FPInventoryController {
 	@AuthGuard()
 	async searchCustomerOrder(
 		@Headers('X-User-Company') factoryCode: string,
+		@Query('target', new DefaultValuePipe('')) orderTarget: string,
+		@Query('production_code', new DefaultValuePipe('')) productionCode: string,
 		@Query('search', new DefaultValuePipe('')) searchTerm: string
 	) {
-		return await this.fpiService.searchCustomerOrder(factoryCode, searchTerm)
+		return await this.fpiService.searchCustomerOrder({
+			factoryCode,
+			orderTarget,
+			productionCode,
+			searchTerm
+		} satisfies SearchCustOrderParams)
 	}
 
 	@Api({

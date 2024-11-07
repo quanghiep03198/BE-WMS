@@ -1,5 +1,5 @@
 import { FileLogger } from '@/common/helpers/file-logger.helper'
-import { DATABASE_DATA_LAKE, DATA_SOURCE_DATA_LAKE, RecordStatus } from '@/databases/constants'
+import { DATABASE_DATA_LAKE, DATA_SOURCE_DATA_LAKE, DATA_SOURCE_ERP, RecordStatus } from '@/databases/constants'
 import { CACHE_MANAGER } from '@nestjs/cache-manager'
 import { Inject, Injectable, InternalServerErrorException, NotFoundException, Scope } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
@@ -15,7 +15,6 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { Brackets, DataSource, FindOptionsWhere, In, IsNull } from 'typeorm'
 import { SqlServerConnectionOptions } from 'typeorm/driver/sqlserver/SqlServerConnectionOptions'
-import { FactoryCodeOrderRef } from '../../department/constants'
 import { TenancyService } from '../../tenancy/tenancy.service'
 import { ThirdPartyApiEvent } from '../../third-party-api/constants'
 import { FetchThirdPartyApiEvent, SyncEventPayload } from '../../third-party-api/third-party-api.interface'
@@ -30,7 +29,7 @@ import { ExchangeEpcDTO, UpdateStockDTO } from '../dto/fp-inventory.dto'
 import { FPInventoryEntity } from '../entities/fp-inventory.entity'
 import { RFIDCustomerEntity } from '../entities/rfid-customer.entity'
 import { FPIRespository } from '../repositories/fp-inventory.repository'
-import { RFIDSearchParams } from '../rfid.interface'
+import { RFIDSearchParams, SearchCustOrderParams } from '../rfid.interface'
 
 /**
  * @description Service for Finished Production Inventory (FPI)
@@ -38,7 +37,8 @@ import { RFIDSearchParams } from '../rfid.interface'
 @Injectable({ scope: Scope.REQUEST })
 export class FPInventoryService {
 	constructor(
-		@InjectDataSource(DATA_SOURCE_DATA_LAKE) private readonly datasource: DataSource,
+		@InjectDataSource(DATA_SOURCE_DATA_LAKE) private readonly datasourceDL: DataSource,
+		@InjectDataSource(DATA_SOURCE_ERP) private readonly datasourceERP: DataSource,
 		@Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
 		@Inject(REQUEST) private readonly request: Request,
 		private readonly rfidRepository: FPIRespository,
@@ -166,28 +166,38 @@ export class FPInventoryService {
 		}
 	}
 
-	public async searchCustomerOrder(factoryCode: string, searchTerm: string) {
-		/** @description Start year of Republic of China (Taiwan) */
-		const ROC_ESTABLISHMENT_YEAR: number = 1911 // * Start year of Republic of China (Taiwan)
+	public async searchCustomerOrder(params: SearchCustOrderParams) {
+		const subQuery = this.datasourceERP
+			.createQueryBuilder()
+			.select('manu.mo_no', 'mo_no')
+			.from(/* SQL */ `wuerp_vnrd.dbo.ta_manufacturmst`, 'manu')
+			.where(/* SQL */ `manu.cofactory_code = :factoryCode`)
+			.andWhere(/* SQL */ `manu.created >= CAST(DATEADD(YEAR, -2, GETDATE()) AS DATE)`)
+			.setParameter('factoryCode', params.factoryCode)
 
-		/** @description Current year of Republic of China */
-		const currentRepublicOfChinaYear: number = new Date().getFullYear() - ROC_ESTABLISHMENT_YEAR
+		return await this.datasourceDL
+			.createQueryBuilder()
+			.select(/* SQL */ `DISTINCT TOP 5 mo_no AS mo_no`)
+			.from(RFIDCustomerEntity, 'cust')
+			.where(/* SQL */ `mo_no IN (${subQuery.getQuery()})`)
+			.andWhere(/* SQL */ `mo_no LIKE :searchTerm`, { searchTerm: `%${params.searchTerm}%` })
+			.andWhere(/* SQL */ `mo_no <> :orderTarget`, { orderTarget: params.orderTarget })
+			.andWhere(
+				new Brackets((qb) => {
+					if (params.productionCode === FALLBACK_VALUE) return qb
+					return qb
+						.andWhere(/* SQL */ `mat_code = :productionCode`, { productionCode: params.productionCode })
+						.andWhere(
+							new Brackets((qb) => {
+								if (!params.sizeNumCode) return qb
+								return qb.andWhere(/* SQL */ `size_numcode = :sizeNumCode`, { sizeNumCode: params.sizeNumCode })
+							})
+						)
+				})
+			)
 
-		/** @description Prefix of manufacturing order code*/
-		const orderCodePrefix: string = currentRepublicOfChinaYear.toString().slice(1) + FactoryCodeOrderRef[factoryCode]
-
-		return await this.datasource.query(
-			/* SQL */ `
-					WITH datalist as (
-						SELECT mo_no
-						FROM DV_DATA_LAKE.dbo.dv_RFIDrecordmst_cust
-						UNION ALL SELECT mo_no
-						FROM DV_DATA_LAKE.dbo.dv_rfidmatchmst_cust
-					) SELECT DISTINCT TOP 5 * FROM datalist 
-					WHERE mo_no LIKE CONCAT('%', @0, '%')
-					AND mo_no LIKE CONCAT(@1, '%')`,
-			[searchTerm, orderCodePrefix]
-		)
+			.setParameters(subQuery.getParameters())
+			.getRawMany()
 	}
 
 	public async exchangeEpc(payload: ExchangeEpcDTO) {
@@ -330,7 +340,7 @@ export class FPInventoryService {
 				).toString()
 
 				const [orderInformation, epcToUpsert] = await Promise.all([
-					this.datasource.query<Partial<RFIDCustomerEntity>[]>(orderInformationQuery, [item.mo_no]),
+					this.datasourceDL.query<Partial<RFIDCustomerEntity>[]>(orderInformationQuery, [item.mo_no]),
 					queryRunner.manager
 						.getRepository(FPInventoryEntity)
 						.createQueryBuilder('inv')
