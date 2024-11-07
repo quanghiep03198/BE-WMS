@@ -37,7 +37,7 @@ export class PMInventoryService {
 					// record_time: MoreThanOrEqual(format(new Date(), 'yyyy-MM-dd'))
 				},
 				take: this.LIMIT_FETCH_DOCS,
-				skip: (args.page ?? 1 - 1) * this.LIMIT_FETCH_DOCS,
+				skip: (args.page - 1) * this.LIMIT_FETCH_DOCS,
 				order: { mo_no: 'ASC' }
 			}),
 			this.getOrderSizes(args)
