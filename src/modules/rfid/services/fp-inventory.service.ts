@@ -181,7 +181,6 @@ export class FPInventoryService {
 			.from(RFIDCustomerEntity, 'cust')
 			.where(/* SQL */ `mo_no IN (${subQuery.getQuery()})`)
 			.andWhere(/* SQL */ `mo_no LIKE :searchTerm`, { searchTerm: `%${params.searchTerm}%` })
-			.andWhere(/* SQL */ `mo_no <> :orderTarget`, { orderTarget: params.orderTarget })
 			.andWhere(
 				new Brackets((qb) => {
 					if (params.productionCode === FALLBACK_VALUE) return qb
@@ -195,7 +194,6 @@ export class FPInventoryService {
 						)
 				})
 			)
-
 			.setParameters(subQuery.getParameters())
 			.getRawMany()
 	}
