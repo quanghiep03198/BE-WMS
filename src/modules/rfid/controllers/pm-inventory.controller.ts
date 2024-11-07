@@ -11,7 +11,6 @@ import {
 	Headers,
 	HttpStatus,
 	Logger,
-	Param,
 	ParseIntPipe,
 	Query,
 	Sse,
@@ -19,7 +18,13 @@ import {
 } from '@nestjs/common'
 import { catchError, from, interval, map, of, switchMap } from 'rxjs'
 import { ProducingProcessSuffix } from '../constants'
-import { UpdateStockDTO, updateStockValidator } from '../dto/pm-inventory.dto'
+import {
+	DeleteOrderDTO,
+	deleteOrderValidator,
+	processValidator,
+	UpdateStockDTO,
+	updateStockValidator
+} from '../dto/pm-inventory.dto'
 import { PMInventoryService } from '../services/pm-inventory.service'
 
 @Controller('rfid/pm-inventory')
@@ -30,11 +35,11 @@ export class PMInventoryController {
 	@AuthGuard()
 	async fetchProducingEpc(
 		@Headers('X-User-Company') factoryCode: string,
-		@Query('process', TransformUppercasePipe) producingProcess: ProducingProcessSuffix
+		@Query('process', new ZodValidationPipe(processValidator))
+		producingProcess: ProducingProcessSuffix
 	) {
 		if (!factoryCode) throw new BadRequestException('Factory code is required')
-		if (!producingProcess) throw new BadRequestException('Producing process is required')
-		Logger.debug(factoryCode)
+
 		return interval(500).pipe(
 			switchMap(() =>
 				from(this.pmInventoryService.fetchLastestDataByProcess({ factoryCode, producingProcess, page: 1 })).pipe(
@@ -69,12 +74,18 @@ export class PMInventoryController {
 	}
 
 	@Api({
-		endpoint: 'delete-unexpected-order/:order',
+		endpoint: 'delete-unexpected-order',
 		method: HttpMethod.DELETE,
-		statusCode: HttpStatus.NO_CONTENT,
+		statusCode: HttpStatus.OK,
 		message: 'common.deleted'
 	})
-	async deleteUnexpectedOrder(@Param('order') orderCode: string) {
-		return await this.pmInventoryService.deleteUnexpectedOrder(orderCode)
+	async deleteUnexpectedOrder(
+		@Headers('X-User-Company') factoryCode: string,
+		@Query(new ZodValidationPipe(deleteOrderValidator)) deleteOrderQueries: DeleteOrderDTO
+	) {
+		console.log(deleteOrderQueries)
+		const result = await this.pmInventoryService.deleteUnexpectedOrder({ factoryCode, ...deleteOrderQueries })
+		Logger.debug(result)
+		return result
 	}
 }

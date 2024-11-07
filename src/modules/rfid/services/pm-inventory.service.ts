@@ -3,18 +3,30 @@ import { Injectable, Logger } from '@nestjs/common'
 import { groupBy, isNil, uniqBy } from 'lodash'
 import { In, IsNull, Like, Or } from 'typeorm'
 import { InventoryActions } from '../constants'
-import { UpdateStockDTO } from '../dto/pm-inventory.dto'
+import { DeleteOrderDTO, UpdateStockDTO } from '../dto/pm-inventory.dto'
 import { PMInventoryEntity } from '../entities/pm-inventory.entity'
 import { RFIDPMEntity } from '../entities/rfid-pm.entity'
 
-type FetchLatestDataArgs = { factoryCode: string; producingProcess: string; page: number }
+interface BaseFetchDataArgs {
+	factoryCode: string
+	producingProcess: string
+}
+
+interface FetchLatestDataArgs extends BaseFetchDataArgs {
+	page: number
+}
+
+interface FetchLatestDataArgs extends BaseFetchDataArgs {
+	page: number
+}
 
 @Injectable()
 export class PMInventoryService {
+	private readonly LIMIT_FETCH_DOCS = 50
+
 	constructor(private readonly tenancyService: TenancyService) {}
 
 	async fetchLastestDataByProcess(args: FetchLatestDataArgs) {
-		const LIMIT_FETCH_DOCS = 50
 		const stationNoPattern = `%${args.factoryCode}_${args.producingProcess}%`
 		const [[epcs, totalDocs], sizes] = await Promise.all([
 			this.tenancyService.dataSource.getRepository(PMInventoryEntity).findAndCount({
@@ -24,18 +36,19 @@ export class PMInventoryService {
 					station_no: Like(stationNoPattern)
 					// record_time: MoreThanOrEqual(format(new Date(), 'yyyy-MM-dd'))
 				},
-				take: LIMIT_FETCH_DOCS,
-				skip: (args.page - 1) * LIMIT_FETCH_DOCS
+				take: this.LIMIT_FETCH_DOCS,
+				skip: (args.page ?? 1 - 1) * this.LIMIT_FETCH_DOCS,
+				order: { mo_no: 'ASC' }
 			}),
 			this.getOrderSizes(args)
 		])
 
-		const totalPages = Math.ceil(totalDocs / LIMIT_FETCH_DOCS)
+		const totalPages = Math.ceil(totalDocs / this.LIMIT_FETCH_DOCS)
 
 		const response = {
 			epcs: {
 				data: epcs,
-				limit: LIMIT_FETCH_DOCS,
+				limit: this.LIMIT_FETCH_DOCS,
 				page: args.page,
 				totalDocs,
 				totalPages,
@@ -83,47 +96,54 @@ export class PMInventoryService {
 		const filteredPayload = payload.orders.filter((item) => !isNil(item))
 		const hasSomeUnknownOrder = payload.orders.length !== filteredPayload.length
 
-		const result = await this.tenancyService.dataSource.getRepository(PMInventoryEntity).update(
+		return await this.tenancyService.dataSource.getRepository(PMInventoryEntity).update(
 			{
 				mo_no: hasSomeUnknownOrder ? Or(IsNull(), In(filteredPayload)) : In(filteredPayload),
 				rfid_status: IsNull()
 			},
 			{ rfid_status: InventoryActions.INBOUND }
 		)
-
-		Logger.debug(result)
-
-		return result
 	}
 
-	async deleteUnexpectedOrder(orderCode: string) {
+	async deleteUnexpectedOrder(args: DeleteOrderDTO & { factoryCode: string }) {
+		const stationNoPattern = `%${args.factoryCode}_${args.process}%`
+
 		const queryRunner = this.tenancyService.dataSource.createQueryRunner()
 		await queryRunner.startTransaction()
 		try {
-			const rs1 = await queryRunner.manager
-				.createQueryBuilder()
-				.delete()
-				.from(PMInventoryEntity)
-				.where({ mo_no: orderCode !== 'null' ? orderCode : IsNull() })
-				.execute()
-
-			console.log(rs1)
-			await queryRunner.manager.query(
-				/* SQL */ `DELETE FROM DV_DATA_LAKE.dbo.UHF_RFID_TEST WHERE epc IN (
-						SELECT EPC_Code as epc FROM DV_DATA_LAKE.dbo.dv_RFIDrecordmst
-						WHERE mo_no = @0
-					)`,
-				[orderCode]
-			)
-			// await Promise.all([
-			// ])
+			await Promise.all([
+				queryRunner.manager
+					.createQueryBuilder()
+					.delete()
+					.from(PMInventoryEntity)
+					.where({ mo_no: args.order !== 'null' ? args.order : IsNull() })
+					.andWhere({ station_no: Like(stationNoPattern) })
+					.execute(),
+				queryRunner.manager.query(
+					/* SQL */ `DELETE FROM DV_DATA_LAKE.dbo.UHF_RFID_TEST WHERE epc IN (
+								SELECT EPC_Code as epc FROM DV_DATA_LAKE.dbo.dv_RFIDrecordmst
+								WHERE mo_no = @0
+								AND stationNO LIKE @1
+							)`,
+					[args.order, stationNoPattern]
+				)
+			])
 
 			await queryRunner.commitTransaction()
-		} catch {
+		} catch (e) {
 			queryRunner.rollbackTransaction()
-			Logger.error('Failed to delete unexpected order')
+			Logger.error(e)
 		} finally {
 			await queryRunner.release()
 		}
+
+		const totalDocsAfterDelete = await this.tenancyService.dataSource.getRepository(PMInventoryEntity).countBy({
+			rfid_status: IsNull(),
+			station_no: Like(stationNoPattern)
+		})
+
+		const totalPagesAfterDelete = Math.ceil(totalDocsAfterDelete / this.LIMIT_FETCH_DOCS)
+
+		return { totalDocs: totalDocsAfterDelete, totalPages: totalPagesAfterDelete }
 	}
 }
