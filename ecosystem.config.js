@@ -4,7 +4,8 @@ module.exports = {
 			name: 'wms-api',
 			script: './dist/main.js',
 			cwd: __dirname,
-			autorestart: true,
+			autorestart: false,
+			watch: false,
 			exec_mode: 'cluster'
 		}
 	]
