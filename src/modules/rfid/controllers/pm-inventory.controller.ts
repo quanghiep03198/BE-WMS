@@ -34,12 +34,15 @@ export class PMInventoryController {
 	@AuthGuard()
 	async fetchProducingEpc(
 		@Headers('X-User-Company') factoryCode: string,
+		@Headers('X-Polling-Duration') pollingDuration: number,
 		@Query('process', new ZodValidationPipe(processValidator))
 		producingProcess: ProducingProcessSuffix
 	) {
+		const FALLBACK_POLLING_DURATION: number = 500
+		const duration = pollingDuration ?? FALLBACK_POLLING_DURATION
 		if (!factoryCode) throw new BadRequestException('Factory code is required')
 
-		return interval(500).pipe(
+		return interval(duration).pipe(
 			switchMap(() =>
 				from(this.pmInventoryService.fetchLastestDataByProcess({ factoryCode, producingProcess, page: 1 })).pipe(
 					catchError((error) => {
