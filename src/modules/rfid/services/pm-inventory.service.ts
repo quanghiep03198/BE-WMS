@@ -109,23 +109,21 @@ export class PMInventoryService {
 		const queryRunner = this.tenancyService.dataSource.createQueryRunner()
 		await queryRunner.startTransaction()
 		try {
-			await Promise.all([
-				queryRunner.manager
-					.createQueryBuilder()
-					.delete()
-					.from(PMInventoryEntity)
-					.where({ mo_no: args.order !== 'null' ? args.order : IsNull() })
-					.andWhere({ station_no: Like(stationNoPattern) })
-					.execute(),
-				queryRunner.manager.query(
-					/* SQL */ `DELETE FROM DV_DATA_LAKE.dbo.UHF_RFID_TEST WHERE epc IN (
-								SELECT EPC_Code as epc FROM DV_DATA_LAKE.dbo.dv_RFIDrecordmst
-								WHERE mo_no = @0
-								AND stationNO LIKE @1
-							)`,
-					[args.order, stationNoPattern]
-				)
-			])
+			await queryRunner.manager.query(
+				/* SQL */ `
+					DELETE FROM DV_DATA_LAKE.dbo.UHF_RFID_TEST WHERE epc IN (
+						SELECT EPC_Code as epc FROM DV_DATA_LAKE.dbo.dv_RFIDrecordmst
+						WHERE mo_no = @0
+						AND stationNO LIKE @1)`,
+				[args.order, stationNoPattern]
+			)
+			await queryRunner.manager
+				.createQueryBuilder()
+				.delete()
+				.from(PMInventoryEntity)
+				.where({ mo_no: args.order !== 'null' ? args.order : IsNull() })
+				.andWhere({ station_no: Like(stationNoPattern) })
+				.execute()
 
 			await queryRunner.commitTransaction()
 		} catch (e) {
