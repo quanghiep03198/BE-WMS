@@ -34,7 +34,6 @@ export class PMInventoryService {
 				where: {
 					rfid_status: IsNull(),
 					station_no: Like(stationNoPattern)
-					// record_time: MoreThanOrEqual(format(new Date(), 'yyyy-MM-dd'))
 				},
 				take: this.LIMIT_FETCH_DOCS,
 				skip: (args.page - 1) * this.LIMIT_FETCH_DOCS,
@@ -77,9 +76,8 @@ export class PMInventoryService {
 				/* SQL */ `pm.size_numcode AS size_numcode`,
 				/* SQL */ `COUNT(DISTINCT inv.EPC_Code) AS count`
 			])
-			.leftJoin(RFIDPMEntity, 'pm', /* SQL */ `inv.EPC_Code = pm.EPC_Code AND  inv.mo_no = pm.mo_no`)
+			.leftJoin(RFIDPMEntity, 'pm', /* SQL */ `inv.EPC_Code = pm.EPC_Code AND inv.mo_no = pm.mo_no`)
 			.where(/* SQL */ `inv.rfid_status IS NULL`)
-			// .andWhere(/* SQL */ `inv.record_time >= CAST(GETDATE() AS DATE)`)
 			.andWhere(/* SQL */ `inv.station_no LIKE '%${stationNoPattern}%'`)
 			.groupBy('inv.mo_no')
 			.addGroupBy('pm.mat_code')
