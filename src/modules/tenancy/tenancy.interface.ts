@@ -7,6 +7,7 @@ export interface ITenancy {
 	id: Tenant
 	default?: boolean
 	factories: Array<FactoryCode>
+	alias: string
 	host: string
 }
 
