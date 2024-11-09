@@ -59,9 +59,15 @@ export class PMInventoryController {
 	async fetchEpc(
 		@Headers('X-User-Company') factoryCode: string,
 		@Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
-		@Query('process', TransformUppercasePipe) producingProcess: ProducingProcessSuffix
+		@Query('process', TransformUppercasePipe) producingProcess: ProducingProcessSuffix,
+		@Query('selected_order') selectedOrder: string
 	) {
-		return await this.pmInventoryService.fetchLastestDataByProcess({ factoryCode, producingProcess, page })
+		return await this.pmInventoryService.fetchLastestDataByProcess({
+			factoryCode,
+			producingProcess,
+			page,
+			selectedOrder
+		})
 	}
 
 	@Api({

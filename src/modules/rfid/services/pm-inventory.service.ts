@@ -2,7 +2,7 @@ import { TenancyService } from '@/modules/tenancy/tenancy.service'
 import { Injectable, Logger } from '@nestjs/common'
 import { groupBy, isNil, uniqBy } from 'lodash'
 import { In, IsNull, Like, Or } from 'typeorm'
-import { InventoryActions } from '../constants'
+import { FALLBACK_VALUE, InventoryActions } from '../constants'
 import { DeleteOrderDTO, UpdateStockDTO } from '../dto/pm-inventory.dto'
 import { PMInventoryEntity } from '../entities/pm-inventory.entity'
 import { RFIDPMEntity } from '../entities/rfid-pm.entity'
@@ -14,10 +14,7 @@ interface BaseFetchDataArgs {
 
 interface FetchLatestDataArgs extends BaseFetchDataArgs {
 	page: number
-}
-
-interface FetchLatestDataArgs extends BaseFetchDataArgs {
-	page: number
+	selectedOrder?: string
 }
 
 @Injectable()
@@ -28,12 +25,18 @@ export class PMInventoryService {
 
 	async fetchLastestDataByProcess(args: FetchLatestDataArgs) {
 		const stationNoPattern = `%${args.factoryCode}_${args.producingProcess}%`
+
 		const [[epcs, totalDocs], sizes] = await Promise.all([
 			this.tenancyService.dataSource.getRepository(PMInventoryEntity).findAndCount({
 				select: ['epc', 'mo_no'],
 				where: {
 					rfid_status: IsNull(),
-					station_no: Like(stationNoPattern)
+					station_no: Like(stationNoPattern),
+					mo_no: isNil(args.selectedOrder)
+						? undefined
+						: args.selectedOrder === FALLBACK_VALUE
+							? IsNull()
+							: args.selectedOrder
 				},
 				take: this.LIMIT_FETCH_DOCS,
 				skip: (args.page - 1) * this.LIMIT_FETCH_DOCS,
@@ -109,14 +112,24 @@ export class PMInventoryService {
 		const queryRunner = this.tenancyService.dataSource.createQueryRunner()
 		await queryRunner.startTransaction()
 		try {
-			await queryRunner.manager.query(
-				/* SQL */ `
-					DELETE FROM DV_DATA_LAKE.dbo.UHF_RFID_TEST WHERE epc IN (
-						SELECT EPC_Code as epc FROM DV_DATA_LAKE.dbo.dv_RFIDrecordmst
-						WHERE mo_no = @0
-						AND stationNO LIKE @1)`,
-				[args.order, stationNoPattern]
-			)
+			await queryRunner.manager
+				.createQueryBuilder()
+				.delete()
+				.from(/* SQL */ `DV_DATA_LAKE.dbo.UHF_RFID_TEST`)
+				.where((qb) => {
+					const subQuery = qb
+						.createQueryBuilder()
+						.select('EPC_Code', 'epc')
+						.from(/* SQL */ PMInventoryEntity, 'rfid')
+						.where(/* SQL */ `rfid.mo_no = :mo_no`, { mo_no: args.order })
+						.andWhere(/* SQL */ `rfid.stationNO LIKE :stationNoPattern`, { stationNoPattern })
+						.getQuery()
+					return /* SQL */ `epc IN (${subQuery})`
+				})
+				.setParameter('mo_no', args.order)
+				.setParameter('stationNoPattern', stationNoPattern)
+				.execute()
+
 			await queryRunner.manager
 				.createQueryBuilder()
 				.delete()
