@@ -28,6 +28,10 @@ export const createStorageLocationValidator = z.object({
 		.default(false)
 		.optional()
 		.transform((value) => (value ? 1 : 0)),
+	user_code_created: z.string().nullable().optional(),
+	user_name_created: z.string().nullable().optional(),
+	user_code_updated: z.string().nullable().optional(),
+	user_name_updated: z.string().nullable().optional(),
 	remark: z.string().optional()
 })
 
