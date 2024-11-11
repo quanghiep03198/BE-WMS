@@ -11,7 +11,13 @@ export abstract class BaseAbstractEntity {
 	user_code_created: string
 
 	@Column({ type: 'nvarchar', length: 50, default: null })
+	user_name_created: string
+
+	@Column({ type: 'nvarchar', length: 50, default: null })
 	user_code_updated: string
+
+	@Column({ type: 'nvarchar', length: 50, default: null })
+	user_name_updated: string
 
 	@CreateDateColumn({ type: 'datetime', default: format(new Date(), 'yyyy-MM-dd HH:mm:ss') })
 	created: Date
