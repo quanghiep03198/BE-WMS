@@ -1,9 +1,9 @@
 import { TenancyService } from '@/modules/tenancy/tenancy.service'
 import { Injectable, Logger } from '@nestjs/common'
 import { groupBy, isNil, uniqBy } from 'lodash'
-import { In, IsNull, Like, Or } from 'typeorm'
+import { IsNull, Like } from 'typeorm'
 import { InventoryActions } from '../constants'
-import { DeleteOrderDTO, UpdateStockDTO } from '../dto/pm-inventory.dto'
+import { type DeleteOrderDTO, type UpdatePMStockDTO } from '../dto/pm-inventory.dto'
 import { PMInventoryEntity } from '../entities/pm-inventory.entity'
 import { RFIDPMEntity } from '../entities/rfid-pm.entity'
 
@@ -93,14 +93,14 @@ export class PMInventoryService {
 			.getRawMany()
 	}
 
-	async updateStock(payload: UpdateStockDTO) {
-		const filteredPayload = payload.orders.filter((item) => !isNil(item))
-		const hasSomeUnknownOrder = payload.orders.length !== filteredPayload.length
-
+	async updateStock(payload: UpdatePMStockDTO) {
+		const stationNoPattern = `%${payload.factoryCode}_${payload.producingPrcess}%`
+		console.log(payload.order)
 		return await this.tenancyService.dataSource.getRepository(PMInventoryEntity).update(
 			{
-				mo_no: hasSomeUnknownOrder ? Or(IsNull(), In(filteredPayload)) : In(filteredPayload),
-				rfid_status: IsNull()
+				mo_no: payload.order === 'null' ? IsNull() : payload.order,
+				rfid_status: IsNull(),
+				station_no: Like(stationNoPattern)
 			},
 			{ rfid_status: InventoryActions.INBOUND }
 		)

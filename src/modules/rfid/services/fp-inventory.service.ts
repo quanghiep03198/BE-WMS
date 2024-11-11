@@ -308,7 +308,6 @@ export class FPInventoryService {
 
 	@OnEvent(ThirdPartyApiEvent.SUCCESS)
 	protected async syncWithCustomerData(e: SyncEventPayload) {
-		FileLogger.debug(e.data)
 		// * Intialize datasource
 		const tenant = this.tenancyService.findOneById(e.params.tenantId)
 		const dataSource = new DataSource({
