@@ -1,7 +1,7 @@
 import { DATA_SOURCE_DATA_LAKE, DATA_SOURCE_ERP } from '@/databases/constants'
 import { StorageLocationEntity } from '@/modules/warehouse/entities/storage-location.entity'
 import { WarehouseEntity } from '@/modules/warehouse/entities/warehouse.entity'
-import { ConflictException, Injectable, InternalServerErrorException, Logger, NotFoundException } from '@nestjs/common'
+import { ConflictException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common'
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm'
 import { format } from 'date-fns'
 import { readFileSync } from 'fs'
@@ -52,7 +52,6 @@ export class TransferOrderService {
 	}
 
 	async getTransferOrderDatalist(params: ITransferOrderDatalistParams) {
-		Logger.debug(params)
 		const query = readFileSync(join(__dirname, '../sql/pack-list.sql'), 'utf-8').toString()
 		const startDate = format(params.time_range.from, 'yyyy-MM-dd')
 		const endDate = format(params.time_range.to, 'yyyy-MM-dd')
