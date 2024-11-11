@@ -48,6 +48,7 @@ export class UserService extends BaseAbstractService<UserEntity> {
 		const user = await this.userRepository
 			.createQueryBuilder('u')
 			.select('u.id', 'id')
+			.addSelect('u.username', 'username')
 			.addSelect('u.password', 'password')
 			.addSelect('u.role', 'role')
 			.addSelect('e.employee_name', 'display_name')
