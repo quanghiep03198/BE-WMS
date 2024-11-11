@@ -2,7 +2,7 @@ import { TenancyService } from '@/modules/tenancy/tenancy.service'
 import { Injectable, Logger } from '@nestjs/common'
 import { groupBy, isNil, uniqBy } from 'lodash'
 import { In, IsNull, Like, Or } from 'typeorm'
-import { FALLBACK_VALUE, InventoryActions } from '../constants'
+import { InventoryActions } from '../constants'
 import { DeleteOrderDTO, UpdateStockDTO } from '../dto/pm-inventory.dto'
 import { PMInventoryEntity } from '../entities/pm-inventory.entity'
 import { RFIDPMEntity } from '../entities/rfid-pm.entity'
@@ -34,7 +34,7 @@ export class PMInventoryService {
 					station_no: Like(stationNoPattern),
 					mo_no: isNil(args.selectedOrder)
 						? undefined
-						: args.selectedOrder === FALLBACK_VALUE
+						: args.selectedOrder === 'null'
 							? IsNull()
 							: args.selectedOrder
 				},
@@ -81,7 +81,7 @@ export class PMInventoryService {
 			])
 			.leftJoin(RFIDPMEntity, 'pm', /* SQL */ `inv.EPC_Code = pm.EPC_Code AND inv.mo_no = pm.mo_no`)
 			.where(/* SQL */ `inv.rfid_status IS NULL`)
-			.andWhere(/* SQL */ `inv.station_no LIKE '%${stationNoPattern}%'`)
+			.andWhere(/* SQL */ `inv.station_no LIKE :stationNoPattern`, { stationNoPattern })
 			.groupBy('inv.mo_no')
 			.addGroupBy('pm.mat_code')
 			.addGroupBy('pm.shoestyle_codefactory')
