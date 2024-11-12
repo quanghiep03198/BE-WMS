@@ -1,7 +1,7 @@
 import { TenancyService } from '@/modules/tenancy/tenancy.service'
 import { Injectable, Logger } from '@nestjs/common'
-import { groupBy, isNil, uniqBy } from 'lodash'
-import { IsNull, Like } from 'typeorm'
+import { groupBy, isNil } from 'lodash'
+import { Brackets, IsNull, Like } from 'typeorm'
 import { InventoryActions } from '../constants'
 import { type DeleteOrderDTO, type UpdatePMStockDTO } from '../dto/pm-inventory.dto'
 import { PMInventoryEntity } from '../entities/pm-inventory.entity'
@@ -26,22 +26,30 @@ export class PMInventoryService {
 	async fetchLastestDataByProcess(args: FetchLatestDataArgs) {
 		const stationNoPattern = `%${args.factoryCode}_${args.producingProcess}%`
 
-		const [[epcs, totalDocs], sizes] = await Promise.all([
-			this.tenancyService.dataSource.getRepository(PMInventoryEntity).findAndCount({
-				select: ['epc', 'mo_no'],
-				where: {
-					rfid_status: IsNull(),
-					station_no: Like(stationNoPattern),
-					mo_no: isNil(args.selectedOrder)
-						? undefined
-						: args.selectedOrder === 'null'
-							? IsNull()
-							: args.selectedOrder
-				},
-				take: this.LIMIT_FETCH_DOCS,
-				skip: (args.page - 1) * this.LIMIT_FETCH_DOCS,
-				order: { mo_no: 'ASC' }
-			}),
+		const getEpcQueryBuilder = this.tenancyService.dataSource
+			.createQueryBuilder()
+			.select([/* SQL */ `rec.epc AS epc`, /* SQL */ `rec.mo_no AS mo_no`])
+			.distinct(true)
+			.from(PMInventoryEntity, 'rec')
+			.leftJoin(RFIDPMEntity, 'match', /* SQL */ `rec.epc = match.epc AND rec.mo_no = match.mo_no`)
+			.where(/* SQL */ `rec.rfid_status IS NULL`)
+			.andWhere(/* SQL */ `rec.station_no LIKE :stationNoPattern`, { stationNoPattern })
+			.andWhere(/* SQL */ `match.ri_cancel = 0`)
+			.andWhere(
+				new Brackets((qb) => {
+					if (isNil(args.selectedOrder)) return qb
+					else if (args.selectedOrder === 'null') return qb.andWhere(/* SQL */ `rec.mo_no IS NULL`)
+					else return qb.andWhere(/* SQL */ `rec.mo_no = :selectedOrder`, { selectedOrder: args.selectedOrder })
+				})
+			)
+			.orderBy('mo_no', 'ASC')
+			.offset((args.page - 1) * this.LIMIT_FETCH_DOCS)
+			.limit(this.LIMIT_FETCH_DOCS)
+			.maxExecutionTime(1000)
+
+		const [epcs, totalDocs, sizes] = await Promise.all([
+			getEpcQueryBuilder.getRawMany(),
+			getEpcQueryBuilder.getCount(),
 			this.getOrderSizes(args)
 		])
 
@@ -57,8 +65,7 @@ export class PMInventoryService {
 				hasNextPage: args.page < totalPages,
 				hasPrevPage: args.page > 1
 			} satisfies Pagination<Record<'epc' | 'mo_no', string>>,
-			orders: uniqBy(sizes, 'mo_no').map((item) => item.mo_no),
-			sizes: groupBy(sizes, 'mo_no')
+			orders: groupBy(sizes, 'mo_no')
 		}
 
 		return response
@@ -71,21 +78,22 @@ export class PMInventoryService {
 		const stationNoPattern = `%${args.factoryCode}_${args.producingProcess}%`
 		return await this.tenancyService.dataSource
 			.getRepository(PMInventoryEntity)
-			.createQueryBuilder('inv')
+			.createQueryBuilder('rec')
 			.select([
-				/* SQL */ `inv.mo_no AS mo_no`,
-				/* SQL */ `pm.mat_code AS mat_code`,
-				/* SQL */ `pm.shoestyle_codefactory AS shoes_style_code_factory`,
-				/* SQL */ `pm.size_numcode AS size_numcode`,
-				/* SQL */ `COUNT(DISTINCT inv.EPC_Code) AS count`
+				/* SQL */ `rec.mo_no AS mo_no`,
+				/* SQL */ `match.mat_code AS mat_code`,
+				/* SQL */ `match.shoestyle_codefactory AS shoes_style_code_factory`,
+				/* SQL */ `match.size_numcode AS size_numcode`,
+				/* SQL */ `COUNT(DISTINCT rec.epc) AS count`
 			])
-			.leftJoin(RFIDPMEntity, 'pm', /* SQL */ `inv.EPC_Code = pm.EPC_Code AND inv.mo_no = pm.mo_no`)
-			.where(/* SQL */ `inv.rfid_status IS NULL`)
-			.andWhere(/* SQL */ `inv.station_no LIKE :stationNoPattern`, { stationNoPattern })
-			.groupBy('inv.mo_no')
-			.addGroupBy('pm.mat_code')
-			.addGroupBy('pm.shoestyle_codefactory')
-			.addGroupBy('pm.size_numcode')
+			.leftJoin(RFIDPMEntity, 'match', /* SQL */ `rec.epc = match.epc AND rec.mo_no = match.mo_no`)
+			.where(/* SQL */ `rec.rfid_status IS NULL`)
+			.andWhere(/* SQL */ `rec.station_no LIKE :stationNoPattern`, { stationNoPattern })
+			.andWhere(/* SQL */ `match.ri_cancel = 0`)
+			.groupBy('rec.mo_no')
+			.addGroupBy('match.mat_code')
+			.addGroupBy('match.shoestyle_codefactory')
+			.addGroupBy('match.size_numcode')
 			.orderBy('mo_no', 'ASC')
 			.addOrderBy('shoestyle_codefactory', 'ASC')
 			.addOrderBy('size_numcode', 'ASC')
