@@ -43,6 +43,7 @@ export class PMInventoryService {
 				})
 			)
 			.orderBy('mo_no', 'ASC')
+			.addOrderBy('epc', 'ASC')
 			.offset((args.page - 1) * this.LIMIT_FETCH_DOCS)
 			.limit(this.LIMIT_FETCH_DOCS)
 			.maxExecutionTime(1000)
