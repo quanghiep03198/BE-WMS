@@ -48,7 +48,7 @@ export class PMInventoryService {
 			.limit(this.LIMIT_FETCH_DOCS)
 			.maxExecutionTime(1000)
 
-		const [epcs, totalDocs, sizes] = await Promise.all([
+		const [epcs, totalDocs, orders] = await Promise.all([
 			getEpcQueryBuilder.getRawMany(),
 			getEpcQueryBuilder.getCount(),
 			this.getOrderSizes(args)
@@ -66,7 +66,7 @@ export class PMInventoryService {
 				hasNextPage: args.page < totalPages,
 				hasPrevPage: args.page > 1
 			} satisfies Pagination<Record<'epc' | 'mo_no', string>>,
-			orders: groupBy(sizes, 'mo_no')
+			orders: groupBy(orders, 'mo_no')
 		}
 
 		return response
@@ -85,7 +85,11 @@ export class PMInventoryService {
 				/* SQL */ `match.mat_code AS mat_code`,
 				/* SQL */ `match.shoestyle_codefactory AS shoes_style_code_factory`,
 				/* SQL */ `match.size_numcode AS size_numcode`,
-				/* SQL */ `COUNT(DISTINCT rec.epc) AS count`
+				/* SQL */ `
+					CASE WHEN match.sole_tag = 'A' 
+						THEN COUNT(DISTINCT rec.epc)
+						ELSE COUNT(rec.epc)  
+					END AS count`
 			])
 			.leftJoin(RFIDPMEntity, 'match', /* SQL */ `rec.epc = match.epc AND rec.mo_no = match.mo_no`)
 			.where(/* SQL */ `rec.rfid_status IS NULL`)
@@ -95,6 +99,7 @@ export class PMInventoryService {
 			.addGroupBy('match.mat_code')
 			.addGroupBy('match.shoestyle_codefactory')
 			.addGroupBy('match.size_numcode')
+			.addGroupBy('match.sole_tag')
 			.orderBy('mo_no', 'ASC')
 			.addOrderBy('shoestyle_codefactory', 'ASC')
 			.addOrderBy('size_numcode', 'ASC')

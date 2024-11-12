@@ -26,6 +26,9 @@ export class RFIDPMEntity extends BaseAbstractEntity {
 	@Column({ type: 'bit', default: false, transformer: new BoolBitTransformer() })
 	ri_cancel: boolean
 
+	@Column({ type: 'nvarchar', length: 10, enum: ['A', 'B', 'C', 'D'] })
+	sole_tag: string
+
 	constructor(item: Partial<RFIDPMEntity>) {
 		super()
 		Object.assign(this, item)
