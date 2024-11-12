@@ -4,9 +4,10 @@ module.exports = {
 			name: 'wms-api',
 			script: './dist/main.js',
 			cwd: __dirname,
-			autorestart: false,
+			autorestart: true,
 			watch: false,
-			exec_mode: 'cluster'
+			exec_mode: 'cluster',
+			max_memory_restart: '500M'
 		}
 	]
 }
