@@ -1,3 +1,4 @@
+import { FileLogger } from '@/common/helpers/file-logger.helper'
 import { TenancyService } from '@/modules/tenancy/tenancy.service'
 import { Injectable, Logger } from '@nestjs/common'
 import { groupBy, isNil } from 'lodash'
@@ -126,47 +127,47 @@ export class PMInventoryService {
 		const queryRunner = this.tenancyService.dataSource.createQueryRunner()
 		await queryRunner.startTransaction()
 		try {
-			await queryRunner.manager
+			const rs1 = await queryRunner.manager
 				.createQueryBuilder()
 				.delete()
-				.from(/* SQL */ `DV_DATA_LAKE.dbo.UHF_RFID_TEST`)
-				.where((qb) => {
-					const subQuery = qb
-						.createQueryBuilder()
-						.select('EPC_Code', 'epc')
-						.from(/* SQL */ PMInventoryEntity, 'rfid')
-						.where(/* SQL */ `rfid.mo_no = :mo_no`, { mo_no: args.order })
-						.andWhere(/* SQL */ `rfid.stationNO LIKE :stationNoPattern`, { stationNoPattern })
-						.getQuery()
-					return /* SQL */ `epc IN (${subQuery})`
-				})
-				.setParameter('mo_no', args.order)
-				.setParameter('stationNoPattern', stationNoPattern)
+				.from('DV_DATA_LAKE.dbo.UHF_RFID_TEST')
+				.where(
+					'epc IN (' +
+						queryRunner.manager
+							.createQueryBuilder()
+							.select('EPC_Code', 'epc')
+							.from(/* SQL */ `DV_DATA_LAKE.dbo.dv_RFIDrecordmst`, 'dv')
+							.where(
+								/* SQL */ `
+									(LOWER(:order) = 'null' AND dv.mo_no IS NULL) 
+									OR (:order <> 'null' AND dv.mo_no = :order)`,
+								{ order: args.order }
+							)
+							.andWhere(/* SQL */ `dv.stationNO LIKE :stationNoPattern`, { stationNoPattern })
+							.andWhere(/* SQL */ `dv.rfid_status IS NULL`)
+							.getQuery() +
+						')'
+				)
+				.setParameters({ order: args.order, stationNoPattern })
 				.execute()
 
-			await queryRunner.manager
+			const rs2 = await queryRunner.manager
 				.createQueryBuilder()
 				.delete()
 				.from(PMInventoryEntity)
-				.where({ mo_no: args.order !== 'null' ? args.order : IsNull() })
+				.where({ mo_no: String(args.order).toLowerCase() === 'null' ? IsNull() : args.order })
+				.andWhere({ rfid_status: IsNull() })
 				.andWhere({ station_no: Like(stationNoPattern) })
 				.execute()
 
 			await queryRunner.commitTransaction()
+
+			Logger.debug({ rs1, rs2 })
 		} catch (e) {
 			queryRunner.rollbackTransaction()
-			Logger.error(e)
+			FileLogger.error(e)
 		} finally {
 			await queryRunner.release()
 		}
-
-		const totalDocsAfterDelete = await this.tenancyService.dataSource.getRepository(PMInventoryEntity).countBy({
-			rfid_status: IsNull(),
-			station_no: Like(stationNoPattern)
-		})
-
-		const totalPagesAfterDelete = Math.ceil(totalDocsAfterDelete / this.LIMIT_FETCH_DOCS)
-
-		return { totalDocs: totalDocsAfterDelete, totalPages: totalPagesAfterDelete }
 	}
 }
