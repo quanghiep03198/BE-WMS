@@ -30,7 +30,7 @@ export class PMInventoryController {
 		@Query('process', new ZodValidationPipe(processValidator))
 		producingProcess: ProducingProcessSuffix
 	) {
-		const FALLBACK_POLLING_DURATION: number = 500
+		const FALLBACK_POLLING_DURATION: number = 1000
 		const duration = pollingDuration ?? FALLBACK_POLLING_DURATION
 		if (!factoryCode) throw new BadRequestException('Factory code is required')
 
@@ -89,6 +89,6 @@ export class PMInventoryController {
 		@Headers('X-User-Company') factoryCode: string,
 		@Query(new ZodValidationPipe(deleteOrderValidator)) deleteOrderQueries: DeleteOrderDTO
 	) {
-		return await this.pmInventoryService.deleteUnexpectedOrder({ factoryCode, ...deleteOrderQueries })
+		return await this.pmInventoryService.softDeleteUnexpectedOrder({ factoryCode, ...deleteOrderQueries })
 	}
 }
