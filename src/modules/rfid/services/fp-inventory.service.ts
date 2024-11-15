@@ -50,13 +50,13 @@ export class FPInventoryService {
 
 	public async fetchItems({ page, filter }: RFIDSearchParams) {
 		try {
-			const [epcs, orders, sizes, has_invalid_epc] = await Promise.all([
+			const [epcs, orders, has_invalid_epc] = await Promise.all([
 				this.findWhereNotInStock({ page, filter }),
-				this.rfidRepository.getOrderQuantity(),
-				this.rfidRepository.getOrderSizes(),
+				// this.rfidRepository.getOrderQuantity(),
+				this.rfidRepository.getOrderDetails(),
 				this.rfidRepository.checkInvalidEpcExist()
 			])
-			return { epcs, orders, sizes, has_invalid_epc }
+			return { epcs, orders, has_invalid_epc }
 		} catch (error) {
 			throw new InternalServerErrorException(error)
 		}
@@ -112,11 +112,11 @@ export class FPInventoryService {
 	}
 
 	public async getManufacturingOrderDetail() {
-		const [sizes, orders] = await Promise.all([
-			this.rfidRepository.getOrderSizes(),
-			this.rfidRepository.getOrderQuantity()
-		])
-		return { sizes, orders }
+		// const [sizes, orders] = await Promise.all([
+		// 	this.rfidRepository.getOrderDetails(),
+		// 	this.rfidRepository.getOrderDetails()
+		// ])
+		return await this.rfidRepository.getOrderDetails()
 	}
 
 	public async updateStock(payload: UpdateStockDTO) {

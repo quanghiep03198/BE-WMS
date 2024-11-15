@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common'
 import { format } from 'date-fns'
+import { groupBy } from 'lodash'
 import { IsNull, Like, MoreThanOrEqual, Not } from 'typeorm'
 import { TenancyService } from '../../tenancy/tenancy.service'
 import { EXCLUDED_EPC_PATTERN, EXCLUDED_ORDERS, FALLBACK_VALUE, INTERNAL_EPC_PATTERN } from '../constants'
@@ -28,8 +29,8 @@ export class FPIRespository {
 	/**
 	 * @description Get manufacturing order sizes
 	 */
-	async getOrderSizes() {
-		return await this.tenancyService.dataSource
+	async getOrderDetails() {
+		const result = await this.tenancyService.dataSource
 			.getRepository(FPInventoryEntity)
 			.createQueryBuilder('inv')
 			.select([
@@ -63,9 +64,20 @@ export class FPIRespository {
 			})
 			.maxExecutionTime(1000)
 			.getRawMany()
+
+		return Object.entries(groupBy(result, 'mo_no')).map(([order, sizes]) => ({
+			mo_no: order,
+			mat_code: sizes[0].mat_code,
+			shoes_style_code_factory: sizes[0].shoes_style_code_factory,
+			sizes: sizes.map((size) => ({
+				size_numcode: size.size_numcode,
+				count: size.count
+			}))
+		}))
 	}
 
 	/**
+	 * @deprecated
 	 * @description Get manufacturing order quantity
 	 */
 	async getOrderQuantity() {

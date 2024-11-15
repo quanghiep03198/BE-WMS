@@ -31,7 +31,7 @@ export class FPInventoryController {
 		@Headers('X-User-Company') factoryCode: string,
 		@Headers('X-Polling-Duration') pollingDuration: number
 	) {
-		const FALLBACK_POLLING_DURATION: number = 500
+		const FALLBACK_POLLING_DURATION: number = 1000
 		const duration = pollingDuration ?? FALLBACK_POLLING_DURATION
 		if (!factoryCode) {
 			throw new BadRequestException('Factory code is required')
