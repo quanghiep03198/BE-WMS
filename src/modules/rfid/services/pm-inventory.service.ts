@@ -129,6 +129,9 @@ export class PMInventoryService {
 		)
 	}
 
+	/**
+	 * @deprecated
+	 */
 	async softDeleteUnexpectedOrder(args: DeleteOrderDTO & { factoryCode: string }): Promise<UpdateResult> {
 		const stationNoPattern = `%${args.factoryCode}_${args.process}%`
 
@@ -140,5 +143,52 @@ export class PMInventoryService {
 			},
 			{ rfid_status: InventoryActions.OUTBOUND }
 		)
+	}
+
+	async deleteUnexpectedOrder(args: DeleteOrderDTO & { factoryCode: string }) {
+		const stationNoPattern = `%${args.factoryCode}_${args.process}%`
+
+		const queryRunner = this.tenancyService.dataSource.createQueryRunner()
+		await queryRunner.startTransaction()
+		try {
+			await queryRunner.manager
+				.createQueryBuilder()
+				.delete()
+				.from('DV_DATA_LAKE.dbo.UHF_RFID_TEST')
+				.where(
+					'epc IN (' +
+						queryRunner.manager
+							.createQueryBuilder()
+							.select('EPC_Code', 'epc')
+							.from(/* SQL */ `DV_DATA_LAKE.dbo.dv_RFIDrecordmst`, 'dv')
+							.where(
+								/* SQL */ `
+									(LOWER(:order) = 'null' AND dv.mo_no IS NULL) 
+									OR (:order <> 'null' AND dv.mo_no = :order)`,
+								{ order: args.order }
+							)
+							.andWhere(/* SQL */ `dv.stationNO LIKE :stationNoPattern`, { stationNoPattern })
+							.andWhere(/* SQL */ `dv.rfid_status IS NULL`)
+							.getQuery() +
+						')'
+				)
+				.setParameters({ order: args.order, stationNoPattern })
+				.execute()
+
+			await queryRunner.manager
+				.createQueryBuilder()
+				.delete()
+				.from(PMInventoryEntity)
+				.where({ mo_no: String(args.order).toLowerCase() === 'null' ? IsNull() : args.order })
+				.andWhere({ rfid_status: IsNull() })
+				.andWhere({ station_no: Like(stationNoPattern) })
+				.execute()
+
+			await queryRunner.commitTransaction()
+		} catch {
+			queryRunner.rollbackTransaction()
+		} finally {
+			await queryRunner.release()
+		}
 	}
 }

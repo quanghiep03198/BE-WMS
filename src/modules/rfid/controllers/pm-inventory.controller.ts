@@ -89,6 +89,6 @@ export class PMInventoryController {
 		@Headers('X-User-Company') factoryCode: string,
 		@Query(new ZodValidationPipe(deleteOrderValidator)) deleteOrderQueries: DeleteOrderDTO
 	) {
-		return await this.pmInventoryService.softDeleteUnexpectedOrder({ factoryCode, ...deleteOrderQueries })
+		return await this.pmInventoryService.deleteUnexpectedOrder({ factoryCode, ...deleteOrderQueries })
 	}
 }
