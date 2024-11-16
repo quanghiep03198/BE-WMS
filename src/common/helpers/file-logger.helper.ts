@@ -21,8 +21,6 @@ export class FileLogger {
 	}
 
 	protected static rewrite(type: LogType, log: string) {
-		const data = readFileSync(this.logFilePath).toString().split('\n')
-		data.splice(0, 0, log)
 		const filePath = (() => {
 			switch (type) {
 				case 'debug':
@@ -33,6 +31,8 @@ export class FileLogger {
 					return this.logFilePath
 			}
 		})()
+		const data = readFileSync(filePath).toString().split('\n')
+		data.splice(0, 0, log)
 		writeFileSync(filePath, data.join('\n'))
 	}
 
