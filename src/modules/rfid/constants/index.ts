@@ -14,7 +14,8 @@ export enum InventoryStorageType {
 
 export enum ProducingProcessSuffix {
 	HALF_FINISHED = 'IH',
-	CUTTING = 'FC'
+	CUTTING = 'FC',
+	SHAPING = 'DH'
 }
 
 export const EXCLUDED_ORDERS: Array<string> = ['13D05B006']
