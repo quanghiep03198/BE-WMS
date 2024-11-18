@@ -5,14 +5,15 @@ import { ConfigService } from '@nestjs/config'
 import { EventEmitter2, OnEvent } from '@nestjs/event-emitter'
 import { AxiosRequestConfig } from 'axios'
 import { Cache } from 'cache-manager'
-import { uniqBy } from 'lodash'
+import { writeFileSync } from 'fs'
+import { isEmpty, isNil, uniqBy } from 'lodash'
+import { join } from 'path'
 import { FactoryCode } from '../department/constants'
 import { ThirdPartyApiEvent } from './constants'
 import {
 	FetchThirdPartyApiEvent,
 	OAuth2Credentials,
 	OAuth2TokenResponse,
-	SyncEventData,
 	SyncEventPayload,
 	ThirdPartyApiResponseData
 } from './third-party-api.interface'
@@ -99,7 +100,6 @@ export class ThirdPartyApiService {
 	}): Promise<ThirdPartyApiResponseData> {
 		try {
 			return await this.httpService.axiosRef.get<void, ThirdPartyApiResponseData>(`/epc/${param}`, {
-				method: 'GET',
 				headers: {
 					['Content-Type']: 'application/json',
 					...headers
@@ -110,11 +110,23 @@ export class ThirdPartyApiService {
 		}
 	}
 
+	private async getCustmerEpcByCmdNo(commandNumber) {
+		return await this.httpService.axiosRef.get<void, ThirdPartyApiResponseData[]>('/epcs', {
+			params: {
+				commandNumber
+			}
+		})
+	}
+
+	private getFileToStoreData(factoryCode: string) {
+		return `[${factoryCode}]-decker-api.data.json`
+	}
+
 	@OnEvent(ThirdPartyApiEvent.DISPATCH)
 	protected async pullCustomerDataByFactory(e: FetchThirdPartyApiEvent) {
 		await this.authenticate(e.params.factoryCode)
 
-		const data = await Promise.all(
+		const expectedCommandData = await Promise.all(
 			e.data.map(async (item) => {
 				return await this.getCustomerEpcData({
 					headers: {
@@ -125,14 +137,29 @@ export class ThirdPartyApiService {
 			})
 		)
 
-		const eventData: Array<SyncEventData> = uniqBy(data, (item) => item.epc.slice(0, 22)).map((item) => ({
-			epc: item.epc,
-			mo_no: item.commandNumber,
-			size_numcode: item.sizeNumber
-		}))
+		Logger.debug(expectedCommandData)
 
-		this.eventEmitter.emit(ThirdPartyApiEvent.SUCCESS, {
-			data: eventData,
+		if (expectedCommandData.every((item) => isNil(item) || isEmpty(item))) {
+			await this.cacheManager.del(`sync_process:${e.params.factoryCode}`)
+			return
+		}
+
+		const epcsByFetchedCommandData = uniqBy(
+			expectedCommandData.filter((item) => !isNil(item) || isEmpty(item)),
+			'commandNumber'
+		)
+			.map(async (item) => await this.getCustmerEpcByCmdNo(item.commandNumber))
+			.flat()
+
+		// TODO: temporarily save fetched data from customer to file
+		const storeDataFileName = this.getFileToStoreData(e.params.factoryCode)
+		writeFileSync(
+			join(__dirname, '../..', `/assets/data/${storeDataFileName}`),
+			JSON.stringify(epcsByFetchedCommandData)
+		)
+
+		this.eventEmitter.emit(ThirdPartyApiEvent.FULFILL, {
+			data: { storeDataFileName },
 			params: e.params
 		} satisfies SyncEventPayload)
 	}

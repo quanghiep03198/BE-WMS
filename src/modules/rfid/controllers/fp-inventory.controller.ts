@@ -37,7 +37,11 @@ export class FPInventoryController {
 			throw new BadRequestException('Factory code is required')
 		}
 
-		await this.fpiService.syncDataWithThirdPartyApi()
+		/**
+		 * @deprecated
+		 * Temporary solution to sync data with third party API, it need to update upsert logic
+		 * await this.fpiService.syncDataWithThirdPartyApi()
+		 */
 
 		return interval(duration).pipe(
 			switchMap(() =>

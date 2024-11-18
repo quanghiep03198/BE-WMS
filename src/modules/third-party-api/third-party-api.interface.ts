@@ -38,5 +38,7 @@ export interface FetchThirdPartyApiEvent {
 export type SyncEventData = Pick<RFIDCustomerEntity, 'epc' | 'mo_no' | 'size_numcode'>
 
 export interface SyncEventPayload extends Pick<FetchThirdPartyApiEvent, 'params'> {
-	data: Array<SyncEventData>
+	data: {
+		storeDataFileName
+	}
 }

@@ -1,5 +1,5 @@
 import { FileLogger } from '@/common/helpers/file-logger.helper'
-import { DATABASE_DATA_LAKE, DATA_SOURCE_DATA_LAKE, DATA_SOURCE_ERP, RecordStatus } from '@/databases/constants'
+import { DATABASE_DATA_LAKE, DATA_SOURCE_DATA_LAKE, DATA_SOURCE_ERP } from '@/databases/constants'
 import { CACHE_MANAGER } from '@nestjs/cache-manager'
 import { Inject, Injectable, InternalServerErrorException, NotFoundException, Scope } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
@@ -7,12 +7,11 @@ import { REQUEST } from '@nestjs/core'
 import { EventEmitter2, OnEvent } from '@nestjs/event-emitter'
 import { InjectDataSource } from '@nestjs/typeorm'
 import { Cache } from 'cache-manager'
-import { format } from 'date-fns'
 import { Request } from 'express'
 import { chunk, omit, pick } from 'lodash'
 import { I18nContext, I18nService } from 'nestjs-i18n'
 import { readFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { join, resolve } from 'node:path'
 import { Brackets, DataSource, FindOptionsWhere, In, IsNull } from 'typeorm'
 import { SqlServerConnectionOptions } from 'typeorm/driver/sqlserver/SqlServerConnectionOptions'
 import { TenancyService } from '../../tenancy/tenancy.service'
@@ -52,7 +51,6 @@ export class FPInventoryService {
 		try {
 			const [epcs, orders, has_invalid_epc] = await Promise.all([
 				this.findWhereNotInStock({ page, filter }),
-				// this.rfidRepository.getOrderQuantity(),
 				this.rfidRepository.getOrderDetails(),
 				this.rfidRepository.checkInvalidEpcExist()
 			])
@@ -112,10 +110,6 @@ export class FPInventoryService {
 	}
 
 	public async getManufacturingOrderDetail() {
-		// const [sizes, orders] = await Promise.all([
-		// 	this.rfidRepository.getOrderDetails(),
-		// 	this.rfidRepository.getOrderDetails()
-		// ])
 		return await this.rfidRepository.getOrderDetails()
 	}
 
@@ -279,12 +273,7 @@ export class FPInventoryService {
 			.getRepository(FPInventoryEntity)
 			.createQueryBuilder('inv')
 			.select(/* SQL */ `DISTINCT MIN(inv.epc) AS epc`)
-			.leftJoin(
-				RFIDCustomerEntity,
-				'cust',
-				/* SQL */ `cust.epc = inv.epc AND COALESCE(cust.mo_no, :fallbackValue) = COALESCE(inv.mo_no, :fallbackValue)`
-			)
-			.where(/* SQL */ `cust.mo_no IS NULL OR inv.mo_no IS NULL`)
+			.where(/* SQL */ `inv.mo_no IS NULL`)
 			.andWhere(/* SQL */ `inv.rfid_status IS NULL`)
 			.groupBy(/* SQL */ `LEFT(inv.epc, :matchEpcCharLen)`)
 			.setParameters({
@@ -306,7 +295,7 @@ export class FPInventoryService {
 		} satisfies FetchThirdPartyApiEvent)
 	}
 
-	@OnEvent(ThirdPartyApiEvent.SUCCESS)
+	@OnEvent(ThirdPartyApiEvent.FULFILL)
 	protected async syncWithCustomerData(e: SyncEventPayload) {
 		// * Intialize datasource
 		const tenant = this.tenancyService.findOneById(e.params.tenantId)
@@ -320,84 +309,16 @@ export class FPInventoryService {
 		if (!dataSource.isInitialized) {
 			await dataSource.initialize()
 		}
+
+		const storedDataFromApi = readFileSync(
+			resolve(join(__dirname, `/src/assets/data/${e.data.storeDataFileName}`), 'utf-8')
+		)
+
 		/**
-		 * @todo
-		 * With each command number that is fetched from third party API, we will have a unique manufacturing order number (mo_no)
-		 * Update the customer data with the manufacturing order number (mo_no) and size number (size_numcode)
+		 * TODO: Implement logic to upsert data from third party API that is stored in data assets
+		 * Previous logic is deprecated
 		 */
-		const queryRunner = dataSource.createQueryRunner()
-		await queryRunner.connect()
-		await queryRunner.startTransaction()
-
-		try {
-			for (const item of e.data) {
-				const orderInformationQuery = readFileSync(
-					join(__dirname, '../sql/order-information.sql'),
-					'utf-8'
-				).toString()
-
-				const [orderInformation, epcToUpsert] = await Promise.all([
-					this.datasourceDL.query<Partial<RFIDCustomerEntity>[]>(orderInformationQuery, [item.mo_no]),
-					queryRunner.manager
-						.getRepository(FPInventoryEntity)
-						.createQueryBuilder('inv')
-						.select(/* SQL */ `inv.epc`)
-						.where(/* SQL */ `inv.mo_no IS NULL`)
-						.andWhere(/* SQL */ `inv.rfid_status IS NULL`)
-						.andWhere(/* SQL */ `inv.epc = :epc`, { epc: item.epc })
-						.getRawOne<Record<'epc', string>>()
-				])
-
-				const upsertRFIDCustQueryBuilder = !!epcToUpsert
-					? queryRunner.manager
-							.getRepository(RFIDCustomerEntity)
-							.createQueryBuilder('cust')
-							.update()
-							.set({
-								...orderInformation[0],
-								...omit(item, 'epc')
-							})
-							.where(/* SQL */ `EPC_Code = :epc`, { epc: epcToUpsert.epc })
-					: queryRunner.manager
-							.createQueryBuilder()
-							.insert()
-							.into(RFIDCustomerEntity)
-							.values({
-								is_active: RecordStatus.ACTIVE,
-								created: format(new Date(), 'yyyy-MM-dd HH:mm:ss'),
-								size_qty: 1,
-								ri_type: 'A',
-								ri_foot: 'A',
-								ri_cancel: false,
-								factory_code_orders: e.params.factoryCode,
-								factory_name_orders: e.params.factoryCode,
-								factory_code_produce: e.params.factoryCode,
-								factory_name_produce: e.params.factoryCode,
-								ri_date: format(new Date(), 'yyyy-MM-dd HH:mm:ss'),
-								...orderInformation[0],
-								...item
-							})
-
-				const updateRFIDInvQueryBuilder = queryRunner.manager
-					.getRepository(FPInventoryEntity)
-					.createQueryBuilder('inv')
-					.update()
-					.set({ mo_no: item.mo_no })
-					.where(/* SQL */ `EPC_Code = :epc`, { epc: item.epc })
-					.andWhere(/* SQL */ `mo_no IS NULL`)
-					.andWhere(/* SQL */ `rfid_status IS NULL`)
-
-				await Promise.all([upsertRFIDCustQueryBuilder.execute(), updateRFIDInvQueryBuilder.execute()])
-			}
-			await queryRunner.commitTransaction()
-		} catch (error) {
-			FileLogger.error(error.message)
-			await queryRunner.rollbackTransaction()
-			throw new InternalServerErrorException(error)
-		} finally {
-			// * Clear cache sync flag after synchronized with customer data
-			await this.cacheManager.del(`sync_process:${e.params.factoryCode}`)
-			await queryRunner.release()
-		}
+		FileLogger.debug(storedDataFromApi)
+		return
 	}
 }
