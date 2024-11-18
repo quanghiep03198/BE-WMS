@@ -48,33 +48,40 @@ export class PMInventoryService {
 			.limit(this.LIMIT_FETCH_DOCS)
 			.maxExecutionTime(1000)
 
-		const [epcs, totalDocs, orders] = await Promise.all([
-			getEpcQueryBuilder.getRawMany(),
-			getEpcQueryBuilder.getCount(),
-			this.getOrderSizes(args)
-		])
+		const [epcs, orders] = await Promise.all([getEpcQueryBuilder.getRawMany(), this.getOrderSizes(args)])
 
-		const totalPages = Math.ceil(totalDocs / this.LIMIT_FETCH_DOCS)
-
-		const response = {
-			epcs: {
-				data: epcs,
-				limit: this.LIMIT_FETCH_DOCS,
-				page: args.page,
-				totalDocs,
-				totalPages,
-				hasNextPage: args.page < totalPages,
-				hasPrevPage: args.page > 1
-			} satisfies Pagination<Record<'epc' | 'mo_no', string>>,
-			orders: Object.entries(groupBy(orders, 'mo_no')).map(([order, sizes]) => ({
-				mo_no: order,
-				mat_code: sizes[0].mat_code,
-				shoes_style_code_factory: sizes[0].shoes_style_code_factory,
-				sizes: sizes.map((size) => ({
+		const scannedOrders = Object.entries(groupBy(orders, 'mo_no')).map(([order, sizes]) => ({
+			mo_no: order,
+			mat_code: sizes[0].mat_code,
+			shoes_style_code_factory: sizes[0].shoes_style_code_factory,
+			sizes: sizes
+				.map((size) => ({
 					size_numcode: size.size_numcode,
 					count: size.count
 				}))
-			}))
+				.sort((s1, s2) => s1.size_numcode - s2.size_numcode)
+		}))
+
+		const totalDocs = scannedOrders.reduce(
+			(acc, curr) => acc + curr.sizes.reduce((_acc, _curr) => _acc + _curr.count, 0),
+			0
+		)
+
+		const totalPages = Math.ceil(totalDocs / this.LIMIT_FETCH_DOCS)
+
+		const scannedEpcs = {
+			data: epcs,
+			limit: this.LIMIT_FETCH_DOCS,
+			page: args.page,
+			totalDocs,
+			totalPages,
+			hasNextPage: args.page < totalPages,
+			hasPrevPage: args.page > 1
+		} satisfies Pagination<Record<'epc' | 'mo_no', string>>
+
+		const response = {
+			epcs: scannedEpcs,
+			orders: scannedOrders
 		}
 
 		return response
@@ -87,8 +94,8 @@ export class PMInventoryService {
 		const stationNoPattern = `%${args.factoryCode}_${args.producingProcess}%`
 
 		return await this.tenancyService.dataSource
-			.getRepository(PMInventoryEntity)
-			.createQueryBuilder('rec')
+			.getRepository(RFIDPMEntity)
+			.createQueryBuilder('match')
 			.select([
 				/* SQL */ `match.mo_no AS mo_no`,
 				/* SQL */ `match.mat_code AS mat_code`,
@@ -100,7 +107,7 @@ export class PMInventoryService {
 						ELSE COUNT(match.epc)  
 					END AS count`
 			])
-			.leftJoin(RFIDPMEntity, 'match', /* SQL */ `rec.epc = match.epc AND rec.mo_no = match.mo_no`)
+			.leftJoin(PMInventoryEntity, 'rec', /* SQL */ `rec.epc = match.epc AND rec.mo_no = match.mo_no`)
 			.where(/* SQL */ `rec.rfid_status IS NULL`)
 			.andWhere(/* SQL */ `rec.station_no LIKE :stationNoPattern`, { stationNoPattern })
 			.andWhere(/* SQL */ `match.ri_cancel = 0`)
@@ -154,23 +161,22 @@ export class PMInventoryService {
 			await queryRunner.manager
 				.createQueryBuilder()
 				.delete()
-				.from('DV_DATA_LAKE.dbo.UHF_RFID_TEST')
+				.from(/* SQL */ `DV_DATA_LAKE.dbo.UHF_RFID_TEST`)
 				.where(
-					'epc IN (' +
-						queryRunner.manager
-							.createQueryBuilder()
-							.select('EPC_Code', 'epc')
-							.from(/* SQL */ `DV_DATA_LAKE.dbo.dv_RFIDrecordmst`, 'dv')
-							.where(
-								/* SQL */ `
-									(LOWER(:order) = 'null' AND dv.mo_no IS NULL) 
-									OR (:order <> 'null' AND dv.mo_no = :order)`,
-								{ order: args.order }
-							)
-							.andWhere(/* SQL */ `dv.stationNO LIKE :stationNoPattern`, { stationNoPattern })
-							.andWhere(/* SQL */ `dv.rfid_status IS NULL`)
-							.getQuery() +
-						')'
+					/* SQL */ `epc IN (${queryRunner.manager
+						.createQueryBuilder()
+						.select('EPC_Code', 'epc')
+						.from(/* SQL */ `DV_DATA_LAKE.dbo.dv_RFIDrecordmst`, 'dv')
+						.where(
+							/* SQL */ `
+								(LOWER(:order) = 'null' AND dv.mo_no IS NULL) 
+								OR (:order <> 'null' AND dv.mo_no = :order)`,
+							{ order: args.order }
+						)
+						.andWhere(/* SQL */ `dv.stationNO LIKE :stationNoPattern`, { stationNoPattern })
+						.andWhere(/* SQL */ `dv.rfid_status IS NULL`)
+						.getQuery()}
+					)`
 				)
 				.setParameters({ order: args.order, stationNoPattern })
 				.execute()
