@@ -1,5 +1,5 @@
 import { FileLogger } from '@/common/helpers/file-logger.helper'
-import { DATASOURCE_DATA_LAKE } from '@/databases/constants'
+import { DATABASE_DATA_LAKE, DATA_SOURCE_DATA_LAKE, DATA_SOURCE_ERP } from '@/databases/constants'
 import { CACHE_MANAGER } from '@nestjs/cache-manager'
 import { Inject, Injectable, InternalServerErrorException, NotFoundException, Scope } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
@@ -11,52 +11,60 @@ import { Request } from 'express'
 import { chunk, omit, pick } from 'lodash'
 import { I18nContext, I18nService } from 'nestjs-i18n'
 import { readFileSync } from 'node:fs'
-import { join } from 'node:path'
-import { Brackets, DataSource, FindOptionsWhere, In, IsNull, Like } from 'typeorm'
+import { join, resolve } from 'node:path'
+import { Brackets, DataSource, FindOptionsWhere, In, IsNull } from 'typeorm'
 import { SqlServerConnectionOptions } from 'typeorm/driver/sqlserver/SqlServerConnectionOptions'
-import { FactoryCodeOrderRef } from '../department/constants'
-import { TenancyService } from '../tenancy/tenancy.service'
-import { FETCH_CUSTOMER_DATA, FETCH_CUSTOMER_DATA_SUCCESSFULLY } from '../third-party-api/constants'
-import { FetchThirdPartyApiEvent, SyncEvent } from '../third-party-api/third-party-api.interface'
-import { EXCLUDED_EPC_PATTERN, EXCLUDED_ORDERS, FALLBACK_VALUE, INTERNAL_EPC_PATTERN } from './constants'
-import { ExchangeEpcDTO, UpdateStockDTO } from './dto/rfid.dto'
-import { RFIDCustomerEntity } from './entities/rfid-customer.entity'
-import { RFIDInventoryEntity } from './entities/rfid-inventory.entity'
-import { RFIDSearchParams } from './rfid.interface'
-import { RFIDRepository } from './rfid.repository'
+import { TenancyService } from '../../tenancy/tenancy.service'
+import { ThirdPartyApiEvent } from '../../third-party-api/constants'
+import { FetchThirdPartyApiEvent, SyncEventPayload } from '../../third-party-api/third-party-api.interface'
+import {
+	EXCLUDED_EPC_PATTERN,
+	EXCLUDED_ORDERS,
+	FALLBACK_VALUE,
+	INTERNAL_EPC_PATTERN,
+	MATCH_EPC_CHAR_LEN
+} from '../constants'
+import { ExchangeEpcDTO, UpdateStockDTO } from '../dto/fp-inventory.dto'
+import { FPInventoryEntity } from '../entities/fp-inventory.entity'
+import { RFIDCustomerEntity } from '../entities/rfid-customer.entity'
+import { FPIRespository } from '../repositories/fp-inventory.repository'
+import { RFIDSearchParams, SearchCustOrderParams } from '../rfid.interface'
 
+/**
+ * @description Service for Finished Production Inventory (FPI)
+ */
 @Injectable({ scope: Scope.REQUEST })
-export class RFIDService {
+export class FPInventoryService {
 	constructor(
-		@InjectDataSource(DATASOURCE_DATA_LAKE) private readonly datasource: DataSource,
+		@InjectDataSource(DATA_SOURCE_DATA_LAKE) private readonly datasourceDL: DataSource,
+		@InjectDataSource(DATA_SOURCE_ERP) private readonly datasourceERP: DataSource,
 		@Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
 		@Inject(REQUEST) private readonly request: Request,
-		private readonly rfidRepository: RFIDRepository,
+		private readonly rfidRepository: FPIRespository,
 		private readonly eventEmitter: EventEmitter2,
 		private readonly tenancyService: TenancyService,
 		private readonly configService: ConfigService,
 		private readonly i18n: I18nService
 	) {}
 
-	async fetchItems({ page, filter }: RFIDSearchParams) {
+	public async fetchItems({ page, filter }: RFIDSearchParams) {
 		try {
-			const [epcs, orders, sizes, has_invalid_epc] = await Promise.all([
+			const [epcs, orders, has_invalid_epc] = await Promise.all([
 				this.findWhereNotInStock({ page, filter }),
-				this.rfidRepository.getOrderQuantity(),
-				this.rfidRepository.getOrderSizes(),
+				this.rfidRepository.getOrderDetails(),
 				this.rfidRepository.checkInvalidEpcExist()
 			])
-			return { epcs, orders, sizes, has_invalid_epc }
+			return { epcs, orders, has_invalid_epc }
 		} catch (error) {
 			throw new InternalServerErrorException(error)
 		}
 	}
 
-	async findWhereNotInStock({ page, filter }: RFIDSearchParams) {
+	public async findWhereNotInStock({ page, filter }: RFIDSearchParams) {
 		const LIMIT_FETCH_DOCS = 50
 
 		const queryBuilder = this.tenancyService.dataSource
-			.getRepository(RFIDInventoryEntity)
+			.getRepository(FPInventoryEntity)
 			.createQueryBuilder('inv')
 			.select(/* SQL */ `inv.epc`, 'epc')
 			.addSelect(/* SQL */ `COALESCE(inv.mo_no_actual, inv.mo_no, :fallbackValue)`, 'mo_no')
@@ -71,6 +79,7 @@ export class RFIDService {
 					})
 				})
 			)
+			.maxExecutionTime(1000)
 			.setParameters({
 				fallbackValue: FALLBACK_VALUE,
 				excludedOrders: EXCLUDED_ORDERS,
@@ -100,16 +109,12 @@ export class RFIDService {
 		}
 	}
 
-	async getManufacturingOrderDetail() {
-		const [sizes, orders] = await Promise.all([
-			this.rfidRepository.getOrderSizes(),
-			this.rfidRepository.getOrderQuantity()
-		])
-		return { sizes, orders }
+	public async getManufacturingOrderDetail() {
+		return await this.rfidRepository.getOrderDetails()
 	}
 
-	async updateStock(payload: UpdateStockDTO) {
-		const repository = this.tenancyService.dataSource.getRepository(RFIDInventoryEntity)
+	public async updateStock(payload: UpdateStockDTO) {
+		const repository = this.tenancyService.dataSource.getRepository(FPInventoryEntity)
 		const updatePayload = omit(payload, 'mo_no')
 		const queryBuilder = repository.createQueryBuilder().update().set(updatePayload)
 
@@ -125,7 +130,7 @@ export class RFIDService {
 		return await queryBuilder.execute()
 	}
 
-	async deleteUnexpectedOrder(orderCode: string) {
+	public async deleteUnexpectedOrder(orderCode: string) {
 		if (orderCode === FALLBACK_VALUE) return // * Only delete defined manufacturing order
 
 		const queryRunner = this.tenancyService.dataSource.createQueryRunner()
@@ -142,7 +147,7 @@ export class RFIDService {
 			await queryRunner.manager
 				.createQueryBuilder()
 				.delete()
-				.from(RFIDInventoryEntity)
+				.from(FPInventoryEntity)
 				.where({ mo_no: orderCode })
 				.orWhere({ mo_no_actual: orderCode })
 				.execute()
@@ -155,31 +160,39 @@ export class RFIDService {
 		}
 	}
 
-	async searchCustomerOrder(factoryCode: string, searchTerm: string) {
-		/** @description Start year of Republic of China (Taiwan) */
-		const ROC_ESTABLISHMENT_YEAR: number = 1911 // * Start year of Republic of China (Taiwan)
+	public async searchCustomerOrder(params: SearchCustOrderParams) {
+		const subQuery = this.datasourceERP
+			.createQueryBuilder()
+			.select('manu.mo_no', 'mo_no')
+			.from(/* SQL */ `wuerp_vnrd.dbo.ta_manufacturmst`, 'manu')
+			.where(/* SQL */ `manu.cofactory_code = :factoryCode`)
+			.andWhere(/* SQL */ `manu.created >= CAST(DATEADD(YEAR, -2, GETDATE()) AS DATE)`)
+			.setParameter('factoryCode', params.factoryCode)
 
-		/** @description Current year of Republic of China */
-		const currentRepublicOfChinaYear: number = new Date().getFullYear() - ROC_ESTABLISHMENT_YEAR
-
-		/** @description Prefix of manufacturing order code*/
-		const orderCodePrefix: string = currentRepublicOfChinaYear.toString().slice(1) + FactoryCodeOrderRef[factoryCode]
-
-		return await this.datasource.query(
-			/* SQL */ `
-					WITH datalist as (
-						SELECT mo_no
-						FROM DV_DATA_LAKE.dbo.dv_RFIDrecordmst_cust
-						UNION ALL SELECT mo_no
-						FROM DV_DATA_LAKE.dbo.dv_rfidmatchmst_cust
-					) SELECT DISTINCT TOP 5 * FROM datalist 
-					WHERE mo_no LIKE CONCAT('%', @0, '%')
-					AND mo_no LIKE CONCAT(@1, '%')`,
-			[searchTerm, orderCodePrefix]
-		)
+		return await this.datasourceDL
+			.createQueryBuilder()
+			.select(/* SQL */ `DISTINCT TOP 5 mo_no AS mo_no`)
+			.from(RFIDCustomerEntity, 'cust')
+			.where(/* SQL */ `mo_no IN (${subQuery.getQuery()})`)
+			.andWhere(/* SQL */ `mo_no LIKE :searchTerm`, { searchTerm: `%${params.searchTerm}%` })
+			.andWhere(
+				new Brackets((qb) => {
+					if (params.productionCode === FALLBACK_VALUE) return qb
+					return qb
+						.andWhere(/* SQL */ `mat_code = :productionCode`, { productionCode: params.productionCode })
+						.andWhere(
+							new Brackets((qb) => {
+								if (!params.sizeNumCode) return qb
+								return qb.andWhere(/* SQL */ `size_numcode = :sizeNumCode`, { sizeNumCode: params.sizeNumCode })
+							})
+						)
+				})
+			)
+			.setParameters(subQuery.getParameters())
+			.getRawMany()
 	}
 
-	async exchangeEpc(payload: ExchangeEpcDTO) {
+	public async exchangeEpc(payload: ExchangeEpcDTO) {
 		const queryRunner = this.tenancyService.dataSource.createQueryRunner()
 
 		const epcToExchange = payload.multi
@@ -205,7 +218,7 @@ export class RFIDService {
 					.getRepository(RFIDCustomerEntity)
 					.createQueryBuilder('cust')
 					.select(/* SQL */ `TOP ${payload.quantity} cust.*`)
-					.innerJoin(RFIDInventoryEntity, 'inv', /* SQL */ `cust.epc = inv.epc`)
+					.innerJoin(FPInventoryEntity, 'inv', /* SQL */ `cust.epc = inv.epc`)
 					.where(
 						new Brackets((qb) => {
 							return qb.where(/* SQL */ `cust.mo_no IS NULL OR inv.mo_no IS NULL`)
@@ -222,19 +235,19 @@ export class RFIDService {
 					.insert(unknownCustomerEpc.map((item) => omit({ ...item, mo_no: payload.mo_no_actual }, 'keyid')))
 
 				for (const epcBatch of epcBatches) {
-					const criteria: FindOptionsWhere<RFIDCustomerEntity | RFIDInventoryEntity> = {
+					const criteria: FindOptionsWhere<RFIDCustomerEntity | FPInventoryEntity> = {
 						epc: In(epcBatch)
 					}
-					await queryRunner.manager.update(RFIDInventoryEntity, criteria, update)
+					await queryRunner.manager.update(FPInventoryEntity, criteria, update)
 				}
 			} else {
 				for (const epcBatch of epcBatches) {
-					const criteria: FindOptionsWhere<RFIDCustomerEntity | RFIDInventoryEntity> = {
+					const criteria: FindOptionsWhere<RFIDCustomerEntity | FPInventoryEntity> = {
 						epc: In(epcBatch)
 					}
 					await Promise.all([
 						queryRunner.manager.update(RFIDCustomerEntity, criteria, update),
-						queryRunner.manager.update(RFIDInventoryEntity, criteria, update)
+						queryRunner.manager.update(FPInventoryEntity, criteria, update)
 					])
 				}
 			}
@@ -247,87 +260,65 @@ export class RFIDService {
 		}
 	}
 
-	async fetchThirdPartyApi() {
-		// * First 22 characters in EPC will have the same manufacturing order code (mo_no)
-		const MATCH_EPC_CHAR_LEN = 22
+	public async syncDataWithThirdPartyApi() {
+		const tenantId = String(this.request.headers['x-tenant-id'])
+		const factoryCode = String(this.request.headers['x-user-company'])
 
+		// * Prevent multiple sync process
+		const syncProcessFlag = await this.cacheManager.get(`sync_process:${factoryCode}`)
+		if (syncProcessFlag) return
+
+		// * First 22 characters in EPC will have the same manufacturing order code (mo_no)
 		const unknownCustomerEpc = await this.tenancyService.dataSource
-			.getRepository(RFIDInventoryEntity)
+			.getRepository(FPInventoryEntity)
 			.createQueryBuilder('inv')
 			.select(/* SQL */ `DISTINCT MIN(inv.epc) AS epc`)
-			.innerJoin(RFIDCustomerEntity, 'cust', /* SQL */ `cust.epc = inv.epc`)
-			.where(
-				new Brackets((qb) => {
-					return qb.where(/* SQL */ `cust.mo_no IS NULL`).orWhere(/* SQL */ `inv.mo_no IS NULL`)
-				})
-			)
-			.groupBy(/* SQL */ `LEFT(inv.epc, ${MATCH_EPC_CHAR_LEN})`)
+			.where(/* SQL */ `inv.mo_no IS NULL`)
+			.andWhere(/* SQL */ `inv.rfid_status IS NULL`)
+			.groupBy(/* SQL */ `LEFT(inv.epc, :matchEpcCharLen)`)
+			.setParameters({
+				fallbackValue: FALLBACK_VALUE,
+				matchEpcCharLen: MATCH_EPC_CHAR_LEN
+			})
 			.getRawMany()
 
 		// * If exist customer's EPCs that do not have manufacturing order, emit event to synchronize
 		if (unknownCustomerEpc.length === 0) return
-		const distinctEpcPatterns = unknownCustomerEpc.map((item) => item.epc)
-		const tenantId = String(this.request.headers['x-tenant-id'])
-		const factoryCode = String(this.request.headers['x-user-company'])
 
-		await this.eventEmitter.emitAsync(FETCH_CUSTOMER_DATA, {
+		const distinctEpc = unknownCustomerEpc.map((item) => item.epc)
+		// * Set cache flag to prevent multiple sync process
+		await this.cacheManager.set(`sync_process:${factoryCode}`, true, 60 * 1000 * 5)
+
+		this.eventEmitter.emit(ThirdPartyApiEvent.DISPATCH, {
 			params: { tenantId, factoryCode },
-			data: distinctEpcPatterns
+			data: distinctEpc
 		} satisfies FetchThirdPartyApiEvent)
 	}
 
-	@OnEvent(FETCH_CUSTOMER_DATA_SUCCESSFULLY)
-	async syncWithCustomerData(e: SyncEvent) {
+	@OnEvent(ThirdPartyApiEvent.FULFILL)
+	protected async syncWithCustomerData(e: SyncEventPayload) {
 		// * Intialize datasource
 		const tenant = this.tenancyService.findOneById(e.params.tenantId)
 		const dataSource = new DataSource({
 			...this.configService.getOrThrow<SqlServerConnectionOptions>('database'),
-			entities: [RFIDCustomerEntity, RFIDInventoryEntity],
-			host: tenant.host
+			entities: [join(__dirname, '../entities/*.entity.{ts,js}')],
+			host: tenant.host,
+			database: DATABASE_DATA_LAKE
 		})
 
 		if (!dataSource.isInitialized) {
 			await dataSource.initialize()
 		}
 
-		/**
-		 * @todo
-		 * With each command number that is fetched from third party API, we will have a unique manufacturing order number (mo_no)
-		 * Update the customer data with the manufacturing order number (mo_no) and size number (size_numcode)
-		 */
-		const queryRunner = dataSource.createQueryRunner()
-		await queryRunner.connect()
-		await queryRunner.startTransaction()
+		const storedDataFromApi = readFileSync(
+			resolve(join(__dirname, `/src/assets/data/${e.data.storeDataFileName}`), 'utf-8')
+		)
 
-		try {
-			for (const item of e.data) {
-				const orderInformationQuery = readFileSync(
-					join(__dirname, './sql/order-information.sql'),
-					'utf-8'
-				).toString()
-				const orderInformation = await queryRunner.query(orderInformationQuery, [item.updater.mo_no])
-				await Promise.all([
-					queryRunner.manager.getRepository(RFIDCustomerEntity).update(
-						{ epc: Like(item.matchEpcPattern) },
-						{
-							...orderInformation[0],
-							...item.updater
-						}
-					),
-					queryRunner.manager
-						.getRepository(RFIDInventoryEntity)
-						.update({ epc: Like(item.matchEpcPattern) }, pick(item.updater, 'mo_no'))
-				])
-			}
-			await queryRunner.commitTransaction()
-		} catch (error) {
-			FileLogger.error(error.message)
-			await queryRunner.rollbackTransaction()
-			throw new InternalServerErrorException(error)
-		} finally {
-			// * Clear cache sync flag after synchronized with customer data
-			await this.cacheManager.del(`sync_process:${e.params.factoryCode}`)
-			await queryRunner.release()
-		}
+		/**
+		 * TODO: Implement logic to upsert data from third party API that is stored in data assets
+		 * Previous logic is deprecated
+		 */
+		FileLogger.debug(storedDataFromApi)
+		return
 	}
 }

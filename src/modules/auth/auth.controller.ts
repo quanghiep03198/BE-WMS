@@ -1,10 +1,8 @@
 import { Api, HttpMethod } from '@/common/decorators/api.decorator'
 import { AuthGuard } from '@/common/decorators/auth.decorator'
 import { User } from '@/common/decorators/user.decorator'
-import { ZodValidationPipe } from '@/common/pipes/zod-validation.pipe'
-import { Controller, Param, UseGuards, UsePipes } from '@nestjs/common'
+import { Controller, Param, UseGuards } from '@nestjs/common'
 import { AuthService } from './auth.service'
-import { loginValidator } from './dto/auth.dto'
 import { LocalAuthGuard } from './guards/local-auth.guard'
 
 @Controller()
@@ -16,7 +14,6 @@ export class AuthController {
 		method: HttpMethod.POST
 	})
 	@UseGuards(LocalAuthGuard)
-	@UsePipes(new ZodValidationPipe(loginValidator))
 	async login(@User() user) {
 		return await this.authService.login(user)
 	}

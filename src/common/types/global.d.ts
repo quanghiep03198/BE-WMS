@@ -59,4 +59,6 @@ export declare global {
 			JWT_EXPIRES: string
 		}
 	}
+
+	type FirstParameter<T> = T extends (first: infer FirstArgument, ...args: any[]) => infer T ? FirstArgument : never
 }

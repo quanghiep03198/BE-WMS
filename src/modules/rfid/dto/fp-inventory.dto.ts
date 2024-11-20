@@ -7,7 +7,12 @@ export const updateStockValidator = z
 		rfid_use: z.nativeEnum(InventoryStorageType, { required_error: 'Required' }),
 		dept_code: z.string().optional(),
 		storage: z.string().optional(),
-		mo_no: z.string({ required_error: 'Required' }).min(1, { message: 'Required' }).nullable()
+		mo_no: z.string({ required_error: 'Required' }).min(1, { message: 'Required' }).nullable(),
+		quantity: z.number().optional()
+	})
+	.refine((values) => {
+		values.quantity = values.rfid_status === InventoryActions.INBOUND ? 1 : -1
+		return true
 	})
 	.superRefine((values, ctx) => {
 		if (values.rfid_status === InventoryActions.INBOUND) {
@@ -25,7 +30,7 @@ export const updateStockValidator = z
 export const exchangeEpcValidator = z
 	.object({
 		mo_no: z.string({ required_error: 'Required' }).min(1, { message: 'Required' }),
-		mo_no_actual: z.string({ required_error: 'Required' }).min(1, { message: 'Required' }),
+		mo_no_actual: z.string({ required_error: 'Required' }).min(1, { message: 'Required' }).toUpperCase(),
 		size_numcode: z.string({ required_error: 'Required' }).min(1, { message: 'Required' }).optional(),
 		mat_code: z.string({ required_error: 'Required' }).min(1, { message: 'Required' }).optional(),
 		quantity: z.number({ required_error: 'Required' }).positive().optional(),

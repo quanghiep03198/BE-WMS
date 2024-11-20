@@ -1,7 +1,6 @@
 import { Api, HttpMethod } from '@/common/decorators/api.decorator'
 import { AuthGuard } from '@/common/decorators/auth.decorator'
 import { ZodValidationPipe } from '@/common/pipes/zod-validation.pipe'
-import { CACHE_MANAGER } from '@nestjs/cache-manager'
 import {
 	BadRequestException,
 	Body,
@@ -9,51 +8,44 @@ import {
 	DefaultValuePipe,
 	Headers,
 	HttpStatus,
-	Inject,
 	Param,
 	ParseIntPipe,
 	Query,
-	Sse,
-	UsePipes
+	Sse
 } from '@nestjs/common'
-import { Cache } from 'cache-manager'
 import { catchError, from, interval, map, of, switchMap } from 'rxjs'
-import { ThirdPartyApiService } from '../third-party-api/third-party.service'
-import { ExchangeEpcDTO, exchangeEpcValidator, UpdateStockDTO, updateStockValidator } from './dto/rfid.dto'
-import { RFIDService } from './rfid.service'
+import { ExchangeEpcDTO, exchangeEpcValidator, UpdateStockDTO, updateStockValidator } from '../dto/fp-inventory.dto'
+import { SearchCustOrderParams } from '../rfid.interface'
+import { FPInventoryService } from '../services/fp-inventory.service'
 
-@Controller('rfid')
-export class RFIDController {
-	constructor(
-		@Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
-		private readonly thirdPartyApiService: ThirdPartyApiService,
-		private rfidService: RFIDService
-	) {}
+/**
+ * @description Controller for Finished Production Inventory (FPI)
+ */
+@Controller('rfid/fp-inventory')
+export class FPInventoryController {
+	constructor(private readonly fpiService: FPInventoryService) {}
 
-	@Sse('fetch-epc/sse')
+	@Sse('sse')
 	@AuthGuard()
 	async fetchLatestData(
 		@Headers('X-User-Company') factoryCode: string,
 		@Headers('X-Polling-Duration') pollingDuration: number
 	) {
-		const FALLBACK_POLLING_DURATION = 500
+		const FALLBACK_POLLING_DURATION: number = 1000
 		const duration = pollingDuration ?? FALLBACK_POLLING_DURATION
 		if (!factoryCode) {
 			throw new BadRequestException('Factory code is required')
 		}
-		const syncProcessFlag = await this.cacheManager.get(`sync_process:${factoryCode}`)
-		// * Prevent multiple sync process
-		if (!syncProcessFlag) {
-			await this.cacheManager.set(`sync_process:${factoryCode}`, true, 60 * 1000 * 60)
-			// * Authenticate third party API
-			const isAuthenticated = await this.thirdPartyApiService.authenticate(factoryCode)
-			// * Fetch third party API
-			if (isAuthenticated) this.rfidService.fetchThirdPartyApi()
-		}
+
+		/**
+		 * @deprecated
+		 * Temporary solution to sync data with third party API, it need to update upsert logic
+		 * await this.fpiService.syncDataWithThirdPartyApi()
+		 */
 
 		return interval(duration).pipe(
 			switchMap(() =>
-				from(this.rfidService.fetchItems({ page: 1 })).pipe(
+				from(this.fpiService.fetchItems({ page: 1 })).pipe(
 					catchError((error) => {
 						return of({ error: error.message })
 					})
@@ -69,7 +61,7 @@ export class RFIDController {
 	})
 	@AuthGuard()
 	async getManufacturingOrderDetail() {
-		return this.rfidService.getManufacturingOrderDetail()
+		return this.fpiService.getManufacturingOrderDetail()
 	}
 
 	@Api({
@@ -79,9 +71,16 @@ export class RFIDController {
 	@AuthGuard()
 	async searchCustomerOrder(
 		@Headers('X-User-Company') factoryCode: string,
+		@Query('target', new DefaultValuePipe('')) orderTarget: string,
+		@Query('production_code', new DefaultValuePipe('')) productionCode: string,
 		@Query('search', new DefaultValuePipe('')) searchTerm: string
 	) {
-		return await this.rfidService.searchCustomerOrder(factoryCode, searchTerm)
+		return await this.fpiService.searchCustomerOrder({
+			factoryCode,
+			orderTarget,
+			productionCode,
+			searchTerm
+		} satisfies SearchCustOrderParams)
 	}
 
 	@Api({
@@ -93,7 +92,7 @@ export class RFIDController {
 		@Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
 		@Query('filter', new DefaultValuePipe('')) filter: string
 	) {
-		return await this.rfidService.findWhereNotInStock({ page, filter })
+		return await this.fpiService.findWhereNotInStock({ page, filter })
 	}
 
 	@Api({
@@ -103,9 +102,8 @@ export class RFIDController {
 		message: 'common.updated'
 	})
 	@AuthGuard()
-	@UsePipes(new ZodValidationPipe(updateStockValidator))
-	async updateStock(@Body() payload: UpdateStockDTO) {
-		return await this.rfidService.updateStock(payload)
+	async updateStock(@Body(new ZodValidationPipe(updateStockValidator)) payload: UpdateStockDTO) {
+		return await this.fpiService.updateStock(payload)
 	}
 
 	@Api({
@@ -115,9 +113,8 @@ export class RFIDController {
 		message: 'common.updated'
 	})
 	@AuthGuard()
-	@UsePipes(new ZodValidationPipe(exchangeEpcValidator))
-	async exchangeEpc(@Body() payload: ExchangeEpcDTO) {
-		return await this.rfidService.exchangeEpc(payload)
+	async exchangeEpc(@Body(new ZodValidationPipe(exchangeEpcValidator)) payload: ExchangeEpcDTO) {
+		return await this.fpiService.exchangeEpc(payload)
 	}
 
 	@Api({
@@ -128,6 +125,6 @@ export class RFIDController {
 	})
 	@AuthGuard()
 	async deleteUnexpectedOrder(@Param('order') orderCode: string) {
-		return await this.rfidService.deleteUnexpectedOrder(orderCode)
+		return await this.fpiService.deleteUnexpectedOrder(orderCode)
 	}
 }

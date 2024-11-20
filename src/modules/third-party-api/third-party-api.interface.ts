@@ -35,11 +35,10 @@ export interface FetchThirdPartyApiEvent {
 	data: Array<string>
 }
 
-export interface SyncDataUpdater {
-	matchEpcPattern: string
-	updater: Pick<RFIDCustomerEntity, 'mo_no' | 'size_numcode'>
-}
+export type SyncEventData = Pick<RFIDCustomerEntity, 'epc' | 'mo_no' | 'size_numcode'>
 
-export interface SyncEvent extends Pick<FetchThirdPartyApiEvent, 'params'> {
-	data: Array<SyncDataUpdater>
+export interface SyncEventPayload extends Pick<FetchThirdPartyApiEvent, 'params'> {
+	data: {
+		storeDataFileName
+	}
 }

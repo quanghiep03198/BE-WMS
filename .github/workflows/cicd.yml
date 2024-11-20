@@ -16,7 +16,7 @@ jobs:
       steps:
          - uses: actions/checkout@v4
            with:
-              fetch-depth: 0 # Shallow clones should be disabled for a better relevancy of analysis
+              fetch-depth: 0
          - name: SonarCloud Scan
            uses: SonarSource/sonarcloud-github-action@master
            env:
@@ -28,7 +28,11 @@ jobs:
       runs-on: [self-hosted, 'Server-19']
       steps:
          - name: Checkout code
-           uses: actions/checkout@v4
+           shell: bash
+           run: |
+              git fetch
+              git reset --hard
+              git pull origin develop --rebase
 
          - name: Load environment variables
            shell: bash
@@ -42,16 +46,22 @@ jobs:
            shell: bash
            run: npm run build
 
-         - name: Restart PM2 process
+         - name: Restart and save PM2 process
            shell: bash
-           run: pm2 restart ecosystem.config.js
+           run: |
+              pm2 restart ecosystem.config.js
+              pm2 save
 
    deploy-server-51:
       name: Deploy to server 51
       runs-on: [self-hosted, 'Server-51']
       steps:
          - name: Checkout code
-           uses: actions/checkout@v4
+           shell: bash
+           run: |
+              git fetch
+              git reset --hard
+              git pull origin develop --rebase
 
          - name: Load environment variables
            shell: bash
@@ -65,6 +75,8 @@ jobs:
            shell: bash
            run: npm run build
 
-         - name: Restart PM2 process
+         - name: Restart and save PM2 process
            shell: bash
-           run: pm2 restart ecosystem.config.js
+           run: |
+              pm2 restart ecosystem.config.js
+              pm2 save

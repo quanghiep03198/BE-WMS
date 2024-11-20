@@ -1,12 +1,13 @@
+import { ZodValidationPipe } from '@/common/pipes/zod-validation.pipe'
 import { CACHE_MANAGER } from '@nestjs/cache-manager'
-import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common'
+import { BadRequestException, Inject, Injectable, NotFoundException, UsePipes } from '@nestjs/common'
 import { JwtService } from '@nestjs/jwt'
 import { Cache } from 'cache-manager'
 import { pick } from 'lodash'
 import { I18nContext, I18nService } from 'nestjs-i18n'
 import { UserEntity } from '../user/entities/user.entity'
 import { UserService } from '../user/services/user.service'
-import { LoginDTO } from './dto/auth.dto'
+import { LoginDTO, loginValidator } from './dto/auth.dto'
 
 @Injectable()
 export class AuthService {
@@ -19,6 +20,7 @@ export class AuthService {
 
 	private TOKEN_CACHE_TTL = 60 * 1000 * 60 + 30 * 1000
 
+	@UsePipes(new ZodValidationPipe(loginValidator))
 	async validateUser(payload: LoginDTO) {
 		const user = await this.userService.findUserByUsername(payload.username)
 		if (!user) throw new NotFoundException(this.i18n.t('auth.user_not_found', { lang: I18nContext.current().lang }))

@@ -13,9 +13,9 @@ export abstract class BaseAbstractService<Entity extends BaseAbstractEntity> imp
 		return await this.repository.save(newRecord)
 	}
 
-	async insertMany(payload: Entity[]) {
+	async insertMany(payload: DeepPartial<Entity>[]) {
 		const newRecords = this.repository.create(payload)
-		return await this.repository.insert(newRecords as any) // TODO: need fix type
+		return await this.repository.insert(newRecords as FirstParameter<typeof this.repository.insert>)
 	}
 
 	async findAll(): Promise<Entity[]> {

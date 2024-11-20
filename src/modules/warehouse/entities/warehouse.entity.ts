@@ -23,6 +23,12 @@ export class WarehouseEntity extends BaseAbstractEntity {
 	@Column({ name: 'wa_dept_code' })
 	dept_code: string
 
+	@Column({ name: 'wa_employee_code' })
+	employee_code: string
+
+	@Column({ name: 'wa_employee_name' })
+	employee_name: string
+
 	@Column({ type: 'bit', transformer: [new BoolBitTransformer()] })
 	is_default: Bit | boolean
 

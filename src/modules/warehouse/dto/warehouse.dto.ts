@@ -8,7 +8,11 @@ export const createWarehouseValidator = z.object({
 	area: z.number({ required_error: 'This field is required' }).min(0, { message: 'This field is required' }),
 	is_disable: z.boolean().default(false),
 	is_default: z.boolean().default(false),
-	remark: z.string().optional()
+	user_code_created: z.string().nullable().optional(),
+	user_name_created: z.string().nullable().optional(),
+	user_code_updated: z.string().nullable().optional(),
+	user_name_updated: z.string().nullable().optional(),
+	remark: z.string().nullable().optional()
 })
 
 export const updateWarehouseValidator = createWarehouseValidator.partial()

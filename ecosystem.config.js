@@ -5,7 +5,9 @@ module.exports = {
 			script: './dist/main.js',
 			cwd: __dirname,
 			autorestart: true,
-			exec_mode: 'cluster'
+			watch: false,
+			exec_mode: 'cluster',
+			max_memory_restart: '500M'
 		}
 	]
 }

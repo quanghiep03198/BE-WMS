@@ -1,41 +1,22 @@
 SELECT
-	a.mo_no AS mo_no,
-	a.mo_noseq AS mo_noseq,
-	a.or_no AS or_no,
-	or1.or_custpo,
-	d.shoestyle_codefactory AS shoes_style_code_factory,
-	-- d.shoestyle_code AS shoes_style_code,
-	os.size_code AS size_code,
-	c.mat_code AS mat_code
-FROM
-	wuerp_vnrd.dbo.ta_manufacturdet AS a
-	LEFT JOIN wuerp_vnrd.dbo.ta_ordermst or1 ON or1.or_no= a.or_no
-		AND or1.isactive= 'Y'
-	LEFT JOIN wuerp_vnrd.dbo.ta_manufacturdet manu ON manu.mo_templink= a.mo_templink_related
-		AND manu.isactive= 'Y'
-	LEFT JOIN (
-		SELECT COUNT(a.or_qtypacking) AS or_qtypacking, a.or_no
-		FROM wuerp_vnrd.dbo.ta_orderdet a
-		WHERE a.isactive= 'Y'
-		GROUP BY a.or_no
-	) or2 ON or2.or_no = or1.or_no
-	LEFT JOIN wuerp_vnrd.dbo.ta_manufacturmst a1 ON a1.mo_no= a.mo_no
-		AND a1.isactive= 'Y'
-	LEFT JOIN wuerp_vnrd.dbo.ta_brand b1 ON b1.custbrand_id= a1.custbrand_id
-		AND b1.isactive= 'Y'
-	LEFT JOIN wuerp_vnrd.dbo.ta_productmst c ON c.mat_code= a1.mat_code
-		AND c.isactive= 'Y'
-	LEFT JOIN (
-  SELECT CAST(ISNULL( shoestyle_codecust, '' ) + '/' + ISNULL( shoestyle_namecust, '' ) AS NVARCHAR ( 255 ) ) AS cust_shoestyle1, shoestyle_templink
-	FROM wuerp_vnrd.dbo.ta_shoestylecolor
-	WHERE isactive = 'Y' ) k ON k.shoestyle_templink= c.shoestyle_templink
-	LEFT JOIN wuerp_vnrd.dbo.ta_shoefactorymst d ON d.shoestyle_systemcodefty= c.shoestyle_systemcodefty
-		AND d.isactive= 'Y'
-	LEFT JOIN wuerp_vnrd.dbo.ta_ordersizerun os ON or2.or_no = os.or_no
-		AND os.isactive= 'Y'
-WHERE
-  a.isactive= 'Y'
-	AND a.mo_no = @0
-ORDER BY
-  a.mo_no,
-  a.mo_noseq ASC
+	a.mo_no[mo_no],
+	a.mat_code[mat_code],
+	b.mo_noseq[mo_noseq],
+	b.or_no[or_no],
+	d.or_custpo[or_custpo],
+	g.shoestyle_codefactory[shoestyle_codefactory],
+	g.shoestyle_code[shoestyle_code],
+	CAST(ISNULL(i.shoestyle_codecust,'') + '/' + ISNULL( i.shoestyle_namecust, '' ) AS nvarchar( 255 ))[cust_shoestyle],
+	k.size_code,
+	k.size_sumqty[size_qty]
+FROM wuerp_vnrd.dbo.ta_manufacturmst a
+	LEFT JOIN wuerp_vnrd.dbo.ta_manufacturdet b ON a.mo_no=b.mo_no AND b.isactive='Y'
+	LEFT JOIN wuerp_vnrd.dbo.ta_brand c ON c.custbrand_id = a.custbrand_id AND c.isactive = 'Y'
+	LEFT JOIN wuerp_vnrd.dbo.ta_ordermst d ON d.or_no = b.or_no AND d.isactive = 'Y'
+	LEFT JOIN wuerp_vnrd.dbo.ta_orderdet e ON e.or_no = d.or_no AND e.isactive = 'Y'
+	LEFT JOIN wuerp_vnrd.dbo.ta_productmst f ON f.mat_code= a.mat_code AND f.isactive= 'Y'
+	LEFT JOIN wuerp_vnrd.dbo.ta_shoefactorymst g ON g.shoestyle_systemcodefty = f.shoestyle_systemcodefty AND g.isactive = 'Y'
+	LEFT JOIN wuerp_vnrd.dbo.ta_ordersizerun h ON h.or_no = b.or_no AND h.isactive= 'Y'
+	LEFT JOIN wuerp_vnrd.dbo.ta_shoestylecolor i ON i.shoestyle_templink = f.shoestyle_templink and i.isactive = 'Y'
+	LEFT JOIN wuerp_vnrd.dbo.ta_ordersizerun k ON k.or_no = d.or_no AND k.isactive = 'Y'
+WHERE a.mo_no = @0

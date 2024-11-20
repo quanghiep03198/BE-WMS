@@ -1,10 +1,10 @@
 import { HttpModule, HttpService } from '@nestjs/axios'
-import { HttpStatus, Logger, Module, OnModuleInit } from '@nestjs/common'
+import { HttpStatus, Module, OnModuleInit } from '@nestjs/common'
 import { Agent } from 'https'
 // import { ThirdPartyApiInterceptor } from './third-party-api.interceptor'
 import { ConfigService } from '@nestjs/config'
 import { AxiosError, AxiosResponse, InternalAxiosRequestConfig } from 'axios'
-import { ThirdPartyApiService } from './third-party.service'
+import { ThirdPartyApiService } from './third-party-api.service'
 
 @Module({
 	imports: [HttpModule.register({ httpsAgent: new Agent({ keepAlive: true }) })],
@@ -23,7 +23,6 @@ export class ThirdPartyApiModule implements OnModuleInit {
 
 		this.httpService.axiosRef.interceptors.request.use(
 			async (config) => {
-				Logger.debug(config.baseURL)
 				if (config.baseURL === this.configService.get('THIRD_PARTY_API_URL')) {
 					const factoryCode = config.headers['X-Factory']
 					const accessToken = await this.thirdPartyApiService.getTokenByFactory(factoryCode)

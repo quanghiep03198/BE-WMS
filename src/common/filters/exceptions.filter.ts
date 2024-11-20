@@ -1,6 +1,7 @@
 import { ArgumentsHost, Catch, ExceptionFilter, HttpException, HttpStatus } from '@nestjs/common'
 import { HttpAdapterHost } from '@nestjs/core'
 import { FileLogger } from '../helpers/file-logger.helper'
+import { IResponseBody } from '../helpers/transform-response.helper'
 
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
@@ -15,9 +16,10 @@ export class AllExceptionsFilter implements ExceptionFilter {
 		const { httpAdapter } = this.httpAdapterHost
 		const ctx = host.switchToHttp()
 		const httpStatus = exception instanceof HttpException ? exception.getStatus() : HttpStatus.INTERNAL_SERVER_ERROR
-		const responseBody = {
+		const responseBody: IResponseBody = {
 			message: exception.message,
 			statusCode: httpStatus,
+			stack: exception.stack,
 			timestamp: new Date().toISOString(),
 			path: httpAdapter.getRequestUrl(ctx.getRequest())
 		}
