@@ -3,7 +3,7 @@ import { BaseAbstractEntity } from '@/modules/_base/base.abstract.entity'
 import { Column, Entity } from 'typeorm'
 import { InventoryActions } from '../constants'
 
-@Entity('dv_RFIDrecordmst', { database: DATABASE_DATA_LAKE, synchronize: false })
+@Entity('dv_InvRFIDrecordmst', { database: DATABASE_DATA_LAKE, synchronize: false })
 export class PMInventoryEntity extends BaseAbstractEntity {
 	@Column({ name: 'stationNO', type: 'nvarchar', length: 20 })
 	station_no: string

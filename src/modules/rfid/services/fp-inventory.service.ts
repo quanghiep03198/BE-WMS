@@ -24,11 +24,11 @@ import {
 	INTERNAL_EPC_PATTERN,
 	MATCH_EPC_CHAR_LEN
 } from '../constants'
-import { ExchangeEpcDTO, UpdateStockDTO } from '../dto/fp-inventory.dto'
+import { ExchangeEpcDTO, SearchCustOrderParamsDTO, UpdateStockDTO } from '../dto/fp-inventory.dto'
 import { FPInventoryEntity } from '../entities/fp-inventory.entity'
 import { RFIDCustomerEntity } from '../entities/rfid-customer.entity'
 import { FPIRespository } from '../repositories/fp-inventory.repository'
-import { RFIDSearchParams, SearchCustOrderParams } from '../rfid.interface'
+import { RFIDSearchParams } from '../rfid.interface'
 
 /**
  * @description Service for Finished Production Inventory (FPI)
@@ -47,10 +47,10 @@ export class FPInventoryService {
 		private readonly i18n: I18nService
 	) {}
 
-	public async fetchItems({ page, filter }: RFIDSearchParams) {
+	public async fetchItems(args: RFIDSearchParams) {
 		try {
 			const [epcs, orders, has_invalid_epc] = await Promise.all([
-				this.findWhereNotInStock({ page, filter }),
+				this.findWhereNotInStock(args),
 				this.rfidRepository.getOrderDetails(),
 				this.rfidRepository.checkInvalidEpcExist()
 			])
@@ -60,7 +60,7 @@ export class FPInventoryService {
 		}
 	}
 
-	public async findWhereNotInStock({ page, filter }: RFIDSearchParams) {
+	public async findWhereNotInStock(args: RFIDSearchParams) {
 		const LIMIT_FETCH_DOCS = 50
 
 		const queryBuilder = this.tenancyService.dataSource
@@ -69,16 +69,22 @@ export class FPInventoryService {
 			.select(/* SQL */ `inv.epc`, 'epc')
 			.addSelect(/* SQL */ `COALESCE(inv.mo_no_actual, inv.mo_no, :fallbackValue)`, 'mo_no')
 			.where(/* SQL */ `inv.rfid_status IS NULL`)
-			.andWhere(/* SQL */ `inv.epc NOT LIKE :excludedEpcPattern`)
+			.andWhere(/* SQL */ `inv.record_time >= CAST(GETDATE() AS DATE)`)
+			.andWhere(/* SQL */ `inv.EPC_Code NOT LIKE :excludedEpcPattern`)
 			.andWhere(/* SQL */ `COALESCE(inv.mo_no_actual, inv.mo_no, :fallbackValue) NOT IN (:...excludedOrders)`)
 			.andWhere(
 				new Brackets((qb) => {
-					if (!filter) return qb
-					return qb.andWhere(/* SQL */ `COALESCE(inv.mo_no_actual, inv.mo_no, :fallbackValue) = :orderCode`, {
-						orderCode: filter
+					if (!args['mo_no.eq']) return qb
+					return qb.andWhere(/* SQL */ `COALESCE(inv.mo_no_actual, inv.mo_no, :fallbackValue) = :mo_no`, {
+						mo_no: args['mo_no.eq']
 					})
 				})
 			)
+			.orderBy(/* SQL */ `inv.mo_no`, 'ASC')
+			.addOrderBy(/* SQL */ `inv.epc`, 'ASC')
+			.addOrderBy(/* SQL */ `inv.record_time`, 'DESC')
+			.limit(LIMIT_FETCH_DOCS)
+			.offset((args.page - 1) * LIMIT_FETCH_DOCS)
 			.maxExecutionTime(1000)
 			.setParameters({
 				fallbackValue: FALLBACK_VALUE,
@@ -86,25 +92,17 @@ export class FPInventoryService {
 				excludedEpcPattern: EXCLUDED_EPC_PATTERN
 			})
 
-		const [data, totalDocs] = await Promise.all([
-			queryBuilder
-				.orderBy(/* SQL */ `inv.record_time`, 'DESC')
-				.addOrderBy(/* SQL */ `inv.epc`, 'ASC')
-				.take(LIMIT_FETCH_DOCS)
-				.skip((page - 1) * LIMIT_FETCH_DOCS)
-				.getRawMany(),
-			queryBuilder.getCount()
-		])
+		const [data, totalDocs] = await Promise.all([queryBuilder.getRawMany(), queryBuilder.getCount()])
 
 		const totalPages = Math.ceil(totalDocs / LIMIT_FETCH_DOCS)
 
 		return {
 			data,
-			hasNextPage: page < totalPages,
-			hasPrevPage: page > 1,
+			hasNextPage: args.page < totalPages,
+			hasPrevPage: args.page > 1,
 			totalDocs,
 			limit: LIMIT_FETCH_DOCS,
-			page,
+			page: args.page,
 			totalPages
 		}
 	}
@@ -160,32 +158,32 @@ export class FPInventoryService {
 		}
 	}
 
-	public async searchCustomerOrder(params: SearchCustOrderParams) {
+	public async searchCustomerOrder(params: SearchCustOrderParamsDTO) {
 		const subQuery = this.datasourceERP
 			.createQueryBuilder()
 			.select('manu.mo_no', 'mo_no')
 			.from(/* SQL */ `wuerp_vnrd.dbo.ta_manufacturmst`, 'manu')
-			.where(/* SQL */ `manu.cofactory_code = :factoryCode`)
+			.where(/* SQL */ `manu.cofactory_code = :factory`)
 			.andWhere(/* SQL */ `manu.created >= CAST(DATEADD(YEAR, -2, GETDATE()) AS DATE)`)
-			.setParameter('factoryCode', params.factoryCode)
+			.setParameter('factory_code', params['factory_code.eq'])
 
 		return await this.datasourceDL
 			.createQueryBuilder()
 			.select(/* SQL */ `DISTINCT TOP 5 mo_no AS mo_no`)
 			.from(RFIDCustomerEntity, 'cust')
 			.where(/* SQL */ `mo_no IN (${subQuery.getQuery()})`)
-			.andWhere(/* SQL */ `mo_no LIKE :searchTerm`, { searchTerm: `%${params.searchTerm}%` })
+			.andWhere(/* SQL */ `mo_no LIKE :searchTerm`, { searchTerm: `%${params.q}%` })
 			.andWhere(
 				new Brackets((qb) => {
-					if (params.productionCode === FALLBACK_VALUE) return qb
-					return qb
-						.andWhere(/* SQL */ `mat_code = :productionCode`, { productionCode: params.productionCode })
-						.andWhere(
-							new Brackets((qb) => {
-								if (!params.sizeNumCode) return qb
-								return qb.andWhere(/* SQL */ `size_numcode = :sizeNumCode`, { sizeNumCode: params.sizeNumCode })
+					if (params['mat_code.eq'] === FALLBACK_VALUE) return qb
+					return qb.andWhere(/* SQL */ `mat_code = :mat_code`, { mat_code: params['mat_code.eq'] }).andWhere(
+						new Brackets((qb) => {
+							if (!params['size_num_code.eq']) return qb
+							return qb.andWhere(/* SQL */ `size_numcode = :size_numcode`, {
+								size_numcode: params['size_num_code.eq']
 							})
-						)
+						})
+					)
 				})
 			)
 			.setParameters(subQuery.getParameters())
