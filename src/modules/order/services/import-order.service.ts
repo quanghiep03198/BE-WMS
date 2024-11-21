@@ -22,7 +22,7 @@ export class ImportOrderService {
 	) {}
 
 	async getOneRow(orNo: string): Promise<any> {
-		const sql = readFileSync(join(__dirname, '../sql/one-row.sql'), 'utf-8')
+		const sql = readFileSync(join(__dirname, '../sql/import-order-detail.sql'), 'utf-8')
 		const result = await this.dataSourceERP.query(sql, [orNo])
 		return result[0] || null
 	}
