@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { DataSourceOptions } from 'typeorm'
 
 export declare global {
@@ -60,5 +61,6 @@ export declare global {
 		}
 	}
 
+	// eslint-disable-next-line unused-imports/no-unused-vars
 	type FirstParameter<T> = T extends (first: infer FirstArgument, ...args: any[]) => infer T ? FirstArgument : never
 }

@@ -119,16 +119,12 @@ export class TransferOrderService {
 	async updateTransferOrder(transfer_order_code: string, payload: UpdateTransferOrderDTO) {
 		const transferOrder = await this.transferOrderDetailRepository.findOneBy({ transfer_order_code })
 
-		console.log(transferOrder, 'transferOrdertransferOrder')
-
 		if (!transferOrder) throw new NotFoundException('Transfer order could not be found')
 		return await this.transferOrderDetailRepository.update({ transfer_order_code }, payload as any)
 	}
 
 	async updateTransferOrderApprove(transfer_order_code: string, payload: UpdateTransferOrderDTO) {
 		const transferOrder = await this.transferOrderRepository.findOneBy({ transfer_order_code })
-
-		console.log(transferOrder, 'transferOrdertransferOrder')
 
 		if (!transferOrder) throw new NotFoundException('Transfer order could not be found')
 		return await this.transferOrderRepository.update({ transfer_order_code }, payload)
@@ -164,10 +160,8 @@ export class TransferOrderService {
 
 	async updateMulti(payload: any) {
 		const index = 'transfer_order_code'
-		console.log(payload)
 
 		const updatePromises = payload.map(async (item) => {
-			console.log(item, 'itemitem')
 			if (!item[index]) {
 				throw new Error(`Missing ${index} in item: ${JSON.stringify(item)}`)
 			}
