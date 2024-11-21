@@ -25,6 +25,10 @@ jobs:
       name: Deploy to server 19
       runs-on: [self-hosted, 'Server-19']
       steps:
+         - name: Ensure safely deployment
+           shell: bash
+           run: pm2 stop ecosystem.config.js
+
          - name: Checkout code
            uses: actions/checkout@v4
 
@@ -50,6 +54,10 @@ jobs:
       name: Deploy to server 51
       runs-on: [self-hosted, 'Server-51']
       steps:
+         - name: Ensure safely deployment
+           shell: bash
+           run: pm2 stop ecosystem.config.js
+
          - name: Checkout code
            uses: actions/checkout@v4
 

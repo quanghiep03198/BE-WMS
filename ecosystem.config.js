@@ -29,11 +29,9 @@ module.exports = {
 			name: 'wms-api',
 			script: './dist/main.js',
 			cwd: __dirname,
-			autorestart: false,
 			watch: false,
 			exec_mode: 'cluster',
-			max_memory_restart: '500M',
-			cron_restart: '0 */24 * * *'
+			max_memory_restart: '500M'
 		}
 	]
 }
