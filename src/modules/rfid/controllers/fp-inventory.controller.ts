@@ -14,8 +14,14 @@ import {
 	Sse
 } from '@nestjs/common'
 import { catchError, from, interval, map, of, switchMap } from 'rxjs'
-import { ExchangeEpcDTO, exchangeEpcValidator, UpdateStockDTO, updateStockValidator } from '../dto/fp-inventory.dto'
-import { SearchCustOrderParams } from '../rfid.interface'
+import {
+	ExchangeEpcDTO,
+	exchangeEpcValidator,
+	searchCustomerValidator,
+	SearchCustOrderParamsDTO,
+	UpdateStockDTO,
+	updateStockValidator
+} from '../dto/fp-inventory.dto'
 import { FPInventoryService } from '../services/fp-inventory.service'
 
 /**
@@ -70,17 +76,14 @@ export class FPInventoryController {
 	})
 	@AuthGuard()
 	async searchCustomerOrder(
-		@Headers('X-User-Company') factoryCode: string,
-		@Query('target', new DefaultValuePipe('')) orderTarget: string,
-		@Query('production_code', new DefaultValuePipe('')) productionCode: string,
-		@Query('search', new DefaultValuePipe('')) searchTerm: string
+		@Headers('X-User-Company') factory_code: string,
+		@Query(new ZodValidationPipe(searchCustomerValidator))
+		queries: SearchCustOrderParamsDTO
 	) {
 		return await this.fpiService.searchCustomerOrder({
-			factoryCode,
-			orderTarget,
-			productionCode,
-			searchTerm
-		} satisfies SearchCustOrderParams)
+			'factory_code.eq': factory_code,
+			...queries
+		} satisfies SearchCustOrderParamsDTO)
 	}
 
 	@Api({
@@ -90,9 +93,9 @@ export class FPInventoryController {
 	@AuthGuard()
 	async fetchNextItems(
 		@Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
-		@Query('filter', new DefaultValuePipe('')) filter: string
+		@Query('mo_no.eq', new DefaultValuePipe('')) selectedOrder: string
 	) {
-		return await this.fpiService.findWhereNotInStock({ page, filter })
+		return await this.fpiService.findWhereNotInStock({ page, 'mo_no.eq': selectedOrder })
 	}
 
 	@Api({

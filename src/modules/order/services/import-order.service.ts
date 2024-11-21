@@ -99,7 +99,7 @@ export class ImportOrderService {
 		}
 
 		// Transaction
-		const createdTransferOrders = []
+		// const createdTransferOrders = []
 		await this.dataSourceERP.manager.transaction(async (manager) => {
 			for (const detailPayload of ProductionImportPayloadDetail) {
 				await manager.getRepository(ImportOrderDetEntity).save(detailPayload)

@@ -6,12 +6,17 @@ export const processValidator = z.nativeEnum(ProducingProcessSuffix, {
 	message: 'Invalid process suffix'
 })
 
-export const deleteOrderValidator = z.object({ order: z.string(), process: z.nativeEnum(ProducingProcessSuffix) })
+export const deleteOrderQueriesValidator = z.object({
+	'mo_no.eq': z.string(),
+	'producing_process.eq': z.nativeEnum(ProducingProcessSuffix)
+})
 
-export type ProductingProcessDTO = z.infer<typeof processValidator>
-export type DeleteOrderDTO = z.infer<typeof deleteOrderValidator>
-export type UpdatePMStockDTO = {
-	factoryCode: string
-	producingPrcess: ProducingProcessSuffix
-	order: string
+export type DeleteOrderQueriesDTO = z.infer<typeof deleteOrderQueriesValidator> & {
+	'factory_code.eq': string
+}
+
+export type UpdatePMStockParamsDTO = {
+	'factory_code.eq': string
+	'producing_process.eq': ProducingProcessSuffix
+	'mo_no.eq': string
 }

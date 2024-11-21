@@ -13,9 +13,15 @@ import {
 	Query,
 	Sse
 } from '@nestjs/common'
-import { catchError, from, interval, map, of, switchMap } from 'rxjs'
+import { catchError, from, interval, map, of, Subject, switchMap, takeUntil } from 'rxjs'
 import { ProducingProcessSuffix } from '../constants'
-import { DeleteOrderDTO, deleteOrderValidator, processValidator, UpdatePMStockDTO } from '../dto/pm-inventory.dto'
+import {
+	DeleteOrderQueriesDTO,
+	deleteOrderQueriesValidator,
+	processValidator,
+	UpdatePMStockParamsDTO
+} from '../dto/pm-inventory.dto'
+import { FetchLatestPMDataArgs } from '../rfid.interface'
 import { PMInventoryService } from '../services/pm-inventory.service'
 
 @Controller('rfid/pm-inventory')
@@ -27,22 +33,32 @@ export class PMInventoryController {
 	async fetchProducingEpc(
 		@Headers('X-User-Company') factoryCode: string,
 		@Headers('X-Polling-Duration') pollingDuration: number,
-		@Query('process', new ZodValidationPipe(processValidator))
+		@Query('producing_process.eq', new ZodValidationPipe(processValidator))
 		producingProcess: ProducingProcessSuffix
 	) {
 		const FALLBACK_POLLING_DURATION: number = 1000
 		const duration = pollingDuration ?? FALLBACK_POLLING_DURATION
 		if (!factoryCode) throw new BadRequestException('Factory code is required')
 
+		const errorSubject = new Subject<void>()
+
 		return interval(duration).pipe(
 			switchMap(() =>
-				from(this.pmInventoryService.fetchLastestDataByProcess({ factoryCode, producingProcess, page: 1 })).pipe(
+				from(
+					this.pmInventoryService.fetchLastestDataByProcess({
+						'factory_code.eq': factoryCode,
+						'producing_process.eq': producingProcess,
+						page: 1
+					})
+				).pipe(
 					catchError((error) => {
+						errorSubject.next()
 						return of({ error: error.message })
 					})
 				)
 			),
-			map((data) => ({ data }))
+			map((data) => ({ data })),
+			takeUntil(errorSubject)
 		)
 	}
 
@@ -51,32 +67,32 @@ export class PMInventoryController {
 	async fetchEpc(
 		@Headers('X-User-Company') factoryCode: string,
 		@Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
-		@Query('process', TransformUppercasePipe) producingProcess: ProducingProcessSuffix,
-		@Query('selected_order') selectedOrder: string
+		@Query('producing_process.eq', TransformUppercasePipe) producingProcess: ProducingProcessSuffix,
+		@Query('mo_no.eq') selectedOrder: string
 	) {
 		return await this.pmInventoryService.fetchLastestDataByProcess({
-			factoryCode,
-			producingProcess,
 			page,
-			selectedOrder
-		})
+			'factory_code.eq': factoryCode,
+			'producing_process.eq': producingProcess,
+			'mo_no.eq': selectedOrder
+		} satisfies FetchLatestPMDataArgs)
 	}
 
 	@Api({
-		endpoint: 'update-stock/:process/:order',
+		endpoint: 'update-stock/:process_code/:order_code',
 		method: HttpMethod.PATCH
 	})
 	@AuthGuard()
 	async updateStock(
 		@Headers('X-User-Company') factoryCode: string,
-		@Param('order') order: string,
-		@Param('process') producingPrcess: ProducingProcessSuffix
+		@Param('order_code') orderCode: string,
+		@Param('process_code') processCode: ProducingProcessSuffix
 	) {
 		return await this.pmInventoryService.updateStock({
-			factoryCode,
-			order,
-			producingPrcess
-		} satisfies UpdatePMStockDTO)
+			'factory_code.eq': factoryCode,
+			'mo_no.eq': orderCode,
+			'producing_process.eq': processCode
+		} satisfies UpdatePMStockParamsDTO)
 	}
 
 	@Api({
@@ -87,8 +103,12 @@ export class PMInventoryController {
 	})
 	async deleteUnexpectedOrder(
 		@Headers('X-User-Company') factoryCode: string,
-		@Query(new ZodValidationPipe(deleteOrderValidator)) deleteOrderQueries: DeleteOrderDTO
+		@Query(new ZodValidationPipe(deleteOrderQueriesValidator))
+		deleteOrderQueries: Omit<DeleteOrderQueriesDTO, 'factory_code.eq'>
 	) {
-		return await this.pmInventoryService.deleteUnexpectedOrder({ factoryCode, ...deleteOrderQueries })
+		return await this.pmInventoryService.softDeleteUnexpectedOrder({
+			'factory_code.eq': factoryCode,
+			...deleteOrderQueries
+		} satisfies DeleteOrderQueriesDTO)
 	}
 }

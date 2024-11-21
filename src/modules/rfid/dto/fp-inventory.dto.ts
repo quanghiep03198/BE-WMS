@@ -52,5 +52,15 @@ export const exchangeEpcValidator = z
 		}
 	})
 
+export const searchCustomerValidator = z.object({
+	'mo_no.eq': z.string(),
+	'mat_code.eq': z.string(),
+	'size_num_code.eq': z.string().optional(),
+	q: z.string()
+})
+
 export type UpdateStockDTO = z.infer<typeof updateStockValidator>
 export type ExchangeEpcDTO = z.infer<typeof exchangeEpcValidator>
+export type SearchCustOrderParamsDTO = z.infer<typeof searchCustomerValidator> & {
+	['factory_code.eq']: string
+}

@@ -2,6 +2,7 @@ import { ArgumentMetadata, BadRequestException, Injectable, PipeTransform } from
 
 @Injectable()
 export class TransformUppercasePipe implements PipeTransform<string, string> {
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	transform(value: string, _metadata: ArgumentMetadata): string {
 		if (!value) {
 			throw new BadRequestException('Validation failed')

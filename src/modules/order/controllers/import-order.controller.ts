@@ -1,7 +1,7 @@
 import { Api, HttpMethod } from '@/common/decorators/api.decorator'
 import { AuthGuard } from '@/common/decorators/auth.decorator'
 import { Body, Controller, Headers, HttpStatus } from '@nestjs/common'
-import { DeleteTransferOrderDTO } from '../dto/transfer-order.dto'
+import { IImportOrderDelete } from '../interfaces/import-order.interface'
 import { ImportOrderService } from '../services/import-order.service'
 
 @Controller('order/production-import')
@@ -26,8 +26,8 @@ export class ImportOrderController {
 		message: { i18nKey: 'common.deleted' }
 	})
 	@AuthGuard()
-	async deleteTransferOrder(@Body() payload: DeleteTransferOrderDTO) {
-		return await this.importOrderService.deleteImportData(payload)
+	async deleteTransferOrder(@Body() payload: IImportOrderDelete) {
+		return await this.importOrderService.deleteImportData(payload?.id)
 	}
 
 	@Api({ method: HttpMethod.POST, statusCode: HttpStatus.CREATED, message: 'common.created' })
