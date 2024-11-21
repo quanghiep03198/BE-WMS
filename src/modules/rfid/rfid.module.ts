@@ -7,6 +7,7 @@ import { ThirdPartyApiModule } from '../third-party-api/third-party-api.module'
 import { FPInventoryController } from './controllers/fp-inventory.controller'
 import { PMInventoryController } from './controllers/pm-inventory.controller'
 import { FPInventoryEntity } from './entities/fp-inventory.entity'
+import { PMInventoryMstEntity } from './entities/pm-inventory-mst.entity'
 import { RFIDCustomerEntity } from './entities/rfid-customer.entity'
 import { FPIRespository } from './repositories/fp-inventory.repository'
 import { FPInventoryService } from './services/fp-inventory.service'
@@ -18,7 +19,7 @@ import { RFIDCustomerEntitySubscriber } from './subscribers/rfid-customer.entity
 	imports: [
 		TenancyModule,
 		ThirdPartyApiModule,
-		TypeOrmModule.forFeature([FPInventoryEntity, RFIDCustomerEntity], DATA_SOURCE_DATA_LAKE)
+		TypeOrmModule.forFeature([FPInventoryEntity, PMInventoryMstEntity, RFIDCustomerEntity], DATA_SOURCE_DATA_LAKE)
 	],
 	controllers: [FPInventoryController, PMInventoryController],
 	providers: [
