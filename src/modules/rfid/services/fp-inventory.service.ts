@@ -163,7 +163,7 @@ export class FPInventoryService {
 			.createQueryBuilder()
 			.select('manu.mo_no', 'mo_no')
 			.from(/* SQL */ `wuerp_vnrd.dbo.ta_manufacturmst`, 'manu')
-			.where(/* SQL */ `manu.cofactory_code = :factory`)
+			.where(/* SQL */ `manu.cofactory_code = :factory_code`)
 			.andWhere(/* SQL */ `manu.created >= CAST(DATEADD(YEAR, -2, GETDATE()) AS DATE)`)
 			.setParameter('factory_code', params['factory_code.eq'])
 

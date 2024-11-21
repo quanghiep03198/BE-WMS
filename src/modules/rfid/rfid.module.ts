@@ -32,6 +32,9 @@ import { RFIDCustomerEntitySubscriber } from './subscribers/rfid-customer.entity
 })
 export class RFIDModule implements NestModule {
 	configure(consumer: MiddlewareConsumer) {
-		consumer.apply(TenacyMiddleware).forRoutes({ path: '/rfid*', method: RequestMethod.ALL })
+		consumer
+			.apply(TenacyMiddleware)
+			.exclude({ path: '/rfid/fp-inventory/search-exchangable-order', method: RequestMethod.GET })
+			.forRoutes({ path: '/rfid*', method: RequestMethod.ALL })
 	}
 }
