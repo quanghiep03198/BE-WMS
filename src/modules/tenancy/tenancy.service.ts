@@ -50,7 +50,6 @@ export class TenancyService implements OnModuleDestroy {
 		},
 		{
 			id: Tenant.VN_LIANSHUN_SECONDARY,
-			default: true,
 			factories: [FactoryCode.GL3],
 			host: this.configService.get('TENANT_VN_LIANSHUN_SECONDARY'),
 			alias: this.getHostAlias(this.configService.get('TENANT_VN_LIANSHUN_SECONDARY'))
