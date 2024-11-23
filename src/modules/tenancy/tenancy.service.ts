@@ -42,21 +42,28 @@ export class TenancyService implements OnModuleDestroy {
 			alias: this.getHostAlias(this.configService.get('TENANT_VN_LIANYING_SECONDARY'))
 		},
 		{
-			id: Tenant.VN_LIANSHUN_2,
+			id: Tenant.VN_LIANSHUN_PRIMARY,
 			default: true,
 			factories: [FactoryCode.GL3],
-			host: this.configService.get('TENANT_VN_LIANSHUN_2'),
-			alias: this.getHostAlias(this.configService.get('TENANT_VN_LIANSHUN_2'))
+			host: this.configService.get('TENANT_VN_LIANSHUN_PRIMARY'),
+			alias: this.getHostAlias(this.configService.get('TENANT_VN_LIANSHUN_PRIMARY'))
 		},
 		{
-			id: Tenant.KM_1,
+			id: Tenant.VN_LIANSHUN_SECONDARY,
+			default: true,
+			factories: [FactoryCode.GL3],
+			host: this.configService.get('TENANT_VN_LIANSHUN_SECONDARY'),
+			alias: this.getHostAlias(this.configService.get('TENANT_VN_LIANSHUN_SECONDARY'))
+		},
+		{
+			id: Tenant.KM_PRIMARY,
 			default: true,
 			factories: [FactoryCode.GL4],
 			host: this.configService.get<string>('TENANT_KM_PRIMARY'),
 			alias: this.getHostAlias(this.configService.get('TENANT_KM_PRIMARY'))
 		},
 		{
-			id: Tenant.KM_2,
+			id: Tenant.KM_SECONDARY,
 			factories: [FactoryCode.GL4],
 			host: this.configService.get('TENANT_KM_SECONDARY'),
 			alias: this.getHostAlias(this.configService.get('TENANT_KM_SECONDARY'))
