@@ -3,9 +3,8 @@ import { TenancyService } from '@/modules/tenancy/tenancy.service'
 import { Injectable } from '@nestjs/common'
 import { groupBy, isNil } from 'lodash'
 import { Brackets, IsNull, Like } from 'typeorm'
-import { InventoryActions, ProducingProcessSuffix } from '../constants'
+import { InventoryActions } from '../constants'
 import { type DeleteOrderQueriesDTO, type UpdatePMStockParamsDTO } from '../dto/pm-inventory.dto'
-import { PMInventoryMstEntity } from '../entities/pm-inventory-mst.entity'
 import { PMInventoryEntity } from '../entities/pm-inventory.entity'
 import { RFIDPMEntity } from '../entities/rfid-pm.entity'
 import { FetchLatestPMDataArgs } from '../rfid.interface'
@@ -19,16 +18,11 @@ export class PMInventoryService {
 
 		const stationNoPattern = `%${args['factory_code.eq']}_${args['producing_process.eq']}%`
 
-		const InventoryEntity =
-			args['producing_process.eq'] === ProducingProcessSuffix.HALF_FINISHED
-				? PMInventoryEntity
-				: PMInventoryMstEntity
-
 		const getEpcQueryBuilder = this.tenancyService.dataSource
 			.createQueryBuilder()
 			.select([/* SQL */ `inv.epc AS epc`, /* SQL */ `inv.mo_no AS mo_no`])
 			.distinct(true)
-			.from(InventoryEntity, 'inv')
+			.from(PMInventoryEntity, 'inv')
 			.leftJoin(RFIDPMEntity, 'match', /* SQL */ `inv.epc = match.epc AND inv.mo_no = match.mo_no`)
 			.where(/* SQL */ `inv.rfid_status IS NULL`)
 			.andWhere(/* SQL */ `inv.station_no LIKE :stationNoPattern`, { stationNoPattern })
@@ -48,11 +42,7 @@ export class PMInventoryService {
 			.limit(LIMIT_FETCH_DOCS)
 			.maxExecutionTime(1000)
 
-		const [epcs, orders] = await Promise.all([
-			getEpcQueryBuilder.getRawMany(),
-			// getEpcQueryBuilder.getCount(),
-			this.getOrderSizes(args)
-		])
+		const [epcs, orders] = await Promise.all([getEpcQueryBuilder.getRawMany(), this.getOrderSizes(args)])
 
 		const scannedOrders = Object.entries(groupBy(orders, 'mo_no')).map(([order, sizes]) => ({
 			mo_no: order,
@@ -99,13 +89,8 @@ export class PMInventoryService {
 	async getOrderSizes(args: FetchLatestPMDataArgs) {
 		const stationNoPattern = `%${args['factory_code.eq']}_${args['producing_process.eq']}%`
 
-		const InventoryEntity =
-			args['producing_process.eq'] === ProducingProcessSuffix.HALF_FINISHED
-				? PMInventoryEntity
-				: PMInventoryMstEntity
-
 		return await this.tenancyService.dataSource
-			.getRepository(InventoryEntity)
+			.getRepository(PMInventoryEntity)
 			.createQueryBuilder('inv')
 			.select([
 				/* SQL */ `match.mo_no AS mo_no`,
@@ -114,10 +99,10 @@ export class PMInventoryService {
 				/* SQL */ `match.size_numcode AS size_numcode`,
 				/* SQL */ `match.sole_tag AS sole_tag`,
 				/* SQL */ `
-					CASE WHEN match.sole_tag = 'A' 
-						THEN COUNT(DISTINCT inv.epc)
-						ELSE COUNT(inv.epc)  
-					END AS count`
+						CASE WHEN match.sole_tag = 'A' 
+							THEN COUNT(DISTINCT inv.epc)
+							ELSE COUNT(inv.epc)  
+						END AS count`
 			])
 			.leftJoin(RFIDPMEntity, 'match', /* SQL */ `inv.epc = match.epc AND inv.mo_no = match.mo_no`)
 			.where(/* SQL */ `inv.rfid_status IS NULL`)
@@ -125,7 +110,7 @@ export class PMInventoryService {
 			.andWhere(/* SQL */ `inv.record_time >= CAST(GETDATE() AS DATE)`)
 			.andWhere(/* SQL */ `match.ri_cancel = 0`)
 			.andWhere(/* SQL */ `inv.is_active = :isActive`, { isActive: RecordStatus.ACTIVE })
-			.groupBy('match.mo_no')
+			.groupBy('mo_no')
 			.addGroupBy('match.mat_code')
 			.addGroupBy('match.shoestyle_codefactory')
 			.addGroupBy('match.size_numcode')
@@ -141,12 +126,7 @@ export class PMInventoryService {
 	async updateStock(payload: UpdatePMStockParamsDTO) {
 		const stationNoPattern = `%${payload['factory_code.eq']}_${payload['producing_process.eq']}%`
 
-		const InventoryEntity =
-			payload['producing_process.eq'] === ProducingProcessSuffix.HALF_FINISHED
-				? PMInventoryEntity
-				: PMInventoryMstEntity
-
-		return await this.tenancyService.dataSource.getRepository(InventoryEntity).update(
+		return await this.tenancyService.dataSource.getRepository(PMInventoryEntity).update(
 			{
 				mo_no: payload['mo_no.eq'] === 'null' ? IsNull() : payload['mo_no.eq'],
 				rfid_status: IsNull(),
@@ -208,12 +188,7 @@ export class PMInventoryService {
 	async softDeleteUnexpectedOrder(args: DeleteOrderQueriesDTO) {
 		const stationNoPattern = `%${args['factory_code.eq']}_${args['producing_process.eq']}%`
 
-		const InventoryEntity =
-			args['producing_process.eq'] === ProducingProcessSuffix.HALF_FINISHED
-				? PMInventoryEntity
-				: PMInventoryMstEntity
-
-		return await this.tenancyService.dataSource.getRepository(InventoryEntity).update(
+		return await this.tenancyService.dataSource.getRepository(PMInventoryEntity).update(
 			{
 				mo_no: args['mo_no.eq.eq'] === 'null' ? IsNull() : args['mo_no.eq'],
 				is_active: RecordStatus.ACTIVE,

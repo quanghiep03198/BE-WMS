@@ -3,6 +3,10 @@ import { BaseAbstractEntity } from '@/modules/_base/base.abstract.entity'
 import { Column, Entity } from 'typeorm'
 import { InventoryActions } from '../constants'
 
+/**
+ * @deprecated
+ * Don't use this entity for RFID scanning EPCs at P.M Inventory, F.C and Shaping department anymore.
+ */
 @Entity('dv_RFIDrecordmst', { database: DATABASE_DATA_LAKE, synchronize: false })
 export class PMInventoryMstEntity extends BaseAbstractEntity {
 	@Column({ name: 'stationNO', type: 'nvarchar', length: 20 })
