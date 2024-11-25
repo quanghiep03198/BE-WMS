@@ -1,10 +1,10 @@
-import { RFIDCustomerEntity } from '@/modules/rfid/entities/rfid-customer.entity'
+import { RFIDMatchCusEntity } from '@/modules/rfid/entities/rfid-match-cus.entity'
 import { omit } from 'lodash'
 import crypto from 'node:crypto'
 import { setSeederFactory } from 'typeorm-extension'
 
-export const rfidCustomerFactory = setSeederFactory(RFIDCustomerEntity, (faker) => {
-	const rfidCustomer = new RFIDCustomerEntity({})
+export const rfidCustomerFactory = setSeederFactory(RFIDMatchCusEntity, (faker) => {
+	const rfidCustomer = new RFIDMatchCusEntity({})
 	rfidCustomer.epc = '3034' + crypto.randomBytes(16).toString('hex').toUpperCase()
 	rfidCustomer.mo_no = '13A05B' + faker.number.int({ min: 101, max: 110 }).toString()
 

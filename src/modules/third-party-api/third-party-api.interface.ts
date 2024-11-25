@@ -1,4 +1,4 @@
-import { RFIDCustomerEntity } from '../rfid/entities/rfid-customer.entity'
+import { RFIDMatchCusEntity } from '../rfid/entities/rfid-match-cus.entity'
 
 export interface OAuth2Credentials {
 	client_id: string
@@ -35,7 +35,7 @@ export interface FetchThirdPartyApiEvent {
 	data: Array<string>
 }
 
-export type SyncEventData = Pick<RFIDCustomerEntity, 'epc' | 'mo_no' | 'size_numcode'>
+export type SyncEventData = Pick<RFIDMatchCusEntity, 'epc' | 'mo_no' | 'size_numcode'>
 
 export interface SyncEventPayload extends Pick<FetchThirdPartyApiEvent, 'params'> {
 	data: {

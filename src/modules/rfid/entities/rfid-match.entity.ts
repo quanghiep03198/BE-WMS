@@ -7,7 +7,7 @@ import { Column, Entity } from 'typeorm'
  * @description RFID Production Management Entity - Describes the details of internal EPC (which commonly starts with E28xxx)
  */
 @Entity('dv_rfidmatchmst', { database: DATABASE_DATA_LAKE, synchronize: false })
-export class RFIDPMEntity extends BaseAbstractEntity {
+export class RFIDMatchEntity extends BaseAbstractEntity {
 	@Column({ name: 'EPC_Code', type: 'nvarchar', length: 50 })
 	epc: string
 
@@ -29,7 +29,7 @@ export class RFIDPMEntity extends BaseAbstractEntity {
 	@Column({ type: 'nvarchar', length: 10, enum: ['A', 'B', 'C', 'D'] })
 	sole_tag: string
 
-	constructor(item: Partial<RFIDPMEntity>) {
+	constructor(item: Partial<RFIDMatchEntity>) {
 		super()
 		Object.assign(this, item)
 	}

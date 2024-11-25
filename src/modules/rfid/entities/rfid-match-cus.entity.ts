@@ -3,7 +3,7 @@ import { BaseAbstractEntity } from '@/modules/_base/base.abstract.entity'
 import { Column, Entity, Index } from 'typeorm'
 
 @Entity('dv_rfidmatchmst_cust', { database: DATABASE_DATA_LAKE, synchronize: true })
-export class RFIDCustomerEntity extends BaseAbstractEntity {
+export class RFIDMatchCusEntity extends BaseAbstractEntity {
 	@Column({ name: 'EPC_Code' })
 	@Index()
 	epc: string
@@ -82,7 +82,7 @@ export class RFIDCustomerEntity extends BaseAbstractEntity {
 	@Column({ type: 'nvarchar', length: 50, nullable: true })
 	dept_name: string
 
-	constructor(item: Partial<RFIDCustomerEntity>) {
+	constructor(item: Partial<RFIDMatchCusEntity>) {
 		super()
 		Object.assign(this, item)
 	}

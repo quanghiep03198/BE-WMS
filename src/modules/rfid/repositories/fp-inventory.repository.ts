@@ -6,7 +6,7 @@ import { TenancyService } from '../../tenancy/tenancy.service'
 import { EXCLUDED_EPC_PATTERN, EXCLUDED_ORDERS, FALLBACK_VALUE, INTERNAL_EPC_PATTERN } from '../constants'
 import { ExchangeEpcDTO } from '../dto/fp-inventory.dto'
 import { FPInventoryEntity } from '../entities/fp-inventory.entity'
-import { RFIDCustomerEntity } from '../entities/rfid-customer.entity'
+import { RFIDMatchCusEntity } from '../entities/rfid-match-cus.entity'
 
 /**
  * @description Repository for Finished Production Inventory (FPI)
@@ -41,7 +41,7 @@ export class FPIRespository {
 				/* SQL */ `COUNT(DISTINCT inv.EPC_Code) AS count`
 			])
 			.leftJoin(
-				RFIDCustomerEntity,
+				RFIDMatchCusEntity,
 				'cust',
 				/* SQL */ `inv.EPC_Code = cust.EPC_Code 
 					AND COALESCE(inv.mo_no_actual, inv.mo_no, :fallbackValue) = COALESCE(cust.mo_no_actual, cust.mo_no, :fallbackValue)`
@@ -101,11 +101,11 @@ export class FPIRespository {
 		}
 
 		const subQuery = this.tenancyService.dataSource
-			.getRepository(RFIDCustomerEntity)
+			.getRepository(RFIDMatchCusEntity)
 			.createQueryBuilder('cust1')
 			.select('cust1.EPC_Code')
 			.innerJoin(
-				RFIDCustomerEntity,
+				RFIDMatchCusEntity,
 				'cust2',
 				/* SQL */ `cust1.mat_code = cust2.mat_code AND cust1.mo_no <> cust2.mo_no`
 			)
@@ -135,7 +135,7 @@ export class FPIRespository {
 			.createQueryBuilder('inv')
 			.select(/* SQL */ `cust.epc`, 'epc')
 			.innerJoin(
-				RFIDCustomerEntity,
+				RFIDMatchCusEntity,
 				'cust',
 				/* SQL */ `inv.epc = cust.epc AND COALESCE(inv.mo_no_actual, inv.mo_no, :fallbackValue) = COALESCE(cust.mo_no_actual, cust.mo_no, :fallbackValue)`
 			)

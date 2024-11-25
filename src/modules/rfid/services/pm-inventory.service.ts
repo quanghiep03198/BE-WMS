@@ -6,7 +6,7 @@ import { Brackets, IsNull, Like } from 'typeorm'
 import { InventoryActions } from '../constants'
 import { type DeleteOrderQueriesDTO, type UpdatePMStockParamsDTO } from '../dto/pm-inventory.dto'
 import { PMInventoryEntity } from '../entities/pm-inventory.entity'
-import { RFIDPMEntity } from '../entities/rfid-pm.entity'
+import { RFIDMatchEntity } from '../entities/rfid-match.entity'
 import { FetchLatestPMDataArgs } from '../rfid.interface'
 
 @Injectable()
@@ -23,7 +23,7 @@ export class PMInventoryService {
 			.select([/* SQL */ `inv.epc AS epc`, /* SQL */ `inv.mo_no AS mo_no`])
 			.distinct(true)
 			.from(PMInventoryEntity, 'inv')
-			.leftJoin(RFIDPMEntity, 'match', /* SQL */ `inv.epc = match.epc AND inv.mo_no = match.mo_no`)
+			.leftJoin(RFIDMatchEntity, 'match', /* SQL */ `inv.epc = match.epc AND inv.mo_no = match.mo_no`)
 			.where(/* SQL */ `inv.rfid_status IS NULL`)
 			.andWhere(/* SQL */ `inv.station_no LIKE :stationNoPattern`, { stationNoPattern })
 			.andWhere(/* SQL */ `inv.record_time >= CAST(GETDATE() AS DATE)`)
@@ -104,7 +104,7 @@ export class PMInventoryService {
 							ELSE COUNT(inv.epc)  
 						END AS count`
 			])
-			.leftJoin(RFIDPMEntity, 'match', /* SQL */ `inv.epc = match.epc AND inv.mo_no = match.mo_no`)
+			.leftJoin(RFIDMatchEntity, 'match', /* SQL */ `inv.epc = match.epc AND inv.mo_no = match.mo_no`)
 			.where(/* SQL */ `inv.rfid_status IS NULL`)
 			.andWhere(/* SQL */ `inv.station_no LIKE :stationNoPattern`, { stationNoPattern })
 			.andWhere(/* SQL */ `inv.record_time >= CAST(GETDATE() AS DATE)`)

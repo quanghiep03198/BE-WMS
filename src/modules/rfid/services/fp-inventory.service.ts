@@ -26,7 +26,7 @@ import {
 } from '../constants'
 import { ExchangeEpcDTO, SearchCustOrderParamsDTO, UpdateStockDTO } from '../dto/fp-inventory.dto'
 import { FPInventoryEntity } from '../entities/fp-inventory.entity'
-import { RFIDCustomerEntity } from '../entities/rfid-customer.entity'
+import { RFIDMatchCusEntity } from '../entities/rfid-match-cus.entity'
 import { FPIRespository } from '../repositories/fp-inventory.repository'
 import { RFIDSearchParams } from '../rfid.interface'
 
@@ -170,7 +170,7 @@ export class FPInventoryService {
 		return await this.datasourceDL
 			.createQueryBuilder()
 			.select(/* SQL */ `DISTINCT TOP 5 mo_no AS mo_no`)
-			.from(RFIDCustomerEntity, 'cust')
+			.from(RFIDMatchCusEntity, 'cust')
 			.where(/* SQL */ `mo_no IN (${subQuery.getQuery()})`)
 			.andWhere(/* SQL */ `mo_no LIKE :searchTerm`, { searchTerm: `%${params.q}%` })
 			.andWhere(
@@ -213,7 +213,7 @@ export class FPInventoryService {
 		try {
 			if (payload.mo_no === FALLBACK_VALUE) {
 				const unknownCustomerEpc = await queryRunner.manager
-					.getRepository(RFIDCustomerEntity)
+					.getRepository(RFIDMatchCusEntity)
 					.createQueryBuilder('cust')
 					.select(/* SQL */ `TOP ${payload.quantity} cust.*`)
 					.innerJoin(FPInventoryEntity, 'inv', /* SQL */ `cust.epc = inv.epc`)
@@ -229,22 +229,22 @@ export class FPInventoryService {
 					.getRawMany()
 
 				await queryRunner.manager
-					.getRepository(RFIDCustomerEntity)
+					.getRepository(RFIDMatchCusEntity)
 					.insert(unknownCustomerEpc.map((item) => omit({ ...item, mo_no: payload.mo_no_actual }, 'keyid')))
 
 				for (const epcBatch of epcBatches) {
-					const criteria: FindOptionsWhere<RFIDCustomerEntity | FPInventoryEntity> = {
+					const criteria: FindOptionsWhere<RFIDMatchCusEntity | FPInventoryEntity> = {
 						epc: In(epcBatch)
 					}
 					await queryRunner.manager.update(FPInventoryEntity, criteria, update)
 				}
 			} else {
 				for (const epcBatch of epcBatches) {
-					const criteria: FindOptionsWhere<RFIDCustomerEntity | FPInventoryEntity> = {
+					const criteria: FindOptionsWhere<RFIDMatchCusEntity | FPInventoryEntity> = {
 						epc: In(epcBatch)
 					}
 					await Promise.all([
-						queryRunner.manager.update(RFIDCustomerEntity, criteria, update),
+						queryRunner.manager.update(RFIDMatchCusEntity, criteria, update),
 						queryRunner.manager.update(FPInventoryEntity, criteria, update)
 					])
 				}
