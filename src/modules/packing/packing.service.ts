@@ -24,7 +24,7 @@ export class PackingService {
 			.where(
 				new Brackets((qb) => {
 					if (scanId) {
-						return qb.where('series_number = :scanId', { scanId: this.extractSeriesNumber(scanId) })
+						return qb.where('series_number = :series_number', { series_number: this.extractSeriesNumber(scanId) })
 					} else return qb
 				})
 			)
@@ -38,9 +38,9 @@ export class PackingService {
 	}
 
 	async updatePackingWeight(seriesNumber: string, payload: UpdatePackingWeightDTO) {
-		const actualSeriesNumber = this.extractSeriesNumber(seriesNumber)
-		const packingItemToUpdate = await this.packingRepository.findOneBy({ series_number: seriesNumber })
-		if (!packingItemToUpdate) throw new NotFoundException('Packing item not found')
-		return await this.packingRepository.update({ series_number: actualSeriesNumber }, payload)
+		return await this.packingRepository.update(
+			{ series_number: this.extractSeriesNumber(seriesNumber) },
+			{ actual_weight_in: payload.Actual_weight_in }
+		)
 	}
 }
