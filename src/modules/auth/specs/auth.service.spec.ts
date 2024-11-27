@@ -3,16 +3,19 @@ import { BadRequestException, NotFoundException } from '@nestjs/common'
 import { JwtService } from '@nestjs/jwt'
 import { Test, TestingModule } from '@nestjs/testing'
 import { Cache } from 'cache-manager'
+import { I18nService } from 'nestjs-i18n'
 import { UserEntity } from '../../user/entities/user.entity'
 import { UserService } from '../../user/services/user.service'
 import { AuthService } from '../auth.service'
 import { LoginDTO } from '../dto/auth.dto'
+import { LocalStrategy } from '../strategies/local.strategy'
 
 describe('AuthService', () => {
 	let authService: AuthService
 	let userService: UserService
 	let jwtService: JwtService
 	let cacheManager: Cache
+	let i18nService: I18nService
 
 	beforeEach(async () => {
 		const module: TestingModule = await Test.createTestingModule({
@@ -21,15 +24,27 @@ describe('AuthService', () => {
 				{
 					provide: CACHE_MANAGER,
 					useValue: {
-						set: jest.fn(),
 						get: jest.fn(),
+						set: jest.fn(),
 						del: jest.fn()
+					}
+				},
+				{
+					provide: I18nService,
+					useValue: {
+						t: jest.fn()
 					}
 				},
 				{
 					provide: JwtService,
 					useValue: {
 						signAsync: jest.fn()
+					}
+				},
+				{
+					provide: LocalStrategy,
+					useValue: {
+						validate: jest.fn()
 					}
 				},
 				{
@@ -47,74 +62,86 @@ describe('AuthService', () => {
 		userService = module.get<UserService>(UserService)
 		jwtService = module.get<JwtService>(JwtService)
 		cacheManager = module.get<Cache>(CACHE_MANAGER)
-	})
-
-	it('should be defined', () => {
-		expect(authService).toBeDefined()
+		i18nService = module.get<I18nService>(I18nService)
 	})
 
 	describe('validateUser', () => {
-		it('should return user if valid', async () => {
-			const payload: LoginDTO = { username: 'test', password: 'password' }
-			const user = new UserEntity({ id: 1, username: 'test' })
-			user.authenticate = jest.fn().mockReturnValue(true)
-			jest.spyOn(userService, 'findUserByUsername').mockResolvedValue(user)
-
-			expect(await authService.validateUser(payload)).toEqual(user)
-		})
-
-		it('should throw NotFoundException if user not found', async () => {
-			const payload: LoginDTO = { username: 'test', password: 'password' }
+		it('should throw NotFoundException if user is not found', async () => {
 			jest.spyOn(userService, 'findUserByUsername').mockResolvedValue(null)
+			jest.spyOn(i18nService, 't').mockReturnValue('User not found')
 
-			await expect(authService.validateUser(payload)).rejects.toThrow(NotFoundException)
+			await expect(authService.validateUser({ username: 'test', password: 'test' } as LoginDTO)).rejects.toThrow(
+				NotFoundException
+			)
 		})
 
 		it('should throw BadRequestException if password is incorrect', async () => {
-			const payload: LoginDTO = { username: 'test', password: 'password' }
-			const user = new UserEntity({ username: 'test', password: 'wrong_password' })
-			user.authenticate = jest.fn().mockReturnValue(false)
+			const user = { authenticate: jest.fn().mockReturnValue(false) } as any
+			jest.spyOn(userService, 'findUserByUsername').mockResolvedValue(user)
+			jest.spyOn(i18nService, 't').mockReturnValue('Incorrect password')
+
+			await expect(authService.validateUser({ username: 'test', password: 'test' } as LoginDTO)).rejects.toThrow(
+				BadRequestException
+			)
+		})
+
+		it('should return user if validation is successful', async () => {
+			const user = { authenticate: jest.fn().mockReturnValue(true) } as any
 			jest.spyOn(userService, 'findUserByUsername').mockResolvedValue(user)
 
-			await expect(authService.validateUser(payload)).rejects.toThrow(BadRequestException)
+			const result = await authService.validateUser({ username: 'test', password: 'test' } as LoginDTO)
+			expect(result).toBe(user)
 		})
 	})
 
 	describe('login', () => {
 		it('should return user and token', async () => {
-			const user = new UserEntity({ id: 1, username: 'test' })
-			user.id = 1
-			jest.spyOn(userService, 'getProfile').mockResolvedValue(user)
-			jest.spyOn(jwtService, 'signAsync').mockResolvedValue('token')
-			jest.spyOn(cacheManager, 'set').mockResolvedValue(undefined)
+			const user = { id: 1, username: 'E001', role: 'admin' } as UserEntity
+			const profile = {
+				id: 1,
+				username: 'test',
+				display_name: 'User',
+				employee_code: 'E001',
+				role: 'admin'
+			} as UserEntity & { display_name: string }
+			const token = 'token'
+			jest.spyOn(userService, 'getProfile').mockResolvedValue(profile)
+			jest.spyOn(jwtService, 'signAsync').mockResolvedValue(token)
+			jest.spyOn(cacheManager, 'set').mockResolvedValue(null)
 
-			expect(await authService.login(user)).toEqual({ user, token: 'token' })
+			const result = await authService.login(user)
+			expect(result).toEqual({ user: profile, token })
+			expect(cacheManager.set).toHaveBeenCalledWith(`token:${user.id}`, token, authService['TOKEN_CACHE_TTL'])
 		})
 	})
 
 	describe('refreshToken', () => {
-		it('should return new token', async () => {
-			const user = new UserEntity({})
-			user.id = 1
-			jest.spyOn(userService, 'findOneById').mockResolvedValue(user)
-			jest.spyOn(jwtService, 'signAsync').mockResolvedValue('newToken')
-			jest.spyOn(cacheManager, 'set').mockResolvedValue(undefined)
-
-			expect(await authService.refreshToken(user.id)).toEqual('newToken')
-		})
-
-		it('should throw NotFoundException if user not found', async () => {
+		it('should throw NotFoundException if user is not found', async () => {
 			jest.spyOn(userService, 'findOneById').mockResolvedValue(null)
 
 			await expect(authService.refreshToken(1)).rejects.toThrow(NotFoundException)
+		})
+
+		it('should return new token', async () => {
+			const user = { id: 1, username: 'E001', role: 'admin' } as UserEntity
+			const refreshToken = 'refreshToken'
+			jest.spyOn(userService, 'findOneById').mockResolvedValue(user)
+			jest.spyOn(jwtService, 'signAsync').mockResolvedValue(refreshToken)
+			jest.spyOn(cacheManager, 'set').mockResolvedValue(null)
+
+			const result = await authService.refreshToken(1)
+			expect(result).toBe(refreshToken)
+			expect(cacheManager.set).toHaveBeenCalledWith(`token:${user.id}`, refreshToken, authService['TOKEN_CACHE_TTL'])
 		})
 	})
 
 	describe('logout', () => {
 		it('should revoke cached token', async () => {
-			jest.spyOn(cacheManager, 'del').mockResolvedValue(undefined)
+			jest.spyOn(cacheManager, 'del').mockResolvedValue(null)
 
-			expect(await authService.logout(1)).toBeNull()
+			const result = await authService.logout(1)
+			expect(result).toBeNull()
+			expect(cacheManager.del).toHaveBeenCalledWith('token:1')
 		})
 	})
 })

@@ -23,9 +23,9 @@ export class AuthService {
 	@UsePipes(new ZodValidationPipe(loginValidator))
 	async validateUser(payload: LoginDTO) {
 		const user = await this.userService.findUserByUsername(payload.username)
-		if (!user) throw new NotFoundException(this.i18n.t('auth.user_not_found', { lang: I18nContext.current().lang }))
+		if (!user) throw new NotFoundException(this.i18n.t('auth.user_not_found', { lang: I18nContext.current()?.lang }))
 		if (!user.authenticate(payload.password))
-			throw new BadRequestException(this.i18n.t('auth.incorrect_password', { lang: I18nContext.current().lang }))
+			throw new BadRequestException(this.i18n.t('auth.incorrect_password', { lang: I18nContext.current()?.lang }))
 		return user
 	}
 
