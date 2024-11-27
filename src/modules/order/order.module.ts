@@ -3,8 +3,8 @@ import { Module } from '@nestjs/common'
 import { TypeOrmModule } from '@nestjs/typeorm'
 import { ImportOrderController } from './controllers/import-order.controller'
 import { TransferOrderController } from './controllers/transfer-order.controller'
-import { ImportOrderDetEntity } from './entities/import-order-det.entity'
-import { ImportOrderEntity } from './entities/import-order-mst.entity'
+import { ImportOrderDetailEntity } from './entities/import-order-detail.entity'
+import { ImportOrderEntity } from './entities/import-order.entity'
 import { TransferOrderDetailEntity } from './entities/transfer-order-detail.entity'
 import { TransferOrderEntity } from './entities/transfer-order.entity'
 import { ImportOrderService } from './services/import-order.service'
@@ -14,7 +14,7 @@ import { TransferOrderEntitySubscriber } from './subscribers/transfer-order.enti
 @Module({
 	imports: [
 		TypeOrmModule.forFeature(
-			[TransferOrderEntity, TransferOrderDetailEntity, ImportOrderDetEntity, ImportOrderEntity],
+			[TransferOrderEntity, TransferOrderDetailEntity, ImportOrderDetailEntity, ImportOrderEntity],
 			DATA_SOURCE_DATA_LAKE
 		)
 	],

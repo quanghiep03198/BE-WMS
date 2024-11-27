@@ -3,7 +3,7 @@ import { BaseAbstractEntity } from '@/modules/_base/base.abstract.entity'
 import { Column, Entity } from 'typeorm'
 
 @Entity('dv_whiodet', { database: DATABASE_DATA_LAKE, synchronize: false })
-export class ImportOrderDetEntity extends BaseAbstractEntity {
+export class ImportOrderDetailEntity extends BaseAbstractEntity {
 	@Column()
 	user_code_created: string
 
