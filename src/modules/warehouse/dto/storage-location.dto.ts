@@ -18,16 +18,8 @@ export const createStorageLocationValidator = z.object({
 		.string({ required_error: 'This field is requried' })
 		.trim()
 		.min(1, { message: 'This field is required' }),
-	is_disable: z
-		.boolean()
-		.default(false)
-		.optional()
-		.transform((value) => (value ? 1 : 0)),
-	is_default: z
-		.boolean()
-		.default(false)
-		.optional()
-		.transform((value) => (value ? 1 : 0)),
+	is_disable: z.boolean().default(false).optional(),
+	is_default: z.boolean().default(false).optional(),
 	user_code_created: z.string().nullable().optional(),
 	user_name_created: z.string().nullable().optional(),
 	user_code_updated: z.string().nullable().optional(),

@@ -14,8 +14,6 @@ export declare global {
 		totalPages: number
 	}
 
-	type Bit = 0 | 1
-
 	type DatabaseType<T = 'mssql'> = Extract<DataSourceOptions['type'], T>
 
 	namespace NodeJS {
@@ -47,12 +45,14 @@ export declare global {
 			TENANT_MAIN: string
 			TENANT_VN_LIANYING_PRIMARY: string
 			TENANT_VN_LIANYING_SECONDARY: string
-			TENANT_VN_LIANSHUN_2: string
+			TENANT_VN_LIANSHUN_PRIMARY: string
+			TENANT_VN_LIANSHUN_SECONDARY: string
 			TENANT_KM_PRIMARY: string
 			TENANT_KM_SECONDARY: string
 			// * Redis
 			REDIS_HOST: string
 			REDIS_PORT: string
+			REDIS_PASSWORD: string
 			// * Bcrypt
 			SALT_ROUND: string
 			// * Jwt

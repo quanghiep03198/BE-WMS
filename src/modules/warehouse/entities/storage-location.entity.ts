@@ -5,7 +5,7 @@ import { Column, Entity, JoinColumn, ManyToOne } from 'typeorm'
 import { WarehouseStorageTypes } from '../constants'
 import { WarehouseEntity } from './warehouse.entity'
 
-@Entity('dv_warehouseccodedet', { database: DATABASE_DATA_LAKE, synchronize: true })
+@Entity('dv_warehouseccodedet', { database: DATABASE_DATA_LAKE })
 export class StorageLocationEntity extends BaseAbstractEntity {
 	@Column({ type: 'varchar', length: 20 })
 	storage_num: string
@@ -26,10 +26,10 @@ export class StorageLocationEntity extends BaseAbstractEntity {
 	cofactory_code: string
 
 	@Column({ type: 'bit', default: 0, transformer: new BoolBitTransformer() })
-	is_default: Bit | boolean
+	is_default: boolean
 
 	@Column({ type: 'bit', default: 0, transformer: new BoolBitTransformer() })
-	is_disable: Bit | boolean
+	is_disable: boolean
 
 	@ManyToOne(() => WarehouseEntity, (warehouse) => warehouse.storage_locations)
 	@JoinColumn({ name: 'warehouse_num', referencedColumnName: 'warehouse_num' })

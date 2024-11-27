@@ -1,5 +1,5 @@
 import { DATABASE_DATA_LAKE } from '@/databases/constants'
-import { BoolBitTransformer } from '@/databases/transformers/bool.transformer'
+import { BoolBitTransformer, type Bit } from '@/databases/transformers/bool.transformer'
 import { BaseAbstractEntity } from '@/modules/_base/base.abstract.entity'
 import { Column, Entity, Index, OneToMany } from 'typeorm'
 import { WarehouseTypes } from '../constants'
