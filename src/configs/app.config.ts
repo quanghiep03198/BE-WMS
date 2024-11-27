@@ -12,7 +12,8 @@ export const appConfigFactory: ConfigFactory = () => ({
 	cache: {
 		store: redisStore,
 		host: process.env.REDIS_HOST,
-		port: +process.env.REDIS_PORT
+		port: +process.env.REDIS_PORT,
+		password: process.env.REDIS_PASSWORD
 	} as CacheModuleOptions<RedisClientOptions>,
 	i18n: {
 		fallbackLanguage: process.env.FALLBACK_LANGUAGE,
