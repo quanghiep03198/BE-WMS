@@ -1,4 +1,3 @@
-import { Tenant } from '@/common/constants'
 import { Inject, Injectable, NotFoundException, OnModuleDestroy, Scope } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { REQUEST } from '@nestjs/core'
@@ -6,7 +5,8 @@ import { Request } from 'express'
 import { omit } from 'lodash'
 import { DataSource } from 'typeorm'
 import { FactoryCode } from '../department/constants'
-import { ITenancy } from './tenancy.interface'
+import { Tenant } from './constants'
+import { ITenancy } from './interfaces'
 
 @Injectable({ scope: Scope.REQUEST })
 export class TenancyService implements OnModuleDestroy {
@@ -30,8 +30,8 @@ export class TenancyService implements OnModuleDestroy {
 		},
 		{
 			id: Tenant.VN_LIANYING_PRIMARY,
-			default: true,
 			factories: [FactoryCode.GL1],
+			default: true,
 			host: this.configService.get('TENANT_VN_LIANYING_PRIMARY'),
 			alias: this.getHostAlias(this.configService.get('TENANT_VN_LIANYING_PRIMARY'))
 		},
@@ -78,6 +78,7 @@ export class TenancyService implements OnModuleDestroy {
 	public get dataSource(): DataSource {
 		return this.request.dataSource
 	}
+
 	private getHostAlias(host: string) {
 		return host.split('.').slice(-2).join('.')
 	}

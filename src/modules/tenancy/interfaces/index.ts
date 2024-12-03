@@ -1,7 +1,7 @@
-import { Tenant } from '@/common/constants'
 import { Request } from 'express'
 import { DataSource } from 'typeorm'
-import { FactoryCode } from '../department/constants'
+import { FactoryCode } from '../../department/constants'
+import { Tenant } from '../constants'
 
 export interface ITenancy {
 	id: Tenant
