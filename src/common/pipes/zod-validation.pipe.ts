@@ -10,7 +10,6 @@ export class ZodValidationPipe implements PipeTransform {
 			return this.schema.parse(value)
 		} catch (error) {
 			const firstEarliestError = error?.issues?.[0]
-			console.log(error)
 			throw new UnprocessableEntityException(firstEarliestError?.message)
 		}
 	}
