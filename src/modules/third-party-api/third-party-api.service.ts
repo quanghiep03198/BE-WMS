@@ -1,13 +1,14 @@
+import { FileLogger } from '@/common/helpers/file-logger.helper'
 import { HttpService } from '@nestjs/axios'
 import { CACHE_MANAGER } from '@nestjs/cache-manager'
-import { Inject, Injectable, Logger, NotFoundException } from '@nestjs/common'
+import { Inject, Injectable, NotFoundException } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { EventEmitter2, OnEvent } from '@nestjs/event-emitter'
 import { AxiosRequestConfig } from 'axios'
 import { Cache } from 'cache-manager'
 import { writeFileSync } from 'fs'
 import { isEmpty, isNil, uniqBy } from 'lodash'
-import { join } from 'path'
+import { join, resolve } from 'path'
 import { FactoryCode } from '../department/constants'
 import { ThirdPartyApiEvent } from './constants'
 import {
@@ -49,25 +50,31 @@ export class ThirdPartyApiService {
 		}
 	}
 
-	private setTokenByFactory(factoryCode: string, accessToken: string, expiresIn: number) {
-		this.cacheManager.set(`third_party_token:${factoryCode}`, accessToken, expiresIn)
+	async setTokenByFactory(factoryCode: string, accessToken: string, expiresIn: number) {
+		return await this.cacheManager.set(`third_party_token:${factoryCode}`, accessToken, expiresIn)
 	}
 
 	public async getTokenByFactory(factoryCode: string): Promise<string | null> {
 		return await this.cacheManager.get(`third_party_token:${factoryCode}`)
 	}
 
-	private async authenticate(factoryCode: string): Promise<boolean> {
+	private async authenticate(factoryCode: string) {
 		try {
 			const accessToken = await this.cacheManager.get(`third_party_token:${factoryCode}`)
 			if (!accessToken) {
 				const oauth2TokenResponse = await this.fetchOauth2Token(factoryCode)
-				this.setTokenByFactory(factoryCode, oauth2TokenResponse.access_token, oauth2TokenResponse.expires_in)
+				this.setTokenByFactory(
+					factoryCode,
+					`${oauth2TokenResponse.token_type} ${oauth2TokenResponse.access_token}`,
+					oauth2TokenResponse.expires_in
+				)
+				return `${oauth2TokenResponse.token_type} ${oauth2TokenResponse.access_token}`
 			}
-			return true
+
+			return `Bearer ${accessToken}`
 		} catch {
 			await this.cacheManager.del(`sync_process:${factoryCode}`)
-			return false
+			return null
 		}
 	}
 
@@ -87,7 +94,7 @@ export class ThirdPartyApiService {
 				})
 			})
 		} catch (error) {
-			Logger.error(error.message)
+			FileLogger.error(error)
 		}
 	}
 
@@ -99,7 +106,8 @@ export class ThirdPartyApiService {
 		param: string
 	}): Promise<ThirdPartyApiResponseData> {
 		try {
-			return await this.httpService.axiosRef.get<void, ThirdPartyApiResponseData>(`/epc/${param}`, {
+			const BASE_URL = this.configService.get('THIRD_PARTY_API_URL')
+			return await this.httpService.axiosRef.get<void, ThirdPartyApiResponseData>(`${BASE_URL}/epc/${param}`, {
 				headers: {
 					['Content-Type']: 'application/json',
 					...headers
@@ -111,7 +119,8 @@ export class ThirdPartyApiService {
 	}
 
 	private async getCustmerEpcByCmdNo(commandNumber) {
-		return await this.httpService.axiosRef.get<void, ThirdPartyApiResponseData[]>('/epcs', {
+		const BASE_URL = this.configService.get('THIRD_PARTY_API_URL')
+		return await this.httpService.axiosRef.get<void, ThirdPartyApiResponseData[]>(`${BASE_URL}/epcs`, {
 			params: {
 				commandNumber
 			}
@@ -124,43 +133,48 @@ export class ThirdPartyApiService {
 
 	@OnEvent(ThirdPartyApiEvent.DISPATCH)
 	protected async pullCustomerDataByFactory(e: FetchThirdPartyApiEvent) {
-		await this.authenticate(e.params.factoryCode)
+		try {
+			const accessToken = await this.authenticate(e.params.factoryCode)
 
-		const expectedCommandData = await Promise.all(
-			e.data.map(async (item) => {
-				return await this.getCustomerEpcData({
-					headers: {
-						['X-Factory']: e.params.factoryCode
-					},
-					param: item
+			const expectedCommandData = await Promise.all(
+				e.data.map(async (item) => {
+					return await this.getCustomerEpcData({
+						headers: {
+							['X-Factory']: e.params.factoryCode,
+							['Authorization']: accessToken
+						},
+						param: item
+					})
 				})
-			})
-		)
+			)
 
-		Logger.debug(expectedCommandData)
+			if (expectedCommandData.every((item) => isNil(item) || isEmpty(item))) {
+				await this.cacheManager.del(`sync_process:${e.params.factoryCode}`)
+				return
+			}
 
-		if (expectedCommandData.every((item) => isNil(item) || isEmpty(item))) {
-			await this.cacheManager.del(`sync_process:${e.params.factoryCode}`)
-			return
+			const epcsByFetchedCommandData = uniqBy(
+				expectedCommandData.filter((item) => !isNil(item) || isEmpty(item)),
+				'commandNumber'
+			)
+				.map(async (item) => await this.getCustmerEpcByCmdNo(item.commandNumber))
+				.flat()
+
+			// TODO: temporarily save fetched data from customer to file
+			const storeDataFileName = this.getFileToStoreData(e.params.factoryCode)
+
+			writeFileSync(
+				resolve(join(__dirname, '../..', `/assets/data/${storeDataFileName}`)),
+				JSON.stringify(epcsByFetchedCommandData)
+			)
+
+			this.eventEmitter.emit(ThirdPartyApiEvent.FULFILL, {
+				data: { storeDataFileName },
+				params: e.params
+			} satisfies SyncEventPayload)
+		} catch (error) {
+			FileLogger.error(error)
+			this.cacheManager.del(`sync_process:${e.params.factoryCode}`)
 		}
-
-		const epcsByFetchedCommandData = uniqBy(
-			expectedCommandData.filter((item) => !isNil(item) || isEmpty(item)),
-			'commandNumber'
-		)
-			.map(async (item) => await this.getCustmerEpcByCmdNo(item.commandNumber))
-			.flat()
-
-		// TODO: temporarily save fetched data from customer to file
-		const storeDataFileName = this.getFileToStoreData(e.params.factoryCode)
-		writeFileSync(
-			join(__dirname, '../..', `/assets/data/${storeDataFileName}`),
-			JSON.stringify(epcsByFetchedCommandData)
-		)
-
-		this.eventEmitter.emit(ThirdPartyApiEvent.FULFILL, {
-			data: { storeDataFileName },
-			params: e.params
-		} satisfies SyncEventPayload)
 	}
 }

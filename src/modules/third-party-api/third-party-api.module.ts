@@ -25,13 +25,15 @@ export class ThirdPartyApiModule implements OnModuleInit {
 			async (config) => {
 				if (config.baseURL === this.configService.get('THIRD_PARTY_API_URL')) {
 					const factoryCode = config.headers['X-Factory']
+
+					if (!factoryCode) return config
 					const accessToken = await this.thirdPartyApiService.getTokenByFactory(factoryCode)
 					config.headers['Authorization'] = `Bearer ${accessToken}`
 				}
 				return config
 			},
 			(error) => {
-				return Promise.reject(error)
+				return Promise.reject(error.message)
 			}
 		)
 
@@ -43,14 +45,21 @@ export class ThirdPartyApiModule implements OnModuleInit {
 				const originalRequest: InternalAxiosRequestConfig = error.config
 				const errorStatus = error.status
 				if (originalRequest && !originalRequest['retry'] && errorStatus === HttpStatus.UNAUTHORIZED) {
-					const refreshToken = await this.thirdPartyApiService.fetchOauth2Token(
+					const tokenResponse = await this.thirdPartyApiService.fetchOauth2Token(
 						originalRequest.headers['X-Factory']
 					)
-					originalRequest.headers['Authorization'] = `Bearer ${refreshToken}`
-					this.httpService.axiosRef.request(originalRequest)
+					if (!tokenResponse) return Promise.reject('Token response is empty')
+					await this.thirdPartyApiService.setTokenByFactory(
+						originalRequest.headers['X-Factory'],
+						tokenResponse?.access_token,
+						tokenResponse?.expires_in
+					)
+					originalRequest.headers['Authorization'] = `${tokenResponse?.token_type} ${tokenResponse?.access_token}`
+					const response = await this.httpService.axiosRef.request(originalRequest)
 					originalRequest['retry'] = true
+					return response
 				}
-				return Promise.reject(error)
+				return Promise.reject(error.message)
 			}
 		)
 	}
