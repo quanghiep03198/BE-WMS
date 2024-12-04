@@ -1,54 +1,40 @@
 import { DATABASE_DATA_LAKE } from '@/databases/constants'
+import { BoolBitTransformer } from '@/databases/transformers/bool.transformer'
 import { BaseAbstractEntity } from '@/modules/_base/base.abstract.entity'
 import { Column, Entity } from 'typeorm'
 
 @Entity('dv_whiodet', { database: DATABASE_DATA_LAKE, synchronize: false })
 export class ImportOrderDetailEntity extends BaseAbstractEntity {
-	@Column()
-	user_code_created: string
-
-	@Column()
-	user_name_created: string
-
-	@Column()
-	user_name_updated: string
-
-	@Column()
-	user_code_updated: string
-
-	@Column()
+	@Column({ type: 'nvarchar', length: 50 })
 	sno_no: string
 
-	@Column()
+	@Column({ type: 'nvarchar', length: 50 })
 	custbrand_id: string
 
-	@Column()
+	@Column({ type: 'nvarchar', length: 20 })
 	sno_templink: string
 
-	@Column()
+	@Column({ type: 'nvarchar', length: 20 })
 	mo_templink: string
 
-	@Column()
+	@Column({ type: 'nvarchar', length: 20 })
 	mo_no: string
 
-	@Column()
+	@Column({ type: 'numeric' })
 	sno_boxqty: number
 
-	@Column()
+	@Column({ type: 'numeric', nullable: true })
 	sno_qty: number
 
-	@Column()
+	@Column({ type: 'nvarchar', length: 50 })
 	storage_num: string
 
-	@Column()
-	is_bgrade: string
+	@Column({ type: 'bit', transformer: new BoolBitTransformer(), default: false })
+	is_bgrade: boolean
 
-	@Column()
+	@Column({ type: 'nvarchar', length: 50, nullable: true })
 	employee_code: string
 
-	@Column()
+	@Column({ type: 'nvarchar', length: 50, nullable: true })
 	employee_name: string
-
-	@Column()
-	remark: string
 }
