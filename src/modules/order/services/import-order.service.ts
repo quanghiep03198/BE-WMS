@@ -4,8 +4,8 @@ import { InjectDataSource, InjectRepository } from '@nestjs/typeorm'
 import { readFileSync } from 'fs'
 import { join } from 'path'
 import { DataSource, In, Repository } from 'typeorm'
-import { ImportOrderDetailEntity } from '../entities/import-order-detail.entity'
-import { ImportOrderEntity } from '../entities/import-order.entity'
+import { ImportOrderDetEntity } from '../entities/import-order-det.entity'
+import { ImportOrderEntity } from '../entities/import-order-mst.entity'
 import { TransferOrderDetailEntity } from '../entities/transfer-order-detail.entity'
 
 @Injectable()
@@ -13,8 +13,8 @@ export class ImportOrderService {
 	constructor(
 		@InjectRepository(ImportOrderEntity, DATA_SOURCE_DATA_LAKE)
 		private readonly ImportOrderRepository: Repository<ImportOrderEntity>,
-		@InjectRepository(ImportOrderDetailEntity, DATA_SOURCE_DATA_LAKE)
-		private readonly ImportOrderDetRepository: Repository<ImportOrderDetailEntity>,
+		@InjectRepository(ImportOrderDetEntity, DATA_SOURCE_DATA_LAKE)
+		private readonly ImportOrderDetRepository: Repository<ImportOrderDetEntity>,
 		@InjectRepository(TransferOrderDetailEntity, DATA_SOURCE_DATA_LAKE)
 		@InjectDataSource(DATA_SOURCE_ERP)
 		private readonly dataSourceERP: DataSource,
@@ -39,17 +39,15 @@ export class ImportOrderService {
 	}
 
 	async store(companyCode: string, payload: any) {
+		console.log(payload, 'payload')
 		const ProductionImportPayload = payload.map((item) => {
 			return {
 				...item,
 				cofactory_code: companyCode,
-				sno_date: new Date().toISOString(),
-				dept_name: 'test_dept',
-				sno_no: 'SNA' + Date.now().toString().slice(-7),
-				type_inventorylist: 'AAA',
-				dept_code: 'test_code' + Date.now().toString().slice(-4),
-				warehouse_code: 'test132',
-				warehouse_name: 'test133'
+				dept_name: item.dept_code,
+				warehouse_code: item.warehouse_num,
+				warehouse_name: item.warehouse_num,
+				sno_location: item.storage_num
 			}
 		})
 
@@ -102,7 +100,7 @@ export class ImportOrderService {
 		// const createdTransferOrders = []
 		await this.dataSourceERP.manager.transaction(async (manager) => {
 			for (const detailPayload of ProductionImportPayloadDetail) {
-				await manager.getRepository(ImportOrderDetailEntity).save(detailPayload)
+				await manager.getRepository(ImportOrderDetEntity).save(detailPayload)
 			}
 		})
 	}
@@ -114,7 +112,7 @@ export class ImportOrderService {
 		await queryRunner.startTransaction()
 
 		try {
-			await queryRunner.manager.delete(ImportOrderDetailEntity, {
+			await queryRunner.manager.delete(ImportOrderDetEntity, {
 				sno_no: In(sno_no)
 			})
 
