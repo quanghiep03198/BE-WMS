@@ -20,7 +20,6 @@ export class TransferOrderController {
 	async getTransferOrderDatalist(
 		@Headers('X-User-Company') factoryCode: string,
 		@Query('time_range') timeRange: any,
-
 		@Query('brand') customerBrand: string
 	) {
 		timeRange = JSON.parse(timeRange)
