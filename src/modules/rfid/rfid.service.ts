@@ -85,14 +85,13 @@ export class FPInventoryService {
 			.addOrderBy(/* SQL */ `inv.record_time`, 'DESC')
 			.limit(LIMIT_FETCH_DOCS)
 			.offset((args.page - 1) * LIMIT_FETCH_DOCS)
-			.maxExecutionTime(500)
+			.maxExecutionTime(1000)
 			.setParameters({
 				fallbackValue: FALLBACK_VALUE,
 				excludedOrders: EXCLUDED_ORDERS,
 				excludedEpcPattern: EXCLUDED_EPC_PATTERN
 			})
-		const totalDocs = 0
-		const [data] = await Promise.all([queryBuilder.getRawMany()])
+		const [data, totalDocs] = await Promise.all([queryBuilder.getRawMany(), queryBuilder.getCount()])
 
 		const totalPages = Math.ceil(totalDocs / LIMIT_FETCH_DOCS)
 
