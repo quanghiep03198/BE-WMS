@@ -39,17 +39,15 @@ export class ImportOrderService {
 	}
 
 	async store(companyCode: string, payload: any) {
+		console.log(payload, 'payload')
 		const ProductionImportPayload = payload.map((item) => {
 			return {
 				...item,
 				cofactory_code: companyCode,
-				sno_date: new Date().toISOString(),
-				dept_name: 'test_dept',
-				sno_no: 'SNA' + Date.now().toString().slice(-7),
-				type_inventorylist: 'AAA',
-				dept_code: 'test_code' + Date.now().toString().slice(-4),
-				warehouse_code: 'test132',
-				warehouse_name: 'test133'
+				dept_name: item.dept_code,
+				warehouse_code: item.warehouse_num,
+				warehouse_name: item.warehouse_num,
+				sno_location: item.storage_num
 			}
 		})
 
