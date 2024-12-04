@@ -4,9 +4,10 @@ import { BaseAbstractEntity } from '@/modules/_base/base.abstract.entity'
 import { Column, Entity } from 'typeorm'
 
 /**
+ * @deprecated
  * @description RFID Production Management Entity - Describes the details of internal EPC (which commonly starts with E28xxx)
  */
-@Entity('dv_rfidmatchmst', { database: DATABASE_DATA_LAKE, synchronize: false })
+@Entity('dv_rfidmatchmst', { database: DATABASE_DATA_LAKE })
 export class RFIDMatchEntity extends BaseAbstractEntity {
 	@Column({ name: 'EPC_Code', type: 'nvarchar', length: 50 })
 	epc: string

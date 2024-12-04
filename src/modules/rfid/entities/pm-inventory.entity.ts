@@ -3,7 +3,11 @@ import { BaseAbstractEntity } from '@/modules/_base/base.abstract.entity'
 import { Column, Entity } from 'typeorm'
 import { InventoryActions } from '../constants'
 
-@Entity('dv_InvRFIDrecordmst', { database: DATABASE_DATA_LAKE, synchronize: false })
+/**
+ * @deprecated
+ * @description RFID Production Management Entity - Describes status of Internal RFID tags in the factory (E28xxx)
+ */
+@Entity('dv_InvRFIDrecordmst', { database: DATABASE_DATA_LAKE })
 export class PMInventoryEntity extends BaseAbstractEntity {
 	@Column({ name: 'stationNO', type: 'nvarchar', length: 20 })
 	station_no: string

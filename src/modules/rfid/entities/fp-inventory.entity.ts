@@ -3,7 +3,10 @@ import { BaseAbstractEntity } from '@/modules/_base/base.abstract.entity'
 import { Column, Entity, Index } from 'typeorm'
 import { InventoryActions, InventoryStorageType } from '../constants'
 
-@Entity('dv_InvRFIDrecorddet', { database: DATABASE_DATA_LAKE, synchronize: true })
+/**
+ * @description RFID Production Management Entity - Describes status of RFID tags in the factory (3034xxx)
+ */
+@Entity('dv_InvRFIDrecorddet', { database: DATABASE_DATA_LAKE })
 export class FPInventoryEntity extends BaseAbstractEntity {
 	@Column({ name: 'stationNO' })
 	station_no: string

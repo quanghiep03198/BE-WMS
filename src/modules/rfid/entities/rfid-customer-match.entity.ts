@@ -2,8 +2,11 @@ import { DATABASE_DATA_LAKE } from '@/databases/constants'
 import { BaseAbstractEntity } from '@/modules/_base/base.abstract.entity'
 import { Column, Entity, Index } from 'typeorm'
 
-@Entity('dv_rfidmatchmst_cust', { database: DATABASE_DATA_LAKE, synchronize: true })
-export class RFIDMatchCusEntity extends BaseAbstractEntity {
+/**
+ * @description RFID Customer Match Entity - Describes the details of customer EPC (which commonly starts with "3034")
+ */
+@Entity('dv_rfidmatchmst_cust', { database: DATABASE_DATA_LAKE })
+export class RFIDMatchCustomerEntity extends BaseAbstractEntity {
 	@Column({ name: 'EPC_Code' })
 	@Index()
 	epc: string
@@ -82,7 +85,7 @@ export class RFIDMatchCusEntity extends BaseAbstractEntity {
 	@Column({ type: 'nvarchar', length: 50, nullable: true })
 	dept_name: string
 
-	constructor(item: Partial<RFIDMatchCusEntity>) {
+	constructor(item: Partial<RFIDMatchCustomerEntity>) {
 		super()
 		Object.assign(this, item)
 	}

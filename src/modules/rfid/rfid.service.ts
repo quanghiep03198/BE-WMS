@@ -1,7 +1,7 @@
 import { FileLogger } from '@/common/helpers/file-logger.helper'
 import { DATABASE_DATA_LAKE, DATA_SOURCE_DATA_LAKE, DATA_SOURCE_ERP } from '@/databases/constants'
 import { CACHE_MANAGER } from '@nestjs/cache-manager'
-import { Inject, Injectable, InternalServerErrorException, NotFoundException, Scope } from '@nestjs/common'
+import { Inject, Injectable, InternalServerErrorException, Logger, NotFoundException, Scope } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { REQUEST } from '@nestjs/core'
 import { EventEmitter2, OnEvent } from '@nestjs/event-emitter'
@@ -14,21 +14,21 @@ import { readFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { Brackets, DataSource, FindOptionsWhere, In, IsNull } from 'typeorm'
 import { SqlServerConnectionOptions } from 'typeorm/driver/sqlserver/SqlServerConnectionOptions'
-import { TenancyService } from '../../tenancy/tenancy.service'
-import { ThirdPartyApiEvent } from '../../third-party-api/constants'
-import { FetchThirdPartyApiEvent, SyncEventPayload } from '../../third-party-api/third-party-api.interface'
+import { TenancyService } from '../tenancy/tenancy.service'
+import { ThirdPartyApiEvent } from '../third-party-api/constants'
+import { FetchThirdPartyApiEvent, SyncEventPayload } from '../third-party-api/third-party-api.interface'
 import {
 	EXCLUDED_EPC_PATTERN,
 	EXCLUDED_ORDERS,
 	FALLBACK_VALUE,
 	INTERNAL_EPC_PATTERN,
 	MATCH_EPC_CHAR_LEN
-} from '../constants'
-import { ExchangeEpcDTO, SearchCustOrderParamsDTO, UpdateStockDTO } from '../dto/fp-inventory.dto'
-import { FPInventoryEntity } from '../entities/fp-inventory.entity'
-import { RFIDMatchCusEntity } from '../entities/rfid-match-cus.entity'
-import { FPIRespository } from '../repositories/fp-inventory.repository'
-import { RFIDSearchParams } from '../rfid.interface'
+} from './constants'
+import { ExchangeEpcDTO, SearchCustOrderParamsDTO, UpdateStockDTO } from './dto/rfid.dto'
+import { FPInventoryEntity } from './entities/fp-inventory.entity'
+import { RFIDMatchCustomerEntity } from './entities/rfid-customer-match.entity'
+import { RFIDSearchParams } from './interfaces'
+import { FPIRespository } from './rfid.repository'
 
 /**
  * @description Service for Finished Production Inventory (FPI)
@@ -85,14 +85,14 @@ export class FPInventoryService {
 			.addOrderBy(/* SQL */ `inv.record_time`, 'DESC')
 			.limit(LIMIT_FETCH_DOCS)
 			.offset((args.page - 1) * LIMIT_FETCH_DOCS)
-			.maxExecutionTime(1000)
+			.maxExecutionTime(500)
 			.setParameters({
 				fallbackValue: FALLBACK_VALUE,
 				excludedOrders: EXCLUDED_ORDERS,
 				excludedEpcPattern: EXCLUDED_EPC_PATTERN
 			})
-
-		const [data, totalDocs] = await Promise.all([queryBuilder.getRawMany(), queryBuilder.getCount()])
+		const totalDocs = 0
+		const [data] = await Promise.all([queryBuilder.getRawMany()])
 
 		const totalPages = Math.ceil(totalDocs / LIMIT_FETCH_DOCS)
 
@@ -170,7 +170,7 @@ export class FPInventoryService {
 		return await this.datasourceDL
 			.createQueryBuilder()
 			.select(/* SQL */ `DISTINCT TOP 5 mo_no AS mo_no`)
-			.from(RFIDMatchCusEntity, 'cust')
+			.from(RFIDMatchCustomerEntity, 'cust')
 			.where(/* SQL */ `mo_no IN (${subQuery.getQuery()})`)
 			.andWhere(/* SQL */ `mo_no LIKE :searchTerm`, { searchTerm: `%${params.q}%` })
 			.andWhere(
@@ -213,7 +213,7 @@ export class FPInventoryService {
 		try {
 			if (payload.mo_no === FALLBACK_VALUE) {
 				const unknownCustomerEpc = await queryRunner.manager
-					.getRepository(RFIDMatchCusEntity)
+					.getRepository(RFIDMatchCustomerEntity)
 					.createQueryBuilder('cust')
 					.select(/* SQL */ `TOP ${payload.quantity} cust.*`)
 					.innerJoin(FPInventoryEntity, 'inv', /* SQL */ `cust.epc = inv.epc`)
@@ -229,22 +229,22 @@ export class FPInventoryService {
 					.getRawMany()
 
 				await queryRunner.manager
-					.getRepository(RFIDMatchCusEntity)
+					.getRepository(RFIDMatchCustomerEntity)
 					.insert(unknownCustomerEpc.map((item) => omit({ ...item, mo_no: payload.mo_no_actual }, 'keyid')))
 
 				for (const epcBatch of epcBatches) {
-					const criteria: FindOptionsWhere<RFIDMatchCusEntity | FPInventoryEntity> = {
+					const criteria: FindOptionsWhere<RFIDMatchCustomerEntity | FPInventoryEntity> = {
 						epc: In(epcBatch)
 					}
 					await queryRunner.manager.update(FPInventoryEntity, criteria, update)
 				}
 			} else {
 				for (const epcBatch of epcBatches) {
-					const criteria: FindOptionsWhere<RFIDMatchCusEntity | FPInventoryEntity> = {
+					const criteria: FindOptionsWhere<RFIDMatchCustomerEntity | FPInventoryEntity> = {
 						epc: In(epcBatch)
 					}
 					await Promise.all([
-						queryRunner.manager.update(RFIDMatchCusEntity, criteria, update),
+						queryRunner.manager.update(RFIDMatchCustomerEntity, criteria, update),
 						queryRunner.manager.update(FPInventoryEntity, criteria, update)
 					])
 				}
@@ -295,6 +295,7 @@ export class FPInventoryService {
 
 	@OnEvent(ThirdPartyApiEvent.FULFILL)
 	protected async syncWithCustomerData(e: SyncEventPayload) {
+		Logger.debug(e.data)
 		// * Intialize datasource
 		const tenant = this.tenancyService.findOneById(e.params.tenantId)
 		const dataSource = new DataSource({
@@ -309,7 +310,7 @@ export class FPInventoryService {
 		}
 
 		const storedDataFromApi = readFileSync(
-			resolve(join(__dirname, `/src/assets/data/${e.data.storeDataFileName}`), 'utf-8')
+			resolve(join(__dirname, '../../..', `/assets/data/${e.data.storeDataFileName}`))
 		)
 
 		/**

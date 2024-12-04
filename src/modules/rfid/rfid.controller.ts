@@ -21,13 +21,13 @@ import {
 	SearchCustOrderParamsDTO,
 	UpdateStockDTO,
 	updateStockValidator
-} from '../dto/fp-inventory.dto'
-import { FPInventoryService } from '../services/fp-inventory.service'
+} from './dto/rfid.dto'
+import { FPInventoryService } from './rfid.service'
 
 /**
  * @description Controller for Finished Production Inventory (FPI)
  */
-@Controller('rfid/fp-inventory')
+@Controller('rfid')
 export class FPInventoryController {
 	constructor(private readonly fpiService: FPInventoryService) {}
 
@@ -46,8 +46,8 @@ export class FPInventoryController {
 		/**
 		 * @deprecated
 		 * Temporary solution to sync data with third party API, it need to update upsert logic
-		 * await this.fpiService.syncDataWithThirdPartyApi()
 		 */
+		// await this.fpiService.syncDataWithThirdPartyApi()
 
 		return interval(duration).pipe(
 			switchMap(() =>
