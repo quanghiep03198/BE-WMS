@@ -99,14 +99,17 @@ export class FPInventoryController {
 	}
 
 	@Api({
-		endpoint: 'update-stock',
+		endpoint: 'update-stock/:orderCode',
 		method: HttpMethod.PATCH,
 		statusCode: HttpStatus.CREATED,
 		message: 'common.updated'
 	})
 	@AuthGuard()
-	async updateStock(@Body(new ZodValidationPipe(updateStockValidator)) payload: UpdateStockDTO) {
-		return await this.fpiService.updateStock(payload)
+	async updateStock(
+		@Param('orderCode') orderCode: string,
+		@Body(new ZodValidationPipe(updateStockValidator)) payload: UpdateStockDTO
+	) {
+		return await this.fpiService.updateStock(orderCode, payload)
 	}
 
 	@Api({

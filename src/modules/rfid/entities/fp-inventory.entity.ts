@@ -14,7 +14,7 @@ export class FPInventoryEntity extends BaseAbstractEntity {
 	@Column({ name: 'FC_server_code' })
 	factory_code: string
 
-	@Column({ type: 'nvarchar', length: 20 })
+	@Column({ name: 'dept_code', type: 'nvarchar', length: 20 })
 	dept_code: string
 
 	@Index()

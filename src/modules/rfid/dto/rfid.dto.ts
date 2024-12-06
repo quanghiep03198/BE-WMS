@@ -6,13 +6,7 @@ export const updateStockValidator = z
 		rfid_status: z.nativeEnum(InventoryActions, { required_error: 'Required' }),
 		rfid_use: z.nativeEnum(InventoryStorageType, { required_error: 'Required' }),
 		dept_code: z.string().optional(),
-		storage: z.string().optional(),
-		mo_no: z.string({ required_error: 'Required' }).min(1, { message: 'Required' }).nullable(),
-		quantity: z.number().optional()
-	})
-	.refine((values) => {
-		values.quantity = values.rfid_status === InventoryActions.INBOUND ? 1 : -1
-		return true
+		storage: z.string().optional()
 	})
 	.superRefine((values, ctx) => {
 		if (values.rfid_status === InventoryActions.INBOUND) {

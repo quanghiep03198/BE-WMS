@@ -12,7 +12,7 @@ import { chunk, omit, pick } from 'lodash'
 import { I18nContext, I18nService } from 'nestjs-i18n'
 import { readFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
-import { Brackets, DataSource, FindOptionsWhere, In, IsNull } from 'typeorm'
+import { Brackets, DataSource, FindOptionsWhere, In } from 'typeorm'
 import { SqlServerConnectionOptions } from 'typeorm/driver/sqlserver/SqlServerConnectionOptions'
 import { TenancyService } from '../tenancy/tenancy.service'
 import { ThirdPartyApiEvent } from '../third-party-api/constants'
@@ -110,16 +110,15 @@ export class FPInventoryService {
 		return await this.rfidRepository.getOrderDetails()
 	}
 
-	public async updateStock(payload: UpdateStockDTO) {
+	public async updateStock(orderCode: string, payload: UpdateStockDTO) {
 		const repository = this.tenancyService.dataSource.getRepository(FPInventoryEntity)
-		const updatePayload = omit(payload, 'mo_no')
-		const queryBuilder = repository.createQueryBuilder().update().set(updatePayload)
+		const queryBuilder = repository.createQueryBuilder().update().set(payload)
 
-		if (!payload.mo_no) {
-			queryBuilder.where({ mo_no: IsNull() })
+		if (orderCode === FALLBACK_VALUE) {
+			queryBuilder.where(/* SQL */ `mo_no IS NULL`)
 		} else {
 			queryBuilder.where(/* SQL */ `COALESCE(mo_no_actual, mo_no, :fallbackValue) = :mo_no`, {
-				mo_no: payload.mo_no,
+				mo_no: orderCode,
 				fallbackValue: FALLBACK_VALUE
 			})
 		}
