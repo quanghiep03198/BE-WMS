@@ -29,6 +29,7 @@ export const appConfigFactory: ConfigFactory = () => ({
 		port: +process.env.DB_PORT,
 		username: process.env.DB_USERNAME,
 		password: process.env.DB_PASSWORD,
+		schema: 'dbo',
 		entities: [path.join(__dirname, '**', '*.entity.{ts,js}')],
 		migrations: [path.join(__dirname, '/migrations/**/*{.ts,.js}')],
 		subscribers: [path.join(__dirname, '**', '*.subscriber{.ts,.js}')],
@@ -45,7 +46,8 @@ export const appConfigFactory: ConfigFactory = () => ({
 			options: {
 				socket: {
 					host: process.env.REDIS_HOST,
-					port: +process.env.REDIS_PORT
+					port: +process.env.REDIS_PORT,
+					password: process.env.REDIS_PASSWORD
 				}
 			},
 			ignoreErrors: true
