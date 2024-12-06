@@ -3,6 +3,9 @@ import { BoolBitTransformer } from '@/databases/transformers/bool.transformer'
 import { BaseAbstractEntity } from '@/modules/_base/base.abstract.entity'
 import { Column, Entity } from 'typeorm'
 
+/**
+ * @deprecated
+ */
 @Entity('dv_whiodet', { database: DATABASE_DATA_LAKE, synchronize: false })
 export class ImportOrderDetailEntity extends BaseAbstractEntity {
 	@Column({ type: 'nvarchar', length: 50 })

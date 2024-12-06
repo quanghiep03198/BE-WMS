@@ -2,6 +2,9 @@ import { DATABASE_DATA_LAKE } from '@/databases/constants'
 import { BaseAbstractEntity } from '@/modules/_base/base.abstract.entity'
 import { Column, Entity } from 'typeorm'
 
+/**
+ * @deprecated
+ */
 @Entity('dv_whiomst', { database: DATABASE_DATA_LAKE, synchronize: false })
 export class ImportOrderEntity extends BaseAbstractEntity {
 	@Column()

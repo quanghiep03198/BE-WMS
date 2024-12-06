@@ -8,6 +8,9 @@ import { ImportOrderDetailEntity } from '../entities/import-order-detail.entity'
 import { ImportOrderEntity } from '../entities/import-order.entity'
 import { TransferOrderDetailEntity } from '../entities/transfer-order-detail.entity'
 
+/**
+ * @deprecated
+ */
 @Injectable()
 export class ImportOrderService {
 	constructor(

@@ -4,6 +4,9 @@ import { Body, Controller, Headers, HttpStatus } from '@nestjs/common'
 import { IImportOrderDelete } from '../interfaces/import-order.interface'
 import { ImportOrderService } from '../services/import-order.service'
 
+/**
+ * @deprecated
+ */
 @Controller('order/production-import')
 export class ImportOrderController {
 	constructor(private readonly importOrderService: ImportOrderService) {}
