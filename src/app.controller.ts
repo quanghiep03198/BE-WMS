@@ -1,10 +1,10 @@
-import { Controller } from '@nestjs/common'
-import { Api, HttpMethod } from './common/decorators/api.decorator'
+import { Controller, Get, Res } from '@nestjs/common'
+import { Response } from 'express'
 
 @Controller()
 export class AppController {
-	@Api({ method: HttpMethod.GET })
-	welcome() {
-		return 'Hello World'
+	@Get()
+	index(@Res() res: Response) {
+		return res.redirect('https://documenter.getpostman.com/view/24228770/2sAYBYfVys')
 	}
 }

@@ -1,27 +1,25 @@
-// Unit tests for: welcome
-
+import { Test, TestingModule } from '@nestjs/testing'
+import { Response } from 'express'
 import { AppController } from './app.controller'
 
-describe('AppController.welcome() welcome method', () => {
+describe('AppController', () => {
 	let appController: AppController
 
-	beforeEach(() => {
-		appController = new AppController()
+	beforeEach(async () => {
+		const app: TestingModule = await Test.createTestingModule({
+			controllers: [AppController]
+		}).compile()
+
+		appController = app.get<AppController>(AppController)
 	})
 
-	describe('Happy Path', () => {
-		it('should return "Hello World" when called', () => {
-			// Arrange & Act
-			const result = appController.welcome()
+	it('should redirect to the Postman documentation', () => {
+		const res = {
+			redirect: jest.fn()
+		} as unknown as Response
 
-			// Assert
-			expect(result).toBe('Hello World')
-		})
-	})
+		appController.index(res)
 
-	describe('Edge Cases', () => {
-		// Since the method is simple and does not take any parameters or have any complex logic,
-		// there are no edge cases to test. However, this section is included for completeness
-		// and future-proofing if the method's complexity increases.
+		expect(res.redirect).toHaveBeenCalledWith('https://documenter.getpostman.com/view/24228770/2sAYBYfVys')
 	})
 })
