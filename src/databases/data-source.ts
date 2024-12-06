@@ -1,8 +1,6 @@
 import 'dotenv/config'
 import { join, resolve } from 'path'
 import { DataSource, DataSourceOptions } from 'typeorm'
-import { SeederOptions } from 'typeorm-extension'
-import { rfidCustomerFactory } from './seeders/rfid/rfid-customer.factory'
 
 export default new DataSource({
 	type: process.env.DB_TYPE,
@@ -15,11 +13,9 @@ export default new DataSource({
 	subscribers: [resolve(join(__dirname, '../**/*.subscriber{.ts,.js}'))],
 	logging: true,
 	synchronize: true,
-	factories: [rfidCustomerFactory],
-	seeds: [],
 	options: {
 		trustServerCertificate: true,
 		encrypt: false,
 		enableArithAbort: true
 	}
-} as DataSourceOptions & SeederOptions)
+} as DataSourceOptions)

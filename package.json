@@ -23,8 +23,7 @@
 		"migration:show": "npm run typeorm migration:show -- -d ./src/databases/data-source.ts",
 		"migration:create": "npm run typeorm -- migration:create ./src/databases/migrations/%npm_config_name%",
 		"migration:run": "npm run typeorm migration:run -- -d src/databases/data-source.ts",
-		"migration:revert": "npm run typeorm migration:revert -- -d ./src/databases/data-source.ts",
-		"seeder:run": "npm run typeorm seed:run -- -d ./src/databases/data-source.ts"
+		"migration:revert": "npm run typeorm migration:revert -- -d ./src/databases/data-source.ts"
 	},
 	"dependencies": {
 		"@faker-js/faker": "^9.0.1",
@@ -47,6 +46,7 @@
 		"compression": "^1.7.4",
 		"date-fns": "^3.6.0",
 		"dotenv": "^16.4.5",
+		"exceljs": "^4.4.0",
 		"helmet": "^7.1.0",
 		"ioredis": "^5.4.1",
 		"lodash": "^4.17.21",
@@ -61,7 +61,6 @@
 		"reflect-metadata": "^0.2.0",
 		"rxjs": "^7.8.1",
 		"typeorm": "^0.3.20",
-		"typeorm-extension": "^3.6.1",
 		"util": "^0.12.5",
 		"zod": "^3.23.8"
 	},
@@ -73,7 +72,7 @@
 		"@nestjs/cli": "^10.0.0",
 		"@nestjs/schematics": "^10.0.0",
 		"@nestjs/testing": "^10.0.0",
-		"@swc/cli": "^0.4.0",
+		"@swc/cli": "^0.5.2",
 		"@swc/core": "^1.7.23",
 		"@swc/jest": "^0.2.36",
 		"@types/bcrypt": "^5.0.2",
