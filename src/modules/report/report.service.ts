@@ -77,7 +77,7 @@ export class ReportService {
 		// * Add title
 		worksheet.insertRow(1, null)
 		worksheet.getRow(1).height = 28
-		worksheet.mergeCells('A1:F1')
+		worksheet.mergeCells('A1:G1')
 		worksheet.getCell('A1').value = `Inbound Report - ${format(new Date(), 'yyyy/MM/dd')}`
 		worksheet.getRow(1).alignment = { vertical: 'middle', horizontal: 'left' }
 		worksheet.getCell('A1').fill = {
