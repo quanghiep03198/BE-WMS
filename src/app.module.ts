@@ -16,6 +16,7 @@ import { DepartmentModule } from './modules/department/department.module'
 import { InventoryModule } from './modules/inventory/inventory.module'
 import { OrderModule } from './modules/order/order.module'
 import { PackingModule } from './modules/packing/packing.module'
+import { ReportModule } from './modules/report/report.module'
 import { RFIDModule } from './modules/rfid/rfid.module'
 import { TenancyModule } from './modules/tenancy/tenancy.module'
 import { ThirdPartyApiModule } from './modules/third-party-api/third-party-api.module'
@@ -61,16 +62,16 @@ import { WarehouseModule } from './modules/warehouse/warehouse.module'
 		DatabaseModule,
 		// * Feature modules
 		AuthModule,
-		UserModule,
+		DepartmentModule,
+		InventoryModule,
+		OrderModule,
+		PackingModule,
+		ReportModule,
+		RFIDModule,
 		TenancyModule,
 		ThirdPartyApiModule,
-		WarehouseModule,
-		RFIDModule,
-		PackingModule,
-		DepartmentModule,
-		OrderModule,
-		InventoryModule
-		// ReportModule
+		UserModule,
+		WarehouseModule
 	],
 	controllers: [AppController],
 	providers: []
