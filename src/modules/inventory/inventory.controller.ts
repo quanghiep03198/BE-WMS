@@ -25,13 +25,4 @@ export class InventoryController {
 	) {
 		return this.inventoryService.findByMonth({ ['factory_code.eq']: factoryCode, ...searchTerms })
 	}
-
-	@Api({
-		endpoint: '/daily-inbound-report',
-		method: HttpMethod.GET
-	})
-	@AuthGuard()
-	async getDailyInboundReport() {
-		return await this.inventoryService.getDailyInboundReport()
-	}
 }

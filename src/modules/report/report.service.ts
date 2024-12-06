@@ -1,4 +1,4 @@
-import { DATA_SOURCE_ERP } from '@/databases/constants'
+import { DATA_SOURCE_DATA_LAKE, LinkedServer } from '@/databases/constants'
 import { Injectable } from '@nestjs/common'
 import { InjectDataSource } from '@nestjs/typeorm'
 import { format } from 'date-fns'
@@ -7,23 +7,62 @@ import { readFileSync } from 'fs'
 import { I18nContext, I18nService } from 'nestjs-i18n'
 import { join } from 'path'
 import { DataSource } from 'typeorm'
+import { EXCLUDED_EPC_PATTERN, EXCLUDED_ORDERS, FALLBACK_VALUE } from '../rfid/constants'
+import { FPInventoryEntity } from '../rfid/entities/fp-inventory.entity'
+import { RFIDMatchCustomerEntity } from '../rfid/entities/rfid-customer-match.entity'
+import { TenancyService } from '../tenancy/tenancy.service'
 import { IReportSearchParams } from './interfaces'
 
 @Injectable()
 export class ReportService {
 	constructor(
-		@InjectDataSource(DATA_SOURCE_ERP) private readonly dataSourceERP: DataSource,
+		@InjectDataSource(DATA_SOURCE_DATA_LAKE) private readonly dataSourceDL: DataSource,
+		private readonly tenancyService: TenancyService,
 		private readonly i18nService: I18nService
 	) {}
 
-	async findByDate(filter: IReportSearchParams) {
-		const query = readFileSync(join(__dirname, './sql/report.sql'), 'utf-8').toString()
+	async getByDate(filter: IReportSearchParams) {
+		const query = readFileSync(join(__dirname, './sql/inbound-report.sql'), 'utf-8').toString()
+		const queryRunner = this.dataSourceDL.createQueryRunner()
+		await queryRunner.connect()
 
-		return await this.dataSourceERP.query(query, [filter['factory_code.eq'], filter['date.eq']])
+		return await queryRunner.manager.query(query, [
+			LinkedServer[filter['factory_code.eq']],
+			filter['factory_code.eq'],
+			filter['date.eq']
+		])
+	}
+
+	async getDailyInboundReport() {
+		return await this.tenancyService.dataSource
+			.getRepository(FPInventoryEntity)
+			.createQueryBuilder('inv')
+			.select(/* SQL */ `DISTINCT COALESCE(inv.mo_no_actual, inv.mo_no, :fallbackValue) AS mo_no`)
+			.addSelect(/* SQL */ `COUNT(DISTINCT inv.EPC_Code) AS count`)
+			.addSelect(/* SQL */ `CASE WHEN COUNT(inv.mo_no_actual) > 0 THEN 1 ELSE 0 END AS is_exchanged`)
+			.leftJoin(
+				RFIDMatchCustomerEntity,
+				'match',
+				/* SQL */ `inv.EPC_Code = match.EPC_Code 
+				AND COALESCE(inv.mo_no_actual, inv.mo_no, :fallbackValue) = COALESCE(match.mo_no_actual, match.mo_no, :fallbackValue)`
+			)
+			.where(/* SQL */ `inv.rfid_status IS NOT NULL`)
+			.andWhere(/* SQL */ `inv.record_time >= CAST(GETDATE() AS DATE)`)
+			.andWhere(/* SQL */ `inv.EPC_Code NOT LIKE :excludedEpcPattern`)
+			.andWhere(/* SQL */ `match.ri_cancel = 0`)
+			.andWhere(/* SQL */ `COALESCE(inv.mo_no_actual, inv.mo_no, :fallbackValue) NOT IN (:...excludedOrders)`)
+			.groupBy(/* SQL */ `COALESCE(inv.mo_no_actual, inv.mo_no, :fallbackValue)`)
+			.setParameters({
+				fallbackValue: FALLBACK_VALUE,
+				excludedOrders: EXCLUDED_ORDERS,
+				excludedEpcPattern: EXCLUDED_EPC_PATTERN
+			})
+			.getRawMany()
+			.then((data) => data.map((item) => ({ ...item, is_exchanged: Boolean(item.is_exchanged) })))
 	}
 
 	async exportReportToExcel(filter: IReportSearchParams) {
-		const data = await this.findByDate(filter)
+		const data = await this.getByDate(filter)
 		const workbook = new ExcelJS.Workbook()
 		const worksheet = workbook.addWorksheet(`Report ${format(new Date(), 'yyyy-MM-dd')}`)
 

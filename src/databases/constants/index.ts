@@ -10,3 +10,9 @@ export enum RecordStatus {
 	ACTIVE = 'Y',
 	INACTIVE = 'N'
 }
+
+export enum LinkedServer {
+	VA1 = 'DV_SERVER802',
+	VB2 = 'DV_SERVER202',
+	CA1 = 'DV_SERVER51'
+}

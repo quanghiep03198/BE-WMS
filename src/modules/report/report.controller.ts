@@ -1,7 +1,7 @@
 import { Api, HttpMethod } from '@/common/decorators/api.decorator'
 import { AuthGuard } from '@/common/decorators/auth.decorator'
 import { AllExceptionsFilter } from '@/common/filters/exceptions.filter'
-import { Controller, Get, Headers, Query, Res, UseFilters } from '@nestjs/common'
+import { Controller, DefaultValuePipe, Get, Headers, Query, Res, UseFilters } from '@nestjs/common'
 import { format } from 'date-fns'
 import { Response } from 'express'
 import { IReportSearchParams } from './interfaces'
@@ -13,20 +13,29 @@ export class ReportController {
 
 	@Api({ method: HttpMethod.GET })
 	@AuthGuard()
-	findAll(
+	async getByDate(
 		@Headers('X-User-Company') factoryCode: string,
-		@Query()
+		@Query('date.eq', new DefaultValuePipe(format(new Date(), 'yyyy-MM-dd')))
 		dateQuery: any
 	) {
-		return this.reportService.findByDate({
+		return await this.reportService.getByDate({
 			'factory_code.eq': factoryCode,
-			'date.eq': dateQuery['date.eq'] ?? format(new Date(), 'yyyy-MM-dd')
+			'date.eq': dateQuery
 		} satisfies IReportSearchParams)
 	}
 
-	@Get('/export')
+	@Api({
+		endpoint: 'daily-inbound-report',
+		method: HttpMethod.GET
+	})
+	@AuthGuard()
+	async getDailyInboundReport() {
+		return await this.reportService.getDailyInboundReport()
+	}
+
+	@Get('export')
 	@UseFilters(AllExceptionsFilter)
-	// @AuthGuard()
+	@AuthGuard()
 	async exportReportToExcel(
 		@Headers('X-User-Company') factoryCode: string,
 		@Query('date.eq') date: string,
@@ -37,8 +46,8 @@ export class ReportController {
 			'factory_code.eq': factoryCode
 		})
 
+		return res.send(buffer)
 		// res.setHeader('Content-Disposition', 'attachment; filename=report.xlsx')
 		// res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-		res.send(buffer)
 	}
 }
