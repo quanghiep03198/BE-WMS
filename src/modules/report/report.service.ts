@@ -129,7 +129,7 @@ export class ReportService {
 			size: 16
 		}
 		worksheet.eachRow({ includeEmpty: false }, (row) => {
-			row.eachCell({ includeEmpty: false }, (cell) => {
+			row.eachCell({ includeEmpty: true }, (cell) => {
 				cell.border = {
 					top: { style: 'thin' },
 					left: { style: 'thin' },
