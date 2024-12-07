@@ -24,11 +24,8 @@ SELECT
 FROM ' + @0 + '.DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet inv
 LEFT JOIN wuerp_vnrd.dbo.ta_manufacturmst manu
 	ON manu.mo_no = COALESCE(inv.mo_no_actual, inv.mo_no)
-INNER JOIN DV_DATA_LAKE.dbo.dv_rfidmatchmst_cust cust 
+LEFT JOIN DV_DATA_LAKE.dbo.dv_rfidmatchmst_cust cust 
 	ON inv.EPC_Code = cust.EPC_Code 
-	AND COALESCE(cust.mo_no_actual, cust.mo_no, ''Unknown'') = COALESCE(inv.mo_no_actual, inv.mo_no, ''Unknown'')
-	AND COALESCE(cust.mo_no_actual, cust.mo_no) = manu.mo_no 
-	AND cust.mat_code =  manu.mat_code 
 LEFT JOIN DV_DATA_LAKE.dbo.dv_Deptmst dept
 	ON dept.ERP_dept_code = inv.dept_code
 	AND dept.MES_dept_codeupper = 
@@ -67,9 +64,6 @@ WITH ReportData AS (SELECT
 	ON manu.mo_no = COALESCE(inv.mo_no_actual, inv.mo_no)
 	LEFT JOIN DV_DATA_LAKE.dbo.dv_rfidmatchmst_cust cust 
 		ON inv.EPC_Code = cust.EPC_Code 
-		AND COALESCE(cust.mo_no_actual, cust.mo_no, 'Unknown') = COALESCE(inv.mo_no_actual, inv.mo_no, 'Unknown')
-		AND COALESCE(cust.mo_no_actual, cust.mo_no) = manu.mo_no 
-		AND cust.mat_code =  manu.mat_code  
 	LEFT JOIN DV_DATA_LAKE.dbo.dv_Deptmst dept
 	ON dept.ERP_dept_code = inv.dept_code
 	AND dept.MES_dept_codeupper = CASE 
