@@ -2,7 +2,7 @@ import { DATA_SOURCE_DATA_LAKE, LinkedServer } from '@/databases/constants'
 import { Injectable } from '@nestjs/common'
 import { InjectDataSource } from '@nestjs/typeorm'
 import { format } from 'date-fns'
-import * as ExcelJS from 'exceljs'
+import { Workbook } from 'exceljs'
 import { readFileSync } from 'fs'
 import { I18nContext, I18nService } from 'nestjs-i18n'
 import { join } from 'path'
@@ -22,9 +22,14 @@ export class ReportService {
 	) {}
 
 	async getByDate(filter: IReportSearchParams) {
-		const query = readFileSync(join(__dirname, './sql/inbound-report.sql'), 'utf-8').toString()
 		const queryRunner = this.dataSourceDL.createQueryRunner()
 		await queryRunner.connect()
+
+		const isToday = format(filter['date.eq'], 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd')
+
+		const query = isToday
+			? readFileSync(join(__dirname, './sql/daily-inbound-report.sql'), 'utf-8').toString()
+			: readFileSync(join(__dirname, './sql/history-inbound-report.sql'), 'utf-8').toString()
 
 		return await queryRunner.manager.query(query, [
 			LinkedServer[filter['factory_code.eq']],
@@ -63,7 +68,7 @@ export class ReportService {
 
 	async exportReportToExcel(filter: IReportSearchParams) {
 		const data = await this.getByDate(filter)
-		const workbook = new ExcelJS.Workbook()
+		const workbook = new Workbook()
 		const worksheet = workbook.addWorksheet(`Report ${format(new Date(), 'yyyy-MM-dd')}`)
 
 		const currentLanguage = I18nContext.current()?.lang
