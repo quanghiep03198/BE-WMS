@@ -1,7 +1,6 @@
-import { Injectable } from '@nestjs/common'
-import { format } from 'date-fns'
+import { Injectable, Logger } from '@nestjs/common'
 import { groupBy } from 'lodash'
-import { IsNull, Like, MoreThanOrEqual, Not } from 'typeorm'
+import { DataSource, In, IsNull, Like, Not } from 'typeorm'
 import { TenancyService } from '../tenancy/tenancy.service'
 import { EXCLUDED_EPC_PATTERN, EXCLUDED_ORDERS, FALLBACK_VALUE, INTERNAL_EPC_PATTERN } from './constants'
 import { ExchangeEpcDTO } from './dto/rfid.dto'
@@ -21,7 +20,7 @@ export class FPIRespository {
 	async checkInvalidEpcExist() {
 		return await this.tenancyService.dataSource.getRepository(FPInventoryEntity).existsBy({
 			epc: Like(INTERNAL_EPC_PATTERN),
-			record_time: MoreThanOrEqual(format(new Date(), 'yyyy-MM-dd')),
+			// record_time: MoreThanOrEqual(format(new Date(), 'yyyy-MM-dd')),
 			rfid_status: IsNull()
 		})
 	}
@@ -48,7 +47,7 @@ export class FPIRespository {
 			)
 			.where(/* SQL */ `inv.EPC_Code NOT LIKE :excludedEpcPattern`)
 			.andWhere(/* SQL */ `inv.EPC_Code NOT LIKE :internalEpcPattern`)
-			.andWhere(/* SQL */ `inv.record_time >= CAST(GETDATE() AS DATE)`)
+			// .andWhere(/* SQL */ `inv.record_time >= CAST(GETDATE() AS DATE)`)
 			.andWhere(/* SQL */ `inv.rfid_status IS NULL`)
 			.andWhere(/* SQL */ `COALESCE(inv.mo_no_actual, inv.mo_no, :fallbackValue) NOT IN (:...excludedOrders)`)
 			.andWhere(/* SQL */ `COALESCE(cust.mo_no_actual, cust.mo_no, :fallbackValue) NOT IN (:...excludedOrders)`)
@@ -160,5 +159,82 @@ export class FPIRespository {
 			})
 			.limit(payload.quantity)
 			.getRawMany()
+	}
+
+	async upsertBulk(dataSource: DataSource, payload: { [key: string]: RFIDMatchCustomerEntity[] }): Promise<void> {
+		const queryRunner = dataSource.createQueryRunner()
+		await queryRunner.connect()
+
+		try {
+			// Start a transaction
+			await queryRunner.startTransaction()
+
+			const chunkPayload = Object.entries(payload)
+			for (const [commandNumber, epcData] of chunkPayload) {
+				await queryRunner.query(/* SQL */ `
+					MERGE INTO dv_rfidmatchmst_cust AS target
+					USING (
+						VALUES ${epcData
+							.map((item) => {
+								return `(
+									'${item.epc}', '${item.mo_no}', '${item.mat_code}','${item.mo_noseq}', '${item.or_no}', 
+									'${item.or_cust_po}', '${item.shoes_style_code_factory}', '${item.cust_shoes_style}', '${item.size_code}', '${item.size_numcode}', 
+									'${item.factory_code_orders}', '${item.factory_name_orders}', '${item.factory_code_produce}', '${item.factory_name_produce}', ${item.size_qty || 1}
+								)`
+							})
+							.join(',')}
+					)  AS source (
+							EPC_Code, mo_no, mat_code, mo_noseq, or_no, 
+						 	or_custpo, shoestyle_codefactory, cust_shoestyle, size_code, size_numcode,
+							factory_code_orders, factory_name_orders, factory_code_produce, factory_name_produce, size_qty
+						)
+					ON target.EPC_Code = source.EPC_Code
+						WHEN MATCHED THEN
+							UPDATE SET 
+								target.mo_no = source.mo_no,
+								target.mat_code = source.mat_code,
+								target.mo_noseq = source.mo_noseq,
+								target.or_no = source.or_no,
+								target.or_custpo = source.or_custpo,
+								target.shoestyle_codefactory = source.shoestyle_codefactory,
+								target.cust_shoestyle = source.cust_shoestyle,
+								target.size_code = source.size_code,
+								target.size_numcode = source.size_numcode,
+								target.factory_code_orders = source.factory_code_orders,
+								target.factory_name_orders = source.factory_name_orders,
+								target.factory_code_produce = source.factory_code_produce,
+								target.factory_name_produce = source.factory_name_produce,
+								target.size_qty = source.size_qty
+						WHEN NOT MATCHED THEN
+					INSERT (
+						EPC_Code, mo_no, mat_code, mo_noseq, or_no, or_custpo, 
+						shoestyle_codefactory, cust_shoestyle, size_code, size_numcode,
+					  	factory_code_orders, factory_name_orders, factory_code_produce, factory_name_produce, size_qty, 
+						isactive, created, ri_date, ri_type, ri_foot, ri_cancel)
+					VALUES (
+						source.EPC_Code, source.mo_no, source.mat_code, source.mo_noseq, source.or_no, 
+						source.or_custpo, source.shoestyle_codefactory, source.cust_shoestyle, source.size_code, source.size_numcode,
+						source.factory_code_orders, source.factory_name_orders, source.factory_code_produce, source.factory_name_produce, source.size_qty, 
+						'Y', GETDATE(), CAST(GETDATE() AS DATE), 'A', 'A', 0
+					);`)
+
+				await dataSource
+					.getRepository(FPInventoryEntity)
+					.createQueryBuilder()
+					.update()
+					.set({ mo_no: commandNumber })
+					.where({ epc: In(epcData.map((item) => item.epc)) })
+					.execute()
+			}
+
+			// Commit the transaction
+			await queryRunner.commitTransaction()
+		} catch (error) {
+			Logger.error(error)
+			await queryRunner.rollbackTransaction()
+			throw new Error(`Failed to upsert data: ${error.message}`)
+		} finally {
+			await queryRunner.release()
+		}
 	}
 }

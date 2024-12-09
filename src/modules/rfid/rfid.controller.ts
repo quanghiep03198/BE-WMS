@@ -29,7 +29,7 @@ import { FPInventoryService } from './rfid.service'
  */
 @Controller('rfid')
 export class FPInventoryController {
-	constructor(private readonly fpiService: FPInventoryService) {}
+	constructor(private readonly rfidService: FPInventoryService) {}
 
 	@Sse('sse')
 	@AuthGuard()
@@ -47,11 +47,11 @@ export class FPInventoryController {
 		 * @deprecated
 		 * Temporary solution to sync data with third party API, it need to update upsert logic
 		 */
-		// await this.fpiService.syncDataWithThirdPartyApi()
+		await this.rfidService.syncDataWithThirdPartyApi()
 
 		return interval(duration).pipe(
 			switchMap(() =>
-				from(this.fpiService.fetchItems({ page: 1 })).pipe(
+				from(this.rfidService.fetchItems({ page: 1 })).pipe(
 					catchError((error) => {
 						return of({ error: error.message })
 					})
@@ -67,7 +67,7 @@ export class FPInventoryController {
 	})
 	@AuthGuard()
 	async getManufacturingOrderDetail() {
-		return this.fpiService.getManufacturingOrderDetail()
+		return this.rfidService.getManufacturingOrderDetail()
 	}
 
 	@Api({
@@ -80,7 +80,7 @@ export class FPInventoryController {
 		@Query(new ZodValidationPipe(searchCustomerValidator))
 		queries: SearchCustOrderParamsDTO
 	) {
-		return await this.fpiService.searchCustomerOrder({
+		return await this.rfidService.searchCustomerOrder({
 			'factory_code.eq': factory_code,
 			...queries
 		} satisfies SearchCustOrderParamsDTO)
@@ -95,7 +95,7 @@ export class FPInventoryController {
 		@Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
 		@Query('mo_no.eq', new DefaultValuePipe('')) selectedOrder: string
 	) {
-		return await this.fpiService.findWhereNotInStock({ page, 'mo_no.eq': selectedOrder })
+		return await this.rfidService.findWhereNotInStock({ page, 'mo_no.eq': selectedOrder })
 	}
 
 	@Api({
@@ -109,7 +109,7 @@ export class FPInventoryController {
 		@Param('orderCode') orderCode: string,
 		@Body(new ZodValidationPipe(updateStockValidator)) payload: UpdateStockDTO
 	) {
-		return await this.fpiService.updateStock(orderCode, payload)
+		return await this.rfidService.updateStock(orderCode, payload)
 	}
 
 	@Api({
@@ -120,7 +120,7 @@ export class FPInventoryController {
 	})
 	@AuthGuard()
 	async exchangeEpc(@Body(new ZodValidationPipe(exchangeEpcValidator)) payload: ExchangeEpcDTO) {
-		return await this.fpiService.exchangeEpc(payload)
+		return await this.rfidService.exchangeEpc(payload)
 	}
 
 	@Api({
@@ -131,6 +131,6 @@ export class FPInventoryController {
 	})
 	@AuthGuard()
 	async deleteUnexpectedOrder(@Param('order') orderCode: string) {
-		return await this.fpiService.deleteUnexpectedOrder(orderCode)
+		return await this.rfidService.deleteUnexpectedOrder(orderCode)
 	}
 }

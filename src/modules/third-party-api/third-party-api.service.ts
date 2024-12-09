@@ -7,7 +7,7 @@ import { EventEmitter2, OnEvent } from '@nestjs/event-emitter'
 import { AxiosRequestConfig } from 'axios'
 import { Cache } from 'cache-manager'
 import { writeFileSync } from 'fs'
-import { isEmpty, isNil, uniqBy } from 'lodash'
+import { uniqBy } from 'lodash'
 import { join, resolve } from 'path'
 import { FactoryCode } from '../department/constants'
 import { ThirdPartyApiEvent } from './constants'
@@ -60,7 +60,7 @@ export class ThirdPartyApiService {
 
 	private async authenticate(factoryCode: string) {
 		try {
-			const accessToken = await this.cacheManager.get(`third_party_token:${factoryCode}`)
+			const accessToken = await this.cacheManager.get<string | null>(`third_party_token:${factoryCode}`)
 			if (!accessToken) {
 				const oauth2TokenResponse = await this.fetchOauth2Token(factoryCode)
 				this.setTokenByFactory(
@@ -71,7 +71,7 @@ export class ThirdPartyApiService {
 				return `${oauth2TokenResponse.token_type} ${oauth2TokenResponse.access_token}`
 			}
 
-			return `Bearer ${accessToken}`
+			return accessToken
 		} catch {
 			await this.cacheManager.del(`sync_process:${factoryCode}`)
 			return null
@@ -81,6 +81,9 @@ export class ThirdPartyApiService {
 	public async fetchOauth2Token(factoryCode: string): Promise<OAuth2TokenResponse> {
 		try {
 			const credentials = this.getCredentialsByFactory(factoryCode)
+
+			console.log(credentials)
+
 			return await this.httpService.axiosRef.request<URLSearchParams, OAuth2TokenResponse>({
 				baseURL: this.configService.get('THIRD_PARTY_OAUTH_API_URL'),
 				method: 'POST',
@@ -106,24 +109,21 @@ export class ThirdPartyApiService {
 		param: string
 	}): Promise<ThirdPartyApiResponseData> {
 		try {
-			const BASE_URL = this.configService.get('THIRD_PARTY_API_URL')
+			console.log(param)
+			const BASE_URL = this.configService.get<string>('THIRD_PARTY_API_URL')
 			return await this.httpService.axiosRef.get<void, ThirdPartyApiResponseData>(`${BASE_URL}/epc/${param}`, {
-				headers: {
-					['Content-Type']: 'application/json',
-					...headers
-				}
+				headers
 			})
 		} catch (error) {
 			console.log(error.message)
 		}
 	}
 
-	private async getCustmerEpcByCmdNo(commandNumber) {
+	private async getCustomerEpcByCmdNo({ headers, params }: AxiosRequestConfig) {
 		const BASE_URL = this.configService.get('THIRD_PARTY_API_URL')
 		return await this.httpService.axiosRef.get<void, ThirdPartyApiResponseData[]>(`${BASE_URL}/epcs`, {
-			params: {
-				commandNumber
-			}
+			headers,
+			params
 		})
 	}
 
@@ -136,39 +136,45 @@ export class ThirdPartyApiService {
 		try {
 			const accessToken = await this.authenticate(e.params.factoryCode)
 
-			const expectedCommandData = await Promise.all(
-				e.data.map(async (item) => {
-					return await this.getCustomerEpcData({
-						headers: {
-							['X-Factory']: e.params.factoryCode,
-							['Authorization']: accessToken
-						},
-						param: item
-					})
+			let commandNumbers = []
+			for (const item of e.data) {
+				const data = await this.getCustomerEpcData({
+					headers: { ['Authorization']: accessToken },
+					param: item
 				})
-			)
+				if (!data) continue
+				commandNumbers = [...commandNumbers, data]
+			}
 
-			if (expectedCommandData.every((item) => isNil(item) || isEmpty(item))) {
+			// * If there is no data fetched from the customer, then stop the process
+			if (commandNumbers.length === 0) {
+				console.log('No data fetched from the customer')
 				await this.cacheManager.del(`sync_process:${e.params.factoryCode}`)
 				return
 			}
 
-			const epcsByFetchedCommandData = uniqBy(
-				expectedCommandData.filter((item) => !isNil(item) || isEmpty(item)),
-				'commandNumber'
-			)
-				.map(async (item) => await this.getCustmerEpcByCmdNo(item.commandNumber))
-				.flat()
+			commandNumbers = uniqBy(commandNumbers, 'commandNumber').map((item) => item.commandNumber)
+
+			let epcs = []
+
+			for (const cmdNo of commandNumbers) {
+				const data = await this.getCustomerEpcByCmdNo({
+					headers: { ['Authorization']: accessToken },
+					params: { commandNumber: cmdNo }
+				})
+				epcs = [...epcs, ...data]
+			}
 
 			// TODO: temporarily save fetched data from customer to file
 			const storeDataFileName = this.getFileToStoreData(e.params.factoryCode)
 
 			writeFileSync(
 				resolve(join(__dirname, '../..', `/assets/data/${storeDataFileName}`)),
-				JSON.stringify(epcsByFetchedCommandData)
+				JSON.stringify({ epcs }, null, 3),
+				'utf-8'
 			)
 
-			this.eventEmitter.emit(ThirdPartyApiEvent.FULFILL, {
+			await this.eventEmitter.emitAsync(ThirdPartyApiEvent.FULFILL, {
 				data: { storeDataFileName },
 				params: e.params
 			} satisfies SyncEventPayload)

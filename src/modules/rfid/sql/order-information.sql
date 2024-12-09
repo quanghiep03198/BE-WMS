@@ -4,10 +4,9 @@ SELECT
 	b.mo_noseq[mo_noseq],
 	b.or_no[or_no],
 	d.or_custpo[or_custpo],
-	g.shoestyle_codefactory[shoestyle_codefactory],
-	g.shoestyle_code[shoestyle_code],
+	g.shoestyle_codefactory[shoes_style_code_factory],
 	CAST(ISNULL(i.shoestyle_codecust,'') + '/' + ISNULL( i.shoestyle_namecust, '' ) AS nvarchar( 255 ))[cust_shoestyle],
-	k.size_code,
+	k.size_code[size_code],
 	k.size_sumqty[size_qty]
 FROM wuerp_vnrd.dbo.ta_manufacturmst a
 	LEFT JOIN wuerp_vnrd.dbo.ta_manufacturdet b ON a.mo_no=b.mo_no AND b.isactive='Y'
