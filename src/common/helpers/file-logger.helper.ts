@@ -44,7 +44,7 @@ export class FileLogger {
 	}
 
 	public static error(e: Error) {
-		this.rewrite('error', this.format('Error', e.stack))
+		this.rewrite('error', this.format('Error', e?.stack ?? e))
 	}
 
 	public static debug(arg: any) {
