@@ -3,14 +3,7 @@ import { AuthGuard } from '@/common/decorators/auth.decorator'
 import { User } from '@/common/decorators/user.decorator'
 import { ZodValidationPipe } from '@/common/pipes/zod-validation.pipe'
 import { Body, Controller, HttpStatus } from '@nestjs/common'
-import {
-	ChangePasswordDTO,
-	changePasswordValidator,
-	RegisterDTO,
-	registerValidator,
-	UpdateProfileDTO,
-	updateProfileValidator
-} from '../dto/user.dto'
+import { ChangePasswordDTO, changePasswordValidator, UpdateProfileDTO, updateProfileValidator } from '../dto/user.dto'
 import { UserService } from '../services/user.service'
 
 @Controller()
@@ -55,19 +48,5 @@ export class UserController {
 	@AuthGuard()
 	async getUserFactory(@User('id') id: number) {
 		return await this.userService.getUserCompany(+id)
-	}
-
-	/**
-	 * @deprecated
-	 */
-	@Api({
-		endpoint: 'register',
-		method: HttpMethod.POST,
-		statusCode: HttpStatus.CREATED,
-		message: { i18nKey: 'common.created' }
-	})
-	async register(@Body(new ZodValidationPipe(registerValidator)) payload: RegisterDTO) {
-		console.log(payload)
-		// return await this.userService.createUser(payload)
 	}
 }
