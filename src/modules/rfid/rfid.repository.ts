@@ -1,4 +1,5 @@
-import { Injectable, Logger } from '@nestjs/common'
+import { FileLogger } from '@/common/helpers/file-logger.helper'
+import { Injectable } from '@nestjs/common'
 import { groupBy } from 'lodash'
 import { DataSource, In, IsNull, Like, Not } from 'typeorm'
 import { TenancyService } from '../tenancy/tenancy.service'
@@ -47,7 +48,7 @@ export class FPIRespository {
 			)
 			.where(/* SQL */ `inv.EPC_Code NOT LIKE :excludedEpcPattern`)
 			.andWhere(/* SQL */ `inv.EPC_Code NOT LIKE :internalEpcPattern`)
-			// .andWhere(/* SQL */ `inv.record_time >= CAST(GETDATE() AS DATE)`)
+			.andWhere(/* SQL */ `inv.record_time >= CAST(GETDATE() AS DATE)`)
 			.andWhere(/* SQL */ `inv.rfid_status IS NULL`)
 			.andWhere(/* SQL */ `COALESCE(inv.mo_no_actual, inv.mo_no, :fallbackValue) NOT IN (:...excludedOrders)`)
 			.andWhere(/* SQL */ `COALESCE(cust.mo_no_actual, cust.mo_no, :fallbackValue) NOT IN (:...excludedOrders)`)
@@ -163,26 +164,27 @@ export class FPIRespository {
 
 	async upsertBulk(dataSource: DataSource, payload: { [key: string]: RFIDMatchCustomerEntity[] }): Promise<void> {
 		const queryRunner = dataSource.createQueryRunner()
-		await queryRunner.connect()
-
 		try {
-			// Start a transaction
+			await queryRunner.connect()
 			await queryRunner.startTransaction()
 
 			const chunkPayload = Object.entries(payload)
+
 			for (const [commandNumber, epcData] of chunkPayload) {
+				const mergeSourceValues = epcData
+					.map((item) => {
+						return `(
+							'${item.epc}', '${item.mo_no}', '${item.mat_code}','${item.mo_noseq}', '${item.or_no}', 
+							'${item.or_cust_po}', '${item.shoes_style_code_factory}', '${item.cust_shoes_style}', '${item.size_code}', '${item.size_numcode}', 
+							'${item.factory_code_orders}', '${item.factory_name_orders}', '${item.factory_code_produce}', '${item.factory_name_produce}', ${item.size_qty || 1}
+						)`
+					})
+					.join(',')
+
 				await queryRunner.query(/* SQL */ `
 					MERGE INTO dv_rfidmatchmst_cust AS target
 					USING (
-						VALUES ${epcData
-							.map((item) => {
-								return `(
-									'${item.epc}', '${item.mo_no}', '${item.mat_code}','${item.mo_noseq}', '${item.or_no}', 
-									'${item.or_cust_po}', '${item.shoes_style_code_factory}', '${item.cust_shoes_style}', '${item.size_code}', '${item.size_numcode}', 
-									'${item.factory_code_orders}', '${item.factory_name_orders}', '${item.factory_code_produce}', '${item.factory_name_produce}', ${item.size_qty || 1}
-								)`
-							})
-							.join(',')}
+						VALUES ${mergeSourceValues}
 					)  AS source (
 							EPC_Code, mo_no, mat_code, mo_noseq, or_no, 
 						 	or_custpo, shoestyle_codefactory, cust_shoestyle, size_code, size_numcode,
@@ -227,12 +229,10 @@ export class FPIRespository {
 					.execute()
 			}
 
-			// Commit the transaction
 			await queryRunner.commitTransaction()
 		} catch (error) {
-			Logger.error(error)
+			FileLogger.error(error)
 			await queryRunner.rollbackTransaction()
-			throw new Error(`Failed to upsert data: ${error.message}`)
 		} finally {
 			await queryRunner.release()
 		}

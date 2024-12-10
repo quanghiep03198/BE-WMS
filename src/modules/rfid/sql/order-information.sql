@@ -1,13 +1,13 @@
 SELECT
-	a.mo_no[mo_no],
-	a.mat_code[mat_code],
-	b.mo_noseq[mo_noseq],
-	b.or_no[or_no],
-	d.or_custpo[or_custpo],
-	g.shoestyle_codefactory[shoes_style_code_factory],
-	CAST(ISNULL(i.shoestyle_codecust,'') + '/' + ISNULL( i.shoestyle_namecust, '' ) AS nvarchar( 255 ))[cust_shoestyle],
-	k.size_code[size_code],
-	k.size_sumqty[size_qty]
+	a.mo_no AS mo_no,
+	a.mat_code AS mat_code,
+	b.mo_noseq AS mo_noseq,
+	b.or_no AS or_no,
+	d.or_custpo AS or_custpo,
+	g.shoestyle_codefactory AS shoes_style_code_factory,
+	CAST(ISNULL(i.shoestyle_codecust,'') + '/' + ISNULL( i.shoestyle_namecust, '' ) AS nvarchar( 255 )) AS cust_shoestyle,
+	k.size_code AS size_code,
+	k.size_sumqty AS size_qty
 FROM wuerp_vnrd.dbo.ta_manufacturmst a
 	LEFT JOIN wuerp_vnrd.dbo.ta_manufacturdet b ON a.mo_no=b.mo_no AND b.isactive='Y'
 	LEFT JOIN wuerp_vnrd.dbo.ta_brand c ON c.custbrand_id = a.custbrand_id AND c.isactive = 'Y'

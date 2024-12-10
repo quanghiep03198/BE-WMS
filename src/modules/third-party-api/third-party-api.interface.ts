@@ -39,6 +39,6 @@ export type SyncEventData = Pick<RFIDMatchCustomerEntity, 'epc' | 'mo_no' | 'siz
 
 export interface SyncEventPayload extends Pick<FetchThirdPartyApiEvent, 'params'> {
 	data: {
-		storeDataFileName
+		file: string
 	}
 }

@@ -1,7 +1,7 @@
 import { FileLogger } from '@/common/helpers/file-logger.helper'
 import { HttpService } from '@nestjs/axios'
 import { CACHE_MANAGER } from '@nestjs/cache-manager'
-import { Inject, Injectable, NotFoundException } from '@nestjs/common'
+import { Inject, Injectable, Logger, NotFoundException } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { EventEmitter2, OnEvent } from '@nestjs/event-emitter'
 import { AxiosRequestConfig } from 'axios'
@@ -61,14 +61,11 @@ export class ThirdPartyApiService {
 	private async authenticate(factoryCode: string) {
 		try {
 			const accessToken = await this.cacheManager.get<string | null>(`third_party_token:${factoryCode}`)
+
 			if (!accessToken) {
 				const oauth2TokenResponse = await this.fetchOauth2Token(factoryCode)
-				this.setTokenByFactory(
-					factoryCode,
-					`${oauth2TokenResponse.token_type} ${oauth2TokenResponse.access_token}`,
-					oauth2TokenResponse.expires_in
-				)
-				return `${oauth2TokenResponse.token_type} ${oauth2TokenResponse.access_token}`
+				this.setTokenByFactory(factoryCode, oauth2TokenResponse.access_token, oauth2TokenResponse.expires_in)
+				return oauth2TokenResponse.access_token
 			}
 
 			return accessToken
@@ -81,8 +78,6 @@ export class ThirdPartyApiService {
 	public async fetchOauth2Token(factoryCode: string): Promise<OAuth2TokenResponse> {
 		try {
 			const credentials = this.getCredentialsByFactory(factoryCode)
-
-			console.log(credentials)
 
 			return await this.httpService.axiosRef.request<URLSearchParams, OAuth2TokenResponse>({
 				baseURL: this.configService.get('THIRD_PARTY_OAUTH_API_URL'),
@@ -109,13 +104,12 @@ export class ThirdPartyApiService {
 		param: string
 	}): Promise<ThirdPartyApiResponseData> {
 		try {
-			console.log(param)
 			const BASE_URL = this.configService.get<string>('THIRD_PARTY_API_URL')
 			return await this.httpService.axiosRef.get<void, ThirdPartyApiResponseData>(`${BASE_URL}/epc/${param}`, {
 				headers
 			})
 		} catch (error) {
-			console.log(error.message)
+			FileLogger.error(error.message)
 		}
 	}
 
@@ -134,12 +128,15 @@ export class ThirdPartyApiService {
 	@OnEvent(ThirdPartyApiEvent.DISPATCH)
 	protected async pullCustomerDataByFactory(e: FetchThirdPartyApiEvent) {
 		try {
-			const accessToken = await this.authenticate(e.params.factoryCode)
-
 			let commandNumbers = []
+			let epcs = []
+
+			const accessToken = await this.authenticate(e.params.factoryCode)
+			if (!accessToken) throw new Error('Failed to get Decker OAuth2 token')
+
 			for (const item of e.data) {
 				const data = await this.getCustomerEpcData({
-					headers: { ['Authorization']: accessToken },
+					headers: { ['Authorization']: `Bearer ${accessToken}` },
 					param: item
 				})
 				if (!data) continue
@@ -148,34 +145,31 @@ export class ThirdPartyApiService {
 
 			// * If there is no data fetched from the customer, then stop the process
 			if (commandNumbers.length === 0) {
-				console.log('No data fetched from the customer')
+				Logger.warn('No data fetched from the customer')
 				await this.cacheManager.del(`sync_process:${e.params.factoryCode}`)
 				return
 			}
 
-			commandNumbers = uniqBy(commandNumbers, 'commandNumber').map((item) => item.commandNumber)
-
-			let epcs = []
+			commandNumbers = uniqBy(commandNumbers, 'commandNumber').map((item) => item?.commandNumber)
 
 			for (const cmdNo of commandNumbers) {
 				const data = await this.getCustomerEpcByCmdNo({
-					headers: { ['Authorization']: accessToken },
+					headers: { ['Authorization']: `Bearer ${accessToken}` },
 					params: { commandNumber: cmdNo }
 				})
 				epcs = [...epcs, ...data]
 			}
 
-			// TODO: temporarily save fetched data from customer to file
 			const storeDataFileName = this.getFileToStoreData(e.params.factoryCode)
 
 			writeFileSync(
-				resolve(join(__dirname, '../..', `/assets/data/${storeDataFileName}`)),
+				resolve(join(__dirname, '../..', `/assets/${storeDataFileName}`)),
 				JSON.stringify({ epcs }, null, 3),
 				'utf-8'
 			)
 
 			await this.eventEmitter.emitAsync(ThirdPartyApiEvent.FULFILL, {
-				data: { storeDataFileName },
+				data: { file: storeDataFileName },
 				params: e.params
 			} satisfies SyncEventPayload)
 		} catch (error) {
