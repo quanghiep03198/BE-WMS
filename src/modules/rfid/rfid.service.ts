@@ -1,7 +1,7 @@
 import { FileLogger } from '@/common/helpers/file-logger.helper'
 import { DATABASE_DATA_LAKE, DATA_SOURCE_DATA_LAKE, DATA_SOURCE_ERP } from '@/databases/constants'
 import { CACHE_MANAGER } from '@nestjs/cache-manager'
-import { Inject, Injectable, InternalServerErrorException, Logger, NotFoundException, Scope } from '@nestjs/common'
+import { Inject, Injectable, InternalServerErrorException, NotFoundException, Scope } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { REQUEST } from '@nestjs/core'
 import { EventEmitter2, OnEvent } from '@nestjs/event-emitter'
@@ -360,7 +360,7 @@ export class FPInventoryService {
 				resolve(join(__dirname, '../..', `/assets/${e.data.file}`)),
 				JSON.stringify({ epcs: [] }, null, 3)
 			)
-			Logger.log('Synchronized data from Decker API', 'ThirdPartyApiService')
+			FileLogger.log('Synchronized data from Decker API')
 		} catch (error) {
 			FileLogger.error(error)
 		} finally {
