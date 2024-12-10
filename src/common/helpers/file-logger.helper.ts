@@ -54,4 +54,10 @@ export class FileLogger {
 	public static log(arg: any) {
 		this.rewrite('log', this.format('Log', arg))
 	}
+
+	public static rotate() {
+		writeFileSync(this.logFilePath, '')
+		writeFileSync(this.debugLogFilePath, '')
+		writeFileSync(this.debugLogFilePath, '')
+	}
 }
