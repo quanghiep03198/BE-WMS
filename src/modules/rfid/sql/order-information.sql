@@ -1,4 +1,4 @@
-SELECT
+SELECT TOP 1
 	a.mo_no AS mo_no,
 	a.mat_code AS mat_code,
 	b.mo_noseq AS mo_noseq,
@@ -19,3 +19,4 @@ FROM wuerp_vnrd.dbo.ta_manufacturmst a
 	LEFT JOIN wuerp_vnrd.dbo.ta_shoestylecolor i ON i.shoestyle_templink = f.shoestyle_templink and i.isactive = 'Y'
 	LEFT JOIN wuerp_vnrd.dbo.ta_ordersizerun k ON k.or_no = d.or_no AND k.isactive = 'Y'
 WHERE a.mo_no = @0
+ORDER BY b.mo_noseq DESC
