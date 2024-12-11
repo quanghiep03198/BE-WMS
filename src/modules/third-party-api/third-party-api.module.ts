@@ -1,9 +1,10 @@
+import { FileLogger } from '@/common/helpers/file-logger.helper'
 import { HttpModule, HttpService } from '@nestjs/axios'
 import { Module, OnModuleInit } from '@nestjs/common'
-import { Agent } from 'https'
-// import { ThirdPartyApiInterceptor } from './third-party-api.interceptor'
 import { ConfigService } from '@nestjs/config'
 import { AxiosError, AxiosResponse } from 'axios'
+import { Agent } from 'https'
+import { upperCase } from 'lodash'
 import { ThirdPartyApiService } from './third-party-api.service'
 
 @Module({
@@ -27,9 +28,19 @@ export class ThirdPartyApiModule implements OnModuleInit {
 
 		this.httpService.axiosRef.interceptors.response.use(
 			<T>(response: AxiosResponse<T>) => {
+				const requestMethod = upperCase(response.config.method)
+				const requestURL = response.config.baseURL + response.config.url
+				const errorStatus = response.status
+				FileLogger.log(`${requestMethod} ${requestURL} ${errorStatus}`)
 				return response.data
 			},
-			(error: AxiosError) => Promise.reject(error.message)
+			(error: AxiosError) => {
+				const requestMethod = upperCase(error.config.method)
+				const requestURL = error.config.baseURL + error.config.url
+				const errorStatus = error.status
+				FileLogger.log(`${requestMethod} ${requestURL} ${errorStatus}`)
+				return Promise.reject(error.message)
+			}
 		)
 	}
 }
