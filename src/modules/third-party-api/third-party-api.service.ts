@@ -7,7 +7,6 @@ import { EventEmitter2, OnEvent } from '@nestjs/event-emitter'
 import { AxiosRequestConfig } from 'axios'
 import { Cache } from 'cache-manager'
 import { writeFileSync } from 'fs'
-import { uniqBy } from 'lodash'
 import { join, resolve } from 'path'
 import { FactoryCode } from '../department/constants'
 import { ThirdPartyApiEvent } from './constants'
@@ -21,6 +20,8 @@ import {
 
 @Injectable()
 export class ThirdPartyApiService {
+	private readonly logger = new Logger(ThirdPartyApiService.name, { timestamp: true })
+
 	constructor(
 		@Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
 		private readonly httpService: HttpService,
@@ -104,8 +105,7 @@ export class ThirdPartyApiService {
 		param: string
 	}): Promise<ThirdPartyApiResponseData> {
 		try {
-			const BASE_URL = this.configService.get<string>('THIRD_PARTY_API_URL')
-			return await this.httpService.axiosRef.get<void, ThirdPartyApiResponseData>(`${BASE_URL}/epc/${param}`, {
+			return await this.httpService.axiosRef.get<void, ThirdPartyApiResponseData>(`/epc/${param}`, {
 				headers
 			})
 		} catch (error) {
@@ -114,8 +114,7 @@ export class ThirdPartyApiService {
 	}
 
 	private async getCustomerEpcByCmdNo({ headers, params }: AxiosRequestConfig) {
-		const BASE_URL = this.configService.get('THIRD_PARTY_API_URL')
-		return await this.httpService.axiosRef.get<void, ThirdPartyApiResponseData[]>(`${BASE_URL}/epcs`, {
+		return await this.httpService.axiosRef.get<void, ThirdPartyApiResponseData[]>('/epcs', {
 			headers,
 			params
 		})
@@ -131,6 +130,7 @@ export class ThirdPartyApiService {
 			let commandNumbers = []
 			let epcs = []
 
+			// * Authenticate the factory to get the OAuth2 token
 			const accessToken = await this.authenticate(e.params.factoryCode)
 			if (!accessToken) throw new Error('Failed to get Decker OAuth2 token')
 
@@ -145,13 +145,14 @@ export class ThirdPartyApiService {
 
 			// * If there is no data fetched from the customer, then stop the process
 			if (commandNumbers.length === 0) {
-				Logger.warn('No data fetched from the customer')
+				this.logger.warn('No data fetched from the customer')
 				await this.cacheManager.del(`sync_process:${e.params.factoryCode}`)
 				return
 			}
 
-			commandNumbers = uniqBy(commandNumbers, 'commandNumber').map((item) => item?.commandNumber)
+			commandNumbers = [...new Set(commandNumbers.map((item) => item?.commandNumber))]
 
+			// * Fetch the EPC data by fetched command number
 			for (const cmdNo of commandNumbers) {
 				const data = await this.getCustomerEpcByCmdNo({
 					headers: { ['Authorization']: `Bearer ${accessToken}` },
@@ -160,6 +161,7 @@ export class ThirdPartyApiService {
 				epcs = [...epcs, ...data]
 			}
 
+			// * Store the fetched EPC data to the file
 			const storeDataFileName = this.getFileToStoreData(e.params.factoryCode)
 
 			writeFileSync(

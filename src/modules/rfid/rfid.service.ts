@@ -8,7 +8,7 @@ import { EventEmitter2, OnEvent } from '@nestjs/event-emitter'
 import { InjectDataSource } from '@nestjs/typeorm'
 import { Cache } from 'cache-manager'
 import { Request } from 'express'
-import { chunk, omit, pick } from 'lodash'
+import { chunk, omit, pick, uniqBy } from 'lodash'
 import { I18nContext, I18nService } from 'nestjs-i18n'
 import { readFileSync, writeFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
@@ -313,6 +313,7 @@ export class FPInventoryService {
 
 			if (!dataSource.isInitialized) await dataSource.initialize()
 
+			// * Read stored data from JSON assets
 			const fetchedStoreData = readFileSync(resolve(join(__dirname, '../..', `/assets/${e.data.file}`)), 'utf-8')
 			const data = JSON.parse(fetchedStoreData) as { epcs: ThirdPartyApiResponseData[] }
 			if (!data?.epcs || !Array.isArray(data?.epcs)) throw new Error()
@@ -326,19 +327,20 @@ export class FPInventoryService {
 			const upsertData = data.epcs.filter((item) => unknownCustomerEpc.some((_item) => _item.epc === item.epc))
 			const commandNumbers = [...new Set(upsertData.filter((item) => !!item).map((item) => item.commandNumber))]
 
-			const orderInformation = []
+			// * Retrieve order information from ERP
+			let orderInformation = []
 			const orderInformationQuery = readFileSync(join(__dirname, './sql/order-information.sql'), 'utf-8').toString()
 
 			for (const cmd of commandNumbers) {
 				const orderInfo = await this.datasourceERP.query<Partial<RFIDMatchCustomerEntity>[]>(
 					orderInformationQuery,
-					[cmd]
+					[cmd.slice(0, 9)]
 				)
 				if (orderInfo?.length === 0) continue
-				orderInformation.push(orderInfo[0])
+				orderInformation = [...orderInformation, ...orderInfo]
 			}
 
-			const chunkPayload = orderInformation.reduce((acc, curr) => {
+			const chunkPayload = uniqBy(orderInformation, 'mo_no').reduce((acc, curr) => {
 				return {
 					...acc,
 					[curr.mo_no]: upsertData
@@ -355,7 +357,10 @@ export class FPInventoryService {
 				}
 			}, {})
 
+			// * Upsert data to database
 			await this.rfidRepository.upsertBulk(dataSource, chunkPayload)
+
+			// * Reset data store
 			writeFileSync(
 				resolve(join(__dirname, '../..', `/assets/${e.data.file}`)),
 				JSON.stringify({ epcs: [] }, null, 3)
