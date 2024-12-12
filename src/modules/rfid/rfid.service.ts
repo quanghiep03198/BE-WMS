@@ -72,9 +72,7 @@ export class FPInventoryService {
 			.createQueryBuilder('inv')
 			.select(/* SQL */ `inv.epc`, 'epc')
 			.addSelect(/* SQL */ `COALESCE(inv.mo_no_actual, inv.mo_no, :fallbackValue)`, 'mo_no')
-			.addSelect(/* SQL */ `CASE WHEN EPC_Code LIKE 'E28%' THEN 1 ELSE 0 END AS is_internal`)
 			.where(/* SQL */ `inv.rfid_status IS NULL`)
-			.andWhere(/* SQL */ `inv.record_time >= CAST(GETDATE() AS DATE)`)
 			.andWhere(/* SQL */ `inv.EPC_Code NOT LIKE :excludedEpcPattern`)
 			.andWhere(/* SQL */ `COALESCE(inv.mo_no_actual, inv.mo_no, :fallbackValue) NOT IN (:...excludedOrders)`)
 			.andWhere(
@@ -85,9 +83,9 @@ export class FPInventoryService {
 					})
 				})
 			)
-			.orderBy(/* SQL */ `inv.record_time`, 'DESC')
-			.addOrderBy(/* SQL */ `inv.epc`, 'DESC')
+			.orderBy(/* SQL */ `inv.epc`, 'DESC')
 			.addOrderBy(/* SQL */ `inv.mo_no`, 'DESC')
+			.addOrderBy(/* SQL */ `inv.record_time`, 'DESC')
 			.limit(LIMIT_FETCH_DOCS)
 			.offset((args.page - 1) * LIMIT_FETCH_DOCS)
 			.maxExecutionTime(1000)
@@ -96,6 +94,7 @@ export class FPInventoryService {
 				excludedOrders: EXCLUDED_ORDERS,
 				excludedEpcPattern: EXCLUDED_EPC_PATTERN
 			})
+
 		const [data, totalDocs] = await Promise.all([queryBuilder.getRawMany(), queryBuilder.getCount()])
 
 		const totalPages = Math.ceil(totalDocs / LIMIT_FETCH_DOCS)
@@ -135,7 +134,7 @@ export class FPInventoryService {
 		if (orderCode === FALLBACK_VALUE) return // * Only delete defined manufacturing order
 
 		const queryRunner = this.tenancyService.dataSource.createQueryRunner()
-		await queryRunner.startTransaction()
+		await queryRunner.startTransaction('READ UNCOMMITTED')
 		try {
 			await queryRunner.manager.query(
 				/* SQL */ `
@@ -212,7 +211,7 @@ export class FPInventoryService {
 			BATCH_SIZE
 		)
 
-		await queryRunner.startTransaction()
+		await queryRunner.startTransaction('READ UNCOMMITTED')
 
 		try {
 			if (payload.mo_no === FALLBACK_VALUE) {
@@ -228,7 +227,6 @@ export class FPInventoryService {
 					)
 					.andWhere(/* SQL */ `inv.rfid_status IS NULL`)
 					.andWhere(/* SQL */ `inv.epc NOT LIKE :internalEpcPattern`, { internalEpcPattern: INTERNAL_EPC_PATTERN })
-					.andWhere(/* SQL */ `inv.record_time >= CAST(GETDATE() AS DATE)`)
 					.getRawMany()
 
 				await queryRunner.manager
@@ -273,12 +271,15 @@ export class FPInventoryService {
 				.getRepository(FPInventoryEntity)
 				.createQueryBuilder('inv')
 				.select(/* SQL */ `DISTINCT MIN(inv.epc) AS epc`)
-				.where(/* SQL */ `inv.mo_no IS NULL`)
-				.andWhere(/* SQL */ `inv.record_time >= CAST(GETDATE() AS DATE)`)
-				.andWhere(/* SQL */ `inv.rfid_status IS NULL`)
+				.where(/* SQL */ `inv.rfid_status IS NULL`)
+				.andWhere(/* SQL */ `inv.EPC_Code NOT LIKE :internalEpcPattern`)
+				.andWhere(/* SQL */ `inv.EPC_Code NOT LIKE :excludedEpcPattern`)
+				.andWhere(/* SQL */ `inv.mo_no IS NULL`)
 				.groupBy(/* SQL */ `LEFT(inv.epc, :matchEpcCharLen)`)
 				.setParameters({
 					fallbackValue: FALLBACK_VALUE,
+					internalEpcPattern: INTERNAL_EPC_PATTERN,
+					excludedEpcPattern: EXCLUDED_EPC_PATTERN,
 					matchEpcCharLen: MATCH_EPC_CHAR_LEN
 				})
 				.getRawMany()
@@ -319,14 +320,14 @@ export class FPInventoryService {
 			if (!data?.epcs || !Array.isArray(data?.epcs)) throw new Error('Invalid data format')
 
 			const unknownCustomerEpc = await dataSource.getRepository(FPInventoryEntity).findBy({
-				mo_no: IsNull(),
 				rfid_status: IsNull(),
-				epc: Not(Like(`%${INTERNAL_EPC_PATTERN}%`))
+				epc: Not(Like(INTERNAL_EPC_PATTERN)),
+				mo_no: IsNull()
 			})
 
 			const upsertData = data.epcs.filter((item) => unknownCustomerEpc.some((_item) => _item.epc === item.epc))
 
-			const commandNumbers = [
+			const uniqCommandNumbers = [
 				...new Set(upsertData.filter((item) => !!item).map((item) => item.commandNumber.slice(0, 9)))
 			]
 
@@ -334,7 +335,7 @@ export class FPInventoryService {
 			let orderInformation = []
 			const orderInformationQuery = readFileSync(join(__dirname, './sql/order-information.sql'), 'utf-8').toString()
 
-			for (const cmd of commandNumbers) {
+			for (const cmd of uniqCommandNumbers) {
 				const orderInfo = await this.datasourceERP.query<Partial<RFIDMatchCustomerEntity>[]>(
 					orderInformationQuery,
 					[cmd]

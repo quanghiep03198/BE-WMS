@@ -35,10 +35,9 @@ export class FPIRespository {
 				/* SQL */ `inv.EPC_Code = cust.EPC_Code 
 					AND COALESCE(inv.mo_no_actual, inv.mo_no, :fallbackValue) = COALESCE(cust.mo_no_actual, cust.mo_no, :fallbackValue)`
 			)
-			.where(/* SQL */ `inv.EPC_Code NOT LIKE :excludedEpcPattern`)
+			.where(/* SQL */ `inv.rfid_status IS NULL`)
+			.andWhere(/* SQL */ `inv.EPC_Code NOT LIKE :excludedEpcPattern`)
 			.andWhere(/* SQL */ `inv.EPC_Code NOT LIKE :internalEpcPattern`)
-			.andWhere(/* SQL */ `inv.record_time >= CAST(GETDATE() AS DATE)`)
-			.andWhere(/* SQL */ `inv.rfid_status IS NULL`)
 			.andWhere(/* SQL */ `COALESCE(inv.mo_no_actual, inv.mo_no, :fallbackValue) NOT IN (:...excludedOrders)`)
 			.andWhere(/* SQL */ `COALESCE(cust.mo_no_actual, cust.mo_no, :fallbackValue) NOT IN (:...excludedOrders)`)
 			.groupBy(
@@ -150,7 +149,7 @@ export class FPIRespository {
 		const queryRunner = dataSource.createQueryRunner()
 		try {
 			await queryRunner.connect()
-			await queryRunner.startTransaction()
+			await queryRunner.startTransaction('READ UNCOMMITTED')
 
 			const chunkPayload = Object.entries(payload)
 
@@ -177,6 +176,7 @@ export class FPIRespository {
 					ON target.EPC_Code = source.EPC_Code
 						WHEN MATCHED THEN
 							UPDATE SET 
+								target.mo_no_actual = NULL,
 								target.mo_no = source.mo_no,
 								target.mat_code = source.mat_code,
 								target.mo_noseq = source.mo_noseq,
@@ -209,7 +209,7 @@ export class FPIRespository {
 					.getRepository(FPInventoryEntity)
 					.createQueryBuilder()
 					.update()
-					.set({ mo_no: commandNumber })
+					.set({ mo_no: commandNumber, mo_no_actual: null })
 					.where({ epc: In(epcData.map((item) => item.epc)) })
 					.execute()
 			}
