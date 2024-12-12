@@ -31,16 +31,17 @@ export const appConfigFactory: ConfigFactory = () => ({
 		password: process.env.DB_PASSWORD,
 		schema: 'dbo',
 		entities: [path.join(__dirname, '**', '*.entity.{ts,js}')],
-		migrations: [path.join(__dirname, '/migrations/**/*{.ts,.js}')],
-		subscribers: [path.join(__dirname, '**', '*.subscriber{.ts,.js}')],
+		migrations: [path.join(__dirname, '/migrations/**/*.{ts,js}')],
+		subscribers: [path.join(__dirname, '**', '*.subscriber.{ts,js}')],
 		autoLoadEntities: true,
+		synchronize: false,
+		logging: ['error'],
 		options: {
 			trustServerCertificate: Boolean(process.env.DB_TRUST_SERVER_CERTIFICATE),
 			encrypt: false,
 			enableArithAbort: true,
 			connectTimeout: Number(process.env.DB_CONNECTION_TIMEOUT)
 		},
-		synchronize: false,
 		cache: {
 			type: 'redis',
 			options: {
