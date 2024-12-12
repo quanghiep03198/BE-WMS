@@ -1,23 +1,37 @@
-# Use Node.js LTS version as base image
-FROM node:lts-alpine
+FROM node AS development
 
-# Set the working directory inside the container
-WORKDIR /app
+WORKDIR /usr/src/app
 
-# Copy package.json and package-lock.json to the working directory
 COPY package*.json ./
 
 # Install Node.js dependencies
-RUN npm ci
+RUN npm install
 
 # Install PM2
 RUN npm i -g pm2
 
-# Copy the rest of the application code
+# Install NestJS CLI
+RUN npm i -g @nestjs/cli 
+
+COPY . .
+
+FROM node AS production
+
+WORKDIR /usr/src/app
+
+ARG NODE_ENV=production
+
+ENV NODE_ENV=${NODE_ENV}
+
+COPY package*.json ./
+
+RUN npm install --only=production
+
 COPY . .
 
 # Expose the application port
 EXPOSE 3001
 
-# Command to run the app
+COPY --from=development /usr/src/app/dist ./dist
+
 CMD ["pm2", "start", "ecosystem.config.js"]

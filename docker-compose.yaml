@@ -1,6 +1,6 @@
 services:
    node:
-      container_name: node
+      container_name: NestJS Application
       build:
          context: .
          dockerfile: Dockerfile
@@ -8,6 +8,7 @@ services:
          - '3001:3001'
       depends_on:
          - redis
+         - kafka
       environment:
          REDIS_HOST: redis
          REDIS_PORT: 6379
@@ -15,10 +16,18 @@ services:
          - app-network
 
    redis:
-      image: 'redis:alpine'
-      container_name: redis
+      image: 'redis'
+      container_name: Redis
       ports:
          - '6379:6379'
+      networks:
+         - app-network
+
+   kafka:
+      image: 'apache/kafka:latest'
+      container_name: Apache Kafka
+      ports:
+         - '9092:9092'
       networks:
          - app-network
 
