@@ -1,4 +1,5 @@
 import { format } from 'date-fns'
+import { capitalize } from 'lodash'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { isPrimitive } from '../utils/common.util'
@@ -8,7 +9,7 @@ type LogType = 'error' | 'debug' | 'info'
 export class FileLogger {
 	protected static dirPath: string = resolve('logs')
 	protected static infoLogFilePath: string = resolve('logs/info.log')
-	protected static errorLogFilePath: string = resolve('logs/errors.log')
+	protected static errorLogFilePath: string = resolve('logs/error.log')
 	protected static debugLogFilePath: string = resolve('logs/debug.log')
 
 	public static initialize(): void {
@@ -36,28 +37,28 @@ export class FileLogger {
 		writeFileSync(filePath, data.join('\n'))
 	}
 
-	protected static format(type: 'Error' | 'Debug' | 'Info', ctx: any) {
+	protected static createLog(type: LogType, ctx: any) {
 		const timestamp: string = format(new Date(), 'yyyy-MM-dd HH:mm:ss')
 		if (!isPrimitive(ctx)) ctx = JSON.stringify(ctx, null, 3)
 
-		return `[${timestamp}] ${type}: ${ctx}\n`
+		return `[${timestamp}] ${capitalize(type)}: ${ctx}\n`
 	}
 
-	public static error(e: Error) {
-		this.rewrite('error', this.format('Error', e?.stack ?? e))
+	public static error(e: Error | unknown) {
+		this.rewrite('error', this.createLog('error', e instanceof Error ? e.stack : e))
 	}
 
 	public static debug(arg: any) {
-		this.rewrite('debug', this.format('Debug', arg))
+		this.rewrite('debug', this.createLog('debug', arg))
 	}
 
 	public static info(arg: any) {
-		this.rewrite('info', this.format('Info', arg))
+		this.rewrite('info', this.createLog('info', arg))
 	}
 
 	public static rotate() {
 		writeFileSync(this.infoLogFilePath, '')
 		writeFileSync(this.debugLogFilePath, '')
-		writeFileSync(this.debugLogFilePath, '')
+		writeFileSync(this.errorLogFilePath, '')
 	}
 }
