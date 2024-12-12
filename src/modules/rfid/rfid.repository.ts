@@ -16,17 +16,6 @@ export class FPIRespository {
 	constructor(private readonly tenancyService: TenancyService) {}
 
 	/**
-	 * @description Check if there is any invalid EPC exist
-	 */
-	async checkInvalidEpcExist() {
-		return await this.tenancyService.dataSource.getRepository(FPInventoryEntity).existsBy({
-			epc: Like(INTERNAL_EPC_PATTERN),
-			// record_time: MoreThanOrEqual(format(new Date(), 'yyyy-MM-dd')),
-			rfid_status: IsNull()
-		})
-	}
-
-	/**
 	 * @description Get manufacturing order sizes
 	 */
 	async getOrderDetails() {
@@ -100,20 +89,17 @@ export class FPIRespository {
 				.getRawMany()
 		}
 
+		const ordersToExchange = mo_no.split(',').map((m) => m.trim())
+
 		const subQuery = this.tenancyService.dataSource
 			.getRepository(RFIDMatchCustomerEntity)
 			.createQueryBuilder('cust1')
-			.select('cust1.EPC_Code')
-			.innerJoin(
-				RFIDMatchCustomerEntity,
-				'cust2',
-				/* SQL */ `cust1.mat_code = cust2.mat_code AND cust1.mo_no <> cust2.mo_no`
-			)
+			.select(/* SQL */ `cust1.EPC_Code`)
 			.where(/* SQL */ `COALESCE(cust1.mo_no_actual, cust1.mo_no) IN (:...ordersToExchange)`, {
-				ordersToExchange: mo_no.split(',').map((m) => m.trim())
+				ordersToExchange
 			})
 
-		const queryBuilder = this.tenancyService.dataSource
+		return await this.tenancyService.dataSource
 			.getRepository(FPInventoryEntity)
 			.createQueryBuilder('inv')
 			.select(/* SQL */ `inv.EPC_Code`, 'epc')
@@ -121,9 +107,7 @@ export class FPIRespository {
 			.andWhere(/* SQL */ `inv.EPC_Code NOT LIKE :internalEpcPattern`, { internalEpcPattern: INTERNAL_EPC_PATTERN })
 			.andWhere(/* SQL */ `inv.mo_no <> :mo_no_actual`, { mo_no_actual })
 			.setParameters(subQuery.getParameters())
-
-		const result = await queryBuilder.getRawMany()
-		return result
+			.getRawMany()
 	}
 
 	/**
@@ -208,17 +192,18 @@ export class FPIRespository {
 								target.factory_name_produce = source.factory_name_produce,
 								target.size_qty = source.size_qty
 						WHEN NOT MATCHED THEN
-					INSERT (
-						EPC_Code, mo_no, mat_code, mo_noseq, or_no, or_custpo, 
-						shoestyle_codefactory, cust_shoestyle, size_code, size_numcode,
-					  	factory_code_orders, factory_name_orders, factory_code_produce, factory_name_produce, size_qty, 
-						isactive, created, ri_date, ri_type, ri_foot, ri_cancel)
-					VALUES (
-						source.EPC_Code, source.mo_no, source.mat_code, source.mo_noseq, source.or_no, 
-						source.or_custpo, source.shoestyle_codefactory, source.cust_shoestyle, source.size_code, source.size_numcode,
-						source.factory_code_orders, source.factory_name_orders, source.factory_code_produce, source.factory_name_produce, source.size_qty, 
-						'Y', GETDATE(), CAST(GETDATE() AS DATE), 'A', 'A', 0
-					);`)
+							INSERT (
+								EPC_Code, mo_no, mat_code, mo_noseq, or_no, or_custpo, 
+								shoestyle_codefactory, cust_shoestyle, size_code, size_numcode,
+								factory_code_orders, factory_name_orders, factory_code_produce, factory_name_produce, size_qty, 
+								isactive, created, ri_date, ri_type, ri_foot, ri_cancel
+							)
+							VALUES (
+								source.EPC_Code, source.mo_no, source.mat_code, source.mo_noseq, source.or_no, 
+								source.or_custpo, source.shoestyle_codefactory, source.cust_shoestyle, source.size_code, source.size_numcode,
+								source.factory_code_orders, source.factory_name_orders, source.factory_code_produce, source.factory_name_produce, source.size_qty, 
+								'Y', GETDATE(), CAST(GETDATE() AS DATE), 'A', 'A', 0
+							);`)
 
 				await dataSource
 					.getRepository(FPInventoryEntity)

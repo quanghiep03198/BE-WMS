@@ -53,12 +53,12 @@ export class FPInventoryService {
 
 	public async fetchItems(args: RFIDSearchParams) {
 		try {
-			const [epcs, orders, has_invalid_epc] = await Promise.all([
+			const [epcs, orders] = await Promise.all([
 				this.findWhereNotInStock(args),
-				this.rfidRepository.getOrderDetails(),
-				this.rfidRepository.checkInvalidEpcExist()
+				this.rfidRepository.getOrderDetails()
 			])
-			return { epcs, orders, has_invalid_epc }
+
+			return { epcs, orders }
 		} catch (error) {
 			throw new InternalServerErrorException(error)
 		}
@@ -72,6 +72,7 @@ export class FPInventoryService {
 			.createQueryBuilder('inv')
 			.select(/* SQL */ `inv.epc`, 'epc')
 			.addSelect(/* SQL */ `COALESCE(inv.mo_no_actual, inv.mo_no, :fallbackValue)`, 'mo_no')
+			.addSelect(/* SQL */ `CASE WHEN EPC_Code LIKE 'E28%' THEN 1 ELSE 0 END AS is_internal`)
 			.where(/* SQL */ `inv.rfid_status IS NULL`)
 			.andWhere(/* SQL */ `inv.record_time >= CAST(GETDATE() AS DATE)`)
 			.andWhere(/* SQL */ `inv.EPC_Code NOT LIKE :excludedEpcPattern`)
@@ -84,9 +85,9 @@ export class FPInventoryService {
 					})
 				})
 			)
-			.orderBy(/* SQL */ `inv.mo_no`, 'ASC')
-			.addOrderBy(/* SQL */ `inv.epc`, 'ASC')
-			.addOrderBy(/* SQL */ `inv.record_time`, 'DESC')
+			.orderBy(/* SQL */ `inv.record_time`, 'DESC')
+			.addOrderBy(/* SQL */ `inv.epc`, 'DESC')
+			.addOrderBy(/* SQL */ `inv.mo_no`, 'DESC')
 			.limit(LIMIT_FETCH_DOCS)
 			.offset((args.page - 1) * LIMIT_FETCH_DOCS)
 			.maxExecutionTime(1000)
@@ -212,6 +213,7 @@ export class FPInventoryService {
 		)
 
 		await queryRunner.startTransaction()
+
 		try {
 			if (payload.mo_no === FALLBACK_VALUE) {
 				const unknownCustomerEpc = await queryRunner.manager
@@ -244,13 +246,11 @@ export class FPInventoryService {
 					const criteria: FindOptionsWhere<RFIDMatchCustomerEntity | FPInventoryEntity> = {
 						epc: In(epcBatch)
 					}
-					await Promise.all([
-						queryRunner.manager.update(RFIDMatchCustomerEntity, criteria, update),
-						queryRunner.manager.update(FPInventoryEntity, criteria, update)
-					])
+					await queryRunner.commitTransaction()
+					await queryRunner.manager.update(RFIDMatchCustomerEntity, criteria, update)
+					await queryRunner.manager.update(FPInventoryEntity, criteria, update)
 				}
 			}
-			await queryRunner.commitTransaction()
 		} catch (e) {
 			await queryRunner.rollbackTransaction()
 			throw new InternalServerErrorException(e.message)
@@ -314,9 +314,9 @@ export class FPInventoryService {
 			if (!dataSource.isInitialized) await dataSource.initialize()
 
 			// * Read stored data from JSON assets
-			const fetchedStoreData = readFileSync(resolve(join(__dirname, '../..', `/assets/${e.data.file}`)), 'utf-8')
-			const data = JSON.parse(fetchedStoreData) as { epcs: ThirdPartyApiResponseData[] }
-			if (!data?.epcs || !Array.isArray(data?.epcs)) throw new Error()
+			const storedData = readFileSync(resolve(join(__dirname, '../..', `/assets/${e.data.file}`)), 'utf-8')
+			const data = JSON.parse(storedData) as { epcs: ThirdPartyApiResponseData[] }
+			if (!data?.epcs || !Array.isArray(data?.epcs)) throw new Error('Invalid data format')
 
 			const unknownCustomerEpc = await dataSource.getRepository(FPInventoryEntity).findBy({
 				mo_no: IsNull(),
@@ -325,7 +325,10 @@ export class FPInventoryService {
 			})
 
 			const upsertData = data.epcs.filter((item) => unknownCustomerEpc.some((_item) => _item.epc === item.epc))
-			const commandNumbers = [...new Set(upsertData.filter((item) => !!item).map((item) => item.commandNumber))]
+
+			const commandNumbers = [
+				...new Set(upsertData.filter((item) => !!item).map((item) => item.commandNumber.slice(0, 9)))
+			]
 
 			// * Retrieve order information from ERP
 			let orderInformation = []
@@ -334,7 +337,7 @@ export class FPInventoryService {
 			for (const cmd of commandNumbers) {
 				const orderInfo = await this.datasourceERP.query<Partial<RFIDMatchCustomerEntity>[]>(
 					orderInformationQuery,
-					[cmd.slice(0, 9)]
+					[cmd]
 				)
 				if (orderInfo?.length === 0) continue
 				orderInformation = [...orderInformation, ...orderInfo]
@@ -344,7 +347,7 @@ export class FPInventoryService {
 				return {
 					...acc,
 					[curr.mo_no]: upsertData
-						.filter((item) => item.commandNumber === curr.mo_no)
+						.filter((item) => curr.mo_no === item.commandNumber.slice(0, 9))
 						.map((item) => ({
 							...curr,
 							epc: item.epc,
@@ -365,7 +368,7 @@ export class FPInventoryService {
 				resolve(join(__dirname, '../..', `/assets/${e.data.file}`)),
 				JSON.stringify({ epcs: [] }, null, 3)
 			)
-			FileLogger.log('Synchronized data from Decker API')
+			FileLogger.info('Synchronized data from Decker API')
 		} catch (error) {
 			FileLogger.error(error)
 		} finally {
