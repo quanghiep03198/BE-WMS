@@ -31,14 +31,14 @@ export class ThirdPartyApiModule implements OnModuleInit {
 				const requestMethod = upperCase(response.config.method)
 				const requestURL = response.config.baseURL + response.config.url
 				const errorStatus = response.status
-				FileLogger.log(`${requestMethod} ${requestURL} ${errorStatus}`)
+				FileLogger.info(`${requestMethod} ${requestURL} ${errorStatus}`)
 				return response.data
 			},
 			(error: AxiosError) => {
 				const requestMethod = upperCase(error.config.method)
 				const requestURL = error.config.baseURL + error.config.url
 				const errorStatus = error.status
-				FileLogger.log(`${requestMethod} ${requestURL} ${errorStatus}`)
+				FileLogger.info(`${requestMethod} ${requestURL} ${errorStatus}`)
 				return Promise.reject(error.message)
 			}
 		)
