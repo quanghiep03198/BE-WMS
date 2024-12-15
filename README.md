@@ -1,41 +1,40 @@
 [![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=quanghiep03198_BE-WMS&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=quanghiep03198_BE-WMS)
 
-# Warehouse Management API 
+# Warehouse Management API
 
 [![SonarCloud](https://sonarcloud.io/images/project_badges/sonarcloud-black.svg)](https://sonarcloud.io/summary/new_code?id=quanghiep03198_BE-WMS)
 
 This is a **RESTful API** for a **Warehouse Management System** built with **NestJS**. The API allows you to manage product inventories, monitor stock levels, and handle various warehouse operations. <br/> The project integrates **SQL Server** as the primary database using **TypeORM** and uses **Redis** for caching and performance optimization.
 
-
 ## Table of Contents
 
--  [Features](#features)
--  [Tech Stack](#tech-stack)
--  [Getting Started](#getting-started)
--  [Configuration](#configuration)
--  [Running the Application](#running-the-application)
--  [Contributing](#contributing)
--  [License](#license)
+- [Features](#features)
+- [Tech Stack](#tech-stack)
+- [Getting Started](#getting-started)
+- [Configuration](#configuration)
+- [Running the Application](#running-the-application)
+- [Contributing](#contributing)
+- [License](#license)
 
 ## Features
 
--  **Product Management**: Create, update, delete, and list products.
--  **Inventory Management**: Track stock levels, update quantities, and monitor stock movements.
--  **Order Processing**: Manage incoming and outgoing orders, including validations.
--  **Warehouse Zones**: Manage different storage zones and sections within the warehouse.
--  **Redis Caching**: Improve API performance by caching frequently accessed data.
--  **Database Transactions**: Ensure data integrity using SQL Server and TypeORM.
--  **Authentication and Authorization**: Secure API endpoints using JWT authentication (optional).
+- **Product Management**: Create, update, delete, and list products.
+- **Inventory Management**: Track stock levels, update quantities, and monitor stock movements.
+- **Order Processing**: Manage incoming and outgoing orders, including validations.
+- **Warehouse Zones**: Manage different storage zones and sections within the warehouse.
+- **Redis Caching**: Improve API performance by caching frequently accessed data.
+- **Database Transactions**: Ensure data integrity using SQL Server and TypeORM.
+- **Authentication and Authorization**: Secure API endpoints using JWT authentication (optional).
 
 ## Tech Stack
 
--  **Languages**: [Typescript](https://www.typescriptlang.org/) / [Node.js](https://nodejs.org/docs/latest/api/)
--  **Framework**: [NestJS](https://nestjs.com/)
--  **Database**: [Microsoft SQL Server](https://www.microsoft.com/en-us/sql-server/sql-server-2022)
--  **Cache**: [Redis](https://redis.io/docs/latest/)
--  **ORM**: [TypeORM](https://typeorm.io/)
--  **Authentication**: [JSON Web Tokens](https://jwt.io/)
--  **Validation**: [Zod](https://zod.dev/)
+- **Languages**: [Typescript](https://www.typescriptlang.org/) / [Node.js](https://nodejs.org/docs/latest/api/)
+- **Framework**: [NestJS](https://nestjs.com/)
+- **Database**: [Microsoft SQL Server](https://www.microsoft.com/en-us/sql-server/sql-server-2022)
+- **Cache**: [Redis](https://redis.io/docs/latest/)
+- **ORM**: [TypeORM](https://typeorm.io/)
+- **Authentication**: [JSON Web Tokens](https://jwt.io/)
+- **Validation**: [Zod](https://zod.dev/)
 
 ## Getting Started
 
@@ -43,10 +42,75 @@ This is a **RESTful API** for a **Warehouse Management System** built with **Nes
 
 Before you begin, ensure you have the following installed:
 
--  **Node.js** (v18.x or higher)
--  **SQL Server** (Local or remote instance)
--  **Redis** (Local or remote instance)
--  **NPM** or **Yarn**
+- **Node.js** (v18.x or higher)
+- **SQL Server** (Local or remote instance)
+- **NPM** or **PNPM**
+
+### Folder Structure
+
+```
+├── .github/
+│   └── workflows
+│       └── cicd.yml
+├── .husky/
+├── .vscode/
+├── docs/
+├── logs/
+├── node_modules/
+├── src/
+│   ├── common/
+│   │   ├── constants/
+│   │   ├── decorators/
+│   │   ├── filters/
+│   │   ├── helper/
+│   │   ├── interceptors/
+│   │   ├── pipes/
+│   │   ├── types/
+│   │   ├── interceptors/
+│   │   └── utils/
+│   ├── configs/
+│   │   ├── app.config.ts
+│   │   └── app.config.validator.ts
+│   ├── databases/
+│   │   ├── constants/
+│   │   ├── migrations/
+│   │   ├── seeds/
+│   │   ├── transformers/
+│   │   ├── data-source.ts
+│   │   ├── database.module.ts
+│   │   └── seed.ts
+│   ├── generated/
+│   │   └── i18n.generated.ts
+│   ├── i18n/
+│   │   ├── cn/
+│   │   ├── en/
+│   │   └── vi/
+│   ├── jobs/
+│   │   └── file-logger.service.job.ts
+│   ├── messages/
+│   │   └── ioredis.service.ts
+│   ├── modules/
+│   │   ├── auth/
+│   │   ├── users/
+│   │   ├── rfid/
+│   │   └── ...
+│   ├── app.module.ts
+│   ├── app.controller.ts
+│   ├── main.ts
+│   └── ...
+├── .env.example
+├── commitlint.config.js
+├── docker-compose.yaml
+├── Dockerfile
+├── ecosystem.config.js
+├── nest-cli.json
+├── package.json
+├── pnpm-lock.yaml
+├── sonar-project.properties
+├── tsconfig.build.json
+├── tsconfig.json
+└── ...
+```
 
 ### Installation
 
@@ -107,10 +171,10 @@ If you'd like to contribute to this project, please follow the contribution guid
 
 ## Branching Strategy
 
--  **main**: Production-ready code.
--  **develop**: Development branch for the next release.
--  **feat/\***: Developing feature branch
--  **fix/\***: Needed fix branch
+- **main**: Production-ready code.
+- **develop**: Development branch for the next release.
+- **feat/\***: Developing feature branch
+- **fix/\***: Needed fix branch
 
 Create a feature branch for any new features or bug fixes.
 
