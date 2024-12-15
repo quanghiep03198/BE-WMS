@@ -1,11 +1,12 @@
-import { Injectable, OnModuleDestroy } from '@nestjs/common'
+import { Injectable, Logger, OnApplicationShutdown, OnModuleDestroy } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { Redis } from 'ioredis'
 
 @Injectable()
-export class PubSubService implements OnModuleDestroy {
-	private publisher: Redis
-	private subscriber: Redis
+export class IoRedisService implements OnModuleDestroy, OnApplicationShutdown {
+	private readonly publisher: Redis
+	private readonly subscriber: Redis
+	private readonly logger: Logger
 
 	constructor(private readonly configService: ConfigService) {
 		this.publisher = new Redis({
@@ -18,9 +19,15 @@ export class PubSubService implements OnModuleDestroy {
 			port: this.configService.get('REDIS_PORT'),
 			password: this.configService.get('REDIS_PASSWORD')
 		})
+		this.logger = new Logger(IoRedisService.name)
 	}
 
 	onModuleDestroy() {
+		this.publisher.quit()
+		this.subscriber.quit()
+	}
+
+	onApplicationShutdown() {
 		this.publisher.quit()
 		this.subscriber.quit()
 	}
@@ -31,7 +38,7 @@ export class PubSubService implements OnModuleDestroy {
 
 	async subscribe(channel: string, callback: (msg: string) => void): Promise<void> {
 		this.subscriber.subscribe(channel, (error) => {
-			if (error) console.log(error)
+			if (error) this.logger.error(error)
 		})
 		this.subscriber.on('message', (_channel, message) => {
 			if (_channel === channel) {
