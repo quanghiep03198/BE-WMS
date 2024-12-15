@@ -1,7 +1,11 @@
 /**
- * @typedef {Object} AppConfig
+ * @typedef AppConfig
  * @property {string} name
  * @property {string} script
+ * @property {string} args
+ * @property {string} interpreter
+ * @property {string} interpreter
+ * @property {string} node_args
  * @property {string} cwd
  * @property {boolean} autorestart
  * @property {boolean} watch
@@ -9,6 +13,11 @@
  * @property {string} max_memory_restart
  * @property {string} cron_restart
  * @property {string} error_file
+ * @property {'cluster' | 'fork'} exec_mode
+ * @property {[key: string]: string} env
+ * @property {boolean} appendEnvToName
+ * @property {boolean} source_map_support
+ *
  */
 
 /**
