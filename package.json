@@ -19,14 +19,14 @@
 		"test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
 		"test:e2e": "jest --config ./test/jest-e2e.json",
 		"prepare": "husky",
-		"typeorm": "ts-node -r tsconfig-paths/register ./node_modules/typeorm/cli",
+		"typeorm": "SET MIGRATION_DB_HOST=%npm_config_host% && ts-node -r tsconfig-paths/register ./node_modules/typeorm/cli",
 		"migration:show": "npm run typeorm migration:show -- -d ./src/databases/data-source.ts",
 		"migration:create": "npm run typeorm migration:create ./src/databases/migrations/%npm_config_name%",
-		"migration:run": "SET MIGRATION_DB_HOST=%npm_config_host% &&  npm run typeorm migration:run -- -d src/databases/data-source.ts",
-		"migration:revert": "SET MIGRATION_DB_HOST=%npm_config_host% &&  npm run typeorm migration:revert -- -d ./src/databases/data-source.ts",
+		"migration:run": "npm run typeorm migration:run -- -d src/databases/data-source.ts",
+		"migration:revert": "npm run typeorm migration:revert -- -d ./src/databases/data-source.ts",
 		"seed": "ts-node -r tsconfig-paths/register ./node_modules/typeorm-extension/bin/cli.cjs",
 		"seed:run": "SET SEEDING_DB_HOST=%npm_config_host% && ts-node -r tsconfig-paths/register src/databases/seed.ts ",
-		"seed:create": "npx ts-node -r tsconfig-paths/register ./node_modules/typeorm-extension/bin/cli.cjs seed:create --name src/databases/seeds/%npm_config_name%.seeder.ts"
+		"seed:create": "npm run seed seed:create --name src/databases/seeds/%npm_config_name%.seeder.ts"
 	},
 	"dependencies": {
 		"@faker-js/faker": "^9.3.0",
