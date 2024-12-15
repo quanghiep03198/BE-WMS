@@ -20,12 +20,15 @@ export declare global {
 		interface ProcessEnv {
 			NODE_ENV: 'development' | 'production' | 'test'
 			PORT: string
+			FALLBACK_LANGUAGE: string
 			// * Throttler
 			THROTTLER_TTL: string
 			THROTTLER_LIMIT: string
 			// * Database
 			DB_TYPE: DataSourceOptions['type']
 			DB_HOST: string
+			SEEDING_DB_HOST: string
+			MIGRATION_DB_HOST: string
 			DB_USERNAME: string
 			DB_PASSWORD: string
 			DB_PORT: string
@@ -63,4 +66,8 @@ export declare global {
 
 	// eslint-disable-next-line unused-imports/no-unused-vars
 	type FirstParameter<T> = T extends (first: infer FirstArgument, ...args: any[]) => infer T ? FirstArgument : never
+
+	type ProcessEnv = {
+		[K in keyof NodeJS.ProcessEnv as string extends K ? never : number extends K ? never : K]: NodeJS.ProcessEnv[K]
+	}
 }
