@@ -6,7 +6,7 @@ SELECT
 	dept.MES_dept_name AS shaping_dept_name,
 	COUNT(DISTINCT inv.EPC_Code) AS inbound_qty,
 	CAST(inv.record_time AS DATE) AS inbound_date 
-FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet inv 
+FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet_backup_Daily inv 
 LEFT JOIN wuerp_vnrd.dbo.ta_manufacturmst manu
 	ON manu.mo_no = COALESCE(inv.mo_no_actual, inv.mo_no)
 LEFT JOIN DV_DATA_LAKE.dbo.dv_rfidmatchmst_cust cust 
