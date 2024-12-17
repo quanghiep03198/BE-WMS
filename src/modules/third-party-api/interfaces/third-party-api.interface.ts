@@ -1,4 +1,4 @@
-import { RFIDMatchCustomerEntity } from '../rfid/entities/rfid-customer-match.entity'
+import { RFIDMatchCustomerEntity } from '../../rfid/entities/rfid-customer-match.entity'
 
 export interface OAuth2Credentials {
 	client_id: string

@@ -1,14 +1,22 @@
 import { FileLogger } from '@/common/helpers/file-logger.helper'
+import { DATA_SOURCE_ERP } from '@/databases/constants'
 import { HttpService } from '@nestjs/axios'
 import { CACHE_MANAGER } from '@nestjs/cache-manager'
-import { Inject, Injectable, Logger, NotFoundException } from '@nestjs/common'
+import { Inject, Injectable, InternalServerErrorException, Logger, NotFoundException, Scope } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
+import { REQUEST } from '@nestjs/core'
 import { EventEmitter2, OnEvent } from '@nestjs/event-emitter'
+import { InjectDataSource } from '@nestjs/typeorm'
 import { AxiosRequestConfig } from 'axios'
 import { Cache } from 'cache-manager'
-import { writeFileSync } from 'fs'
+import { Request } from 'express'
+import { readFileSync, writeFileSync } from 'fs'
+import { chunk } from 'lodash'
 import { join, resolve } from 'path'
+import { DataSource } from 'typeorm'
 import { FactoryCode } from '../department/constants'
+import { RFIDMatchCustomerEntity } from '../rfid/entities/rfid-customer-match.entity'
+import { TenancyService } from '../tenancy/tenancy.service'
 import { ThirdPartyApiEvent } from './constants'
 import {
 	FetchThirdPartyApiEvent,
@@ -16,18 +24,25 @@ import {
 	OAuth2TokenResponse,
 	SyncEventPayload,
 	ThirdPartyApiResponseData
-} from './third-party-api.interface'
+} from './interfaces/third-party-api.interface'
+import { ThirdPartyApiHelper } from './third-party-api.helper'
 
-@Injectable()
+@Injectable({ scope: Scope.REQUEST })
 export class ThirdPartyApiService {
-	private readonly logger = new Logger(ThirdPartyApiService.name, { timestamp: true })
+	private readonly logger: Logger
 
 	constructor(
 		@Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
+		@Inject(REQUEST) private readonly request: Request,
+		@InjectDataSource(DATA_SOURCE_ERP) private readonly dataSourceERP: DataSource,
 		private readonly httpService: HttpService,
 		private readonly configService: ConfigService,
-		private readonly eventEmitter: EventEmitter2
-	) {}
+		private readonly eventEmitter: EventEmitter2,
+		private readonly tenancyService: TenancyService,
+		private readonly thirdPartyApiHelper: ThirdPartyApiHelper
+	) {
+		this.logger = new Logger(ThirdPartyApiService.name, { timestamp: true })
+	}
 
 	private getCredentialsByFactory(factoryCode: string): OAuth2Credentials {
 		switch (factoryCode) {
@@ -51,17 +66,17 @@ export class ThirdPartyApiService {
 		}
 	}
 
-	async setTokenByFactory(factoryCode: string, accessToken: string, expiresIn: number) {
+	private async setTokenByFactory(factoryCode: string, accessToken: string, expiresIn: number) {
 		return await this.cacheManager.set(`third_party_token:${factoryCode}`, accessToken, expiresIn)
 	}
 
-	public async getTokenByFactory(factoryCode: string): Promise<string | null> {
-		return await this.cacheManager.get(`third_party_token:${factoryCode}`)
+	private async getTokenByFactory(factoryCode: string): Promise<string | null> {
+		return await this.cacheManager.get<string | null>(`third_party_token:${factoryCode}`)
 	}
 
-	private async authenticate(factoryCode: string) {
+	public async authenticate(factoryCode: string) {
 		try {
-			const accessToken = await this.cacheManager.get<string | null>(`third_party_token:${factoryCode}`)
+			const accessToken = await this.getTokenByFactory(factoryCode)
 
 			if (!accessToken) {
 				const oauth2TokenResponse = await this.fetchOauth2Token(factoryCode)
@@ -71,7 +86,7 @@ export class ThirdPartyApiService {
 
 			return accessToken
 		} catch {
-			await this.cacheManager.del(`sync_process:${factoryCode}`)
+			await this.thirdPartyApiHelper.exitSyncProcess(factoryCode)
 			return null
 		}
 	}
@@ -97,7 +112,7 @@ export class ThirdPartyApiService {
 		}
 	}
 
-	private async getCustomerEpcData({
+	private async getOneEpc({
 		headers,
 		param
 	}: {
@@ -113,19 +128,15 @@ export class ThirdPartyApiService {
 		}
 	}
 
-	private async getCustomerEpcByCmdNo({ headers, params }: AxiosRequestConfig) {
+	private async getEpcByCommandNumber({ headers, params }: AxiosRequestConfig) {
 		return await this.httpService.axiosRef.get<void, ThirdPartyApiResponseData[]>('/epcs', {
 			headers,
 			params
 		})
 	}
 
-	private getFileToStoreData(factoryCode: string) {
-		return `[${factoryCode}]-decker-api.data.json`
-	}
-
 	@OnEvent(ThirdPartyApiEvent.DISPATCH)
-	protected async pullCustomerDataByFactory(e: FetchThirdPartyApiEvent) {
+	protected async onDispatchApiCall(e: FetchThirdPartyApiEvent) {
 		try {
 			let commandNumbers = []
 			let epcs = []
@@ -135,7 +146,7 @@ export class ThirdPartyApiService {
 			if (!accessToken) throw new Error('Failed to get Decker OAuth2 token')
 
 			for (const item of e.data) {
-				const data = await this.getCustomerEpcData({
+				const data = await this.getOneEpc({
 					headers: { ['Authorization']: `Bearer ${accessToken}` },
 					param: item
 				})
@@ -146,7 +157,7 @@ export class ThirdPartyApiService {
 			// * If there is no data fetched from the customer, then stop the process
 			if (commandNumbers.length === 0) {
 				this.logger.warn('No data fetched from the customer')
-				await this.cacheManager.del(`sync_process:${e.params.factoryCode}`)
+				this.thirdPartyApiHelper.exitSyncProcess(e.params.factoryCode)
 				return
 			}
 
@@ -154,7 +165,7 @@ export class ThirdPartyApiService {
 
 			// * Fetch the EPC data by fetched command number
 			for (const cmdNo of commandNumbers) {
-				const data = await this.getCustomerEpcByCmdNo({
+				const data = await this.getEpcByCommandNumber({
 					headers: { ['Authorization']: `Bearer ${accessToken}` },
 					params: { commandNumber: cmdNo }
 				})
@@ -162,7 +173,7 @@ export class ThirdPartyApiService {
 			}
 
 			// * Store the fetched EPC data to the file
-			const storeDataFileName = this.getFileToStoreData(e.params.factoryCode)
+			const storeDataFileName = `[${e.params.factoryCode}]-decker-api.data.json`
 
 			writeFileSync(
 				resolve(join(__dirname, '../..', `/assets/${storeDataFileName}`)),
@@ -176,7 +187,198 @@ export class ThirdPartyApiService {
 			} satisfies SyncEventPayload)
 		} catch (error) {
 			FileLogger.error(error)
-			this.cacheManager.del(`sync_process:${e.params.factoryCode}`)
+			this.thirdPartyApiHelper.exitSyncProcess(e.params.factoryCode)
 		}
+	}
+
+	async upsertByCommandNumber(commandNumber: string) {
+		const accessToken = this.request['access_token']
+		const factoryCode = this.request.headers['x-user-company']
+
+		const data = await this.getEpcByCommandNumber({
+			headers: { ['Authorization']: `Bearer ${accessToken}` },
+			params: { commandNumber: commandNumber }
+		})
+
+		if (!Array.isArray(data) || data.length === 0) {
+			throw new NotFoundException('No data fetched from the customer')
+		}
+
+		const orderInformationQuery = readFileSync(
+			join(__dirname, '../rfid/sql/order-information.sql'),
+			'utf-8'
+		).toString()
+
+		const orderInformation = await this.dataSourceERP
+			.query<Partial<RFIDMatchCustomerEntity>[]>(orderInformationQuery, [commandNumber])
+			.then((data) => data?.at(0))
+
+		if (!orderInformation) {
+			throw new NotFoundException(`Order information could not be found`)
+		}
+
+		const queryRunner = this.tenancyService.dataSource.createQueryRunner()
+
+		const sourceData = data.map((item) => ({
+			...orderInformation,
+			epc: item.epc,
+			size_numcode: item.sizeNumber,
+			factory_code_orders: factoryCode,
+			factory_name_orders: factoryCode,
+			factory_code_produce: factoryCode,
+			factory_name_produce: factoryCode
+		}))
+
+		const chunkPayload = chunk(sourceData, 2000)
+
+		await queryRunner.connect()
+		await queryRunner.startTransaction('READ COMMITTED')
+
+		try {
+			for (const payload of chunkPayload) {
+				const data = payload
+					.map((item) => {
+						return `(
+							'${item.epc}', '${item.mo_no}', '${item.mat_code}','${item.mo_noseq}', '${item.or_no}', 
+							'${item.or_cust_po}', '${item.shoes_style_code_factory}', '${item.cust_shoes_style}', '${item.size_code}', '${item.size_numcode}', 
+							'${item.factory_code_orders}', '${item.factory_name_orders}', '${item.factory_code_produce}', '${item.factory_name_produce}', ${item.size_qty || 1}
+						)`
+					})
+					.join(',')
+
+				await queryRunner.manager.query(/* SQL */ `
+						MERGE INTO dv_rfidmatchmst_cust AS target
+						USING (VALUES ${data}) AS source (
+							EPC_Code, mo_no, mat_code, mo_noseq, or_no, 
+							or_custpo, shoestyle_codefactory, cust_shoestyle, size_code, size_numcode,
+							factory_code_orders, factory_name_orders, factory_code_produce, factory_name_produce, size_qty
+						)
+						ON target.EPC_Code = source.EPC_Code
+						WHEN MATCHED THEN
+							UPDATE SET 
+								target.mo_no_actual = NULL,
+								target.mo_no = source.mo_no,
+								target.mat_code = source.mat_code,
+								target.mo_noseq = source.mo_noseq,
+								target.or_no = source.or_no,
+								target.or_custpo = source.or_custpo,
+								target.shoestyle_codefactory = source.shoestyle_codefactory,
+								target.cust_shoestyle = source.cust_shoestyle,
+								target.size_code = source.size_code,
+								target.size_numcode = source.size_numcode,
+								target.factory_code_orders = source.factory_code_orders,
+								target.factory_name_orders = source.factory_name_orders,
+								target.factory_code_produce = source.factory_code_produce,
+								target.factory_name_produce = source.factory_name_produce,
+								target.size_qty = source.size_qty
+						WHEN NOT MATCHED THEN
+							INSERT (
+								EPC_Code, mo_no, mat_code, mo_noseq, or_no, or_custpo, 
+								shoestyle_codefactory, cust_shoestyle, size_code, size_numcode,
+								factory_code_orders, factory_name_orders, factory_code_produce, factory_name_produce, size_qty, 
+								isactive, created, ri_date, ri_type, ri_foot, ri_cancel
+							)
+							VALUES (
+								source.EPC_Code, source.mo_no, source.mat_code, source.mo_noseq, source.or_no, 
+								source.or_custpo, source.shoestyle_codefactory, source.cust_shoestyle, source.size_code, source.size_numcode,
+								source.factory_code_orders, source.factory_name_orders, source.factory_code_produce, source.factory_name_produce, source.size_qty, 
+								'Y', GETDATE(), CAST(GETDATE() AS DATE), 'A', 'A', 0
+							);
+						`)
+			}
+			await queryRunner.commitTransaction()
+			return { affected: sourceData.length }
+		} catch (error) {
+			await queryRunner.rollbackTransaction()
+			FileLogger.error(error)
+			throw new InternalServerErrorException(error)
+		} finally {
+			await queryRunner.release()
+		}
+	}
+
+	async upsertByEpc(epc: string) {
+		const accessToken = this.request['access_token']
+		const factoryCode = this.request.headers['x-user-company']
+
+		const data = await this.getOneEpc({
+			headers: { ['Authorization']: `Bearer ${accessToken}` },
+			param: epc
+		})
+
+		if (!data) {
+			throw new NotFoundException('No data fetched from the customer')
+		}
+
+		const orderInformationQuery = readFileSync(
+			join(__dirname, '../rfid/sql/order-information.sql'),
+			'utf-8'
+		).toString()
+
+		const orderInformation = await this.dataSourceERP
+			.query<Partial<RFIDMatchCustomerEntity>[]>(orderInformationQuery, [data.commandNumber])
+			.then((data) => data?.at(0))
+
+		if (!orderInformation) {
+			throw new NotFoundException(`Order information could not be found`)
+		}
+
+		const queryRunner = this.tenancyService.dataSource.createQueryRunner()
+		await queryRunner.connect()
+
+		const upsertPayload = {
+			...orderInformation,
+			epc: data.epc,
+			size_numcode: data.sizeNumber,
+			factory_code_orders: factoryCode,
+			factory_name_orders: factoryCode,
+			factory_code_produce: factoryCode,
+			factory_name_produce: factoryCode
+		}
+
+		await queryRunner.manager.query(/* SQL */ `
+			MERGE INTO dv_rfidmatchmst_cust AS target
+			USING (VALUES (
+				'${upsertPayload.epc}', '${upsertPayload.mo_no}', '${upsertPayload.mat_code}','${upsertPayload.mo_noseq}', '${upsertPayload.or_no}', 
+				'${upsertPayload.or_cust_po}', '${upsertPayload.shoes_style_code_factory}', '${upsertPayload.cust_shoes_style}', '${upsertPayload.size_code}', '${upsertPayload.size_numcode}', 
+				'${upsertPayload.factory_code_orders}', '${upsertPayload.factory_name_orders}', '${upsertPayload.factory_code_produce}', '${upsertPayload.factory_name_produce}', ${upsertPayload.size_qty || 1}
+			)) AS source (
+				EPC_Code, mo_no, mat_code, mo_noseq, or_no, 
+				or_custpo, shoestyle_codefactory, cust_shoestyle, size_code, size_numcode,
+				factory_code_orders, factory_name_orders, factory_code_produce, factory_name_produce, size_qty
+			)
+			ON target.EPC_Code = source.EPC_Code
+			WHEN MATCHED THEN
+				UPDATE SET 
+					target.mo_no_actual = NULL,
+					target.mo_no = source.mo_no,
+					target.mat_code = source.mat_code,
+					target.mo_noseq = source.mo_noseq,
+					target.or_no = source.or_no,
+					target.or_custpo = source.or_custpo,
+					target.shoestyle_codefactory = source.shoestyle_codefactory,
+					target.cust_shoestyle = source.cust_shoestyle,
+					target.size_code = source.size_code,
+					target.size_numcode = source.size_numcode,
+					target.factory_code_orders = source.factory_code_orders,
+					target.factory_name_orders = source.factory_name_orders,
+					target.factory_code_produce = source.factory_code_produce,
+					target.factory_name_produce = source.factory_name_produce,
+					target.size_qty = source.size_qty
+			WHEN NOT MATCHED THEN
+				INSERT (
+					EPC_Code, mo_no, mat_code, mo_noseq, or_no, or_custpo, 
+					shoestyle_codefactory, cust_shoestyle, size_code, size_numcode,
+					factory_code_orders, factory_name_orders, factory_code_produce, factory_name_produce, size_qty, 
+					isactive, created, ri_date, ri_type, ri_foot, ri_cancel
+				)
+				VALUES (
+					source.EPC_Code, source.mo_no, source.mat_code, source.mo_noseq, source.or_no, 
+					source.or_custpo, source.shoestyle_codefactory, source.cust_shoestyle, source.size_code, source.size_numcode,
+					source.factory_code_orders, source.factory_name_orders, source.factory_code_produce, source.factory_name_produce, source.size_qty, 
+					'Y', GETDATE(), CAST(GETDATE() AS DATE), 'A', 'A', 0
+				);
+			`)
+		return { affected: 1 }
 	}
 }
