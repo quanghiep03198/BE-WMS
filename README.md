@@ -166,7 +166,8 @@ To run the unit tests:
 npm run test:cov
 ```
 
-##Contributing
+## Contributing
+
 If you'd like to contribute to this project, please follow the contribution guidelines. We welcome all contributions, from minor fixes to new features.
 
 ## Branching Strategy
