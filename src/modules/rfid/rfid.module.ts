@@ -3,12 +3,13 @@ import { MiddlewareConsumer, Module, NestModule, RequestMethod } from '@nestjs/c
 import { TypeOrmModule } from '@nestjs/typeorm'
 import { TenacyMiddleware } from '../tenancy/tenancy.middleware'
 import { TenancyModule } from '../tenancy/tenancy.module'
+import { ThirdPartyApiHelper } from '../third-party-api/third-party-api.helper'
 import { ThirdPartyApiModule } from '../third-party-api/third-party-api.module'
 import { FPInventoryEntity } from './entities/fp-inventory.entity'
 import { RFIDMatchCustomerEntity } from './entities/rfid-customer-match.entity'
-import { FPInventoryController } from './rfid.controller'
+import { RFIDController } from './rfid.controller'
 import { FPIRespository } from './rfid.repository'
-import { FPInventoryService } from './rfid.service'
+import { RFIDService } from './rfid.service'
 import { FPInventoryEntitySubscriber } from './subscribers/fp-inventory.entity.subscriber'
 import { RFIDCustomerEntitySubscriber } from './subscribers/rfid-customer.entity.subscriber'
 
@@ -18,8 +19,14 @@ import { RFIDCustomerEntitySubscriber } from './subscribers/rfid-customer.entity
 		ThirdPartyApiModule,
 		TypeOrmModule.forFeature([FPInventoryEntity, RFIDMatchCustomerEntity], DATA_SOURCE_DATA_LAKE)
 	],
-	controllers: [FPInventoryController],
-	providers: [FPInventoryService, FPIRespository, RFIDCustomerEntitySubscriber, FPInventoryEntitySubscriber]
+	controllers: [RFIDController],
+	providers: [
+		RFIDService,
+		FPIRespository,
+		RFIDCustomerEntitySubscriber,
+		FPInventoryEntitySubscriber,
+		ThirdPartyApiHelper
+	]
 })
 export class RFIDModule implements NestModule {
 	configure(consumer: MiddlewareConsumer) {

@@ -22,14 +22,14 @@ import {
 	UpdateStockDTO,
 	updateStockValidator
 } from './dto/rfid.dto'
-import { FPInventoryService } from './rfid.service'
+import { RFIDService } from './rfid.service'
 
 /**
  * @description Controller for Finished Production Inventory (FPI)
  */
 @Controller('rfid')
-export class FPInventoryController {
-	constructor(private readonly rfidService: FPInventoryService) {}
+export class RFIDController {
+	constructor(private readonly rfidService: RFIDService) {}
 
 	@Sse('sse')
 	@AuthGuard()
@@ -43,11 +43,7 @@ export class FPInventoryController {
 			throw new BadRequestException('Factory code is required')
 		}
 
-		/**
-		 * @deprecated
-		 * Temporary solution to sync data with third party API, it need to update upsert logic
-		 */
-		await this.rfidService.syncDataWithThirdPartyApi()
+		await this.rfidService.dispatchApiCall()
 
 		return interval(duration).pipe(
 			switchMap(() =>

@@ -1,3 +1,5 @@
+import { RFIDMatchCustomerEntity } from '../entities/rfid-customer-match.entity'
+
 export type RFIDSearchParams = {
 	page: number
 	'mo_no.eq'?: string
@@ -10,12 +12,7 @@ export type SearchCustOrderParams = {
 	q: string
 }
 
-interface BaseFetchPMDataArgs {
-	'factory_code.eq': string
-	'producing_process.eq': string
-}
-
-export interface FetchLatestPMDataArgs extends BaseFetchPMDataArgs {
-	page: number
-	'mo_no.eq'?: string
+export type UpsertRFIDCustomerData = {
+	commandNumber: string
+	items: Partial<RFIDMatchCustomerEntity>[]
 }

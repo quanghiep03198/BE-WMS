@@ -1,5 +1,7 @@
 import { FileLogger } from '@/common/helpers/file-logger.helper'
+import { DATA_SOURCE_DATA_LAKE } from '@/databases/constants'
 import { Injectable } from '@nestjs/common'
+import { InjectDataSource } from '@nestjs/typeorm'
 import { groupBy } from 'lodash'
 import { DataSource, In, IsNull, Like, Not } from 'typeorm'
 import { TenancyService } from '../tenancy/tenancy.service'
@@ -7,13 +9,17 @@ import { EXCLUDED_EPC_PATTERN, EXCLUDED_ORDERS, FALLBACK_VALUE, INTERNAL_EPC_PAT
 import { ExchangeEpcDTO } from './dto/rfid.dto'
 import { FPInventoryEntity } from './entities/fp-inventory.entity'
 import { RFIDMatchCustomerEntity } from './entities/rfid-customer-match.entity'
+import { UpsertRFIDCustomerData } from './types'
 
 /**
  * @description Repository for Finished Production Inventory (FPI)
  */
 @Injectable()
 export class FPIRespository {
-	constructor(private readonly tenancyService: TenancyService) {}
+	constructor(
+		@InjectDataSource(DATA_SOURCE_DATA_LAKE) private readonly dataSourceDL: DataSource,
+		private readonly tenancyService: TenancyService
+	) {}
 
 	/**
 	 * @description Get manufacturing order sizes
@@ -145,16 +151,14 @@ export class FPIRespository {
 			.getRawMany()
 	}
 
-	async upsertBulk(dataSource: DataSource, payload: { [key: string]: RFIDMatchCustomerEntity[] }): Promise<void> {
+	async upsertBulk(dataSource: DataSource, payload: Array<UpsertRFIDCustomerData>): Promise<void> {
 		const queryRunner = dataSource.createQueryRunner()
 		try {
 			await queryRunner.connect()
 			await queryRunner.startTransaction('READ UNCOMMITTED')
 
-			const chunkPayload = Object.entries(payload)
-
-			for (const [commandNumber, epcData] of chunkPayload) {
-				const mergeSourceValues = epcData
+			for (const { commandNumber, items } of payload) {
+				const mergeSourceValues = items
 					.map((item) => {
 						return `(
 							'${item.epc}', '${item.mo_no}', '${item.mat_code}','${item.mo_noseq}', '${item.or_no}', 
@@ -210,7 +214,7 @@ export class FPIRespository {
 					.createQueryBuilder()
 					.update()
 					.set({ mo_no: commandNumber, mo_no_actual: null })
-					.where({ epc: In(epcData.map((item) => item.epc)) })
+					.where({ epc: In(items.map((item) => item.epc)) })
 					.execute()
 			}
 

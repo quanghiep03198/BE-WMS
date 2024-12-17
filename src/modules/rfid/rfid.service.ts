@@ -20,7 +20,8 @@ import {
 	FetchThirdPartyApiEvent,
 	SyncEventPayload,
 	ThirdPartyApiResponseData
-} from '../third-party-api/third-party-api.interface'
+} from '../third-party-api/interfaces/third-party-api.interface'
+import { ThirdPartyApiHelper } from '../third-party-api/third-party-api.helper'
 import {
 	EXCLUDED_EPC_PATTERN,
 	EXCLUDED_ORDERS,
@@ -31,14 +32,14 @@ import {
 import { ExchangeEpcDTO, SearchCustOrderParamsDTO, UpdateStockDTO } from './dto/rfid.dto'
 import { FPInventoryEntity } from './entities/fp-inventory.entity'
 import { RFIDMatchCustomerEntity } from './entities/rfid-customer-match.entity'
-import { RFIDSearchParams } from './interfaces'
 import { FPIRespository } from './rfid.repository'
+import { RFIDSearchParams, UpsertRFIDCustomerData } from './types'
 
 /**
  * @description Service for Finished Production Inventory (FPI)
  */
 @Injectable({ scope: Scope.REQUEST })
-export class FPInventoryService {
+export class RFIDService {
 	constructor(
 		@InjectDataSource(DATA_SOURCE_DATA_LAKE) private readonly datasourceDL: DataSource,
 		@InjectDataSource(DATA_SOURCE_ERP) private readonly datasourceERP: DataSource,
@@ -48,7 +49,8 @@ export class FPInventoryService {
 		private readonly eventEmitter: EventEmitter2,
 		private readonly tenancyService: TenancyService,
 		private readonly configService: ConfigService,
-		private readonly i18n: I18nService
+		private readonly i18n: I18nService,
+		private readonly thirdPartyApiHelper: ThirdPartyApiHelper
 	) {}
 
 	public async fetchItems(args: RFIDSearchParams) {
@@ -206,6 +208,7 @@ export class FPInventoryService {
 		const update = pick(payload, 'mo_no_actual')
 
 		const BATCH_SIZE = 2000
+
 		const epcBatches = chunk(
 			epcToExchange.map((item) => item.epc),
 			BATCH_SIZE
@@ -257,13 +260,13 @@ export class FPInventoryService {
 		}
 	}
 
-	public async syncDataWithThirdPartyApi() {
+	public async dispatchApiCall() {
 		try {
 			const tenantId = String(this.request.headers['x-tenant-id'])
 			const factoryCode = String(this.request.headers['x-user-company'])
 
 			// * Prevent multiple sync process
-			const syncProcessFlag = await this.cacheManager.get(`sync_process:${factoryCode}`)
+			const syncProcessFlag = await this.thirdPartyApiHelper.getSyncProcess(factoryCode)
 			if (syncProcessFlag) return
 
 			// * First 22 characters in EPC will have the same manufacturing order code (mo_no)
@@ -288,8 +291,10 @@ export class FPInventoryService {
 			if (unknownCustomerEpc.length === 0) return
 
 			const distinctEpc = unknownCustomerEpc.map((item) => item.epc)
+
 			// * Set cache flag to prevent multiple sync process
-			await this.cacheManager.set(`sync_process:${factoryCode}`, true, 60 * 1000 * 5)
+
+			await this.thirdPartyApiHelper.startSyncProcess(factoryCode)
 
 			await this.eventEmitter.emitAsync(ThirdPartyApiEvent.DISPATCH, {
 				params: { tenantId, factoryCode },
@@ -301,15 +306,15 @@ export class FPInventoryService {
 	}
 
 	@OnEvent(ThirdPartyApiEvent.FULFILL)
-	protected async syncWithCustomerData(e: SyncEventPayload) {
+	protected async onApiCallFulfill(e: SyncEventPayload) {
 		try {
 			// * Intialize datasource
 			const tenant = this.tenancyService.findOneById(e.params.tenantId)
 			const dataSource = new DataSource({
 				...this.configService.getOrThrow<SqlServerConnectionOptions>('database'),
-				entities: [FPInventoryEntity, RFIDMatchCustomerEntity],
 				host: tenant.host,
-				database: DATABASE_DATA_LAKE
+				database: DATABASE_DATA_LAKE,
+				entities: [FPInventoryEntity, RFIDMatchCustomerEntity]
 			})
 
 			if (!dataSource.isInitialized) await dataSource.initialize()
@@ -319,12 +324,14 @@ export class FPInventoryService {
 			const data = JSON.parse(storedData) as { epcs: ThirdPartyApiResponseData[] }
 			if (!data?.epcs || !Array.isArray(data?.epcs)) throw new Error('Invalid data format')
 
+			// * Get unknown customer EPC need to be upserted
 			const unknownCustomerEpc = await dataSource.getRepository(FPInventoryEntity).findBy({
 				rfid_status: IsNull(),
 				epc: Not(Like(INTERNAL_EPC_PATTERN)),
 				mo_no: IsNull()
 			})
 
+			// * Filter & Standardize manufacturing order codes
 			const upsertData = data.epcs.filter((item) => unknownCustomerEpc.some((_item) => _item.epc === item.epc))
 
 			const uniqCommandNumbers = [
@@ -332,7 +339,8 @@ export class FPInventoryService {
 			]
 
 			// * Retrieve order information from ERP
-			let orderInformation = []
+
+			let orderInformation: Partial<RFIDMatchCustomerEntity>[] = []
 			const orderInformationQuery = readFileSync(join(__dirname, './sql/order-information.sql'), 'utf-8').toString()
 
 			for (const cmd of uniqCommandNumbers) {
@@ -344,10 +352,13 @@ export class FPInventoryService {
 				orderInformation = [...orderInformation, ...orderInfo]
 			}
 
-			const chunkPayload = uniqBy(orderInformation, 'mo_no').reduce((acc, curr) => {
-				return {
-					...acc,
-					[curr.mo_no]: upsertData
+			// * Upsert data to database
+			const upsertPayload: Array<UpsertRFIDCustomerData> = uniqBy(orderInformation, 'mo_no').reduce((acc, curr) => {
+				if (!curr.mo_no) {
+					return acc
+				} else {
+					const commandNumber: string = curr.mo_no
+					const items: UpsertRFIDCustomerData['items'] = upsertData
 						.filter((item) => curr.mo_no === item.commandNumber.slice(0, 9))
 						.map((item) => ({
 							...curr,
@@ -358,11 +369,12 @@ export class FPInventoryService {
 							factory_code_produce: e.params.factoryCode,
 							factory_name_produce: e.params.factoryCode
 						}))
+					const upsertChunk: UpsertRFIDCustomerData = { commandNumber, items }
+					return [...acc, upsertChunk]
 				}
-			}, {})
+			}, [])
 
-			// * Upsert data to database
-			await this.rfidRepository.upsertBulk(dataSource, chunkPayload)
+			await this.rfidRepository.upsertBulk(dataSource, upsertPayload)
 
 			// * Reset data store
 			writeFileSync(
@@ -373,7 +385,7 @@ export class FPInventoryService {
 		} catch (error) {
 			FileLogger.error(error)
 		} finally {
-			await this.cacheManager.del(`sync_process:${e.params.factoryCode}`)
+			await this.thirdPartyApiHelper.exitSyncProcess(e.params.factoryCode)
 		}
 	}
 }
