@@ -1,11 +1,3 @@
-/* POP MENU FOR SELECT WHICH mo_no */
-/* brand_name品牌, mo_no指令項次, or_no訂單編號, or_custpoone客戶訂單, shoestyle_codefactory工廠型體, prod_color中英顏色, or_deliverdate客戶交期,
-   or_deliverdate_confirm確認交貨日, or_totalqty訂單數量, sno_qty已入庫數量, sno_qty_notyet未入庫數量, dep_name港口名稱, dep_destination目的地 */
-/* mat_code成品編號, shoestyle_codecust客戶型體, dep_shipdestination港口目的地 */
-
-/*, manum.mo_no, manud.mo_noseq*/
-
-
 DECLARE @paramCompanyCode NVARCHAR(10) = @0;
 
 

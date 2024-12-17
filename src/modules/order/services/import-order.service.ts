@@ -37,7 +37,7 @@ export class ImportOrderService {
 	}
 
 	async getDataImport(companyCode: string) {
-		const query = readFileSync(join(__dirname, '../sql/data-import.sql'), 'utf-8').toString()
+		const query = readFileSync(join(__dirname, '../sql/import-order-datalist.sql'), 'utf-8').toString()
 		return await this.dataSourceERP.query(query, [companyCode])
 	}
 

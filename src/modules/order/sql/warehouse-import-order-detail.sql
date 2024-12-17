@@ -31,4 +31,4 @@ LEFT JOIN wuerp_vnrd.dbo.ta_shoefactorymst shoef ON
 	AND shoef.isactive = 'Y'
 WHERE
 	whiod.isactive = 'Y'
-	AND whiod.sno_no = :sno_no;
+	AND whiod.sno_no = @0;
