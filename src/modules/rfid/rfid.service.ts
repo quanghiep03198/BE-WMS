@@ -1,12 +1,10 @@
 import { FileLogger } from '@/common/helpers/file-logger.helper'
 import { DATABASE_DATA_LAKE, DATA_SOURCE_DATA_LAKE, DATA_SOURCE_ERP } from '@/databases/constants'
-import { CACHE_MANAGER } from '@nestjs/cache-manager'
 import { Inject, Injectable, InternalServerErrorException, NotFoundException, Scope } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { REQUEST } from '@nestjs/core'
 import { EventEmitter2, OnEvent } from '@nestjs/event-emitter'
 import { InjectDataSource } from '@nestjs/typeorm'
-import { Cache } from 'cache-manager'
 import { Request } from 'express'
 import { chunk, omit, pick, uniqBy } from 'lodash'
 import { I18nContext, I18nService } from 'nestjs-i18n'
@@ -43,13 +41,12 @@ export class RFIDService {
 	constructor(
 		@InjectDataSource(DATA_SOURCE_DATA_LAKE) private readonly datasourceDL: DataSource,
 		@InjectDataSource(DATA_SOURCE_ERP) private readonly datasourceERP: DataSource,
-		@Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
 		@Inject(REQUEST) private readonly request: Request,
-		private readonly rfidRepository: FPIRespository,
-		private readonly eventEmitter: EventEmitter2,
-		private readonly tenancyService: TenancyService,
-		private readonly configService: ConfigService,
 		private readonly i18n: I18nService,
+		private readonly configService: ConfigService,
+		private readonly eventEmitter: EventEmitter2,
+		private readonly rfidRepository: FPIRespository,
+		private readonly tenancyService: TenancyService,
 		private readonly thirdPartyApiHelper: ThirdPartyApiHelper
 	) {}
 
