@@ -22,6 +22,6 @@
 			"@/*": ["src/*"]
 		}
 	},
-	"include": ["src/**/*.ts", "test"],
+	"include": ["src/**/*.ts", "test", "src/instrument.ts"],
 	"exclude": ["node_modules"]
 }

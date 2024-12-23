@@ -5,6 +5,7 @@ import compression from 'compression'
 import helmet from 'helmet'
 import morgan from 'morgan'
 import { AppModule } from './app.module'
+import './instrument'
 
 async function bootstrap() {
 	try {

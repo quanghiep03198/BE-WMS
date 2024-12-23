@@ -1,9 +1,12 @@
-import { Module, OnModuleInit } from '@nestjs/common'
+import { Module, OnApplicationBootstrap, OnApplicationShutdown, OnModuleInit } from '@nestjs/common'
 import { ConfigModule, ConfigService } from '@nestjs/config'
+import * as Sentry from '@sentry/nestjs'
+import { SentryGlobalFilter, SentryModule } from '@sentry/nestjs/setup'
 import { AcceptLanguageResolver, HeaderResolver, I18nModule, QueryResolver } from 'nestjs-i18n'
 import { DatabaseModule } from './databases/database.module'
 // Feature modules
 import { CacheModule } from '@nestjs/cache-manager'
+import { APP_FILTER } from '@nestjs/core'
 import { EventEmitterModule } from '@nestjs/event-emitter'
 import { ScheduleModule } from '@nestjs/schedule'
 import { ThrottlerModule } from '@nestjs/throttler'
@@ -34,6 +37,7 @@ import { WarehouseModule } from './modules/warehouse/warehouse.module'
 			load: [appConfigFactory],
 			validate: validateConfig
 		}),
+		SentryModule.forRoot(),
 		ScheduleModule.forRoot(),
 		I18nModule.forRootAsync({
 			inject: [ConfigService],
@@ -77,10 +81,22 @@ import { WarehouseModule } from './modules/warehouse/warehouse.module'
 		WarehouseModule
 	],
 	controllers: [AppController],
-	providers: [FileLoggerJobService]
+	providers: [
+		{
+			provide: APP_FILTER,
+			useClass: SentryGlobalFilter
+		},
+		FileLoggerJobService
+	]
 })
-export class AppModule implements OnModuleInit {
+export class AppModule implements OnModuleInit, OnApplicationBootstrap, OnApplicationShutdown {
 	onModuleInit() {
 		FileLogger.initialize()
+	}
+	onApplicationBootstrap() {
+		Sentry.profiler.startProfiler()
+	}
+	onApplicationShutdown() {
+		Sentry.profiler.stopProfiler()
 	}
 }
