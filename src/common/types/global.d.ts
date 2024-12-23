@@ -61,6 +61,9 @@ export declare global {
 			// * Jwt
 			JWT_SECRET: string
 			JWT_EXPIRES: string
+			// * Sentry
+			SENTRY_DSN: string
+			SENTRY_AUTH_TOKEN: string
 		}
 	}
 
