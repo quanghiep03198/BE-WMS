@@ -27,7 +27,7 @@ jobs:
       steps:
          - name: Ensure safely deployment
            shell: bash
-           run: pm2 stop ecosystem.config.js
+           run: pm2 stop ecosystem.config.js || true
 
          - name: Checkout code
            uses: actions/checkout@v4
