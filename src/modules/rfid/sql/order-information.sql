@@ -3,9 +3,9 @@ SELECT TOP 1
 	a.mat_code AS mat_code,
 	b.mo_noseq AS mo_noseq,
 	b.or_no AS or_no,
-	d.or_custpo AS or_custpo,
+	d.or_custpo AS or_cust_po,
 	g.shoestyle_codefactory AS shoes_style_code_factory,
-	CAST(ISNULL(i.shoestyle_codecust,'') + '/' + ISNULL( i.shoestyle_namecust, '' ) AS nvarchar( 255 )) AS cust_shoestyle,
+	CAST(ISNULL(i.shoestyle_codecust,'') + '/' + ISNULL( i.shoestyle_namecust, '' ) AS nvarchar( 255 )) AS cust_shoes_style,
 	k.size_code AS size_code,
 	k.size_sumqty AS size_qty
 FROM wuerp_vnrd.dbo.ta_manufacturmst a

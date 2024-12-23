@@ -6,11 +6,11 @@ import { REQUEST } from '@nestjs/core'
 import { EventEmitter2, OnEvent } from '@nestjs/event-emitter'
 import { InjectDataSource } from '@nestjs/typeorm'
 import { Request } from 'express'
-import { chunk, omit, pick, uniqBy } from 'lodash'
+import { chunk, groupBy, omit, pick } from 'lodash'
 import { I18nContext, I18nService } from 'nestjs-i18n'
 import { readFileSync, writeFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
-import { Brackets, DataSource, FindOptionsWhere, In, IsNull, Like, Not } from 'typeorm'
+import { Brackets, DataSource, FindOptionsWhere, In } from 'typeorm'
 import { SqlServerConnectionOptions } from 'typeorm/driver/sqlserver/SqlServerConnectionOptions'
 import { TenancyService } from '../tenancy/tenancy.service'
 import { ThirdPartyApiEvent } from '../third-party-api/constants'
@@ -31,7 +31,7 @@ import { ExchangeEpcDTO, SearchCustOrderParamsDTO, UpdateStockDTO } from './dto/
 import { FPInventoryEntity } from './entities/fp-inventory.entity'
 import { RFIDMatchCustomerEntity } from './entities/rfid-customer-match.entity'
 import { FPIRespository } from './rfid.repository'
-import { RFIDSearchParams, UpsertRFIDCustomerData } from './types'
+import { RFIDSearchParams } from './types'
 
 /**
  * @description Service for Finished Production Inventory (FPI)
@@ -65,7 +65,8 @@ export class RFIDService {
 
 	public async findWhereNotInStock(args: RFIDSearchParams) {
 		const LIMIT_FETCH_DOCS = 50
-
+		const factoryCode = this.request.headers['x-user-company']
+		const syncProcess = await this.thirdPartyApiHelper.getSyncProcess(String(factoryCode))
 		const queryBuilder = this.tenancyService.dataSource
 			.getRepository(FPInventoryEntity)
 			.createQueryBuilder('inv')
@@ -93,6 +94,7 @@ export class RFIDService {
 				excludedOrders: EXCLUDED_ORDERS,
 				excludedEpcPattern: EXCLUDED_EPC_PATTERN
 			})
+			.cache(!!syncProcess)
 
 		const [data, totalDocs] = await Promise.all([queryBuilder.getRawMany(), queryBuilder.getCount()])
 
@@ -285,7 +287,7 @@ export class RFIDService {
 				.getRawMany()
 
 			// * If exist customer's EPCs that do not have manufacturing order, emit event to synchronize
-			if (unknownCustomerEpc.length === 0) return
+			if (unknownCustomerEpc.length === 0) return { affected: 0 }
 
 			const distinctEpc = unknownCustomerEpc.map((item) => item.epc)
 
@@ -313,7 +315,6 @@ export class RFIDService {
 				database: DATABASE_DATA_LAKE,
 				entities: [FPInventoryEntity, RFIDMatchCustomerEntity]
 			})
-
 			if (!dataSource.isInitialized) await dataSource.initialize()
 
 			// * Read stored data from JSON assets
@@ -321,26 +322,15 @@ export class RFIDService {
 			const data = JSON.parse(storedData) as { epcs: ThirdPartyApiResponseData[] }
 			if (!data?.epcs || !Array.isArray(data?.epcs)) throw new Error('Invalid data format')
 
-			// * Get unknown customer EPC need to be upserted
-			const unknownCustomerEpc = await dataSource.getRepository(FPInventoryEntity).findBy({
-				rfid_status: IsNull(),
-				epc: Not(Like(INTERNAL_EPC_PATTERN)),
-				mo_no: IsNull()
-			})
-
-			// * Filter & Standardize manufacturing order codes
-			const upsertData = data.epcs.filter((item) => unknownCustomerEpc.some((_item) => _item.epc === item.epc))
-
-			const uniqCommandNumbers = [
-				...new Set(upsertData.filter((item) => !!item).map((item) => item.commandNumber.slice(0, 9)))
-			]
+			// * Retrieve unique command numbers from Third Party API response data
+			const availableCommandNums = Object.keys(groupBy(data.epcs, 'commandNumber')).map((item) => item.slice(0, 9)) // * Extract first 9 characters
+			const uniqueCommandNums = [...new Set(availableCommandNums)]
 
 			// * Retrieve order information from ERP
-
 			let orderInformation: Partial<RFIDMatchCustomerEntity>[] = []
 			const orderInformationQuery = readFileSync(join(__dirname, './sql/order-information.sql'), 'utf-8').toString()
 
-			for (const cmd of uniqCommandNumbers) {
+			for (const cmd of uniqueCommandNums) {
 				const orderInfo = await this.datasourceERP.query<Partial<RFIDMatchCustomerEntity>[]>(
 					orderInformationQuery,
 					[cmd]
@@ -350,34 +340,24 @@ export class RFIDService {
 			}
 
 			// * Upsert data to database
-			const upsertPayload: Array<UpsertRFIDCustomerData> = uniqBy(orderInformation, 'mo_no').reduce((acc, curr) => {
-				if (!curr.mo_no) {
-					return acc
-				} else {
-					const commandNumber: string = curr.mo_no
-					const items: UpsertRFIDCustomerData['items'] = upsertData
-						.filter((item) => curr.mo_no === item.commandNumber.slice(0, 9))
-						.map((item) => ({
-							...curr,
-							epc: item.epc,
-							size_numcode: item.sizeNumber,
-							factory_code_orders: e.params.factoryCode,
-							factory_name_orders: e.params.factoryCode,
-							factory_code_produce: e.params.factoryCode,
-							factory_name_produce: e.params.factoryCode
-						}))
-					const upsertChunk: UpsertRFIDCustomerData = { commandNumber, items }
-					return [...acc, upsertChunk]
-				}
-			}, [])
+			const payload: Partial<RFIDMatchCustomerEntity>[] = data.epcs.map((item) => ({
+				...orderInformation.find((data) => data.mo_no === item.commandNumber.slice(0, 9)),
+				epc: item.epc,
+				size_numcode: item.sizeNumber,
+				factory_code_orders: e.params.factoryCode,
+				factory_name_orders: e.params.factoryCode,
+				factory_code_produce: e.params.factoryCode,
+				factory_name_produce: e.params.factoryCode
+			}))
 
-			await this.rfidRepository.upsertBulk(dataSource, upsertPayload)
+			await this.rfidRepository.upsertBulk(dataSource, payload)
 
 			// * Reset data store
 			writeFileSync(
 				resolve(join(__dirname, '../..', `/assets/${e.data.file}`)),
 				JSON.stringify({ epcs: [] }, null, 3)
 			)
+
 			FileLogger.info('Synchronized data from Decker API')
 		} catch (error) {
 			FileLogger.error(error)

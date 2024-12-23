@@ -2,14 +2,13 @@ import { FileLogger } from '@/common/helpers/file-logger.helper'
 import { DATA_SOURCE_DATA_LAKE } from '@/databases/constants'
 import { Injectable } from '@nestjs/common'
 import { InjectDataSource } from '@nestjs/typeorm'
-import { groupBy } from 'lodash'
+import { chunk, groupBy } from 'lodash'
 import { DataSource, In, IsNull, Like, Not } from 'typeorm'
 import { TenancyService } from '../tenancy/tenancy.service'
 import { EXCLUDED_EPC_PATTERN, EXCLUDED_ORDERS, FALLBACK_VALUE, INTERNAL_EPC_PATTERN } from './constants'
 import { ExchangeEpcDTO } from './dto/rfid.dto'
 import { FPInventoryEntity } from './entities/fp-inventory.entity'
 import { RFIDMatchCustomerEntity } from './entities/rfid-customer-match.entity'
-import { UpsertRFIDCustomerData } from './types'
 
 /**
  * @description Repository for Finished Production Inventory (FPI)
@@ -29,7 +28,7 @@ export class FPIRespository {
 			.getRepository(FPInventoryEntity)
 			.createQueryBuilder('inv')
 			.select([
-				/* SQL */ `COALESCE(inv.mo_no_actual, inv.mo_no, cust.mo_no_actual, cust.mo_no, :fallbackValue) AS mo_no`,
+				/* SQL */ `COALESCE(inv.mo_no_actual, inv.mo_no, :fallbackValue) AS mo_no`,
 				/* SQL */ `COALESCE(cust.mat_code, :fallbackValue) AS mat_code`,
 				/* SQL */ `COALESCE(cust.shoestyle_codefactory, :fallbackValue) AS shoes_style_code_factory`,
 				/* SQL */ `ISNULL(cust.size_numcode, :fallbackValue) AS size_numcode`,
@@ -48,8 +47,9 @@ export class FPIRespository {
 			.andWhere(/* SQL */ `COALESCE(cust.mo_no_actual, cust.mo_no, :fallbackValue) NOT IN (:...excludedOrders)`)
 			.groupBy(
 				/* SQL */ `
-					COALESCE(inv.mo_no_actual, inv.mo_no, cust.mo_no_actual, cust.mo_no, :fallbackValue),
-					COALESCE(cust.mat_code, :fallbackValue), COALESCE(cust.shoestyle_codefactory, :fallbackValue),
+					COALESCE(inv.mo_no_actual, inv.mo_no, :fallbackValue),
+					COALESCE(cust.mat_code, :fallbackValue), 
+					COALESCE(cust.shoestyle_codefactory, :fallbackValue),
 					ISNULL(cust.size_numcode, :fallbackValue)
 				`
 			)
@@ -151,18 +151,28 @@ export class FPIRespository {
 			.getRawMany()
 	}
 
-	async upsertBulk(dataSource: DataSource, payload: Array<UpsertRFIDCustomerData>): Promise<void> {
+	async upsertBulk(dataSource: DataSource, payload: Partial<RFIDMatchCustomerEntity>[]): Promise<void> {
 		const queryRunner = dataSource.createQueryRunner()
+
+		// * Get unknown customer EPC need to be upserted
+		const unknownCustomerEpc = await queryRunner.manager.getRepository(FPInventoryEntity).findBy({
+			rfid_status: IsNull(),
+			epc: Not(Like(INTERNAL_EPC_PATTERN)),
+			mo_no: IsNull()
+		})
+
 		try {
 			await queryRunner.connect()
-			await queryRunner.startTransaction('READ UNCOMMITTED')
+			await queryRunner.startTransaction()
 
-			for (const { commandNumber, items } of payload) {
-				const mergeSourceValues = items
+			// * Upsert data for "dv_rfidmatchmst_cust" table
+			for (const data of chunk(payload, 2000)) {
+				FileLogger.debug(data)
+				const mergeSourceValues = data
 					.map((item) => {
 						return `(
-							'${item.epc}', '${item.mo_no}', '${item.mat_code}','${item.mo_noseq}', '${item.or_no}', 
-							'${item.or_cust_po}', '${item.shoes_style_code_factory}', '${item.cust_shoes_style}', '${item.size_code}', '${item.size_numcode}', 
+							'${item.epc}', '${item.mo_no}', '${item.mat_code}','${item.mo_noseq}', '${item.or_no}',
+							'${item.or_cust_po}', '${item.shoes_style_code_factory}', '${item.cust_shoes_style}', '${item.size_code}', '${item.size_numcode}',
 							'${item.factory_code_orders}', '${item.factory_name_orders}', '${item.factory_code_produce}', '${item.factory_name_produce}', ${item.size_qty || 1}
 						)`
 					})
@@ -173,48 +183,58 @@ export class FPIRespository {
 					USING (
 						VALUES ${mergeSourceValues}
 					)  AS source (
-							EPC_Code, mo_no, mat_code, mo_noseq, or_no, 
-						 	or_custpo, shoestyle_codefactory, cust_shoestyle, size_code, size_numcode,
+							EPC_Code, mo_no, mat_code, mo_noseq, or_no,
+							or_custpo, shoestyle_codefactory, cust_shoestyle, size_code, size_numcode,
 							factory_code_orders, factory_name_orders, factory_code_produce, factory_name_produce, size_qty
 						)
 					ON target.EPC_Code = source.EPC_Code
-						WHEN MATCHED THEN
-							UPDATE SET 
-								target.mo_no_actual = NULL,
-								target.mo_no = source.mo_no,
-								target.mat_code = source.mat_code,
-								target.mo_noseq = source.mo_noseq,
-								target.or_no = source.or_no,
-								target.or_custpo = source.or_custpo,
-								target.shoestyle_codefactory = source.shoestyle_codefactory,
-								target.cust_shoestyle = source.cust_shoestyle,
-								target.size_code = source.size_code,
-								target.size_numcode = source.size_numcode,
-								target.factory_code_orders = source.factory_code_orders,
-								target.factory_name_orders = source.factory_name_orders,
-								target.factory_code_produce = source.factory_code_produce,
-								target.factory_name_produce = source.factory_name_produce,
-								target.size_qty = source.size_qty
-						WHEN NOT MATCHED THEN
-							INSERT (
-								EPC_Code, mo_no, mat_code, mo_noseq, or_no, or_custpo, 
-								shoestyle_codefactory, cust_shoestyle, size_code, size_numcode,
-								factory_code_orders, factory_name_orders, factory_code_produce, factory_name_produce, size_qty, 
-								isactive, created, ri_date, ri_type, ri_foot, ri_cancel
-							)
-							VALUES (
-								source.EPC_Code, source.mo_no, source.mat_code, source.mo_noseq, source.or_no, 
-								source.or_custpo, source.shoestyle_codefactory, source.cust_shoestyle, source.size_code, source.size_numcode,
-								source.factory_code_orders, source.factory_name_orders, source.factory_code_produce, source.factory_name_produce, source.size_qty, 
-								'Y', GETDATE(), CAST(GETDATE() AS DATE), 'A', 'A', 0
-							);`)
+					WHEN MATCHED THEN
+						UPDATE SET 
+						target.mo_no_actual = NULL,
+						target.mo_no = source.mo_no,
+						target.mat_code = source.mat_code,
+						target.mo_noseq = source.mo_noseq,
+						target.or_no = source.or_no,
+						target.or_custpo = source.or_custpo,
+						target.shoestyle_codefactory = source.shoestyle_codefactory,
+						target.cust_shoestyle = source.cust_shoestyle,
+						target.size_code = source.size_code,
+						target.size_numcode = source.size_numcode,
+						target.factory_code_orders = source.factory_code_orders,
+						target.factory_name_orders = source.factory_name_orders,
+						target.factory_code_produce = source.factory_code_produce,
+						target.factory_name_produce = source.factory_name_produce,
+						target.size_qty = source.size_qty
+					WHEN NOT MATCHED THEN
+						INSERT (
+							EPC_Code, mo_no, mat_code, mo_noseq, or_no, or_custpo,
+							shoestyle_codefactory, cust_shoestyle, size_code, size_numcode,
+							factory_code_orders, factory_name_orders, factory_code_produce, factory_name_produce, size_qty,
+							isactive, created, ri_date, ri_type, ri_foot, ri_cancel
+						)
+						VALUES (
+							source.EPC_Code, source.mo_no, source.mat_code, source.mo_noseq, source.or_no,
+							source.or_custpo, source.shoestyle_codefactory, source.cust_shoestyle, source.size_code, source.size_numcode,
+							source.factory_code_orders, source.factory_name_orders, source.factory_code_produce, source.factory_name_produce, source.size_qty,
+							'Y', GETDATE(), CAST(GETDATE() AS DATE), 'A', 'A', 0
+						);`)
+			}
 
+			// * Update "mo_no" for unknown customer EPC in "dv_InvRFIDrecorddet" table
+			const epcGroups = groupBy(payload, 'mo_no')
+			for (const commandNumber in epcGroups) {
 				await dataSource
 					.getRepository(FPInventoryEntity)
 					.createQueryBuilder()
 					.update()
 					.set({ mo_no: commandNumber, mo_no_actual: null })
-					.where({ epc: In(items.map((item) => item.epc)) })
+					.where({
+						epc: In(
+							epcGroups[commandNumber]
+								.filter((item) => unknownCustomerEpc.some((_item) => _item.epc === item.epc))
+								.map((item) => item.epc)
+						)
+					})
 					.execute()
 			}
 

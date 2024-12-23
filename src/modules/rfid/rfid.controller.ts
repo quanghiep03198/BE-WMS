@@ -43,8 +43,6 @@ export class RFIDController {
 			throw new BadRequestException('Factory code is required')
 		}
 
-		await this.rfidService.dispatchApiCall()
-
 		return interval(duration).pipe(
 			switchMap(() =>
 				from(this.rfidService.fetchItems({ page: 1 })).pipe(
@@ -55,6 +53,15 @@ export class RFIDController {
 			),
 			map((data) => ({ data }))
 		)
+	}
+
+	@Api({
+		endpoint: 'third-party-api-sync',
+		method: HttpMethod.PUT,
+		statusCode: HttpStatus.CREATED
+	})
+	async triggerSync() {
+		await this.rfidService.dispatchApiCall()
 	}
 
 	@Api({
