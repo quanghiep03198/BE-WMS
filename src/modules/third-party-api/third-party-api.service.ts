@@ -232,15 +232,15 @@ export class ThirdPartyApiService {
 		const chunkPayload = chunk(sourceData, 2000)
 
 		await queryRunner.connect()
-		await queryRunner.startTransaction('READ COMMITTED')
+		await queryRunner.startTransaction()
 
 		try {
 			for (const payload of chunkPayload) {
-				const data = payload
+				const sourceValues = payload
 					.map((item) => {
 						return `(
-							'${item.epc}', '${item.mo_no}', '${item.mat_code}','${item.mo_noseq}', '${item.or_no}', 
-							'${item.or_cust_po}', '${item.shoes_style_code_factory}', '${item.cust_shoes_style}', '${item.size_code}', '${item.size_numcode}', 
+							'${item.epc}', '${item.mo_no}', '${item.mat_code}','${item.mo_noseq}', '${item.or_no}',
+							'${item.or_cust_po}', '${item.shoes_style_code_factory}', '${item.cust_shoes_style}', '${item.size_code}', '${item.size_numcode}',
 							'${item.factory_code_orders}', '${item.factory_name_orders}', '${item.factory_code_produce}', '${item.factory_name_produce}', ${item.size_qty || 1}
 						)`
 					})
@@ -248,29 +248,12 @@ export class ThirdPartyApiService {
 
 				await queryRunner.manager.query(/* SQL */ `
 						MERGE INTO dv_rfidmatchmst_cust AS target
-						USING (VALUES ${data}) AS source (
-							EPC_Code, mo_no, mat_code, mo_noseq, or_no, 
+						USING (VALUES ${sourceValues}) AS source (
+							EPC_Code, mo_no, mat_code, mo_noseq, or_no,
 							or_custpo, shoestyle_codefactory, cust_shoestyle, size_code, size_numcode,
 							factory_code_orders, factory_name_orders, factory_code_produce, factory_name_produce, size_qty
 						)
 						ON target.EPC_Code = source.EPC_Code
-						WHEN MATCHED THEN
-							UPDATE SET 
-								target.mo_no_actual = NULL,
-								target.mo_no = source.mo_no,
-								target.mat_code = source.mat_code,
-								target.mo_noseq = source.mo_noseq,
-								target.or_no = source.or_no,
-								target.or_custpo = source.or_custpo,
-								target.shoestyle_codefactory = source.shoestyle_codefactory,
-								target.cust_shoestyle = source.cust_shoestyle,
-								target.size_code = source.size_code,
-								target.size_numcode = source.size_numcode,
-								target.factory_code_orders = source.factory_code_orders,
-								target.factory_name_orders = source.factory_name_orders,
-								target.factory_code_produce = source.factory_code_produce,
-								target.factory_name_produce = source.factory_name_produce,
-								target.size_qty = source.size_qty
 						WHEN NOT MATCHED THEN
 							INSERT (
 								EPC_Code, mo_no, mat_code, mo_noseq, or_no, or_custpo, 
@@ -348,23 +331,6 @@ export class ThirdPartyApiService {
 				factory_code_orders, factory_name_orders, factory_code_produce, factory_name_produce, size_qty
 			)
 			ON target.EPC_Code = source.EPC_Code
-			WHEN MATCHED THEN
-				UPDATE SET 
-					target.mo_no_actual = NULL,
-					target.mo_no = source.mo_no,
-					target.mat_code = source.mat_code,
-					target.mo_noseq = source.mo_noseq,
-					target.or_no = source.or_no,
-					target.or_custpo = source.or_custpo,
-					target.shoestyle_codefactory = source.shoestyle_codefactory,
-					target.cust_shoestyle = source.cust_shoestyle,
-					target.size_code = source.size_code,
-					target.size_numcode = source.size_numcode,
-					target.factory_code_orders = source.factory_code_orders,
-					target.factory_name_orders = source.factory_name_orders,
-					target.factory_code_produce = source.factory_code_produce,
-					target.factory_name_produce = source.factory_name_produce,
-					target.size_qty = source.size_qty
 			WHEN NOT MATCHED THEN
 				INSERT (
 					EPC_Code, mo_no, mat_code, mo_noseq, or_no, or_custpo, 
