@@ -1,5 +1,5 @@
 import { DATA_SOURCE_DATA_LAKE } from '@/databases/constants'
-import { MiddlewareConsumer, Module } from '@nestjs/common'
+import { MiddlewareConsumer, Module, RequestMethod } from '@nestjs/common'
 import { TypeOrmModule } from '@nestjs/typeorm'
 import { FPInventoryEntity } from '../rfid/entities/fp-inventory.entity'
 import { RFIDMatchCustomerEntity } from '../rfid/entities/rfid-customer-match.entity'
@@ -18,6 +18,6 @@ import { ReportService } from './report.service'
 })
 export class ReportModule {
 	configure(consumer: MiddlewareConsumer) {
-		consumer.apply(TenacyMiddleware).forRoutes('/report/daily-inbound-report')
+		consumer.apply(TenacyMiddleware).forRoutes({ path: '/report*', method: RequestMethod.ALL })
 	}
 }

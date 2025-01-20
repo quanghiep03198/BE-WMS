@@ -1,41 +1,26 @@
-import { DATA_SOURCE_DATA_LAKE, LinkedServer } from '@/databases/constants'
 import { Injectable } from '@nestjs/common'
-import { InjectDataSource } from '@nestjs/typeorm'
 import { format } from 'date-fns'
 import { Workbook } from 'exceljs'
 import { readFileSync } from 'fs'
 import { I18nContext, I18nService } from 'nestjs-i18n'
 import { join } from 'path'
-import { DataSource } from 'typeorm'
 import { EXCLUDED_EPC_PATTERN, EXCLUDED_ORDERS, FALLBACK_VALUE } from '../rfid/constants'
 import { FPInventoryEntity } from '../rfid/entities/fp-inventory.entity'
 import { RFIDMatchCustomerEntity } from '../rfid/entities/rfid-customer-match.entity'
 import { TenancyService } from '../tenancy/tenancy.service'
-import { IReportSearchParams } from './interfaces'
 
 @Injectable()
 export class ReportService {
 	constructor(
-		@InjectDataSource(DATA_SOURCE_DATA_LAKE) private readonly dataSourceDL: DataSource,
 		private readonly tenancyService: TenancyService,
 		private readonly i18nService: I18nService
 	) {}
 
-	async getByDate(filter: IReportSearchParams) {
-		const queryRunner = this.dataSourceDL.createQueryRunner()
+	async getInboundReportByDate(date: string) {
+		const queryRunner = this.tenancyService.dataSource.createQueryRunner()
 		await queryRunner.connect()
-
-		const isToday = format(filter['date.eq'], 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd')
-
-		const query = isToday
-			? readFileSync(join(__dirname, './sql/daily-inbound-report.sql'), 'utf-8').toString()
-			: readFileSync(join(__dirname, './sql/history-inbound-report.sql'), 'utf-8').toString()
-
-		return await queryRunner.manager.query(query, [
-			LinkedServer[filter['factory_code.eq']],
-			filter['factory_code.eq'],
-			filter['date.eq']
-		])
+		const query = readFileSync(join(__dirname, './sql/inbound-report.sql'), 'utf-8').toString()
+		return await queryRunner.manager.query(query, [date])
 	}
 
 	async getDailyInboundReport() {
@@ -66,8 +51,8 @@ export class ReportService {
 			.then((data) => data.map((item) => ({ ...item, is_exchanged: Boolean(item.is_exchanged) })))
 	}
 
-	async exportReportToExcel(filter: IReportSearchParams) {
-		const data = await this.getByDate(filter)
+	async exportReportToExcel(date: string) {
+		const data = await this.getInboundReportByDate(date)
 		const workbook = new Workbook()
 		const worksheet = workbook.addWorksheet(`Report ${format(new Date(), 'yyyy-MM-dd')}`)
 

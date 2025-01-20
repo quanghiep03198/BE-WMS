@@ -1,10 +1,9 @@
 import { Api, HttpMethod } from '@/common/decorators/api.decorator'
 import { AuthGuard } from '@/common/decorators/auth.decorator'
 import { AllExceptionsFilter } from '@/common/filters/exceptions.filter'
-import { Controller, DefaultValuePipe, Get, Headers, Query, Res, UseFilters } from '@nestjs/common'
+import { Controller, DefaultValuePipe, Get, Query, Res, UseFilters } from '@nestjs/common'
 import { format } from 'date-fns'
 import { Response } from 'express'
-import { IReportSearchParams } from './interfaces'
 import { ReportService } from './report.service'
 
 @Controller('report')
@@ -13,15 +12,11 @@ export class ReportController {
 
 	@Api({ method: HttpMethod.GET })
 	@AuthGuard()
-	async getByDate(
-		@Headers('X-User-Company') factoryCode: string,
+	async getInboundReportByDate(
 		@Query('date.eq', new DefaultValuePipe(format(new Date(), 'yyyy-MM-dd')))
 		dateQuery: any
 	) {
-		return await this.reportService.getByDate({
-			'factory_code.eq': factoryCode,
-			'date.eq': dateQuery
-		} satisfies IReportSearchParams)
+		return await this.reportService.getInboundReportByDate(dateQuery)
 	}
 
 	@Api({
@@ -29,6 +24,9 @@ export class ReportController {
 		method: HttpMethod.GET
 	})
 	@AuthGuard()
+	/**
+	 * @deprecated
+	 */
 	async getDailyInboundReport() {
 		return await this.reportService.getDailyInboundReport()
 	}
@@ -36,15 +34,8 @@ export class ReportController {
 	@Get('export')
 	@UseFilters(AllExceptionsFilter)
 	@AuthGuard()
-	async exportReportToExcel(
-		@Headers('X-User-Company') factoryCode: string,
-		@Query('date.eq') date: string,
-		@Res() res: Response
-	) {
-		const buffer = await this.reportService.exportReportToExcel({
-			'date.eq': date,
-			'factory_code.eq': factoryCode
-		})
+	async exportReportToExcel(@Query('date.eq') date: string, @Res() res: Response) {
+		const buffer = await this.reportService.exportReportToExcel(date)
 
 		return res.send(buffer)
 		// res.setHeader('Content-Disposition', 'attachment; filename=report.xlsx')
