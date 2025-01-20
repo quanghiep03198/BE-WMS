@@ -136,4 +136,15 @@ export class RFIDController {
 	async deleteUnexpectedOrder(@Param('order') orderCode: string) {
 		return await this.rfidService.deleteUnexpectedOrder(orderCode)
 	}
+
+	@Api({
+		endpoint: 'delete-unexpected-epc',
+		method: HttpMethod.DELETE,
+		statusCode: HttpStatus.NO_CONTENT,
+		message: 'common.deleted'
+	})
+	@AuthGuard()
+	async deleteEpcBySize(@Query(new ZodValidationPipe(searchCustomerValidator)) queries: any) {
+		return await this.rfidService.deleteEpcBySize(queries)
+	}
 }

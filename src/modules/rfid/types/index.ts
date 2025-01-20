@@ -16,3 +16,7 @@ export type UpsertRFIDCustomerData = {
 	commandNumber: string
 	items: Partial<RFIDMatchCustomerEntity>[]
 }
+
+export type DeleteEpcBySizeParams = Pick<SearchCustOrderParams, 'mo_no.eq' | 'size_num_code.eq'> & {
+	'quantity.eq': number
+}

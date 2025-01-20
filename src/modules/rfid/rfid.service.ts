@@ -31,7 +31,7 @@ import { ExchangeEpcDTO, SearchCustOrderParamsDTO, UpdateStockDTO } from './dto/
 import { FPInventoryEntity } from './entities/fp-inventory.entity'
 import { RFIDMatchCustomerEntity } from './entities/rfid-customer-match.entity'
 import { FPIRespository } from './rfid.repository'
-import { RFIDSearchParams } from './types'
+import { DeleteEpcBySizeParams, RFIDSearchParams } from './types'
 
 /**
  * @description Service for Finished Production Inventory (FPI)
@@ -254,6 +254,41 @@ export class RFIDService {
 		} catch (e) {
 			await queryRunner.rollbackTransaction()
 			throw new InternalServerErrorException(e.message)
+		} finally {
+			await queryRunner.release()
+		}
+	}
+
+	public async deleteEpcBySize(filters: DeleteEpcBySizeParams) {
+		const queryRunner = this.tenancyService.dataSource.createQueryRunner()
+		await queryRunner.startTransaction('READ UNCOMMITTED')
+
+		try {
+			await queryRunner.manager.query(
+				/* SQL */ `
+						DELETE FROM DV_DATA_LAKE.dbo.UHF_RFID_TEST WHERE epc IN (
+							SELECT DISTINCT TOP 5 inv.EPC_Code AS epc FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet inv
+							LEFT JOIN DV_DATA_LAKE.dbo.dv_rfidmatchmst_cust mat ON inv.EPC_Code = mat.EPC_Code
+							WHERE COALESCE(inv.mo_no_actual, inv.mo_no) = @0
+							AND mat.size_numcode = @1
+						)`,
+				[filters['mo_no.eq'], filters['size_num_code.eq']]
+			)
+			await queryRunner.manager.query(
+				/* SQL */ `
+				DELETE FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet WHERE EPC_Code IN (
+					SELECT DISTINCT TOP 5 inv.EPC_Code FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet inv
+					LEFT JOIN DV_DATA_LAKE.dbo.dv_rfidmatchmst_cust mat ON inv.EPC_Code = mat.EPC_Code
+					WHERE COALESCE(inv.mo_no_actual, inv.mo_no) = @0
+					AND mat.size_numcode = @1
+				)`,
+				[filters['mo_no.eq'], filters['size_num_code.eq']]
+			)
+
+			await queryRunner.commitTransaction()
+		} catch (error) {
+			await queryRunner.rollbackTransaction()
+			throw new InternalServerErrorException(error)
 		} finally {
 			await queryRunner.release()
 		}
