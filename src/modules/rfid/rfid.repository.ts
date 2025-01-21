@@ -2,14 +2,15 @@ import { FileLogger } from '@/common/helpers/file-logger.helper'
 import { DATA_SOURCE_DATA_LAKE } from '@/databases/constants'
 import { Injectable } from '@nestjs/common'
 import { InjectDataSource } from '@nestjs/typeorm'
+import fs from 'fs'
 import { chunk, groupBy } from 'lodash'
+import path from 'path'
 import { DataSource, In, IsNull, Like, Not } from 'typeorm'
 import { TenancyService } from '../tenancy/tenancy.service'
 import { EXCLUDED_EPC_PATTERN, EXCLUDED_ORDERS, FALLBACK_VALUE, INTERNAL_EPC_PATTERN } from './constants'
 import { ExchangeEpcDTO } from './dto/rfid.dto'
 import { FPInventoryEntity } from './entities/fp-inventory.entity'
 import { RFIDMatchCustomerEntity } from './entities/rfid-customer-match.entity'
-
 /**
  * @description Repository for Finished Production Inventory (FPI)
  */
@@ -21,50 +22,13 @@ export class FPIRespository {
 	) {}
 
 	/**
-	 * @description Get manufacturing order sizes
+	 * @description Get manufacturing order sizes by EPCs
 	 */
-	async getOrderDetails() {
-		const result = await this.tenancyService.dataSource
-			.getRepository(FPInventoryEntity)
-			.createQueryBuilder('inv')
-			.select([
-				/* SQL */ `COALESCE(inv.mo_no_actual, inv.mo_no, :fallbackValue) AS mo_no`,
-				/* SQL */ `COALESCE(cust.mat_code, :fallbackValue) AS mat_code`,
-				/* SQL */ `COALESCE(cust.shoestyle_codefactory, :fallbackValue) AS shoes_style_code_factory`,
-				/* SQL */ `ISNULL(cust.size_numcode, :fallbackValue) AS size_numcode`,
-				/* SQL */ `COUNT(DISTINCT inv.EPC_Code) AS count`
-			])
-			.leftJoin(
-				RFIDMatchCustomerEntity,
-				'cust',
-				/* SQL */ `inv.EPC_Code = cust.EPC_Code 
-					AND COALESCE(inv.mo_no_actual, inv.mo_no, :fallbackValue) = COALESCE(cust.mo_no_actual, cust.mo_no, :fallbackValue)`
-			)
-			.where(/* SQL */ `inv.rfid_status IS NULL`)
-			.andWhere(/* SQL */ `inv.EPC_Code NOT LIKE :excludedEpcPattern`)
-			.andWhere(/* SQL */ `inv.EPC_Code NOT LIKE :internalEpcPattern`)
-			.andWhere(/* SQL */ `COALESCE(inv.mo_no_actual, inv.mo_no, :fallbackValue) NOT IN (:...excludedOrders)`)
-			.andWhere(/* SQL */ `COALESCE(cust.mo_no_actual, cust.mo_no, :fallbackValue) NOT IN (:...excludedOrders)`)
-			.groupBy(
-				/* SQL */ `
-					COALESCE(inv.mo_no_actual, inv.mo_no, :fallbackValue),
-					COALESCE(cust.mat_code, :fallbackValue), 
-					COALESCE(cust.shoestyle_codefactory, :fallbackValue),
-					ISNULL(cust.size_numcode, :fallbackValue)
-				`
-			)
-			.orderBy('mat_code', 'ASC')
-			.addOrderBy('size_numcode', 'ASC')
-			.addOrderBy('mo_no', 'ASC')
-			.setParameters({
-				excludedEpcPattern: EXCLUDED_EPC_PATTERN,
-				internalEpcPattern: INTERNAL_EPC_PATTERN,
-				fallbackValue: FALLBACK_VALUE,
-				excludedOrders: EXCLUDED_ORDERS
-			})
-			.maxExecutionTime(500)
-			.getRawMany()
-
+	async getOrderDetailByEpcs(epcs: Record<'epc' | 'mo_no', string>[]) {
+		const result = await this.tenancyService.dataSource.query(
+			fs.readFileSync(path.join(__dirname, './sql/order-detail.sql'), { encoding: 'utf-8' }).toString(),
+			[epcs.map((item) => item.epc).join(','), EXCLUDED_ORDERS.join(',')]
+		)
 		return Object.entries(groupBy(result, 'mo_no')).map(([order, sizes]) => ({
 			mo_no: order,
 			mat_code: sizes[0].mat_code,
@@ -74,6 +38,46 @@ export class FPIRespository {
 				count: size.count
 			}))
 		}))
+		// const result = await this.tenancyService.dataSource
+		// 	.getRepository(FPInventoryEntity)
+		// 	.createQueryBuilder('inv')
+		// 	.select([
+		// 		/* SQL */ `COALESCE(inv.mo_no_actual, inv.mo_no, :fallbackValue) AS mo_no`,
+		// 		/* SQL */ `COALESCE(cust.mat_code, :fallbackValue) AS mat_code`,
+		// 		/* SQL */ `COALESCE(cust.shoestyle_codefactory, :fallbackValue) AS shoes_style_code_factory`,
+		// 		/* SQL */ `ISNULL(cust.size_numcode, :fallbackValue) AS size_numcode`,
+		// 		/* SQL */ `COUNT(DISTINCT inv.EPC_Code) AS count`
+		// 	])
+		// 	.leftJoin(
+		// 		RFIDMatchCustomerEntity,
+		// 		'cust',
+		// 		/* SQL */ `inv.EPC_Code = cust.EPC_Code
+		// 			AND COALESCE(inv.mo_no_actual, inv.mo_no, :fallbackValue) = COALESCE(cust.mo_no_actual, cust.mo_no, :fallbackValue)`
+		// 	)
+		// 	.where(/* SQL */ `inv.rfid_status IS NULL`)
+		// 	.andWhere(/* SQL */ `inv.EPC_Code NOT LIKE :excludedEpcPattern`)
+		// 	.andWhere(/* SQL */ `inv.EPC_Code NOT LIKE :internalEpcPattern`)
+		// 	.andWhere(/* SQL */ `COALESCE(inv.mo_no_actual, inv.mo_no, :fallbackValue) NOT IN (:...excludedOrders)`)
+		// 	.andWhere(/* SQL */ `COALESCE(cust.mo_no_actual, cust.mo_no, :fallbackValue) NOT IN (:...excludedOrders)`)
+		// 	.groupBy(
+		// 		/* SQL */ `
+		// 			COALESCE(inv.mo_no_actual, inv.mo_no, :fallbackValue),
+		// 			COALESCE(cust.mat_code, :fallbackValue),
+		// 			COALESCE(cust.shoestyle_codefactory, :fallbackValue),
+		// 			ISNULL(cust.size_numcode, :fallbackValue)
+		// 		`
+		// 	)
+		// 	.orderBy('mat_code', 'ASC')
+		// 	.addOrderBy('size_numcode', 'ASC')
+		// 	.addOrderBy('mo_no', 'ASC')
+		// 	.setParameters({
+		// 		excludedEpcPattern: EXCLUDED_EPC_PATTERN,
+		// 		internalEpcPattern: INTERNAL_EPC_PATTERN,
+		// 		fallbackValue: FALLBACK_VALUE,
+		// 		excludedOrders: EXCLUDED_ORDERS
+		// 	})
+		// 	.maxExecutionTime(500)
+		// 	.getRawMany()
 	}
 
 	/**

@@ -176,7 +176,7 @@ export class ThirdPartyApiService {
 			const storeDataFileName = `[${e.params.factoryCode}]-decker-api.data.json`
 
 			writeFileSync(
-				resolve(join(__dirname, '../..', `/assets/${storeDataFileName}`)),
+				resolve(join(__dirname, '../..', `/data/__DECKER__/${storeDataFileName}`)),
 				JSON.stringify({ epcs }, null, 3),
 				'utf-8'
 			)

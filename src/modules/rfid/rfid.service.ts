@@ -1,15 +1,18 @@
 import { FileLogger } from '@/common/helpers/file-logger.helper'
 import { DATABASE_DATA_LAKE, DATA_SOURCE_DATA_LAKE, DATA_SOURCE_ERP } from '@/databases/constants'
+import { InjectQueue } from '@nestjs/bullmq'
 import { Inject, Injectable, InternalServerErrorException, NotFoundException, Scope } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { REQUEST } from '@nestjs/core'
 import { EventEmitter2, OnEvent } from '@nestjs/event-emitter'
 import { InjectDataSource } from '@nestjs/typeorm'
+import { Queue } from 'bullmq'
 import { Request } from 'express'
+import fs from 'fs-extra'
 import { chunk, groupBy, omit, pick } from 'lodash'
 import { I18nContext, I18nService } from 'nestjs-i18n'
 import { readFileSync, writeFileSync } from 'node:fs'
-import { join, resolve } from 'node:path'
+import path, { join, resolve } from 'node:path'
 import { Brackets, DataSource, FindOptionsWhere, In } from 'typeorm'
 import { SqlServerConnectionOptions } from 'typeorm/driver/sqlserver/SqlServerConnectionOptions'
 import { TenancyService } from '../tenancy/tenancy.service'
@@ -25,13 +28,15 @@ import {
 	EXCLUDED_ORDERS,
 	FALLBACK_VALUE,
 	INTERNAL_EPC_PATTERN,
-	MATCH_EPC_CHAR_LEN
+	MATCH_EPC_CHAR_LEN,
+	POST_DATA_QUEUE
 } from './constants'
-import { ExchangeEpcDTO, SearchCustOrderParamsDTO, UpdateStockDTO } from './dto/rfid.dto'
+import { ExchangeEpcDTO, PostReaderDataDTO, SearchCustOrderParamsDTO, UpdateStockDTO } from './dto/rfid.dto'
 import { FPInventoryEntity } from './entities/fp-inventory.entity'
 import { RFIDMatchCustomerEntity } from './entities/rfid-customer-match.entity'
+import { RFIDDataService } from './rfid.data.service'
 import { FPIRespository } from './rfid.repository'
-import { DeleteEpcBySizeParams, RFIDSearchParams } from './types'
+import { DeleteEpcBySizeParams, RFIDSearchParams, StoredRFIDReaderData } from './types'
 
 /**
  * @description Service for Finished Production Inventory (FPI)
@@ -39,6 +44,7 @@ import { DeleteEpcBySizeParams, RFIDSearchParams } from './types'
 @Injectable({ scope: Scope.REQUEST })
 export class RFIDService {
 	constructor(
+		@InjectQueue(POST_DATA_QUEUE) private readonly postDataQueue: Queue,
 		@InjectDataSource(DATA_SOURCE_DATA_LAKE) private readonly datasourceDL: DataSource,
 		@InjectDataSource(DATA_SOURCE_ERP) private readonly datasourceERP: DataSource,
 		@Inject(REQUEST) private readonly request: Request,
@@ -50,75 +56,65 @@ export class RFIDService {
 		private readonly thirdPartyApiHelper: ThirdPartyApiHelper
 	) {}
 
-	public async fetchItems(args: RFIDSearchParams) {
-		try {
-			const [epcs, orders] = await Promise.all([
-				this.findWhereNotInStock(args),
-				this.rfidRepository.getOrderDetails()
-			])
+	public async getIncomingEpcs(args: RFIDSearchParams) {
+		const tenantId = this.request.headers['x-tenant-id']
+		const dataFilePath = RFIDDataService.getInvDataFile(String(tenantId))
+		const storedJsonData = fs.readJsonSync(dataFilePath) as StoredRFIDReaderData
 
-			return { epcs, orders }
-		} catch (error) {
-			throw new InternalServerErrorException(error)
-		}
-	}
+		const epcs = storedJsonData.epcs
+		const totalDocs = epcs.length
+		const totalPages = Math.ceil(totalDocs / args._limit)
 
-	public async findWhereNotInStock(args: RFIDSearchParams) {
-		const LIMIT_FETCH_DOCS = 50
-		const factoryCode = this.request.headers['x-user-company']
-		const syncProcess = await this.thirdPartyApiHelper.getSyncProcess(String(factoryCode))
-		const queryBuilder = this.tenancyService.dataSource
-			.getRepository(FPInventoryEntity)
-			.createQueryBuilder('inv')
-			.select(/* SQL */ `inv.epc`, 'epc')
-			.addSelect(/* SQL */ `COALESCE(inv.mo_no_actual, inv.mo_no, :fallbackValue)`, 'mo_no')
-			.where(/* SQL */ `inv.rfid_status IS NULL`)
-			.andWhere(/* SQL */ `inv.EPC_Code NOT LIKE :excludedEpcPattern`)
-			.andWhere(/* SQL */ `COALESCE(inv.mo_no_actual, inv.mo_no, :fallbackValue) NOT IN (:...excludedOrders)`)
-			.andWhere(
-				new Brackets((qb) => {
-					if (!args['mo_no.eq']) return qb
-					return qb.andWhere(/* SQL */ `COALESCE(inv.mo_no_actual, inv.mo_no, :fallbackValue) = :mo_no`, {
-						mo_no: args['mo_no.eq']
-					})
-				})
-			)
-			.orderBy(/* SQL */ `inv.epc`, 'DESC')
-			.addOrderBy(/* SQL */ `inv.mo_no`, 'DESC')
-			.addOrderBy(/* SQL */ `inv.record_time`, 'DESC')
-			.limit(LIMIT_FETCH_DOCS)
-			.offset((args.page - 1) * LIMIT_FETCH_DOCS)
-			.maxExecutionTime(1000)
-			.setParameters({
-				fallbackValue: FALLBACK_VALUE,
-				excludedOrders: EXCLUDED_ORDERS,
-				excludedEpcPattern: EXCLUDED_EPC_PATTERN
-			})
-			.cache(!!syncProcess)
-
-		const [data, totalDocs] = await Promise.all([queryBuilder.getRawMany(), queryBuilder.getCount()])
-
-		const totalPages = Math.ceil(totalDocs / LIMIT_FETCH_DOCS)
+		const orderDetails = await this.getOrderDetailsByEpcs()
 
 		return {
-			data,
-			hasNextPage: args.page < totalPages,
-			hasPrevPage: args.page > 1,
-			totalDocs,
-			limit: LIMIT_FETCH_DOCS,
-			page: args.page,
-			totalPages
+			epcs: {
+				data: epcs.slice((args._page - 1) * args._limit, args._page * args._limit),
+				totalDocs: totalDocs,
+				totalPages: totalPages,
+				limit: args._limit,
+				page: args._page,
+				hasNextPage: args._page < totalPages,
+				hasPrevPage: args._page > 1
+			},
+			orders: orderDetails
 		}
 	}
 
-	public async getManufacturingOrderDetail() {
-		return await this.rfidRepository.getOrderDetails()
+	public async getOrderDetailsByEpcs() {
+		const tenantId = this.request.headers['x-tenant-id']
+		const accumulatedData = RFIDDataService.getInvScannedEpcs(String(tenantId))
+
+		if (!Array.isArray(accumulatedData)) throw new Error('Invalid data format')
+
+		const result = await this.tenancyService.dataSource.query(
+			fs.readFileSync(path.join(__dirname, './sql/order-detail.sql'), { encoding: 'utf-8' }).toString(),
+			[accumulatedData.map((item) => item.epc).join(','), EXCLUDED_ORDERS.join(',')]
+		)
+
+		return Object.entries(groupBy(result, 'mo_no')).map(([order, sizes]) => ({
+			mo_no: order,
+			mat_code: sizes[0].mat_code,
+			shoes_style_code_factory: sizes[0].shoes_style_code_factory,
+			sizes: sizes.map((size) => ({
+				size_numcode: size.size_numcode,
+				count: size.count
+			}))
+		}))
+	}
+
+	/**
+	 *	@description Post received data from Android RFID reader to queue for processing
+	 * @param {string} tenantId
+	 * @param {PostReaderDataDTO} payload
+	 */
+	public async postDataToQueue(tenantId: string, payload: PostReaderDataDTO) {
+		await this.postDataQueue.add(tenantId, payload)
 	}
 
 	public async updateStock(orderCode: string, payload: UpdateStockDTO) {
 		const repository = this.tenancyService.dataSource.getRepository(FPInventoryEntity)
 		const queryBuilder = repository.createQueryBuilder().update().set(payload)
-
 		if (orderCode === FALLBACK_VALUE) {
 			queryBuilder.where(/* SQL */ `mo_no IS NULL`)
 		} else {
@@ -129,6 +125,15 @@ export class RFIDService {
 		}
 
 		return await queryBuilder.execute()
+	}
+
+	public async deliverInventory(payload) {
+		return await this.tenancyService.dataSource
+			.createQueryBuilder()
+			.insert()
+			.into(FPInventoryEntity)
+			.values(payload)
+			.execute()
 	}
 
 	public async deleteUnexpectedOrder(orderCode: string) {
@@ -145,6 +150,7 @@ export class RFIDService {
 					)`,
 				[orderCode]
 			)
+			// TODO: Delete from stored JSON data file
 			await queryRunner.manager
 				.createQueryBuilder()
 				.delete()
@@ -195,7 +201,7 @@ export class RFIDService {
 
 	public async exchangeEpc(payload: ExchangeEpcDTO) {
 		const queryRunner = this.tenancyService.dataSource.createQueryRunner()
-
+		// TODO: Implement update from stored JSON data file and dv_rfidmatchmst_cust table
 		const epcToExchange = payload.multi
 			? await this.rfidRepository.getAllExchangableEpc(payload)
 			: await this.rfidRepository.getExchangableEpcBySize(payload)
@@ -274,6 +280,7 @@ export class RFIDService {
 						)`,
 				[filters['mo_no.eq'], filters['size_num_code.eq']]
 			)
+			// TODO: Delete from stored JSON data file
 			await queryRunner.manager.query(
 				/* SQL */ `
 				DELETE FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet WHERE EPC_Code IN (
@@ -339,6 +346,10 @@ export class RFIDService {
 		}
 	}
 
+	/**
+	 * @deprecated
+	 * This method will be migrated to Redis BullMQ to handle for better performance in the future
+	 */
 	@OnEvent(ThirdPartyApiEvent.FULFILL)
 	protected async onApiCallFulfill(e: SyncEventPayload) {
 		try {
@@ -353,7 +364,7 @@ export class RFIDService {
 			if (!dataSource.isInitialized) await dataSource.initialize()
 
 			// * Read stored data from JSON assets
-			const storedData = readFileSync(resolve(join(__dirname, '../..', `/assets/${e.data.file}`)), 'utf-8')
+			const storedData = readFileSync(resolve(join(__dirname, '../..', `/data/__DECKER__/${e.data.file}`)), 'utf-8')
 			const data = JSON.parse(storedData) as { epcs: ThirdPartyApiResponseData[] }
 			if (!data?.epcs || !Array.isArray(data?.epcs)) throw new Error('Invalid data format')
 
@@ -389,7 +400,7 @@ export class RFIDService {
 
 			// * Reset data store
 			writeFileSync(
-				resolve(join(__dirname, '../..', `/assets/${e.data.file}`)),
+				resolve(join(__dirname, '../..', `/data/__DECKER__/${e.data.file}`)),
 				JSON.stringify({ epcs: [] }, null, 3)
 			)
 

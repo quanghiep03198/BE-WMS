@@ -2,26 +2,30 @@ import { Api, HttpMethod } from '@/common/decorators/api.decorator'
 import { AuthGuard } from '@/common/decorators/auth.decorator'
 import { ZodValidationPipe } from '@/common/pipes/zod-validation.pipe'
 import {
-	BadRequestException,
 	Body,
 	Controller,
 	DefaultValuePipe,
 	Headers,
 	HttpStatus,
+	Logger,
 	Param,
 	ParseIntPipe,
 	Query,
 	Sse
 } from '@nestjs/common'
-import { catchError, from, interval, map, of, switchMap } from 'rxjs'
+import fs from 'fs'
+import { catchError, from, map, of, Subject, switchMap } from 'rxjs'
 import {
 	ExchangeEpcDTO,
 	exchangeEpcValidator,
+	PostReaderDataDTO,
+	readerPostDataValidator,
 	searchCustomerValidator,
 	SearchCustOrderParamsDTO,
 	UpdateStockDTO,
 	updateStockValidator
 } from './dto/rfid.dto'
+import { RFIDDataService } from './rfid.data.service'
 import { RFIDService } from './rfid.service'
 
 /**
@@ -33,26 +37,28 @@ export class RFIDController {
 
 	@Sse('sse')
 	@AuthGuard()
-	async fetchLatestData(
-		@Headers('X-User-Company') factoryCode: string,
-		@Headers('X-Polling-Duration') pollingDuration: number
-	) {
-		const FALLBACK_POLLING_DURATION: number = 1000
-		const duration = pollingDuration ?? FALLBACK_POLLING_DURATION
-		if (!factoryCode) {
-			throw new BadRequestException('Factory code is required')
-		}
+	async fetchLatestData(@Headers('X-Tenant-Id') tenantId: string) {
+		try {
+			const subject = new Subject<any>()
+			const dataFilePath = RFIDDataService.getInvDataFile(tenantId)
 
-		return interval(duration).pipe(
-			switchMap(() =>
-				from(this.rfidService.fetchItems({ page: 1 })).pipe(
-					catchError((error) => {
-						return of({ error: error.message })
-					})
-				)
-			),
-			map((data) => ({ data }))
-		)
+			subject.next(from(this.rfidService.getIncomingEpcs({ _page: 1, _limit: 50 })))
+
+			fs.watch(dataFilePath, (_, filename) => {
+				if (filename) subject.next(from(this.rfidService.getIncomingEpcs({ _page: 1, _limit: 50 })))
+			})
+
+			return subject.asObservable().pipe(
+				switchMap(() =>
+					from(this.rfidService.getIncomingEpcs({ _page: 1, _limit: 50 })).pipe(
+						catchError((error) => of({ error: error.message }))
+					)
+				),
+				map((data) => ({ data }))
+			)
+		} catch (error) {
+			Logger.error(error)
+		}
 	}
 
 	@Api({
@@ -61,6 +67,7 @@ export class RFIDController {
 		statusCode: HttpStatus.CREATED
 	})
 	async triggerSync() {
+		// ! This service will be replaced by Redis BullMQ to handle with queue
 		await this.rfidService.dispatchApiCall()
 	}
 
@@ -70,7 +77,7 @@ export class RFIDController {
 	})
 	@AuthGuard()
 	async getManufacturingOrderDetail() {
-		return this.rfidService.getManufacturingOrderDetail()
+		return this.rfidService.getOrderDetailsByEpcs()
 	}
 
 	@Api({
@@ -98,9 +105,12 @@ export class RFIDController {
 		@Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
 		@Query('mo_no.eq', new DefaultValuePipe('')) selectedOrder: string
 	) {
-		return await this.rfidService.findWhereNotInStock({ page, 'mo_no.eq': selectedOrder })
+		return await this.rfidService.getIncomingEpcs({ _page: page, _limit: 50, 'mo_no.eq': selectedOrder })
 	}
 
+	/**
+	 * @deprecated
+	 */
 	@Api({
 		endpoint: 'update-stock/:orderCode',
 		method: HttpMethod.PATCH,
@@ -113,6 +123,19 @@ export class RFIDController {
 		@Body(new ZodValidationPipe(updateStockValidator)) payload: UpdateStockDTO
 	) {
 		return await this.rfidService.updateStock(orderCode, payload)
+	}
+
+	@Api({
+		endpoint: 'post-data/:tenant_id',
+		method: HttpMethod.POST,
+		statusCode: HttpStatus.CREATED,
+		message: 'common.created'
+	})
+	async postData(
+		@Param('tenant_id') tenantId: string,
+		@Body(new ZodValidationPipe(readerPostDataValidator)) payload: PostReaderDataDTO
+	) {
+		return await this.rfidService.postDataToQueue(tenantId, payload)
 	}
 
 	@Api({

@@ -1,7 +1,14 @@
 import { RFIDMatchCustomerEntity } from '../entities/rfid-customer-match.entity'
 
+export type StoredRFIDReaderItem = Record<'epc' | 'mo_no' | 'station_no' | 'record_time', string>
+
+export type StoredRFIDReaderData = {
+	epcs: Array<StoredRFIDReaderItem>
+}
+
 export type RFIDSearchParams = {
-	page: number
+	_page: number
+	_limit: number
 	'mo_no.eq'?: string
 }
 export type SearchCustOrderParams = {

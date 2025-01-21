@@ -10,10 +10,6 @@
 				"watchAssets": true
 			},
 			{
-				"include": "assets/**/*",
-				"watchAssets": true
-			},
-			{
 				"include": "modules/**/sql/*.sql",
 				"watchAssets": true
 			}

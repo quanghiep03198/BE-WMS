@@ -5,6 +5,7 @@ import { SentryGlobalFilter, SentryModule } from '@sentry/nestjs/setup'
 import { AcceptLanguageResolver, HeaderResolver, I18nModule, QueryResolver } from 'nestjs-i18n'
 import { DatabaseModule } from './databases/database.module'
 // Feature modules
+import { BullModule } from '@nestjs/bullmq'
 import { CacheModule } from '@nestjs/cache-manager'
 import { APP_FILTER } from '@nestjs/core'
 import { EventEmitterModule } from '@nestjs/event-emitter'
@@ -22,6 +23,8 @@ import { InventoryModule } from './modules/inventory/inventory.module'
 import { OrderModule } from './modules/order/order.module'
 import { PackingModule } from './modules/packing/packing.module'
 import { ReportModule } from './modules/report/report.module'
+import { RFIDConsumer } from './modules/rfid/rfid.consumer'
+import { RFIDDataService } from './modules/rfid/rfid.data.service'
 import { RFIDModule } from './modules/rfid/rfid.module'
 import { TenancyModule } from './modules/tenancy/tenancy.module'
 import { ThirdPartyApiModule } from './modules/third-party-api/third-party-api.module'
@@ -57,6 +60,11 @@ import { WarehouseModule } from './modules/warehouse/warehouse.module'
 			inject: [ConfigService],
 			useFactory: (configService: ConfigService) => configService.getOrThrow('throttler')
 		}),
+		BullModule.forRootAsync({
+			inject: [ConfigService],
+			useFactory: (configService: ConfigService) => configService.getOrThrow('bullmq')
+		}),
+
 		EventEmitterModule.forRoot({
 			wildcard: false,
 			delimiter: '.',
@@ -86,12 +94,14 @@ import { WarehouseModule } from './modules/warehouse/warehouse.module'
 			provide: APP_FILTER,
 			useClass: SentryGlobalFilter
 		},
-		FileLoggerJobService
+		FileLoggerJobService,
+		RFIDConsumer
 	]
 })
 export class AppModule implements OnModuleInit, OnApplicationBootstrap, OnApplicationShutdown {
 	onModuleInit() {
 		FileLogger.initialize()
+		RFIDDataService.initialize()
 	}
 	onApplicationBootstrap() {
 		Sentry.profiler.startProfiler()
