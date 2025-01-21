@@ -17,6 +17,9 @@ export class FPInventoryEntity extends BaseAbstractEntity {
 	@Column({ name: 'dept_code', type: 'nvarchar', length: 20 })
 	dept_code: string
 
+	@Column({ name: 'dept_name', type: 'nvarchar', length: 20 })
+	dept_name: string
+
 	@Index()
 	@Column({ name: 'EPC_Code' })
 	epc: string
