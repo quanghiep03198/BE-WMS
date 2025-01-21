@@ -36,6 +36,12 @@ jobs:
            shell: bash
            run: echo "${{ secrets.ENV_VARIABLE_SVR19 }}" > .env
 
+         - name: Initialize Sentry CLI
+           shell: bash
+           run: |
+              echo "[auth]" > .sentryclirc
+              echo "token=${{ secrets.SENTRY_AUTH_TOKEN }}" >> .sentryclirc
+
          - name: Install dependencies
            shell: bash
            run: npm install
@@ -64,6 +70,12 @@ jobs:
          - name: Load environment variables
            shell: bash
            run: echo "${{ secrets.ENV_VARIABLE_SVR51 }}" > .env
+
+         - name: Initialize Sentry CLI
+           shell: bash
+           run: |
+              echo "[auth]" > .sentryclirc
+              echo "token=${{ secrets.SENTRY_AUTH_TOKEN }}" >> .sentryclirc
 
          - name: Install dependencies
            shell: bash
