@@ -2,7 +2,7 @@ import { existsSync, JsonOutputOptions, mkdirSync, outputJsonSync, readJsonSync 
 import { uniqBy } from 'lodash'
 import { join, resolve } from 'path'
 import { Tenant } from '../tenancy/constants'
-import { StoredRFIDReaderData } from './types'
+import { StoredRFIDReaderItem } from './types'
 
 export class RFIDDataService {
 	protected static jsonOptions: JsonOutputOptions = { spaces: 3, EOL: '\n' }
@@ -72,17 +72,17 @@ export class RFIDDataService {
 		return this.dataFiles[tenantId]
 	}
 
-	public static getInvScannedEpcs(tenantId: string): Record<'epc' | 'mo_no', string>[] {
+	public static getInvScannedEpcs(tenantId: string): StoredRFIDReaderItem[] {
 		const dataFile = this.dataFiles[tenantId]
 		const data = readJsonSync(dataFile)
 		if (!Array.isArray(data?.epcs)) return []
 		return data.epcs
 	}
 
-	public static insertInvScannedEpcs(tenantId: string, payload: StoredRFIDReaderData) {
+	public static insertInvScannedEpcs(tenantId: string, payload: StoredRFIDReaderItem[]) {
 		const dataFile = this.getInvDataFile(tenantId)
 		const data = this.getInvScannedEpcs(tenantId)
-		outputJsonSync(dataFile, { epcs: uniqBy([payload, ...data], 'epc') }, this.jsonOptions)
+		outputJsonSync(dataFile, { epcs: uniqBy([...payload, ...data], 'epc') }, this.jsonOptions)
 	}
 
 	public static findInvScannedEpcsByOrder(tenantId: string, orderCode: string) {

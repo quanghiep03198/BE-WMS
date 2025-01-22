@@ -14,7 +14,7 @@ import {
 	Sse
 } from '@nestjs/common'
 import fs from 'fs'
-import { catchError, from, map, of, Subject, switchMap } from 'rxjs'
+import { catchError, from, map, of, Subject } from 'rxjs'
 import {
 	ExchangeEpcDTO,
 	exchangeEpcValidator,
@@ -42,20 +42,22 @@ export class RFIDController {
 			const subject = new Subject<any>()
 			const dataFilePath = RFIDDataService.getInvDataFile(tenantId)
 
-			subject.next(from(this.rfidService.getIncomingEpcs({ _page: 1, _limit: 50 })))
+			const postMessage = () => {
+				from(this.rfidService.getIncomingEpcs({ _page: 1, _limit: 50 }))
+					.pipe(
+						catchError((error) => of({ error: error.message })),
+						map((data) => ({ data }))
+					)
+					.subscribe((data) => subject.next(data))
+			}
+
+			postMessage()
 
 			fs.watch(dataFilePath, (_, filename) => {
-				if (filename) subject.next(from(this.rfidService.getIncomingEpcs({ _page: 1, _limit: 50 })))
+				if (filename) postMessage()
 			})
 
-			return subject.asObservable().pipe(
-				switchMap(() =>
-					from(this.rfidService.getIncomingEpcs({ _page: 1, _limit: 50 })).pipe(
-						catchError((error) => of({ error: error.message }))
-					)
-				),
-				map((data) => ({ data }))
-			)
+			return subject.asObservable()
 		} catch (error) {
 			Logger.error(error)
 		}

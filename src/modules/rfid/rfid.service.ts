@@ -1,7 +1,7 @@
 import { FileLogger } from '@/common/helpers/file-logger.helper'
 import { DATABASE_DATA_LAKE, DATA_SOURCE_DATA_LAKE, DATA_SOURCE_ERP } from '@/databases/constants'
 import { InjectQueue } from '@nestjs/bullmq'
-import { Inject, Injectable, InternalServerErrorException, NotFoundException, Scope } from '@nestjs/common'
+import { Inject, Injectable, InternalServerErrorException, Logger, NotFoundException, Scope } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { REQUEST } from '@nestjs/core'
 import { EventEmitter2, OnEvent } from '@nestjs/event-emitter'
@@ -36,7 +36,7 @@ import { FPInventoryEntity } from './entities/fp-inventory.entity'
 import { RFIDMatchCustomerEntity } from './entities/rfid-customer-match.entity'
 import { RFIDDataService } from './rfid.data.service'
 import { FPIRespository } from './rfid.repository'
-import { DeleteEpcBySizeParams, RFIDSearchParams, StoredRFIDReaderData } from './types'
+import { DeleteEpcBySizeParams, RFIDSearchParams } from './types'
 
 /**
  * @description Service for Finished Production Inventory (FPI)
@@ -58,15 +58,10 @@ export class RFIDService {
 
 	public async getIncomingEpcs(args: RFIDSearchParams) {
 		const tenantId = this.request.headers['x-tenant-id']
-		const dataFilePath = RFIDDataService.getInvDataFile(String(tenantId))
-		const storedJsonData = fs.readJsonSync(dataFilePath) as StoredRFIDReaderData
-
-		const epcs = storedJsonData.epcs
+		const epcs = RFIDDataService.getInvScannedEpcs(String(tenantId))
 		const totalDocs = epcs.length
 		const totalPages = Math.ceil(totalDocs / args._limit)
-
 		const orderDetails = await this.getOrderDetailsByEpcs()
-
 		return {
 			epcs: {
 				data: epcs.slice((args._page - 1) * args._limit, args._page * args._limit),
@@ -87,6 +82,7 @@ export class RFIDService {
 
 		if (!Array.isArray(accumulatedData)) throw new Error('Invalid data format')
 
+		Logger.debug(accumulatedData.map((item) => item.epc).join(','))
 		const result = await this.tenancyService.dataSource.query(
 			fs.readFileSync(path.join(__dirname, './sql/order-detail.sql'), { encoding: 'utf-8' }).toString(),
 			[accumulatedData.map((item) => item.epc).join(','), EXCLUDED_ORDERS.join(',')]

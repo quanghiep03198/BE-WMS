@@ -9,7 +9,7 @@ import { TenancyService } from '../tenancy/tenancy.service'
 import { POST_DATA_QUEUE } from './constants'
 import { PostReaderDataDTO } from './dto/rfid.dto'
 import { RFIDDataService } from './rfid.data.service'
-import { StoredRFIDReaderData } from './types'
+import { StoredRFIDReaderItem } from './types'
 
 @Processor(POST_DATA_QUEUE)
 export class RFIDConsumer extends WorkerHost {
@@ -31,19 +31,19 @@ export class RFIDConsumer extends WorkerHost {
 			if (!dataSource.isInitialized) await dataSource.initialize()
 
 			const { data, sn } = job.data
-			const incommingEpcs = await dataSource.query<StoredRFIDReaderData>(
+			const incommingEpcs = await dataSource.query<StoredRFIDReaderItem[]>(
 				/* SQL */ `
 					SELECT 
-						rfid.EPC_Code AS epc, 
-						COALESCE(rifd.mo_no_actual, rifd.mo_no, 'Unknown') AS mo_no,
+						DISTINCT EPC_Code AS epc, 
+						COALESCE(mo_no_actual, mo_no, 'Unknown') AS mo_no,
 						reader.station_no,
 						GETDATE() AS record_time
-					FROM DV_DATA_LAKE.dbo.dv_rfidmatchmst_cust rfid
+					FROM DV_DATA_LAKE.dbo.dv_rfidmatchmst_cust
 					OUTER APPLY (
 						SELECT device_name AS station_no
 						FROM DV_DATA_LAKE.dbo.dv_rfidreader
 						WHERE device_sn = @1
-					) reader (station_no)
+					) reader
 					WHERE EPC_Code IN (
 						SELECT value AS EPC_Code
 						FROM STRING_SPLIT(@0, ',')
