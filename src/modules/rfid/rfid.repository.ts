@@ -1,11 +1,14 @@
 import { FileLogger } from '@/common/helpers/file-logger.helper'
-import { DATA_SOURCE_DATA_LAKE } from '@/databases/constants'
+import { DATA_SOURCE_DATA_LAKE, DATA_SOURCE_ERP, DATABASE_DATA_LAKE } from '@/databases/constants'
 import { Injectable } from '@nestjs/common'
+import { ConfigService } from '@nestjs/config'
 import { InjectDataSource } from '@nestjs/typeorm'
 import fs from 'fs'
+import { readFileSync } from 'fs-extra'
 import { chunk, groupBy } from 'lodash'
-import path from 'path'
+import path, { join } from 'path'
 import { DataSource, In, IsNull, Like, Not } from 'typeorm'
+import { SqlServerConnectionOptions } from 'typeorm/driver/sqlserver/SqlServerConnectionOptions'
 import { TenancyService } from '../tenancy/tenancy.service'
 import { EXCLUDED_EPC_PATTERN, EXCLUDED_ORDERS, FALLBACK_VALUE, INTERNAL_EPC_PATTERN } from './constants'
 import { ExchangeEpcDTO } from './dto/rfid.dto'
@@ -18,7 +21,9 @@ import { RFIDMatchCustomerEntity } from './entities/rfid-customer-match.entity'
 export class FPIRespository {
 	constructor(
 		@InjectDataSource(DATA_SOURCE_DATA_LAKE) private readonly dataSourceDL: DataSource,
-		private readonly tenancyService: TenancyService
+		@InjectDataSource(DATA_SOURCE_ERP) private readonly dataSourceERP: DataSource,
+		private readonly tenancyService: TenancyService,
+		private readonly configService: ConfigService
 	) {}
 
 	/**
@@ -38,46 +43,6 @@ export class FPIRespository {
 				count: size.count
 			}))
 		}))
-		// const result = await this.tenancyService.dataSource
-		// 	.getRepository(FPInventoryEntity)
-		// 	.createQueryBuilder('inv')
-		// 	.select([
-		// 		/* SQL */ `COALESCE(inv.mo_no_actual, inv.mo_no, :fallbackValue) AS mo_no`,
-		// 		/* SQL */ `COALESCE(cust.mat_code, :fallbackValue) AS mat_code`,
-		// 		/* SQL */ `COALESCE(cust.shoestyle_codefactory, :fallbackValue) AS shoes_style_code_factory`,
-		// 		/* SQL */ `ISNULL(cust.size_numcode, :fallbackValue) AS size_numcode`,
-		// 		/* SQL */ `COUNT(DISTINCT inv.EPC_Code) AS count`
-		// 	])
-		// 	.leftJoin(
-		// 		RFIDMatchCustomerEntity,
-		// 		'cust',
-		// 		/* SQL */ `inv.EPC_Code = cust.EPC_Code
-		// 			AND COALESCE(inv.mo_no_actual, inv.mo_no, :fallbackValue) = COALESCE(cust.mo_no_actual, cust.mo_no, :fallbackValue)`
-		// 	)
-		// 	.where(/* SQL */ `inv.rfid_status IS NULL`)
-		// 	.andWhere(/* SQL */ `inv.EPC_Code NOT LIKE :excludedEpcPattern`)
-		// 	.andWhere(/* SQL */ `inv.EPC_Code NOT LIKE :internalEpcPattern`)
-		// 	.andWhere(/* SQL */ `COALESCE(inv.mo_no_actual, inv.mo_no, :fallbackValue) NOT IN (:...excludedOrders)`)
-		// 	.andWhere(/* SQL */ `COALESCE(cust.mo_no_actual, cust.mo_no, :fallbackValue) NOT IN (:...excludedOrders)`)
-		// 	.groupBy(
-		// 		/* SQL */ `
-		// 			COALESCE(inv.mo_no_actual, inv.mo_no, :fallbackValue),
-		// 			COALESCE(cust.mat_code, :fallbackValue),
-		// 			COALESCE(cust.shoestyle_codefactory, :fallbackValue),
-		// 			ISNULL(cust.size_numcode, :fallbackValue)
-		// 		`
-		// 	)
-		// 	.orderBy('mat_code', 'ASC')
-		// 	.addOrderBy('size_numcode', 'ASC')
-		// 	.addOrderBy('mo_no', 'ASC')
-		// 	.setParameters({
-		// 		excludedEpcPattern: EXCLUDED_EPC_PATTERN,
-		// 		internalEpcPattern: INTERNAL_EPC_PATTERN,
-		// 		fallbackValue: FALLBACK_VALUE,
-		// 		excludedOrders: EXCLUDED_ORDERS
-		// 	})
-		// 	.maxExecutionTime(500)
-		// 	.getRawMany()
 	}
 
 	/**
@@ -155,7 +120,30 @@ export class FPIRespository {
 			.getRawMany()
 	}
 
-	async upsertBulk(dataSource: DataSource, payload: Partial<RFIDMatchCustomerEntity>[]): Promise<void> {
+	async getOrderInformationFromERP(orders: Array<string>): Promise<Partial<RFIDMatchCustomerEntity>[]> {
+		let orderInformation: Partial<RFIDMatchCustomerEntity>[] = []
+		const orderInformationQuery = readFileSync(join(__dirname, './sql/order-information.sql'), 'utf-8').toString()
+
+		for (const order of orders) {
+			const orderInfo = await this.dataSourceERP.query<Partial<RFIDMatchCustomerEntity>[]>(orderInformationQuery, [
+				order
+			])
+			if (orderInfo?.length === 0) continue
+			orderInformation = [...orderInformation, ...orderInfo]
+		}
+
+		return orderInformation
+	}
+
+	async upsertBulk(databaseServer: string, payload: Partial<RFIDMatchCustomerEntity>[]): Promise<void> {
+		const dataSource = new DataSource({
+			...this.configService.getOrThrow<SqlServerConnectionOptions>('database'),
+			host: databaseServer,
+			database: DATABASE_DATA_LAKE,
+			entities: [RFIDMatchCustomerEntity]
+		})
+		if (!dataSource.isInitialized) await dataSource.initialize()
+
 		const queryRunner = dataSource.createQueryRunner()
 
 		// * Get unknown customer EPC need to be upserted
@@ -171,7 +159,6 @@ export class FPIRespository {
 
 			// * Upsert data for "dv_rfidmatchmst_cust" table
 			for (const data of chunk(payload, 2000)) {
-				FileLogger.debug(data)
 				const mergeSourceValues = data
 					.map((item) => {
 						return `(

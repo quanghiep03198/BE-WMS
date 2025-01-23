@@ -1,17 +1,20 @@
 import { FileLogger } from '@/common/helpers/file-logger.helper'
 import { DATA_SOURCE_DATA_LAKE } from '@/databases/constants'
 import { HttpModule, HttpService } from '@nestjs/axios'
-import { MiddlewareConsumer, Module, NestModule, OnModuleInit } from '@nestjs/common'
+import { BullModule } from '@nestjs/bullmq'
+import { forwardRef, MiddlewareConsumer, Module, NestModule, OnModuleInit } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { TypeOrmModule } from '@nestjs/typeorm'
 import { AxiosError, AxiosResponse } from 'axios'
 import { Agent } from 'https'
 import { upperCase } from 'lodash'
 import { FPInventoryEntity } from '../rfid/entities/fp-inventory.entity'
+import { RFIDModule } from '../rfid/rfid.module'
 import { TenacyMiddleware } from '../tenancy/tenancy.middleware'
 import { TenancyModule } from '../tenancy/tenancy.module'
+import { THIRD_PARTY_API_SYNC } from './constants'
+import { ThirdPartyApiConsumer } from './third-party-api.consumer'
 import { ThirdPartyApiController } from './third-party-api.controller'
-import { ThirdPartyApiHelper } from './third-party-api.helper'
 import { ThirdPartyApiMiddleware } from './third-party-api.middleware'
 import { ThirdPartyApiService } from './third-party-api.service'
 
@@ -19,11 +22,13 @@ import { ThirdPartyApiService } from './third-party-api.service'
 	imports: [
 		TenancyModule,
 		TypeOrmModule.forFeature([FPInventoryEntity], DATA_SOURCE_DATA_LAKE),
-		HttpModule.register({ httpsAgent: new Agent({ keepAlive: true }) })
+		HttpModule.register({ httpsAgent: new Agent({ keepAlive: true }) }),
+		BullModule.registerQueue({ name: THIRD_PARTY_API_SYNC }),
+		forwardRef(() => RFIDModule)
 	],
 	controllers: [ThirdPartyApiController],
-	providers: [ThirdPartyApiService, ThirdPartyApiHelper],
-	exports: [HttpModule, ThirdPartyApiService]
+	providers: [ThirdPartyApiService, ThirdPartyApiConsumer],
+	exports: [HttpModule, ThirdPartyApiService, BullModule]
 })
 export class ThirdPartyApiModule implements NestModule, OnModuleInit {
 	constructor(

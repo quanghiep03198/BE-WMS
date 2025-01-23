@@ -5,6 +5,7 @@ import { Column, Entity } from 'typeorm'
 
 /**
  * @deprecated
+ * ! This entity is deprecated
  * @description RFID Production Management Entity - Describes the details of internal EPC (which commonly starts with E28xxx)
  */
 @Entity('dv_rfidmatchmst', { database: DATABASE_DATA_LAKE })

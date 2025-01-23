@@ -5,5 +5,6 @@ export module 'express' {
 
 	export interface Request {
 		dataSource?: DataSource
+		user?: Partial<UserEntity>
 	}
 }

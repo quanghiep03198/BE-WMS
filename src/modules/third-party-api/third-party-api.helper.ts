@@ -4,6 +4,8 @@ import { Cache } from 'cache-manager'
 import { IThirdPartyApiHelper } from './interfaces/third-party-api.helper.interface'
 
 /**
+ * @deprecated
+ * ! This helper is deprecated and will be removed in the future
  * @description Helper for third-party APIs
  */
 @Injectable()

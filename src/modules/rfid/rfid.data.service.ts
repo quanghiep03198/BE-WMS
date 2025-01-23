@@ -33,6 +33,7 @@ export class RFIDDataService {
 	static readonly CA1_PM_DATA_FILE: string = resolve(RFIDDataService.PM_DATA_DIR, '[CA1]-pm-rfid.data.json')
 
 	static readonly dataFiles: Record<string, string> = {
+		[Tenant.DEV]: RFIDDataService.VA1_PM_DATA_FILE, // * Just for testing, should be removed in production
 		[Tenant.VN_LIANYING_PRIMARY]: RFIDDataService.VA1_PM_DATA_FILE,
 		[Tenant.VN_LIANSHUN_PRIMARY]: RFIDDataService.VB2_PM_DATA_FILE,
 		[Tenant.KM_PRIMARY]: RFIDDataService.VB2_PM_DATA_FILE
@@ -68,36 +69,37 @@ export class RFIDDataService {
 		return data.epcs
 	}
 
-	public static getInvDataFile(tenantId: string): string {
+	public static getEpcDataFile(tenantId: string): string {
 		return this.dataFiles[tenantId]
 	}
 
-	public static getInvScannedEpcs(tenantId: string): StoredRFIDReaderItem[] {
+	public static getScannedEpcs(tenantId: string): StoredRFIDReaderItem[] {
 		const dataFile = this.dataFiles[tenantId]
 		const data = readJsonSync(dataFile)
 		if (!Array.isArray(data?.epcs)) return []
 		return data.epcs
 	}
 
-	public static insertInvScannedEpcs(tenantId: string, payload: StoredRFIDReaderItem[]) {
-		const dataFile = this.getInvDataFile(tenantId)
-		const data = this.getInvScannedEpcs(tenantId)
+	public static insertScannedEpcs(tenantId: string, payload: StoredRFIDReaderItem[]) {
+		const dataFile = this.getEpcDataFile(tenantId)
+		console.log(dataFile)
+		const data = this.getScannedEpcs(tenantId)
 		outputJsonSync(dataFile, { epcs: uniqBy([...payload, ...data], 'epc') }, this.jsonOptions)
 	}
 
-	public static findInvScannedEpcsByOrder(tenantId: string, orderCode: string) {
-		const dataSource = this.getInvScannedEpcs(tenantId)
+	public static getScannedEpcsByOrder(tenantId: string, orderCode: string) {
+		const dataSource = this.getScannedEpcs(tenantId)
 		return dataSource.filter((item) => item.mo_no === orderCode)
 	}
 
-	public static deleteInvScannedEpcsByOrder(tenantId: string, orderCode: string) {
-		const dataFile = this.getInvDataFile(tenantId)
-		const data = this.getInvScannedEpcs(tenantId)
+	public static deleteScannedEpcsByOrder(tenantId: string, orderCode: string) {
+		const dataFile = this.getEpcDataFile(tenantId)
+		const data = this.getScannedEpcs(tenantId)
 		outputJsonSync(dataFile, { epcs: data.filter((item) => item.mo_no !== orderCode) }, this.jsonOptions)
 	}
 
 	public static truncateData(tenantId: string) {
-		const dataFile = this.getInvDataFile(tenantId)
+		const dataFile = this.getEpcDataFile(tenantId)
 		outputJsonSync(dataFile, { epcs: [] }, this.jsonOptions)
 	}
 }

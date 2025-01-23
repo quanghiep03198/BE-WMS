@@ -25,7 +25,6 @@ import {
 	SyncEventPayload,
 	ThirdPartyApiResponseData
 } from './interfaces/third-party-api.interface'
-import { ThirdPartyApiHelper } from './third-party-api.helper'
 
 @Injectable({ scope: Scope.REQUEST })
 export class ThirdPartyApiService {
@@ -38,8 +37,7 @@ export class ThirdPartyApiService {
 		private readonly httpService: HttpService,
 		private readonly configService: ConfigService,
 		private readonly eventEmitter: EventEmitter2,
-		private readonly tenancyService: TenancyService,
-		private readonly thirdPartyApiHelper: ThirdPartyApiHelper
+		private readonly tenancyService: TenancyService
 	) {
 		this.logger = new Logger(ThirdPartyApiService.name, { timestamp: true })
 	}
@@ -86,7 +84,6 @@ export class ThirdPartyApiService {
 
 			return accessToken
 		} catch {
-			await this.thirdPartyApiHelper.exitSyncProcess(factoryCode)
 			return null
 		}
 	}
@@ -112,7 +109,7 @@ export class ThirdPartyApiService {
 		}
 	}
 
-	private async getOneEpc({
+	public async getOneEpc({
 		headers,
 		param
 	}: {
@@ -128,7 +125,7 @@ export class ThirdPartyApiService {
 		}
 	}
 
-	private async getEpcByCommandNumber({ headers, params }: AxiosRequestConfig) {
+	public async getEpcByCommandNumber({ headers, params }: AxiosRequestConfig) {
 		return await this.httpService.axiosRef.get<void, ThirdPartyApiResponseData[]>('/epcs', {
 			headers,
 			params
@@ -157,7 +154,6 @@ export class ThirdPartyApiService {
 			// * If there is no data fetched from the customer, then stop the process
 			if (commandNumbers.length === 0) {
 				this.logger.warn('No data fetched from the customer')
-				this.thirdPartyApiHelper.exitSyncProcess(e.params.factoryCode)
 				return
 			}
 
@@ -187,7 +183,6 @@ export class ThirdPartyApiService {
 			} satisfies SyncEventPayload)
 		} catch (error) {
 			FileLogger.error(error)
-			this.thirdPartyApiHelper.exitSyncProcess(e.params.factoryCode)
 		}
 	}
 

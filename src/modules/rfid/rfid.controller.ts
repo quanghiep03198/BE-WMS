@@ -1,6 +1,8 @@
 import { Api, HttpMethod } from '@/common/decorators/api.decorator'
 import { AuthGuard } from '@/common/decorators/auth.decorator'
+import { User } from '@/common/decorators/user.decorator'
 import { ZodValidationPipe } from '@/common/pipes/zod-validation.pipe'
+import { InjectQueue } from '@nestjs/bullmq'
 import {
 	Body,
 	Controller,
@@ -13,8 +15,10 @@ import {
 	Query,
 	Sse
 } from '@nestjs/common'
+import { Queue } from 'bullmq'
 import fs from 'fs'
 import { catchError, from, map, of, Subject } from 'rxjs'
+import { POST_DATA_QUEUE } from './constants'
 import {
 	ExchangeEpcDTO,
 	exchangeEpcValidator,
@@ -33,17 +37,20 @@ import { RFIDService } from './rfid.service'
  */
 @Controller('rfid')
 export class RFIDController {
-	constructor(private readonly rfidService: RFIDService) {}
+	constructor(
+		@InjectQueue(POST_DATA_QUEUE) private readonly postDataQueue: Queue,
+		private readonly rfidService: RFIDService
+	) {}
 
 	@Sse('sse')
 	@AuthGuard()
 	async fetchLatestData(@Headers('X-Tenant-Id') tenantId: string) {
 		try {
 			const subject = new Subject<any>()
-			const dataFilePath = RFIDDataService.getInvDataFile(tenantId)
+			const dataFilePath = RFIDDataService.getEpcDataFile(tenantId)
 
 			const postMessage = () => {
-				from(this.rfidService.getIncomingEpcs({ _page: 1, _limit: 50 }))
+				from(this.rfidService.fetchLatestData({ _page: 1, _limit: 50 }))
 					.pipe(
 						catchError((error) => of({ error: error.message })),
 						map((data) => ({ data }))
@@ -64,22 +71,38 @@ export class RFIDController {
 	}
 
 	@Api({
-		endpoint: 'third-party-api-sync',
-		method: HttpMethod.PUT,
-		statusCode: HttpStatus.CREATED
+		endpoint: 'fetch-epc',
+		method: HttpMethod.GET
 	})
-	async triggerSync() {
-		// ! This service will be replaced by Redis BullMQ to handle with queue
-		await this.rfidService.dispatchApiCall()
+	@AuthGuard()
+	async fetchNextItems(
+		@Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+		@Query('mo_no.eq', new DefaultValuePipe('')) selectedOrder: string
+	) {
+		return await this.rfidService.getIncomingEpcs({ _page: page, _limit: 50, 'mo_no.eq': selectedOrder })
 	}
+
+	// @Api({
+	// 	endpoint: 'third-party-api-sync',
+	// 	method: HttpMethod.PUT,
+	// 	statusCode: HttpStatus.CREATED
+	// })
+	// /**
+	//  * @deprecated
+	//  * ! This endpoint will be removed in the future
+	//  */
+	// async triggerSync() {
+	// 	return await this.
+	// 	// await this.rfidService.dispatchApiCall()
+	// }
 
 	@Api({
 		endpoint: 'manufacturing-order-detail',
 		method: HttpMethod.GET
 	})
 	@AuthGuard()
-	async getManufacturingOrderDetail() {
-		return this.rfidService.getOrderDetailsByEpcs()
+	async getOrderDetails() {
+		return this.rfidService.getOrderDetails()
 	}
 
 	@Api({
@@ -99,45 +122,36 @@ export class RFIDController {
 	}
 
 	@Api({
-		endpoint: 'fetch-epc',
-		method: HttpMethod.GET
-	})
-	@AuthGuard()
-	async fetchNextItems(
-		@Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
-		@Query('mo_no.eq', new DefaultValuePipe('')) selectedOrder: string
-	) {
-		return await this.rfidService.getIncomingEpcs({ _page: page, _limit: 50, 'mo_no.eq': selectedOrder })
-	}
-
-	/**
-	 * @deprecated
-	 */
-	@Api({
 		endpoint: 'update-stock/:orderCode',
-		method: HttpMethod.PATCH,
+		method: HttpMethod.PUT,
 		statusCode: HttpStatus.CREATED,
 		message: 'common.updated'
 	})
 	@AuthGuard()
-	async updateStock(
+	async updateFPStock(
 		@Param('orderCode') orderCode: string,
+		@User('username') username: string,
+		@Headers('X-User-Company') factoryCode: string,
 		@Body(new ZodValidationPipe(updateStockValidator)) payload: UpdateStockDTO
 	) {
-		return await this.rfidService.updateStock(orderCode, payload)
+		return await this.rfidService.updateFPStock(orderCode, {
+			...payload,
+			user_code_created: username,
+			factory_code: factoryCode
+		})
 	}
 
 	@Api({
-		endpoint: 'post-data/:tenant_id',
+		endpoint: 'post-data/:tenantId',
 		method: HttpMethod.POST,
 		statusCode: HttpStatus.CREATED,
 		message: 'common.created'
 	})
 	async postData(
-		@Param('tenant_id') tenantId: string,
+		@Param('tenantId') tenantId: string,
 		@Body(new ZodValidationPipe(readerPostDataValidator)) payload: PostReaderDataDTO
 	) {
-		return await this.rfidService.postDataToQueue(tenantId, payload)
+		return await this.postDataQueue.add(tenantId, payload)
 	}
 
 	@Api({
