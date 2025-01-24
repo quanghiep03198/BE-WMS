@@ -1,7 +1,9 @@
 import { existsSync, JsonOutputOptions, mkdirSync, outputJsonSync, readJsonSync } from 'fs-extra'
-import { uniqBy } from 'lodash'
+import { pick, uniqBy } from 'lodash'
 import { join, resolve } from 'path'
 import { Tenant } from '../tenancy/constants'
+import { FALLBACK_VALUE } from './constants'
+import { RFIDMatchCustomerEntity } from './entities/rfid-customer-match.entity'
 import { StoredRFIDReaderItem } from './types'
 
 export class RFIDDataService {
@@ -80,16 +82,53 @@ export class RFIDDataService {
 		return data.epcs
 	}
 
+	public static getScannedEpcsByOrder(tenantId: string, orderCode: string) {
+		const dataSource = this.getScannedEpcs(tenantId)
+		return dataSource.filter((item) => item.mo_no === orderCode)
+	}
+
 	public static insertScannedEpcs(tenantId: string, payload: StoredRFIDReaderItem[]) {
 		const dataFile = this.getEpcDataFile(tenantId)
-		console.log(dataFile)
 		const data = this.getScannedEpcs(tenantId)
 		outputJsonSync(dataFile, { epcs: uniqBy([...payload, ...data], 'epc') }, this.jsonOptions)
 	}
 
-	public static getScannedEpcsByOrder(tenantId: string, orderCode: string) {
-		const dataSource = this.getScannedEpcs(tenantId)
-		return dataSource.filter((item) => item.mo_no === orderCode)
+	public static updateUnknownScannedEpcs(tenantId: string, payload: Partial<RFIDMatchCustomerEntity>[]) {
+		const dataFile = this.getEpcDataFile(tenantId)
+		const data = this.getScannedEpcs(tenantId)
+		const update = payload.filter((item) => data.some((__item) => __item.epc === item.epc))
+		outputJsonSync(
+			dataFile,
+			{
+				epcs: data.map((item) => {
+					if (payload.some((__item) => __item.epc === item.epc) && item.mo_no === FALLBACK_VALUE)
+						return {
+							...item,
+							...pick(
+								update.find((__item) => __item.epc === item.epc),
+								['mo_no', 'mat_code', 'size_numcode']
+							)
+						}
+					return item
+				})
+			},
+			this.jsonOptions
+		)
+	}
+
+	public static updateScannedEpcs(tenantId: string, epcs: Array<string>, update: any) {
+		const dataFile = this.getEpcDataFile(tenantId)
+		const data = this.getScannedEpcs(tenantId)
+		outputJsonSync(
+			dataFile,
+			{
+				epcs: data.map((item) => {
+					if (epcs.includes(item.epc)) return { ...item, ...update }
+					return item
+				})
+			},
+			this.jsonOptions
+		)
 	}
 
 	public static deleteScannedEpcsByOrder(tenantId: string, orderCode: string) {

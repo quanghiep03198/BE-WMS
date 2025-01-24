@@ -7,13 +7,14 @@ import fs from 'fs'
 import { readFileSync } from 'fs-extra'
 import { chunk, groupBy } from 'lodash'
 import path, { join } from 'path'
-import { DataSource, In, IsNull, Like, Not } from 'typeorm'
+import { DataSource, IsNull, Like, Not } from 'typeorm'
 import { SqlServerConnectionOptions } from 'typeorm/driver/sqlserver/SqlServerConnectionOptions'
 import { TenancyService } from '../tenancy/tenancy.service'
 import { EXCLUDED_EPC_PATTERN, EXCLUDED_ORDERS, FALLBACK_VALUE, INTERNAL_EPC_PATTERN } from './constants'
 import { ExchangeEpcDTO } from './dto/rfid.dto'
 import { FPInventoryEntity } from './entities/fp-inventory.entity'
 import { RFIDMatchCustomerEntity } from './entities/rfid-customer-match.entity'
+import { RFIDDataService } from './rfid.data.service'
 /**
  * @description Repository for Finished Production Inventory (FPI)
  */
@@ -46,6 +47,8 @@ export class FPIRespository {
 	}
 
 	/**
+	 * @deprecated
+	 * ! This method is deprecated and will be removed in the future
 	 * @description Get all exchangable EPC
 	 */
 	async getAllExchangableEpc(payload: Pick<ExchangeEpcDTO, 'mo_no' | 'mo_no_actual' | 'quantity'>) {
@@ -85,6 +88,8 @@ export class FPIRespository {
 	}
 
 	/**
+	 * @deprecated
+	 * ! This method is deprecated and will be removed in the future
 	 * @description Get exchangable EPC by size
 	 */
 	async getExchangableEpcBySize(payload: ExchangeEpcDTO) {
@@ -135,23 +140,18 @@ export class FPIRespository {
 		return orderInformation
 	}
 
-	async upsertBulk(databaseServer: string, payload: Partial<RFIDMatchCustomerEntity>[]): Promise<void> {
+	async upsertBulk(tenantId: string, payload: Partial<RFIDMatchCustomerEntity>[]): Promise<void> {
+		const tenant = this.tenancyService.findOneById(tenantId)
+
 		const dataSource = new DataSource({
 			...this.configService.getOrThrow<SqlServerConnectionOptions>('database'),
-			host: databaseServer,
+			host: tenant.host,
 			database: DATABASE_DATA_LAKE,
 			entities: [RFIDMatchCustomerEntity]
 		})
 		if (!dataSource.isInitialized) await dataSource.initialize()
 
 		const queryRunner = dataSource.createQueryRunner()
-
-		// * Get unknown customer EPC need to be upserted
-		const unknownCustomerEpc = await queryRunner.manager.getRepository(FPInventoryEntity).findBy({
-			rfid_status: IsNull(),
-			epc: Not(Like(INTERNAL_EPC_PATTERN)),
-			mo_no: IsNull()
-		})
 
 		try {
 			await queryRunner.connect()
@@ -211,25 +211,9 @@ export class FPIRespository {
 						);`)
 			}
 
-			// * Update "mo_no" for unknown customer EPC in "dv_InvRFIDrecorddet" table
-			const epcGroups = groupBy(payload, 'mo_no')
-			for (const commandNumber in epcGroups) {
-				await dataSource
-					.getRepository(FPInventoryEntity)
-					.createQueryBuilder()
-					.update()
-					.set({ mo_no: commandNumber, mo_no_actual: null })
-					.where({
-						epc: In(
-							epcGroups[commandNumber]
-								.filter((item) => unknownCustomerEpc.some((_item) => _item.epc === item.epc))
-								.map((item) => item.epc)
-						)
-					})
-					.execute()
-			}
-
 			await queryRunner.commitTransaction()
+
+			RFIDDataService.updateUnknownScannedEpcs(tenantId, payload)
 		} catch (error) {
 			FileLogger.error(error)
 			await queryRunner.rollbackTransaction()

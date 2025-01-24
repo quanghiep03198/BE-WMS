@@ -2,45 +2,36 @@ import { FileLogger } from '@/common/helpers/file-logger.helper'
 import { DATA_SOURCE_ERP } from '@/databases/constants'
 import { HttpService } from '@nestjs/axios'
 import { CACHE_MANAGER } from '@nestjs/cache-manager'
-import { Inject, Injectable, InternalServerErrorException, Logger, NotFoundException, Scope } from '@nestjs/common'
+import { Inject, Injectable, InternalServerErrorException, NotFoundException, Scope } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { REQUEST } from '@nestjs/core'
-import { EventEmitter2, OnEvent } from '@nestjs/event-emitter'
 import { InjectDataSource } from '@nestjs/typeorm'
 import { AxiosRequestConfig } from 'axios'
 import { Cache } from 'cache-manager'
 import { Request } from 'express'
-import { readFileSync, writeFileSync } from 'fs'
+import { readFileSync } from 'fs'
 import { chunk } from 'lodash'
-import { join, resolve } from 'path'
+import { join } from 'path'
 import { DataSource } from 'typeorm'
 import { FactoryCode } from '../department/constants'
 import { RFIDMatchCustomerEntity } from '../rfid/entities/rfid-customer-match.entity'
 import { TenancyService } from '../tenancy/tenancy.service'
-import { ThirdPartyApiEvent } from './constants'
 import {
-	FetchThirdPartyApiEvent,
 	OAuth2Credentials,
 	OAuth2TokenResponse,
-	SyncEventPayload,
 	ThirdPartyApiResponseData
 } from './interfaces/third-party-api.interface'
 
 @Injectable({ scope: Scope.REQUEST })
 export class ThirdPartyApiService {
-	private readonly logger: Logger
-
 	constructor(
 		@Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
 		@Inject(REQUEST) private readonly request: Request,
 		@InjectDataSource(DATA_SOURCE_ERP) private readonly dataSourceERP: DataSource,
 		private readonly httpService: HttpService,
 		private readonly configService: ConfigService,
-		private readonly eventEmitter: EventEmitter2,
 		private readonly tenancyService: TenancyService
-	) {
-		this.logger = new Logger(ThirdPartyApiService.name, { timestamp: true })
-	}
+	) {}
 
 	private getCredentialsByFactory(factoryCode: string): OAuth2Credentials {
 		switch (factoryCode) {
@@ -130,60 +121,6 @@ export class ThirdPartyApiService {
 			headers,
 			params
 		})
-	}
-
-	@OnEvent(ThirdPartyApiEvent.DISPATCH)
-	protected async onDispatchApiCall(e: FetchThirdPartyApiEvent) {
-		try {
-			let commandNumbers = []
-			let epcs = []
-
-			// * Authenticate the factory to get the OAuth2 token
-			const accessToken = await this.authenticate(e.params.factoryCode)
-			if (!accessToken) throw new Error('Failed to get Decker OAuth2 token')
-
-			for (const item of e.data) {
-				const data = await this.getOneEpc({
-					headers: { ['Authorization']: `Bearer ${accessToken}` },
-					param: item
-				})
-				if (!data) continue
-				commandNumbers = [...commandNumbers, data]
-			}
-
-			// * If there is no data fetched from the customer, then stop the process
-			if (commandNumbers.length === 0) {
-				this.logger.warn('No data fetched from the customer')
-				return
-			}
-
-			commandNumbers = [...new Set(commandNumbers.map((item) => item?.commandNumber))]
-
-			// * Fetch the EPC data by fetched command number
-			for (const cmdNo of commandNumbers) {
-				const data = await this.getEpcByCommandNumber({
-					headers: { ['Authorization']: `Bearer ${accessToken}` },
-					params: { commandNumber: cmdNo }
-				})
-				epcs = [...epcs, ...data]
-			}
-
-			// * Store the fetched EPC data to the file
-			const storeDataFileName = `[${e.params.factoryCode}]-decker-api.data.json`
-
-			writeFileSync(
-				resolve(join(__dirname, '../..', `/data/__DECKER__/${storeDataFileName}`)),
-				JSON.stringify({ epcs }, null, 3),
-				'utf-8'
-			)
-
-			await this.eventEmitter.emitAsync(ThirdPartyApiEvent.FULFILL, {
-				data: { file: storeDataFileName },
-				params: e.params
-			} satisfies SyncEventPayload)
-		} catch (error) {
-			FileLogger.error(error)
-		}
 	}
 
 	async upsertByCommandNumber(commandNumber: string) {
@@ -340,6 +277,7 @@ export class ThirdPartyApiService {
 					'Y', GETDATE(), CAST(GETDATE() AS DATE), 'A', 'A', 0
 				);
 			`)
+
 		return { affected: 1 }
 	}
 }

@@ -4,6 +4,7 @@ import { MiddlewareConsumer, Module, NestModule, RequestMethod } from '@nestjs/c
 import { TypeOrmModule } from '@nestjs/typeorm'
 import { TenacyMiddleware } from '../tenancy/tenancy.middleware'
 import { TenancyModule } from '../tenancy/tenancy.module'
+import { THIRD_PARTY_API_SYNC } from '../third-party-api/constants'
 import { ThirdPartyApiModule } from '../third-party-api/third-party-api.module'
 import { POST_DATA_QUEUE } from './constants'
 import { FPInventoryEntity } from './entities/fp-inventory.entity'
@@ -21,9 +22,8 @@ import { RFIDCustomerEntitySubscriber } from './subscribers/rfid-customer.entity
 		TenancyModule,
 		ThirdPartyApiModule,
 		TypeOrmModule.forFeature([FPInventoryEntity, RFIDMatchCustomerEntity, RFIDReaderEntity], DATA_SOURCE_DATA_LAKE),
-		BullModule.registerQueue({
-			name: POST_DATA_QUEUE
-		})
+		BullModule.registerQueue({ name: POST_DATA_QUEUE }),
+		BullModule.registerQueue({ name: THIRD_PARTY_API_SYNC })
 	],
 	controllers: [RFIDController],
 	providers: [

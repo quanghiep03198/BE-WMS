@@ -23,7 +23,10 @@ import { ThirdPartyApiService } from './third-party-api.service'
 		TenancyModule,
 		TypeOrmModule.forFeature([FPInventoryEntity], DATA_SOURCE_DATA_LAKE),
 		HttpModule.register({ httpsAgent: new Agent({ keepAlive: true }) }),
-		BullModule.registerQueue({ name: THIRD_PARTY_API_SYNC }),
+		BullModule.registerQueue({
+			name: THIRD_PARTY_API_SYNC,
+			defaultJobOptions: { removeOnComplete: true, removeOnFail: true }
+		}),
 		forwardRef(() => RFIDModule)
 	],
 	controllers: [ThirdPartyApiController],

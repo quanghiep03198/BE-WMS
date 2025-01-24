@@ -42,18 +42,19 @@ export class FPInventoryConsumer extends WorkerHost {
 			const { data, sn } = job.data
 
 			const deviceInformation = await dataSource.getRepository(RFIDReaderEntity).findOneBy({ device_sn: sn })
-			// /* SQL */ `COALESCE(mo_no_actual, mo_no, :fallbackValue) AS mo_no`,
+
 			const incommingEpcs = await dataSource
+				.getRepository(RFIDMatchCustomerEntity)
 				.createQueryBuilder()
 				.select([
 					/* SQL */ `DISTINCT EPC_Code AS epc`,
-					/* SQL */ `:fallbackValue AS mo_no`,
+					/* SQL */ `COALESCE(mo_no_actual, mo_no, :fallbackValue) AS mo_no`,
 					/* SQL */ `COALESCE(mat_code, :fallbackValue) AS mat_code`,
-					/* SQL */ `:stationNO AS station_no`,
+					/* SQL */ `COALESCE(shoestyle_codefactory, :fallbackValue) AS shoes_style_code_factory`,
 					/* SQL */ `COALESCE(size_numcode, :fallbackValue) AS size_numcode`,
+					/* SQL */ `:stationNO AS station_no`,
 					/* SQL */ `GETDATE() AS record_time`
 				])
-				.from(/* SQL */ `DV_DATA_LAKE.dbo.dv_rfidmatchmst_cust`, 'dv')
 				.where(/* SQL */ `EPC_Code IN (:...epcs)`)
 				.setParameters({
 					fallbackValue: FALLBACK_VALUE,
@@ -65,8 +66,12 @@ export class FPInventoryConsumer extends WorkerHost {
 			const validUnknownEpcs = incommingEpcs.filter(
 				(item) => item.mo_no === FALLBACK_VALUE && !item.epc.startsWith('E28')
 			)
+
 			if (validUnknownEpcs.length > 0) {
-				const uniqueEpcs = _.uniqBy(validUnknownEpcs, (item) => item.epc.substring(0, 22))
+				Logger.debug(validUnknownEpcs)
+
+				const uniqueEpcs = _.uniqBy(validUnknownEpcs, (item) => item.epc.substring(0, 22)).map((item) => item.epc)
+
 				this.thirdPartyApiSyncQueue.add(deviceInformation.factory_code, uniqueEpcs, { jobId: tenantId })
 			}
 

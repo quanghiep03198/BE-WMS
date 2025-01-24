@@ -3,18 +3,15 @@ import { Inject, Injectable, InternalServerErrorException, Logger, NotFoundExcep
 import { REQUEST } from '@nestjs/core'
 import { InjectDataSource } from '@nestjs/typeorm'
 import { Request } from 'express'
-import fs from 'fs-extra'
 import { chunk, groupBy, omit, pick } from 'lodash'
 import { I18nContext, I18nService } from 'nestjs-i18n'
-import path from 'node:path'
 import { Brackets, DataSource, FindOptionsWhere, In } from 'typeorm'
 import { TenancyService } from '../tenancy/tenancy.service'
-import { EXCLUDED_ORDERS, FALLBACK_VALUE, INTERNAL_EPC_PATTERN } from './constants'
+import { FALLBACK_VALUE, INTERNAL_EPC_PATTERN } from './constants'
 import { ExchangeEpcDTO, SearchCustOrderParamsDTO, UpdateStockDTO } from './dto/rfid.dto'
 import { FPInventoryEntity } from './entities/fp-inventory.entity'
 import { RFIDMatchCustomerEntity } from './entities/rfid-customer-match.entity'
 import { RFIDDataService } from './rfid.data.service'
-import { FPIRespository } from './rfid.repository'
 import { DeleteEpcBySizeParams, RFIDSearchParams } from './types'
 
 /**
@@ -27,7 +24,6 @@ export class RFIDService {
 		@InjectDataSource(DATA_SOURCE_ERP) private readonly datasourceERP: DataSource,
 		@Inject(REQUEST) private readonly request: Request,
 		private readonly i18n: I18nService,
-		private readonly rfidRepository: FPIRespository,
 		private readonly tenancyService: TenancyService
 	) {}
 
@@ -62,19 +58,20 @@ export class RFIDService {
 
 		if (!Array.isArray(accumulatedData)) throw new Error('Invalid data format')
 
-		Logger.debug(accumulatedData.map((item) => item.epc).join(','))
-		const result = await this.tenancyService.dataSource.query(
-			fs.readFileSync(path.join(__dirname, './sql/order-detail.sql'), { encoding: 'utf-8' }).toString(),
-			[accumulatedData.map((item) => item.epc).join(','), EXCLUDED_ORDERS.join(',')]
-		)
-
-		return Object.entries(groupBy(result, 'mo_no')).map(([order, sizes]) => ({
+		// const result = await this.tenancyService.dataSource.query(
+		// 	fs.readFileSync(path.join(__dirname, './sql/order-detail.sql'), { encoding: 'utf-8' }).toString(),
+		// 	[accumulatedData.map((item) => item.epc).join(','), EXCLUDED_ORDERS.join(',')]
+		// )
+		Logger.debug(accumulatedData)
+		return Object.entries(groupBy(accumulatedData, 'mo_no')).map(([order, sizes]) => ({
 			mo_no: order,
 			mat_code: sizes[0].mat_code,
 			shoes_style_code_factory: sizes[0].shoes_style_code_factory,
 			sizes: sizes.map((size) => ({
 				size_numcode: size.size_numcode,
-				count: size.count
+				count: sizes.reduce((acc, curr) => {
+					if (curr.size_numcode === size.size_numcode) return acc + 1
+				}, 0)
 			}))
 		}))
 	}
@@ -130,9 +127,25 @@ export class RFIDService {
 	// TODO: Implement update from stored JSON data file and dv_rfidmatchmst_cust table
 	public async exchangeEpc(payload: ExchangeEpcDTO) {
 		const queryRunner = this.tenancyService.dataSource.createQueryRunner()
-		const epcToExchange = payload.multi
-			? await this.rfidRepository.getAllExchangableEpc(payload)
-			: await this.rfidRepository.getExchangableEpcBySize(payload)
+		const scannedEpcs = RFIDDataService.getScannedEpcs(String(this.request.headers['x-tenant-id']))
+		const epcToExchange = scannedEpcs
+			.filter((item) => {
+				if (payload.multi) {
+					return (
+						payload.mo_no
+							.split(',')
+							.map((m) => m.trim())
+							.some((__item) => __item === item.mo_no) && item.mo_no !== payload.mo_no_actual
+					)
+				} else {
+					return (
+						item.mo_no === payload.mo_no &&
+						item.size_numcode === payload.size_numcode &&
+						item.mat_code === payload.mat_code
+					)
+				}
+			})
+			.map((item) => item.epc)
 
 		if (epcToExchange.length === 0) {
 			throw new NotFoundException(this.i18n.t('rfid.errors.no_matching_epc', { lang: I18nContext.current().lang }))
@@ -141,11 +154,6 @@ export class RFIDService {
 		const update = pick(payload, 'mo_no_actual')
 
 		const BATCH_SIZE = 2000
-
-		const epcBatches = chunk(
-			epcToExchange.map((item) => item.epc),
-			BATCH_SIZE
-		)
 
 		await queryRunner.startTransaction('READ UNCOMMITTED')
 
@@ -169,22 +177,23 @@ export class RFIDService {
 					.getRepository(RFIDMatchCustomerEntity)
 					.insert(unknownCustomerEpc.map((item) => omit({ ...item, mo_no: payload.mo_no_actual }, 'keyid')))
 
-				for (const epcBatch of epcBatches) {
+				for (const epcBatch of chunk(epcToExchange, BATCH_SIZE)) {
 					const criteria: FindOptionsWhere<RFIDMatchCustomerEntity | FPInventoryEntity> = {
 						epc: In(epcBatch)
 					}
 					await queryRunner.manager.update(FPInventoryEntity, criteria, update)
 				}
 			} else {
-				for (const epcBatch of epcBatches) {
+				for (const epcBatch of chunk(epcToExchange, BATCH_SIZE)) {
 					const criteria: FindOptionsWhere<RFIDMatchCustomerEntity | FPInventoryEntity> = {
 						epc: In(epcBatch)
 					}
 					await queryRunner.manager.update(RFIDMatchCustomerEntity, criteria, update)
-					await queryRunner.manager.update(FPInventoryEntity, criteria, update)
 				}
 			}
 			await queryRunner.commitTransaction()
+
+			RFIDDataService.updateScannedEpcs(String(this.request.headers['x-tenant-id']), epcToExchange, update)
 		} catch (e) {
 			await queryRunner.rollbackTransaction()
 			throw new InternalServerErrorException(e.message)
@@ -193,7 +202,7 @@ export class RFIDService {
 		}
 	}
 
-	public async deleteEpcBySize(filters: DeleteEpcBySizeParams) {
+	public async deleteEpcBySize(_filters: DeleteEpcBySizeParams) {
 		// TODO: Implement delete from stored JSON data file
 	}
 }
