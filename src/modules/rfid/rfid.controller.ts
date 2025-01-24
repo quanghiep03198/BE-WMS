@@ -17,7 +17,7 @@ import {
 } from '@nestjs/common'
 import { Queue } from 'bullmq'
 import fs from 'fs'
-import { catchError, from, map, of, Subject } from 'rxjs'
+import { catchError, from, map, of, ReplaySubject } from 'rxjs'
 import { POST_DATA_QUEUE } from './constants'
 import {
 	ExchangeEpcDTO,
@@ -46,7 +46,7 @@ export class RFIDController {
 	@AuthGuard()
 	async fetchLatestData(@Headers('X-Tenant-Id') tenantId: string) {
 		try {
-			const subject = new Subject<any>()
+			const subject = new ReplaySubject<any>(1)
 			const dataFilePath = RFIDDataService.getEpcDataFile(tenantId)
 
 			const postMessage = () => {
@@ -55,7 +55,9 @@ export class RFIDController {
 						catchError((error) => of({ error: error.message })),
 						map((data) => ({ data }))
 					)
-					.subscribe((data) => subject.next(data))
+					.subscribe((data) => {
+						subject.next(data)
+					})
 			}
 
 			postMessage()
@@ -81,20 +83,6 @@ export class RFIDController {
 	) {
 		return await this.rfidService.getIncomingEpcs({ _page: page, _limit: 50, 'mo_no.eq': selectedOrder })
 	}
-
-	// @Api({
-	// 	endpoint: 'third-party-api-sync',
-	// 	method: HttpMethod.PUT,
-	// 	statusCode: HttpStatus.CREATED
-	// })
-	// /**
-	//  * @deprecated
-	//  * ! This endpoint will be removed in the future
-	//  */
-	// async triggerSync() {
-	// 	return await this.
-	// 	// await this.rfidService.dispatchApiCall()
-	// }
 
 	@Api({
 		endpoint: 'manufacturing-order-detail',

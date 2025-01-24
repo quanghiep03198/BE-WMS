@@ -1,5 +1,5 @@
 import { FileLogger } from '@/common/helpers/file-logger.helper'
-import { OnWorkerEvent, Processor, WorkerHost } from '@nestjs/bullmq'
+import { Processor, WorkerHost } from '@nestjs/bullmq'
 import { Logger } from '@nestjs/common'
 import { Job } from 'bullmq'
 import { groupBy } from 'lodash'
@@ -89,15 +89,5 @@ export class ThirdPartyApiConsumer extends WorkerHost {
 			factory_code_produce: factoryCode,
 			factory_name_produce: factoryCode
 		}))
-	}
-
-	@OnWorkerEvent('progress')
-	onJobProgress(job: Job<string[], void, string>) {
-		this.logger.log(`Job [${job.id}] is in progress`)
-	}
-
-	@OnWorkerEvent('completed')
-	onJobCompleted(job: Job<string[], void, string>) {
-		this.logger.log(`Job [${job.id}] is completed`)
 	}
 }

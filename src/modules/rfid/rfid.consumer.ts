@@ -1,8 +1,6 @@
 import { FileLogger } from '@/common/helpers/file-logger.helper'
 import { InjectQueue, Processor, WorkerHost } from '@nestjs/bullmq'
-import { Logger } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
-import { EventEmitter2 } from '@nestjs/event-emitter'
 import { Job, Queue } from 'bullmq'
 import _ from 'lodash'
 import { DataSource } from 'typeorm'
@@ -21,7 +19,6 @@ export class FPInventoryConsumer extends WorkerHost {
 	constructor(
 		@InjectQueue(THIRD_PARTY_API_SYNC) private readonly thirdPartyApiSyncQueue: Queue,
 		private readonly configService: ConfigService,
-		private readonly eventEmitter: EventEmitter2,
 		private readonly tenancyService: TenancyService
 	) {
 		super()
@@ -68,16 +65,19 @@ export class FPInventoryConsumer extends WorkerHost {
 			)
 
 			if (validUnknownEpcs.length > 0) {
-				Logger.debug(validUnknownEpcs)
-
 				const uniqueEpcs = _.uniqBy(validUnknownEpcs, (item) => item.epc.substring(0, 22)).map((item) => item.epc)
-
-				this.thirdPartyApiSyncQueue.add(deviceInformation.factory_code, uniqueEpcs, { jobId: tenantId })
+				this.thirdPartyApiSyncQueue.add(deviceInformation.factory_code, uniqueEpcs, {
+					jobId: tenantId,
+					attempts: 3,
+					backoff: {
+						type: 'exponential',
+						delay: 3000
+					}
+				})
 			}
 
 			RFIDDataService.insertScannedEpcs(String(tenantId), incommingEpcs)
 		} catch (e) {
-			Logger.error(e)
 			FileLogger.error(e)
 		}
 	}

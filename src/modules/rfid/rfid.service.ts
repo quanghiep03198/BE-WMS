@@ -1,13 +1,13 @@
 import { DATA_SOURCE_DATA_LAKE, DATA_SOURCE_ERP } from '@/databases/constants'
-import { Inject, Injectable, InternalServerErrorException, Logger, NotFoundException, Scope } from '@nestjs/common'
+import { Inject, Injectable, InternalServerErrorException, NotFoundException, Scope } from '@nestjs/common'
 import { REQUEST } from '@nestjs/core'
 import { InjectDataSource } from '@nestjs/typeorm'
 import { Request } from 'express'
-import { chunk, groupBy, omit, pick } from 'lodash'
+import { chunk, groupBy, pick } from 'lodash'
 import { I18nContext, I18nService } from 'nestjs-i18n'
 import { Brackets, DataSource, FindOptionsWhere, In } from 'typeorm'
 import { TenancyService } from '../tenancy/tenancy.service'
-import { FALLBACK_VALUE, INTERNAL_EPC_PATTERN } from './constants'
+import { FALLBACK_VALUE } from './constants'
 import { ExchangeEpcDTO, SearchCustOrderParamsDTO, UpdateStockDTO } from './dto/rfid.dto'
 import { FPInventoryEntity } from './entities/fp-inventory.entity'
 import { RFIDMatchCustomerEntity } from './entities/rfid-customer-match.entity'
@@ -36,6 +36,7 @@ export class RFIDService {
 	public getIncomingEpcs(args: RFIDSearchParams) {
 		const tenantId = this.request.headers['x-tenant-id']
 		const epcs = RFIDDataService.getScannedEpcs(String(tenantId))
+
 		const totalDocs = epcs.length
 		const totalPages = Math.ceil(totalDocs / args._limit)
 
@@ -55,25 +56,23 @@ export class RFIDService {
 	public async getOrderDetails() {
 		const tenantId = this.request.headers['x-tenant-id']
 		const accumulatedData = RFIDDataService.getScannedEpcs(String(tenantId))
-
 		if (!Array.isArray(accumulatedData)) throw new Error('Invalid data format')
-
-		// const result = await this.tenancyService.dataSource.query(
-		// 	fs.readFileSync(path.join(__dirname, './sql/order-detail.sql'), { encoding: 'utf-8' }).toString(),
-		// 	[accumulatedData.map((item) => item.epc).join(','), EXCLUDED_ORDERS.join(',')]
-		// )
-		Logger.debug(accumulatedData)
-		return Object.entries(groupBy(accumulatedData, 'mo_no')).map(([order, sizes]) => ({
-			mo_no: order,
-			mat_code: sizes[0].mat_code,
-			shoes_style_code_factory: sizes[0].shoes_style_code_factory,
-			sizes: sizes.map((size) => ({
-				size_numcode: size.size_numcode,
-				count: sizes.reduce((acc, curr) => {
-					if (curr.size_numcode === size.size_numcode) return acc + 1
-				}, 0)
-			}))
-		}))
+		return Object.entries(
+			groupBy(accumulatedData, (item) => {
+				return [item.mo_no, item.mat_code, item.shoes_style_code_factory]
+			})
+		).map(([keys, sizes]) => {
+			const [mo_no, mat_code, shoes_style_code_factory] = keys.split(',')
+			return {
+				mo_no,
+				mat_code,
+				shoes_style_code_factory,
+				sizes: Object.entries(groupBy(sizes, 'size_numcode')).map(([size, items]) => ({
+					size_numcode: size,
+					count: items.length
+				}))
+			}
+		})
 	}
 
 	public async updateFPStock(orderCode: string, data: UpdateStockDTO) {
@@ -126,9 +125,10 @@ export class RFIDService {
 
 	// TODO: Implement update from stored JSON data file and dv_rfidmatchmst_cust table
 	public async exchangeEpc(payload: ExchangeEpcDTO) {
+		const tenantId = String(this.request.headers['x-tenant-id'])
 		const queryRunner = this.tenancyService.dataSource.createQueryRunner()
-		const scannedEpcs = RFIDDataService.getScannedEpcs(String(this.request.headers['x-tenant-id']))
-		const epcToExchange = scannedEpcs
+		const scannedEpcs = RFIDDataService.getScannedEpcs(tenantId)
+		let epcToExchange = scannedEpcs
 			.filter((item) => {
 				if (payload.multi) {
 					return (
@@ -147,53 +147,25 @@ export class RFIDService {
 			})
 			.map((item) => item.epc)
 
+		if (!payload.multi && payload.quantity) {
+			epcToExchange = epcToExchange.slice(0, payload.quantity)
+		}
+
 		if (epcToExchange.length === 0) {
 			throw new NotFoundException(this.i18n.t('rfid.errors.no_matching_epc', { lang: I18nContext.current().lang }))
 		}
 
-		const update = pick(payload, 'mo_no_actual')
-
-		const BATCH_SIZE = 2000
-
-		await queryRunner.startTransaction('READ UNCOMMITTED')
-
 		try {
-			if (payload.mo_no === FALLBACK_VALUE) {
-				const unknownCustomerEpc = await queryRunner.manager
-					.getRepository(RFIDMatchCustomerEntity)
-					.createQueryBuilder('cust')
-					.select(/* SQL */ `TOP ${payload.quantity} cust.*`)
-					.innerJoin(FPInventoryEntity, 'inv', /* SQL */ `cust.epc = inv.epc`)
-					.where(
-						new Brackets((qb) => {
-							return qb.where(/* SQL */ `cust.mo_no IS NULL OR inv.mo_no IS NULL`)
-						})
-					)
-					.andWhere(/* SQL */ `inv.rfid_status IS NULL`)
-					.andWhere(/* SQL */ `inv.epc NOT LIKE :internalEpcPattern`, { internalEpcPattern: INTERNAL_EPC_PATTERN })
-					.getRawMany()
-
-				await queryRunner.manager
-					.getRepository(RFIDMatchCustomerEntity)
-					.insert(unknownCustomerEpc.map((item) => omit({ ...item, mo_no: payload.mo_no_actual }, 'keyid')))
-
-				for (const epcBatch of chunk(epcToExchange, BATCH_SIZE)) {
-					const criteria: FindOptionsWhere<RFIDMatchCustomerEntity | FPInventoryEntity> = {
-						epc: In(epcBatch)
-					}
-					await queryRunner.manager.update(FPInventoryEntity, criteria, update)
+			const update = pick(payload, 'mo_no_actual')
+			await queryRunner.startTransaction('READ UNCOMMITTED')
+			for (const epcBatch of chunk(epcToExchange, 2000)) {
+				const criteria: FindOptionsWhere<RFIDMatchCustomerEntity> = {
+					epc: In(epcBatch)
 				}
-			} else {
-				for (const epcBatch of chunk(epcToExchange, BATCH_SIZE)) {
-					const criteria: FindOptionsWhere<RFIDMatchCustomerEntity | FPInventoryEntity> = {
-						epc: In(epcBatch)
-					}
-					await queryRunner.manager.update(RFIDMatchCustomerEntity, criteria, update)
-				}
+				await queryRunner.manager.update(RFIDMatchCustomerEntity, criteria, update)
 			}
 			await queryRunner.commitTransaction()
-
-			RFIDDataService.updateScannedEpcs(String(this.request.headers['x-tenant-id']), epcToExchange, update)
+			RFIDDataService.updateScannedEpcs(tenantId, epcToExchange, { mo_no: payload.mo_no_actual })
 		} catch (e) {
 			await queryRunner.rollbackTransaction()
 			throw new InternalServerErrorException(e.message)

@@ -7,7 +7,7 @@ import { RFIDMatchCustomerEntity } from './entities/rfid-customer-match.entity'
 import { StoredRFIDReaderItem } from './types'
 
 export class RFIDDataService {
-	protected static jsonOptions: JsonOutputOptions = { spaces: 3, EOL: '\n' }
+	protected static jsonOutputOptions: JsonOutputOptions = { spaces: 3, EOL: '\n' }
 
 	constructor() {}
 
@@ -16,29 +16,20 @@ export class RFIDDataService {
 	static readonly PM_DATA_DIR: string = resolve(join(__dirname, '../../data/__PM__'))
 
 	// * Decker RFID data files
-	static readonly VA1_DECKER_DATA_FILE: string = resolve(
-		RFIDDataService.DEKCER_API_DATA_DIR,
-		'[VA1]-decker-api.data.json'
-	)
-	static readonly VB2_DECKER_DATA_FILE: string = resolve(
-		RFIDDataService.DEKCER_API_DATA_DIR,
-		'[VB2]-decker-api.data.json'
-	)
-	static readonly CA1_DECKER_DATA_FILE: string = resolve(
-		RFIDDataService.DEKCER_API_DATA_DIR,
-		'[CA1]-decker-api.data.json'
-	)
+	static readonly VA1_DECKER_DATA_FILE: string = resolve(this.DEKCER_API_DATA_DIR, '[VA1]-decker-api.data.json')
+	static readonly VB2_DECKER_DATA_FILE: string = resolve(this.DEKCER_API_DATA_DIR, '[VB2]-decker-api.data.json')
+	static readonly CA1_DECKER_DATA_FILE: string = resolve(this.DEKCER_API_DATA_DIR, '[CA1]-decker-api.data.json')
 
 	// * Production Warehouse RFID data files
-	static readonly VA1_PM_DATA_FILE: string = resolve(RFIDDataService.PM_DATA_DIR, '[VA1]-pm-rfid.data.json')
-	static readonly VB2_PM_DATA_FILE: string = resolve(RFIDDataService.PM_DATA_DIR, '[VB2]-pm-rfid.data.json')
-	static readonly CA1_PM_DATA_FILE: string = resolve(RFIDDataService.PM_DATA_DIR, '[CA1]-pm-rfid.data.json')
+	static readonly VA1_PM_DATA_FILE: string = resolve(this.PM_DATA_DIR, '[VA1]-pm-rfid.data.json')
+	static readonly VB2_PM_DATA_FILE: string = resolve(this.PM_DATA_DIR, '[VB2]-pm-rfid.data.json')
+	static readonly CA1_PM_DATA_FILE: string = resolve(this.PM_DATA_DIR, '[CA1]-pm-rfid.data.json')
 
 	static readonly dataFiles: Record<string, string> = {
-		[Tenant.DEV]: RFIDDataService.VA1_PM_DATA_FILE, // * Just for testing, should be removed in production
-		[Tenant.VN_LIANYING_PRIMARY]: RFIDDataService.VA1_PM_DATA_FILE,
-		[Tenant.VN_LIANSHUN_PRIMARY]: RFIDDataService.VB2_PM_DATA_FILE,
-		[Tenant.KM_PRIMARY]: RFIDDataService.VB2_PM_DATA_FILE
+		[Tenant.DEV]: this.VA1_PM_DATA_FILE, // * Just for testing, should be removed in production
+		[Tenant.VN_LIANYING_PRIMARY]: this.VA1_PM_DATA_FILE,
+		[Tenant.VN_LIANSHUN_PRIMARY]: this.VB2_PM_DATA_FILE,
+		[Tenant.KM_PRIMARY]: this.VB2_PM_DATA_FILE
 	}
 
 	public static initialize(): void {
@@ -52,16 +43,19 @@ export class RFIDDataService {
 			mkdirSync(this.PM_DATA_DIR, { recursive: true })
 		}
 
-		if (!existsSync(this.VA1_PM_DATA_FILE)) outputJsonSync(this.VA1_PM_DATA_FILE, { epcs: [] }, this.jsonOptions)
-		if (!existsSync(this.VB2_PM_DATA_FILE)) outputJsonSync(this.VB2_PM_DATA_FILE, { epcs: [] }, this.jsonOptions)
-		if (!existsSync(this.CA1_PM_DATA_FILE)) outputJsonSync(this.CA1_PM_DATA_FILE, { epcs: [] }, this.jsonOptions)
+		if (!existsSync(this.VA1_PM_DATA_FILE))
+			outputJsonSync(this.VA1_PM_DATA_FILE, { epcs: [] }, this.jsonOutputOptions)
+		if (!existsSync(this.VB2_PM_DATA_FILE))
+			outputJsonSync(this.VB2_PM_DATA_FILE, { epcs: [] }, this.jsonOutputOptions)
+		if (!existsSync(this.CA1_PM_DATA_FILE))
+			outputJsonSync(this.CA1_PM_DATA_FILE, { epcs: [] }, this.jsonOutputOptions)
 
 		if (!existsSync(this.VA1_DECKER_DATA_FILE))
-			outputJsonSync(this.VA1_DECKER_DATA_FILE, { epcs: [] }, this.jsonOptions)
+			outputJsonSync(this.VA1_DECKER_DATA_FILE, { epcs: [] }, this.jsonOutputOptions)
 		if (!existsSync(this.VB2_DECKER_DATA_FILE))
-			outputJsonSync(this.VB2_DECKER_DATA_FILE, { epcs: [] }, this.jsonOptions)
+			outputJsonSync(this.VB2_DECKER_DATA_FILE, { epcs: [] }, this.jsonOutputOptions)
 		if (!existsSync(this.CA1_DECKER_DATA_FILE))
-			outputJsonSync(this.CA1_DECKER_DATA_FILE, { epcs: [] }, this.jsonOptions)
+			outputJsonSync(this.CA1_DECKER_DATA_FILE, { epcs: [] }, this.jsonOutputOptions)
 	}
 
 	public static getFetchedDeckerEpcs(tenantId: string): Record<'epc' | 'mo_no', string>[] {
@@ -90,7 +84,7 @@ export class RFIDDataService {
 	public static insertScannedEpcs(tenantId: string, payload: StoredRFIDReaderItem[]) {
 		const dataFile = this.getEpcDataFile(tenantId)
 		const data = this.getScannedEpcs(tenantId)
-		outputJsonSync(dataFile, { epcs: uniqBy([...payload, ...data], 'epc') }, this.jsonOptions)
+		outputJsonSync(dataFile, { epcs: uniqBy([...payload, ...data], 'epc') }, this.jsonOutputOptions)
 	}
 
 	public static updateUnknownScannedEpcs(tenantId: string, payload: Partial<RFIDMatchCustomerEntity>[]) {
@@ -112,7 +106,7 @@ export class RFIDDataService {
 					return item
 				})
 			},
-			this.jsonOptions
+			this.jsonOutputOptions
 		)
 	}
 
@@ -123,22 +117,22 @@ export class RFIDDataService {
 			dataFile,
 			{
 				epcs: data.map((item) => {
-					if (epcs.includes(item.epc)) return { ...item, ...update }
+					if (epcs.some((epc) => epc === item.epc)) return { ...item, ...update }
 					return item
 				})
 			},
-			this.jsonOptions
+			this.jsonOutputOptions
 		)
 	}
 
 	public static deleteScannedEpcsByOrder(tenantId: string, orderCode: string) {
 		const dataFile = this.getEpcDataFile(tenantId)
 		const data = this.getScannedEpcs(tenantId)
-		outputJsonSync(dataFile, { epcs: data.filter((item) => item.mo_no !== orderCode) }, this.jsonOptions)
+		outputJsonSync(dataFile, { epcs: data.filter((item) => item.mo_no !== orderCode) }, this.jsonOutputOptions)
 	}
 
 	public static truncateData(tenantId: string) {
 		const dataFile = this.getEpcDataFile(tenantId)
-		outputJsonSync(dataFile, { epcs: [] }, this.jsonOptions)
+		outputJsonSync(dataFile, { epcs: [] }, this.jsonOutputOptions)
 	}
 }
