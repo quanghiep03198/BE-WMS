@@ -1,6 +1,7 @@
 import { Logger, RequestMethod, VersioningType } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { NestFactory } from '@nestjs/core'
+import bodyParser from 'body-parser'
 import compression from 'compression'
 import helmet from 'helmet'
 import morgan from 'morgan'
@@ -15,6 +16,8 @@ async function bootstrap() {
 		app.enableVersioning({ type: VersioningType.URI })
 		app.enableCors()
 		app.use(helmet())
+		app.use(bodyParser.json({ limit: '50mb' }))
+		app.use(bodyParser.urlencoded({ limit: '50mb', extended: true }))
 		app.use(
 			morgan('dev', {
 				stream: {
