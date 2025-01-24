@@ -32,7 +32,7 @@ export class AuthService {
 	async login(payload: UserEntity) {
 		const userId = payload.id
 		const user = await this.userService.getProfile(userId)
-		const token = await this.jwtService.signAsync(pick(user, ['id', 'employee_code', 'role']))
+		const token = await this.jwtService.signAsync(pick(user, ['id', 'username', 'employee_code', 'role']))
 		await this.cacheManager.set(`token:${userId}`, token, this.TOKEN_CACHE_TTL)
 		return { user, token }
 	}
@@ -40,7 +40,7 @@ export class AuthService {
 	async refreshToken(userId: number) {
 		const user = await this.userService.findOneById(userId)
 		if (!user) throw new NotFoundException('User could not be found')
-		const refreshToken = await this.jwtService.signAsync(pick(user, ['id', 'employee_code', 'role']))
+		const refreshToken = await this.jwtService.signAsync(pick(user, ['id', 'username', 'employee_code', 'role']))
 		await this.cacheManager.set(`token:${userId}`, refreshToken, this.TOKEN_CACHE_TTL)
 		return refreshToken
 	}

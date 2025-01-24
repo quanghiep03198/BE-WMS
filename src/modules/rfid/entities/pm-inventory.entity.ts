@@ -5,6 +5,7 @@ import { InventoryActions } from '../constants'
 
 /**
  * @deprecated
+ * ! This entity is deprecated
  * @description RFID Production Management Entity - Describes status of Internal RFID tags in the factory (E28xxx)
  */
 @Entity('dv_InvRFIDrecordmst', { database: DATABASE_DATA_LAKE })

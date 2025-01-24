@@ -1,27 +1,35 @@
 import { Api, HttpMethod } from '@/common/decorators/api.decorator'
 import { AuthGuard } from '@/common/decorators/auth.decorator'
+import { User } from '@/common/decorators/user.decorator'
 import { ZodValidationPipe } from '@/common/pipes/zod-validation.pipe'
+import { InjectQueue } from '@nestjs/bullmq'
 import {
-	BadRequestException,
 	Body,
 	Controller,
 	DefaultValuePipe,
 	Headers,
 	HttpStatus,
+	Logger,
 	Param,
 	ParseIntPipe,
 	Query,
 	Sse
 } from '@nestjs/common'
-import { catchError, from, interval, map, of, switchMap } from 'rxjs'
+import { Queue } from 'bullmq'
+import fs from 'fs'
+import { catchError, from, map, of, ReplaySubject } from 'rxjs'
+import { POST_DATA_QUEUE } from './constants'
 import {
 	ExchangeEpcDTO,
 	exchangeEpcValidator,
+	PostReaderDataDTO,
+	readerPostDataValidator,
 	searchCustomerValidator,
 	SearchCustOrderParamsDTO,
 	UpdateStockDTO,
 	updateStockValidator
 } from './dto/rfid.dto'
+import { RFIDDataService } from './rfid.data.service'
 import { RFIDService } from './rfid.service'
 
 /**
@@ -29,39 +37,51 @@ import { RFIDService } from './rfid.service'
  */
 @Controller('rfid')
 export class RFIDController {
-	constructor(private readonly rfidService: RFIDService) {}
+	constructor(
+		@InjectQueue(POST_DATA_QUEUE) private readonly postDataQueue: Queue,
+		private readonly rfidService: RFIDService
+	) {}
 
 	@Sse('sse')
 	@AuthGuard()
-	async fetchLatestData(
-		@Headers('X-User-Company') factoryCode: string,
-		@Headers('X-Polling-Duration') pollingDuration: number
-	) {
-		const FALLBACK_POLLING_DURATION: number = 1000
-		const duration = pollingDuration ?? FALLBACK_POLLING_DURATION
-		if (!factoryCode) {
-			throw new BadRequestException('Factory code is required')
-		}
+	async fetchLatestData(@Headers('X-Tenant-Id') tenantId: string) {
+		try {
+			const subject = new ReplaySubject<any>(1)
+			const dataFilePath = RFIDDataService.getEpcDataFile(tenantId)
 
-		return interval(duration).pipe(
-			switchMap(() =>
-				from(this.rfidService.fetchItems({ page: 1 })).pipe(
-					catchError((error) => {
-						return of({ error: error.message })
+			const postMessage = () => {
+				from(this.rfidService.fetchLatestData({ _page: 1, _limit: 50 }))
+					.pipe(
+						catchError((error) => of({ error: error.message })),
+						map((data) => ({ data }))
+					)
+					.subscribe((data) => {
+						subject.next(data)
 					})
-				)
-			),
-			map((data) => ({ data }))
-		)
+			}
+
+			postMessage()
+
+			fs.watch(dataFilePath, (_, filename) => {
+				if (filename) postMessage()
+			})
+
+			return subject.asObservable()
+		} catch (error) {
+			Logger.error(error)
+		}
 	}
 
 	@Api({
-		endpoint: 'third-party-api-sync',
-		method: HttpMethod.PUT,
-		statusCode: HttpStatus.CREATED
+		endpoint: 'fetch-epc',
+		method: HttpMethod.GET
 	})
-	async triggerSync() {
-		await this.rfidService.dispatchApiCall()
+	@AuthGuard()
+	async fetchNextItems(
+		@Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+		@Query('mo_no.eq', new DefaultValuePipe('')) selectedOrder: string
+	) {
+		return await this.rfidService.getIncomingEpcs({ _page: page, _limit: 50, 'mo_no.eq': selectedOrder })
 	}
 
 	@Api({
@@ -69,8 +89,8 @@ export class RFIDController {
 		method: HttpMethod.GET
 	})
 	@AuthGuard()
-	async getManufacturingOrderDetail() {
-		return this.rfidService.getManufacturingOrderDetail()
+	async getOrderDetails() {
+		return this.rfidService.getOrderDetails()
 	}
 
 	@Api({
@@ -90,29 +110,36 @@ export class RFIDController {
 	}
 
 	@Api({
-		endpoint: 'fetch-epc',
-		method: HttpMethod.GET
-	})
-	@AuthGuard()
-	async fetchNextItems(
-		@Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
-		@Query('mo_no.eq', new DefaultValuePipe('')) selectedOrder: string
-	) {
-		return await this.rfidService.findWhereNotInStock({ page, 'mo_no.eq': selectedOrder })
-	}
-
-	@Api({
 		endpoint: 'update-stock/:orderCode',
-		method: HttpMethod.PATCH,
+		method: HttpMethod.PUT,
 		statusCode: HttpStatus.CREATED,
 		message: 'common.updated'
 	})
 	@AuthGuard()
-	async updateStock(
+	async updateFPStock(
 		@Param('orderCode') orderCode: string,
+		@User('username') username: string,
+		@Headers('X-User-Company') factoryCode: string,
 		@Body(new ZodValidationPipe(updateStockValidator)) payload: UpdateStockDTO
 	) {
-		return await this.rfidService.updateStock(orderCode, payload)
+		return await this.rfidService.updateFPStock(orderCode, {
+			...payload,
+			user_code_created: username,
+			factory_code: factoryCode
+		})
+	}
+
+	@Api({
+		endpoint: 'post-data/:tenantId',
+		method: HttpMethod.POST,
+		statusCode: HttpStatus.CREATED,
+		message: 'common.created'
+	})
+	async postData(
+		@Param('tenantId') tenantId: string,
+		@Body(new ZodValidationPipe(readerPostDataValidator)) payload: PostReaderDataDTO
+	) {
+		return await this.postDataQueue.add(tenantId, payload)
 	}
 
 	@Api({

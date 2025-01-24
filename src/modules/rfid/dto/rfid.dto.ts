@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { InventoryActions, InventoryStorageType } from '../constants'
+import { FPInventoryEntity } from '../entities/fp-inventory.entity'
 
 export const updateStockValidator = z
 	.object({
@@ -7,7 +8,8 @@ export const updateStockValidator = z
 		rfid_use: z.nativeEnum(InventoryStorageType, { required_error: 'Required' }),
 		dept_code: z.string().optional(),
 		dept_name: z.string().optional(),
-		storage: z.string().optional()
+		storage: z.string().optional(),
+		quantity: z.number().optional()
 	})
 	.superRefine((values, ctx) => {
 		if (values.rfid_status === InventoryActions.INBOUND) {
@@ -23,6 +25,10 @@ export const updateStockValidator = z
 		} else {
 			return true
 		}
+	})
+	.refine((values) => {
+		values.quantity = values.rfid_status === InventoryActions.INBOUND ? 1 : -1
+		return true
 	})
 
 export const exchangeEpcValidator = z
@@ -62,8 +68,32 @@ export const deleteEpcBySizeValidator = z.object({
 	'quantity.eq': z.number().positive()
 })
 
-export type UpdateStockDTO = z.infer<typeof updateStockValidator>
+export const readerPostDataValidator = z.object({
+	method: z.string(),
+	sn: z.string(),
+	timestamp: z.string(),
+	data: z.object({
+		timestamp: z.string(),
+		id: z.string(),
+		temperature: z.string(),
+		tagList: z.array(
+			z.object({
+				direction: z.string(),
+				firstTime: z.number(),
+				lastTime: z.number(),
+				ant: z.number(),
+				firstAnt: z.number(),
+				rssi: z.string(),
+				epc: z.string()
+			})
+		)
+	})
+})
+
+export type UpdateStockDTO = z.infer<typeof updateStockValidator> &
+	Pick<FPInventoryEntity, 'user_code_created' | 'factory_code'>
 export type ExchangeEpcDTO = z.infer<typeof exchangeEpcValidator>
 export type SearchCustOrderParamsDTO = z.infer<typeof searchCustomerValidator> & {
 	['factory_code.eq']: string
 }
+export type PostReaderDataDTO = z.infer<typeof readerPostDataValidator>

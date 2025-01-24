@@ -1,4 +1,5 @@
 import env from '@/common/utils/env.util'
+import { BullRootModuleOptions } from '@nestjs/bullmq'
 import { CacheModuleOptions } from '@nestjs/cache-manager'
 import { ConfigFactory } from '@nestjs/config'
 import { ThrottlerOptions } from '@nestjs/throttler'
@@ -56,6 +57,13 @@ export const appConfigFactory: ConfigFactory = () => ({
 			ignoreErrors: true
 		}
 	} satisfies TypeOrmModuleOptions,
+	bullmq: {
+		connection: {
+			host: env('REDIS_HOST'),
+			port: env('REDIS_PORT', { serialize: (value): number => parseInt(value) }),
+			password: env('REDIS_PASSWORD')
+		}
+	} satisfies BullRootModuleOptions,
 	throttler: {
 		ttl: env('THROTTLER_TTL', { serialize: (value): number => parseInt(value) }),
 		limit: env('THROTTLER_LIMIT', { serialize: (value): number => parseInt(value) })

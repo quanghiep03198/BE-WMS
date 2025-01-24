@@ -1,15 +1,20 @@
 import { FileLogger } from '@/common/helpers/file-logger.helper'
-import { DATA_SOURCE_DATA_LAKE } from '@/databases/constants'
+import { DATA_SOURCE_DATA_LAKE, DATA_SOURCE_ERP, DATABASE_DATA_LAKE } from '@/databases/constants'
 import { Injectable } from '@nestjs/common'
+import { ConfigService } from '@nestjs/config'
 import { InjectDataSource } from '@nestjs/typeorm'
+import fs from 'fs'
+import { readFileSync } from 'fs-extra'
 import { chunk, groupBy } from 'lodash'
-import { DataSource, In, IsNull, Like, Not } from 'typeorm'
+import path, { join } from 'path'
+import { DataSource, IsNull, Like, Not } from 'typeorm'
+import { SqlServerConnectionOptions } from 'typeorm/driver/sqlserver/SqlServerConnectionOptions'
 import { TenancyService } from '../tenancy/tenancy.service'
 import { EXCLUDED_EPC_PATTERN, EXCLUDED_ORDERS, FALLBACK_VALUE, INTERNAL_EPC_PATTERN } from './constants'
 import { ExchangeEpcDTO } from './dto/rfid.dto'
 import { FPInventoryEntity } from './entities/fp-inventory.entity'
 import { RFIDMatchCustomerEntity } from './entities/rfid-customer-match.entity'
-
+import { RFIDDataService } from './rfid.data.service'
 /**
  * @description Repository for Finished Production Inventory (FPI)
  */
@@ -17,54 +22,19 @@ import { RFIDMatchCustomerEntity } from './entities/rfid-customer-match.entity'
 export class FPIRespository {
 	constructor(
 		@InjectDataSource(DATA_SOURCE_DATA_LAKE) private readonly dataSourceDL: DataSource,
-		private readonly tenancyService: TenancyService
+		@InjectDataSource(DATA_SOURCE_ERP) private readonly dataSourceERP: DataSource,
+		private readonly tenancyService: TenancyService,
+		private readonly configService: ConfigService
 	) {}
 
 	/**
-	 * @description Get manufacturing order sizes
+	 * @description Get manufacturing order sizes by EPCs
 	 */
-	async getOrderDetails() {
-		const result = await this.tenancyService.dataSource
-			.getRepository(FPInventoryEntity)
-			.createQueryBuilder('inv')
-			.select([
-				/* SQL */ `COALESCE(inv.mo_no_actual, inv.mo_no, :fallbackValue) AS mo_no`,
-				/* SQL */ `COALESCE(cust.mat_code, :fallbackValue) AS mat_code`,
-				/* SQL */ `COALESCE(cust.shoestyle_codefactory, :fallbackValue) AS shoes_style_code_factory`,
-				/* SQL */ `ISNULL(cust.size_numcode, :fallbackValue) AS size_numcode`,
-				/* SQL */ `COUNT(DISTINCT inv.EPC_Code) AS count`
-			])
-			.leftJoin(
-				RFIDMatchCustomerEntity,
-				'cust',
-				/* SQL */ `inv.EPC_Code = cust.EPC_Code 
-					AND COALESCE(inv.mo_no_actual, inv.mo_no, :fallbackValue) = COALESCE(cust.mo_no_actual, cust.mo_no, :fallbackValue)`
-			)
-			.where(/* SQL */ `inv.rfid_status IS NULL`)
-			.andWhere(/* SQL */ `inv.EPC_Code NOT LIKE :excludedEpcPattern`)
-			.andWhere(/* SQL */ `inv.EPC_Code NOT LIKE :internalEpcPattern`)
-			.andWhere(/* SQL */ `COALESCE(inv.mo_no_actual, inv.mo_no, :fallbackValue) NOT IN (:...excludedOrders)`)
-			.andWhere(/* SQL */ `COALESCE(cust.mo_no_actual, cust.mo_no, :fallbackValue) NOT IN (:...excludedOrders)`)
-			.groupBy(
-				/* SQL */ `
-					COALESCE(inv.mo_no_actual, inv.mo_no, :fallbackValue),
-					COALESCE(cust.mat_code, :fallbackValue), 
-					COALESCE(cust.shoestyle_codefactory, :fallbackValue),
-					ISNULL(cust.size_numcode, :fallbackValue)
-				`
-			)
-			.orderBy('mat_code', 'ASC')
-			.addOrderBy('size_numcode', 'ASC')
-			.addOrderBy('mo_no', 'ASC')
-			.setParameters({
-				excludedEpcPattern: EXCLUDED_EPC_PATTERN,
-				internalEpcPattern: INTERNAL_EPC_PATTERN,
-				fallbackValue: FALLBACK_VALUE,
-				excludedOrders: EXCLUDED_ORDERS
-			})
-			.maxExecutionTime(500)
-			.getRawMany()
-
+	async getOrderDetailByEpcs(epcs: Record<'epc' | 'mo_no', string>[]) {
+		const result = await this.tenancyService.dataSource.query(
+			fs.readFileSync(path.join(__dirname, './sql/order-detail.sql'), { encoding: 'utf-8' }).toString(),
+			[epcs.map((item) => item.epc).join(','), EXCLUDED_ORDERS.join(',')]
+		)
 		return Object.entries(groupBy(result, 'mo_no')).map(([order, sizes]) => ({
 			mo_no: order,
 			mat_code: sizes[0].mat_code,
@@ -77,6 +47,8 @@ export class FPIRespository {
 	}
 
 	/**
+	 * @deprecated
+	 * ! This method is deprecated and will be removed in the future
 	 * @description Get all exchangable EPC
 	 */
 	async getAllExchangableEpc(payload: Pick<ExchangeEpcDTO, 'mo_no' | 'mo_no_actual' | 'quantity'>) {
@@ -116,6 +88,8 @@ export class FPIRespository {
 	}
 
 	/**
+	 * @deprecated
+	 * ! This method is deprecated and will be removed in the future
 	 * @description Get exchangable EPC by size
 	 */
 	async getExchangableEpcBySize(payload: ExchangeEpcDTO) {
@@ -151,15 +125,33 @@ export class FPIRespository {
 			.getRawMany()
 	}
 
-	async upsertBulk(dataSource: DataSource, payload: Partial<RFIDMatchCustomerEntity>[]): Promise<void> {
-		const queryRunner = dataSource.createQueryRunner()
+	async getOrderInformationFromERP(orders: Array<string>): Promise<Partial<RFIDMatchCustomerEntity>[]> {
+		let orderInformation: Partial<RFIDMatchCustomerEntity>[] = []
+		const orderInformationQuery = readFileSync(join(__dirname, './sql/order-information.sql'), 'utf-8').toString()
 
-		// * Get unknown customer EPC need to be upserted
-		const unknownCustomerEpc = await queryRunner.manager.getRepository(FPInventoryEntity).findBy({
-			rfid_status: IsNull(),
-			epc: Not(Like(INTERNAL_EPC_PATTERN)),
-			mo_no: IsNull()
+		for (const order of orders) {
+			const orderInfo = await this.dataSourceERP.query<Partial<RFIDMatchCustomerEntity>[]>(orderInformationQuery, [
+				order
+			])
+			if (orderInfo?.length === 0) continue
+			orderInformation = [...orderInformation, ...orderInfo]
+		}
+
+		return orderInformation
+	}
+
+	async upsertBulk(tenantId: string, payload: Partial<RFIDMatchCustomerEntity>[]): Promise<void> {
+		const tenant = this.tenancyService.findOneById(tenantId)
+
+		const dataSource = new DataSource({
+			...this.configService.getOrThrow<SqlServerConnectionOptions>('database'),
+			host: tenant.host,
+			database: DATABASE_DATA_LAKE,
+			entities: [RFIDMatchCustomerEntity]
 		})
+		if (!dataSource.isInitialized) await dataSource.initialize()
+
+		const queryRunner = dataSource.createQueryRunner()
 
 		try {
 			await queryRunner.connect()
@@ -167,7 +159,6 @@ export class FPIRespository {
 
 			// * Upsert data for "dv_rfidmatchmst_cust" table
 			for (const data of chunk(payload, 2000)) {
-				FileLogger.debug(data)
 				const mergeSourceValues = data
 					.map((item) => {
 						return `(
@@ -220,25 +211,9 @@ export class FPIRespository {
 						);`)
 			}
 
-			// * Update "mo_no" for unknown customer EPC in "dv_InvRFIDrecorddet" table
-			const epcGroups = groupBy(payload, 'mo_no')
-			for (const commandNumber in epcGroups) {
-				await dataSource
-					.getRepository(FPInventoryEntity)
-					.createQueryBuilder()
-					.update()
-					.set({ mo_no: commandNumber, mo_no_actual: null })
-					.where({
-						epc: In(
-							epcGroups[commandNumber]
-								.filter((item) => unknownCustomerEpc.some((_item) => _item.epc === item.epc))
-								.map((item) => item.epc)
-						)
-					})
-					.execute()
-			}
-
 			await queryRunner.commitTransaction()
+
+			RFIDDataService.updateUnknownScannedEpcs(tenantId, payload)
 		} catch (error) {
 			FileLogger.error(error)
 			await queryRunner.rollbackTransaction()
