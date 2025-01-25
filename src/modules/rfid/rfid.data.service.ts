@@ -29,7 +29,7 @@ export class RFIDDataService {
 		[Tenant.DEV]: this.VA1_PM_DATA_FILE, // * Just for testing, should be removed in production
 		[Tenant.VN_LIANYING_PRIMARY]: this.VA1_PM_DATA_FILE,
 		[Tenant.VN_LIANSHUN_PRIMARY]: this.VB2_PM_DATA_FILE,
-		[Tenant.KM_PRIMARY]: this.VB2_PM_DATA_FILE
+		[Tenant.KM_PRIMARY]: this.CA1_PM_DATA_FILE
 	}
 
 	public static initialize(): void {
