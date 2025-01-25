@@ -78,11 +78,20 @@ export class RFIDService {
 	public async updateFPStock(orderCode: string, data: UpdateStockDTO) {
 		const tenantId = this.request.headers['x-tenant-id']
 		const payload = RFIDDataService.getScannedEpcsByOrder(String(tenantId), orderCode)
-		await this.tenancyService.dataSource
-			.getRepository(FPInventoryEntity)
-			.insert(payload.map((value) => ({ ...value, ...data })))
-
-		RFIDDataService.deleteScannedEpcsByOrder(String(tenantId), orderCode)
+		const queryRunner = this.tenancyService.dataSource.createQueryRunner()
+		queryRunner.startTransaction()
+		try {
+			for (const item of chunk(
+				payload.map((value) => ({ ...value, ...data })),
+				100
+			)) {
+				await this.tenancyService.dataSource.getRepository(FPInventoryEntity).insert(item)
+			}
+			queryRunner.commitTransaction()
+			RFIDDataService.deleteScannedEpcsByOrder(String(tenantId), orderCode)
+		} catch {
+			queryRunner.rollbackTransaction()
+		}
 	}
 
 	public deleteUnexpectedOrder(orderCode: string) {
