@@ -7,7 +7,7 @@ import { DataSource } from 'typeorm'
 import { SqlServerConnectionOptions } from 'typeorm/driver/sqlserver/SqlServerConnectionOptions'
 import { TenancyService } from '../tenancy/tenancy.service'
 import { THIRD_PARTY_API_SYNC } from '../third-party-api/constants'
-import { FALLBACK_VALUE, POST_DATA_QUEUE } from './constants'
+import { EXCLUDED_ORDERS, FALLBACK_VALUE, POST_DATA_QUEUE } from './constants'
 import { PostReaderDataDTO } from './dto/rfid.dto'
 import { RFIDMatchCustomerEntity } from './entities/rfid-customer-match.entity'
 import { RFIDReaderEntity } from './entities/rfid-reader.entity'
@@ -76,7 +76,10 @@ export class FPInventoryConsumer extends WorkerHost {
 				})
 			}
 
-			RFIDDataService.insertScannedEpcs(String(tenantId), incommingEpcs)
+			RFIDDataService.insertScannedEpcs(
+				String(tenantId),
+				incommingEpcs.filter((item) => EXCLUDED_ORDERS.some((mo_no) => mo_no !== item.mo_no))
+			)
 		} catch (e) {
 			FileLogger.error(e)
 		}
