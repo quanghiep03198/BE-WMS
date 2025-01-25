@@ -28,14 +28,14 @@ export class RFIDService {
 	) {}
 
 	public async fetchLatestData(args: RFIDSearchParams) {
-		const epcs = this.getIncomingEpcs(args)
-		const orders = await this.getOrderDetails()
+		const [epcs, orders] = await Promise.all([this.getIncomingEpcs(args), this.getOrderDetails()])
+
 		return { epcs, orders }
 	}
 
-	public getIncomingEpcs(args: RFIDSearchParams) {
+	public async getIncomingEpcs(args: RFIDSearchParams) {
 		const tenantId = this.request.headers['x-tenant-id']
-		const epcs = RFIDDataService.getScannedEpcs(String(tenantId))
+		const epcs = await RFIDDataService.getScannedEpcs(String(tenantId))
 
 		const totalDocs = epcs.length
 		const totalPages = Math.ceil(totalDocs / args._limit)
@@ -55,7 +55,7 @@ export class RFIDService {
 
 	public async getOrderDetails() {
 		const tenantId = this.request.headers['x-tenant-id']
-		const accumulatedData = RFIDDataService.getScannedEpcs(String(tenantId))
+		const accumulatedData = await RFIDDataService.getScannedEpcs(String(tenantId))
 		if (!Array.isArray(accumulatedData)) throw new Error('Invalid data format')
 		return Object.entries(
 			groupBy(accumulatedData, (item) => {
@@ -77,7 +77,7 @@ export class RFIDService {
 
 	public async updateFPStock(orderCode: string, data: UpdateStockDTO) {
 		const tenantId = this.request.headers['x-tenant-id']
-		const payload = RFIDDataService.getScannedEpcsByOrder(String(tenantId), orderCode)
+		const payload = await RFIDDataService.getScannedEpcsByOrder(String(tenantId), orderCode)
 		const queryRunner = this.tenancyService.dataSource.createQueryRunner()
 		queryRunner.startTransaction()
 		try {
@@ -94,10 +94,10 @@ export class RFIDService {
 		}
 	}
 
-	public deleteUnexpectedOrder(orderCode: string) {
+	public async deleteUnexpectedOrder(orderCode: string) {
 		if (orderCode === FALLBACK_VALUE) return // * Only delete defined manufacturing order
 		const tenantId = this.request.headers['x-tenant-id']
-		return RFIDDataService.deleteScannedEpcsByOrder(String(tenantId), orderCode)
+		return await RFIDDataService.deleteScannedEpcsByOrder(String(tenantId), orderCode)
 	}
 
 	public async searchCustomerOrder(params: SearchCustOrderParamsDTO) {
@@ -136,7 +136,7 @@ export class RFIDService {
 	public async exchangeEpc(payload: ExchangeEpcDTO) {
 		const tenantId = String(this.request.headers['x-tenant-id'])
 		const queryRunner = this.tenancyService.dataSource.createQueryRunner()
-		const scannedEpcs = RFIDDataService.getScannedEpcs(tenantId)
+		const scannedEpcs = await RFIDDataService.getScannedEpcs(tenantId)
 		let epcToExchange = scannedEpcs
 			.filter((item) => {
 				if (payload.multi) {
@@ -174,7 +174,7 @@ export class RFIDService {
 				await queryRunner.manager.update(RFIDMatchCustomerEntity, criteria, update)
 			}
 			await queryRunner.commitTransaction()
-			RFIDDataService.updateScannedEpcs(tenantId, epcToExchange, { mo_no: payload.mo_no_actual })
+			await RFIDDataService.updateScannedEpcs(tenantId, epcToExchange, { mo_no: payload.mo_no_actual })
 		} catch (e) {
 			await queryRunner.rollbackTransaction()
 			throw new InternalServerErrorException(e.message)
@@ -183,7 +183,7 @@ export class RFIDService {
 		}
 	}
 
-	public async deleteEpcBySize(_filters: DeleteEpcBySizeParams) {
-		// TODO: Implement delete from stored JSON data file
+	public async deleteEpcBySize(tenantId: string, filters: DeleteEpcBySizeParams) {
+		return await RFIDDataService.deleteScannedEpcsBySize(tenantId, filters)
 	}
 }

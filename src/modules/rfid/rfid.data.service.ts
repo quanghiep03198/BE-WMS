@@ -1,15 +1,15 @@
-import { existsSync, JsonOutputOptions, mkdirSync, outputJsonSync, readJsonSync } from 'fs-extra'
+import { NotFoundException } from '@nestjs/common'
+import { existsSync, JsonOutputOptions, outputJson, readJson, readJsonSync } from 'fs-extra'
+import { mkdir } from 'fs/promises'
 import { pick, uniqBy } from 'lodash'
 import { join, resolve } from 'path'
 import { Tenant } from '../tenancy/constants'
 import { FALLBACK_VALUE } from './constants'
 import { RFIDMatchCustomerEntity } from './entities/rfid-customer-match.entity'
-import { StoredRFIDReaderItem } from './types'
+import { DeleteEpcBySizeParams, StoredRFIDReaderItem } from './types'
 
 export class RFIDDataService {
 	protected static jsonOutputOptions: JsonOutputOptions = { spaces: 3, EOL: '\n' }
-
-	constructor() {}
 
 	static readonly DATA_DIR: string = resolve(join(__dirname, '../../data'))
 	static readonly DEKCER_API_DATA_DIR: string = resolve(join(__dirname, '../../data/__DECKER__'))
@@ -32,30 +32,27 @@ export class RFIDDataService {
 		[Tenant.KM_PRIMARY]: this.CA1_PM_DATA_FILE
 	}
 
-	public static initialize(): void {
+	public static async initialize(): Promise<void> {
 		if (!existsSync(this.DATA_DIR)) {
-			mkdirSync(this.DATA_DIR, { recursive: true })
+			mkdir(this.DATA_DIR, { recursive: true })
 		}
 		if (!existsSync(this.DEKCER_API_DATA_DIR)) {
-			mkdirSync(this.DEKCER_API_DATA_DIR, { recursive: true })
+			mkdir(this.DEKCER_API_DATA_DIR, { recursive: true })
 		}
 		if (!existsSync(this.PM_DATA_DIR)) {
-			mkdirSync(this.PM_DATA_DIR, { recursive: true })
+			mkdir(this.PM_DATA_DIR, { recursive: true })
 		}
 
-		if (!existsSync(this.VA1_PM_DATA_FILE))
-			outputJsonSync(this.VA1_PM_DATA_FILE, { epcs: [] }, this.jsonOutputOptions)
-		if (!existsSync(this.VB2_PM_DATA_FILE))
-			outputJsonSync(this.VB2_PM_DATA_FILE, { epcs: [] }, this.jsonOutputOptions)
-		if (!existsSync(this.CA1_PM_DATA_FILE))
-			outputJsonSync(this.CA1_PM_DATA_FILE, { epcs: [] }, this.jsonOutputOptions)
+		if (!existsSync(this.VA1_PM_DATA_FILE)) outputJson(this.VA1_PM_DATA_FILE, { epcs: [] }, this.jsonOutputOptions)
+		if (!existsSync(this.VB2_PM_DATA_FILE)) outputJson(this.VB2_PM_DATA_FILE, { epcs: [] }, this.jsonOutputOptions)
+		if (!existsSync(this.CA1_PM_DATA_FILE)) outputJson(this.CA1_PM_DATA_FILE, { epcs: [] }, this.jsonOutputOptions)
 
 		if (!existsSync(this.VA1_DECKER_DATA_FILE))
-			outputJsonSync(this.VA1_DECKER_DATA_FILE, { epcs: [] }, this.jsonOutputOptions)
+			outputJson(this.VA1_DECKER_DATA_FILE, { epcs: [] }, this.jsonOutputOptions)
 		if (!existsSync(this.VB2_DECKER_DATA_FILE))
-			outputJsonSync(this.VB2_DECKER_DATA_FILE, { epcs: [] }, this.jsonOutputOptions)
+			outputJson(this.VB2_DECKER_DATA_FILE, { epcs: [] }, this.jsonOutputOptions)
 		if (!existsSync(this.CA1_DECKER_DATA_FILE))
-			outputJsonSync(this.CA1_DECKER_DATA_FILE, { epcs: [] }, this.jsonOutputOptions)
+			outputJson(this.CA1_DECKER_DATA_FILE, { epcs: [] }, this.jsonOutputOptions)
 	}
 
 	public static getFetchedDeckerEpcs(tenantId: string): Record<'epc' | 'mo_no', string>[] {
@@ -66,32 +63,34 @@ export class RFIDDataService {
 	}
 
 	public static getEpcDataFile(tenantId: string): string {
-		return this.dataFiles[tenantId]
+		const dataFile = this.dataFiles[tenantId]
+		if (!dataFile) throw new NotFoundException('Data source not found')
+		return dataFile
 	}
 
-	public static getScannedEpcs(tenantId: string): StoredRFIDReaderItem[] {
+	public static async getScannedEpcs(tenantId: string): Promise<StoredRFIDReaderItem[]> {
 		const dataFile = this.dataFiles[tenantId]
-		const data = readJsonSync(dataFile)
+		const data = await readJson(dataFile)
 		if (!Array.isArray(data?.epcs)) return []
 		return data.epcs
 	}
 
-	public static getScannedEpcsByOrder(tenantId: string, orderCode: string) {
-		const dataSource = this.getScannedEpcs(tenantId)
+	public static async getScannedEpcsByOrder(tenantId: string, orderCode: string): Promise<StoredRFIDReaderItem[]> {
+		const dataSource = await this.getScannedEpcs(tenantId)
 		return dataSource.filter((item) => item.mo_no === orderCode)
 	}
 
-	public static insertScannedEpcs(tenantId: string, payload: StoredRFIDReaderItem[]) {
+	public static async insertScannedEpcs(tenantId: string, payload: StoredRFIDReaderItem[]) {
 		const dataFile = this.getEpcDataFile(tenantId)
-		const data = this.getScannedEpcs(tenantId)
-		outputJsonSync(dataFile, { epcs: uniqBy([...payload, ...data], 'epc') }, this.jsonOutputOptions)
+		const data = await this.getScannedEpcs(tenantId)
+		outputJson(dataFile, { epcs: uniqBy([...payload, ...data], 'epc') }, this.jsonOutputOptions)
 	}
 
-	public static updateUnknownScannedEpcs(tenantId: string, payload: Partial<RFIDMatchCustomerEntity>[]) {
+	public static async updateUnknownScannedEpcs(tenantId: string, payload: Partial<RFIDMatchCustomerEntity>[]) {
 		const dataFile = this.getEpcDataFile(tenantId)
-		const data = this.getScannedEpcs(tenantId)
+		const data = await this.getScannedEpcs(tenantId)
 		const update = payload.filter((item) => data.some((__item) => __item.epc === item.epc))
-		outputJsonSync(
+		outputJson(
 			dataFile,
 			{
 				epcs: data.map((item) => {
@@ -110,10 +109,10 @@ export class RFIDDataService {
 		)
 	}
 
-	public static updateScannedEpcs(tenantId: string, epcs: Array<string>, update: any) {
+	public static async updateScannedEpcs(tenantId: string, epcs: Array<string>, update: any) {
 		const dataFile = this.getEpcDataFile(tenantId)
-		const data = this.getScannedEpcs(tenantId)
-		outputJsonSync(
+		const data = await this.getScannedEpcs(tenantId)
+		outputJson(
 			dataFile,
 			{
 				epcs: data.map((item) => {
@@ -125,14 +124,34 @@ export class RFIDDataService {
 		)
 	}
 
-	public static deleteScannedEpcsByOrder(tenantId: string, orderCode: string) {
+	public static async deleteScannedEpcsByOrder(tenantId: string, orderCode: string) {
 		const dataFile = this.getEpcDataFile(tenantId)
-		const data = this.getScannedEpcs(tenantId)
-		outputJsonSync(dataFile, { epcs: data.filter((item) => item.mo_no !== orderCode) }, this.jsonOutputOptions)
+		const data = await this.getScannedEpcs(tenantId)
+		outputJson(dataFile, { epcs: data.filter((item) => item.mo_no !== orderCode) }, this.jsonOutputOptions)
 	}
 
-	public static truncateData(tenantId: string) {
+	public static async deleteScannedEpcsBySize(tenantId: string, filters: DeleteEpcBySizeParams) {
 		const dataFile = this.getEpcDataFile(tenantId)
-		outputJsonSync(dataFile, { epcs: [] }, this.jsonOutputOptions)
+		const data = await this.getScannedEpcs(tenantId)
+		const filteredData = data.filter(
+			(item) => item.mo_no !== filters['mo_no.eq'] || item.size_numcode !== filters['size_num_code.eq']
+		)
+		const remainingData = data.filter(
+			(item) => item.mo_no === filters['mo_no.eq'] && item.size_numcode === filters['size_num_code.eq']
+		)
+		const updatedData = remainingData.slice(filters['quantity.eq'])
+
+		outputJson(
+			dataFile,
+			{
+				epcs: [...filteredData, ...updatedData]
+			},
+			this.jsonOutputOptions
+		)
+	}
+
+	public static async truncateData(tenantId: string) {
+		const dataFile = this.getEpcDataFile(tenantId)
+		outputJson(dataFile, { epcs: [] }, this.jsonOutputOptions)
 	}
 }

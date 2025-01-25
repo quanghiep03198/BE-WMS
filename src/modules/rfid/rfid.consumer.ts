@@ -53,10 +53,12 @@ export class FPInventoryConsumer extends WorkerHost {
 					/* SQL */ `GETDATE() AS record_time`
 				])
 				.where(/* SQL */ `EPC_Code IN (:...epcs)`)
+				.andWhere(/* SQL */ `mo_no NOT IN (:...excludedOrders)`)
 				.setParameters({
 					fallbackValue: FALLBACK_VALUE,
 					stationNO: deviceInformation.station_no,
-					epcs: data.tagList.map((item) => item.epc)
+					epcs: data.tagList.map((item) => item.epc),
+					excludedOrders: EXCLUDED_ORDERS
 				})
 				.getRawMany<StoredRFIDReaderItem>()
 
@@ -76,10 +78,7 @@ export class FPInventoryConsumer extends WorkerHost {
 				})
 			}
 
-			RFIDDataService.insertScannedEpcs(
-				String(tenantId),
-				incommingEpcs.filter((item) => EXCLUDED_ORDERS.some((mo_no) => mo_no !== item.mo_no))
-			)
+			await RFIDDataService.insertScannedEpcs(String(tenantId), incommingEpcs)
 		} catch (e) {
 			FileLogger.error(e)
 		}

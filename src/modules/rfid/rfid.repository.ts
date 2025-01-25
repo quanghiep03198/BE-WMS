@@ -213,7 +213,7 @@ export class FPIRespository {
 
 			await queryRunner.commitTransaction()
 
-			RFIDDataService.updateUnknownScannedEpcs(tenantId, payload)
+			await RFIDDataService.updateUnknownScannedEpcs(tenantId, payload)
 		} catch (error) {
 			FileLogger.error(error)
 			await queryRunner.rollbackTransaction()

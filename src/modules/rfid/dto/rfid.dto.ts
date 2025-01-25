@@ -62,6 +62,7 @@ export const searchCustomerValidator = z.object({
 	'size_num_code.eq': z.string().optional(),
 	q: z.string()
 })
+
 export const deleteEpcBySizeValidator = z.object({
 	'mo_no.eq': z.string(),
 	'size_num_code.eq': z.string(),

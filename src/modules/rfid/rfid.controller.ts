@@ -21,6 +21,7 @@ import fs from 'fs'
 import { catchError, from, map, of, ReplaySubject } from 'rxjs'
 import { POST_DATA_QUEUE } from './constants'
 import {
+	deleteEpcBySizeValidator,
 	ExchangeEpcDTO,
 	exchangeEpcValidator,
 	PostReaderDataDTO,
@@ -32,6 +33,7 @@ import {
 } from './dto/rfid.dto'
 import { RFIDDataService } from './rfid.data.service'
 import { RFIDService } from './rfid.service'
+import { DeleteEpcBySizeParams } from './types'
 
 /**
  * @description Controller for Finished Production Inventory (FPI)
@@ -48,7 +50,6 @@ export class RFIDController {
 	async fetchLatestData(@Headers('X-Tenant-Id') tenantId: string) {
 		try {
 			const subject = new ReplaySubject<any>(1)
-			const dataFilePath = RFIDDataService.getEpcDataFile(tenantId)
 
 			const postMessage = () => {
 				from(this.rfidService.fetchLatestData({ _page: 1, _limit: 50 }))
@@ -63,6 +64,7 @@ export class RFIDController {
 
 			postMessage()
 
+			const dataFilePath = RFIDDataService.getEpcDataFile(tenantId)
 			fs.watch(dataFilePath, (_, filename) => {
 				if (filename) postMessage()
 			})
@@ -130,7 +132,7 @@ export class RFIDController {
 		})
 	}
 
-	@Throttle({ default: { limit: 3, ttl: 10000 } })
+	@Throttle({ default: { limit: 1, ttl: 5000 } })
 	@Api({
 		endpoint: 'post-data/:tenantId',
 		method: HttpMethod.POST,
@@ -173,7 +175,10 @@ export class RFIDController {
 		message: 'common.deleted'
 	})
 	@AuthGuard()
-	async deleteEpcBySize(@Query(new ZodValidationPipe(searchCustomerValidator)) queries: any) {
-		return await this.rfidService.deleteEpcBySize(queries)
+	async deleteEpcBySize(
+		@Headers('X-Tenant-Id') tenantId: string,
+		@Query(new ZodValidationPipe(deleteEpcBySizeValidator)) filters: DeleteEpcBySizeParams
+	) {
+		return await this.rfidService.deleteEpcBySize(tenantId, filters)
 	}
 }
