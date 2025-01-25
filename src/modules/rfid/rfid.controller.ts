@@ -15,6 +15,7 @@ import {
 	Query,
 	Sse
 } from '@nestjs/common'
+import { Throttle } from '@nestjs/throttler'
 import { Queue } from 'bullmq'
 import fs from 'fs'
 import { catchError, from, map, of, ReplaySubject } from 'rxjs'
@@ -129,6 +130,7 @@ export class RFIDController {
 		})
 	}
 
+	@Throttle({ default: { limit: 3, ttl: 10000 } })
 	@Api({
 		endpoint: 'post-data/:tenantId',
 		method: HttpMethod.POST,
