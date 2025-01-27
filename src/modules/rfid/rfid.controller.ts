@@ -132,7 +132,7 @@ export class RFIDController {
 		})
 	}
 
-	@Throttle({ default: { limit: 1, ttl: 5000 } })
+	@Throttle({ default: { limit: 20, ttl: 10000 } })
 	@Api({
 		endpoint: 'post-data/:tenantId',
 		method: HttpMethod.POST,
