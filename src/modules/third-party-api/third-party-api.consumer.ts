@@ -1,6 +1,6 @@
 import { FileLogger } from '@/common/helpers/file-logger.helper'
 import { Processor, WorkerHost } from '@nestjs/bullmq'
-import { Logger } from '@nestjs/common'
+import { Logger, UnauthorizedException } from '@nestjs/common'
 import { Job } from 'bullmq'
 import { groupBy } from 'lodash'
 import { RFIDMatchCustomerEntity } from '../rfid/entities/rfid-customer-match.entity'
@@ -20,14 +20,12 @@ export class ThirdPartyApiConsumer extends WorkerHost {
 	}
 
 	async process(job: Job<string[], void, string>): Promise<void> {
-		this.logger.debug('Start processing job ...')
-
 		const factoryCode: string = job.name
 		const tenantId: string = job.id
 
 		try {
 			const accessToken = await this.thirdPartyApiService.authenticate(factoryCode)
-			if (!accessToken) throw new Error('Failed to get Decker OAuth2 token')
+			if (!accessToken) throw new UnauthorizedException('Failed to get Decker OAuth2 token')
 
 			const commandNumbers = await this.fetchCommandNumbers(job.data, accessToken)
 			if (commandNumbers.length === 0) {
