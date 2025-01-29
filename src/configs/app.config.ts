@@ -62,6 +62,14 @@ export const appConfigFactory: ConfigFactory = () => ({
 			host: env('REDIS_HOST'),
 			port: env('REDIS_PORT', { serialize: (value): number => parseInt(value) }),
 			password: env('REDIS_PASSWORD')
+		},
+		defaultJobOptions: {
+			removeOnComplete: true,
+			attempts: 3,
+			backoff: {
+				type: 'exponential',
+				delay: 3000
+			}
 		}
 	} satisfies BullRootModuleOptions,
 	throttler: {
