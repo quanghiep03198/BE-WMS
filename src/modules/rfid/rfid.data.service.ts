@@ -9,7 +9,7 @@ import { RFIDMatchCustomerEntity } from './entities/rfid-customer-match.entity'
 import { DeleteEpcBySizeParams, StoredRFIDReaderItem } from './types'
 
 export class RFIDDataService {
-	protected static jsonOutputOptions: JsonOutputOptions = { spaces: 3, EOL: '\n' }
+	protected static readonly jsonOutputOptions: JsonOutputOptions = { spaces: 3, EOL: '\n' }
 
 	static readonly DATA_DIR: string = resolve(join(__dirname, '../../data'))
 	static readonly DEKCER_API_DATA_DIR: string = resolve(join(__dirname, '../../data/__DECKER__'))
