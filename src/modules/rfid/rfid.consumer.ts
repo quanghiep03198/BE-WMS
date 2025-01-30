@@ -1,6 +1,6 @@
 import { FileLogger } from '@/common/helpers/file-logger.helper'
 import { InjectQueue, Processor, WorkerHost } from '@nestjs/bullmq'
-import { Logger, Scope } from '@nestjs/common'
+import { Logger } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { Job, Queue } from 'bullmq'
 import _ from 'lodash'
@@ -15,7 +15,7 @@ import { RFIDReaderEntity } from './entities/rfid-reader.entity'
 import { RFIDDataService } from './rfid.data.service'
 import { StoredRFIDReaderItem } from './types'
 
-@Processor({ name: POST_DATA_QUEUE, scope: Scope.REQUEST })
+@Processor(POST_DATA_QUEUE)
 export class FPInventoryConsumer extends WorkerHost {
 	private readonly dataSources: Map<string, DataSource> = new Map()
 
