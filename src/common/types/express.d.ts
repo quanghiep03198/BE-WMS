@@ -4,7 +4,7 @@ export module 'express' {
 	}
 
 	export interface Request {
-		dataSource?: DataSource
+		tenancyHost?: string
 		user?: Partial<UserEntity>
 	}
 }

@@ -15,7 +15,7 @@ import { join } from 'path'
 import { DataSource } from 'typeorm'
 import { FactoryCode } from '../department/constants'
 import { RFIDMatchCustomerEntity } from '../rfid/entities/rfid-customer-match.entity'
-import { TenancyService } from '../tenancy/tenancy.service'
+import { TENANCY_DATASOURCE } from '../tenancy/constants'
 import {
 	OAuth2Credentials,
 	OAuth2TokenResponse,
@@ -28,9 +28,9 @@ export class ThirdPartyApiService {
 		@Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
 		@Inject(REQUEST) private readonly request: Request,
 		@InjectDataSource(DATA_SOURCE_ERP) private readonly dataSourceERP: DataSource,
+		@Inject(TENANCY_DATASOURCE) private readonly dataSource: DataSource,
 		private readonly httpService: HttpService,
-		private readonly configService: ConfigService,
-		private readonly tenancyService: TenancyService
+		private readonly configService: ConfigService
 	) {}
 
 	private getCredentialsByFactory(factoryCode: string): OAuth2Credentials {
@@ -149,7 +149,7 @@ export class ThirdPartyApiService {
 			throw new NotFoundException(`Order information could not be found`)
 		}
 
-		const queryRunner = this.tenancyService.dataSource.createQueryRunner()
+		const queryRunner = this.dataSource.createQueryRunner()
 
 		const sourceData = data.map((item) => ({
 			...orderInformation,
@@ -238,7 +238,7 @@ export class ThirdPartyApiService {
 			throw new NotFoundException(`Order information could not be found`)
 		}
 
-		const queryRunner = this.tenancyService.dataSource.createQueryRunner()
+		const queryRunner = this.dataSource.createQueryRunner()
 		await queryRunner.connect()
 
 		const upsertPayload = {

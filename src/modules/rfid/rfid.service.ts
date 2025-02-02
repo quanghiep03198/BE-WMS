@@ -6,7 +6,7 @@ import { Request } from 'express'
 import { chunk, groupBy, pick } from 'lodash'
 import { I18nContext, I18nService } from 'nestjs-i18n'
 import { Brackets, DataSource, FindOptionsWhere, In } from 'typeorm'
-import { TenancyService } from '../tenancy/tenancy.service'
+import { TENANCY_DATASOURCE } from '../tenancy/constants'
 import { FALLBACK_VALUE } from './constants'
 import { ExchangeEpcDTO, SearchCustOrderParamsDTO, UpdateStockDTO } from './dto/rfid.dto'
 import { FPInventoryEntity } from './entities/fp-inventory.entity'
@@ -20,11 +20,11 @@ import { DeleteEpcBySizeParams, RFIDSearchParams } from './types'
 @Injectable({ scope: Scope.REQUEST })
 export class RFIDService {
 	constructor(
+		@Inject(REQUEST) private readonly request: Request,
 		@InjectDataSource(DATA_SOURCE_DATA_LAKE) private readonly datasourceDL: DataSource,
 		@InjectDataSource(DATA_SOURCE_ERP) private readonly datasourceERP: DataSource,
-		@Inject(REQUEST) private readonly request: Request,
-		private readonly i18n: I18nService,
-		private readonly tenancyService: TenancyService
+		@Inject(TENANCY_DATASOURCE) private readonly dataSource: DataSource | undefined,
+		private readonly i18n: I18nService
 	) {}
 
 	public async fetchLatestData(args: RFIDSearchParams) {
@@ -78,14 +78,14 @@ export class RFIDService {
 	public async updateFPStock(orderCode: string, data: UpdateStockDTO) {
 		const tenantId = this.request.headers['x-tenant-id']
 		const payload = await RFIDDataService.getScannedEpcsByOrder(String(tenantId), orderCode)
-		const queryRunner = this.tenancyService.dataSource.createQueryRunner()
+		const queryRunner = this.dataSource.createQueryRunner()
 		queryRunner.startTransaction()
 		try {
 			for (const item of chunk(
 				payload.map((value) => ({ ...value, ...data })),
 				100
 			)) {
-				await this.tenancyService.dataSource.getRepository(FPInventoryEntity).insert(item)
+				await this.dataSource.getRepository(FPInventoryEntity).insert(item)
 			}
 			queryRunner.commitTransaction()
 			RFIDDataService.deleteScannedEpcsByOrder(String(tenantId), orderCode)
@@ -135,7 +135,7 @@ export class RFIDService {
 	// TODO: Implement update from stored JSON data file and dv_rfidmatchmst_cust table
 	public async exchangeEpc(payload: ExchangeEpcDTO) {
 		const tenantId = String(this.request.headers['x-tenant-id'])
-		const queryRunner = this.tenancyService.dataSource.createQueryRunner()
+		const queryRunner = this.dataSource.createQueryRunner()
 		const scannedEpcs = await RFIDDataService.getScannedEpcs(tenantId)
 		let epcToExchange = scannedEpcs
 			.filter((item) => {

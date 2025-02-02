@@ -1,30 +1,34 @@
-import { Injectable } from '@nestjs/common'
+import { Inject, Injectable } from '@nestjs/common'
 import { format } from 'date-fns'
 import { Workbook } from 'exceljs'
 import { readFileSync } from 'fs'
 import { I18nContext, I18nService } from 'nestjs-i18n'
 import { join } from 'path'
+import { DataSource } from 'typeorm'
 import { EXCLUDED_EPC_PATTERN, EXCLUDED_ORDERS, FALLBACK_VALUE } from '../rfid/constants'
 import { FPInventoryEntity } from '../rfid/entities/fp-inventory.entity'
 import { RFIDMatchCustomerEntity } from '../rfid/entities/rfid-customer-match.entity'
-import { TenancyService } from '../tenancy/tenancy.service'
+import { TENANCY_DATASOURCE } from '../tenancy/constants'
 
 @Injectable()
 export class ReportService {
 	constructor(
-		private readonly tenancyService: TenancyService,
+		@Inject(TENANCY_DATASOURCE) private readonly dataSource: DataSource,
 		private readonly i18nService: I18nService
 	) {}
 
 	async getInboundReportByDate(date: string) {
-		const queryRunner = this.tenancyService.dataSource.createQueryRunner()
+		const queryRunner = this.dataSource.createQueryRunner()
 		await queryRunner.connect()
 		const query = readFileSync(join(__dirname, './sql/inbound-report.sql'), 'utf-8').toString()
 		return await queryRunner.manager.query(query, [date])
 	}
 
+	/**
+	 * @deprecated
+	 */
 	async getDailyInboundReport() {
-		return await this.tenancyService.dataSource
+		return await this.dataSource
 			.getRepository(FPInventoryEntity)
 			.createQueryBuilder('inv')
 			.select(/* SQL */ `DISTINCT COALESCE(inv.mo_no_actual, inv.mo_no, :fallbackValue) AS mo_no`)

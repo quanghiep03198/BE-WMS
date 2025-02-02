@@ -11,20 +11,20 @@ import { DeleteEpcBySizeParams, StoredRFIDReaderData, StoredRFIDReaderItem } fro
 export class RFIDDataService {
 	protected static readonly jsonOutputOptions: JsonOutputOptions = { spaces: 3, EOL: '\n' }
 
-	static readonly DATA_DIR: string = join(process.cwd(), 'data')
-	static readonly DEKCER_API_DATA_DIR: string = join(process.cwd(), '/data/__DECKER__')
-	static readonly PM_DATA_DIR: string = join(process.cwd(), '/data/__PM__')
+	static readonly DATA_DIR: string = join(process.cwd(), '/data')
+	static readonly DEKCER_API_DATA_DIR: string = join(process.cwd(), '/data/@DECKER')
+	static readonly PM_DATA_DIR: string = join(process.cwd(), '/data/@FP')
 
 	// * Decker RFID data files
-	static readonly VA1_DECKER_DATA_FILE: string = resolve(this.DEKCER_API_DATA_DIR, '[VA1]-decker-api.data.json')
-	static readonly VB2_DECKER_DATA_FILE: string = resolve(this.DEKCER_API_DATA_DIR, '[VB2]-decker-api.data.json')
-	static readonly CA1_DECKER_DATA_FILE: string = resolve(this.DEKCER_API_DATA_DIR, '[CA1]-decker-api.data.json')
+	static readonly VA1_DECKER_DATA_FILE: string = resolve(this.DEKCER_API_DATA_DIR, 'VA1.data.json')
+	static readonly VB2_DECKER_DATA_FILE: string = resolve(this.DEKCER_API_DATA_DIR, 'VB2.data.json')
+	static readonly CA1_DECKER_DATA_FILE: string = resolve(this.DEKCER_API_DATA_DIR, 'CA1.data.json')
 
 	// * Production Warehouse RFID data files
-	static readonly DEV_PM_DATA_FILE: string = resolve(this.PM_DATA_DIR, '[DEV]-pm-rfid.data.json') // * Only for used in development
-	static readonly VA1_PM_DATA_FILE: string = resolve(this.PM_DATA_DIR, '[VA1]-pm-rfid.data.json')
-	static readonly VB2_PM_DATA_FILE: string = resolve(this.PM_DATA_DIR, '[VB2]-pm-rfid.data.json')
-	static readonly CA1_PM_DATA_FILE: string = resolve(this.PM_DATA_DIR, '[CA1]-pm-rfid.data.json')
+	static readonly DEV_PM_DATA_FILE: string = resolve(this.PM_DATA_DIR, 'DEV.data.json') // * Only for used in development
+	static readonly VA1_PM_DATA_FILE: string = resolve(this.PM_DATA_DIR, 'VA1.data.json')
+	static readonly VB2_PM_DATA_FILE: string = resolve(this.PM_DATA_DIR, 'VB2.data.json')
+	static readonly CA1_PM_DATA_FILE: string = resolve(this.PM_DATA_DIR, 'CA1.data.json')
 
 	static readonly dataFiles: Record<string, string> = {
 		[Tenant.DEV]: this.DEV_PM_DATA_FILE, // * Only for used in development

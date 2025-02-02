@@ -13,9 +13,10 @@ import {
 	Param,
 	ParseIntPipe,
 	Query,
-	Sse
+	Sse,
+	UseGuards
 } from '@nestjs/common'
-import { Throttle } from '@nestjs/throttler'
+import { ThrottlerGuard } from '@nestjs/throttler'
 import { Queue } from 'bullmq'
 import fs from 'fs'
 import { catchError, from, map, of, ReplaySubject } from 'rxjs'
@@ -38,6 +39,7 @@ import { DeleteEpcBySizeParams } from './types'
 /**
  * @description Controller for Finished Production Inventory (FPI)
  */
+
 @Controller('rfid')
 export class RFIDController {
 	constructor(
@@ -132,18 +134,20 @@ export class RFIDController {
 		})
 	}
 
-	@Throttle({ default: { limit: 20, ttl: 10000 } })
 	@Api({
 		endpoint: 'post-data/:tenantId',
 		method: HttpMethod.POST,
 		statusCode: HttpStatus.CREATED,
 		message: 'common.created'
 	})
+	@UseGuards(ThrottlerGuard)
 	async postData(
 		@Param('tenantId') tenantId: string,
 		@Body(new ZodValidationPipe(readerPostDataValidator)) payload: PostReaderDataDTO
 	) {
-		return await this.postDataQueue.add(tenantId, payload)
+		return await this.postDataQueue.add(tenantId, payload, {
+			deduplication: { id: tenantId, ttl: 3000 }
+		})
 	}
 
 	@Api({

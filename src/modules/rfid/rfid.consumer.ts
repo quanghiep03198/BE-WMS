@@ -1,12 +1,12 @@
 import { FileLogger } from '@/common/helpers/file-logger.helper'
-import { InjectQueue, Processor, WorkerHost } from '@nestjs/bullmq'
+import { InjectQueue, OnWorkerEvent, Processor, WorkerHost } from '@nestjs/bullmq'
 import { Logger } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { Job, Queue } from 'bullmq'
 import _ from 'lodash'
 import { DataSource } from 'typeorm'
 import { SqlServerConnectionOptions } from 'typeorm/driver/sqlserver/SqlServerConnectionOptions'
-import { TenancyService } from '../tenancy/tenancy.service'
+import { Tenant } from '../tenancy/constants'
 import { THIRD_PARTY_API_SYNC } from '../third-party-api/constants'
 import { EXCLUDED_ORDERS, FALLBACK_VALUE, POST_DATA_QUEUE } from './constants'
 import { PostReaderDataDTO } from './dto/rfid.dto'
@@ -15,14 +15,32 @@ import { RFIDReaderEntity } from './entities/rfid-reader.entity'
 import { RFIDDataService } from './rfid.data.service'
 import { StoredRFIDReaderItem } from './types'
 
-@Processor(POST_DATA_QUEUE)
+@Processor(POST_DATA_QUEUE, { concurrency: 10 })
 export class FPInventoryConsumer extends WorkerHost {
+	private readonly logger = new Logger(FPInventoryConsumer.name)
 	private readonly dataSources: Map<string, DataSource> = new Map()
+	private readonly tenants = [
+		{
+			id: Tenant.DEV,
+			host: this.configService.get('TENANT_DEV')
+		},
+		{
+			id: Tenant.VN_LIANYING_PRIMARY,
+			host: this.configService.get('TENANT_VN_LIANYING_PRIMARY')
+		},
+		{
+			id: Tenant.VN_LIANSHUN_PRIMARY,
+			host: this.configService.get('TENANT_VN_LIANSHUN_PRIMARY')
+		},
+		{
+			id: Tenant.KM_PRIMARY,
+			host: this.configService.get('TENANT_KM_PRIMARY')
+		}
+	]
 
 	constructor(
 		@InjectQueue(THIRD_PARTY_API_SYNC) private readonly thirdPartyApiSyncQueue: Queue,
-		private readonly configService: ConfigService,
-		private readonly tenancyService: TenancyService
+		private readonly configService: ConfigService
 	) {
 		super()
 	}
@@ -35,6 +53,7 @@ export class FPInventoryConsumer extends WorkerHost {
 	public async process(job: Job<PostReaderDataDTO, void, string>): Promise<void> {
 		try {
 			const tenantId = job.name
+
 			const { data, sn } = job.data
 
 			const dataSource = await this.getOrCreateDataSource(tenantId)
@@ -64,7 +83,6 @@ export class FPInventoryConsumer extends WorkerHost {
 					excludedOrders: EXCLUDED_ORDERS
 				})
 				.getRawMany<StoredRFIDReaderItem>()
-
 			// * Check if EPC have no information, trigger queue to fetch from third party API
 			const validUnknownEpcs = incommingEpcs.filter(
 				(item) => item.mo_no === FALLBACK_VALUE && !item.epc.startsWith('E28')
@@ -81,11 +99,26 @@ export class FPInventoryConsumer extends WorkerHost {
 				})
 			}
 
-			await RFIDDataService.insertScannedEpcs(String(tenantId), incommingEpcs)
+			await RFIDDataService.insertScannedEpcs(tenantId, incommingEpcs)
 		} catch (e) {
-			Logger.error(e)
+			this.logger.error(e)
 			FileLogger.error(e)
 		}
+	}
+
+	@OnWorkerEvent('active')
+	async onWorkerActive(job: Job) {
+		this.logger.log(`Job "${job.name}" is active`)
+	}
+
+	@OnWorkerEvent('completed')
+	onWorkerCompleted(job: Job) {
+		this.logger.log(`Job "${job.name}" completed`)
+	}
+
+	@OnWorkerEvent('failed')
+	onWorkerFailed(job: Job) {
+		this.logger.error(`Job "${job.name}" failed`)
 	}
 
 	/**
@@ -97,7 +130,8 @@ export class FPInventoryConsumer extends WorkerHost {
 		if (this.dataSources.has(tenantId)) {
 			return this.dataSources.get(tenantId)
 		}
-		const tenant = await this.tenancyService.findOneById(tenantId)
+		const tenant = this.tenants.find((tenant) => tenant.id === tenantId)
+
 		const dataSource = new DataSource({
 			...this.configService.getOrThrow<SqlServerConnectionOptions>('database'),
 			host: tenant.host,
@@ -107,6 +141,7 @@ export class FPInventoryConsumer extends WorkerHost {
 			await dataSource.initialize()
 		}
 		this.dataSources.set(tenantId, dataSource)
+
 		return dataSource
 	}
 }

@@ -1,6 +1,6 @@
 import { FileLogger } from '@/common/helpers/file-logger.helper'
 import { DATA_SOURCE_DATA_LAKE, DATA_SOURCE_ERP, DATABASE_DATA_LAKE } from '@/databases/constants'
-import { Injectable } from '@nestjs/common'
+import { Inject, Injectable } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { InjectDataSource } from '@nestjs/typeorm'
 import fs from 'fs'
@@ -9,6 +9,7 @@ import { chunk, groupBy } from 'lodash'
 import path, { join } from 'path'
 import { DataSource, IsNull, Like, Not } from 'typeorm'
 import { SqlServerConnectionOptions } from 'typeorm/driver/sqlserver/SqlServerConnectionOptions'
+import { TENANCY_DATASOURCE } from '../tenancy/constants'
 import { TenancyService } from '../tenancy/tenancy.service'
 import { EXCLUDED_EPC_PATTERN, EXCLUDED_ORDERS, FALLBACK_VALUE, INTERNAL_EPC_PATTERN } from './constants'
 import { ExchangeEpcDTO } from './dto/rfid.dto'
@@ -23,6 +24,7 @@ export class FPIRespository {
 	constructor(
 		@InjectDataSource(DATA_SOURCE_DATA_LAKE) private readonly dataSourceDL: DataSource,
 		@InjectDataSource(DATA_SOURCE_ERP) private readonly dataSourceERP: DataSource,
+		@Inject(TENANCY_DATASOURCE) private readonly dataSource: DataSource,
 		private readonly tenancyService: TenancyService,
 		private readonly configService: ConfigService
 	) {}
@@ -31,7 +33,7 @@ export class FPIRespository {
 	 * @description Get manufacturing order sizes by EPCs
 	 */
 	async getOrderDetailByEpcs(epcs: Record<'epc' | 'mo_no', string>[]) {
-		const result = await this.tenancyService.dataSource.query(
+		const result = await this.dataSource.query(
 			fs.readFileSync(path.join(__dirname, './sql/order-detail.sql'), { encoding: 'utf-8' }).toString(),
 			[epcs.map((item) => item.epc).join(','), EXCLUDED_ORDERS.join(',')]
 		)
@@ -54,7 +56,7 @@ export class FPIRespository {
 	async getAllExchangableEpc(payload: Pick<ExchangeEpcDTO, 'mo_no' | 'mo_no_actual' | 'quantity'>) {
 		const { mo_no, mo_no_actual } = payload
 		if (mo_no === FALLBACK_VALUE) {
-			return await this.tenancyService.dataSource
+			return await this.dataSource
 				.getRepository(FPInventoryEntity)
 				.createQueryBuilder('inv')
 				.select('inv.epc', 'epc')
@@ -68,7 +70,7 @@ export class FPIRespository {
 
 		const ordersToExchange = mo_no.split(',').map((m) => m.trim())
 
-		const subQuery = this.tenancyService.dataSource
+		const subQuery = this.dataSource
 			.getRepository(RFIDMatchCustomerEntity)
 			.createQueryBuilder('cust1')
 			.select(/* SQL */ `cust1.EPC_Code`)
@@ -76,7 +78,7 @@ export class FPIRespository {
 				ordersToExchange
 			})
 
-		return await this.tenancyService.dataSource
+		return await this.dataSource
 			.getRepository(FPInventoryEntity)
 			.createQueryBuilder('inv')
 			.select(/* SQL */ `inv.EPC_Code`, 'epc')
@@ -93,7 +95,7 @@ export class FPIRespository {
 	 * @description Get exchangable EPC by size
 	 */
 	async getExchangableEpcBySize(payload: ExchangeEpcDTO) {
-		return await this.tenancyService.dataSource
+		return await this.dataSource
 			.getRepository(FPInventoryEntity)
 			.createQueryBuilder('inv')
 			.select(/* SQL */ `cust.epc`, 'epc')

@@ -1,19 +1,18 @@
-import { Inject, Injectable, NotFoundException, OnModuleDestroy, Scope } from '@nestjs/common'
+import { Injectable, NotFoundException, OnModuleDestroy } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
-import { REQUEST } from '@nestjs/core'
-import { Request } from 'express'
 import { omit } from 'lodash'
+import { join } from 'path'
 import { DataSource } from 'typeorm'
+import { SqlServerConnectionOptions } from 'typeorm/driver/sqlserver/SqlServerConnectionOptions'
 import { FactoryCode } from '../department/constants'
 import { Tenant } from './constants'
 import { ITenancy } from './interfaces'
 
-@Injectable({ scope: Scope.REQUEST })
+@Injectable()
 export class TenancyService implements OnModuleDestroy {
-	constructor(
-		@Inject(REQUEST) private readonly request: Request,
-		private readonly configService: ConfigService
-	) {}
+	private dataSources: Map<string, DataSource> = new Map()
+
+	constructor(private readonly configService: ConfigService) {}
 
 	private readonly tenants: Array<ITenancy> = [
 		{
@@ -70,21 +69,20 @@ export class TenancyService implements OnModuleDestroy {
 	]
 
 	onModuleDestroy() {
-		if (typeof this.request?.dataSource?.destroy === 'function') {
-			this.dataSource.destroy()
+		for (const dataSource of this.dataSources.values()) {
+			if (dataSource.isInitialized) {
+				dataSource.destroy()
+			}
 		}
-	}
-
-	public get dataSource(): DataSource {
-		return this.request.dataSource
+		this.dataSources.clear()
 	}
 
 	private getHostAlias(host: string) {
 		return host.split('.').slice(-2).join('.')
 	}
 
-	public findOneById(id: string) {
-		const tenant = this.tenants.find((tenancy) => tenancy.id === id)
+	public findOneById(tenantId: string) {
+		const tenant = this.tenants.find((tenancy) => tenancy.id === tenantId)
 		if (!tenant) throw new NotFoundException('No available tenant')
 		return tenant
 	}
@@ -99,5 +97,22 @@ export class TenancyService implements OnModuleDestroy {
 		const tenant = this.tenants.find((tenant) => tenant.factories.includes(factoryCode) && tenant.default)
 		if (!tenant) throw new NotFoundException('No available tenant')
 		return omit(tenant, 'host')
+	}
+
+	public async getDataSourceByHost(host: string) {
+		if (!this.dataSources.has(host)) {
+			const dataSource = new DataSource({
+				...this.configService.getOrThrow<SqlServerConnectionOptions>('database'),
+				entities: [join(__dirname, '../**/*.entity.{ts,js}')],
+				host: host
+			})
+			this.dataSources.set(host, dataSource)
+		}
+
+		const dataSource = this.dataSources.get(host)
+
+		if (!dataSource.isInitialized) await dataSource.initialize()
+
+		return dataSource
 	}
 }
