@@ -90,7 +90,6 @@ import { WarehouseModule } from './modules/warehouse/warehouse.module'
 	controllers: [AppController],
 	providers: [
 		FileLoggerJobService,
-
 		{
 			provide: APP_FILTER,
 			useClass: SentryGlobalFilter
