@@ -72,8 +72,21 @@ export const appConfigFactory: ConfigFactory = () => ({
 			}
 		}
 	} satisfies BullRootModuleOptions,
-	throttler: {
-		ttl: env('THROTTLER_TTL', { serialize: (value): number => parseInt(value) }),
-		limit: env('THROTTLER_LIMIT', { serialize: (value): number => parseInt(value) })
-	} satisfies ThrottlerOptions
+	throttler: [
+		{
+			name: 'short',
+			ttl: 1000,
+			limit: 3
+		},
+		{
+			name: 'medium',
+			ttl: 10000,
+			limit: 20
+		},
+		{
+			name: 'long',
+			ttl: 60000,
+			limit: 100
+		}
+	] satisfies ThrottlerOptions[]
 })
