@@ -3,12 +3,13 @@
  * @property {string} name
  * @property {string} script
  * @property {string} args
- * @property {string} interpreter
+ * @property {number} instances
  * @property {string} interpreter
  * @property {string} node_args
  * @property {string} cwd
  * @property {boolean} autorestart
- * @property {boolean} watch
+ * @property {boolean | string | string[]} watch
+ * @property {boolean | string | string[]} ignore_watch
  * @property {string} exec_mode
  * @property {string} max_memory_restart
  * @property {string} cron_restart
@@ -39,8 +40,15 @@ module.exports = {
 			script: './dist/main.js',
 			cwd: __dirname,
 			watch: false,
+			ignore_watch: ['data'],
 			exec_mode: 'cluster',
-			max_memory_restart: '500M'
+			instances: 2,
+			max_memory_restart: '300M',
+			increment_var: 'PORT',
+			env: {
+				NODE_ENV: 'production',
+				PORT: 3001
+			}
 		}
 	]
 }
