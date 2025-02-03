@@ -13,7 +13,7 @@ export class RFIDDataService {
 
 	static readonly DATA_DIR: string = join(process.cwd(), '/data')
 	static readonly DEKCER_API_DATA_DIR: string = join(process.cwd(), '/data/@DECKER')
-	static readonly PM_DATA_DIR: string = join(process.cwd(), '/data/@FP')
+	static readonly PM_DATA_DIR: string = join(process.cwd(), '/data/@FPW')
 
 	// * Decker RFID data files
 	static readonly VA1_DECKER_DATA_FILE: string = resolve(this.DEKCER_API_DATA_DIR, 'VA1.data.json')
