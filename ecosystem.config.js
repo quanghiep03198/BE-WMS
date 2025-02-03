@@ -43,6 +43,7 @@ module.exports = {
 			ignore_watch: ['data'],
 			exec_mode: 'cluster',
 			instances: 2,
+			autorestart: true,
 			max_memory_restart: '300M',
 			increment_var: 'PORT',
 			env: {
