@@ -13,10 +13,8 @@ import {
 	Param,
 	ParseIntPipe,
 	Query,
-	Sse,
-	UseGuards
+	Sse
 } from '@nestjs/common'
-import { ThrottlerGuard } from '@nestjs/throttler'
 import { Queue } from 'bullmq'
 import fs from 'fs'
 import { catchError, from, map, of, ReplaySubject } from 'rxjs'
@@ -140,7 +138,6 @@ export class RFIDController {
 		statusCode: HttpStatus.CREATED,
 		message: 'common.created'
 	})
-	@UseGuards(ThrottlerGuard)
 	async postData(
 		@Param('tenantId') tenantId: string,
 		@Body(new ZodValidationPipe(readerPostDataValidator)) payload: PostReaderDataDTO
