@@ -2,6 +2,8 @@
 import { DataSourceOptions } from 'typeorm'
 
 export declare global {
+	type RuntimeEnvironment = 'development' | 'production' | 'test'
+
 	interface PaginationParams {
 		limit: number
 		page: number
@@ -18,7 +20,8 @@ export declare global {
 
 	namespace NodeJS {
 		interface ProcessEnv {
-			NODE_ENV: 'development' | 'production' | 'test'
+			NODE_ENV: RuntimeEnvironment
+			HOST: string
 			PORT: string
 			FALLBACK_LANGUAGE: string
 			// * Throttler
