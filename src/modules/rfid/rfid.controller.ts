@@ -142,9 +142,10 @@ export class RFIDController {
 		@Param('tenantId') tenantId: string,
 		@Body(new ZodValidationPipe(readerPostDataValidator)) payload: PostReaderDataDTO
 	) {
-		return await this.postDataQueue.add(tenantId, payload, {
-			deduplication: { id: tenantId, ttl: 3000 }
-		})
+		if (payload?.data?.tagList?.length > 0)
+			return await this.postDataQueue.add(tenantId, payload, {
+				deduplication: { id: tenantId, ttl: 3000 }
+			})
 	}
 
 	@Api({
