@@ -74,20 +74,23 @@ export const readerPostDataValidator = z.object({
 	sn: z.string(),
 	timestamp: z.string(),
 	data: z.object({
-		timestamp: z.string(),
-		id: z.string(),
-		temperature: z.string(),
-		tagList: z.array(
-			z.object({
-				direction: z.string(),
-				firstTime: z.number(),
-				lastTime: z.number(),
-				ant: z.number(),
-				firstAnt: z.number(),
-				rssi: z.string(),
-				epc: z.string()
-			})
-		)
+		timestamp: z.string().optional(),
+		id: z.string().optional(),
+		temperature: z.string().optional(),
+		tagList: z
+			.array(
+				z.object({
+					direction: z.string(),
+					firstTime: z.number(),
+					lastTime: z.number(),
+					ant: z.number(),
+					firstAnt: z.number(),
+					rssi: z.string(),
+					epc: z.string()
+				})
+			)
+			.optional()
+			.default([])
 	})
 })
 
