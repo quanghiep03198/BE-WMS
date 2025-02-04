@@ -22,10 +22,10 @@ export class TenancyService implements OnModuleDestroy {
 			alias: this.getHostAlias(this.configService.get('TENANT_DEV'))
 		},
 		{
-			id: Tenant.MAIN,
+			id: Tenant.MAIN_21,
 			factories: [FactoryCode.GL1, FactoryCode.GL3, FactoryCode.GL4],
-			host: this.configService.get('TENANT_MAIN'),
-			alias: this.getHostAlias(this.configService.get('TENANT_MAIN'))
+			host: this.configService.get('TENANT_MAIN_21'),
+			alias: this.getHostAlias(this.configService.get('TENANT_MAIN_21'))
 		},
 		{
 			id: Tenant.VN_LIANYING_PRIMARY,

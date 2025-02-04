@@ -1,3 +1,27 @@
+require('dotenv').config()
+
+/** @type {EcosystemConfig} */
+module.exports = {
+	apps: [
+		{
+			name: 'wms-api',
+			script: './dist/main.js',
+			cwd: __dirname,
+			watch: process.env.NODE_ENV === 'development' ? ['src', 'dist', '.env'] : false,
+			ignore_watch: ['data'],
+			autorestart: true,
+			exec_mode: 'cluster',
+			instances: 2,
+			max_memory_restart: '500m',
+			increment_var: 'PORT',
+			env: {
+				NODE_ENV: process.env.NODE_ENV,
+				PORT: process.env.PORT
+			}
+		}
+	]
+}
+
 /**
  * @typedef AppConfig
  * @property {string} name
@@ -31,25 +55,3 @@
  * @property {AppConfig[]} apps
  * @property {Object.<string, DeployConfig>} deploy
  */
-
-/** @type {EcosystemConfig} */
-module.exports = {
-	apps: [
-		{
-			name: 'wms-api',
-			script: './dist/main.js',
-			cwd: __dirname,
-			watch: false,
-			ignore_watch: ['data'],
-			exec_mode: 'cluster',
-			instances: 2,
-			autorestart: true,
-			max_memory_restart: '300M',
-			increment_var: 'PORT',
-			env: {
-				NODE_ENV: 'production',
-				PORT: 3001
-			}
-		}
-	]
-}

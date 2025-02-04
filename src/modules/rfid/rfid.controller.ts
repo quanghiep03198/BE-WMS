@@ -2,7 +2,6 @@ import { Api, HttpMethod } from '@/common/decorators/api.decorator'
 import { AuthGuard } from '@/common/decorators/auth.decorator'
 import { User } from '@/common/decorators/user.decorator'
 import { ZodValidationPipe } from '@/common/pipes/zod-validation.pipe'
-import { InjectQueue } from '@nestjs/bullmq'
 import {
 	Body,
 	Controller,
@@ -15,10 +14,8 @@ import {
 	Query,
 	Sse
 } from '@nestjs/common'
-import { Queue } from 'bullmq'
 import fs from 'fs'
 import { catchError, from, map, of, ReplaySubject } from 'rxjs'
-import { POST_DATA_QUEUE } from './constants'
 import {
 	deleteEpcBySizeValidator,
 	ExchangeEpcDTO,
@@ -40,10 +37,7 @@ import { DeleteEpcBySizeParams } from './types'
 
 @Controller('rfid')
 export class RFIDController {
-	constructor(
-		@InjectQueue(POST_DATA_QUEUE) private readonly postDataQueue: Queue,
-		private readonly rfidService: RFIDService
-	) {}
+	constructor(private readonly rfidService: RFIDService) {}
 
 	@Sse('sse')
 	@AuthGuard()
@@ -62,8 +56,10 @@ export class RFIDController {
 					})
 			}
 
+			// * Initial fetch
 			postMessage()
 
+			// * Watch for changes in the data file
 			const dataFilePath = RFIDDataService.getEpcDataFile(tenantId)
 			fs.watch(dataFilePath, (_, filename) => {
 				if (filename) postMessage()
@@ -142,9 +138,7 @@ export class RFIDController {
 		@Param('tenantId') tenantId: string,
 		@Body(new ZodValidationPipe(readerPostDataValidator)) payload: PostReaderDataDTO
 	) {
-		return await this.postDataQueue.add(tenantId, payload, {
-			deduplication: { id: tenantId, ttl: 3000 }
-		})
+		return await this.rfidService.addPostDataQueueJob(tenantId, payload)
 	}
 
 	@Api({

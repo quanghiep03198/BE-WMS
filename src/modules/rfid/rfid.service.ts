@@ -1,14 +1,16 @@
 import { DATA_SOURCE_DATA_LAKE, DATA_SOURCE_ERP } from '@/databases/constants'
+import { InjectQueue } from '@nestjs/bullmq'
 import { Inject, Injectable, InternalServerErrorException, NotFoundException, Scope } from '@nestjs/common'
 import { REQUEST } from '@nestjs/core'
 import { InjectDataSource } from '@nestjs/typeorm'
+import { Queue } from 'bullmq'
 import { Request } from 'express'
-import { chunk, groupBy, pick } from 'lodash'
+import { chunk, groupBy, omit, pick } from 'lodash'
 import { I18nContext, I18nService } from 'nestjs-i18n'
 import { Brackets, DataSource, FindOptionsWhere, In } from 'typeorm'
-import { TENANCY_DATASOURCE } from '../tenancy/constants'
-import { FALLBACK_VALUE } from './constants'
-import { ExchangeEpcDTO, SearchCustOrderParamsDTO, UpdateStockDTO } from './dto/rfid.dto'
+import { TENANCY_DATASOURCE, Tenant } from '../tenancy/constants'
+import { FALLBACK_VALUE, POST_DATA_QUEUE_GL1, POST_DATA_QUEUE_GL3, POST_DATA_QUEUE_GL4 } from './constants'
+import { ExchangeEpcDTO, PostReaderDataDTO, SearchCustOrderParamsDTO, UpdateStockDTO } from './dto/rfid.dto'
 import { FPInventoryEntity } from './entities/fp-inventory.entity'
 import { RFIDMatchCustomerEntity } from './entities/rfid-customer-match.entity'
 import { RFIDDataService } from './rfid.data.service'
@@ -21,15 +23,37 @@ import { DeleteEpcBySizeParams, RFIDSearchParams } from './types'
 export class RFIDService {
 	constructor(
 		@Inject(REQUEST) private readonly request: Request,
+		@Inject(TENANCY_DATASOURCE) private readonly dataSource: DataSource | undefined,
 		@InjectDataSource(DATA_SOURCE_DATA_LAKE) private readonly datasourceDL: DataSource,
 		@InjectDataSource(DATA_SOURCE_ERP) private readonly datasourceERP: DataSource,
-		@Inject(TENANCY_DATASOURCE) private readonly dataSource: DataSource | undefined,
+		@InjectQueue(POST_DATA_QUEUE_GL1) private readonly postDataQueueGL1: Queue,
+		@InjectQueue(POST_DATA_QUEUE_GL3) private readonly postDataQueueGL3: Queue,
+		@InjectQueue(POST_DATA_QUEUE_GL4) private readonly postDataQueueGL4: Queue,
 		private readonly i18n: I18nService
 	) {}
 
+	public async addPostDataQueueJob(tenant: string, data: PostReaderDataDTO) {
+		const queue = this.getQueueByTenant(tenant)
+		if (!queue)
+			throw new NotFoundException(this.i18n.t('rfid.errors.invalid_tenant', { lang: I18nContext.current().lang }))
+		return await queue.add(tenant, data, { lifo: true })
+	}
+
+	private getQueueByTenant(tenant: string): Queue | null {
+		switch (tenant) {
+			case Tenant.VN_LIANYING_PRIMARY:
+				return this.postDataQueueGL1
+			case Tenant.VN_LIANSHUN_PRIMARY:
+				return this.postDataQueueGL3
+			case Tenant.KM_PRIMARY:
+				return this.postDataQueueGL4
+			default:
+				return null
+		}
+	}
+
 	public async fetchLatestData(args: RFIDSearchParams) {
 		const [epcs, orders] = await Promise.all([this.getIncomingEpcs(args), this.getOrderDetails()])
-
 		return { epcs, orders }
 	}
 
@@ -37,13 +61,15 @@ export class RFIDService {
 		const tenantId = this.request.headers['x-tenant-id']
 		const epcs = await RFIDDataService.getScannedEpcs(String(tenantId))
 
-		const totalDocs = epcs.length
+		const data = epcs
+			.filter((item) => (!args['mo_no.eq'] ? true : item.mo_no === args['mo_no.eq']))
+			.map((item) => omit(item, 'record_time'))
+
+		const totalDocs = data.length
 		const totalPages = Math.ceil(totalDocs / args._limit)
 
 		return {
-			data: epcs
-				.slice((args._page - 1) * args._limit, args._page * args._limit)
-				.filter((item) => (!args['mo_no.eq'] ? true : item.mo_no === args['mo_no.eq'])),
+			data: data.slice((args._page - 1) * args._limit, args._page * args._limit),
 			totalDocs: totalDocs,
 			totalPages: totalPages,
 			limit: args._limit,

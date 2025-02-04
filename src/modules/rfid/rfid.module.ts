@@ -1,3 +1,4 @@
+import env from '@/common/utils/env.util'
 import { DATA_SOURCE_DATA_LAKE } from '@/databases/constants'
 import { BullModule } from '@nestjs/bullmq'
 import { MiddlewareConsumer, Module, NestModule, RequestMethod } from '@nestjs/common'
@@ -6,11 +7,10 @@ import { TenacyMiddleware } from '../tenancy/tenancy.middleware'
 import { TenancyModule } from '../tenancy/tenancy.module'
 import { THIRD_PARTY_API_SYNC } from '../third-party-api/constants'
 import { ThirdPartyApiModule } from '../third-party-api/third-party-api.module'
-import { POST_DATA_QUEUE } from './constants'
+import queues from './constants/queues'
 import { FPInventoryEntity } from './entities/fp-inventory.entity'
 import { RFIDMatchCustomerEntity } from './entities/rfid-customer-match.entity'
 import { RFIDReaderEntity } from './entities/rfid-reader.entity'
-import { FPInventoryConsumer } from './rfid.consumer'
 import { RFIDController } from './rfid.controller'
 import { FPIRespository } from './rfid.repository'
 import { RFIDService } from './rfid.service'
@@ -22,7 +22,14 @@ import { RFIDCustomerEntitySubscriber } from './subscribers/rfid-customer.entity
 		TenancyModule,
 		ThirdPartyApiModule,
 		TypeOrmModule.forFeature([FPInventoryEntity, RFIDMatchCustomerEntity, RFIDReaderEntity], DATA_SOURCE_DATA_LAKE),
-		BullModule.registerQueue({ name: POST_DATA_QUEUE }),
+		BullModule.registerQueue(
+			...queues
+				.filter((queue) => {
+					if (env<RuntimeEnvironment>('NODE_ENV') === 'development') return true
+					else return queue.tenant === env('HOST')
+				})
+				.map(({ name }) => ({ name }))
+		),
 		BullModule.registerQueue({ name: THIRD_PARTY_API_SYNC })
 	],
 	controllers: [RFIDController],
@@ -31,7 +38,12 @@ import { RFIDCustomerEntitySubscriber } from './subscribers/rfid-customer.entity
 		FPIRespository,
 		RFIDCustomerEntitySubscriber,
 		FPInventoryEntitySubscriber,
-		FPInventoryConsumer
+		...queues
+			.filter((queue) => {
+				if (env<RuntimeEnvironment>('NODE_ENV') === 'development') return true
+				else return queue.tenant === env('HOST')
+			})
+			.map(({ consumer }) => consumer)
 	],
 	exports: [FPIRespository]
 })

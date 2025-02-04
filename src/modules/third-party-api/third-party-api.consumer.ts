@@ -8,7 +8,7 @@ import { FPIRespository } from '../rfid/rfid.repository'
 import { THIRD_PARTY_API_SYNC } from './constants'
 import { ThirdPartyApiService } from './third-party-api.service'
 
-@Processor(THIRD_PARTY_API_SYNC)
+@Processor(THIRD_PARTY_API_SYNC, { concurrency: 3 })
 export class ThirdPartyApiConsumer extends WorkerHost {
 	private readonly logger = new Logger(ThirdPartyApiConsumer.name)
 
