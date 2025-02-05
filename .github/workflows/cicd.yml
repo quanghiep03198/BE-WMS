@@ -27,7 +27,6 @@ jobs:
            with:
               fetch-depth: 0
               clean: false
-         - run: git reset --hard HEAD
 
          - name: Load environment variables
            shell: bash
@@ -61,7 +60,6 @@ jobs:
            with:
               fetch-depth: 0
               clean: false
-         - run: git reset --hard HEAD
 
          - name: Load environment variables
            shell: bash
