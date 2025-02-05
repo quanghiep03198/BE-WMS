@@ -1,4 +1,3 @@
-import env from '@/common/utils/env.util'
 import { DATA_SOURCE_DATA_LAKE } from '@/databases/constants'
 import { BullModule } from '@nestjs/bullmq'
 import { MiddlewareConsumer, Module, NestModule, RequestMethod } from '@nestjs/common'
@@ -22,14 +21,7 @@ import { RFIDCustomerEntitySubscriber } from './subscribers/rfid-customer.entity
 		TenancyModule,
 		ThirdPartyApiModule,
 		TypeOrmModule.forFeature([FPInventoryEntity, RFIDMatchCustomerEntity, RFIDReaderEntity], DATA_SOURCE_DATA_LAKE),
-		BullModule.registerQueue(
-			...queues
-				.filter((queue) => {
-					if (env<RuntimeEnvironment>('NODE_ENV') === 'development') return true
-					else return queue.tenant === env('HOST')
-				})
-				.map(({ name }) => ({ name }))
-		),
+		BullModule.registerQueue(...queues.map(({ name }) => ({ name }))),
 		BullModule.registerQueue({ name: THIRD_PARTY_API_SYNC })
 	],
 	controllers: [RFIDController],
