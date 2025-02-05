@@ -38,12 +38,7 @@ import { RFIDCustomerEntitySubscriber } from './subscribers/rfid-customer.entity
 		FPIRespository,
 		RFIDCustomerEntitySubscriber,
 		FPInventoryEntitySubscriber,
-		...queues
-			.filter((queue) => {
-				if (env<RuntimeEnvironment>('NODE_ENV') === 'development') return true
-				else return queue.tenant === env('HOST')
-			})
-			.map(({ consumer }) => consumer)
+		...queues.map(({ consumer }) => consumer)
 	],
 	exports: [FPIRespository]
 })
