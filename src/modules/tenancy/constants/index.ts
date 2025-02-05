@@ -1,6 +1,7 @@
 export enum Tenant {
 	DEV = 'tenant-dev',
-	MAIN = 'tenant-main', // 10.30.0.21
+	MAIN_19 = 'tenant-main-19', // 10.30.0.19
+	MAIN_21 = 'tenant-main-21', // 10.30.0.21
 	VN_LIANYING_PRIMARY = 'tenant-lianying-primary', // 10.30.80.2
 	VN_LIANYING_SECONDARY = 'tenant-lianying-secondary', // 10.30.80.1
 	VN_LIANSHUN_PRIMARY = 'tenant-lianshun-primary', // 10.30.201.202

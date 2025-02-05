@@ -8,16 +8,21 @@ import { DataSource } from 'typeorm'
 import { SqlServerConnectionOptions } from 'typeorm/driver/sqlserver/SqlServerConnectionOptions'
 import { Tenant } from '../tenancy/constants'
 import { THIRD_PARTY_API_SYNC } from '../third-party-api/constants'
-import { EXCLUDED_ORDERS, FALLBACK_VALUE, POST_DATA_QUEUE } from './constants'
+import {
+	EXCLUDED_ORDERS,
+	FALLBACK_VALUE,
+	POST_DATA_QUEUE_GL1,
+	POST_DATA_QUEUE_GL3,
+	POST_DATA_QUEUE_GL4
+} from './constants'
 import { PostReaderDataDTO } from './dto/rfid.dto'
 import { RFIDMatchCustomerEntity } from './entities/rfid-customer-match.entity'
 import { RFIDReaderEntity } from './entities/rfid-reader.entity'
 import { RFIDDataService } from './rfid.data.service'
 import { StoredRFIDReaderItem } from './types'
 
-@Processor(POST_DATA_QUEUE, { concurrency: 10 })
-export class FPInventoryConsumer extends WorkerHost {
-	private readonly logger = new Logger(FPInventoryConsumer.name)
+class BaseRFIDConsumer extends WorkerHost {
+	private readonly logger = new Logger(BaseRFIDConsumer.name)
 	private readonly dataSources: Map<string, DataSource> = new Map()
 	private readonly tenants = [
 		{
@@ -62,27 +67,31 @@ export class FPInventoryConsumer extends WorkerHost {
 			const deviceInformation = await dataSource.getRepository(RFIDReaderEntity).findOneBy({ device_sn: sn })
 
 			// * Get the EPCs information from the database with received data
-			const incommingEpcs = await dataSource
-				.getRepository(RFIDMatchCustomerEntity)
-				.createQueryBuilder()
-				.select([
-					/* SQL */ `DISTINCT EPC_Code AS epc`,
-					/* SQL */ `COALESCE(mo_no_actual, mo_no, :fallbackValue) AS mo_no`,
-					/* SQL */ `COALESCE(mat_code, :fallbackValue) AS mat_code`,
-					/* SQL */ `COALESCE(shoestyle_codefactory, :fallbackValue) AS shoes_style_code_factory`,
-					/* SQL */ `COALESCE(size_numcode, :fallbackValue) AS size_numcode`,
-					/* SQL */ `:stationNO AS station_no`,
-					/* SQL */ `GETDATE() AS record_time`
-				])
-				.where(/* SQL */ `EPC_Code IN (:...epcs)`)
-				.andWhere(/* SQL */ `mo_no NOT IN (:...excludedOrders)`)
-				.setParameters({
-					fallbackValue: FALLBACK_VALUE,
-					stationNO: deviceInformation.station_no,
-					epcs: data.tagList.map((item) => item.epc),
-					excludedOrders: EXCLUDED_ORDERS
-				})
-				.getRawMany<StoredRFIDReaderItem>()
+			const epcList = data.tagList.map((item) => item.epc.trim()).join(',')
+			const excludedOrders = EXCLUDED_ORDERS.join(',')
+			const stationNO = deviceInformation?.station_no ?? FALLBACK_VALUE
+			const incommingEpcs = await dataSource.query<StoredRFIDReaderItem[]>(
+				/* SQL */ `
+				SELECT DISTINCT a.EPC_Code AS epc, 
+					COALESCE(b.mo_no_actual, b.mo_no, @0) AS mo_no,
+					COALESCE(b.mat_code, @0) AS mat_code,
+					COALESCE(b.shoestyle_codefactory, @0) AS shoes_style_code_factory,
+					COALESCE(b.size_numcode, @0) AS size_numcode,
+					@1 AS station_no,
+					GETDATE() AS record_time
+				FROM (
+					SELECT value AS EPC_Code FROM STRING_SPLIT(@2, ',')
+				) AS a
+				LEFT OUTER JOIN DV_DATA_LAKE.dbo.dv_rfidmatchmst_cust b ON a.EPC_Code = b.EPC_Code
+				WHERE 
+					b.mo_no IS NULL 
+					OR b.mo_no NOT IN (
+						SELECT value AS mo_no FROM STRING_SPLIT(@3, ',')
+					)
+				`,
+				[FALLBACK_VALUE, stationNO, epcList, excludedOrders]
+			)
+
 			// * Check if EPC have no information, trigger queue to fetch from third party API
 			const validUnknownEpcs = incommingEpcs.filter(
 				(item) => item.mo_no === FALLBACK_VALUE && !item.epc.startsWith('E28')
@@ -118,7 +127,7 @@ export class FPInventoryConsumer extends WorkerHost {
 
 	@OnWorkerEvent('failed')
 	onWorkerFailed(job: Job) {
-		this.logger.error(`Job "${job.name}" failed`)
+		FileLogger.error(`Job "${job.name}" failed: ${job.failedReason}`)
 	}
 
 	/**
@@ -145,3 +154,12 @@ export class FPInventoryConsumer extends WorkerHost {
 		return dataSource
 	}
 }
+
+@Processor(POST_DATA_QUEUE_GL1)
+export class GL1RFIDConsumer extends BaseRFIDConsumer {}
+
+@Processor(POST_DATA_QUEUE_GL3)
+export class GL3RFIDConsumer extends BaseRFIDConsumer {}
+
+@Processor(POST_DATA_QUEUE_GL4)
+export class GL4RFIDConsumer extends BaseRFIDConsumer {}

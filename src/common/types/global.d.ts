@@ -48,7 +48,8 @@ export declare global {
 			GL4_CLIENT_SECRET: string
 			// * Tenancy
 			TENANT_DEV: string
-			TENANT_MAIN: string
+			TENANT_MAIN_19: string
+			TENANT_MAIN_21: string
 			TENANT_VN_LIANYING_PRIMARY: string
 			TENANT_VN_LIANYING_SECONDARY: string
 			TENANT_VN_LIANSHUN_PRIMARY: string

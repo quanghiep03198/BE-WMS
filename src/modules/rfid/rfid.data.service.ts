@@ -10,7 +10,6 @@ import { DeleteEpcBySizeParams, StoredRFIDReaderData, StoredRFIDReaderItem } fro
 
 export class RFIDDataService {
 	protected static readonly jsonOutputOptions: JsonOutputOptions = { spaces: 3, EOL: '\n' }
-
 	static readonly DATA_DIR: string = join(process.cwd(), '/data')
 	static readonly DEKCER_API_DATA_DIR: string = join(process.cwd(), '/data/@DECKER')
 	static readonly PM_DATA_DIR: string = join(process.cwd(), '/data/@FPW')
@@ -85,7 +84,15 @@ export class RFIDDataService {
 	public static async insertScannedEpcs(tenantId: string, payload: StoredRFIDReaderItem[]) {
 		const dataFile = this.getEpcDataFile(tenantId)
 		const data = await this.getScannedEpcs(tenantId)
-		outputJson(dataFile, { epcs: uniqBy([...payload, ...data], 'epc') }, this.jsonOutputOptions)
+		outputJson(
+			dataFile,
+			{
+				epcs: uniqBy([...payload, ...data], 'epc').sort(
+					(a, b) => new Date(b.record_time).getTime() - new Date(a.record_time).getTime()
+				)
+			},
+			this.jsonOutputOptions
+		)
 	}
 
 	public static async updateUnknownScannedEpcs(tenantId: string, payload: Partial<RFIDMatchCustomerEntity>[]) {
