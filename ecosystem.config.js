@@ -11,8 +11,7 @@ module.exports = {
 			ignore_watch: ['data'],
 			autorestart: true,
 			exec_mode: 'cluster',
-			instances: 2,
-			max_memory_restart: '500m',
+			max_memory_restart: '500M',
 			increment_var: 'PORT',
 			env: {
 				NODE_ENV: process.env.NODE_ENV,
