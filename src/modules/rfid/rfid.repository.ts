@@ -2,10 +2,12 @@ import { FileLogger } from '@/common/helpers/file-logger.helper'
 import { DATA_SOURCE_DATA_LAKE, DATA_SOURCE_ERP, DATABASE_DATA_LAKE } from '@/databases/constants'
 import { Inject, Injectable } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
+import { InjectModel } from '@nestjs/mongoose'
 import { InjectDataSource } from '@nestjs/typeorm'
 import fs from 'fs'
 import { readFileSync } from 'fs-extra'
-import { chunk, groupBy } from 'lodash'
+import { chunk, groupBy, pick } from 'lodash'
+import { AnyBulkWriteOperation, PaginateModel } from 'mongoose'
 import path, { join } from 'path'
 import { DataSource, IsNull, Like, Not } from 'typeorm'
 import { SqlServerConnectionOptions } from 'typeorm/driver/sqlserver/SqlServerConnectionOptions'
@@ -15,7 +17,7 @@ import { EXCLUDED_EPC_PATTERN, EXCLUDED_ORDERS, FALLBACK_VALUE, INTERNAL_EPC_PAT
 import { ExchangeEpcDTO } from './dto/rfid.dto'
 import { FPInventoryEntity } from './entities/fp-inventory.entity'
 import { RFIDMatchCustomerEntity } from './entities/rfid-customer-match.entity'
-import { RFIDDataService } from './rfid.data.service'
+import { Epc, EpcDocument } from './schemas/epc.schema'
 /**
  * @description Repository for Finished Production Inventory (FPI)
  */
@@ -25,6 +27,7 @@ export class FPIRespository {
 		@InjectDataSource(DATA_SOURCE_DATA_LAKE) private readonly dataSourceDL: DataSource,
 		@InjectDataSource(DATA_SOURCE_ERP) private readonly dataSourceERP: DataSource,
 		@Inject(TENANCY_DATASOURCE) private readonly dataSource: DataSource,
+		@InjectModel(Epc.name) private readonly epcModel: PaginateModel<EpcDocument>,
 		private readonly tenancyService: TenancyService,
 		private readonly configService: ConfigService
 	) {}
@@ -146,7 +149,7 @@ export class FPIRespository {
 		const tenant = this.tenancyService.findOneById(tenantId)
 
 		const dataSource = new DataSource({
-			...this.configService.getOrThrow<SqlServerConnectionOptions>('database'),
+			...this.configService.getOrThrow<SqlServerConnectionOptions>('mssql'),
 			host: tenant.host,
 			database: DATABASE_DATA_LAKE,
 			entities: [RFIDMatchCustomerEntity]
@@ -210,12 +213,21 @@ export class FPIRespository {
 							source.or_custpo, source.shoestyle_codefactory, source.cust_shoestyle, source.size_code, source.size_numcode,
 							source.factory_code_orders, source.factory_name_orders, source.factory_code_produce, source.factory_name_produce, source.size_qty,
 							'Y', GETDATE(), CAST(GETDATE() AS DATE), 'A', 'A', 0
-						);`)
+						)`)
 			}
 
 			await queryRunner.commitTransaction()
 
-			await RFIDDataService.updateUnknownScannedEpcs(tenantId, payload)
+			const bulkWriteOptions: AnyBulkWriteOperation<any>[] = payload.map((item) => ({
+				updateOne: {
+					filter: { tenant_id: tenantId, epc: item.epc },
+					update: {
+						$set: pick(item, ['mo_no', 'mat_code', 'shoes_style_code_factory', 'size_numcode'])
+					}
+				}
+			}))
+			await this.epcModel.bulkWrite(bulkWriteOptions)
+			// await RFIDDataService.updateUnknownScannedEpcs(tenantId, payload)
 		} catch (error) {
 			FileLogger.error(error)
 			await queryRunner.rollbackTransaction()

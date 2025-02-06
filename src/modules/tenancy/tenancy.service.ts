@@ -102,7 +102,7 @@ export class TenancyService implements OnModuleDestroy {
 	public async getDataSourceByHost(host: string) {
 		if (!this.dataSources.has(host)) {
 			const dataSource = new DataSource({
-				...this.configService.getOrThrow<SqlServerConnectionOptions>('database'),
+				...this.configService.getOrThrow<SqlServerConnectionOptions>('mssql'),
 				entities: [join(__dirname, '../**/*.entity.{ts,js}')],
 				host: host
 			})

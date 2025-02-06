@@ -63,10 +63,19 @@ export const searchCustomerValidator = z.object({
 	q: z.string()
 })
 
-export const deleteEpcBySizeValidator = z.object({
+export const deleteEpcValidator = z.object({
 	'mo_no.eq': z.string(),
-	'size_num_code.eq': z.string(),
-	'quantity.eq': z.number().positive()
+	'size_num_code.eq': z.string().optional(),
+	'quantity.eq': z
+		.string()
+		.optional()
+		.refine(
+			(value) => {
+				if (!value) return true
+				return !isNaN(Number(value))
+			},
+			{ message: 'Invalid quantity' }
+		)
 })
 
 export const readerPostDataValidator = z.object({
@@ -91,7 +100,7 @@ export const readerPostDataValidator = z.object({
 	})
 })
 
-export type UpdateStockDTO = z.infer<typeof updateStockValidator> &
+export type UpsertStockDTO = z.infer<typeof updateStockValidator> &
 	Pick<FPInventoryEntity, 'user_code_created' | 'factory_code'>
 export type ExchangeEpcDTO = z.infer<typeof exchangeEpcValidator>
 export type SearchCustOrderParamsDTO = z.infer<typeof searchCustomerValidator> & {

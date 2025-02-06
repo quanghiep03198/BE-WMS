@@ -2,18 +2,20 @@ import { DATA_SOURCE_DATA_LAKE, DATA_SOURCE_ERP } from '@/databases/constants'
 import { InjectQueue } from '@nestjs/bullmq'
 import { Inject, Injectable, InternalServerErrorException, NotFoundException, Scope } from '@nestjs/common'
 import { REQUEST } from '@nestjs/core'
+import { InjectModel } from '@nestjs/mongoose'
 import { InjectDataSource } from '@nestjs/typeorm'
 import { Queue } from 'bullmq'
 import { Request } from 'express'
-import { chunk, groupBy, omit, pick } from 'lodash'
+import { chunk, groupBy, pick } from 'lodash'
+import { DeleteResult, PaginateModel, RootFilterQuery } from 'mongoose'
 import { I18nContext, I18nService } from 'nestjs-i18n'
 import { Brackets, DataSource, FindOptionsWhere, In } from 'typeorm'
 import { TENANCY_DATASOURCE, Tenant } from '../tenancy/constants'
 import { FALLBACK_VALUE, POST_DATA_QUEUE_GL1, POST_DATA_QUEUE_GL3, POST_DATA_QUEUE_GL4 } from './constants'
-import { ExchangeEpcDTO, PostReaderDataDTO, SearchCustOrderParamsDTO, UpdateStockDTO } from './dto/rfid.dto'
-import { FPInventoryEntity } from './entities/fp-inventory.entity'
+import { ExchangeEpcDTO, PostReaderDataDTO, SearchCustOrderParamsDTO, UpsertStockDTO } from './dto/rfid.dto'
 import { RFIDMatchCustomerEntity } from './entities/rfid-customer-match.entity'
 import { RFIDDataService } from './rfid.data.service'
+import { Epc, EpcDocument } from './schemas/epc.schema'
 import { DeleteEpcBySizeParams, RFIDSearchParams } from './types'
 
 /**
@@ -24,6 +26,7 @@ export class RFIDService {
 	constructor(
 		@Inject(REQUEST) private readonly request: Request,
 		@Inject(TENANCY_DATASOURCE) private readonly dataSource: DataSource | undefined,
+		@InjectModel(Epc.name) private readonly epcModel: PaginateModel<EpcDocument>,
 		@InjectDataSource(DATA_SOURCE_DATA_LAKE) private readonly datasourceDL: DataSource,
 		@InjectDataSource(DATA_SOURCE_ERP) private readonly datasourceERP: DataSource,
 		@InjectQueue(POST_DATA_QUEUE_GL1) private readonly postDataQueueGL1: Queue,
@@ -59,29 +62,25 @@ export class RFIDService {
 
 	public async getIncomingEpcs(args: RFIDSearchParams) {
 		const tenantId = this.request.headers['x-tenant-id']
-		const epcs = await RFIDDataService.getScannedEpcs(String(tenantId))
-
-		const data = epcs
-			.filter((item) => (!args['mo_no.eq'] ? true : item.mo_no === args['mo_no.eq']))
-			.map((item) => omit(item, 'record_time'))
-
-		const totalDocs = data.length
-		const totalPages = Math.ceil(totalDocs / args._limit)
-
-		return {
-			data: data.slice((args._page - 1) * args._limit, args._page * args._limit),
-			totalDocs: totalDocs,
-			totalPages: totalPages,
-			limit: args._limit,
-			page: args._page,
-			hasNextPage: args._page < totalPages,
-			hasPrevPage: args._page > 1
-		}
+		return await this.epcModel.paginate(
+			{
+				tenant_id: tenantId
+			},
+			{
+				sort: { record_time: -1 },
+				page: args._page,
+				limit: args._limit,
+				customLabels: {
+					docs: 'data'
+				}
+			}
+		)
 	}
 
 	public async getOrderDetails() {
 		const tenantId = this.request.headers['x-tenant-id']
-		const accumulatedData = await RFIDDataService.getScannedEpcs(String(tenantId))
+		const accumulatedData = await this.epcModel.find({ tenant_id: String(tenantId) })
+		// const accumulatedData = await RFIDDataService.getScannedEpcs(String(tenantId))
 		if (!Array.isArray(accumulatedData)) throw new Error('Invalid data format')
 		return Object.entries(
 			groupBy(accumulatedData, (item) => {
@@ -101,7 +100,7 @@ export class RFIDService {
 		})
 	}
 
-	public async updateFPStock(orderCode: string, data: UpdateStockDTO) {
+	public async upsertFPStock(orderCode: string, data: UpsertStockDTO) {
 		const tenantId = this.request.headers['x-tenant-id']
 		const payload = await RFIDDataService.getScannedEpcsByOrder(String(tenantId), orderCode)
 		const queryRunner = this.dataSource.createQueryRunner()
@@ -111,15 +110,47 @@ export class RFIDService {
 				payload.map((value) => ({ ...value, ...data })),
 				100
 			)) {
-				await this.dataSource.getRepository(FPInventoryEntity).insert(item)
+				const mergeSourceValues = item
+					.map((value) => {
+						return `(
+							'${value.epc}', '${value.mo_no}', '${value.rfid_status}', '${value.rfid_use}', '${value.record_time}', '${value.station_no}',
+							'${value.quantity}', '${value.storage}', '${value.factory_code}', '${value.dept_code}', '${value.dept_name}'
+						)`
+					})
+					.join(',')
+
+				await this.dataSource.query(/* SQL */ `
+					MERGE INTO DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet AS target
+					USING (
+						VALUES ${mergeSourceValues}
+					)  AS source (
+							EPC_Code, mo_no, rfid_status, rfid_use, record_time, station_no,
+							quantity, storage, FC_server_code, dept_code, dept_name
+						)
+					ON target.EPC_Code = source.EPC_Code
+					WHEN NOT MATCHED THEN
+						INSERT (
+							EPC_Code, mo_no, rfid_status, rfid_use, record_time, station_no,
+							quantity, storage, FC_server_code, dept_code, dept_name
+						)
+						VALUES (
+							source.EPC_Code, source.mo_no, source.rfid_status, source.rfid_use, source.record_time, source.station_no,
+							source.quantity, source.storage, source.FC_server_code, source.dept_code, source.dept_name
+						)
+					`)
 			}
 			queryRunner.commitTransaction()
-			RFIDDataService.deleteScannedEpcsByOrder(String(tenantId), orderCode)
+			await this.epcModel.deleteMany({ tenant_id: String(tenantId), mo_no: orderCode })
+			const queue = this.getQueueByTenant(tenantId.toString())
+			await queue.drain()
 		} catch {
 			queryRunner.rollbackTransaction()
 		}
 	}
 
+	/**
+	 * @deprecated
+	 */
 	public async deleteUnexpectedOrder(orderCode: string) {
 		if (orderCode === FALLBACK_VALUE) return // * Only delete defined manufacturing order
 		const tenantId = this.request.headers['x-tenant-id']
@@ -200,7 +231,15 @@ export class RFIDService {
 				await queryRunner.manager.update(RFIDMatchCustomerEntity, criteria, update)
 			}
 			await queryRunner.commitTransaction()
-			await RFIDDataService.updateScannedEpcs(tenantId, epcToExchange, { mo_no: payload.mo_no_actual })
+			await this.epcModel.updateMany(
+				{
+					tenant_id: tenantId,
+					epc: {
+						$in: epcToExchange
+					}
+				},
+				{ mo_no: payload.mo_no_actual }
+			)
 		} catch (e) {
 			await queryRunner.rollbackTransaction()
 			throw new InternalServerErrorException(e.message)
@@ -209,7 +248,14 @@ export class RFIDService {
 		}
 	}
 
-	public async deleteEpcBySize(tenantId: string, filters: DeleteEpcBySizeParams) {
-		return await RFIDDataService.deleteScannedEpcsBySize(tenantId, filters)
+	public async deleteScannedEpcs(tenantId: string, filters: DeleteEpcBySizeParams): Promise<DeleteResult> {
+		const filterQuery: RootFilterQuery<Epc> = !filters['size_num_code.eq'] ? pick(filters, 'mo_no.eq') : filters
+		if (filterQuery['size_numcode.eq'] && filterQuery['quantity.eq']) {
+			const epcsToDelete = await this.epcModel
+				.find({ tenant_id: tenantId, mo_no: filters['mo_no.eq'], size_numcode: filterQuery['size_numcode.eq'] })
+				.limit(filters['quantity.eq'])
+			return await this.epcModel.deleteMany({ epc: { $in: epcsToDelete.map((item) => item.epc) } })
+		}
+		return await this.epcModel.deleteMany({ tenant_id: tenantId, mo_no: filters['mo_no.eq'] })
 	}
 }
