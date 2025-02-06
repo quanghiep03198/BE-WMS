@@ -14,21 +14,24 @@ import {
 	Query,
 	Sse
 } from '@nestjs/common'
+import { InjectModel } from '@nestjs/mongoose'
 import fs from 'fs'
+import { DeleteResult, PaginateModel } from 'mongoose'
 import { catchError, from, map, of, ReplaySubject } from 'rxjs'
 import {
-	deleteEpcBySizeValidator,
+	deleteEpcValidator,
 	ExchangeEpcDTO,
 	exchangeEpcValidator,
 	PostReaderDataDTO,
 	readerPostDataValidator,
 	searchCustomerValidator,
 	SearchCustOrderParamsDTO,
-	UpdateStockDTO,
-	updateStockValidator
+	updateStockValidator,
+	UpsertStockDTO
 } from './dto/rfid.dto'
 import { RFIDDataService } from './rfid.data.service'
 import { RFIDService } from './rfid.service'
+import { Epc, EpcDocument } from './schemas/epc.schema'
 import { DeleteEpcBySizeParams } from './types'
 
 /**
@@ -37,7 +40,10 @@ import { DeleteEpcBySizeParams } from './types'
 
 @Controller('rfid')
 export class RFIDController {
-	constructor(private readonly rfidService: RFIDService) {}
+	constructor(
+		@InjectModel(Epc.name) private readonly epcModel: PaginateModel<EpcDocument>,
+		private readonly rfidService: RFIDService
+	) {}
 
 	@Sse('sse')
 	@AuthGuard()
@@ -60,6 +66,12 @@ export class RFIDController {
 			postMessage()
 
 			// * Watch for changes in the data file
+			this.epcModel.watch().on('change', (change) => {
+				if (change.fullDocument?.tenant_id === tenantId) {
+					console.log(change)
+					postMessage()
+				}
+			})
 			const dataFilePath = RFIDDataService.getEpcDataFile(tenantId)
 			fs.watch(dataFilePath, (_, filename) => {
 				if (filename) postMessage()
@@ -119,9 +131,9 @@ export class RFIDController {
 		@Param('orderCode') orderCode: string,
 		@User('username') username: string,
 		@Headers('X-User-Company') factoryCode: string,
-		@Body(new ZodValidationPipe(updateStockValidator)) payload: UpdateStockDTO
+		@Body(new ZodValidationPipe(updateStockValidator)) payload: UpsertStockDTO
 	) {
-		return await this.rfidService.updateFPStock(orderCode, {
+		return await this.rfidService.upsertFPStock(orderCode, {
 			...payload,
 			user_code_created: username,
 			factory_code: factoryCode
@@ -152,6 +164,9 @@ export class RFIDController {
 		return await this.rfidService.exchangeEpc(payload)
 	}
 
+	/**
+	 * @deprecated
+	 */
 	@Api({
 		endpoint: 'delete-unexpected-order/:order',
 		method: HttpMethod.DELETE,
@@ -164,7 +179,7 @@ export class RFIDController {
 	}
 
 	@Api({
-		endpoint: 'delete-unexpected-epc',
+		endpoint: 'delete-scanned-epcs',
 		method: HttpMethod.DELETE,
 		statusCode: HttpStatus.NO_CONTENT,
 		message: 'common.deleted'
@@ -172,8 +187,8 @@ export class RFIDController {
 	@AuthGuard()
 	async deleteEpcBySize(
 		@Headers('X-Tenant-Id') tenantId: string,
-		@Query(new ZodValidationPipe(deleteEpcBySizeValidator)) filters: DeleteEpcBySizeParams
-	) {
-		return await this.rfidService.deleteEpcBySize(tenantId, filters)
+		@Query(new ZodValidationPipe(deleteEpcValidator)) filters: DeleteEpcBySizeParams
+	): Promise<DeleteResult> {
+		return await this.rfidService.deleteScannedEpcs(tenantId, filters)
 	}
 }

@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
+import { MongooseModule, MongooseModuleOptions } from '@nestjs/mongoose'
 import { TypeOrmModule, TypeOrmModuleAsyncOptions } from '@nestjs/typeorm'
 import {
 	DATA_SOURCE_DATA_LAKE,
@@ -12,13 +13,14 @@ import {
 
 @Module({
 	imports: [
+		// * MSSQL Server
 		TypeOrmModule.forRootAsync({
 			name: DATA_SOURCE_DATA_LAKE,
 			inject: [ConfigService],
 			useFactory: (configService: ConfigService) => {
 				return {
 					database: DATABASE_DATA_LAKE,
-					...configService.getOrThrow<TypeOrmModuleAsyncOptions>('database')
+					...configService.getOrThrow<TypeOrmModuleAsyncOptions>('mssql')
 				}
 			}
 		}),
@@ -28,7 +30,7 @@ import {
 			useFactory: (configService: ConfigService) => {
 				return {
 					database: DATABASE_SYSCLOUD,
-					...configService.getOrThrow<TypeOrmModuleAsyncOptions>('database')
+					...configService.getOrThrow<TypeOrmModuleAsyncOptions>('mssql')
 				}
 			}
 		}),
@@ -38,9 +40,14 @@ import {
 			useFactory: (configService: ConfigService) => {
 				return {
 					database: DATABASE_ERP,
-					...configService.getOrThrow<TypeOrmModuleAsyncOptions>('database')
+					...configService.getOrThrow<TypeOrmModuleAsyncOptions>('mssql')
 				}
 			}
+		}),
+		// * MongoDB
+		MongooseModule.forRootAsync({
+			inject: [ConfigService],
+			useFactory: (configService: ConfigService) => configService.getOrThrow<MongooseModuleOptions>('mongodb')
 		})
 	]
 })

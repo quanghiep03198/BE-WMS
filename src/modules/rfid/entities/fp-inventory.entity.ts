@@ -25,7 +25,7 @@ export class FPInventoryEntity extends BaseAbstractEntity {
 	epc: string
 
 	@Index()
-	@Column({ type: 'nvarchar', length: 20 })
+	@Column({ name: 'mo_no', type: 'nvarchar', length: 20 })
 	mo_no: string
 
 	@Index()

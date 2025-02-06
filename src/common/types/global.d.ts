@@ -37,6 +37,8 @@ export declare global {
 			DB_PORT: string
 			DB_TRUST_SERVER_CERTIFICATE: string
 			DB_CONNECTION_TIMEOUT: string
+
+			MONGO_URI: string
 			// * Third-party API
 			THIRD_PARTY_OAUTH_API_URL: string
 			THIRD_PARTY_API_URL: string

@@ -1,7 +1,9 @@
 import { DATA_SOURCE_DATA_LAKE } from '@/databases/constants'
 import { BullModule } from '@nestjs/bullmq'
 import { MiddlewareConsumer, Module, NestModule, RequestMethod } from '@nestjs/common'
+import { MongooseModule } from '@nestjs/mongoose'
 import { TypeOrmModule } from '@nestjs/typeorm'
+import mongoosePaginatePlugin from 'mongoose-paginate-v2'
 import { TenacyMiddleware } from '../tenancy/tenancy.middleware'
 import { TenancyModule } from '../tenancy/tenancy.module'
 import { THIRD_PARTY_API_SYNC } from '../third-party-api/constants'
@@ -13,6 +15,7 @@ import { RFIDReaderEntity } from './entities/rfid-reader.entity'
 import { RFIDController } from './rfid.controller'
 import { FPIRespository } from './rfid.repository'
 import { RFIDService } from './rfid.service'
+import { Epc, EpcSchema } from './schemas/epc.schema'
 import { FPInventoryEntitySubscriber } from './subscribers/fp-inventory.entity.subscriber'
 import { RFIDCustomerEntitySubscriber } from './subscribers/rfid-customer.entity.subscriber'
 
@@ -21,6 +24,15 @@ import { RFIDCustomerEntitySubscriber } from './subscribers/rfid-customer.entity
 		TenancyModule,
 		ThirdPartyApiModule,
 		TypeOrmModule.forFeature([FPInventoryEntity, RFIDMatchCustomerEntity, RFIDReaderEntity], DATA_SOURCE_DATA_LAKE),
+		MongooseModule.forFeatureAsync([
+			{
+				name: Epc.name,
+				useFactory: () => {
+					EpcSchema.plugin(mongoosePaginatePlugin)
+					return EpcSchema
+				}
+			}
+		]),
 		BullModule.registerQueue(...queues.map(({ name }) => ({ name }))),
 		BullModule.registerQueue({ name: THIRD_PARTY_API_SYNC })
 	],

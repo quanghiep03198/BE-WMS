@@ -2,6 +2,7 @@ import env from '@/common/utils/env.util'
 import { BullRootModuleOptions } from '@nestjs/bullmq'
 import { CacheModuleOptions } from '@nestjs/cache-manager'
 import { ConfigFactory } from '@nestjs/config'
+import { MongooseModuleOptions } from '@nestjs/mongoose'
 import { ThrottlerOptions } from '@nestjs/throttler'
 import { TypeOrmModuleOptions } from '@nestjs/typeorm'
 import * as redisStore from 'cache-manager-redis-store'
@@ -24,8 +25,8 @@ export const appConfigFactory: ConfigFactory = () => ({
 		},
 		typesOutputPath: path.join(__dirname, '../..', '/src/generated/i18n.generated.ts')
 	} satisfies I18nOptions,
-	database: {
-		type: env('DB_TYPE'),
+	mssql: {
+		type: 'mssql',
 		host: env('DB_HOST'),
 		port: env('DB_PORT', { serialize: (value): number => parseInt(value) }),
 		username: env('DB_USERNAME'),
@@ -57,6 +58,11 @@ export const appConfigFactory: ConfigFactory = () => ({
 			ignoreErrors: true
 		}
 	} satisfies TypeOrmModuleOptions,
+	mongodb: {
+		uri: env('MONGO_URI'),
+		maxPoolSize: 100,
+		connectTimeoutMS: 10000
+	} satisfies MongooseModuleOptions,
 	bullmq: {
 		connection: {
 			host: env('REDIS_HOST'),

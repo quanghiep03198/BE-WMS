@@ -2,8 +2,10 @@ import { FileLogger } from '@/common/helpers/file-logger.helper'
 import { InjectQueue, OnWorkerEvent, Processor, WorkerHost } from '@nestjs/bullmq'
 import { Logger } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
+import { InjectModel } from '@nestjs/mongoose'
 import { Job, Queue } from 'bullmq'
-import _ from 'lodash'
+import _, { omit } from 'lodash'
+import { AnyBulkWriteOperation, PaginateModel } from 'mongoose'
 import { DataSource } from 'typeorm'
 import { SqlServerConnectionOptions } from 'typeorm/driver/sqlserver/SqlServerConnectionOptions'
 import { Tenant } from '../tenancy/constants'
@@ -18,7 +20,7 @@ import {
 import { PostReaderDataDTO } from './dto/rfid.dto'
 import { RFIDMatchCustomerEntity } from './entities/rfid-customer-match.entity'
 import { RFIDReaderEntity } from './entities/rfid-reader.entity'
-import { RFIDDataService } from './rfid.data.service'
+import { Epc, EpcDocument } from './schemas/epc.schema'
 import { StoredRFIDReaderItem } from './types'
 
 class BaseRFIDConsumer extends WorkerHost {
@@ -45,6 +47,7 @@ class BaseRFIDConsumer extends WorkerHost {
 
 	constructor(
 		@InjectQueue(THIRD_PARTY_API_SYNC) private readonly thirdPartyApiSyncQueue: Queue,
+		@InjectModel(Epc.name) private readonly epcModel: PaginateModel<EpcDocument>,
 		private readonly configService: ConfigService
 	) {
 		super()
@@ -78,19 +81,22 @@ class BaseRFIDConsumer extends WorkerHost {
 					COALESCE(b.shoestyle_codefactory, @0) AS shoes_style_code_factory,
 					COALESCE(b.size_numcode, @0) AS size_numcode,
 					@1 AS station_no,
+					@2 AS tenant_id,
 					GETDATE() AS record_time
 				FROM (
-					SELECT value AS EPC_Code FROM STRING_SPLIT(@2, ',')
+					SELECT value AS EPC_Code FROM STRING_SPLIT(@3, ',')
 				) AS a
-				LEFT OUTER JOIN DV_DATA_LAKE.dbo.dv_rfidmatchmst_cust b ON a.EPC_Code = b.EPC_Code
+				LEFT JOIN DV_DATA_LAKE.dbo.dv_rfidmatchmst_cust b ON a.EPC_Code = b.EPC_Code
 				WHERE 
 					b.mo_no IS NULL 
 					OR b.mo_no NOT IN (
-						SELECT value AS mo_no FROM STRING_SPLIT(@3, ',')
+						SELECT value AS mo_no FROM STRING_SPLIT(@4, ',')
 					)
 				`,
-				[FALLBACK_VALUE, stationNO, epcList, excludedOrders]
+				[FALLBACK_VALUE, stationNO, tenantId, epcList, excludedOrders]
 			)
+
+			FileLogger.debug(incommingEpcs)
 
 			// * Check if EPC have no information, trigger queue to fetch from third party API
 			const validUnknownEpcs = incommingEpcs.filter(
@@ -108,7 +114,14 @@ class BaseRFIDConsumer extends WorkerHost {
 				})
 			}
 
-			await RFIDDataService.insertScannedEpcs(tenantId, incommingEpcs)
+			const bulkOperations: AnyBulkWriteOperation<any>[] = incommingEpcs.map((item) => ({
+				updateOne: {
+					filter: { epc: item.epc },
+					update: omit(item, 'record_time'),
+					upsert: true
+				}
+			}))
+			await this.epcModel.bulkWrite(bulkOperations)
 		} catch (e) {
 			this.logger.error(e)
 			FileLogger.error(e)
@@ -142,7 +155,7 @@ class BaseRFIDConsumer extends WorkerHost {
 		const tenant = this.tenants.find((tenant) => tenant.id === tenantId)
 
 		const dataSource = new DataSource({
-			...this.configService.getOrThrow<SqlServerConnectionOptions>('database'),
+			...this.configService.getOrThrow<SqlServerConnectionOptions>('mssql'),
 			host: tenant.host,
 			entities: [RFIDReaderEntity, RFIDMatchCustomerEntity]
 		})
