@@ -227,7 +227,6 @@ export class FPIRespository {
 				}
 			}))
 			await this.epcModel.bulkWrite(bulkWriteOptions)
-			// await RFIDDataService.updateUnknownScannedEpcs(tenantId, payload)
 		} catch (error) {
 			FileLogger.error(error)
 			await queryRunner.rollbackTransaction()

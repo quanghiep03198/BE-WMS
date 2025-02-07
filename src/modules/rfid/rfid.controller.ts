@@ -15,7 +15,6 @@ import {
 	Sse
 } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
-import fs from 'fs'
 import { DeleteResult, PaginateModel } from 'mongoose'
 import { catchError, from, map, of, ReplaySubject } from 'rxjs'
 import {
@@ -29,7 +28,6 @@ import {
 	updateStockValidator,
 	UpsertStockDTO
 } from './dto/rfid.dto'
-import { RFIDDataService } from './rfid.data.service'
 import { RFIDService } from './rfid.service'
 import { Epc, EpcDocument } from './schemas/epc.schema'
 import { DeleteEpcBySizeParams } from './types'
@@ -71,10 +69,6 @@ export class RFIDController {
 					console.log(change)
 					postMessage()
 				}
-			})
-			const dataFilePath = RFIDDataService.getEpcDataFile(tenantId)
-			fs.watch(dataFilePath, (_, filename) => {
-				if (filename) postMessage()
 			})
 
 			return subject.asObservable()
@@ -162,20 +156,6 @@ export class RFIDController {
 	@AuthGuard()
 	async exchangeEpc(@Body(new ZodValidationPipe(exchangeEpcValidator)) payload: ExchangeEpcDTO) {
 		return await this.rfidService.exchangeEpc(payload)
-	}
-
-	/**
-	 * @deprecated
-	 */
-	@Api({
-		endpoint: 'delete-unexpected-order/:order',
-		method: HttpMethod.DELETE,
-		statusCode: HttpStatus.NO_CONTENT,
-		message: 'common.deleted'
-	})
-	@AuthGuard()
-	async deleteUnexpectedOrder(@Param('order') orderCode: string) {
-		return await this.rfidService.deleteUnexpectedOrder(orderCode)
 	}
 
 	@Api({

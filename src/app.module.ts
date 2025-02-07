@@ -23,7 +23,6 @@ import { InventoryModule } from './modules/inventory/inventory.module'
 import { OrderModule } from './modules/order/order.module'
 import { PackingModule } from './modules/packing/packing.module'
 import { ReportModule } from './modules/report/report.module'
-import { RFIDDataService } from './modules/rfid/rfid.data.service'
 import { RFIDModule } from './modules/rfid/rfid.module'
 import { TenancyModule } from './modules/tenancy/tenancy.module'
 import { ThirdPartyApiModule } from './modules/third-party-api/third-party-api.module'
@@ -99,7 +98,6 @@ import { WarehouseModule } from './modules/warehouse/warehouse.module'
 export class AppModule implements OnModuleInit, OnApplicationBootstrap, OnApplicationShutdown {
 	onModuleInit() {
 		FileLogger.initialize()
-		RFIDDataService.initialize()
 	}
 	onApplicationBootstrap() {
 		Sentry.profiler.startProfiler()

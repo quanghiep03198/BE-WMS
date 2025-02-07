@@ -14,7 +14,6 @@ import { TENANCY_DATASOURCE, Tenant } from '../tenancy/constants'
 import { FALLBACK_VALUE, POST_DATA_QUEUE_GL1, POST_DATA_QUEUE_GL3, POST_DATA_QUEUE_GL4 } from './constants'
 import { ExchangeEpcDTO, PostReaderDataDTO, SearchCustOrderParamsDTO, UpsertStockDTO } from './dto/rfid.dto'
 import { RFIDMatchCustomerEntity } from './entities/rfid-customer-match.entity'
-import { RFIDDataService } from './rfid.data.service'
 import { Epc, EpcDocument } from './schemas/epc.schema'
 import { DeleteEpcBySizeParams, RFIDSearchParams } from './types'
 
@@ -80,7 +79,6 @@ export class RFIDService {
 	public async getOrderDetails() {
 		const tenantId = this.request.headers['x-tenant-id']
 		const accumulatedData = await this.epcModel.find({ tenant_id: String(tenantId) })
-		// const accumulatedData = await RFIDDataService.getScannedEpcs(String(tenantId))
 		if (!Array.isArray(accumulatedData)) throw new Error('Invalid data format')
 		return Object.entries(
 			groupBy(accumulatedData, (item) => {
@@ -102,7 +100,7 @@ export class RFIDService {
 
 	public async upsertFPStock(orderCode: string, data: UpsertStockDTO) {
 		const tenantId = this.request.headers['x-tenant-id']
-		const payload = await RFIDDataService.getScannedEpcsByOrder(String(tenantId), orderCode)
+		const payload = await this.epcModel.find({ tenant_id: String(tenantId), mo_no: orderCode })
 		const queryRunner = this.dataSource.createQueryRunner()
 		queryRunner.startTransaction()
 		try {
@@ -148,15 +146,6 @@ export class RFIDService {
 		}
 	}
 
-	/**
-	 * @deprecated
-	 */
-	public async deleteUnexpectedOrder(orderCode: string) {
-		if (orderCode === FALLBACK_VALUE) return // * Only delete defined manufacturing order
-		const tenantId = this.request.headers['x-tenant-id']
-		return await RFIDDataService.deleteScannedEpcsByOrder(String(tenantId), orderCode)
-	}
-
 	public async searchCustomerOrder(params: SearchCustOrderParamsDTO) {
 		const subQuery = this.datasourceERP
 			.createQueryBuilder()
@@ -193,7 +182,7 @@ export class RFIDService {
 	public async exchangeEpc(payload: ExchangeEpcDTO) {
 		const tenantId = String(this.request.headers['x-tenant-id'])
 		const queryRunner = this.dataSource.createQueryRunner()
-		const scannedEpcs = await RFIDDataService.getScannedEpcs(tenantId)
+		const scannedEpcs = await this.epcModel.find({ tenant_id: tenantId })
 		let epcToExchange = scannedEpcs
 			.filter((item) => {
 				if (payload.multi) {

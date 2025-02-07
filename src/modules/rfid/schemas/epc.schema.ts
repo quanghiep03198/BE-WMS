@@ -2,7 +2,7 @@ import { Tenant } from '@/modules/tenancy/constants'
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose'
 import mongoose, { HydratedDocument } from 'mongoose'
 
-export type EpcDocument = HydratedDocument<Epc>
+export type EpcDocument = HydratedDocument<Epc> & { record_time: string }
 
 @Schema({
 	collection: 'epcs',
