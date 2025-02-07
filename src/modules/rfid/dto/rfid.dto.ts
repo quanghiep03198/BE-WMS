@@ -59,13 +59,13 @@ export const exchangeEpcValidator = z
 export const searchCustomerValidator = z.object({
 	'mo_no.eq': z.string(),
 	'mat_code.eq': z.string(),
-	'size_num_code.eq': z.string().optional(),
+	'size_numcode.eq': z.string().optional(),
 	q: z.string()
 })
 
 export const deleteEpcValidator = z.object({
 	'mo_no.eq': z.string(),
-	'size_num_code.eq': z.string().optional(),
+	'size_numcode.eq': z.string().optional(),
 	'quantity.eq': z
 		.string()
 		.optional()

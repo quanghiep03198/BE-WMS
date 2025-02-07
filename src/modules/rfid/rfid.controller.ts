@@ -66,7 +66,6 @@ export class RFIDController {
 			// * Watch for changes in the data file
 			this.epcModel.watch().on('change', (change) => {
 				if (change.fullDocument?.tenant_id === tenantId) {
-					console.log(change)
 					postMessage()
 				}
 			})
@@ -83,7 +82,7 @@ export class RFIDController {
 	})
 	@AuthGuard()
 	async fetchNextItems(
-		@Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+		@Query('_page', new DefaultValuePipe(1), ParseIntPipe) page: number,
 		@Query('mo_no.eq', new DefaultValuePipe('')) selectedOrder: string
 	) {
 		return await this.rfidService.getIncomingEpcs({ _page: page, _limit: 50, 'mo_no.eq': selectedOrder })

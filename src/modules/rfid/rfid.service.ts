@@ -1,13 +1,13 @@
 import { DATA_SOURCE_DATA_LAKE, DATA_SOURCE_ERP } from '@/databases/constants'
 import { InjectQueue } from '@nestjs/bullmq'
-import { Inject, Injectable, InternalServerErrorException, NotFoundException, Scope } from '@nestjs/common'
+import { Inject, Injectable, InternalServerErrorException, Logger, NotFoundException, Scope } from '@nestjs/common'
 import { REQUEST } from '@nestjs/core'
 import { InjectModel } from '@nestjs/mongoose'
 import { InjectDataSource } from '@nestjs/typeorm'
 import { Queue } from 'bullmq'
 import { Request } from 'express'
 import { chunk, groupBy, pick } from 'lodash'
-import { DeleteResult, PaginateModel, RootFilterQuery } from 'mongoose'
+import { DeleteResult, FilterQuery, PaginateModel, RootFilterQuery } from 'mongoose'
 import { I18nContext, I18nService } from 'nestjs-i18n'
 import { Brackets, DataSource, FindOptionsWhere, In } from 'typeorm'
 import { TENANCY_DATASOURCE, Tenant } from '../tenancy/constants'
@@ -61,24 +61,23 @@ export class RFIDService {
 
 	public async getIncomingEpcs(args: RFIDSearchParams) {
 		const tenantId = this.request.headers['x-tenant-id']
-		return await this.epcModel.paginate(
-			{
-				tenant_id: tenantId
-			},
-			{
-				sort: { record_time: -1 },
-				page: args._page,
-				limit: args._limit,
-				customLabels: {
-					docs: 'data'
-				}
+		const filterQuery: FilterQuery<EpcDocument> = { tenant_id: tenantId, mo_no: args['mo_no.eq'] }
+		if (!args['mo_no.eq']) delete filterQuery.mo_no
+
+		return await this.epcModel.paginate(filterQuery, {
+			sort: { record_time: -1 },
+			lean: true,
+			page: args._page,
+			limit: args._limit,
+			customLabels: {
+				docs: 'data'
 			}
-		)
+		})
 	}
 
 	public async getOrderDetails() {
 		const tenantId = this.request.headers['x-tenant-id']
-		const accumulatedData = await this.epcModel.find({ tenant_id: String(tenantId) })
+		const accumulatedData = await this.epcModel.find({ tenant_id: String(tenantId) }).lean(true)
 		if (!Array.isArray(accumulatedData)) throw new Error('Invalid data format')
 		return Object.entries(
 			groupBy(accumulatedData, (item) => {
@@ -227,7 +226,8 @@ export class RFIDService {
 						$in: epcToExchange
 					}
 				},
-				{ mo_no: payload.mo_no_actual }
+				{ mo_no: payload.mo_no_actual },
+				{ new: true }
 			)
 		} catch (e) {
 			await queryRunner.rollbackTransaction()
@@ -238,12 +238,18 @@ export class RFIDService {
 	}
 
 	public async deleteScannedEpcs(tenantId: string, filters: DeleteEpcBySizeParams): Promise<DeleteResult> {
-		const filterQuery: RootFilterQuery<Epc> = !filters['size_num_code.eq'] ? pick(filters, 'mo_no.eq') : filters
+		const filterQuery: RootFilterQuery<Epc> = !filters['size_numcode.eq'] ? pick(filters, 'mo_no.eq') : filters
 		if (filterQuery['size_numcode.eq'] && filterQuery['quantity.eq']) {
 			const epcsToDelete = await this.epcModel
 				.find({ tenant_id: tenantId, mo_no: filters['mo_no.eq'], size_numcode: filterQuery['size_numcode.eq'] })
 				.limit(filters['quantity.eq'])
-			return await this.epcModel.deleteMany({ epc: { $in: epcsToDelete.map((item) => item.epc) } })
+				.lean(true)
+
+			Logger.debug(epcsToDelete)
+			return await this.epcModel.deleteMany({
+				tenant_id: tenantId,
+				epc: { $in: epcsToDelete.map((item) => item.epc) }
+			})
 		}
 		return await this.epcModel.deleteMany({ tenant_id: tenantId, mo_no: filters['mo_no.eq'] })
 	}

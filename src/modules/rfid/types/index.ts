@@ -18,7 +18,7 @@ export type RFIDSearchParams = {
 export type SearchCustOrderParams = {
 	'mo_no.eq': string
 	'mat_code.eq': string
-	'size_num_code.eq'?: string
+	'size_numcode.eq'?: string
 	'factory_code.eq': string
 	q: string
 }
@@ -28,6 +28,6 @@ export type UpsertRFIDCustomerData = {
 	items: Partial<RFIDMatchCustomerEntity>[]
 }
 
-export type DeleteEpcBySizeParams = Pick<SearchCustOrderParams, 'mo_no.eq' | 'size_num_code.eq'> & {
+export type DeleteEpcBySizeParams = Pick<SearchCustOrderParams, 'mo_no.eq' | 'size_numcode.eq'> & {
 	'quantity.eq': number
 }

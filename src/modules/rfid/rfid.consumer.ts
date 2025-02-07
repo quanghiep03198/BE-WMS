@@ -4,7 +4,7 @@ import { Logger } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { InjectModel } from '@nestjs/mongoose'
 import { Job, Queue } from 'bullmq'
-import _, { omit } from 'lodash'
+import _ from 'lodash'
 import { AnyBulkWriteOperation, PaginateModel } from 'mongoose'
 import { DataSource } from 'typeorm'
 import { SqlServerConnectionOptions } from 'typeorm/driver/sqlserver/SqlServerConnectionOptions'
@@ -71,7 +71,7 @@ class BaseRFIDConsumer extends WorkerHost {
 
 			// * Get the EPCs information from the database with received data
 			const epcList = data.tagList.map((item) => item.epc.trim()).join(',')
-			const excludedOrders = EXCLUDED_ORDERS.join(',')
+			const excludedOrderList = EXCLUDED_ORDERS.join(',')
 			const stationNO = deviceInformation?.station_no ?? FALLBACK_VALUE
 			const incommingEpcs = await dataSource.query<StoredRFIDReaderItem[]>(
 				/* SQL */ `
@@ -79,24 +79,19 @@ class BaseRFIDConsumer extends WorkerHost {
 					COALESCE(b.mo_no_actual, b.mo_no, @0) AS mo_no,
 					COALESCE(b.mat_code, @0) AS mat_code,
 					COALESCE(b.shoestyle_codefactory, @0) AS shoes_style_code_factory,
-					COALESCE(b.size_numcode, @0) AS size_numcode,
-					@1 AS station_no,
-					@2 AS tenant_id,
-					GETDATE() AS record_time
+					COALESCE(b.size_numcode, @0) AS size_numcode
 				FROM (
-					SELECT value AS EPC_Code FROM STRING_SPLIT(@3, ',')
+					SELECT value AS EPC_Code FROM STRING_SPLIT(@1, ',')
 				) AS a
 				LEFT JOIN DV_DATA_LAKE.dbo.dv_rfidmatchmst_cust b ON a.EPC_Code = b.EPC_Code
 				WHERE 
 					b.mo_no IS NULL 
 					OR b.mo_no NOT IN (
-						SELECT value AS mo_no FROM STRING_SPLIT(@4, ',')
+						SELECT value AS mo_no FROM STRING_SPLIT(@2, ',')
 					)
 				`,
-				[FALLBACK_VALUE, stationNO, tenantId, epcList, excludedOrders]
+				[FALLBACK_VALUE, epcList, excludedOrderList]
 			)
-
-			FileLogger.debug(incommingEpcs)
 
 			// * Check if EPC have no information, trigger queue to fetch from third party API
 			const validUnknownEpcs = incommingEpcs.filter(
@@ -117,7 +112,7 @@ class BaseRFIDConsumer extends WorkerHost {
 			const bulkOperations: AnyBulkWriteOperation<any>[] = incommingEpcs.map((item) => ({
 				updateOne: {
 					filter: { epc: item.epc },
-					update: omit(item, 'record_time'),
+					update: { ...item, station_no: stationNO, tenant_id: tenantId },
 					upsert: true
 				}
 			}))
@@ -126,11 +121,6 @@ class BaseRFIDConsumer extends WorkerHost {
 			this.logger.error(e)
 			FileLogger.error(e)
 		}
-	}
-
-	@OnWorkerEvent('active')
-	async onWorkerActive(job: Job) {
-		this.logger.log(`Job "${job.name}" is active`)
 	}
 
 	@OnWorkerEvent('completed')

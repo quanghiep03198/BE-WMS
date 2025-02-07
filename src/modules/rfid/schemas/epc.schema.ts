@@ -8,7 +8,7 @@ export type EpcDocument = HydratedDocument<Epc> & { record_time: string }
 	collection: 'epcs',
 	timestamps: {
 		createdAt: 'record_time',
-		updatedAt: 'updated_at',
+		updatedAt: 'modified_at',
 		currentTime: () => new Date()
 	},
 	versionKey: false,
