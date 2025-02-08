@@ -1,8 +1,8 @@
 {
-	"name": "node_server",
+	"name": "wms-api",
 	"version": "0.0.1",
-	"description": "",
-	"author": "",
+	"description": "RESTful API for warehouse management system",
+	"author": "quanghiep03198",
 	"private": true,
 	"license": "UNLICENSED",
 	"scripts": {
