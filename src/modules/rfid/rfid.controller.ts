@@ -64,11 +64,13 @@ export class RFIDController {
 			postMessage()
 
 			// * Watch for changes in the data file
-			this.epcModel.watch().on('change', (change) => {
-				if (change.fullDocument?.tenant_id === tenantId) {
-					postMessage()
-				}
-			})
+			this.epcModel
+				.watch([{ $match: { 'fullDocument.tenant_id': tenantId } }], { fullDocument: 'updateLookup' })
+				.on('change', (change) => {
+					if (change.fullDocument?.tenant_id === tenantId) {
+						postMessage()
+					}
+				})
 
 			return subject.asObservable()
 		} catch (error) {

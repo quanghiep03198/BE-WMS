@@ -1,10 +1,11 @@
 import { DATA_SOURCE_DATA_LAKE, DATA_SOURCE_ERP } from '@/databases/constants'
 import { InjectQueue } from '@nestjs/bullmq'
-import { Inject, Injectable, InternalServerErrorException, Logger, NotFoundException, Scope } from '@nestjs/common'
+import { Inject, Injectable, InternalServerErrorException, NotFoundException, Scope } from '@nestjs/common'
 import { REQUEST } from '@nestjs/core'
 import { InjectModel } from '@nestjs/mongoose'
 import { InjectDataSource } from '@nestjs/typeorm'
 import { Queue } from 'bullmq'
+import { format } from 'date-fns'
 import { Request } from 'express'
 import { chunk, groupBy, pick } from 'lodash'
 import { DeleteResult, FilterQuery, PaginateModel, RootFilterQuery } from 'mongoose'
@@ -99,12 +100,16 @@ export class RFIDService {
 
 	public async upsertFPStock(orderCode: string, data: UpsertStockDTO) {
 		const tenantId = this.request.headers['x-tenant-id']
-		const payload = await this.epcModel.find({ tenant_id: String(tenantId), mo_no: orderCode })
+		const payload = await this.epcModel.find({ tenant_id: String(tenantId), mo_no: orderCode }).lean(true)
 		const queryRunner = this.dataSource.createQueryRunner()
 		queryRunner.startTransaction()
 		try {
 			for (const item of chunk(
-				payload.map((value) => ({ ...value, ...data })),
+				payload.map((value) => ({
+					...value,
+					...data,
+					record_time: format(value.record_time, 'yyyy-MM-dd HH:mm:ss')
+				})),
 				100
 			)) {
 				const mergeSourceValues = item
@@ -121,19 +126,19 @@ export class RFIDService {
 					USING (
 						VALUES ${mergeSourceValues}
 					)  AS source (
-							EPC_Code, mo_no, rfid_status, rfid_use, record_time, station_no,
+							EPC_Code, mo_no, rfid_status, rfid_use, record_time, stationNO,
 							quantity, storage, FC_server_code, dept_code, dept_name
 						)
 					ON target.EPC_Code = source.EPC_Code
 					WHEN NOT MATCHED THEN
 						INSERT (
-							EPC_Code, mo_no, rfid_status, rfid_use, record_time, station_no,
+							EPC_Code, mo_no, rfid_status, rfid_use, record_time, stationNO,
 							quantity, storage, FC_server_code, dept_code, dept_name
 						)
 						VALUES (
-							source.EPC_Code, source.mo_no, source.rfid_status, source.rfid_use, source.record_time, source.station_no,
+							source.EPC_Code, source.mo_no, source.rfid_status, source.rfid_use, CAST(source.record_time AS DATE), source.stationNO,
 							source.quantity, source.storage, source.FC_server_code, source.dept_code, source.dept_name
-						)
+						);
 					`)
 			}
 			queryRunner.commitTransaction()
@@ -181,7 +186,7 @@ export class RFIDService {
 	public async exchangeEpc(payload: ExchangeEpcDTO) {
 		const tenantId = String(this.request.headers['x-tenant-id'])
 		const queryRunner = this.dataSource.createQueryRunner()
-		const scannedEpcs = await this.epcModel.find({ tenant_id: tenantId })
+		const scannedEpcs = await this.epcModel.find({ tenant_id: tenantId }).lean(true)
 		let epcToExchange = scannedEpcs
 			.filter((item) => {
 				if (payload.multi) {
@@ -245,7 +250,6 @@ export class RFIDService {
 				.limit(filters['quantity.eq'])
 				.lean(true)
 
-			Logger.debug(epcsToDelete)
 			return await this.epcModel.deleteMany({
 				tenant_id: tenantId,
 				epc: { $in: epcsToDelete.map((item) => item.epc) }
