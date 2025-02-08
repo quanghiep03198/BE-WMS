@@ -69,8 +69,14 @@ class BaseRFIDConsumer extends WorkerHost {
 			// * Get the RFID reader information from the database
 			const deviceInformation = await dataSource.getRepository(RFIDReaderEntity).findOneBy({ device_sn: sn })
 
-			// * Get the EPCs information from the database with received data
-			const epcList = data.tagList.map((item) => item.epc.trim()).join(',')
+			/**
+			 * * Get the EPCs information from the database with received data
+			 * * Do not receive EPCs that start with '303429' (Dansko's EPCs)
+			 */
+			const epcList = data.tagList
+				.filter((item) => !item.epc.startsWith('303429'))
+				.map((item) => item.epc.trim())
+				.join(',')
 			const excludedOrderList = EXCLUDED_ORDERS.join(',')
 			const stationNO = deviceInformation?.station_no ?? FALLBACK_VALUE
 			const incommingEpcs = await dataSource.query<StoredRFIDReaderItem[]>(
