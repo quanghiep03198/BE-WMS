@@ -11,6 +11,7 @@ import { SqlServerConnectionOptions } from 'typeorm/driver/sqlserver/SqlServerCo
 import { Tenant } from '../tenancy/constants'
 import { THIRD_PARTY_API_SYNC } from '../third-party-api/constants'
 import {
+	EXCLUDED_EPC_PATTERN,
 	EXCLUDED_ORDERS,
 	FALLBACK_VALUE,
 	POST_DATA_QUEUE_GL1,
@@ -73,10 +74,7 @@ class BaseRFIDConsumer extends WorkerHost {
 			 * * Get the EPCs information from the database with received data
 			 * * Do not receive EPCs that start with '303429' (Dansko's EPCs)
 			 */
-			const epcList = data.tagList
-				.filter((item) => !item.epc.startsWith('303429'))
-				.map((item) => item.epc.trim())
-				.join(',')
+			const epcList = data.tagList.map((item) => item.epc.trim()).join(',')
 			const excludedOrderList = EXCLUDED_ORDERS.join(',')
 			const stationNO = deviceInformation?.station_no ?? FALLBACK_VALUE
 			const incommingEpcs = await dataSource.query<StoredRFIDReaderItem[]>(
@@ -91,13 +89,17 @@ class BaseRFIDConsumer extends WorkerHost {
 				) AS a
 				LEFT JOIN DV_DATA_LAKE.dbo.dv_rfidmatchmst_cust b ON a.EPC_Code = b.EPC_Code
 				WHERE 
-					b.mo_no IS NULL 
-					OR b.mo_no NOT IN (
-						SELECT value AS mo_no FROM STRING_SPLIT(@2, ',')
+					a.EPC_Code NOT IN (SELECT EPC_Code FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet)
+					AND a.EPC_Code NOT LIKE @2
+					AND (
+						b.mo_no IS NULL 
+						OR b.mo_no NOT IN (SELECT value AS mo_no FROM STRING_SPLIT(@3, ','))
 					)
 				`,
-				[FALLBACK_VALUE, epcList, excludedOrderList]
+				[FALLBACK_VALUE, epcList, EXCLUDED_EPC_PATTERN, excludedOrderList]
 			)
+
+			if (incommingEpcs.length === 0) return
 
 			// * Check if EPC have no information, trigger queue to fetch from third party API
 			const validUnknownEpcs = incommingEpcs.filter(
@@ -106,7 +108,7 @@ class BaseRFIDConsumer extends WorkerHost {
 			if (validUnknownEpcs.length > 0) {
 				const uniqueEpcs = _.uniqBy(validUnknownEpcs, (item) => item.epc.substring(0, 22)).map((item) => item.epc)
 				this.thirdPartyApiSyncQueue.add(deviceInformation.factory_code, uniqueEpcs, {
-					jobId: tenantId,
+					jobId: deviceInformation.factory_code,
 					attempts: 3,
 					backoff: {
 						type: 'exponential',
@@ -125,7 +127,6 @@ class BaseRFIDConsumer extends WorkerHost {
 			await this.epcModel.bulkWrite(bulkOperations)
 		} catch (e) {
 			this.logger.error(e)
-			FileLogger.error(e)
 		}
 	}
 
