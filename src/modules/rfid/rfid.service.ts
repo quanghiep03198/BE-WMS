@@ -8,7 +8,7 @@ import { Queue } from 'bullmq'
 import { format } from 'date-fns'
 import { Request } from 'express'
 import { chunk, groupBy, pick } from 'lodash'
-import { DeleteResult, FilterQuery, PaginateModel, RootFilterQuery } from 'mongoose'
+import { DeleteResult, FilterQuery, PaginateModel, PipelineStage, RootFilterQuery } from 'mongoose'
 import { I18nContext, I18nService } from 'nestjs-i18n'
 import { Brackets, DataSource, FindOptionsWhere, In } from 'typeorm'
 import { TENANCY_DATASOURCE, Tenant } from '../tenancy/constants'
@@ -16,7 +16,7 @@ import { FALLBACK_VALUE, POST_DATA_QUEUE_GL1, POST_DATA_QUEUE_GL3, POST_DATA_QUE
 import { ExchangeEpcDTO, PostReaderDataDTO, SearchCustOrderParamsDTO, UpsertStockDTO } from './dto/rfid.dto'
 import { RFIDMatchCustomerEntity } from './entities/rfid-customer-match.entity'
 import { Epc, EpcDocument } from './schemas/epc.schema'
-import { DeleteEpcBySizeParams, RFIDSearchParams } from './types'
+import { DeleteEpcBySizeParams, RFIDSearchParams, StoredRFIDReaderItem } from './types'
 
 /**
  * @description Service for Finished Production Inventory (FPI)
@@ -42,7 +42,10 @@ export class RFIDService {
 		return await queue.add(tenant, data, { lifo: true })
 	}
 
-	private getQueueByTenant(tenant: string): Queue | null {
+	/**
+	 * @description Get the queue by request's tenant ID
+	 */
+	public getQueueByTenant(tenant: string): Queue | null {
 		switch (tenant) {
 			case Tenant.VN_LIANYING_PRIMARY:
 				return this.postDataQueueGL1
@@ -53,6 +56,23 @@ export class RFIDService {
 			default:
 				return null
 		}
+	}
+
+	/**
+	 * @description Cleanup the queue by tenant. All existing jobs around 5 minutes old will be removed
+	 */
+	public async cleanupQueue(tenantId): Promise<unknown[]> {
+		const queue = this.getQueueByTenant(tenantId)
+		if (!queue) return
+		const GRACE_TIME = 60 * 1000 * 5
+		const QUANTITY = 1000
+		return await Promise.all([
+			queue.drain(),
+			queue.clean(GRACE_TIME, QUANTITY, 'active'),
+			queue.clean(GRACE_TIME, QUANTITY, 'paused'),
+			queue.clean(GRACE_TIME, QUANTITY, 'failed'),
+			queue.clean(GRACE_TIME, QUANTITY, 'completed')
+		])
 	}
 
 	public async fetchLatestData(args: RFIDSearchParams) {
@@ -66,7 +86,7 @@ export class RFIDService {
 		if (!args['mo_no.eq']) delete filterQuery.mo_no
 
 		return await this.epcModel.paginate(filterQuery, {
-			sort: { record_time: -1 },
+			sort: { record_time: -1, epc: 1, mo_no: 1 },
 			lean: true,
 			page: args._page,
 			limit: args._limit,
@@ -98,11 +118,21 @@ export class RFIDService {
 		})
 	}
 
+	public async captureDataChange(onSnapshot: (change?: any) => unknown): Promise<void> {
+		this.epcModel
+			.watch([{ $match: { operationType: { $in: ['insert', 'update', 'delete'] } } }], {
+				fullDocument: 'updateLookup'
+			})
+			.on('change', onSnapshot)
+	}
+
 	public async upsertFPStock(orderCode: string, data: UpsertStockDTO) {
 		const tenantId = this.request.headers['x-tenant-id']
 		const payload = await this.epcModel.find({ tenant_id: String(tenantId), mo_no: orderCode }).lean(true)
+
 		const queryRunner = this.dataSource.createQueryRunner()
-		queryRunner.startTransaction()
+		const session = await this.epcModel.startSession()
+		await Promise.all([queryRunner.startTransaction(), session.startTransaction()])
 		try {
 			for (const item of chunk(
 				payload.map((value) => ({
@@ -115,22 +145,22 @@ export class RFIDService {
 				const mergeSourceValues = item
 					.map((value) => {
 						return `(
-							'${value.epc}', '${value.mo_no}', '${value.rfid_status}', '${value.rfid_use}', '${value.record_time}', '${value.station_no}',
-							'${value.quantity}', '${value.storage}', '${value.factory_code}', '${value.dept_code}', '${value.dept_name}'
+						'${value.epc}', '${value.mo_no}', '${value.rfid_status}', '${value.rfid_use}', '${value.record_time}', '${value.station_no}',
+						'${value.quantity}', '${value.storage}', '${value.factory_code}', '${value.dept_code}', '${value.dept_name}'
 						)`
 					})
 					.join(',')
 
 				await this.dataSource.query(/* SQL */ `
-					MERGE INTO DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet AS target
-					USING (
-						VALUES ${mergeSourceValues}
-					)  AS source (
+						MERGE INTO DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet AS target
+						USING (
+							VALUES ${mergeSourceValues}
+						)  AS source (
 							EPC_Code, mo_no, rfid_status, rfid_use, record_time, stationNO,
 							quantity, storage, FC_server_code, dept_code, dept_name
 						)
-					ON target.EPC_Code = source.EPC_Code
-					WHEN NOT MATCHED THEN
+						ON target.EPC_Code = source.EPC_Code
+						WHEN NOT MATCHED THEN
 						INSERT (
 							EPC_Code, mo_no, rfid_status, rfid_use, record_time, stationNO,
 							quantity, storage, FC_server_code, dept_code, dept_name
@@ -139,14 +169,14 @@ export class RFIDService {
 							source.EPC_Code, source.mo_no, source.rfid_status, source.rfid_use, CAST(source.record_time AS DATE), source.stationNO,
 							source.quantity, source.storage, source.FC_server_code, source.dept_code, source.dept_name
 						);
-					`)
+						`)
 			}
-			queryRunner.commitTransaction()
 			await this.epcModel.deleteMany({ tenant_id: String(tenantId), mo_no: orderCode })
-			const queue = this.getQueueByTenant(tenantId.toString())
-			await queue.drain()
-		} catch {
-			queryRunner.rollbackTransaction()
+
+			await Promise.all([queryRunner.commitTransaction(), session.commitTransaction()])
+		} catch (e) {
+			await Promise.all([queryRunner.rollbackTransaction(), session.abortTransaction()])
+			throw new InternalServerErrorException(e)
 		}
 	}
 
@@ -185,30 +215,28 @@ export class RFIDService {
 	// TODO: Implement update from stored JSON data file and dv_rfidmatchmst_cust table
 	public async exchangeEpc(payload: ExchangeEpcDTO) {
 		const tenantId = String(this.request.headers['x-tenant-id'])
-		const queryRunner = this.dataSource.createQueryRunner()
-		const scannedEpcs = await this.epcModel.find({ tenant_id: tenantId }).lean(true)
-		let epcToExchange = scannedEpcs
-			.filter((item) => {
-				if (payload.multi) {
-					return (
-						payload.mo_no
-							.split(',')
-							.map((m) => m.trim())
-							.some((__item) => __item === item.mo_no) && item.mo_no !== payload.mo_no_actual
-					)
-				} else {
-					return (
-						item.mo_no === payload.mo_no &&
-						item.size_numcode === payload.size_numcode &&
-						item.mat_code === payload.mat_code
-					)
-				}
-			})
-			.map((item) => item.epc)
 
-		if (!payload.multi && payload.quantity) {
-			epcToExchange = epcToExchange.slice(0, payload.quantity)
-		}
+		const queryRunner = this.dataSource.createQueryRunner()
+		const session = await this.epcModel.startSession()
+		const filterQuery: FilterQuery<EpcDocument> = payload.multi
+			? {
+					tenant_id: tenantId,
+					mo_no: { $in: payload.mo_no.split(',').map((m) => m.trim()), $ne: payload.mo_no_actual }
+				}
+			: {
+					tenant_id: tenantId,
+					mo_no: payload.mo_no,
+					size_numcode: payload.size_numcode,
+					mat_code: payload.mat_code
+				}
+		const extraPipelineStages: PipelineStage[] =
+			payload.quantity && !payload.multi ? [{ $limit: payload.quantity }] : []
+
+		const epcToExchange = await this.epcModel.aggregate<StoredRFIDReaderItem>([
+			{ $match: filterQuery },
+			{ $project: { epc: 1 } },
+			...extraPipelineStages
+		])
 
 		if (epcToExchange.length === 0) {
 			throw new NotFoundException(this.i18n.t('rfid.errors.no_matching_epc', { lang: I18nContext.current().lang }))
@@ -216,26 +244,27 @@ export class RFIDService {
 
 		try {
 			const update = pick(payload, 'mo_no_actual')
-			await queryRunner.startTransaction('READ UNCOMMITTED')
-			for (const epcBatch of chunk(epcToExchange, 2000)) {
+			await Promise.all([session.startTransaction(), queryRunner.startTransaction('READ UNCOMMITTED')])
+			for (const epcBatch of chunk(
+				epcToExchange.map((item) => item.epc),
+				2000
+			)) {
 				const criteria: FindOptionsWhere<RFIDMatchCustomerEntity> = {
 					epc: In(epcBatch)
 				}
 				await queryRunner.manager.update(RFIDMatchCustomerEntity, criteria, update)
 			}
-			await queryRunner.commitTransaction()
 			await this.epcModel.updateMany(
 				{
 					tenant_id: tenantId,
-					epc: {
-						$in: epcToExchange
-					}
+					epc: { $in: epcToExchange.map((item) => item.epc) }
 				},
 				{ mo_no: payload.mo_no_actual },
 				{ new: true }
 			)
+			await Promise.all([queryRunner.commitTransaction(), session.commitTransaction()])
 		} catch (e) {
-			await queryRunner.rollbackTransaction()
+			await Promise.all([queryRunner.rollbackTransaction(), session.abortTransaction()])
 			throw new InternalServerErrorException(e.message)
 		} finally {
 			await queryRunner.release()
