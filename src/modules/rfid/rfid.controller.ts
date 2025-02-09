@@ -1,22 +1,30 @@
 import { Api, HttpMethod } from '@/common/decorators/api.decorator'
 import { AuthGuard } from '@/common/decorators/auth.decorator'
 import { User } from '@/common/decorators/user.decorator'
+import { AllExceptionsFilter } from '@/common/filters/exceptions.filter'
 import { ZodValidationPipe } from '@/common/pipes/zod-validation.pipe'
+import { InjectQueue } from '@nestjs/bullmq'
 import {
 	Body,
 	Controller,
 	DefaultValuePipe,
+	Get,
 	Headers,
 	HttpStatus,
 	Logger,
 	Param,
 	ParseIntPipe,
 	Query,
-	Sse
+	Res,
+	UseFilters
 } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
+import { Queue } from 'bullmq'
+import { Response } from 'express'
+import { uniqBy } from 'lodash'
 import { DeleteResult, PaginateModel } from 'mongoose'
-import { catchError, from, map, of, ReplaySubject } from 'rxjs'
+import { THIRD_PARTY_API_SYNC } from '../third-party-api/constants'
+import { FALLBACK_VALUE } from './constants'
 import {
 	deleteEpcValidator,
 	ExchangeEpcDTO,
@@ -38,44 +46,39 @@ import { DeleteEpcBySizeParams } from './types'
 
 @Controller('rfid')
 export class RFIDController {
+	private readonly logger = new Logger(RFIDController.name)
+
 	constructor(
 		@InjectModel(Epc.name) private readonly epcModel: PaginateModel<EpcDocument>,
+		@InjectQueue(THIRD_PARTY_API_SYNC) private readonly thirdPartyApiSyncQueue: Queue,
 		private readonly rfidService: RFIDService
 	) {}
 
-	@Sse('sse')
+	@Get('sse')
 	@AuthGuard()
-	async fetchLatestData(@Headers('X-Tenant-Id') tenantId: string) {
-		try {
-			const subject = new ReplaySubject<any>(1)
+	@UseFilters(AllExceptionsFilter)
+	async streamRFIDData(@Headers('X-Tenant-Id') tenantId: string, @Res() res: Response) {
+		res.setHeader('Content-Type', 'text/event-stream')
+		res.setHeader('Cache-Control', 'no-cache')
 
-			const postMessage = () => {
-				from(this.rfidService.fetchLatestData({ _page: 1, _limit: 50 }))
-					.pipe(
-						catchError((error) => of({ error: error.message })),
-						map((data) => ({ data }))
-					)
-					.subscribe((data) => {
-						subject.next(data)
-					})
-			}
-
-			// * Initial fetch
-			postMessage()
-
-			// * Watch for changes in the data file
-			this.epcModel
-				.watch([{ $match: { 'fullDocument.tenant_id': tenantId } }], { fullDocument: 'updateLookup' })
-				.on('change', (change) => {
-					if (change.fullDocument?.tenant_id === tenantId) {
-						postMessage()
-					}
-				})
-
-			return subject.asObservable()
-		} catch (error) {
-			Logger.error(error)
+		const postMessage = (data) => {
+			res.write(`data: ${JSON.stringify(data)}\n\n`)
+			res.flush()
 		}
+
+		const data = await this.rfidService.fetchLatestData({ _page: 1, _limit: 50 })
+		postMessage(data)
+
+		this.rfidService.captureDataChange(async () => {
+			const data = await this.rfidService.fetchLatestData({ _page: 1, _limit: 50 })
+			if (data) postMessage(data)
+		})
+
+		res.on('close', () => {
+			this.rfidService.cleanupQueue(tenantId)
+			this.logger.log('Stop receiving data from Android RFID device')
+			res.end()
+		})
 	}
 
 	@Api({
@@ -171,5 +174,20 @@ export class RFIDController {
 		@Query(new ZodValidationPipe(deleteEpcValidator)) filters: DeleteEpcBySizeParams
 	): Promise<DeleteResult> {
 		return await this.rfidService.deleteScannedEpcs(tenantId, filters)
+	}
+
+	@Api({
+		endpoint: 'sync-decker-data',
+		method: HttpMethod.PUT,
+		statusCode: HttpStatus.CREATED,
+		message: 'common.created'
+	})
+	async syncDeckerData(@Headers('X-Tenant-Id') tenantId: string, @Headers('X-User-Company') factoryCode: string) {
+		const validUnknownEpcs = await this.epcModel.find({ tenant_id: tenantId, mo_no: FALLBACK_VALUE }).lean(true)
+		return await this.thirdPartyApiSyncQueue.add(
+			factoryCode,
+			uniqBy(validUnknownEpcs, (item) => item.epc.substring(0, 22)).map((item) => item.epc),
+			{ jobId: factoryCode, removeOnComplete: true }
+		)
 	}
 }
