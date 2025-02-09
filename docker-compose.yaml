@@ -6,9 +6,10 @@ services:
          dockerfile: Dockerfile
       ports:
          - '3001:3001'
+      volumes:
+         - .:/apps
       depends_on:
          - redis
-         - kafka
       environment:
          REDIS_HOST: redis
          REDIS_PORT: 6379
@@ -18,16 +19,10 @@ services:
    redis:
       image: 'redis'
       container_name: Redis
+      volumes:
+         - /redis:/redis
       ports:
          - '6379:6379'
-      networks:
-         - app-network
-
-   kafka:
-      image: 'apache/kafka:latest'
-      container_name: Apache Kafka
-      ports:
-         - '9092:9092'
       networks:
          - app-network
 
