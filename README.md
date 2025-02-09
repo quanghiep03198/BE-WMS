@@ -9,7 +9,7 @@ This is a **RESTful API** for a **Warehouse Management System** built with **Nes
 ## Table of Contents
 
 - [Features](#features)
-- [Tech Stack](#tech-stack)
+- [Techlogies Stack](#techstack)
 - [Getting Started](#getting-started)
 - [Configuration](#configuration)
 - [Running the Application](#running-the-application)
@@ -26,15 +26,45 @@ This is a **RESTful API** for a **Warehouse Management System** built with **Nes
 - **Database Transactions**: Ensure data integrity using SQL Server and TypeORM.
 - **Authentication and Authorization**: Secure API endpoints using JWT authentication (optional).
 
-## Tech Stack
+## TechStack
 
-- **Languages**: [Typescript](https://www.typescriptlang.org/) / [Node.js](https://nodejs.org/docs/latest/api/)
-- **Framework**: [NestJS](https://nestjs.com/)
-- **Database**: [Microsoft SQL Server](https://www.microsoft.com/en-us/sql-server/sql-server-2022)
-- **Cache**: [Redis](https://redis.io/docs/latest/)
-- **ORM**: [TypeORM](https://typeorm.io/)
-- **Authentication**: [JSON Web Tokens](https://jwt.io/)
-- **Validation**: [Zod](https://zod.dev/)
+- **Languages**
+
+   ![TypeScript](https://img.shields.io/badge/typescript-%23007ACC.svg?style=for-the-badge&logo=typescript&logoColor=white)
+
+- **Framework**
+
+   ![NodeJS](https://img.shields.io/badge/node.js-6DA55F?style=for-the-badge&logo=node.js&logoColor=white)
+   ![NestJS](https://img.shields.io/badge/nestjs-%23E0234E.svg?style=for-the-badge&logo=nestjs&logoColor=white)
+
+- **Testing**
+
+   ![Jest](https://img.shields.io/badge/-jest-%23C21325?style=for-the-badge&logo=jest&logoColor=white)
+
+- **Databases**
+
+   ![MicrosoftSQLServer](https://img.shields.io/badge/Microsoft%20SQL%20Server-CC2927?style=for-the-badge&logo=microsoft%20sql%20server&logoColor=white)
+   ![MongoDB](https://img.shields.io/badge/MongoDB-%234ea94b.svg?style=for-the-badge&logo=mongodb&logoColor=white)
+   ![Redis](https://img.shields.io/badge/redis-%23DD0031.svg?style=for-the-badge&logo=redis&logoColor=white)
+
+- **ORM**
+
+   ![TypeORM](https://img.shields.io/badge/TypeORM-FE0803.svg?style=for-the-badge&logo=typeorm&logoColor=white)
+   ![Zod](https://img.shields.io/badge/zod-%233068b7.svg?style=for-the-badge&logo=zod&logoColor=white)
+
+- **Authentication**
+
+   ![JWT](https://img.shields.io/badge/JWT-black?style=for-the-badge&logo=JSON%20web%20tokens)
+
+- **Deployment**
+
+   ![Docker](https://img.shields.io/badge/docker-%230db7ed.svg?style=for-the-badge&logo=docker&logoColor=white)
+   ![GitHub Actions](https://img.shields.io/badge/github%20actions-%232671E5.svg?style=for-the-badge&logo=githubactions&logoColor=white)
+
+- **Mornitoring & Tracking**
+
+   ![Sentry](https://img.shields.io/badge/sentry-%23362D59.svg?style=for-the-badge&logo=sentry&logoColor=white)
+   ![SonarQube](https://img.shields.io/badge/SonarQube-black?style=for-the-badge&logo=sonarqube&logoColor=4E9BCD)
 
 ## Getting Started
 
