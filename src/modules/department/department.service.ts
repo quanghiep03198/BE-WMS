@@ -23,7 +23,7 @@ export class DepartmentService {
 		return await this.departmentRepository
 			.createQueryBuilder()
 			.select(['DISTINCT ERP_dept_code AS dept_code', 'MES_dept_name AS dept_name'])
-			.where('company_code = :factoryCode', { factoryCode })
+			.where('company_code = :factoryCode')
 			.andWhere(
 				`MES_dept_codeupper = CASE 
 						WHEN :factoryCode = 'VA1' THEN 'YS06'
@@ -31,9 +31,9 @@ export class DepartmentService {
 						WHEN :factoryCode = 'VB2' THEN 'SS07'
 						WHEN :factoryCode = 'CA1' THEN 'CS07'
 						ELSE MES_dept_codeupper
-				END`,
-				{ factoryCode }
+				END`
 			)
+			.setParameters({ factoryCode })
 			.getRawMany()
 	}
 }
