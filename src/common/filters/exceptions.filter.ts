@@ -1,5 +1,6 @@
 import { ArgumentsHost, Catch, ExceptionFilter, HttpException, HttpStatus } from '@nestjs/common'
 import { HttpAdapterHost } from '@nestjs/core'
+import { SentryExceptionCaptured } from '@sentry/nestjs'
 import { FileLogger } from '../helpers/file-logger.helper'
 import { IResponseBody } from '../helpers/transform-response.helper'
 
@@ -12,6 +13,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
 	 * @param {HttpException | Error} exception
 	 * @param {ArgumentsHost} host
 	 */
+	@SentryExceptionCaptured()
 	catch(exception: HttpException | Error, host: ArgumentsHost): void {
 		const { httpAdapter } = this.httpAdapterHost
 		const ctx = host.switchToHttp()
