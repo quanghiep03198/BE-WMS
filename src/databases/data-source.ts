@@ -25,6 +25,7 @@ export default new DataSource({
 	type: env('DB_TYPE'),
 	username: env('DB_USERNAME'),
 	password: env('DB_PASSWORD'),
+	schema: 'dbo',
 	entities: [join(__dirname, '../**/*.entity.{ts,js}'), join(__dirname, './**/*.entity.{ts,js}')],
 	migrations: [join(__dirname, './migrations/*.{ts,js}')],
 	seeds: [join(__dirname, './seeds/**/*.seeder.{ts,js}')],
