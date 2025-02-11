@@ -21,7 +21,7 @@ export const appConfigFactory: ConfigFactory = () => ({
 		fallbackLanguage: env('FALLBACK_LANGUAGE', { fallbackValue: 'en' }),
 		loaderOptions: {
 			path: path.join(__dirname, '..', '/i18n/'),
-			watch: true
+			watch: env('NODE_ENV') === 'development'
 		},
 		typesOutputPath: path.join(__dirname, '../..', '/src/generated/i18n.generated.ts')
 	} satisfies I18nOptions,
