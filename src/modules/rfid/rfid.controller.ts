@@ -182,12 +182,16 @@ export class RFIDController {
 		statusCode: HttpStatus.CREATED,
 		message: 'common.created'
 	})
+	@AuthGuard()
 	async syncDeckerData(@Headers('X-Tenant-Id') tenantId: string, @Headers('X-User-Company') factoryCode: string) {
 		const validUnknownEpcs = await this.epcModel.find({ tenant_id: tenantId, mo_no: FALLBACK_VALUE }).lean(true)
 		return await this.thirdPartyApiSyncQueue.add(
-			factoryCode,
+			tenantId,
 			uniqBy(validUnknownEpcs, (item) => item.epc.substring(0, 22)).map((item) => item.epc),
-			{ jobId: factoryCode, removeOnComplete: true }
+			{
+				jobId: factoryCode,
+				removeOnComplete: true
+			}
 		)
 	}
 }

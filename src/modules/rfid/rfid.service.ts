@@ -169,7 +169,7 @@ export class RFIDService {
 							source.EPC_Code, source.mo_no, source.rfid_status, source.rfid_use, CAST(source.record_time AS DATE), source.stationNO,
 							source.quantity, source.storage, source.FC_server_code, source.dept_code, source.dept_name
 						);
-						`)
+					`)
 			}
 			await this.epcModel.deleteMany({ tenant_id: String(tenantId), mo_no: orderCode })
 

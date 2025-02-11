@@ -62,7 +62,6 @@ class BaseRFIDConsumer extends WorkerHost {
 	public async process(job: Job<PostReaderDataDTO, void, string>): Promise<void> {
 		try {
 			const tenantId = job.name
-
 			const { data, sn } = job.data
 
 			const dataSource = await this.getOrCreateDataSource(tenantId)
@@ -107,13 +106,10 @@ class BaseRFIDConsumer extends WorkerHost {
 			)
 			if (validUnknownEpcs.length > 0) {
 				const uniqueEpcs = _.uniqBy(validUnknownEpcs, (item) => item.epc.substring(0, 22)).map((item) => item.epc)
-				this.thirdPartyApiSyncQueue.add(deviceInformation.factory_code, uniqueEpcs, {
+				this.thirdPartyApiSyncQueue.add(tenantId, uniqueEpcs, {
 					jobId: deviceInformation.factory_code,
 					attempts: 3,
-					backoff: {
-						type: 'exponential',
-						delay: 3000
-					}
+					backoff: { type: 'exponential' }
 				})
 			}
 
@@ -126,13 +122,13 @@ class BaseRFIDConsumer extends WorkerHost {
 			}))
 			await this.epcModel.bulkWrite(bulkOperations)
 		} catch (e) {
-			this.logger.error(e)
+			FileLogger.error(e)
 		}
 	}
 
 	@OnWorkerEvent('completed')
 	onWorkerCompleted(job: Job) {
-		this.logger.log(`Job "${job.name}" completed`)
+		FileLogger.info(`Job "${job.name}" completed`)
 	}
 
 	@OnWorkerEvent('failed')

@@ -1,5 +1,5 @@
 import { FileLogger } from '@/common/helpers/file-logger.helper'
-import { Processor, WorkerHost } from '@nestjs/bullmq'
+import { OnWorkerEvent, Processor, WorkerHost } from '@nestjs/bullmq'
 import { Logger, UnauthorizedException } from '@nestjs/common'
 import { Job } from 'bullmq'
 import { groupBy } from 'lodash'
@@ -8,7 +8,7 @@ import { FPIRespository } from '../rfid/rfid.repository'
 import { THIRD_PARTY_API_SYNC } from './constants'
 import { ThirdPartyApiService } from './third-party-api.service'
 
-@Processor(THIRD_PARTY_API_SYNC, { concurrency: 3 })
+@Processor(THIRD_PARTY_API_SYNC, { concurrency: 10 })
 export class ThirdPartyApiConsumer extends WorkerHost {
 	private readonly logger = new Logger(ThirdPartyApiConsumer.name)
 
@@ -20,8 +20,8 @@ export class ThirdPartyApiConsumer extends WorkerHost {
 	}
 
 	async process(job: Job<string[], void, string>): Promise<void> {
-		const factoryCode: string = job.name
-		const tenantId: string = job.id
+		const factoryCode: string = job.id
+		const tenantId: string = job.name
 
 		try {
 			const accessToken = await this.thirdPartyApiService.authenticate(factoryCode)
@@ -42,6 +42,16 @@ export class ThirdPartyApiConsumer extends WorkerHost {
 		} catch (error) {
 			FileLogger.error(error)
 		}
+	}
+
+	@OnWorkerEvent('completed')
+	async onWorkerCompleted(job: Job<string[], void, string>) {
+		FileLogger.info(`Pulled EPC data from Decker for factory ${job.name}`)
+	}
+
+	@OnWorkerEvent('failed')
+	onWorkerFailed(job: Job) {
+		FileLogger.error(`Job "${job.name}" failed: ${job.failedReason}`)
 	}
 
 	private async fetchCommandNumbers(data: string[], accessToken: string): Promise<string[]> {

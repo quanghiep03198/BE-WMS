@@ -158,9 +158,10 @@ export class FPIRespository {
 
 		const queryRunner = dataSource.createQueryRunner()
 
+		await queryRunner.connect()
+		const session = await this.epcModel.startSession()
 		try {
-			await queryRunner.connect()
-			await queryRunner.startTransaction()
+			await Promise.all([session.startTransaction(), queryRunner.startTransaction()])
 
 			// * Upsert data for "dv_rfidmatchmst_cust" table
 			for (const data of chunk(payload, 2000)) {
@@ -184,23 +185,6 @@ export class FPIRespository {
 							factory_code_orders, factory_name_orders, factory_code_produce, factory_name_produce, size_qty
 						)
 					ON target.EPC_Code = source.EPC_Code
-					WHEN MATCHED THEN
-						UPDATE SET 
-						target.mo_no_actual = NULL,
-						target.mo_no = source.mo_no,
-						target.mat_code = source.mat_code,
-						target.mo_noseq = source.mo_noseq,
-						target.or_no = source.or_no,
-						target.or_custpo = source.or_custpo,
-						target.shoestyle_codefactory = source.shoestyle_codefactory,
-						target.cust_shoestyle = source.cust_shoestyle,
-						target.size_code = source.size_code,
-						target.size_numcode = source.size_numcode,
-						target.factory_code_orders = source.factory_code_orders,
-						target.factory_name_orders = source.factory_name_orders,
-						target.factory_code_produce = source.factory_code_produce,
-						target.factory_name_produce = source.factory_name_produce,
-						target.size_qty = source.size_qty
 					WHEN NOT MATCHED THEN
 						INSERT (
 							EPC_Code, mo_no, mat_code, mo_noseq, or_no, or_custpo,
@@ -213,10 +197,9 @@ export class FPIRespository {
 							source.or_custpo, source.shoestyle_codefactory, source.cust_shoestyle, source.size_code, source.size_numcode,
 							source.factory_code_orders, source.factory_name_orders, source.factory_code_produce, source.factory_name_produce, source.size_qty,
 							'Y', GETDATE(), CAST(GETDATE() AS DATE), 'A', 'A', 0
-						)`)
+						);
+					`)
 			}
-
-			await queryRunner.commitTransaction()
 
 			const bulkWriteOptions: AnyBulkWriteOperation<any>[] = payload.map((item) => ({
 				updateOne: {
@@ -227,9 +210,11 @@ export class FPIRespository {
 				}
 			}))
 			await this.epcModel.bulkWrite(bulkWriteOptions)
+
+			await Promise.all([queryRunner.commitTransaction(), session.commitTransaction()])
 		} catch (error) {
+			await Promise.all([session.abortTransaction(), queryRunner.rollbackTransaction()])
 			FileLogger.error(error)
-			await queryRunner.rollbackTransaction()
 		} finally {
 			await queryRunner.release()
 		}
