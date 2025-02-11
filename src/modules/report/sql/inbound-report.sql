@@ -20,11 +20,11 @@ LEFT JOIN dv_rfidmatchmst_cust match
 LEFT JOIN wuerp_vnrd.dbo.ta_manufacturmst manf
 	ON manf.mo_no = COALESCE(inv.mo_no_actual, inv.mo_no)
 WHERE 
-	inv.rfid_status IS NOT NULL
+	inv.rfid_status = 'A'
 	AND inv.EPC_Code NOT LIKE '303429%'
 	AND inv.EPC_Code NOT LIKE 'E28%'
 	AND COALESCE(inv.mo_no_actual, inv.mo_no, 'Unknown') NOT IN ('13D05B006')
-	AND CAST(inv.record_time AS DATE) = CAST(@0 AS DATE) -- Đảm bảo sử dụng ngày chuẩn ISO
+	AND CAST(inv.record_time AS DATE) = CAST(@0 AS DATE)
 GROUP BY 
 	COALESCE(inv.mo_no_actual, inv.mo_no, 'Unknown'),
 	manf.mo_sumqty,
