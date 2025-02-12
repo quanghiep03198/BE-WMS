@@ -181,7 +181,7 @@ export class RFIDService {
 	}
 
 	public async searchCustomerOrder(params: SearchCustOrderParamsDTO) {
-		const subQuery = this.datasourceERP
+		const subQuery = this.dataSource
 			.createQueryBuilder()
 			.select('manu.mo_no', 'mo_no')
 			.from(/* SQL */ `wuerp_vnrd.dbo.ta_manufacturmst`, 'manu')
@@ -189,7 +189,7 @@ export class RFIDService {
 			.andWhere(/* SQL */ `manu.created >= CAST(DATEADD(YEAR, -2, GETDATE()) AS DATE)`)
 			.setParameter('factory_code', params['factory_code.eq'])
 
-		return await this.datasourceDL
+		return await this.dataSource
 			.createQueryBuilder()
 			.select(/* SQL */ `DISTINCT TOP 5 mo_no AS mo_no`)
 			.from(RFIDMatchCustomerEntity, 'cust')

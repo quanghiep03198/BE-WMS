@@ -1,5 +1,4 @@
-import { Api, HttpMethod } from '@/common/decorators/api.decorator'
-import { AuthGuard } from '@/common/decorators/auth.decorator'
+import { Api, AuthGuard, HttpMethod } from '@/common/decorators'
 import { Body, Controller, Headers, HttpStatus } from '@nestjs/common'
 import { IImportOrderDelete } from '../interfaces/import-order.interface'
 import { ImportOrderService } from '../services/import-order.service'

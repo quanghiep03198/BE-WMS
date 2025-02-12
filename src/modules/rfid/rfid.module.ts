@@ -23,6 +23,8 @@ import { RFIDCustomerEntitySubscriber } from './subscribers/rfid-customer.entity
 	imports: [
 		TenancyModule,
 		ThirdPartyApiModule,
+		BullModule.registerQueue(...queues.map(({ name }) => ({ name }))),
+		BullModule.registerQueue({ name: THIRD_PARTY_API_SYNC }),
 		TypeOrmModule.forFeature([FPInventoryEntity, RFIDMatchCustomerEntity, RFIDReaderEntity], DATA_SOURCE_DATA_LAKE),
 		MongooseModule.forFeatureAsync([
 			{
@@ -32,9 +34,7 @@ import { RFIDCustomerEntitySubscriber } from './subscribers/rfid-customer.entity
 					return EpcSchema
 				}
 			}
-		]),
-		BullModule.registerQueue(...queues.map(({ name }) => ({ name }))),
-		BullModule.registerQueue({ name: THIRD_PARTY_API_SYNC })
+		])
 	],
 	controllers: [RFIDController],
 	providers: [
@@ -44,14 +44,14 @@ import { RFIDCustomerEntitySubscriber } from './subscribers/rfid-customer.entity
 		FPInventoryEntitySubscriber,
 		...queues.map(({ consumer }) => consumer)
 	],
-	exports: [FPIRespository]
+	exports: [MongooseModule, FPIRespository]
 })
 export class RFIDModule implements NestModule {
 	configure(consumer: MiddlewareConsumer) {
 		consumer
 			.apply(TenacyMiddleware)
 			.exclude(
-				{ path: '/rfid/search-exchangable-order', method: RequestMethod.GET },
+				// { path: '/rfid/search-exchangable-order', method: RequestMethod.GET },
 				{ path: '/rfid/post-data/:tenantId', method: RequestMethod.POST }
 			)
 			.forRoutes({ path: '/rfid/*', method: RequestMethod.ALL })

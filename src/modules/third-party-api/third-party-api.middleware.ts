@@ -10,7 +10,8 @@ export class ThirdPartyApiMiddleware implements NestMiddleware {
 		const factoryCode = req.headers['x-user-company']
 		if (!factoryCode) throw new BadRequestException('Factory code is required')
 		const accessToken = await this.thirdPartyApiService.authenticate(factoryCode.toString())
-		req['access_token'] = accessToken
+		req['factory_code'] = factoryCode
+		req['accessToken'] = accessToken
 		next()
 	}
 }

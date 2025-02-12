@@ -59,7 +59,7 @@ export class ThirdPartyApiModule implements NestModule, OnModuleInit {
 				const requestMethod = upperCase(error.config.method)
 				const requestURL = error.config.baseURL + error.config.url
 				const errorStatus = error.status
-				FileLogger.info(`${requestMethod} ${requestURL} ${errorStatus}`)
+				FileLogger.error(`${requestMethod} ${requestURL} ${errorStatus}`)
 				return Promise.reject(error.message)
 			}
 		)

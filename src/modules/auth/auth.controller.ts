@@ -1,6 +1,4 @@
-import { Api, HttpMethod } from '@/common/decorators/api.decorator'
-import { AuthGuard } from '@/common/decorators/auth.decorator'
-import { User } from '@/common/decorators/user.decorator'
+import { Api, AuthGuard, HttpMethod, User } from '@/common/decorators'
 import { Controller, Param, UseGuards } from '@nestjs/common'
 import { AuthService } from './auth.service'
 import { LocalAuthGuard } from './guards/local-auth.guard'

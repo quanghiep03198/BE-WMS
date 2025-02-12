@@ -57,7 +57,7 @@ export class ThirdPartyApiConsumer extends WorkerHost {
 	private async fetchCommandNumbers(data: string[], accessToken: string): Promise<string[]> {
 		const commandNumbers = await Promise.all(
 			data.map(async (item) => {
-				const response = await this.thirdPartyApiService.getOneEpc({
+				const response = await this.thirdPartyApiService.fetchOneEpc({
 					headers: { Authorization: `Bearer ${accessToken}` },
 					param: item
 				})

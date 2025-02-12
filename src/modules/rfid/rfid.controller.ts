@@ -1,9 +1,6 @@
-import { Api, HttpMethod } from '@/common/decorators/api.decorator'
-import { AuthGuard } from '@/common/decorators/auth.decorator'
-import { User } from '@/common/decorators/user.decorator'
-import { AllExceptionsFilter } from '@/common/filters/exceptions.filter'
-import { ZodValidationPipe } from '@/common/pipes/zod-validation.pipe'
-import { InjectQueue } from '@nestjs/bullmq'
+import { Api, AuthGuard, HttpMethod, User } from '@/common/decorators'
+import { AllExceptionsFilter } from '@/common/filters'
+import { ZodValidationPipe } from '@/common/pipes'
 import {
 	Body,
 	Controller,
@@ -18,13 +15,8 @@ import {
 	Res,
 	UseFilters
 } from '@nestjs/common'
-import { InjectModel } from '@nestjs/mongoose'
-import { Queue } from 'bullmq'
 import { Response } from 'express'
-import { uniqBy } from 'lodash'
-import { DeleteResult, PaginateModel } from 'mongoose'
-import { THIRD_PARTY_API_SYNC } from '../third-party-api/constants'
-import { FALLBACK_VALUE } from './constants'
+import { DeleteResult } from 'mongoose'
 import {
 	deleteEpcValidator,
 	ExchangeEpcDTO,
@@ -37,7 +29,6 @@ import {
 	UpsertStockDTO
 } from './dto/rfid.dto'
 import { RFIDService } from './rfid.service'
-import { Epc, EpcDocument } from './schemas/epc.schema'
 import { DeleteEpcBySizeParams } from './types'
 
 /**
@@ -48,11 +39,7 @@ import { DeleteEpcBySizeParams } from './types'
 export class RFIDController {
 	private readonly logger = new Logger(RFIDController.name)
 
-	constructor(
-		@InjectModel(Epc.name) private readonly epcModel: PaginateModel<EpcDocument>,
-		@InjectQueue(THIRD_PARTY_API_SYNC) private readonly thirdPartyApiSyncQueue: Queue,
-		private readonly rfidService: RFIDService
-	) {}
+	constructor(private readonly rfidService: RFIDService) {}
 
 	@Get('sse')
 	@AuthGuard()
@@ -174,24 +161,5 @@ export class RFIDController {
 		@Query(new ZodValidationPipe(deleteEpcValidator)) filters: DeleteEpcBySizeParams
 	): Promise<DeleteResult> {
 		return await this.rfidService.deleteScannedEpcs(tenantId, filters)
-	}
-
-	@Api({
-		endpoint: 'sync-decker-data',
-		method: HttpMethod.PUT,
-		statusCode: HttpStatus.CREATED,
-		message: 'common.created'
-	})
-	@AuthGuard()
-	async syncDeckerData(@Headers('X-Tenant-Id') tenantId: string, @Headers('X-User-Company') factoryCode: string) {
-		const validUnknownEpcs = await this.epcModel.find({ tenant_id: tenantId, mo_no: FALLBACK_VALUE }).lean(true)
-		return await this.thirdPartyApiSyncQueue.add(
-			tenantId,
-			uniqBy(validUnknownEpcs, (item) => item.epc.substring(0, 22)).map((item) => item.epc),
-			{
-				jobId: factoryCode,
-				removeOnComplete: true
-			}
-		)
 	}
 }

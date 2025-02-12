@@ -1,4 +1,4 @@
-import env from '@/common/utils/env.util'
+import { env } from '@/common/utils'
 import { POST_DATA_QUEUE_GL1, POST_DATA_QUEUE_GL3, POST_DATA_QUEUE_GL4 } from '.'
 import { GL1RFIDConsumer, GL3RFIDConsumer, GL4RFIDConsumer } from '../rfid.consumer'
 

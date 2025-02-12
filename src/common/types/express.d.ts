@@ -4,6 +4,8 @@ export module 'express' {
 	}
 
 	export interface Request {
+		accessToken?: string
+		factoryCode?: string
 		tenancyHost?: string
 		user?: Partial<UserEntity>
 	}

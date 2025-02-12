@@ -1,6 +1,5 @@
-import { Api, HttpMethod } from '@/common/decorators/api.decorator'
-import { AuthGuard } from '@/common/decorators/auth.decorator'
-import { ZodValidationPipe } from '@/common/pipes/zod-validation.pipe'
+import { Api, AuthGuard, HttpMethod } from '@/common/decorators'
+import { ZodValidationPipe } from '@/common/pipes'
 import { Controller, DefaultValuePipe, Headers, Query } from '@nestjs/common'
 import { format } from 'date-fns'
 import { SearchInventoryQueryDTO, searchInventoryQueryValidator } from './dto/inventory.dto'

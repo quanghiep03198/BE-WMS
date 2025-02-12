@@ -1,5 +1,4 @@
-import { Api, HttpMethod } from '@/common/decorators/api.decorator'
-import { AuthGuard } from '@/common/decorators/auth.decorator'
+import { Api, AuthGuard, HttpMethod } from '@/common/decorators'
 import { Body, Controller, Headers, HttpStatus, Param, Query } from '@nestjs/common'
 import { CreateTransferOrderDTO, DeleteTransferOrderDTO } from '../dto/transfer-order.dto'
 import { ITransferOrderDatalistParams } from '../interfaces/transfer-order.interface'

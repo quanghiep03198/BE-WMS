@@ -2,16 +2,14 @@ import { FileLogger } from '@/common/helpers/file-logger.helper'
 import { DATA_SOURCE_ERP } from '@/databases/constants'
 import { HttpService } from '@nestjs/axios'
 import { CACHE_MANAGER } from '@nestjs/cache-manager'
-import { Inject, Injectable, InternalServerErrorException, NotFoundException, Scope } from '@nestjs/common'
+import { Inject, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
-import { REQUEST } from '@nestjs/core'
 import { InjectDataSource } from '@nestjs/typeorm'
 import { AxiosRequestConfig } from 'axios'
 import { Cache } from 'cache-manager'
-import { Request } from 'express'
-import { readFileSync } from 'fs'
+import { readFileSync } from 'fs-extra'
 import { chunk } from 'lodash'
-import { join } from 'path'
+import { join, resolve } from 'path'
 import { DataSource } from 'typeorm'
 import { FactoryCode } from '../department/constants'
 import { RFIDMatchCustomerEntity } from '../rfid/entities/rfid-customer-match.entity'
@@ -22,11 +20,10 @@ import {
 	ThirdPartyApiResponseData
 } from './interfaces/third-party-api.interface'
 
-@Injectable({ scope: Scope.REQUEST })
+@Injectable()
 export class ThirdPartyApiService {
 	constructor(
 		@Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
-		@Inject(REQUEST) private readonly request: Request,
 		@InjectDataSource(DATA_SOURCE_ERP) private readonly dataSourceERP: DataSource,
 		@Inject(TENANCY_DATASOURCE) private readonly dataSource: DataSource,
 		private readonly httpService: HttpService,
@@ -100,7 +97,7 @@ export class ThirdPartyApiService {
 		}
 	}
 
-	public async getOneEpc({
+	public async fetchOneEpc({
 		headers,
 		param
 	}: {
@@ -123,10 +120,7 @@ export class ThirdPartyApiService {
 		})
 	}
 
-	async upsertByCommandNumber(commandNumber: string) {
-		const accessToken = this.request['access_token']
-		const factoryCode = this.request.headers['x-user-company']
-
+	async upsertByCommandNumber(accessToken: string, factoryCode: string, commandNumber: string) {
 		const data = await this.getEpcByCommandNumber({
 			headers: { ['Authorization']: `Bearer ${accessToken}` },
 			params: { commandNumber: commandNumber }
@@ -177,29 +171,10 @@ export class ThirdPartyApiService {
 						)`
 					})
 					.join(',')
-
-				await queryRunner.manager.query(/* SQL */ `
-						MERGE INTO dv_rfidmatchmst_cust AS target
-						USING (VALUES ${sourceValues}) AS source (
-							EPC_Code, mo_no, mat_code, mo_noseq, or_no,
-							or_custpo, shoestyle_codefactory, cust_shoestyle, size_code, size_numcode,
-							factory_code_orders, factory_name_orders, factory_code_produce, factory_name_produce, size_qty
-						)
-						ON target.EPC_Code = source.EPC_Code
-						WHEN NOT MATCHED THEN
-							INSERT (
-								EPC_Code, mo_no, mat_code, mo_noseq, or_no, or_custpo, 
-								shoestyle_codefactory, cust_shoestyle, size_code, size_numcode,
-								factory_code_orders, factory_name_orders, factory_code_produce, factory_name_produce, size_qty, 
-								isactive, created, ri_date, ri_type, ri_foot, ri_cancel
-							)
-							VALUES (
-								source.EPC_Code, source.mo_no, source.mat_code, source.mo_noseq, source.or_no, 
-								source.or_custpo, source.shoestyle_codefactory, source.cust_shoestyle, source.size_code, source.size_numcode,
-								source.factory_code_orders, source.factory_name_orders, source.factory_code_produce, source.factory_name_produce, source.size_qty, 
-								'Y', GETDATE(), CAST(GETDATE() AS DATE), 'A', 'A', 0
-							);
-						`)
+				const upsertQuery = readFileSync(resolve(join(__dirname, '../rfid/upsert-rfid-match.sql')))
+					.toString()
+					.replace(':values', sourceValues)
+				await queryRunner.manager.query(upsertQuery)
 			}
 			await queryRunner.commitTransaction()
 			return { affected: sourceData.length }
@@ -212,11 +187,8 @@ export class ThirdPartyApiService {
 		}
 	}
 
-	async upsertByEpc(epc: string) {
-		const accessToken = this.request['access_token']
-		const factoryCode = this.request.headers['x-user-company']
-
-		const data = await this.getOneEpc({
+	async upsertByEpc(accessToken: string, factoryCode: string, epc: string) {
+		const data = await this.fetchOneEpc({
 			headers: { ['Authorization']: `Bearer ${accessToken}` },
 			param: epc
 		})
@@ -251,32 +223,18 @@ export class ThirdPartyApiService {
 			factory_name_produce: factoryCode
 		}
 
-		await queryRunner.manager.query(/* SQL */ `
-			MERGE INTO dv_rfidmatchmst_cust AS target
-			USING (VALUES (
-				'${upsertPayload.epc}', '${upsertPayload.mo_no}', '${upsertPayload.mat_code}','${upsertPayload.mo_noseq}', '${upsertPayload.or_no}', 
-				'${upsertPayload.or_cust_po}', '${upsertPayload.shoes_style_code_factory}', '${upsertPayload.cust_shoes_style}', '${upsertPayload.size_code}', '${upsertPayload.size_numcode}', 
-				'${upsertPayload.factory_code_orders}', '${upsertPayload.factory_name_orders}', '${upsertPayload.factory_code_produce}', '${upsertPayload.factory_name_produce}', ${upsertPayload.size_qty || 1}
-			)) AS source (
-				EPC_Code, mo_no, mat_code, mo_noseq, or_no, 
-				or_custpo, shoestyle_codefactory, cust_shoestyle, size_code, size_numcode,
-				factory_code_orders, factory_name_orders, factory_code_produce, factory_name_produce, size_qty
+		const upsertQuery = readFileSync(resolve(join(__dirname, '../rfid/upsert-rfid-match.sql')))
+			.toString()
+			.replace(
+				':values',
+				`(
+					'${upsertPayload.epc}', '${upsertPayload.mo_no}', '${upsertPayload.mat_code}','${upsertPayload.mo_noseq}', '${upsertPayload.or_no}', 
+					'${upsertPayload.or_cust_po}', '${upsertPayload.shoes_style_code_factory}', '${upsertPayload.cust_shoes_style}', '${upsertPayload.size_code}', '${upsertPayload.size_numcode}', 
+					'${upsertPayload.factory_code_orders}', '${upsertPayload.factory_name_orders}', '${upsertPayload.factory_code_produce}', '${upsertPayload.factory_name_produce}', ${upsertPayload.size_qty || 1}
+				)`
 			)
-			ON target.EPC_Code = source.EPC_Code
-			WHEN NOT MATCHED THEN
-				INSERT (
-					EPC_Code, mo_no, mat_code, mo_noseq, or_no, or_custpo, 
-					shoestyle_codefactory, cust_shoestyle, size_code, size_numcode,
-					factory_code_orders, factory_name_orders, factory_code_produce, factory_name_produce, size_qty, 
-					isactive, created, ri_date, ri_type, ri_foot, ri_cancel
-				)
-				VALUES (
-					source.EPC_Code, source.mo_no, source.mat_code, source.mo_noseq, source.or_no, 
-					source.or_custpo, source.shoestyle_codefactory, source.cust_shoestyle, source.size_code, source.size_numcode,
-					source.factory_code_orders, source.factory_name_orders, source.factory_code_produce, source.factory_name_produce, source.size_qty, 
-					'Y', GETDATE(), CAST(GETDATE() AS DATE), 'A', 'A', 0
-				);
-			`)
+
+		await queryRunner.manager.query(upsertQuery)
 
 		return { affected: 1 }
 	}

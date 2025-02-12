@@ -1,6 +1,5 @@
-import { Api, HttpMethod } from '@/common/decorators/api.decorator'
-import { AuthGuard } from '@/common/decorators/auth.decorator'
-import { ZodValidationPipe } from '@/common/pipes/zod-validation.pipe'
+import { Api, AuthGuard, HttpMethod } from '@/common/decorators'
+import { ZodValidationPipe } from '@/common/pipes'
 import { Body, Controller, Headers, HttpStatus, Param } from '@nestjs/common'
 import {
 	CreateWarehouseDTO,

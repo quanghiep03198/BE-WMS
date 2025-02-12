@@ -1,5 +1,4 @@
-import { Api, HttpMethod } from '@/common/decorators/api.decorator'
-import { AuthGuard } from '@/common/decorators/auth.decorator'
+import { Api, AuthGuard, HttpMethod } from '@/common/decorators'
 import { BadRequestException, Controller, Headers } from '@nestjs/common'
 import { FactoryCode } from '../department/constants'
 import { TenancyService } from './tenancy.service'

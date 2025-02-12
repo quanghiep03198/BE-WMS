@@ -1,6 +1,5 @@
-import { Api, HttpMethod } from '@/common/decorators/api.decorator'
-import { AuthGuard } from '@/common/decorators/auth.decorator'
-import { AllExceptionsFilter } from '@/common/filters/exceptions.filter'
+import { Api, AuthGuard, HttpMethod } from '@/common/decorators'
+import { AllExceptionsFilter } from '@/common/filters'
 import { Controller, DefaultValuePipe, Get, Query, Res, UseFilters } from '@nestjs/common'
 import { format } from 'date-fns'
 import { Response } from 'express'

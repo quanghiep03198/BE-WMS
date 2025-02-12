@@ -1,4 +1,4 @@
-import env from '@/common/utils/env.util'
+import { env } from '@/common/utils'
 import { BullRootModuleOptions } from '@nestjs/bullmq'
 import { CacheModuleOptions } from '@nestjs/cache-manager'
 import { ConfigFactory } from '@nestjs/config'

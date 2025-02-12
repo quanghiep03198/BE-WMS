@@ -1,5 +1,5 @@
-import { Api, HttpMethod } from '@/common/decorators/api.decorator'
-import { ZodValidationPipe } from '@/common/pipes/zod-validation.pipe'
+import { Api, HttpMethod } from '@/common/decorators'
+import { ZodValidationPipe } from '@/common/pipes'
 import { Body, Controller, HttpStatus, Param, Query } from '@nestjs/common'
 import { UpdatePackingWeightDTO, updatePackingWeightValidator } from './dto/update-packing.dto'
 import { PackingService } from './packing.service'

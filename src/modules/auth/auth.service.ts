@@ -1,4 +1,4 @@
-import { ZodValidationPipe } from '@/common/pipes/zod-validation.pipe'
+import { ZodValidationPipe } from '@/common/pipes'
 import { CACHE_MANAGER } from '@nestjs/cache-manager'
 import { BadRequestException, Inject, Injectable, NotFoundException, UsePipes } from '@nestjs/common'
 import { JwtService } from '@nestjs/jwt'

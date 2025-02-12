@@ -1,6 +1,5 @@
-import { Api } from '@/common/decorators/api.decorator'
-import { AuthGuard } from '@/common/decorators/auth.decorator'
-import { ZodValidationPipe } from '@/common/pipes/zod-validation.pipe'
+import { Api, AuthGuard } from '@/common/decorators'
+import { ZodValidationPipe } from '@/common/pipes'
 import { BadRequestException, Body, Controller, Headers, HttpStatus, Param } from '@nestjs/common'
 import { HttpMethod } from '../../../common/decorators/api.decorator'
 import {

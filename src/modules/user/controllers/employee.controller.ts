@@ -1,4 +1,4 @@
-import { Api, HttpMethod } from '@/common/decorators/api.decorator'
+import { Api, HttpMethod } from '@/common/decorators'
 import { Controller, Query } from '@nestjs/common'
 import { EmployeeService } from '../services/employee.service'
 
