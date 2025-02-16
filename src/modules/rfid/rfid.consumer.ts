@@ -158,11 +158,11 @@ class BaseRFIDConsumer extends WorkerHost {
 	}
 }
 
-@Processor(POST_DATA_QUEUE_GL1)
+@Processor(POST_DATA_QUEUE_GL1, { concurrency: 5 })
 export class GL1RFIDConsumer extends BaseRFIDConsumer {}
 
-@Processor(POST_DATA_QUEUE_GL3)
+@Processor(POST_DATA_QUEUE_GL3, { concurrency: 5 })
 export class GL3RFIDConsumer extends BaseRFIDConsumer {}
 
-@Processor(POST_DATA_QUEUE_GL4)
+@Processor(POST_DATA_QUEUE_GL4, { concurrency: 5 })
 export class GL4RFIDConsumer extends BaseRFIDConsumer {}
