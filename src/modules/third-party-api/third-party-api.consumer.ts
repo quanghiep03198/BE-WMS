@@ -1,5 +1,5 @@
 import { FileLogger } from '@/common/helpers/file-logger.helper'
-import { OnWorkerEvent, Processor, WorkerHost } from '@nestjs/bullmq'
+import { Processor, WorkerHost } from '@nestjs/bullmq'
 import { Logger, UnauthorizedException } from '@nestjs/common'
 import { Job } from 'bullmq'
 import { groupBy } from 'lodash'
@@ -42,16 +42,6 @@ export class ThirdPartyApiConsumer extends WorkerHost {
 		} catch (error) {
 			FileLogger.error(error)
 		}
-	}
-
-	@OnWorkerEvent('completed')
-	async onWorkerCompleted(job: Job<string[], void, string>) {
-		FileLogger.info(`Pulled EPC data from Decker for factory ${job.name}`)
-	}
-
-	@OnWorkerEvent('failed')
-	onWorkerFailed(job: Job) {
-		FileLogger.error(`Job "${job.name}" failed: ${job.failedReason}`)
 	}
 
 	private async fetchCommandNumbers(data: string[], accessToken: string): Promise<string[]> {

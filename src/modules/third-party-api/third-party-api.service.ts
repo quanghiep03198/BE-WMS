@@ -24,8 +24,8 @@ import {
 export class ThirdPartyApiService {
 	constructor(
 		@Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
-		@InjectDataSource(DATA_SOURCE_ERP) private readonly dataSourceERP: DataSource,
 		@Inject(TENANCY_DATASOURCE) private readonly dataSource: DataSource,
+		@InjectDataSource(DATA_SOURCE_ERP) private readonly dataSourceERP: DataSource,
 		private readonly httpService: HttpService,
 		private readonly configService: ConfigService
 	) {}
