@@ -120,9 +120,20 @@ export class RFIDService {
 
 	public async captureDataChange(onSnapshot: (change?: any) => unknown): Promise<void> {
 		this.epcModel
-			.watch([{ $match: { operationType: { $in: ['insert', 'update', 'delete'] } } }], {
-				fullDocument: 'updateLookup'
-			})
+			.watch(
+				[
+					{
+						$match: {
+							operationType: {
+								$in: ['insert', 'update', 'delete']
+							}
+						}
+					}
+				],
+				{
+					fullDocument: 'updateLookup'
+				}
+			)
 			.on('change', onSnapshot)
 	}
 
