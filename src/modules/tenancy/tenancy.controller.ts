@@ -9,11 +9,19 @@ export class TenancyController {
 
 	@Api({ method: HttpMethod.GET })
 	@AuthGuard()
-	getTenantsByFactory(@Headers('X-User-Company') cofactorCode: string) {
+	getAll() {
+		return this.tenancyService.getAll()
+	}
+	@Api({ endpoint: 'by-factory', method: HttpMethod.GET })
+	@AuthGuard()
+	getByFactory(@Headers('X-User-Company') cofactorCode: string) {
 		if (!cofactorCode) throw new BadRequestException('Please provide factory code')
-		return this.tenancyService.getTenantsByFactory(cofactorCode as FactoryCode)
+		return this.tenancyService.getByFactory(cofactorCode as FactoryCode)
 	}
 
+	/**
+	 * @deprecated
+	 */
 	@Api({ endpoint: 'default', method: HttpMethod.GET })
 	@AuthGuard()
 	getDefaultTenantByFactory(@Headers('X-User-Company') cofactorCode: string) {

@@ -17,7 +17,7 @@ import { TenancyService } from './tenancy.service'
 
 			useFactory: async (request: Request, tenancyService: TenancyService) => {
 				const { tenancyHost } = request
-				if (tenancyHost) return await tenancyService.getDataSourceByHost(tenancyHost)
+				if (tenancyHost) return await tenancyService.getTenancyDataSource(tenancyHost)
 			}
 		}
 	],

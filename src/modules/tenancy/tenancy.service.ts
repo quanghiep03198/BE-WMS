@@ -1,3 +1,4 @@
+import { env } from '@/common/utils'
 import { Injectable, NotFoundException, OnModuleDestroy } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { omit } from 'lodash'
@@ -19,52 +20,57 @@ export class TenancyService implements OnModuleDestroy {
 			id: Tenant.DEV,
 			factories: [FactoryCode.GL1, FactoryCode.GL3, FactoryCode.GL4],
 			host: this.configService.get('TENANT_DEV'),
-			alias: this.getHostAlias(this.configService.get('TENANT_DEV'))
+			alias: this.getHostAlias(this.configService.get('TENANT_DEV')),
+			active: true
 		},
 		{
 			id: Tenant.MAIN_21,
 			factories: [FactoryCode.GL1, FactoryCode.GL3, FactoryCode.GL4],
 			host: this.configService.get('TENANT_MAIN_21'),
-			alias: this.getHostAlias(this.configService.get('TENANT_MAIN_21'))
+			alias: this.getHostAlias(this.configService.get('TENANT_MAIN_21')),
+			active: true
 		},
 		{
 			id: Tenant.VN_LIANYING_PRIMARY,
 			factories: [FactoryCode.GL1],
-			default: true,
 			host: this.configService.get('TENANT_VN_LIANYING_PRIMARY'),
-			alias: this.getHostAlias(this.configService.get('TENANT_VN_LIANYING_PRIMARY'))
+			alias: this.getHostAlias(this.configService.get('TENANT_VN_LIANYING_PRIMARY')),
+			active: true
 		},
 		{
 			id: Tenant.VN_LIANYING_SECONDARY,
 			factories: [FactoryCode.GL1],
 			host: this.configService.get('TENANT_VN_LIANYING_SECONDARY'),
-			alias: this.getHostAlias(this.configService.get('TENANT_VN_LIANYING_SECONDARY'))
+			alias: this.getHostAlias(this.configService.get('TENANT_VN_LIANYING_SECONDARY')),
+			active: false
 		},
 		{
 			id: Tenant.VN_LIANSHUN_PRIMARY,
-			default: true,
 			factories: [FactoryCode.GL3],
 			host: this.configService.get('TENANT_VN_LIANSHUN_PRIMARY'),
-			alias: this.getHostAlias(this.configService.get('TENANT_VN_LIANSHUN_PRIMARY'))
+			alias: this.getHostAlias(this.configService.get('TENANT_VN_LIANSHUN_PRIMARY')),
+			active: true
 		},
 		{
 			id: Tenant.VN_LIANSHUN_SECONDARY,
 			factories: [FactoryCode.GL3],
 			host: this.configService.get('TENANT_VN_LIANSHUN_SECONDARY'),
-			alias: this.getHostAlias(this.configService.get('TENANT_VN_LIANSHUN_SECONDARY'))
+			alias: this.getHostAlias(this.configService.get('TENANT_VN_LIANSHUN_SECONDARY')),
+			active: false
 		},
 		{
 			id: Tenant.KM_PRIMARY,
-			default: true,
 			factories: [FactoryCode.GL4],
 			host: this.configService.get<string>('TENANT_KM_PRIMARY'),
-			alias: this.getHostAlias(this.configService.get('TENANT_KM_PRIMARY'))
+			alias: this.getHostAlias(this.configService.get('TENANT_KM_PRIMARY')),
+			active: true
 		},
 		{
 			id: Tenant.KM_SECONDARY,
 			factories: [FactoryCode.GL4],
 			host: this.configService.get('TENANT_KM_SECONDARY'),
-			alias: this.getHostAlias(this.configService.get('TENANT_KM_SECONDARY'))
+			alias: this.getHostAlias(this.configService.get('TENANT_KM_SECONDARY')),
+			active: false
 		}
 	]
 
@@ -87,19 +93,39 @@ export class TenancyService implements OnModuleDestroy {
 		return tenant
 	}
 
-	public getTenantsByFactory(factoryCode: FactoryCode) {
-		const matchTenants = this.tenants.filter((tenant) => tenant.factories.includes(factoryCode))
+	public getAll(): Array<Omit<ITenancy, 'host' | 'active'>> {
+		return this.tenants
+			.filter((tenant) => {
+				return (
+					tenant.active &&
+					(env('NODE_ENV') === 'production' ? tenant.id !== Tenant.DEV && tenant.id !== Tenant.MAIN_21 : true)
+				)
+			})
+			.map((tenant) => omit(tenant, ['host', 'active']))
+	}
+
+	public getByFactory(factoryCode: FactoryCode) {
+		const matchTenants = this.tenants.filter((tenant) => {
+			return (
+				tenant.active &&
+				tenant.factories.includes(factoryCode) &&
+				(env('NODE_ENV') === 'production' ? tenant.id !== Tenant.DEV && tenant.id !== Tenant.MAIN_21 : true)
+			)
+		})
 		if (matchTenants.length === 0) throw new NotFoundException('No available tenant')
-		return matchTenants.map((tenant) => omit(tenant, 'host'))
+		return matchTenants.map((tenant) => omit(tenant, ['host', 'active']))
 	}
 
+	/**
+	 * @deprecated
+	 */
 	public getDefaultTenantByFactory(factoryCode: FactoryCode) {
-		const tenant = this.tenants.find((tenant) => tenant.factories.includes(factoryCode) && tenant.default)
+		const tenant = this.tenants.find((tenant) => tenant.factories.includes(factoryCode) && tenant.active)
 		if (!tenant) throw new NotFoundException('No available tenant')
-		return omit(tenant, 'host')
+		return omit(tenant, ['host', 'active'])
 	}
 
-	public async getDataSourceByHost(host: string) {
+	public async getTenancyDataSource(host: string) {
 		if (!this.dataSources.has(host)) {
 			const dataSource = new DataSource({
 				...this.configService.getOrThrow<SqlServerConnectionOptions>('mssql'),

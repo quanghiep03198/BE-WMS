@@ -5,7 +5,7 @@ import { Tenant } from '../constants'
 
 export interface ITenancy {
 	id: Tenant
-	default?: boolean
+	active?: boolean
 	factories: Array<FactoryCode>
 	alias: string
 	host: string
