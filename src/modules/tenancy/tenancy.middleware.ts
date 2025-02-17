@@ -14,14 +14,5 @@ export class TenacyMiddleware implements NestMiddleware {
 		const tenant = this.tenancyService.findOneById(tenantId.toString())
 		req['tenancyHost'] = tenant.host
 		next()
-		// const dataSource = new DataSource({
-		// 	...this.configService.getOrThrow<SqlServerConnectionOptions>('mssql'),
-		// 	entities: [resolve(join(__dirname, '../**/*.entity.{ts,js}'))],
-		// 	host: tenant.host
-		// })
-		// if (!dataSource.isInitialized) {
-		// 	await dataSource.initialize()
-		// }
-		// req['dataSource'] = dataSource
 	}
 }
