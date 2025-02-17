@@ -11,13 +11,13 @@ import path from 'path'
 import { RedisClientOptions } from 'redis'
 
 export const appConfigFactory: ConfigFactory = () => ({
-	cache: {
+	['cache']: {
 		store: redisStore,
 		host: env('REDIS_HOST'),
 		port: env('REDIS_PORT', { serialize: (value): number => parseInt(value) }),
 		password: env('REDIS_PASSWORD')
 	} as CacheModuleOptions<RedisClientOptions>,
-	i18n: {
+	['i18n']: {
 		fallbackLanguage: env('FALLBACK_LANGUAGE', { fallbackValue: 'en' }),
 		loaderOptions: {
 			path: path.join(__dirname, '..', '/i18n/'),
@@ -25,7 +25,7 @@ export const appConfigFactory: ConfigFactory = () => ({
 		},
 		typesOutputPath: path.join(__dirname, '../..', '/src/generated/i18n.generated.ts')
 	} satisfies I18nOptions,
-	mssql: {
+	['mssql']: {
 		type: 'mssql',
 		host: env('DB_HOST'),
 		port: env('DB_PORT', { serialize: (value): number => parseInt(value) }),
@@ -47,7 +47,7 @@ export const appConfigFactory: ConfigFactory = () => ({
 			enableArithAbort: true,
 			connectTimeout: env('DB_CONNECTION_TIMEOUT', { serialize: (value): number => parseInt(value) })
 		},
-		cache: {
+		['cache']: {
 			type: 'redis',
 			options: {
 				socket: {
@@ -59,12 +59,12 @@ export const appConfigFactory: ConfigFactory = () => ({
 			ignoreErrors: true
 		}
 	} satisfies TypeOrmModuleOptions,
-	mongodb: {
+	['mongodb']: {
 		uri: env('MONGO_URI'),
 		maxPoolSize: 100,
 		connectTimeoutMS: 10000
 	} satisfies MongooseModuleOptions,
-	bullmq: {
+	['bullmq']: {
 		connection: {
 			host: env('REDIS_HOST'),
 			port: env('REDIS_PORT', { serialize: (value): number => parseInt(value) }),
@@ -79,7 +79,7 @@ export const appConfigFactory: ConfigFactory = () => ({
 			}
 		}
 	} satisfies BullRootModuleOptions,
-	throttler: [
+	['throttler']: [
 		{
 			name: 'short',
 			ttl: 1000,
