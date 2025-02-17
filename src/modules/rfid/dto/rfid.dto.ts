@@ -7,6 +7,7 @@ export const updateStockValidator = z
 		rfid_status: z.nativeEnum(InventoryActions, { required_error: 'Required' }),
 		rfid_use: z.nativeEnum(InventoryStorageType, { required_error: 'Required' }),
 		dept_code: z.string().optional(),
+		readable_tenant: z.string(),
 		dept_name: z.string().optional(),
 		storage: z.string().optional(),
 		quantity: z.number().optional()

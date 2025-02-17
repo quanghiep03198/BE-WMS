@@ -182,7 +182,7 @@ export class RFIDService {
 						);
 					`)
 			}
-			await this.epcModel.deleteMany({ tenant_id: String(tenantId), mo_no: orderCode })
+			await this.epcModel.deleteMany({ tenant_id: data.readable_tenant, mo_no: orderCode })
 
 			await Promise.all([queryRunner.commitTransaction(), session.commitTransaction()])
 		} catch (e) {
