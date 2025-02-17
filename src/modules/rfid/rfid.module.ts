@@ -8,7 +8,7 @@ import { TenacyMiddleware } from '../tenancy/tenancy.middleware'
 import { TenancyModule } from '../tenancy/tenancy.module'
 import { THIRD_PARTY_API_SYNC } from '../third-party-api/constants'
 import { ThirdPartyApiModule } from '../third-party-api/third-party-api.module'
-import queues from './constants/queues'
+import { queues } from './constants/queues'
 import { FPInventoryEntity } from './entities/fp-inventory.entity'
 import { RFIDMatchCustomerEntity } from './entities/rfid-customer-match.entity'
 import { RFIDReaderEntity } from './entities/rfid-reader.entity'
@@ -50,10 +50,7 @@ export class RFIDModule implements NestModule {
 	configure(consumer: MiddlewareConsumer) {
 		consumer
 			.apply(TenacyMiddleware)
-			.exclude(
-				// { path: '/rfid/search-exchangable-order', method: RequestMethod.GET },
-				{ path: '/rfid/post-data/:tenantId', method: RequestMethod.POST }
-			)
+			.exclude({ path: '/rfid/post-data/:tenantId', method: RequestMethod.POST })
 			.forRoutes({ path: '/rfid/*', method: RequestMethod.ALL })
 	}
 }

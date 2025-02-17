@@ -1,9 +1,7 @@
-import { DATA_SOURCE_DATA_LAKE, DATA_SOURCE_ERP } from '@/databases/constants'
 import { InjectQueue } from '@nestjs/bullmq'
 import { Inject, Injectable, InternalServerErrorException, NotFoundException, Scope } from '@nestjs/common'
 import { REQUEST } from '@nestjs/core'
 import { InjectModel } from '@nestjs/mongoose'
-import { InjectDataSource } from '@nestjs/typeorm'
 import { Queue } from 'bullmq'
 import { format } from 'date-fns'
 import { Request } from 'express'
@@ -12,7 +10,8 @@ import { DeleteResult, FilterQuery, PaginateModel, PipelineStage, RootFilterQuer
 import { I18nContext, I18nService } from 'nestjs-i18n'
 import { Brackets, DataSource, FindOptionsWhere, In } from 'typeorm'
 import { TENANCY_DATASOURCE, Tenant } from '../tenancy/constants'
-import { FALLBACK_VALUE, POST_DATA_QUEUE_GL1, POST_DATA_QUEUE_GL3, POST_DATA_QUEUE_GL4 } from './constants'
+import { FALLBACK_VALUE } from './constants'
+import { POST_DATA_QUEUE_GL1, POST_DATA_QUEUE_GL3, POST_DATA_QUEUE_GL4 } from './constants/queues'
 import { ExchangeEpcDTO, PostReaderDataDTO, SearchCustOrderParamsDTO, UpsertStockDTO } from './dto/rfid.dto'
 import { RFIDMatchCustomerEntity } from './entities/rfid-customer-match.entity'
 import { Epc, EpcDocument } from './schemas/epc.schema'
@@ -27,8 +26,6 @@ export class RFIDService {
 		@Inject(REQUEST) private readonly request: Request,
 		@Inject(TENANCY_DATASOURCE) private readonly dataSource: DataSource | undefined,
 		@InjectModel(Epc.name) private readonly epcModel: PaginateModel<EpcDocument>,
-		@InjectDataSource(DATA_SOURCE_DATA_LAKE) private readonly datasourceDL: DataSource,
-		@InjectDataSource(DATA_SOURCE_ERP) private readonly datasourceERP: DataSource,
 		@InjectQueue(POST_DATA_QUEUE_GL1) private readonly postDataQueueGL1: Queue,
 		@InjectQueue(POST_DATA_QUEUE_GL3) private readonly postDataQueueGL3: Queue,
 		@InjectQueue(POST_DATA_QUEUE_GL4) private readonly postDataQueueGL4: Queue,

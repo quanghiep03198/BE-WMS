@@ -1,11 +1,11 @@
-import { env } from '@/common/utils'
-import { POST_DATA_QUEUE_GL1, POST_DATA_QUEUE_GL3, POST_DATA_QUEUE_GL4 } from '.'
-import { GL1RFIDConsumer, GL3RFIDConsumer, GL4RFIDConsumer } from '../rfid.consumer'
+import { BaseRFIDConsumer, GL1RFIDConsumer, GL3RFIDConsumer, GL4RFIDConsumer } from '../rfid.consumer'
 
-const queues = [
-	{ name: POST_DATA_QUEUE_GL1, consumer: GL1RFIDConsumer, tenant: env<string>('TENANT_MAIN_19') },
-	{ name: POST_DATA_QUEUE_GL3, consumer: GL3RFIDConsumer, tenant: env<string>('TENANT_MAIN_19') },
-	{ name: POST_DATA_QUEUE_GL4, consumer: GL4RFIDConsumer, tenant: env<string>('TENANT_KM_PRIMARY') }
+export const POST_DATA_QUEUE_GL1 = 'POST_DATA_QUEUE_GL1'
+export const POST_DATA_QUEUE_GL3 = 'POST_DATA_QUEUE_GL3'
+export const POST_DATA_QUEUE_GL4 = 'POST_DATA_QUEUE_GL4'
+
+export const queues: Array<{ name: string; consumer: typeof BaseRFIDConsumer }> = [
+	{ name: POST_DATA_QUEUE_GL1, consumer: GL1RFIDConsumer },
+	{ name: POST_DATA_QUEUE_GL3, consumer: GL3RFIDConsumer },
+	{ name: POST_DATA_QUEUE_GL4, consumer: GL4RFIDConsumer }
 ]
-
-export default queues
