@@ -10,8 +10,8 @@ import { DeleteResult, FilterQuery, PaginateModel, PipelineStage, RootFilterQuer
 import { I18nContext, I18nService } from 'nestjs-i18n'
 import { Brackets, DataSource, FindOptionsWhere, In } from 'typeorm'
 import { TENANCY_DATASOURCE, Tenant } from '../tenancy/constants'
-import { FALLBACK_VALUE } from './constants'
-import { POST_DATA_QUEUE_GL1, POST_DATA_QUEUE_GL3, POST_DATA_QUEUE_GL4 } from './constants/queues'
+import { FALLBACK_VALUE, POST_DATA_QUEUE_GL1, POST_DATA_QUEUE_GL3, POST_DATA_QUEUE_GL4 } from './constants'
+
 import { ExchangeEpcDTO, PostReaderDataDTO, SearchCustOrderParamsDTO, UpsertStockDTO } from './dto/rfid.dto'
 import { RFIDMatchCustomerEntity } from './entities/rfid-customer-match.entity'
 import { Epc, EpcDocument } from './schemas/epc.schema'
