@@ -61,7 +61,6 @@ import { WarehouseModule } from './modules/warehouse/warehouse.module'
 			inject: [ConfigService],
 			useFactory: (configService: ConfigService) => configService.getOrThrow('bullmq')
 		}),
-
 		EventEmitterModule.forRoot({
 			wildcard: false,
 			delimiter: '.',
