@@ -1,10 +1,10 @@
 import { Tenant } from '@/modules/tenancy/constants'
-import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose'
+import { Prop, Schema, SchemaFactory, SchemaOptions } from '@nestjs/mongoose'
 import mongoose, { HydratedDocument } from 'mongoose'
 
 export type EpcDocument = HydratedDocument<Epc> & { record_time: string }
 
-@Schema({
+const defaultSchemaOptions: SchemaOptions = Object.freeze({
 	collection: 'epcs',
 	timestamps: {
 		createdAt: 'record_time',
@@ -15,6 +15,11 @@ export type EpcDocument = HydratedDocument<Epc> & { record_time: string }
 	suppressReservedKeysWarning: false,
 	strict: false,
 	strictQuery: false
+})
+
+@Schema({
+	collection: 'epcs',
+	...defaultSchemaOptions
 })
 export class Epc {
 	@Prop({ type: mongoose.Schema.Types.ObjectId })
@@ -42,4 +47,11 @@ export class Epc {
 	station_no: string
 }
 
+@Schema({
+	collection: 'epcs_backup',
+	...defaultSchemaOptions
+})
+export class EpcBackup extends Epc {}
+
 export const EpcSchema = SchemaFactory.createForClass(Epc)
+export const EpcBackupSchema = SchemaFactory.createForClass(EpcBackup)

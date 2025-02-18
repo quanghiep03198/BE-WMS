@@ -16,7 +16,7 @@ import { BaseRFIDConsumer, GL1RFIDConsumer, GL3RFIDConsumer, GL4RFIDConsumer } f
 import { RFIDController } from './rfid.controller'
 import { FPIRespository } from './rfid.repository'
 import { RFIDService } from './rfid.service'
-import { Epc, EpcSchema } from './schemas/epc.schema'
+import { Epc, EpcBackup, EpcBackupSchema, EpcSchema } from './schemas/epc.schema'
 import { FPInventoryEntitySubscriber } from './subscribers/fp-inventory.entity.subscriber'
 import { RFIDCustomerEntitySubscriber } from './subscribers/rfid-customer.entity.subscriber'
 
@@ -33,6 +33,13 @@ import { RFIDCustomerEntitySubscriber } from './subscribers/rfid-customer.entity
 				useFactory: () => {
 					EpcSchema.plugin(mongoosePaginatePlugin)
 					return EpcSchema
+				}
+			},
+			{
+				name: EpcBackup.name,
+				useFactory: () => {
+					EpcBackupSchema.plugin(mongoosePaginatePlugin)
+					return EpcBackupSchema
 				}
 			}
 		])
