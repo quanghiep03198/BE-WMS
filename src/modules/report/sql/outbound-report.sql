@@ -21,10 +21,9 @@ SELECT
 	COALESCE(inv.mo_no_actual, inv.mo_no, 'Unknown') AS mo_no,
 	match.mat_code,
 	match.shoestyle_codefactory AS shoes_style_code_factory,
-	inv.dept_name AS shaping_dept_name,
 	CAST(manf.mo_sumqty AS INT) AS order_qty,
-	COUNT(DISTINCT inv.EPC_Code) AS inbound_qty,
-	CAST(inv.record_time AS DATE) AS inbound_date, 
+	COUNT(DISTINCT inv.EPC_Code) AS outbound_qty,
+	CAST(inv.record_time AS DATE) AS outbound_date, 
 	CASE WHEN COUNT(inv.mo_no_actual) > 0 THEN 1 ELSE 0 END AS is_exchanged
 FROM datalist inv
 LEFT JOIN dv_rfidmatchmst_cust match
@@ -34,13 +33,13 @@ LEFT JOIN dv_rfidmatchmst_cust match
 LEFT JOIN wuerp_vnrd.dbo.ta_manufacturmst manf
 	ON manf.mo_no = COALESCE(inv.mo_no_actual, inv.mo_no)
 WHERE 
-	inv.rfid_status = 'A'
+	inv.rfid_status = 'B'
 	AND inv.EPC_Code NOT LIKE '303429%'
 	AND inv.EPC_Code NOT LIKE 'E28%'
 	AND COALESCE(inv.mo_no_actual, inv.mo_no, 'Unknown') NOT IN ('13D05B006')
 	AND (
-		inv.stationNO LIKE CONCAT('CUS_', @0, '_WH101')
-		OR inv.stationNO LIKE CONCAT('CUS_', @0, '_WH102')
+		inv.stationNO LIKE CONCAT('CUS_', @0, '_WH103')
+		OR inv.stationNO LIKE CONCAT('CUS_', @0, '_WH103')
 	)
 	AND CAST(inv.record_time AS DATE) = CAST(@1 AS DATE)
 GROUP BY 

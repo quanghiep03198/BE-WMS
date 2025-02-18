@@ -17,11 +17,24 @@ export class ReportService {
 		private readonly i18nService: I18nService
 	) {}
 
-	async getInboundReportByDate(date: string) {
+	/**
+	 * @description Get Inbound Report by date
+	 */
+	async getInboundReportByDate(factoryCode: string, date: string) {
 		const queryRunner = this.dataSource.createQueryRunner()
 		await queryRunner.connect()
 		const query = readFileSync(join(__dirname, './sql/inbound-report.sql'), 'utf-8').toString()
-		return await queryRunner.manager.query(query, [date])
+		return await queryRunner.manager.query(query, [factoryCode, date])
+	}
+
+	/**
+	 * @description Get Outbound Report by date
+	 */
+	async getOutboundReportByDate(factoryCode: string, date: string) {
+		const queryRunner = this.dataSource.createQueryRunner()
+		await queryRunner.connect()
+		const query = readFileSync(join(__dirname, './sql/outbound-report.sql'), 'utf-8').toString()
+		return await queryRunner.manager.query(query, [factoryCode, date])
 	}
 
 	/**
@@ -55,8 +68,8 @@ export class ReportService {
 			.then((data) => data.map((item) => ({ ...item, is_exchanged: Boolean(item.is_exchanged) })))
 	}
 
-	async exportReportToExcel(date: string) {
-		const data = await this.getInboundReportByDate(date)
+	async exportReportToExcel(factoryCode: string, date: string) {
+		const data = await this.getInboundReportByDate(factoryCode, date)
 		const workbook = new Workbook()
 		const worksheet = workbook.addWorksheet(`Report ${format(new Date(), 'yyyy-MM-dd')}`)
 
