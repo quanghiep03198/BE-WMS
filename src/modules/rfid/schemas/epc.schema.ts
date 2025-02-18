@@ -5,7 +5,6 @@ import mongoose, { HydratedDocument } from 'mongoose'
 export type EpcDocument = HydratedDocument<Epc> & { record_time: string }
 
 const defaultSchemaOptions: SchemaOptions = Object.freeze({
-	collection: 'epcs',
 	timestamps: {
 		createdAt: 'record_time',
 		updatedAt: 'modified_at',
