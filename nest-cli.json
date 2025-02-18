@@ -15,7 +15,12 @@
 			}
 		],
 		"deleteOutDir": true,
-		"builder": "swc",
+		"builder": {
+			"type": "swc",
+			"options": {
+				"swcrcPath": "infrastructure/.swcrc"
+			}
+		},
 		"typeCheck": true,
 		"tsConfigPath": "tsconfig.build.json"
 	}
