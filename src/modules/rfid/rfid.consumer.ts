@@ -9,25 +9,15 @@ import { DataSource } from 'typeorm'
 import { SqlServerConnectionOptions } from 'typeorm/driver/sqlserver/SqlServerConnectionOptions'
 import { Tenant } from '../tenancy/constants'
 import { THIRD_PARTY_API_SYNC } from '../third-party-api/constants'
-import {
-	EXCLUDED_EPC_PATTERN,
-	EXCLUDED_ORDERS,
-	FALLBACK_VALUE,
-	POST_DATA_QUEUE_GL1,
-	POST_DATA_QUEUE_GL3,
-	POST_DATA_QUEUE_GL4
-} from './constants'
+import { EXCLUDED_EPC_PATTERN, EXCLUDED_ORDERS, FALLBACK_VALUE, POST_DATA_QUEUE } from './constants'
 import { PostReaderDataDTO } from './dto/rfid.dto'
 import { RFIDMatchCustomerEntity } from './entities/rfid-customer-match.entity'
 import { RFIDReaderEntity } from './entities/rfid-reader.entity'
 import { Epc, EpcDocument } from './schemas/epc.schema'
 import { StoredRFIDReaderItem } from './types'
 
-/**
- * @extends WorkerHost
- * @description Base RFID consumer class
- */
-export class BaseRFIDConsumer extends WorkerHost {
+@Processor(POST_DATA_QUEUE)
+export class RFIDConsumer extends WorkerHost {
 	private readonly dataSources: Map<string, DataSource> = new Map()
 	private readonly tenants = [
 		{
@@ -159,12 +149,3 @@ export class BaseRFIDConsumer extends WorkerHost {
 		return dataSource
 	}
 }
-
-@Processor(POST_DATA_QUEUE_GL1, { concurrency: 2 })
-export class GL1RFIDConsumer extends BaseRFIDConsumer {}
-
-@Processor(POST_DATA_QUEUE_GL3, { concurrency: 2 })
-export class GL3RFIDConsumer extends BaseRFIDConsumer {}
-
-@Processor(POST_DATA_QUEUE_GL4, { concurrency: 2 })
-export class GL4RFIDConsumer extends BaseRFIDConsumer {}

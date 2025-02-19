@@ -8,8 +8,8 @@ import { chunk, groupBy, pick } from 'lodash'
 import { DeleteResult, FilterQuery, PaginateModel, PipelineStage, RootFilterQuery } from 'mongoose'
 import { I18nContext, I18nService } from 'nestjs-i18n'
 import { Brackets, DataSource, FindOptionsWhere, In } from 'typeorm'
-import { TENANCY_DATASOURCE, Tenant } from '../tenancy/constants'
-import { FALLBACK_VALUE, POST_DATA_QUEUE_GL1, POST_DATA_QUEUE_GL3, POST_DATA_QUEUE_GL4 } from './constants'
+import { TENANCY_DATASOURCE } from '../tenancy/constants'
+import { FALLBACK_VALUE, POST_DATA_QUEUE } from './constants'
 
 import { format } from 'date-fns'
 import { ExchangeEpcDTO, PostReaderDataDTO, SearchCustOrderParamsDTO, UpsertStockDTO } from './dto/rfid.dto'
@@ -27,49 +27,26 @@ export class RFIDService {
 		@Inject(TENANCY_DATASOURCE) private readonly dataSource: DataSource | undefined,
 		@InjectModel(Epc.name) private readonly epcModel: PaginateModel<EpcDocument>,
 		@InjectModel(EpcBackup.name) private readonly epcBackupModel: PaginateModel<EpcDocument>,
-		@InjectQueue(POST_DATA_QUEUE_GL1) private readonly postDataQueueGL1: Queue,
-		@InjectQueue(POST_DATA_QUEUE_GL3) private readonly postDataQueueGL3: Queue,
-		@InjectQueue(POST_DATA_QUEUE_GL4) private readonly postDataQueueGL4: Queue,
+		@InjectQueue(POST_DATA_QUEUE) private readonly postDataQueue: Queue,
 		private readonly i18n: I18nService
 	) {}
 
 	public async addPostDataQueueJob(tenant: string, data: PostReaderDataDTO) {
-		const queue = this.getQueueByTenant(tenant)
-		if (!queue)
-			throw new NotFoundException(this.i18n.t('rfid.errors.invalid_tenant', { lang: I18nContext.current().lang }))
-		return await queue.add(tenant, data, { lifo: true })
-	}
-
-	/**
-	 * @description Get the queue by request's tenant ID
-	 */
-	public getQueueByTenant(tenant: string): Queue | null {
-		switch (tenant) {
-			case Tenant.VN_LIANYING_PRIMARY:
-				return this.postDataQueueGL1
-			case Tenant.VN_LIANSHUN_PRIMARY:
-				return this.postDataQueueGL3
-			case Tenant.KM_PRIMARY:
-				return this.postDataQueueGL4
-			default:
-				return null
-		}
+		return await this.postDataQueue.add(tenant, data, { lifo: true })
 	}
 
 	/**
 	 * @description Cleanup the queue by tenant. All existing jobs around 5 minutes old will be removed
 	 */
-	public async cleanupQueue(tenantId): Promise<unknown[]> {
-		const queue = this.getQueueByTenant(tenantId)
-		if (!queue) return
+	public async cleanupQueue(): Promise<unknown[]> {
 		const GRACE_TIME = 60 * 1000 * 5
 		const QUANTITY = 1000
 		return await Promise.all([
-			queue.drain(),
-			queue.clean(GRACE_TIME, QUANTITY, 'active'),
-			queue.clean(GRACE_TIME, QUANTITY, 'paused'),
-			queue.clean(GRACE_TIME, QUANTITY, 'failed'),
-			queue.clean(GRACE_TIME, QUANTITY, 'completed')
+			this.postDataQueue.drain(),
+			this.postDataQueue.clean(GRACE_TIME, QUANTITY, 'active'),
+			this.postDataQueue.clean(GRACE_TIME, QUANTITY, 'paused'),
+			this.postDataQueue.clean(GRACE_TIME, QUANTITY, 'failed'),
+			this.postDataQueue.clean(GRACE_TIME, QUANTITY, 'completed')
 		])
 	}
 
@@ -95,8 +72,7 @@ export class RFIDService {
 	}
 
 	public async getOrderDetails() {
-		const tenantId = this.request.headers['x-tenant-id']
-		const accumulatedData = await this.epcModel.find({ tenant_id: String(tenantId) }).lean(true)
+		const accumulatedData = await this.epcModel.find().lean(true)
 		if (!Array.isArray(accumulatedData)) throw new Error('Invalid data format')
 		return Object.entries(
 			groupBy(accumulatedData, (item) => {
@@ -136,7 +112,7 @@ export class RFIDService {
 	}
 
 	public async upsertFPStock(orderCode: string, data: UpsertStockDTO) {
-		const payload = await this.epcModel.find({ tenant_id: data.readable_tenant, mo_no: orderCode }).lean(true)
+		const payload = await this.epcModel.find({ mo_no: orderCode }).lean(true)
 
 		const queryRunner = this.dataSource.createQueryRunner()
 		const session = await this.epcModel.startSession()

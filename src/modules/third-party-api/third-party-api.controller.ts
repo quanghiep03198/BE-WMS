@@ -27,7 +27,7 @@ export class ThirdPartyApiController {
 	})
 	@AuthGuard()
 	async syncDeckerData(@Headers('X-Tenant-Id') tenantId: string, @Headers('X-User-Company') factoryCode: string) {
-		const validUnknownEpcs = await this.epcModel.find({ tenant_id: tenantId, mo_no: FALLBACK_VALUE }).lean(true)
+		const validUnknownEpcs = await this.epcModel.find({ mo_no: FALLBACK_VALUE }).lean(true)
 		return await this.thirdPartyApiSyncQueue.add(
 			tenantId,
 			uniqBy(validUnknownEpcs, (item) => item.epc.substring(0, 22)).map((item) => item.epc),

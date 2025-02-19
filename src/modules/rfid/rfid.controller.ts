@@ -62,7 +62,7 @@ export class RFIDController {
 		})
 
 		res.on('close', () => {
-			this.rfidService.cleanupQueue(tenantId)
+			this.rfidService.cleanupQueue()
 			this.logger.log('Stop receiving data from Android RFID device')
 			res.end()
 		})

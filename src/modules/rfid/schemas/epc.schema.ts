@@ -1,4 +1,3 @@
-import { Tenant } from '@/modules/tenancy/constants'
 import { Prop, Schema, SchemaFactory, SchemaOptions } from '@nestjs/mongoose'
 import mongoose, { HydratedDocument } from 'mongoose'
 
@@ -23,9 +22,6 @@ const defaultSchemaOptions: SchemaOptions = Object.freeze({
 export class Epc {
 	@Prop({ type: mongoose.Schema.Types.ObjectId })
 	_id: mongoose.Types.ObjectId
-
-	@Prop({ type: String, required: true, index: true })
-	tenant_id: Tenant
 
 	@Prop({ type: String, required: true, unique: true })
 	epc: string
