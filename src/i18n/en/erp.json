@@ -24,6 +24,8 @@
 		"or_qtyperpacking": "Total Quantity per Box",
 		"or_totalqty": "Total quantity",
 		"order_qty": "Order quantity",
+		"outbound_date": "Outbound date",
+		"outbound_qty": "Outbound quantity",
 		"packaging_code": "Packaging number",
 		"prod_color": "Product color",
 		"required_date": "Required date",

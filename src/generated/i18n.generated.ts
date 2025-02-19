@@ -49,6 +49,8 @@ export type I18nTranslations = {
             "or_qtyperpacking": string;
             "or_totalqty": string;
             "order_qty": string;
+            "outbound_date": string;
+            "outbound_qty": string;
             "packaging_code": string;
             "prod_color": string;
             "required_date": string;

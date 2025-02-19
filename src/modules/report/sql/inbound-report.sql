@@ -22,9 +22,10 @@ SELECT
 	match.mat_code,
 	match.shoestyle_codefactory AS shoes_style_code_factory,
 	inv.dept_name AS shaping_dept_name,
+	inv.stationNO AS station_no, 
 	CAST(manf.mo_sumqty AS INT) AS order_qty,
 	COUNT(DISTINCT inv.EPC_Code) AS inbound_qty,
-	CAST(inv.record_time AS DATE) AS inbound_date, 
+	CAST(inv.record_time AS DATE) AS inbound_date,
 	CASE WHEN COUNT(inv.mo_no_actual) > 0 THEN 1 ELSE 0 END AS is_exchanged
 FROM datalist inv
 LEFT JOIN dv_rfidmatchmst_cust match
@@ -39,14 +40,14 @@ WHERE
 	AND inv.EPC_Code NOT LIKE 'E28%'
 	AND COALESCE(inv.mo_no_actual, inv.mo_no, 'Unknown') NOT IN ('13D05B006')
 	AND (
-		inv.stationNO LIKE CONCAT('CUS_', @0, '_WH101')
-		OR inv.stationNO LIKE CONCAT('CUS_', @0, '_WH102')
+		inv.stationNO LIKE 'CUS%WH101' OR inv.stationNO LIKE 'CUS%WH102'
 	)
-	AND CAST(inv.record_time AS DATE) = CAST(@1 AS DATE)
+	AND CAST(inv.record_time AS DATE) = CAST(@0 AS DATE)
 GROUP BY 
 	COALESCE(inv.mo_no_actual, inv.mo_no, 'Unknown'),
 	manf.mo_sumqty,
 	inv.dept_name,
+	inv.stationNO,
 	CAST(inv.record_time AS DATE),
 	match.mat_code,
 	match.shoestyle_codefactory

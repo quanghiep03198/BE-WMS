@@ -25,6 +25,8 @@
 		"or_qtyperpacking": "數量小計",
 		"or_totalqty": "訂單數量",
 		"order_qty": "订单数量",
+		"outbound_date": "出庫日期",
+		"outbound_qty": "出庫數量",
 		"packaging_code": "裝箱單號",
 		"prod_color": "产品颜色",
 		"required_date": "需求日期",

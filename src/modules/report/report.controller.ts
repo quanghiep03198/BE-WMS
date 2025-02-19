@@ -1,6 +1,6 @@
 import { Api, AuthGuard, HttpMethod } from '@/common/decorators'
 import { AllExceptionsFilter } from '@/common/filters'
-import { Controller, DefaultValuePipe, Get, Headers, Query, Res, UseFilters } from '@nestjs/common'
+import { Controller, DefaultValuePipe, Get, Query, Res, UseFilters } from '@nestjs/common'
 import { format } from 'date-fns'
 import { Response } from 'express'
 import { ReportService } from './report.service'
@@ -12,35 +12,36 @@ export class ReportController {
 	@Api({ endpoint: 'daily-inbound', method: HttpMethod.GET })
 	@AuthGuard()
 	async getInboundReportByDate(
-		@Headers('X-User-Company') factoryCode: string,
 		@Query('date.eq', new DefaultValuePipe(format(new Date(), 'yyyy-MM-dd')))
 		dateQuery: any
 	) {
-		return await this.reportService.getInboundReportByDate(factoryCode, dateQuery)
+		return await this.reportService.getInboundReportByDate(dateQuery)
 	}
 
 	@Api({ endpoint: 'daily-outbound', method: HttpMethod.GET })
 	@AuthGuard()
 	async getOutboundReportByDate(
-		@Headers('X-User-Company') factoryCode: string,
 		@Query('date.eq', new DefaultValuePipe(format(new Date(), 'yyyy-MM-dd')))
 		dateQuery: any
 	) {
-		return await this.reportService.getOutboundReportByDate(factoryCode, dateQuery)
+		return await this.reportService.getOutboundReportByDate(dateQuery)
 	}
 
-	@Get('export')
+	@Get('export-daily-inbound')
 	@UseFilters(AllExceptionsFilter)
 	@AuthGuard()
-	async exportReportToExcel(
-		@Headers('X-User-Company') factoryCode: string,
-		@Query('date.eq') date: string,
-		@Res() res: Response
-	) {
-		const buffer = await this.reportService.exportReportToExcel(factoryCode, date)
-
-		return res.send(buffer)
+	async exportDailyInboundToExcel(@Query('date.eq') date: string, @Res() res: Response) {
 		// res.setHeader('Content-Disposition', 'attachment; filename=report.xlsx')
 		// res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+		const buffer = await this.reportService.exportDailyInboundToExcel(date)
+		return res.send(buffer)
+	}
+
+	@Get('export-daily-outbound')
+	@UseFilters(AllExceptionsFilter)
+	@AuthGuard()
+	async exportDailyOutboundToExcel(@Query('date.eq') date: string, @Res() res: Response) {
+		const buffer = await this.reportService.exportDailyOutboundToExcel(date)
+		return res.send(buffer)
 	}
 }

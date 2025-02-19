@@ -37,11 +37,8 @@ WHERE
 	AND inv.EPC_Code NOT LIKE '303429%'
 	AND inv.EPC_Code NOT LIKE 'E28%'
 	AND COALESCE(inv.mo_no_actual, inv.mo_no, 'Unknown') NOT IN ('13D05B006')
-	AND (
-		inv.stationNO LIKE CONCAT('CUS_', @0, '_WH103')
-		OR inv.stationNO LIKE CONCAT('CUS_', @0, '_WH103')
-	)
-	AND CAST(inv.record_time AS DATE) = CAST(@1 AS DATE)
+	AND inv.stationNO LIKE 'CUS%WH103'
+	AND CAST(inv.record_time AS DATE) = CAST(@0 AS DATE)
 GROUP BY 
 	COALESCE(inv.mo_no_actual, inv.mo_no, 'Unknown'),
 	manf.mo_sumqty,
