@@ -4,6 +4,10 @@ on:
    push:
       branches:
          - develop
+   pull_request:
+      branches:
+         - develop
+   workflow_dispatch:
 
 jobs:
    sonarcloud:
@@ -41,7 +45,7 @@ jobs:
 
          - name: Install dependencies
            shell: bash
-           run: pnpm install
+           run: pnpm install --fix-lockfile
 
          - name: Build Nest application
            shell: bash
@@ -74,7 +78,7 @@ jobs:
 
          - name: Install dependencies
            shell: bash
-           run: pnpm install
+           run: pnpm install --fix-lockfile
 
          - name: Build Nest application
            shell: bash
