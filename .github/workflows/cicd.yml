@@ -57,6 +57,39 @@ jobs:
               pm2 restart ecosystem.config.js --update-env
               pm2 save
 
+   deploy-server-201:
+      name: Deploy to server 201.201
+      runs-on: [self-hosted, 'Server-201201']
+      steps:
+         - uses: actions/checkout@v4
+           with:
+              fetch-depth: 0
+              clean: false
+
+         - name: Load environment variables
+           shell: bash
+           run: echo "${{ secrets.ENV_VARIABLE_SVR201201 }}" > .env
+
+         - name: Initialize Sentry CLI
+           shell: bash
+           run: |
+              echo "[auth]" > .sentryclirc
+              echo "token=${{ secrets.SENTRY_AUTH_TOKEN }}" >> .sentryclirc
+
+         - name: Install dependencies
+           shell: bash
+           run: pnpm install --fix-lockfile
+
+         - name: Build Nest application
+           shell: bash
+           run: pnpm build
+
+         - name: Restart and save PM2 process
+           shell: bash
+           run: |
+              pm2 restart ecosystem.config.js --update-env
+              pm2 save
+
    deploy-server-5251:
       name: Deploy to server 5.251
       runs-on: [self-hosted, 'Server-5251']
