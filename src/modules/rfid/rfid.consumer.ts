@@ -23,6 +23,10 @@ import { RFIDReaderEntity } from './entities/rfid-reader.entity'
 import { Epc, EpcDocument } from './schemas/epc.schema'
 import { StoredRFIDReaderItem } from './types'
 
+/**
+ * @extends WorkerHost
+ * @description Base RFID consumer class
+ */
 export class BaseRFIDConsumer extends WorkerHost {
 	private readonly dataSources: Map<string, DataSource> = new Map()
 	private readonly tenants = [
