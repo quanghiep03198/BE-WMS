@@ -1,5 +1,5 @@
 import { FileLogger } from '@/common/helpers/file-logger.helper'
-import { DATA_SOURCE_DATA_LAKE, DATA_SOURCE_ERP, DATABASE_DATA_LAKE } from '@/databases/constants'
+import { DATA_SOURCE_ERP, DATABASE_DATA_LAKE } from '@/databases/constants'
 import { Inject, Injectable } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { InjectModel } from '@nestjs/mongoose'
@@ -24,7 +24,6 @@ import { Epc, EpcDocument } from './schemas/epc.schema'
 @Injectable()
 export class FPIRespository {
 	constructor(
-		@InjectDataSource(DATA_SOURCE_DATA_LAKE) private readonly dataSourceDL: DataSource,
 		@InjectDataSource(DATA_SOURCE_ERP) private readonly dataSourceERP: DataSource,
 		@Inject(TENANCY_DATASOURCE) private readonly dataSource: DataSource,
 		@InjectModel(Epc.name) private readonly epcModel: PaginateModel<EpcDocument>,
@@ -203,7 +202,7 @@ export class FPIRespository {
 
 			const bulkWriteOptions: AnyBulkWriteOperation<any>[] = payload.map((item) => ({
 				updateOne: {
-					filter: { tenant_id: tenantId, epc: item.epc },
+					filter: { epc: item.epc },
 					update: {
 						$set: pick(item, ['mo_no', 'mat_code', 'shoes_style_code_factory', 'size_numcode'])
 					}

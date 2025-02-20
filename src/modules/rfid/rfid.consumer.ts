@@ -105,7 +105,7 @@ export class RFIDConsumer extends WorkerHost {
 			const bulkOperations: AnyBulkWriteOperation<any>[] = incommingEpcs.map((item) => ({
 				updateOne: {
 					filter: { epc: item.epc },
-					update: { ...item, station_no: stationNO, tenant_id: tenantId },
+					update: { ...item, station_no: stationNO },
 					upsert: true
 				}
 			}))

@@ -157,9 +157,8 @@ export class RFIDController {
 	})
 	@AuthGuard()
 	async deleteEpcBySize(
-		@Headers('X-Tenant-Id') tenantId: string,
 		@Query(new ZodValidationPipe(deleteEpcValidator)) filters: DeleteEpcBySizeParams
 	): Promise<DeleteResult> {
-		return await this.rfidService.deleteScannedEpcs(tenantId, filters)
+		return await this.rfidService.deleteScannedEpcs(filters)
 	}
 }

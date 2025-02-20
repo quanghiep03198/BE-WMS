@@ -31,8 +31,8 @@ export class RFIDService {
 		private readonly i18n: I18nService
 	) {}
 
-	public async addPostDataQueueJob(tenant: string, data: PostReaderDataDTO) {
-		return await this.postDataQueue.add(tenant, data, { lifo: true })
+	public async addPostDataQueueJob(tenantId: string, data: PostReaderDataDTO) {
+		return await this.postDataQueue.add(tenantId, data, { lifo: true })
 	}
 
 	/**
@@ -56,8 +56,7 @@ export class RFIDService {
 	}
 
 	public async getIncomingEpcs(args: RFIDSearchParams) {
-		const tenantId = this.request.headers['x-tenant-id']
-		const filterQuery: FilterQuery<EpcDocument> = { tenant_id: tenantId, mo_no: args['mo_no.eq'] }
+		const filterQuery: FilterQuery<EpcDocument> = { mo_no: args['mo_no.eq'] }
 		if (!args['mo_no.eq']) delete filterQuery.mo_no
 
 		return await this.epcModel.paginate(filterQuery, {
@@ -155,10 +154,7 @@ export class RFIDService {
 						);
 					`)
 			}
-			await Promise.all([
-				this.epcBackupModel.insertMany(payload),
-				this.epcModel.deleteMany({ tenant_id: data.readable_tenant, mo_no: orderCode })
-			])
+			await Promise.all([this.epcBackupModel.insertMany(payload), this.epcModel.deleteMany({ mo_no: orderCode })])
 
 			await Promise.all([queryRunner.commitTransaction(), session.commitTransaction()])
 		} catch (e) {
@@ -201,17 +197,13 @@ export class RFIDService {
 
 	// TODO: Implement update from stored JSON data file and dv_rfidmatchmst_cust table
 	public async exchangeEpc(payload: ExchangeEpcDTO) {
-		const tenantId = String(this.request.headers['x-tenant-id'])
-
 		const queryRunner = this.dataSource.createQueryRunner()
 		const session = await this.epcModel.startSession()
 		const filterQuery: FilterQuery<EpcDocument> = payload.multi
 			? {
-					tenant_id: tenantId,
 					mo_no: { $in: payload.mo_no.split(',').map((m) => m.trim()), $ne: payload.mo_no_actual }
 				}
 			: {
-					tenant_id: tenantId,
 					mo_no: payload.mo_no,
 					size_numcode: payload.size_numcode,
 					mat_code: payload.mat_code
@@ -243,7 +235,6 @@ export class RFIDService {
 			}
 			await this.epcModel.updateMany(
 				{
-					tenant_id: tenantId,
 					epc: { $in: epcToExchange.map((item) => item.epc) }
 				},
 				{ mo_no: payload.mo_no_actual },
@@ -258,19 +249,18 @@ export class RFIDService {
 		}
 	}
 
-	public async deleteScannedEpcs(tenantId: string, filters: DeleteEpcBySizeParams): Promise<DeleteResult> {
+	public async deleteScannedEpcs(filters: DeleteEpcBySizeParams): Promise<DeleteResult> {
 		const filterQuery: RootFilterQuery<Epc> = !filters['size_numcode.eq'] ? pick(filters, 'mo_no.eq') : filters
 		if (filterQuery['size_numcode.eq'] && filterQuery['quantity.eq']) {
 			const epcsToDelete = await this.epcModel
-				.find({ tenant_id: tenantId, mo_no: filters['mo_no.eq'], size_numcode: filterQuery['size_numcode.eq'] })
+				.find({ mo_no: filters['mo_no.eq'], size_numcode: filterQuery['size_numcode.eq'] })
 				.limit(filters['quantity.eq'])
 				.lean(true)
 
 			return await this.epcModel.deleteMany({
-				tenant_id: tenantId,
 				epc: { $in: epcsToDelete.map((item) => item.epc) }
 			})
 		}
-		return await this.epcModel.deleteMany({ tenant_id: tenantId, mo_no: filters['mo_no.eq'] })
+		return await this.epcModel.deleteMany({ mo_no: filters['mo_no.eq'] })
 	}
 }
