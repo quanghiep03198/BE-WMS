@@ -65,20 +65,27 @@ export class RFIDService {
 
 		return await this.epcModel.paginate(filterQuery, {
 			sort: { record_time: -1, epc: 1, mo_no: 1 },
+			select: ['epc', 'mo_no'],
 			lean: true,
 			page: args._page,
 			limit: args._limit,
-			customLabels: {
-				docs: 'data'
-			}
+			options: { readPreference: 'nearest' },
+			customLabels: { docs: 'data' }
 		})
 	}
 
 	public async getOrderDetails() {
 		const factoryCode = this.request.headers['x-user-company']
-		const accumulatedData = await this.epcModel
-			.find({ station_no: { $regex: new RegExp(`CUS_${factoryCode}_WH10[12]`) } })
-			.lean(true)
+		const accumulatedData = await this.epcModel.find(
+			{
+				station_no: { $regex: new RegExp(`CUS_${factoryCode}_WH10[12]`) }
+			},
+			null,
+			{
+				readPreference: 'nearest',
+				lean: true
+			}
+		)
 		if (!Array.isArray(accumulatedData)) throw new Error('Invalid data format')
 		return Object.entries(
 			groupBy(accumulatedData, (item) => {
@@ -111,7 +118,8 @@ export class RFIDService {
 					}
 				],
 				{
-					fullDocument: 'updateLookup'
+					fullDocument: 'updateLookup',
+					readPreference: 'nearest'
 				}
 			)
 			.on('change', onSnapshot)
@@ -241,9 +249,7 @@ export class RFIDService {
 				await queryRunner.manager.update(RFIDMatchCustomerEntity, criteria, update)
 			}
 			await this.epcModel.updateMany(
-				{
-					epc: { $in: epcToExchange.map((item) => item.epc) }
-				},
+				{ epc: { $in: epcToExchange.map((item) => item.epc) } },
 				{ mo_no: payload.mo_no_actual },
 				{ new: true }
 			)

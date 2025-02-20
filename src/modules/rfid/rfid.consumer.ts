@@ -109,7 +109,7 @@ export class RFIDConsumer extends WorkerHost {
 					upsert: true
 				}
 			}))
-			await this.epcModel.bulkWrite(bulkOperations)
+			await this.epcModel.bulkWrite(bulkOperations, { writeConcern: { w: 1 } })
 		} catch (e) {
 			FileLogger.error(e)
 		}
