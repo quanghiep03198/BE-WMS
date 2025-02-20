@@ -56,7 +56,11 @@ export class RFIDService {
 	}
 
 	public async getIncomingEpcs(args: RFIDSearchParams) {
-		const filterQuery: FilterQuery<EpcDocument> = { mo_no: args['mo_no.eq'] }
+		const factoryCode = this.request.headers['x-user-company']
+		const filterQuery: FilterQuery<EpcDocument> = {
+			station_no: { $regex: new RegExp(`CUS_${factoryCode}_WH10[12]`) },
+			mo_no: args['mo_no.eq']
+		}
 		if (!args['mo_no.eq']) delete filterQuery.mo_no
 
 		return await this.epcModel.paginate(filterQuery, {
@@ -71,7 +75,10 @@ export class RFIDService {
 	}
 
 	public async getOrderDetails() {
-		const accumulatedData = await this.epcModel.find().lean(true)
+		const factoryCode = this.request.headers['x-user-company']
+		const accumulatedData = await this.epcModel
+			.find({ station_no: { $regex: new RegExp(`CUS_${factoryCode}_WH10[12]`) } })
+			.lean(true)
 		if (!Array.isArray(accumulatedData)) throw new Error('Invalid data format')
 		return Object.entries(
 			groupBy(accumulatedData, (item) => {

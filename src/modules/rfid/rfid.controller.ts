@@ -44,7 +44,7 @@ export class RFIDController {
 	@Get('sse')
 	@AuthGuard()
 	@UseFilters(AllExceptionsFilter)
-	async streamRFIDData(@Headers('X-Tenant-Id') tenantId: string, @Res() res: Response) {
+	async streamRFIDData(@Res() res: Response) {
 		res.setHeader('Content-Type', 'text/event-stream')
 		res.setHeader('Cache-Control', 'no-cache')
 
