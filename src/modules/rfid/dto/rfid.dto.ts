@@ -80,22 +80,22 @@ export const deleteEpcValidator = z.object({
 })
 
 export const readerPostDataValidator = z.object({
-	method: z.string(),
-	sn: z.string(),
-	timestamp: z.string(),
+	method: z.string().optional(),
+	sn: z.string().optional(),
+	timestamp: z.string().nullable().optional(),
 	data: z.object({
-		timestamp: z.string(),
 		id: z.string(),
-		temperature: z.string(),
+		timestamp: z.string().optional(),
+		temperature: z.string().optional(),
 		tagList: z.array(
 			z.object({
-				direction: z.string(),
+				ant: z.number(),
+				epc: z.string(),
+				firstAnt: z.number(),
 				firstTime: z.number(),
 				lastTime: z.number(),
-				ant: z.number(),
-				firstAnt: z.number(),
-				rssi: z.string(),
-				epc: z.string()
+				direction: z.string().optional(),
+				rssi: z.string().optional()
 			})
 		)
 	})
