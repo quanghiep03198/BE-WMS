@@ -16,6 +16,7 @@ import { FileLogger } from './common/helpers'
 import { appConfigFactory, validateConfig } from './configs'
 import { FileLoggerJobService } from './jobs/file-logger.service.job'
 // Feature modules
+import { IoRedisModule } from './messages/ioredis.module'
 import { AuthModule } from './modules/auth/auth.module'
 import { DepartmentModule } from './modules/department/department.module'
 import { InventoryModule } from './modules/inventory/inventory.module'
@@ -39,6 +40,7 @@ import { WarehouseModule } from './modules/warehouse/warehouse.module'
 		}),
 		SentryModule.forRoot(),
 		ScheduleModule.forRoot(),
+		IoRedisModule.forRoot(),
 		I18nModule.forRootAsync({
 			inject: [ConfigService],
 			useFactory: (configService: ConfigService) => configService.getOrThrow('i18n'),

@@ -91,6 +91,11 @@ export type I18nTranslations = {
         "errors": {
             "no_matching_epc": string;
         };
+        "sync_data_steps": {
+            "step_1": string;
+            "step_2": string;
+            "step_3": string;
+        };
     };
 };
 /* prettier-ignore */

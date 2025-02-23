@@ -69,7 +69,6 @@ export class ThirdPartyApiService {
 				this.setTokenByFactory(factoryCode, oauth2TokenResponse.access_token, oauth2TokenResponse.expires_in)
 				return oauth2TokenResponse.access_token
 			}
-
 			return accessToken
 		} catch {
 			return null
@@ -120,7 +119,7 @@ export class ThirdPartyApiService {
 		})
 	}
 
-	async upsertByCommandNumber(accessToken: string, factoryCode: string, commandNumber: string) {
+	public async upsertByCommandNumber(accessToken: string, factoryCode: string, commandNumber: string) {
 		const data = await this.getEpcByCommandNumber({
 			headers: { ['Authorization']: `Bearer ${accessToken}` },
 			params: { commandNumber: commandNumber }
@@ -187,7 +186,7 @@ export class ThirdPartyApiService {
 		}
 	}
 
-	async upsertByEpc(accessToken: string, factoryCode: string, epc: string) {
+	public async upsertByEpc(accessToken: string, factoryCode: string, epc: string) {
 		const data = await this.fetchOneEpc({
 			headers: { ['Authorization']: `Bearer ${accessToken}` },
 			param: epc

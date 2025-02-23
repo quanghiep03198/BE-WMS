@@ -1,25 +1,29 @@
-import { Injectable, Logger, OnApplicationShutdown, OnModuleDestroy } from '@nestjs/common'
+import { Inject, Injectable, Logger, OnApplicationShutdown, OnModuleDestroy } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { Redis } from 'ioredis'
+import { REDIS_PUBLISHER, REDIS_SUBSCRIBER } from './constants'
 
 @Injectable()
 export class IoRedisService implements OnModuleDestroy, OnApplicationShutdown {
-	private readonly publisher: Redis
-	private readonly subscriber: Redis
-	private readonly logger: Logger
+	// private readonly publisher: Redis
+	// private readonly subscriber: Redis
+	private readonly logger = new Logger(IoRedisService.name)
 
-	constructor(private readonly configService: ConfigService) {
-		this.publisher = new Redis({
-			host: this.configService.get('REDIS_HOST'),
-			port: this.configService.get('REDIS_PORT'),
-			password: this.configService.get('REDIS_PASSWORD')
-		})
-		this.subscriber = new Redis({
-			host: this.configService.get('REDIS_HOST'),
-			port: this.configService.get('REDIS_PORT'),
-			password: this.configService.get('REDIS_PASSWORD')
-		})
-		this.logger = new Logger(IoRedisService.name)
+	constructor(
+		@Inject(REDIS_PUBLISHER) private readonly publisher: Redis,
+		@Inject(REDIS_SUBSCRIBER) private readonly subscriber: Redis,
+		private readonly configService: ConfigService
+	) {
+		// this.publisher = new Redis({
+		// 	host: this.configService.get('REDIS_HOST'),
+		// 	port: this.configService.get('REDIS_PORT'),
+		// 	password: this.configService.get('REDIS_PASSWORD')
+		// })
+		// this.subscriber = new Redis({
+		// 	host: this.configService.get('REDIS_HOST'),
+		// 	port: this.configService.get('REDIS_PORT'),
+		// 	password: this.configService.get('REDIS_PASSWORD')
+		// })
 	}
 
 	onModuleDestroy() {
@@ -36,12 +40,12 @@ export class IoRedisService implements OnModuleDestroy, OnApplicationShutdown {
 		this.publisher.publish(channel, message)
 	}
 
-	async subscribe(channel: string, callback: (msg: string) => void): Promise<void> {
-		this.subscriber.subscribe(channel, (error) => {
+	async subscribe(subcribedChannel: string, callback: (msg: string) => void): Promise<void> {
+		this.subscriber.subscribe(subcribedChannel, (error) => {
 			if (error) this.logger.error(error)
 		})
-		this.subscriber.on('message', (_channel, message) => {
-			if (_channel === channel) {
+		this.subscriber.on('message', (channel, message) => {
+			if (channel === subcribedChannel) {
 				callback(message)
 			}
 		})

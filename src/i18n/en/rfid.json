@@ -1,5 +1,10 @@
 {
 	"errors": {
 		"no_matching_epc": "No matching EPC found"
+	},
+	"sync_data_steps": {
+		"step_1": "Authenticate API",
+		"step_2": "Fetch Decker's order and EPC data",
+		"step_3": "Update EPC data"
 	}
 }

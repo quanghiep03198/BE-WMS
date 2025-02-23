@@ -41,7 +41,6 @@ export class ThirdPartyApiModule implements NestModule, OnModuleInit {
 
 	onModuleInit() {
 		this.httpService.axiosRef.defaults.baseURL = this.configService.get('THIRD_PARTY_API_URL')
-
 		this.httpService.axiosRef.interceptors.request.use(
 			(config) => config,
 			(error) => Promise.reject(error.message)
