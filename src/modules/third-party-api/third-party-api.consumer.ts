@@ -39,15 +39,16 @@ export class ThirdPartyApiConsumer extends WorkerHost {
 			const commandNumbers = await this.fetchCommandNumbers(job.data, accessToken)
 			await this.handleCommandNumbers(commandNumbers, factoryCode, tenantId, accessToken)
 		} catch (error) {
-			this.handleError(error, factoryCode)
+			FileLogger.error(error)
+			throw new Error(error.message)
 		}
 	}
 
 	private initializeProcessState() {
 		this.processState = [
-			{ id: 1, name: 'rfid.sync_data_steps.step_1', status: 'processing' },
-			{ id: 2, name: 'rfid.sync_data_steps.step_2', status: 'waiting' },
-			{ id: 3, name: 'rfid.sync_data_steps.step_3', status: 'waiting' }
+			{ id: 1, name: 'sync_data_steps.step_1', status: 'processing' },
+			{ id: 2, name: 'sync_data_steps.step_2', status: 'waiting' },
+			{ id: 3, name: 'sync_data_steps.step_3', status: 'waiting' }
 		]
 	}
 
@@ -131,12 +132,10 @@ export class ThirdPartyApiConsumer extends WorkerHost {
 	private async getOrderInformation(commandNumbers: string[], factoryCode: string): Promise<any[]> {
 		try {
 			const data = await this.rfidRepository.getOrderInformationFromERP(commandNumbers)
-			this.updateProcessState(1, 'completed')
 			this.updateProcessState(2, 'processing')
 			await this.broadcastStateChange(factoryCode)
 			return data
 		} catch {
-			this.updateProcessState(1, 'completed')
 			this.updateProcessState(2, 'failed')
 			await this.broadcastStateChange(factoryCode)
 			throw new Error('Failed to get order information from ERP')
@@ -171,7 +170,7 @@ export class ThirdPartyApiConsumer extends WorkerHost {
 	}
 
 	private updateProcessState(stepId: number, status: SyncProcessState['status']) {
-		this.processState[stepId].status = status
+		this.processState[stepId] = { ...this.processState[stepId], status }
 	}
 
 	private cancelRemainingSteps() {
@@ -182,12 +181,5 @@ export class ThirdPartyApiConsumer extends WorkerHost {
 
 	private async broadcastStateChange(channelId: string) {
 		await this.ioRedisService.publish(`SYNC_DECKER_DATA:${channelId}`, JSON.stringify(this.processState))
-	}
-
-	private handleError(error: Error, factoryCode: string) {
-		FileLogger.error(error)
-		this.updateProcessState(2, 'failed')
-		this.broadcastStateChange(factoryCode)
-		throw new Error(error.message)
 	}
 }

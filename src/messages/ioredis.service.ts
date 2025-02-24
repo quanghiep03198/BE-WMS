@@ -1,30 +1,15 @@
 import { Inject, Injectable, Logger, OnApplicationShutdown, OnModuleDestroy } from '@nestjs/common'
-import { ConfigService } from '@nestjs/config'
 import { Redis } from 'ioredis'
 import { REDIS_PUBLISHER, REDIS_SUBSCRIBER } from './constants'
 
 @Injectable()
 export class IoRedisService implements OnModuleDestroy, OnApplicationShutdown {
-	// private readonly publisher: Redis
-	// private readonly subscriber: Redis
 	private readonly logger = new Logger(IoRedisService.name)
 
 	constructor(
 		@Inject(REDIS_PUBLISHER) private readonly publisher: Redis,
-		@Inject(REDIS_SUBSCRIBER) private readonly subscriber: Redis,
-		private readonly configService: ConfigService
-	) {
-		// this.publisher = new Redis({
-		// 	host: this.configService.get('REDIS_HOST'),
-		// 	port: this.configService.get('REDIS_PORT'),
-		// 	password: this.configService.get('REDIS_PASSWORD')
-		// })
-		// this.subscriber = new Redis({
-		// 	host: this.configService.get('REDIS_HOST'),
-		// 	port: this.configService.get('REDIS_PORT'),
-		// 	password: this.configService.get('REDIS_PASSWORD')
-		// })
-	}
+		@Inject(REDIS_SUBSCRIBER) private readonly subscriber: Redis
+	) {}
 
 	onModuleDestroy() {
 		this.publisher.quit()

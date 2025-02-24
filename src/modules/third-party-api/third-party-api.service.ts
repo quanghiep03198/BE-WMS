@@ -81,6 +81,7 @@ export class ThirdPartyApiService {
 
 			return await this.httpService.axiosRef.request<URLSearchParams, OAuth2TokenResponse>({
 				baseURL: this.configService.get('THIRD_PARTY_OAUTH_API_URL'),
+				url: '',
 				method: 'POST',
 				headers: {
 					['Content-Type']: 'application/x-www-form-urlencoded'

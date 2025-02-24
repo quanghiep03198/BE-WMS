@@ -1,12 +1,11 @@
 import { Api, AuthGuard, HttpMethod } from '@/common/decorators'
 import { InjectQueue } from '@nestjs/bullmq'
-import { Controller, Get, Headers, HttpStatus, Logger, Param, Req, Res } from '@nestjs/common'
+import { Controller, Get, Headers, HttpStatus, Param, Req, Res } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
 import { Queue } from 'bullmq'
 import { Request, Response } from 'express'
 import { uniqBy } from 'lodash'
 import { PaginateModel } from 'mongoose'
-import { I18nContext, I18nService } from 'nestjs-i18n'
 import { FALLBACK_VALUE } from '../rfid/constants'
 import { Epc, EpcDocument } from '../rfid/schemas/epc.schema'
 import { IoRedisService } from './../../messages/ioredis.service'
@@ -19,7 +18,6 @@ export class ThirdPartyApiController {
 		@InjectQueue(THIRD_PARTY_API_SYNC) private readonly thirdPartyApiSyncQueue: Queue,
 		@InjectModel(Epc.name) private readonly epcModel: PaginateModel<EpcDocument>,
 		private readonly thirdPartyApiService: ThirdPartyApiService,
-		private readonly i18nService: I18nService,
 		private readonly ioRedisService: IoRedisService
 	) {}
 
@@ -65,23 +63,11 @@ export class ThirdPartyApiController {
 	async sendSyncState(@Headers('X-User-Company') factoryCode: string, @Res() res: Response) {
 		res.setHeader('Content-Type', 'text/event-stream')
 		res.setHeader('Cache-Control', 'no-cache')
-		Logger.debug(I18nContext.current()?.lang)
 		const postMessage = (data) => {
-			const parsedData = JSON.parse(data)
-			const message = JSON.stringify(
-				parsedData.map((item) => ({
-					...item,
-					name: this.i18nService.t(item.name, { lang: I18nContext.current()?.lang })
-				}))
-			)
-
-			Logger.debug(message)
-			res.write(`data: ${message}\n\n`)
+			res.write(`data: ${data}\n\n`)
 			res.flush()
 		}
-
 		await this.ioRedisService.subscribe(`SYNC_DECKER_DATA:${factoryCode}`, postMessage)
-
 		res.on('close', res.end)
 	}
 }

@@ -24,7 +24,7 @@ export const appConfigFactory: ConfigFactory = () => ({
 			watch: env('NODE_ENV') === 'development'
 		},
 		typesOutputPath: path.join(__dirname, '../..', '/src/generated/i18n.generated.ts'),
-		resolvers: [AcceptLanguageResolver, new HeaderResolver(['accept-language'])]
+		resolvers: [AcceptLanguageResolver, new HeaderResolver(['Accept-Language'])]
 	} satisfies I18nOptions,
 	['mssql']: {
 		type: 'mssql',
