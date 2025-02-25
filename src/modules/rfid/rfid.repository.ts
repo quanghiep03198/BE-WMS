@@ -212,8 +212,9 @@ export class FPIRespository {
 
 			await Promise.all([queryRunner.commitTransaction(), session.commitTransaction()])
 		} catch (error) {
-			await Promise.all([session.abortTransaction(), queryRunner.rollbackTransaction()])
 			FileLogger.error(error)
+			await Promise.all([session.abortTransaction(), queryRunner.rollbackTransaction()])
+			throw new Error(error)
 		} finally {
 			await queryRunner.release()
 		}

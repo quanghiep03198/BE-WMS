@@ -1,4 +1,5 @@
-import { RFIDMatchCustomerEntity } from '../../rfid/entities/rfid-customer-match.entity'
+import { PluralI18nPath } from '@/common/decorators'
+import { I18nPath } from '@/generated/i18n.generated'
 
 export interface OAuth2Credentials {
 	client_id: string
@@ -27,18 +28,8 @@ export interface ThirdPartyApiResponseData {
 	updated: Date
 }
 
-export interface FetchThirdPartyApiEvent {
-	params: {
-		tenantId: string
-		factoryCode: string
-	}
-	data: Array<string>
-}
-
-export type SyncEventData = Pick<RFIDMatchCustomerEntity, 'epc' | 'mo_no' | 'size_numcode'>
-
-export interface SyncEventPayload extends Pick<FetchThirdPartyApiEvent, 'params'> {
-	data: {
-		file: string
-	}
+export interface SyncProcessState {
+	id: number
+	name: string | PluralI18nPath | I18nPath
+	status: 'processing' | 'waiting' | 'completed' | 'failed' | 'cancelled'
 }

@@ -3,18 +3,17 @@ import { Inject, Injectable, InternalServerErrorException, NotFoundException, Sc
 import { REQUEST } from '@nestjs/core'
 import { InjectModel } from '@nestjs/mongoose'
 import { Queue } from 'bullmq'
+import { format } from 'date-fns'
 import { Request } from 'express'
 import { chunk, groupBy, pick } from 'lodash'
-import { DeleteResult, FilterQuery, PaginateModel, PipelineStage, RootFilterQuery } from 'mongoose'
+import { DeleteResult, FilterQuery, PipelineStage, RootFilterQuery } from 'mongoose'
 import { I18nContext, I18nService } from 'nestjs-i18n'
 import { Brackets, DataSource, FindOptionsWhere, In } from 'typeorm'
 import { TENANCY_DATASOURCE } from '../tenancy/constants'
 import { FALLBACK_VALUE, POST_DATA_QUEUE } from './constants'
-
-import { format } from 'date-fns'
 import { ExchangeEpcDTO, PostReaderDataDTO, SearchCustOrderParamsDTO, UpsertStockDTO } from './dto/rfid.dto'
 import { RFIDMatchCustomerEntity } from './entities/rfid-customer-match.entity'
-import { Epc, EpcBackup, EpcDocument } from './schemas/epc.schema'
+import { Epc, EpcDocument, EpcModel } from './schemas/epc.schema'
 import { DeleteEpcBySizeParams, RFIDSearchParams, StoredRFIDReaderItem } from './types'
 
 /**
@@ -25,8 +24,8 @@ export class RFIDService {
 	constructor(
 		@Inject(REQUEST) private readonly request: Request,
 		@Inject(TENANCY_DATASOURCE) private readonly dataSource: DataSource | undefined,
-		@InjectModel(Epc.name) private readonly epcModel: PaginateModel<EpcDocument>,
-		@InjectModel(EpcBackup.name) private readonly epcBackupModel: PaginateModel<EpcDocument>,
+		@InjectModel(Epc.name)
+		private readonly epcModel: EpcModel,
 		@InjectQueue(POST_DATA_QUEUE) private readonly postDataQueue: Queue,
 		private readonly i18n: I18nService
 	) {}
@@ -127,7 +126,6 @@ export class RFIDService {
 
 	public async upsertFPStock(orderCode: string, data: UpsertStockDTO) {
 		const payload = await this.epcModel.find({ mo_no: orderCode }).lean(true)
-
 		const queryRunner = this.dataSource.createQueryRunner()
 		const session = await this.epcModel.startSession()
 		await Promise.all([queryRunner.startTransaction(), session.startTransaction()])
@@ -169,8 +167,7 @@ export class RFIDService {
 						);
 					`)
 			}
-			await Promise.all([this.epcBackupModel.insertMany(payload), this.epcModel.deleteMany({ mo_no: orderCode })])
-
+			await this.epcModel.delete({ mo_no: orderCode }).exec()
 			await Promise.all([queryRunner.commitTransaction(), session.commitTransaction()])
 		} catch (e) {
 			await Promise.all([queryRunner.rollbackTransaction(), session.abortTransaction()])

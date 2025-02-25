@@ -9,12 +9,10 @@ import { TenancyService } from './tenancy.service'
 	controllers: [TenancyController],
 	providers: [
 		TenancyService,
-
 		{
 			provide: TENANCY_DATASOURCE,
 			scope: Scope.REQUEST,
 			inject: [REQUEST, TenancyService],
-
 			useFactory: async (request: Request, tenancyService: TenancyService) => {
 				const { tenancyHost } = request
 				if (tenancyHost) return await tenancyService.getTenancyDataSource(tenancyHost)

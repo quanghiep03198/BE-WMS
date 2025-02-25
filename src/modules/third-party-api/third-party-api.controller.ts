@@ -1,13 +1,14 @@
 import { Api, AuthGuard, HttpMethod } from '@/common/decorators'
 import { InjectQueue } from '@nestjs/bullmq'
-import { Controller, Headers, HttpStatus, Param, Req } from '@nestjs/common'
+import { Controller, Get, Headers, HttpStatus, Param, Req, Res } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
 import { Queue } from 'bullmq'
-import { Request } from 'express'
+import { Request, Response } from 'express'
 import { uniqBy } from 'lodash'
 import { PaginateModel } from 'mongoose'
 import { FALLBACK_VALUE } from '../rfid/constants'
 import { Epc, EpcDocument } from '../rfid/schemas/epc.schema'
+import { IoRedisService } from './../../messages/ioredis.service'
 import { THIRD_PARTY_API_SYNC } from './constants'
 import { ThirdPartyApiService } from './third-party-api.service'
 
@@ -16,7 +17,8 @@ export class ThirdPartyApiController {
 	constructor(
 		@InjectQueue(THIRD_PARTY_API_SYNC) private readonly thirdPartyApiSyncQueue: Queue,
 		@InjectModel(Epc.name) private readonly epcModel: PaginateModel<EpcDocument>,
-		private readonly thirdPartyApiService: ThirdPartyApiService
+		private readonly thirdPartyApiService: ThirdPartyApiService,
+		private readonly ioRedisService: IoRedisService
 	) {}
 
 	@Api({
@@ -54,5 +56,18 @@ export class ThirdPartyApiController {
 	})
 	async upsertByEpc(@Param('epc') epc: string, @Req() req: Request) {
 		return await this.thirdPartyApiService.upsertByEpc(req.accessToken, req.factoryCode, epc)
+	}
+
+	@Get('sync-state')
+	@AuthGuard()
+	async sendSyncState(@Headers('X-User-Company') factoryCode: string, @Res() res: Response) {
+		res.setHeader('Content-Type', 'text/event-stream')
+		res.setHeader('Cache-Control', 'no-cache')
+		const postMessage = (data) => {
+			res.write(`data: ${data}\n\n`)
+			res.flush()
+		}
+		await this.ioRedisService.subscribe(`SYNC_DECKER_DATA:${factoryCode}`, postMessage)
+		res.on('close', res.end)
 	}
 }

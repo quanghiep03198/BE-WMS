@@ -3,7 +3,8 @@ import { BullModule } from '@nestjs/bullmq'
 import { MiddlewareConsumer, Module, NestModule, RequestMethod } from '@nestjs/common'
 import { MongooseModule } from '@nestjs/mongoose'
 import { TypeOrmModule } from '@nestjs/typeorm'
-import mongoosePaginatePlugin from 'mongoose-paginate-v2'
+import MongooseDeletePlugin from 'mongoose-delete'
+import MongoosePaginatePlugin from 'mongoose-paginate-v2'
 import { TenacyMiddleware } from '../tenancy/tenancy.middleware'
 import { TenancyModule } from '../tenancy/tenancy.module'
 import { THIRD_PARTY_API_SYNC } from '../third-party-api/constants'
@@ -16,7 +17,7 @@ import { RFIDConsumer } from './rfid.consumer'
 import { RFIDController } from './rfid.controller'
 import { FPIRespository } from './rfid.repository'
 import { RFIDService } from './rfid.service'
-import { Epc, EpcBackup, EpcBackupSchema, EpcSchema } from './schemas/epc.schema'
+import { Epc, EPC_COLLECTION, EpcSchema } from './schemas/epc.schema'
 import { FPInventoryEntitySubscriber } from './subscribers/fp-inventory.entity.subscriber'
 import { RFIDCustomerEntitySubscriber } from './subscribers/rfid-customer.entity.subscriber'
 
@@ -30,16 +31,11 @@ import { RFIDCustomerEntitySubscriber } from './subscribers/rfid-customer.entity
 		MongooseModule.forFeatureAsync([
 			{
 				name: Epc.name,
+				collection: EPC_COLLECTION,
 				useFactory: () => {
-					EpcSchema.plugin(mongoosePaginatePlugin)
+					EpcSchema.plugin(MongoosePaginatePlugin)
+					EpcSchema.plugin(MongooseDeletePlugin, { overrideMethods: true, indexFields: ['deleted'] })
 					return EpcSchema
-				}
-			},
-			{
-				name: EpcBackup.name,
-				useFactory: () => {
-					EpcBackupSchema.plugin(mongoosePaginatePlugin)
-					return EpcBackupSchema
 				}
 			}
 		])

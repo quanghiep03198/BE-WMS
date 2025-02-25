@@ -6,7 +6,7 @@ import { MongooseModuleOptions } from '@nestjs/mongoose'
 import { ThrottlerOptions } from '@nestjs/throttler'
 import { TypeOrmModuleOptions } from '@nestjs/typeorm'
 import * as redisStore from 'cache-manager-redis-store'
-import { I18nOptions } from 'nestjs-i18n'
+import { AcceptLanguageResolver, HeaderResolver, I18nOptions } from 'nestjs-i18n'
 import path from 'path'
 import { RedisClientOptions } from 'redis'
 
@@ -23,7 +23,8 @@ export const appConfigFactory: ConfigFactory = () => ({
 			path: path.join(__dirname, '..', '/i18n/'),
 			watch: env('NODE_ENV') === 'development'
 		},
-		typesOutputPath: path.join(__dirname, '../..', '/src/generated/i18n.generated.ts')
+		typesOutputPath: path.join(__dirname, '../..', '/src/generated/i18n.generated.ts'),
+		resolvers: [AcceptLanguageResolver, new HeaderResolver(['Accept-Language'])]
 	} satisfies I18nOptions,
 	['mssql']: {
 		type: 'mssql',

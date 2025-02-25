@@ -69,7 +69,6 @@ export class ThirdPartyApiService {
 				this.setTokenByFactory(factoryCode, oauth2TokenResponse.access_token, oauth2TokenResponse.expires_in)
 				return oauth2TokenResponse.access_token
 			}
-
 			return accessToken
 		} catch {
 			return null
@@ -82,6 +81,7 @@ export class ThirdPartyApiService {
 
 			return await this.httpService.axiosRef.request<URLSearchParams, OAuth2TokenResponse>({
 				baseURL: this.configService.get('THIRD_PARTY_OAUTH_API_URL'),
+				url: '',
 				method: 'POST',
 				headers: {
 					['Content-Type']: 'application/x-www-form-urlencoded'
@@ -120,7 +120,7 @@ export class ThirdPartyApiService {
 		})
 	}
 
-	async upsertByCommandNumber(accessToken: string, factoryCode: string, commandNumber: string) {
+	public async upsertByCommandNumber(accessToken: string, factoryCode: string, commandNumber: string) {
 		const data = await this.getEpcByCommandNumber({
 			headers: { ['Authorization']: `Bearer ${accessToken}` },
 			params: { commandNumber: commandNumber }
@@ -187,7 +187,7 @@ export class ThirdPartyApiService {
 		}
 	}
 
-	async upsertByEpc(accessToken: string, factoryCode: string, epc: string) {
+	public async upsertByEpc(accessToken: string, factoryCode: string, epc: string) {
 		const data = await this.fetchOneEpc({
 			headers: { ['Authorization']: `Bearer ${accessToken}` },
 			param: epc
