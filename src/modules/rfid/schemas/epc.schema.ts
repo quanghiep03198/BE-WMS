@@ -1,4 +1,4 @@
-import { Prop, Schema, SchemaFactory, SchemaOptions } from '@nestjs/mongoose'
+import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose'
 import mongoose, { HydratedDocument, PaginateModel } from 'mongoose'
 import { SoftDeleteModel } from 'mongoose-delete'
 
@@ -6,7 +6,10 @@ export type EpcDocument = HydratedDocument<Epc> & { record_time: string }
 
 export interface EpcModel extends PaginateModel<EpcDocument>, SoftDeleteModel<EpcDocument> {}
 
-const defaultSchemaOptions: SchemaOptions = Object.freeze({
+export const EPC_COLLECTION = 'epcs'
+
+@Schema({
+	collection: EPC_COLLECTION,
 	timestamps: {
 		createdAt: 'record_time',
 		updatedAt: 'modified_at'
@@ -15,11 +18,6 @@ const defaultSchemaOptions: SchemaOptions = Object.freeze({
 	suppressReservedKeysWarning: false,
 	strict: false,
 	strictQuery: false
-})
-
-@Schema({
-	collection: 'epcs',
-	...defaultSchemaOptions
 })
 export class Epc {
 	@Prop({ type: mongoose.Schema.Types.ObjectId })
@@ -44,11 +42,4 @@ export class Epc {
 	station_no: string
 }
 
-@Schema({
-	collection: 'epcs_backup',
-	...defaultSchemaOptions
-})
-export class EpcBackup extends Epc {}
-
 export const EpcSchema = SchemaFactory.createForClass(Epc)
-export const EpcBackupSchema = SchemaFactory.createForClass(EpcBackup)

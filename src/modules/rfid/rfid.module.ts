@@ -17,7 +17,7 @@ import { RFIDConsumer } from './rfid.consumer'
 import { RFIDController } from './rfid.controller'
 import { FPIRespository } from './rfid.repository'
 import { RFIDService } from './rfid.service'
-import { Epc, EpcSchema } from './schemas/epc.schema'
+import { Epc, EPC_COLLECTION, EpcSchema } from './schemas/epc.schema'
 import { FPInventoryEntitySubscriber } from './subscribers/fp-inventory.entity.subscriber'
 import { RFIDCustomerEntitySubscriber } from './subscribers/rfid-customer.entity.subscriber'
 
@@ -31,6 +31,7 @@ import { RFIDCustomerEntitySubscriber } from './subscribers/rfid-customer.entity
 		MongooseModule.forFeatureAsync([
 			{
 				name: Epc.name,
+				collection: EPC_COLLECTION,
 				useFactory: () => {
 					EpcSchema.plugin(MongoosePaginatePlugin)
 					EpcSchema.plugin(MongooseDeletePlugin, { overrideMethods: true, indexFields: ['deleted'] })

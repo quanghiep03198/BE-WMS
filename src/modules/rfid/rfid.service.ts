@@ -1,8 +1,9 @@
 import { InjectQueue } from '@nestjs/bullmq'
-import { Inject, Injectable, InternalServerErrorException, Logger, NotFoundException, Scope } from '@nestjs/common'
+import { Inject, Injectable, InternalServerErrorException, NotFoundException, Scope } from '@nestjs/common'
 import { REQUEST } from '@nestjs/core'
 import { InjectModel } from '@nestjs/mongoose'
 import { Queue } from 'bullmq'
+import { format } from 'date-fns'
 import { Request } from 'express'
 import { chunk, groupBy, pick } from 'lodash'
 import { DeleteResult, FilterQuery, PipelineStage, RootFilterQuery } from 'mongoose'
@@ -125,54 +126,48 @@ export class RFIDService {
 
 	public async upsertFPStock(orderCode: string, data: UpsertStockDTO) {
 		const payload = await this.epcModel.find({ mo_no: orderCode }).lean(true)
-
 		const queryRunner = this.dataSource.createQueryRunner()
 		const session = await this.epcModel.startSession()
 		await Promise.all([queryRunner.startTransaction(), session.startTransaction()])
 		try {
-			// for (const item of chunk(
-			// 	payload.map((value) => ({
-			// 		...value,
-			// 		...data,
-			// 		record_time: format(value.record_time, 'yyyy-MM-dd HH:mm:ss')
-			// 	})),
-			// 	100
-			// )) {
-			// 	const mergeSourceValues = item
-			// 		.map((value) => {
-			// 			return `(
-			// 			'${value.epc}', '${value.mo_no}', '${value.rfid_status}', '${value.rfid_use}', '${value.record_time}', '${value.station_no}',
-			// 			'${value.quantity}', '${value.storage}', '${value.factory_code}', '${value.dept_code}', '${value.dept_name}'
-			// 			)`
-			// 		})
-			// 		.join(',')
+			for (const item of chunk(
+				payload.map((value) => ({
+					...value,
+					...data,
+					record_time: format(value.record_time, 'yyyy-MM-dd HH:mm:ss')
+				})),
+				100
+			)) {
+				const mergeSourceValues = item
+					.map((value) => {
+						return `(
+						'${value.epc}', '${value.mo_no}', '${value.rfid_status}', '${value.rfid_use}', '${value.record_time}', '${value.station_no}',
+						'${value.quantity}', '${value.storage}', '${value.factory_code}', '${value.dept_code}', '${value.dept_name}'
+						)`
+					})
+					.join(',')
 
-			// 	await this.dataSource.query(/* SQL */ `
-			// 			MERGE INTO DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet AS target
-			// 			USING (
-			// 				VALUES ${mergeSourceValues}
-			// 			)  AS source (
-			// 				EPC_Code, mo_no, rfid_status, rfid_use, record_time, stationNO,
-			// 				quantity, storage, FC_server_code, dept_code, dept_name
-			// 			)
-			// 			ON target.EPC_Code = source.EPC_Code
-			// 			WHEN NOT MATCHED THEN
-			// 			INSERT (
-			// 				EPC_Code, mo_no, rfid_status, rfid_use, record_time, stationNO,
-			// 				quantity, storage, FC_server_code, dept_code, dept_name
-			// 			)
-			// 			VALUES (
-			// 				source.EPC_Code, source.mo_no, source.rfid_status, source.rfid_use, CAST(source.record_time AS DATETIME), source.stationNO,
-			// 				source.quantity, source.storage, source.FC_server_code, source.dept_code, source.dept_name
-			// 			);
-			// 		`)
-			// }
-
-			this.epcModel.delete({ mo_no: orderCode }, (err, result) => {
-				if (err) {
-					Logger.error(err)
-				}
-			})
+				await this.dataSource.query(/* SQL */ `
+						MERGE INTO DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet AS target
+						USING (
+							VALUES ${mergeSourceValues}
+						)  AS source (
+							EPC_Code, mo_no, rfid_status, rfid_use, record_time, stationNO,
+							quantity, storage, FC_server_code, dept_code, dept_name
+						)
+						ON target.EPC_Code = source.EPC_Code
+						WHEN NOT MATCHED THEN
+						INSERT (
+							EPC_Code, mo_no, rfid_status, rfid_use, record_time, stationNO,
+							quantity, storage, FC_server_code, dept_code, dept_name
+						)
+						VALUES (
+							source.EPC_Code, source.mo_no, source.rfid_status, source.rfid_use, CAST(source.record_time AS DATETIME), source.stationNO,
+							source.quantity, source.storage, source.FC_server_code, source.dept_code, source.dept_name
+						);
+					`)
+			}
+			await this.epcModel.delete({ mo_no: orderCode }).exec()
 			await Promise.all([queryRunner.commitTransaction(), session.commitTransaction()])
 		} catch (e) {
 			await Promise.all([queryRunner.rollbackTransaction(), session.abortTransaction()])
