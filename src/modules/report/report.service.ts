@@ -1,14 +1,12 @@
 import { Inject, Injectable } from '@nestjs/common'
-import { format } from 'date-fns'
+import { format, parseISO } from 'date-fns'
 import { Workbook } from 'exceljs'
 import { readFileSync } from 'fs'
 import { I18nContext, I18nService } from 'nestjs-i18n'
 import { join } from 'path'
 import { DataSource } from 'typeorm'
-import { EXCLUDED_EPC_PATTERN, EXCLUDED_ORDERS, FALLBACK_VALUE } from '../rfid/constants'
-import { FPInventoryEntity } from '../rfid/entities/fp-inventory.entity'
-import { RFIDMatchCustomerEntity } from '../rfid/entities/rfid-customer-match.entity'
 import { TENANCY_DATASOURCE } from '../tenancy/constants'
+import { IInboundReport } from './interfaces'
 
 @Injectable()
 export class ReportService {
@@ -17,55 +15,37 @@ export class ReportService {
 		private readonly i18nService: I18nService
 	) {}
 
-	/**
-	 * @description Get Inbound Report by date
-	 */
-	async getInboundReportByDate(date: string) {
-		const queryRunner = this.dataSource.createQueryRunner()
-		await queryRunner.connect()
+	async getInboundReportByDate(date: string): Promise<Partial<IInboundReport>[]> {
 		const query = readFileSync(join(__dirname, './sql/inbound-report.sql'), 'utf-8').toString()
-		return await queryRunner.manager.query(query, [date])
+		const data = await this.dataSource.query<Partial<IInboundReport>[]>(query, [date])
+		return await Promise.all(
+			data.map(async (item) => {
+				const sizeQtyDetails = await this.getInboundReportDetailByDate(item.mo_no, date)
+				const totalInboundQty = sizeQtyDetails.reduce((acc, curr) => acc + curr.inbound_qty, 0)
+				const missingQty = item.order_qty - totalInboundQty
+				return {
+					...item,
+					total_inbound_qty: totalInboundQty,
+					missing_qty: missingQty,
+					size_run: sizeQtyDetails
+				}
+			})
+		)
 	}
 
-	/**
-	 * @description Get Outbound Report by date
-	 */
+	private async getInboundReportDetailByDate(commandNumber: string, date: string) {
+		const query = readFileSync(join(__dirname, './sql/inbound-size-qty-report.sql'), 'utf-8').toString()
+		return await this.dataSource.query<Array<{ size_numcode: string; inbound_qty: number }>>(query, [
+			commandNumber,
+			date
+		])
+	}
+
 	async getOutboundReportByDate(date: string) {
 		const queryRunner = this.dataSource.createQueryRunner()
 		await queryRunner.connect()
 		const query = readFileSync(join(__dirname, './sql/outbound-report.sql'), 'utf-8').toString()
 		return await queryRunner.manager.query(query, [date])
-	}
-
-	/**
-	 * @deprecated
-	 */
-	async getDailyInboundReport() {
-		return await this.dataSource
-			.getRepository(FPInventoryEntity)
-			.createQueryBuilder('inv')
-			.select(/* SQL */ `DISTINCT COALESCE(inv.mo_no_actual, inv.mo_no, :fallbackValue) AS mo_no`)
-			.addSelect(/* SQL */ `COUNT(DISTINCT inv.EPC_Code) AS count`)
-			.addSelect(/* SQL */ `CASE WHEN COUNT(inv.mo_no_actual) > 0 THEN 1 ELSE 0 END AS is_exchanged`)
-			.leftJoin(
-				RFIDMatchCustomerEntity,
-				'match',
-				/* SQL */ `inv.EPC_Code = match.EPC_Code 
-				AND COALESCE(inv.mo_no_actual, inv.mo_no, :fallbackValue) = COALESCE(match.mo_no_actual, match.mo_no, :fallbackValue)`
-			)
-			.where(/* SQL */ `inv.rfid_status IS NOT NULL`)
-			.andWhere(/* SQL */ `inv.record_time >= CAST(GETDATE() AS DATE)`)
-			.andWhere(/* SQL */ `inv.EPC_Code NOT LIKE :excludedEpcPattern`)
-			.andWhere(/* SQL */ `match.ri_cancel = 0`)
-			.andWhere(/* SQL */ `COALESCE(inv.mo_no_actual, inv.mo_no, :fallbackValue) NOT IN (:...excludedOrders)`)
-			.groupBy(/* SQL */ `COALESCE(inv.mo_no_actual, inv.mo_no, :fallbackValue)`)
-			.setParameters({
-				fallbackValue: FALLBACK_VALUE,
-				excludedOrders: EXCLUDED_ORDERS,
-				excludedEpcPattern: EXCLUDED_EPC_PATTERN
-			})
-			.getRawMany()
-			.then((data) => data.map((item) => ({ ...item, is_exchanged: Boolean(item.is_exchanged) })))
 	}
 
 	async exportDailyInboundToExcel(date: string) {
@@ -78,9 +58,7 @@ export class ReportService {
 				})
 			})
 		})
-
-		const worksheet = workbook.addWorksheet(`Report ${format(new Date(), 'yyyy-MM-dd')}`)
-
+		const worksheet = workbook.addWorksheet(`Report ${format(new Date(date), 'yyyy-MM-dd')}`)
 		worksheet.columns = [
 			{
 				header: this.i18nService.t('erp.fields.mo_no', { lang: currentLanguage }),
@@ -95,39 +73,64 @@ export class ReportService {
 				key: 'shoes_style_code_factory'
 			},
 			{
-				header: this.i18nService.t('erp.fields.shaping_dept_name', { lang: currentLanguage }),
-				key: 'shaping_dept_name'
+				header: this.i18nService.t('erp.fields.mat_ecolor', { lang: currentLanguage }),
+				key: 'mat_ecolor'
 			},
 			{
-				header: 'Station NO',
-				key: 'station_no'
+				header: this.i18nService.t('erp.fields.shaping_dept_name', { lang: currentLanguage }),
+				key: 'shaping_dept_name'
 			},
 			{
 				header: this.i18nService.t('erp.fields.order_qty', { lang: currentLanguage }),
 				key: 'order_qty'
 			},
 			{
-				header: this.i18nService.t('erp.fields.inbound_qty', { lang: currentLanguage }),
-				key: 'inbound_qty'
+				header: this.i18nService.t('erp.fields.daily_inbound_qty', { lang: currentLanguage }),
+				key: 'daily_inbound_qty'
 			},
 			{
-				header: this.i18nService.t('erp.fields.inbound_date', { lang: currentLanguage }),
-				key: 'inbound_date'
+				header: this.i18nService.t('erp.fields.accumulated_inbound_qty', { lang: currentLanguage }),
+				key: 'accumulated_inbound_qty'
+			},
+			{
+				header: this.i18nService.t('erp.fields.missing_qty', { lang: currentLanguage }),
+				key: 'missing_qty'
 			}
 		]
-
 		const data = await this.getInboundReportByDate(date)
-		data.forEach((record) => {
-			worksheet.addRow(record)
-		})
-
+		for (const record of data) {
+			const row = worksheet.addRow(record)
+			row.height = 20
+			row.alignment = { vertical: 'middle', horizontal: 'center' }
+			for (let i = 1; i <= worksheet.columns.length; i++) {
+				row.getCell(i).fill = {
+					type: 'pattern',
+					pattern: 'solid',
+					fgColor: { argb: 'deecf7' }
+				}
+			}
+			const subrows = await this.getInboundReportDetailByDate(record.mo_no, date)
+			for (const subRecord of subrows) {
+				const row = worksheet.addRow([subRecord.size_numcode + '#', subRecord.inbound_qty])
+				row.alignment = { vertical: 'middle', horizontal: 'center' }
+				row.getCell(1).fill = {
+					type: 'pattern',
+					pattern: 'solid',
+					fgColor: { argb: 'fff2cc' }
+				}
+				row.getCell(2).fill = {
+					type: 'pattern',
+					pattern: 'solid',
+					fgColor: { argb: 'f2dcdb' }
+				}
+			}
+		}
 		worksheet.columns.forEach((sheetColumn) => {
 			sheetColumn.font = {
 				size: 12
 			}
 			sheetColumn.width = 30
 		})
-
 		worksheet.getRow(1).font = {
 			bold: true,
 			size: 13
@@ -137,8 +140,12 @@ export class ReportService {
 		// * Add title
 		worksheet.insertRow(1, null)
 		worksheet.getRow(1).height = 28
-		worksheet.mergeCells('A1:H1')
-		worksheet.getCell('A1').value = `Inbound Report - ${format(new Date(), 'yyyy/MM/dd')}`
+		worksheet.mergeCells('A1:I1')
+		worksheet.getCell('A1').value = this.i18nService.t('inoutbound.titles.daily_inbound_report', {
+			args: { date: format(new Date(date), 'yyyy/MM/dd') },
+			lang: currentLanguage
+		})
+		worksheet.getCell('A1').alignment = { vertical: 'middle', horizontal: 'center' }
 		worksheet.getRow(1).alignment = { vertical: 'middle', horizontal: 'left' }
 		worksheet.getCell('A1').fill = {
 			type: 'pattern',
@@ -174,7 +181,7 @@ export class ReportService {
 			})
 		})
 
-		const worksheet = workbook.addWorksheet(`Report ${format(new Date(), 'yyyy-MM-dd')}`)
+		const worksheet = workbook.addWorksheet(`Report ${format(parseISO(date), 'yyyy-MM-dd')}`)
 
 		worksheet.columns = [
 			{
@@ -225,7 +232,7 @@ export class ReportService {
 		worksheet.insertRow(1, null)
 		worksheet.getRow(1).height = 28
 		worksheet.mergeCells('A1:F1')
-		worksheet.getCell('A1').value = `Outbound Report - ${format(new Date(), 'yyyy/MM/dd')}`
+		worksheet.getCell('A1').value = `Outbound Report - ${format(new Date(date), 'yyyy/MM/dd')}`
 		worksheet.getRow(1).alignment = { vertical: 'middle', horizontal: 'left' }
 		worksheet.getCell('A1').fill = {
 			type: 'pattern',
@@ -247,5 +254,12 @@ export class ReportService {
 			})
 		})
 		return await workbook.xlsx.writeBuffer()
+	}
+
+	/**
+	 * @deprecated
+	 */
+	protected replaceChineseName(name: string) {
+		return name.replace(/[\u4e00-\u9fa5]/g, '')
 	}
 }

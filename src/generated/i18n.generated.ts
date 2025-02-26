@@ -24,11 +24,13 @@ export type I18nTranslations = {
     };
     "erp": {
         "fields": {
+            "accumulated_inbound_qty": string;
             "active_date": string;
             "brand_name": string;
             "container_order_code": string;
             "conversion_rate": string;
             "customer_order": string;
+            "daily_inbound_qty": string;
             "dept_code": string;
             "dept_name": string;
             "employee_name": string;
@@ -39,6 +41,8 @@ export type I18nTranslations = {
             "kg_noend": string;
             "kg_nostart": string;
             "mat_code": string;
+            "mat_ecolor": string;
+            "missing_qty": string;
             "mo_no": string;
             "mo_no_actual": string;
             "no_crates_in_stock": string;
@@ -55,13 +59,13 @@ export type I18nTranslations = {
             "prod_color": string;
             "required_date": string;
             "returned_qty": string;
-            "shipment_confirm_date": string;
-            "shipping_destination": string;
-            "ship_order": string;
-            "shoestyle_codefactory": string;
-            "shoes_type_b": string;
             "shaping_dept_code": string;
             "shaping_dept_name": string;
+            "ship_order": string;
+            "shipping_destination": string;
+            "shipment_confirm_date": string;
+            "shoes_type_b": string;
+            "shoestyle_codefactory": string;
             "sno_car_number": string;
             "sno_container": string;
             "sno_date": string;
@@ -85,6 +89,11 @@ export type I18nTranslations = {
             "finished_goods_receipt": string;
             "inbound_shipment_receipt": string;
             "outbound_shipment_receipt": string;
+        };
+    };
+    "inoutbound": {
+        "titles": {
+            "daily_inbound_report": string;
         };
     };
     "rfid": {
