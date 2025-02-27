@@ -190,12 +190,12 @@ export class ReportService {
 				key: 'mat_code'
 			},
 			{
-				header: this.i18nService.t('erp.fields.mat_ecolor', { lang: currentLanguage }),
-				key: 'mat_ecolor'
-			},
-			{
 				header: this.i18nService.t('erp.fields.shoestyle_codefactory', { lang: currentLanguage }),
 				key: 'shoes_style_code_factory'
+			},
+			{
+				header: this.i18nService.t('erp.fields.mat_ecolor', { lang: currentLanguage }),
+				key: 'mat_ecolor'
 			},
 			{
 				header: this.i18nService.t('erp.fields.order_qty', { lang: currentLanguage }),
