@@ -14,7 +14,7 @@ dept_grouping AS (
     GROUP BY mo_no
 ),
 accumulated_counts AS (
-    SELECT mo_no, COUNT(DISTINCT EPC_Code) AS accumulated_inbound_qty
+    SELECT mo_no, COUNT(DISTINCT EPC_Code) AS accumulated_qty
     FROM datalist
     GROUP BY mo_no
 )
@@ -26,9 +26,9 @@ SELECT
 	dg.dept_name AS shaping_dept_name,
     inv.FC_server_code AS factory_code,
 	CAST(ISNULL(manf.mo_sumqty, 0) AS INT) AS order_qty,
-	ac.accumulated_inbound_qty,
+	ac.accumulated_qty,
 	COUNT(DISTINCT inv.EPC_Code) AS daily_inbound_qty,
-	(manf.mo_sumqty - COALESCE(ac.accumulated_inbound_qty, 0)) AS missing_qty
+	(manf.mo_sumqty - COALESCE(ac.accumulated_qty, 0)) AS missing_qty
 FROM datalist inv
 LEFT JOIN DV_DATA_LAKE.dbo.dv_rfidmatchmst_cust match 
 	ON inv.EPC_Code = match.EPC_Code
@@ -51,7 +51,7 @@ GROUP BY
    inv.mo_no,
    prod.mat_ecolor,
    manf.mo_sumqty,
-   ac.accumulated_inbound_qty,
+   ac.accumulated_qty,
    match.mat_code,
    match.shoestyle_codefactory,
    dg.dept_name,

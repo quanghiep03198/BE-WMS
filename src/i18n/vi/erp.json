@@ -1,12 +1,13 @@
 {
 	"fields": {
-		"accumulated_inbound_qty": "Số lượng nhập kho tích lũy",
+		"accumulated_qty": "Số lượng tích lũy",
 		"brand_name": "Nhãn hiệu khách hàng",
 		"container_order_code": "Mã Đơn Xuất Công",
 		"conversion_rate": "Tỷ Lệ Chuyển Đổi",
 		"customer_branch_id": "ID nhã hiệu khách hàng",
 		"customer_order": "Đặt đơn của khách",
-		"daily_inbound_qty": "Số lượng nhập kho hàng ngày",
+		"daily_inbound_qty": "Số lượng nhập trong ngày",
+		"daily_outbound_qty": "Số lượng xuất trong ngày",
 		"dept_name": "Bộ phận cập nhật",
 		"employee_name": "Nhân viên tạo đơn",
 		"export_num": "Số đã xuất kho",

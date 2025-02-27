@@ -3,7 +3,7 @@ export interface IReportSearchParams {
 	['date.eq']?: string
 }
 
-interface IReport {
+export interface IReport {
 	mo_no: string
 	mat_code: string
 	mat_ecolor: string
@@ -11,6 +11,7 @@ interface IReport {
 	shaping_dept_name: string
 	order_qty: number
 	factory_code: string
+	size_run: Array<{ size_numcode: string; qty: number }>
 }
 
 export interface IInboundReport extends IReport {
