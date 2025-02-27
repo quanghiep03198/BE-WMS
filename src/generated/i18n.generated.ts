@@ -24,13 +24,14 @@ export type I18nTranslations = {
     };
     "erp": {
         "fields": {
-            "accumulated_inbound_qty": string;
+            "accumulated_qty": string;
             "active_date": string;
             "brand_name": string;
             "container_order_code": string;
             "conversion_rate": string;
             "customer_order": string;
             "daily_inbound_qty": string;
+            "daily_outbound_qty": string;
             "dept_code": string;
             "dept_name": string;
             "employee_name": string;
@@ -100,6 +101,7 @@ export type I18nTranslations = {
     "inoutbound": {
         "titles": {
             "daily_inbound_report": string;
+            "daily_outbound_report": string;
         };
     };
     "rfid": {

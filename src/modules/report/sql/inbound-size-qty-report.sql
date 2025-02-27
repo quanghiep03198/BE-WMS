@@ -8,7 +8,7 @@ WITH datalist AS (
 )
 SELECT 
 	ISNULL(c.size_numcode, 'Unknown') AS size_numcode, 
-	COUNT(DISTINCT d.EPC_Code) AS inbound_qty
+	COUNT(DISTINCT d.EPC_Code) AS qty
 FROM datalist d 
 LEFT JOIN DV_DATA_LAKE.dbo.dv_rfidmatchmst_cust c
 	ON d.EPC_Code = c.EPC_Code
