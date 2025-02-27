@@ -12,9 +12,8 @@ import { ThirdPartyApiService } from './third-party-api.service'
 
 @Processor(THIRD_PARTY_API_SYNC)
 export class ThirdPartyApiConsumer extends WorkerHost {
-	protected processState: SyncProcessState[]
+	private processState: SyncProcessState[]
 	private readonly logger = new Logger(ThirdPartyApiConsumer.name)
-	static readonly SYNC_DATA_EVENT: string = 'SYNC_DATA'
 
 	constructor(
 		private readonly thirdPartyApiService: ThirdPartyApiService,
