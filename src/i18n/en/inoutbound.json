@@ -1,5 +1,5 @@
 {
 	"titles": {
-		"daily_inbound_report": "Daily Inbound Report - {date}"
+		"daily_inbound_report": "Daily Inbound Report {factory} - {date}"
 	}
 }

@@ -91,6 +91,11 @@ export type I18nTranslations = {
             "outbound_shipment_receipt": string;
         };
     };
+    "factory": {
+        "VA1": string;
+        "VB2": string;
+        "CA1": string;
+    };
     "inoutbound": {
         "titles": {
             "daily_inbound_report": string;

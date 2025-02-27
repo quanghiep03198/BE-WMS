@@ -1,5 +1,5 @@
 {
 	"titles": {
-		"daily_inbound_report": "Báo biểu nhập kho hàng ngày - {date}"
+		"daily_inbound_report": "Báo biểu nhập kho hàng ngày {factory} - {date}"
 	}
 }

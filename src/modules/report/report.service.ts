@@ -1,4 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common'
+import { REQUEST } from '@nestjs/core'
 import { format, parseISO } from 'date-fns'
 import { Workbook } from 'exceljs'
 import { readFileSync } from 'fs'
@@ -12,6 +13,7 @@ import { IInboundReport } from './interfaces'
 export class ReportService {
 	constructor(
 		@Inject(TENANCY_DATASOURCE) private readonly dataSource: DataSource,
+		@Inject(REQUEST) private readonly request: Request,
 		private readonly i18nService: I18nService
 	) {}
 
@@ -50,6 +52,7 @@ export class ReportService {
 
 	async exportDailyInboundToExcel(date: string) {
 		const currentLanguage = I18nContext.current()?.lang
+		const factoryCode = this.request.headers['x-user-company']
 		const workbook = new Workbook()
 		workbook.eachSheet((sheet) => {
 			sheet.eachRow((row) => {
@@ -58,7 +61,11 @@ export class ReportService {
 				})
 			})
 		})
-		const worksheet = workbook.addWorksheet(`Report ${format(new Date(date), 'yyyy-MM-dd')}`)
+		const worksheet = workbook.addWorksheet(
+			this.i18nService.t(`factory.${factoryCode}`, { lang: currentLanguage }) +
+				' - ' +
+				format(new Date(date), 'yyyy-MM-dd')
+		)
 		worksheet.columns = [
 			{
 				header: this.i18nService.t('erp.fields.mo_no', { lang: currentLanguage }),
@@ -142,7 +149,10 @@ export class ReportService {
 		worksheet.getRow(1).height = 28
 		worksheet.mergeCells('A1:I1')
 		worksheet.getCell('A1').value = this.i18nService.t('inoutbound.titles.daily_inbound_report', {
-			args: { date: format(new Date(date), 'yyyy/MM/dd') },
+			args: {
+				factory: this.i18nService.t(`factory.${factoryCode}`, { lang: currentLanguage }),
+				date: format(new Date(date), 'yyyy-MM-dd')
+			},
 			lang: currentLanguage
 		})
 		worksheet.getCell('A1').alignment = { vertical: 'middle', horizontal: 'center' }
