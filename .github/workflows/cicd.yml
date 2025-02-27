@@ -25,6 +25,7 @@ jobs:
               SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
    deploy-server-19:
+      if: ${{github.ref == 'refs/heads/develop'}}
       name: Deploy to server 0.19
       runs-on: [self-hosted, 'Server-19']
       steps:
@@ -58,6 +59,7 @@ jobs:
               pm2 save
 
    deploy-server-201:
+      if: ${{github.ref == 'refs/heads/develop'}}
       name: Deploy to server 201.201
       runs-on: [self-hosted, 'Server-201201']
       steps:
@@ -91,6 +93,7 @@ jobs:
               pm2 save
 
    deploy-server-5251:
+      if: ${{github.ref == 'refs/heads/develop'}}
       name: Deploy to server 5.251
       runs-on: [self-hosted, 'Server-5251']
       steps:
