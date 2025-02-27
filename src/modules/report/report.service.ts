@@ -22,7 +22,7 @@ export class ReportService {
 		const data = await this.dataSource.query<Partial<IInboundReport>[]>(query, [date])
 		return await Promise.all(
 			data.map(async (item) => {
-				const sizeQtyDetails = await this.getInboundReportDetailByDate(item.mo_no, date)
+				const sizeQtyDetails = await this.getInboundReportDetailByDate(item.mo_no, item.factory_code, date)
 				const totalInboundQty = sizeQtyDetails.reduce((acc, curr) => acc + curr.inbound_qty, 0)
 				const missingQty = item.order_qty - totalInboundQty
 				return {
@@ -35,10 +35,11 @@ export class ReportService {
 		)
 	}
 
-	private async getInboundReportDetailByDate(commandNumber: string, date: string) {
+	private async getInboundReportDetailByDate(commandNumber: string, factoryCode: string, date: string) {
 		const query = readFileSync(join(__dirname, './sql/inbound-size-qty-report.sql'), 'utf-8').toString()
 		return await this.dataSource.query<Array<{ size_numcode: string; inbound_qty: number }>>(query, [
 			commandNumber,
+			factoryCode,
 			date
 		])
 	}
@@ -67,6 +68,10 @@ export class ReportService {
 				format(new Date(date), 'yyyy-MM-dd')
 		)
 		worksheet.columns = [
+			{
+				header: this.i18nService.t('factory.factory', { lang: currentLanguage }),
+				key: 'factory_code'
+			},
 			{
 				header: this.i18nService.t('erp.fields.mo_no', { lang: currentLanguage }),
 				key: 'mo_no'
@@ -105,8 +110,12 @@ export class ReportService {
 			}
 		]
 		const data = await this.getInboundReportByDate(date)
+
 		for (const record of data) {
-			const row = worksheet.addRow(record)
+			const row = worksheet.addRow({
+				...record,
+				factory_code: this.i18nService.t(`factory.${record.factory_code}`, { lang: currentLanguage })
+			})
 			row.height = 20
 			row.alignment = { vertical: 'middle', horizontal: 'center' }
 			for (let i = 1; i <= worksheet.columns.length; i++) {
@@ -116,16 +125,18 @@ export class ReportService {
 					fgColor: { argb: 'deecf7' }
 				}
 			}
-			const subrows = await this.getInboundReportDetailByDate(record.mo_no, date)
+			const subrows = await this.getInboundReportDetailByDate(record.mo_no, record.factory_code, date)
 			for (const subRecord of subrows) {
-				const row = worksheet.addRow([subRecord.size_numcode + '#', subRecord.inbound_qty])
+				const row = worksheet.addRow([])
 				row.alignment = { vertical: 'middle', horizontal: 'center' }
-				row.getCell(1).fill = {
+				row.getCell(2).value = subRecord.size_numcode + '#'
+				row.getCell(2).fill = {
 					type: 'pattern',
 					pattern: 'solid',
 					fgColor: { argb: 'fff2cc' }
 				}
-				row.getCell(2).fill = {
+				row.getCell(3).value = subRecord.inbound_qty
+				row.getCell(3).fill = {
 					type: 'pattern',
 					pattern: 'solid',
 					fgColor: { argb: 'f2dcdb' }
@@ -147,7 +158,8 @@ export class ReportService {
 		// * Add title
 		worksheet.insertRow(1, null)
 		worksheet.getRow(1).height = 28
-		worksheet.mergeCells('A1:I1')
+		worksheet.mergeCells('A1:J1')
+
 		worksheet.getCell('A1').value = this.i18nService.t('inoutbound.titles.daily_inbound_report', {
 			args: {
 				factory: this.i18nService.t(`factory.${factoryCode}`, { lang: currentLanguage }),
@@ -155,8 +167,8 @@ export class ReportService {
 			},
 			lang: currentLanguage
 		})
+
 		worksheet.getCell('A1').alignment = { vertical: 'middle', horizontal: 'center' }
-		worksheet.getRow(1).alignment = { vertical: 'middle', horizontal: 'left' }
 		worksheet.getCell('A1').fill = {
 			type: 'pattern',
 			pattern: 'solid',

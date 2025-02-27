@@ -1,8 +1,8 @@
 WITH datalist AS (
-   SELECT EPC_Code, mo_no, mo_no_actual, rfid_status, record_time, stationNO, dept_name
+   SELECT EPC_Code, mo_no, mo_no_actual, rfid_status, record_time,stationNO, FC_server_code, dept_name
    FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet
    UNION ALL
-   SELECT EPC_Code, mo_no, mo_no_actual, rfid_status, record_time, stationNO, dept_name
+   SELECT EPC_Code, mo_no, mo_no_actual, rfid_status, record_time,stationNO, FC_server_code, dept_name
    FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet_backup_Daily 
 ),
 dept_grouping AS (
@@ -24,6 +24,7 @@ SELECT
 	ISNULL(match.shoestyle_codefactory,'Unknown')AS shoes_style_code_factory,
 	ISNULL(prod.mat_ecolor, 'Unknown') AS mat_ecolor,
 	dg.dept_name AS shaping_dept_name,
+    inv.FC_server_code AS factory_code,
 	CAST(ISNULL(manf.mo_sumqty, 0) AS INT) AS order_qty,
 	ac.accumulated_inbound_qty,
 	COUNT(DISTINCT inv.EPC_Code) AS daily_inbound_qty,
@@ -53,5 +54,6 @@ GROUP BY
    ac.accumulated_inbound_qty,
    match.mat_code,
    match.shoestyle_codefactory,
-   dg.dept_name
+   dg.dept_name,
+   inv.FC_server_code
 ORDER BY inv.mo_no DESC;

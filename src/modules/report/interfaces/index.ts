@@ -12,6 +12,7 @@ export interface IInboundReport {
 	station_no: string
 	order_qty: number
 	inbound_qty: number
+	factory_code: string
 	inbound_date: Date | string
 	is_exchanged: number
 }
