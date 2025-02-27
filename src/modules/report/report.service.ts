@@ -17,7 +17,7 @@ export class ReportService {
 		private readonly i18nService: I18nService
 	) {}
 
-	async getInboundReportByDate(date: string): Promise<Partial<IInboundReport>[]> {
+	public async getInboundReportByDate(date: string): Promise<Partial<IInboundReport>[]> {
 		const query = readFileSync(join(__dirname, './sql/inbound-report.sql'), 'utf-8').toString()
 		const data = await this.dataSource.query<Partial<IInboundReport>[]>(query, [date])
 		return await Promise.all(
@@ -35,6 +35,26 @@ export class ReportService {
 		)
 	}
 
+	public async getOutboundReportByDate(date: string) {
+		const queryRunner = this.dataSource.createQueryRunner()
+		await queryRunner.connect()
+		const query = readFileSync(join(__dirname, './sql/outbound-report.sql'), 'utf-8').toString()
+		const data = await queryRunner.manager.query(query, [date])
+		return await Promise.all(
+			data.map(async (item) => {
+				const sizeQtyDetails = await this.getOutboundReportDetailByDate(item.mo_no, item.factory_code, date)
+				const totalOutboundQty = sizeQtyDetails.reduce((acc, curr) => acc + curr.inbound_qty, 0)
+				const missingQty = item.order_qty - totalOutboundQty
+				return {
+					...item,
+					total_inbound_qty: totalOutboundQty,
+					missing_qty: missingQty,
+					size_run: sizeQtyDetails
+				}
+			})
+		)
+	}
+
 	private async getInboundReportDetailByDate(commandNumber: string, factoryCode: string, date: string) {
 		const query = readFileSync(join(__dirname, './sql/inbound-size-qty-report.sql'), 'utf-8').toString()
 		return await this.dataSource.query<Array<{ size_numcode: string; inbound_qty: number }>>(query, [
@@ -44,11 +64,13 @@ export class ReportService {
 		])
 	}
 
-	async getOutboundReportByDate(date: string) {
-		const queryRunner = this.dataSource.createQueryRunner()
-		await queryRunner.connect()
-		const query = readFileSync(join(__dirname, './sql/outbound-report.sql'), 'utf-8').toString()
-		return await queryRunner.manager.query(query, [date])
+	private async getOutboundReportDetailByDate(commandNumber: string, factoryCode: string, date: string) {
+		const query = readFileSync(join(__dirname, './sql/outbound-size-qty-report.sql'), 'utf-8').toString()
+		return await this.dataSource.query<Array<{ size_numcode: string; inbound_qty: number }>>(query, [
+			commandNumber,
+			factoryCode,
+			date
+		])
 	}
 
 	async exportDailyInboundToExcel(date: string) {
@@ -215,6 +237,10 @@ export class ReportService {
 				key: 'mat_code'
 			},
 			{
+				header: this.i18nService.t('erp.fields.mat_ecolor', { lang: currentLanguage }),
+				key: 'mat_ecolor'
+			},
+			{
 				header: this.i18nService.t('erp.fields.shoestyle_codefactory', { lang: currentLanguage }),
 				key: 'shoes_style_code_factory'
 			},
@@ -226,10 +252,6 @@ export class ReportService {
 			{
 				header: this.i18nService.t('erp.fields.outbound_qty', { lang: currentLanguage }),
 				key: 'outbound_qty'
-			},
-			{
-				header: this.i18nService.t('erp.fields.outbound_date', { lang: currentLanguage }),
-				key: 'outbound_date'
 			}
 		]
 

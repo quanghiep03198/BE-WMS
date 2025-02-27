@@ -3,16 +3,21 @@ export interface IReportSearchParams {
 	['date.eq']?: string
 }
 
-export interface IInboundReport {
+interface IReport {
 	mo_no: string
 	mat_code: string
 	mat_ecolor: string
 	shoes_style_code_factory: string
 	shaping_dept_name: string
-	station_no: string
 	order_qty: number
-	inbound_qty: number
 	factory_code: string
-	inbound_date: Date | string
-	is_exchanged: number
+}
+
+export interface IInboundReport extends IReport {
+	daily_inbound_qty: number
+	is_exchanged?: number
+}
+
+export interface IOutboundReport extends IReport {
+	daily_outbound_qty: number
 }
