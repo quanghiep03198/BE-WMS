@@ -1,7 +1,7 @@
 import { FileLogger } from '@/common/helpers/file-logger.helper'
 import { IoRedisService } from '@/messages/ioredis.service'
 import { Processor, WorkerHost } from '@nestjs/bullmq'
-import { Logger, UnauthorizedException } from '@nestjs/common'
+import { Logger } from '@nestjs/common'
 import { Job } from 'bullmq'
 import { groupBy } from 'lodash'
 import { RFIDMatchCustomerEntity } from '../rfid/entities/rfid-customer-match.entity'
@@ -32,13 +32,15 @@ export class ThirdPartyApiConsumer extends WorkerHost {
 	public async process(job: Job<string[], void, string>): Promise<void> {
 		const factoryCode: string = job.id
 		const tenantId: string = job.name
+		const data = job.data
 
 		await this.broadcastStateChange(factoryCode)
 		try {
 			const accessToken = await this.authenticateWithDecker(factoryCode)
-			const commandNumbers = await this.fetchCommandNumbers(job.data, accessToken)
-			await this.handleCommandNumbers(commandNumbers, factoryCode, tenantId, accessToken)
+			await this.executeSync(data, factoryCode, tenantId, accessToken)
 		} catch (error) {
+			this.cancelRemainingSteps()
+			await this.broadcastStateChange(factoryCode)
 			FileLogger.error(error)
 			throw new Error(error.message)
 		}
@@ -52,21 +54,38 @@ export class ThirdPartyApiConsumer extends WorkerHost {
 		]
 	}
 
+	private updateProcessState(stepId: number, status: SyncProcessState['status']) {
+		this.processState[stepId] = { ...this.processState[stepId], status }
+	}
+
+	private cancelRemainingSteps() {
+		for (const step of this.processState) {
+			if (step.status === 'completed') continue
+			else step.status = 'cancelled'
+		}
+	}
+
+	private async broadcastStateChange(channelId: string) {
+		await this.ioRedisService.publish(`SYNC_DECKER_DATA:${channelId}`, JSON.stringify(this.processState))
+	}
+
+	// * Step 1: Authenticate with Decker
 	private async authenticateWithDecker(factoryCode: string): Promise<string> {
 		const accessToken = await this.thirdPartyApiService.authenticate(factoryCode)
 		if (!accessToken) {
 			this.updateProcessState(0, 'failed')
 			this.cancelRemainingSteps()
 			await this.broadcastStateChange(factoryCode)
-			throw new UnauthorizedException('Failed to get Decker OAuth2 token')
+			throw new Error('Failed to get Decker OAuth2 token')
 		}
 		this.updateProcessState(0, 'completed')
-		this.updateProcessState(1, 'processing')
 		await this.broadcastStateChange(factoryCode)
 		return accessToken
 	}
 
+	// * Step 2.1: Fetch command numbers
 	private async fetchCommandNumbers(data: string[], accessToken: string): Promise<string[]> {
+		this.updateProcessState(1, 'processing')
 		try {
 			const commandNumbers = await Promise.all(
 				data.map(async (item) => {
@@ -79,34 +98,11 @@ export class ThirdPartyApiConsumer extends WorkerHost {
 			)
 			return [...new Set(commandNumbers.filter(Boolean))]
 		} catch {
-			this.updateProcessState(1, 'failed')
-			this.cancelRemainingSteps()
 			throw new Error('Failed to fetch command numbers')
 		}
 	}
 
-	private async handleCommandNumbers(
-		commandNumbers: string[],
-		factoryCode: string,
-		tenantId: string,
-		accessToken: string
-	) {
-		if (commandNumbers.length === 0) {
-			this.updateProcessState(1, 'completed')
-			this.updateProcessState(2, 'cancelled')
-			await this.broadcastStateChange(factoryCode)
-			this.logger.warn('No data fetched from the customer')
-			return
-		}
-
-		const epcs = await this.fetchEpcsByCommandNumbers(commandNumbers, accessToken)
-		const availableCommandNumbers = this.extractCommandNumbers(epcs)
-		const orderInformation = await this.getOrderInformation(availableCommandNumbers, factoryCode)
-		const payload = this.createPayload(epcs, orderInformation, factoryCode)
-
-		await this.upsertData(tenantId, payload, factoryCode)
-	}
-
+	// * Step 2.2: Fetch EPCs by command numbers
 	private async fetchEpcsByCommandNumbers(commandNumbers: string[], accessToken: string): Promise<any[]> {
 		try {
 			const epcs = await Promise.all(
@@ -119,16 +115,16 @@ export class ThirdPartyApiConsumer extends WorkerHost {
 			)
 			return epcs.flat()
 		} catch {
-			this.updateProcessState(1, 'failed')
-			this.cancelRemainingSteps()
 			throw new Error('Failed to fetch EPCs by command numbers')
 		}
 	}
 
+	// * Step 2.2.1: Extract command numbers from EPCs
 	private extractCommandNumbers(epcs: any[]): string[] {
 		return [...new Set(Object.keys(groupBy(epcs, 'commandNumber')).map((item) => item.slice(0, 9)))]
 	}
 
+	// * Step 2.2.2: Get order information from ERP
 	private async getOrderInformation(commandNumbers: string[], factoryCode: string): Promise<any[]> {
 		try {
 			const data = await this.rfidRepository.getOrderInformationFromERP(commandNumbers)
@@ -142,12 +138,9 @@ export class ThirdPartyApiConsumer extends WorkerHost {
 		}
 	}
 
-	private createPayload(
-		epcs: any[],
-		orderInformation: any[],
-		factoryCode: string
-	): Partial<RFIDMatchCustomerEntity>[] {
-		return epcs.map((item) => ({
+	// * Step 3: Upsert data to database
+	private async upsertData(tenantId: string, epcs: any[], orderInformation: any[], factoryCode: string) {
+		const payload: Partial<RFIDMatchCustomerEntity>[] = epcs.map((item) => ({
 			...orderInformation.find((data) => data.mo_no === item.commandNumber.slice(0, 9)),
 			epc: item.epc,
 			size_numcode: item.sizeNumber,
@@ -156,30 +149,34 @@ export class ThirdPartyApiConsumer extends WorkerHost {
 			factory_code_produce: factoryCode,
 			factory_name_produce: factoryCode
 		}))
+		await this.rfidRepository.upsertBulk(tenantId, payload)
 	}
 
-	private async upsertData(tenantId: string, payload: Partial<RFIDMatchCustomerEntity>[], factoryCode: string) {
-		try {
-			await this.rfidRepository.upsertBulk(tenantId, payload)
-			this.updateProcessState(2, 'completed')
+	private async executeSync(data, factoryCode: string, tenantId: string, accessToken: string) {
+		this.updateProcessState(1, 'processing')
+		await this.broadcastStateChange(factoryCode)
+
+		const commandNumbers = await this.fetchCommandNumbers(data, accessToken)
+
+		if (commandNumbers.length === 0) {
+			this.updateProcessState(1, 'completed')
+			this.cancelRemainingSteps()
 			await this.broadcastStateChange(factoryCode)
-		} catch {
-			this.updateProcessState(2, 'failed')
-			await this.broadcastStateChange(factoryCode)
+			this.logger.warn('No data fetched from the customer')
+			return
 		}
-	}
 
-	private updateProcessState(stepId: number, status: SyncProcessState['status']) {
-		this.processState[stepId] = { ...this.processState[stepId], status }
-	}
+		const epcs = await this.fetchEpcsByCommandNumbers(commandNumbers, accessToken)
+		const availableCommandNumbers = this.extractCommandNumbers(epcs)
+		const orderInformation = await this.getOrderInformation(availableCommandNumbers, factoryCode)
 
-	private cancelRemainingSteps() {
-		for (let i = 1; i < this.processState.length; i++) {
-			this.processState[i].status = 'cancelled'
-		}
-	}
+		this.updateProcessState(1, 'completed')
+		this.updateProcessState(2, 'processing')
+		await this.broadcastStateChange(factoryCode)
 
-	private async broadcastStateChange(channelId: string) {
-		await this.ioRedisService.publish(`SYNC_DECKER_DATA:${channelId}`, JSON.stringify(this.processState))
+		await this.upsertData(tenantId, epcs, orderInformation, factoryCode)
+
+		this.updateProcessState(2, 'completed')
+		await this.broadcastStateChange(factoryCode)
 	}
 }
