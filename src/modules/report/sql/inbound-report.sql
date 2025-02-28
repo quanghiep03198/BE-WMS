@@ -1,8 +1,8 @@
 WITH datalist AS (
-   SELECT EPC_Code, mo_no, mo_no_actual, rfid_status, record_time,stationNO, FC_server_code, dept_name
+   SELECT EPC_Code, mo_no, mo_no_actual, rfid_status, created, stationNO, FC_server_code, dept_name
    FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet
    UNION ALL
-   SELECT EPC_Code, mo_no, mo_no_actual, rfid_status, record_time,stationNO, FC_server_code, dept_name
+   SELECT EPC_Code, mo_no, mo_no_actual, rfid_status, created, stationNO, FC_server_code, dept_name
    FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet_backup_Daily 
 ),
 dept_grouping AS (
@@ -46,7 +46,7 @@ WHERE
 	AND inv.EPC_Code NOT LIKE '303429%' 
 	AND inv.EPC_Code NOT LIKE 'E28%'
 	AND COALESCE(inv.mo_no_actual, inv.mo_no) <> '13D05B006'
-	AND CAST(inv.record_time AS DATE) = @0
+	AND CAST(inv.created AS DATE) = @0
 GROUP BY 
    inv.mo_no,
    prod.mat_ecolor,

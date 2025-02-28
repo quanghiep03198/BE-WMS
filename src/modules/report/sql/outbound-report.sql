@@ -1,57 +1,8 @@
--- WITH datalist AS (
--- 	SELECT EPC_Code,
--- 		mo_no,
--- 		mo_no_actual,
--- 		rfid_status,
--- 		record_time, 
--- 		dept_name, 
--- 		stationNO 
--- 	FROM dv_InvRFIDrecorddet
--- 	UNION ALL 
--- 	SELECT EPC_Code,
--- 		mo_no,
--- 		mo_no_actual,
--- 		rfid_status,
--- 		record_time, 
--- 		dept_name, 
--- 		stationNO 
--- 	FROM dv_InvRFIDrecorddet_backup_Daily
--- )
--- SELECT 
--- 	COALESCE(inv.mo_no_actual, inv.mo_no, 'Unknown') AS mo_no,
--- 	match.mat_code,
--- 	match.shoestyle_codefactory AS shoes_style_code_factory,
--- 	CAST(manf.mo_sumqty AS INT) AS order_qty,
--- 	COUNT(DISTINCT inv.EPC_Code) AS outbound_qty,
--- 	CAST(inv.record_time AS DATE) AS outbound_date, 
--- 	CASE WHEN COUNT(inv.mo_no_actual) > 0 THEN 1 ELSE 0 END AS is_exchanged
--- FROM datalist inv
--- LEFT JOIN dv_rfidmatchmst_cust match
--- 	ON 
--- 		inv.EPC_Code = match.EPC_Code 
--- 		AND COALESCE(inv.mo_no_actual, inv.mo_no, 'Unknown') = COALESCE(match.mo_no_actual, match.mo_no, 'Unknown')
--- LEFT JOIN wuerp_vnrd.dbo.ta_manufacturmst manf
--- 	ON manf.mo_no = COALESCE(inv.mo_no_actual, inv.mo_no)
--- WHERE 
--- 	inv.rfid_status = 'B'
--- 	AND inv.EPC_Code NOT LIKE '303429%'
--- 	AND inv.EPC_Code NOT LIKE 'E28%'
--- 	AND COALESCE(inv.mo_no_actual, inv.mo_no, 'Unknown') NOT IN ('13D05B006')
--- 	AND inv.stationNO LIKE 'CUS%WH103'
--- 	AND CAST(inv.record_time AS DATE) = CAST(@0 AS DATE)
--- GROUP BY 
--- 	COALESCE(inv.mo_no_actual, inv.mo_no, 'Unknown'),
--- 	manf.mo_sumqty,
--- 	inv.dept_name,
--- 	CAST(inv.record_time AS DATE),
--- 	match.mat_code,
--- 	match.shoestyle_codefactory
-
 WITH datalist AS (
-   SELECT EPC_Code, mo_no, mo_no_actual, rfid_status, record_time,stationNO, FC_server_code, dept_name
+   SELECT EPC_Code, mo_no, mo_no_actual, rfid_status, created, stationNO, FC_server_code, dept_name
    FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet
    UNION ALL
-   SELECT EPC_Code, mo_no, mo_no_actual, rfid_status, record_time,stationNO, FC_server_code, dept_name
+   SELECT EPC_Code, mo_no, mo_no_actual, rfid_status, created, stationNO, FC_server_code, dept_name
    FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet_backup_Daily 
 ),
 accumulated_counts AS (
@@ -65,7 +16,7 @@ accumulated_counts AS (
 SELECT
 	ISNULL(inv.mo_no, 'Unknown') AS mo_no,
 	ISNULL(match.mat_code, 'Unknown') AS mat_code,
-	ISNULL(match.shoestyle_codefactory,'Unknown')AS shoes_style_code_factory,
+	ISNULL(match.shoestyle_codefactory, 'Unknown') AS shoes_style_code_factory,
 	ISNULL(prod.mat_ecolor, 'Unknown') AS mat_ecolor,
     inv.FC_server_code AS factory_code,
 	CAST(ISNULL(manf.mo_sumqty, 0) AS INT) AS order_qty,
@@ -87,7 +38,7 @@ WHERE
 	AND inv.EPC_Code NOT LIKE '303429%' 
 	AND inv.EPC_Code NOT LIKE 'E28%'
 	AND COALESCE(inv.mo_no_actual, inv.mo_no) <> '13D05B006'
-	AND CAST(inv.record_time AS DATE) = @0
+	AND CAST(inv.created AS DATE) = @0
 GROUP BY 
    inv.mo_no,
    prod.mat_ecolor,
