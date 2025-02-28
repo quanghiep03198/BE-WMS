@@ -13,7 +13,7 @@ import { EXCLUDED_EPC_PATTERN, EXCLUDED_ORDERS, FALLBACK_VALUE, POST_DATA_QUEUE 
 import { PostReaderDataDTO } from './dto/rfid.dto'
 import { RFIDMatchCustomerEntity } from './entities/rfid-customer-match.entity'
 import { RFIDReaderEntity } from './entities/rfid-reader.entity'
-import { Epc, EpcDocument } from './schemas/epc.schema'
+import { Epc, EpcDocument, EpcSchema } from './schemas/epc.schema'
 import { StoredRFIDReaderItem } from './types'
 
 @Processor(POST_DATA_QUEUE)
@@ -102,10 +102,10 @@ export class RFIDConsumer extends WorkerHost {
 				})
 			}
 
-			const bulkOperations: AnyBulkWriteOperation<any>[] = incommingEpcs.map((item) => ({
+			const bulkOperations: AnyBulkWriteOperation<typeof EpcSchema>[] = incommingEpcs.map((item) => ({
 				updateOne: {
 					filter: { epc: item.epc },
-					update: { ...item, station_no: stationNO, deleted: false },
+					update: { ...item, station_no: stationNO, record_time: new Date(), deleted: false },
 					upsert: true
 				}
 			}))
