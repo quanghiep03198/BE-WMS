@@ -2,10 +2,6 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose'
 import mongoose, { HydratedDocument, PaginateModel } from 'mongoose'
 import { SoftDeleteModel } from 'mongoose-delete'
 
-export type EpcDocument = HydratedDocument<Epc> & { record_time: string }
-
-export interface EpcModel extends PaginateModel<EpcDocument>, SoftDeleteModel<EpcDocument> {}
-
 export const EPC_COLLECTION = 'epcs'
 
 @Schema({
@@ -41,5 +37,9 @@ export class Epc {
 	@Prop({ type: String, required: true })
 	station_no: string
 }
+
+export type EpcDocument = HydratedDocument<Epc> & { record_time: string }
+
+export type EpcModel = PaginateModel<EpcDocument> & SoftDeleteModel<EpcDocument>
 
 export const EpcSchema = SchemaFactory.createForClass(Epc)
