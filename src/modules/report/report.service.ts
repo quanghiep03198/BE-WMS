@@ -49,11 +49,7 @@ export class ReportService {
 
 	private async getInboundReportDetailByDate(commandNumber: string, factoryCode: string, date: string) {
 		const query = readFileSync(join(__dirname, './sql/inbound-size-qty-report.sql'), 'utf-8').toString()
-		return await this.dataSource.query<Array<{ size_numcode: string; inbound_qty: number }>>(query, [
-			commandNumber,
-			factoryCode,
-			date
-		])
+		return await this.dataSource.query<IReport['size_run']>(query, [commandNumber, factoryCode, date])
 	}
 
 	private async getOutboundReportDetailByDate(commandNumber: string, factoryCode: string, date: string) {
@@ -130,7 +126,7 @@ export class ReportService {
 				row.alignment = { vertical: 'middle', horizontal: 'center' }
 				row.getCell(2).value = subRecord.size_numcode + '#'
 				row.getCell(2).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'fff2cc' } }
-				row.getCell(3).value = subRecord.inbound_qty
+				row.getCell(3).value = subRecord.qty
 				row.getCell(3).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'f2dcdb' } }
 			}
 		}
