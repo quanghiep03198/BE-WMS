@@ -39,10 +39,8 @@ jobs:
               $env = "${{ secrets.ENV_VARIABLE_SVR19 }}"
               $env | Out-File -FilePath .env -Encoding utf8
 
-         - name: Initialize Sentry CLI
-           run: |
-              $sentryclirc = ("${{ secrets.SENTRY_CLI_RC }}")
-              $sentryclirc | Out-File -FilePath .sentryclirc -Encoding utf8
+         - name: Sentry CLI verification
+           run: npx sentry-cli login --auth-token ${{secrets.SENTRY_AUTH_TOKEN}}
 
          - name: Install dependencies
            run: pnpm install --fix-lockfile
@@ -69,10 +67,8 @@ jobs:
               $env = "${{ secrets.ENV_VARIABLE_SVR201201 }}"
               $env | Out-File -FilePath .env -Encoding utf8
 
-         - name: Initialize Sentry CLI
-           run: |
-              $sentryclirc = ("${{ secrets.SENTRY_CLI_RC }}")
-              $sentryclirc | Out-File -FilePath .sentryclirc -Encoding utf8
+         - name: Sentry CLI verification
+           run: npx sentry-cli login --auth-token ${{secrets.SENTRY_AUTH_TOKEN}}
 
          - name: Install dependencies
            run: pnpm install --fix-lockfile
@@ -100,10 +96,8 @@ jobs:
               $env = "${{ secrets.ENV_VARIABLE_SVR5251 }}"
               $env | Out-File -FilePath .env -Encoding utf8
 
-         - name: Initialize Sentry CLI
-           run: |
-              $sentryclirc = ("${{ secrets.SENTRY_CLI_RC }}")
-              $sentryclirc | Out-File -FilePath .sentryclirc -Encoding utf8
+         - name: Sentry CLI verification
+           run: npx sentry-cli login --auth-token ${{secrets.SENTRY_AUTH_TOKEN}}
 
          - name: Install dependencies
            run: pnpm install --fix-lockfile
