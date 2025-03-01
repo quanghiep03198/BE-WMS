@@ -49,7 +49,6 @@ jobs:
            run: pnpm build
 
          - name: Restart and save PM2 process
-           shell: bash
            run: |
               pm2 restart ecosystem.config.js --update-env
               pm2 save
