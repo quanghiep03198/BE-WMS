@@ -36,16 +36,13 @@ jobs:
 
          - name: Load environment variables
            run: |
-              echo "${{ secrets.ENV_VARIABLE_SVR19 }}" > .env
-         - name: Convert .env file to UTF-8
-           shell: bash
-           run: iconv -f utf-8 -t utf-8 -c .env -o .env
+              $env = "${{ secrets.ENV_VARIABLE_SVR19 }}"
+              $env | Out-File -FilePath .env -Encoding utf8
 
          - name: Initialize Sentry CLI
            run: |
-              echo "[auth]" > .sentryclirc
-              echo "token=${{ secrets.SENTRY_AUTH_TOKEN }}" >> .sentryclirc
-              iconv -f utf-8 -t utf-8 -c .sentryclirc -o .sentryclirc
+              $sentryclirc = "${{ secrets.SENTRY_CLI_RC }}"
+              $sentryclirc | Out-File -FilePath .sentryclirc -Encoding utf8
 
          - name: Install dependencies
            run: pnpm install --fix-lockfile
@@ -67,17 +64,15 @@ jobs:
            with:
               fetch-depth: 0
               clean: false
-
          - name: Load environment variables
            run: |
-              echo "${{ secrets.ENV_VARIABLE_SVR19 }}" > .env
-              iconv -f utf-8 -t utf-8 -c .env -o .env
+              $env = "${{ secrets.ENV_VARIABLE_SVR201201 }}"
+              $env | Out-File -FilePath .env -Encoding utf8
 
          - name: Initialize Sentry CLI
            run: |
-              echo "[auth]" > .sentryclirc
-              echo "token=${{ secrets.SENTRY_AUTH_TOKEN }}" >> .sentryclirc
-              iconv -f utf-8 -t utf-8 -c .sentryclirc -o .sentryclirc
+              $sentryclirc = "${{ secrets.SENTRY_CLI_RC }}"
+              $sentryclirc | Out-File -FilePath .sentryclirc -Encoding utf8
 
          - name: Install dependencies
            run: pnpm install --fix-lockfile
@@ -102,14 +97,13 @@ jobs:
 
          - name: Load environment variables
            run: |
-              echo "${{ secrets.ENV_VARIABLE_SVR19 }}" > .env
-              iconv -f utf-8 -t utf-8 -c .env -o .env
+              $env = "${{ secrets.ENV_VARIABLE_SVR5251 }}"
+              $env | Out-File -FilePath .env -Encoding utf8
 
          - name: Initialize Sentry CLI
            run: |
-              echo "[auth]" > .sentryclirc
-              echo "token=${{ secrets.SENTRY_AUTH_TOKEN }}" >> .sentryclirc
-              iconv -f utf-8 -t utf-8 -c .sentryclirc -o .sentryclirc
+              $sentryclirc = "${{ secrets.SENTRY_CLI_RC }}"
+              $sentryclirc | Out-File -FilePath .sentryclirc -Encoding utf8
 
          - name: Install dependencies
            run: pnpm install --fix-lockfile
