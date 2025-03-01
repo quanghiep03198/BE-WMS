@@ -35,12 +35,17 @@ jobs:
               clean: false
 
          - name: Load environment variables
-           run: echo "${{ secrets.ENV_VARIABLE_SVR19 }}" > .env
+           run: |
+              echo "${{ secrets.ENV_VARIABLE_SVR19 }}" > .env
+         - name: Convert .env file to UTF-8
+           shell: bash
+           run: iconv -f utf-8 -t utf-8 -c .env -o .env
 
          - name: Initialize Sentry CLI
            run: |
               echo "[auth]" > .sentryclirc
               echo "token=${{ secrets.SENTRY_AUTH_TOKEN }}" >> .sentryclirc
+              iconv -f utf-8 -t utf-8 -c .sentryclirc -o .sentryclirc
 
          - name: Install dependencies
            run: pnpm install --fix-lockfile
@@ -64,12 +69,15 @@ jobs:
               clean: false
 
          - name: Load environment variables
-           run: echo "${{ secrets.ENV_VARIABLE_SVR201201 }}" > .env
+           run: |
+              echo "${{ secrets.ENV_VARIABLE_SVR19 }}" > .env
+              iconv -f utf-8 -t utf-8 -c .env -o .env
 
          - name: Initialize Sentry CLI
            run: |
               echo "[auth]" > .sentryclirc
               echo "token=${{ secrets.SENTRY_AUTH_TOKEN }}" >> .sentryclirc
+              iconv -f utf-8 -t utf-8 -c .sentryclirc -o .sentryclirc
 
          - name: Install dependencies
            run: pnpm install --fix-lockfile
@@ -93,12 +101,15 @@ jobs:
               clean: false
 
          - name: Load environment variables
-           run: echo "${{ secrets.ENV_VARIABLE_SVR5251 }}" > .env
+           run: |
+              echo "${{ secrets.ENV_VARIABLE_SVR19 }}" > .env
+              iconv -f utf-8 -t utf-8 -c .env -o .env
 
          - name: Initialize Sentry CLI
            run: |
               echo "[auth]" > .sentryclirc
               echo "token=${{ secrets.SENTRY_AUTH_TOKEN }}" >> .sentryclirc
+              iconv -f utf-8 -t utf-8 -c .sentryclirc -o .sentryclirc
 
          - name: Install dependencies
            run: pnpm install --fix-lockfile
