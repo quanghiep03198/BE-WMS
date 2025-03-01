@@ -35,8 +35,7 @@ jobs:
               clean: false
 
          - name: Load environment variables
-           shell: cmd
-           run: echo "${{ secrets.ENV_VARIABLE_SVR19 }}" > .env
+           run: echo ${{ secrets.ENV_VARIABLE_SVR19 }} > .env
 
          - name: Initialize Sentry CLI
            shell: bash
@@ -69,7 +68,6 @@ jobs:
               clean: false
 
          - name: Load environment variables
-           shell: cmd
            run: echo "${{ secrets.ENV_VARIABLE_SVR201201 }}" > .env
 
          - name: Initialize Sentry CLI
@@ -103,7 +101,6 @@ jobs:
               clean: false
 
          - name: Load environment variables
-           shell: cmd
            run: echo "${{ secrets.ENV_VARIABLE_SVR5251 }}" > .env
 
          - name: Initialize Sentry CLI
