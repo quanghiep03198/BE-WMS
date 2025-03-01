@@ -35,24 +35,20 @@ jobs:
               clean: false
 
          - name: Load environment variables
-           run: echo ${{ secrets.ENV_VARIABLE_SVR19 }} > .env
+           run: echo "${{ secrets.ENV_VARIABLE_SVR19 }}" > .env
 
          - name: Initialize Sentry CLI
-           shell: bash
            run: |
               echo "[auth]" > .sentryclirc
               echo "token=${{ secrets.SENTRY_AUTH_TOKEN }}" >> .sentryclirc
 
          - name: Install dependencies
-           shell: bash
            run: pnpm install --fix-lockfile
 
          - name: Build Nest application
-           shell: bash
            run: pnpm build
 
          - name: Restart and save PM2 process
-           shell: bash
            run: |
               pm2 restart ecosystem.config.js --update-env
               pm2 save
@@ -71,21 +67,17 @@ jobs:
            run: echo "${{ secrets.ENV_VARIABLE_SVR201201 }}" > .env
 
          - name: Initialize Sentry CLI
-           shell: bash
            run: |
               echo "[auth]" > .sentryclirc
               echo "token=${{ secrets.SENTRY_AUTH_TOKEN }}" >> .sentryclirc
 
          - name: Install dependencies
-           shell: bash
            run: pnpm install --fix-lockfile
 
          - name: Build Nest application
-           shell: bash
            run: pnpm build
 
          - name: Restart and save PM2 process
-           shell: bash
            run: |
               pm2 restart ecosystem.config.js --update-env
               pm2 save
@@ -104,21 +96,17 @@ jobs:
            run: echo "${{ secrets.ENV_VARIABLE_SVR5251 }}" > .env
 
          - name: Initialize Sentry CLI
-           shell: bash
            run: |
               echo "[auth]" > .sentryclirc
               echo "token=${{ secrets.SENTRY_AUTH_TOKEN }}" >> .sentryclirc
 
          - name: Install dependencies
-           shell: bash
            run: pnpm install --fix-lockfile
 
          - name: Build Nest application
-           shell: bash
            run: pnpm build
 
          - name: Restart and save PM2 process
-           shell: bash
            run: |
               pm2 restart ecosystem.config.js --update-env
               pm2 save
