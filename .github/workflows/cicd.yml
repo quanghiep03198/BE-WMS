@@ -41,7 +41,7 @@ jobs:
 
          - name: Initialize Sentry CLI
            run: |
-              $sentryclirc = "${{ secrets.SENTRY_CLI_RC }}"
+              $sentryclirc = ("${{ secrets.SENTRY_CLI_RC }}")
               $sentryclirc | Out-File -FilePath .sentryclirc -Encoding utf8
 
          - name: Install dependencies
@@ -71,7 +71,7 @@ jobs:
 
          - name: Initialize Sentry CLI
            run: |
-              $sentryclirc = "${{ secrets.SENTRY_CLI_RC }}"
+              $sentryclirc = ("${{ secrets.SENTRY_CLI_RC }}")
               $sentryclirc | Out-File -FilePath .sentryclirc -Encoding utf8
 
          - name: Install dependencies
@@ -102,7 +102,7 @@ jobs:
 
          - name: Initialize Sentry CLI
            run: |
-              $sentryclirc = "${{ secrets.SENTRY_CLI_RC }}"
+              $sentryclirc = ("${{ secrets.SENTRY_CLI_RC }}")
               $sentryclirc | Out-File -FilePath .sentryclirc -Encoding utf8
 
          - name: Install dependencies
