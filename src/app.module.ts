@@ -64,12 +64,12 @@ import { WarehouseModule } from './modules/warehouse/warehouse.module'
 			useFactory: (configService: ConfigService) => configService.getOrThrow('bullmq')
 		}),
 		EventEmitterModule.forRoot({
-			wildcard: false,
+			wildcard: false, // cho phép sử dụng các ký tự đại diện (wildcards) trong tên sự kiện. Ví dụ: (user.login, user.logout, user.signup) => wildcard = user.*.
 			delimiter: '.',
 			newListener: false,
-			removeListener: false,
+			removeListener: true,
 			maxListeners: 10,
-			verboseMemoryLeak: false,
+			verboseMemoryLeak: true,
 			ignoreErrors: false
 		}),
 		DatabaseModule,
