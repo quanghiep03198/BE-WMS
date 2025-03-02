@@ -4,6 +4,7 @@ import { Processor, WorkerHost } from '@nestjs/bullmq'
 import { Logger } from '@nestjs/common'
 import { Job } from 'bullmq'
 import { groupBy } from 'lodash'
+import { OrderService } from '../order/order.service'
 import { RFIDMatchCustomerEntity } from '../rfid/entities/rfid-customer-match.entity'
 import { FPIRespository } from '../rfid/rfid.repository'
 import { THIRD_PARTY_API_SYNC } from './constants'
@@ -18,6 +19,7 @@ export class ThirdPartyApiConsumer extends WorkerHost {
 	constructor(
 		private readonly thirdPartyApiService: ThirdPartyApiService,
 		private readonly rfidRepository: FPIRespository,
+		private readonly orderService: OrderService,
 		private readonly ioRedisService: IoRedisService
 	) {
 		super()
@@ -126,7 +128,7 @@ export class ThirdPartyApiConsumer extends WorkerHost {
 	// * Step 2.2.2: Get order information from ERP
 	private async getOrderInformation(commandNumbers: string[], factoryCode: string): Promise<any[]> {
 		try {
-			const data = await this.rfidRepository.getOrderInformationFromERP(commandNumbers)
+			const data = await this.orderService.getCustOrderDetails(commandNumbers)
 			this.updateProcessState(2, 'processing')
 			await this.broadcastStateChange(factoryCode)
 			return data

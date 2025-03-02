@@ -12,7 +12,7 @@ import { chunk } from 'lodash'
 import { join, resolve } from 'path'
 import { DataSource } from 'typeorm'
 import { FactoryCode } from '../department/constants'
-import { RFIDMatchCustomerEntity } from '../rfid/entities/rfid-customer-match.entity'
+import { OrderService } from '../order/order.service'
 import { TENANCY_DATASOURCE } from '../tenancy/constants'
 import {
 	OAuth2Credentials,
@@ -27,6 +27,7 @@ export class ThirdPartyApiService {
 		@Inject(TENANCY_DATASOURCE) private readonly dataSource: DataSource,
 		@InjectDataSource(DATA_SOURCE_ERP) private readonly dataSourceERP: DataSource,
 		private readonly httpService: HttpService,
+		private readonly orderService: OrderService,
 		private readonly configService: ConfigService
 	) {}
 
@@ -130,13 +131,8 @@ export class ThirdPartyApiService {
 			throw new NotFoundException('No data fetched from the customer')
 		}
 
-		const orderInformationQuery = readFileSync(
-			join(__dirname, '../rfid/sql/order-information.sql'),
-			'utf-8'
-		).toString()
-
-		const orderInformation = await this.dataSourceERP
-			.query<Partial<RFIDMatchCustomerEntity>[]>(orderInformationQuery, [commandNumber])
+		const orderInformation = await this.orderService
+			.getCustOrderByCommandNumber(commandNumber)
 			.then((data) => data?.at(0))
 
 		if (!orderInformation) {
@@ -197,13 +193,8 @@ export class ThirdPartyApiService {
 			throw new NotFoundException('No data fetched from the customer')
 		}
 
-		const orderInformationQuery = readFileSync(
-			join(__dirname, '../rfid/sql/order-information.sql'),
-			'utf-8'
-		).toString()
-
-		const orderInformation = await this.dataSourceERP
-			.query<Partial<RFIDMatchCustomerEntity>[]>(orderInformationQuery, [data.commandNumber])
+		const orderInformation = await this.orderService
+			.getCustOrderByCommandNumber(data.commandNumber)
 			.then((data) => data?.at(0))
 
 		if (!orderInformation) {
