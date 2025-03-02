@@ -3,8 +3,11 @@ import { DATA_SOURCE_DATA_LAKE } from '@/databases/constants'
 import { InjectDataSource } from '@nestjs/typeorm'
 import { format } from 'date-fns'
 import { DataSource, EntitySubscriberInterface, EventSubscriber, InsertEvent } from 'typeorm'
-import { TransferOrderEntity } from './../entities/transfer-order.entity'
+import { TransferOrderEntity } from '../entities/transfer-order.entity'
 
+/**
+ * @deprecated
+ */
 @EventSubscriber()
 export class TransferOrderEntitySubscriber implements EntitySubscriberInterface<TransferOrderEntity> {
 	constructor(@InjectDataSource(DATA_SOURCE_DATA_LAKE) dataSource: DataSource) {

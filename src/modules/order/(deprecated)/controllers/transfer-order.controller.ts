@@ -4,6 +4,9 @@ import { CreateTransferOrderDTO, DeleteTransferOrderDTO } from '../dto/transfer-
 import { ITransferOrderDatalistParams } from '../interfaces/transfer-order.interface'
 import { TransferOrderService } from '../services/transfer-order.service'
 
+/**
+ * @deprecated
+ */
 @Controller('order/transfer-order')
 export class TransferOrderController {
 	constructor(private readonly transferOrderService: TransferOrderService) {}

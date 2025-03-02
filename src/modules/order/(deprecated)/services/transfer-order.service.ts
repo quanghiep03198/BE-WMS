@@ -17,6 +17,9 @@ import { TransferOrderDetailEntity } from '../entities/transfer-order-detail.ent
 import { TransferOrderEntity } from '../entities/transfer-order.entity'
 import { ITransferOrderDatalistParams } from '../interfaces/transfer-order.interface'
 
+/**
+ * @deprecated
+ */
 @Injectable()
 export class TransferOrderService {
 	constructor(

@@ -2,6 +2,9 @@ import { DATABASE_DATA_LAKE } from '@/databases/constants'
 import { BaseAbstractEntity } from '@/modules/_base/base.abstract.entity'
 import { Column, Entity } from 'typeorm'
 
+/**
+ * @deprecated
+ */
 @Entity('dv_transferordermst', { database: DATABASE_DATA_LAKE })
 export class TransferOrderEntity extends BaseAbstractEntity {
 	@Column({ type: 'nvarchar', length: 10 })
