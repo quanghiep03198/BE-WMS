@@ -178,7 +178,6 @@ export class ReportService {
 		worksheet.columns = [
 			{
 				header: this.i18nService.t('erp.fields.mo_no', { lang: currentLanguage }),
-
 				key: 'mo_no'
 			},
 			{
