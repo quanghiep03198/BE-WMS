@@ -5,9 +5,11 @@ import { InjectModel } from '@nestjs/mongoose'
 import { Queue } from 'bullmq'
 import { format } from 'date-fns'
 import { Request } from 'express'
+import { readFileSync } from 'fs-extra'
 import { chunk, groupBy, pick } from 'lodash'
 import { DeleteResult, FilterQuery, PipelineStage, RootFilterQuery } from 'mongoose'
 import { I18nContext, I18nService } from 'nestjs-i18n'
+import { join, resolve } from 'path'
 import { Brackets, DataSource, FindOptionsWhere, In } from 'typeorm'
 import { TENANCY_DATASOURCE } from '../tenancy/constants'
 import { FALLBACK_VALUE, POST_DATA_QUEUE } from './constants'
@@ -76,14 +78,9 @@ export class RFIDService {
 	public async getOrderDetails() {
 		const factoryCode = this.request.headers['x-user-company']
 		const accumulatedData = await this.epcModel.find(
-			{
-				station_no: { $regex: new RegExp(`CUS_${factoryCode}_WH10[12]`) }
-			},
+			{ station_no: { $regex: new RegExp(`CUS_${factoryCode}_WH10[12]`) } },
 			null,
-			{
-				readPreference: 'nearest',
-				lean: true
-			}
+			{ readPreference: 'nearest', lean: true }
 		)
 		if (!Array.isArray(accumulatedData)) throw new Error('Invalid data format')
 		return Object.entries(
@@ -129,6 +126,9 @@ export class RFIDService {
 		const queryRunner = this.dataSource.createQueryRunner()
 		const session = await this.epcModel.startSession()
 		await Promise.all([queryRunner.startTransaction(), session.startTransaction()])
+		const upsertInventoryQuery = readFileSync(resolve(join(__dirname, './sql/upsert-inventory.sql'))).toString(
+			'utf-8'
+		)
 		try {
 			for (const item of chunk(
 				payload.map((value) => ({
@@ -138,34 +138,16 @@ export class RFIDService {
 				})),
 				100
 			)) {
-				const mergeSourceValues = item
+				const values = item
 					.map((value) => {
 						return `(
-						'${value.epc}', '${value.mo_no}', '${value.rfid_status}', '${value.rfid_use}', '${value.record_time}', '${value.station_no}',
-						'${value.quantity}', '${value.storage}', '${value.factory_code}', '${value.dept_code}', '${value.dept_name}'
+							'${value.epc}', '${value.mo_no}', '${value.rfid_status}', '${value.rfid_use}', '${value.record_time}', '${value.station_no}',
+							'${value.quantity}', '${value.storage}', '${value.factory_code}', '${value.dept_code}', '${value.dept_name}'
 						)`
 					})
 					.join(',')
 
-				await this.dataSource.query(/* SQL */ `
-						MERGE INTO DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet AS target
-						USING (
-							VALUES ${mergeSourceValues}
-						)  AS source (
-							EPC_Code, mo_no, rfid_status, rfid_use, record_time, stationNO,
-							quantity, storage, FC_server_code, dept_code, dept_name
-						)
-						ON target.EPC_Code = source.EPC_Code
-						WHEN NOT MATCHED THEN
-						INSERT (
-							EPC_Code, mo_no, rfid_status, rfid_use, record_time, stationNO,
-							quantity, storage, FC_server_code, dept_code, dept_name
-						)
-						VALUES (
-							source.EPC_Code, source.mo_no, source.rfid_status, source.rfid_use, CAST(source.record_time AS DATETIME), source.stationNO,
-							source.quantity, source.storage, source.FC_server_code, source.dept_code, source.dept_name
-						);
-					`)
+				await this.dataSource.query(upsertInventoryQuery.replace(':values', values))
 			}
 			await this.epcModel.delete({ mo_no: orderCode }).exec()
 			await Promise.all([queryRunner.commitTransaction(), session.commitTransaction()])

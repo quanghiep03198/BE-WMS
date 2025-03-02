@@ -1,4 +1,4 @@
-MERGE INTO dv_rfidmatchmst_cust AS target
+MERGE INTO DV_DATA_LAKE.dbo.dv_rfidmatchmst_cust AS target
 USING (VALUES :values) AS source (
    EPC_Code, mo_no, mat_code, mo_noseq, or_no,
    or_custpo, shoestyle_codefactory, cust_shoestyle, size_code, size_numcode,

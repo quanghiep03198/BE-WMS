@@ -31,3 +31,10 @@ export type UpsertRFIDCustomerData = {
 export type DeleteEpcBySizeParams = Pick<SearchCustOrderParams, 'mo_no.eq' | 'size_numcode.eq'> & {
 	'quantity.eq': number
 }
+
+export type CustomerOrderSizeDetail = Pick<
+	RFIDMatchCustomerEntity,
+	'mo_no' | 'mat_code' | 'shoes_style_code_factory' | 'size_numcode'
+> & {
+	count: number
+}
