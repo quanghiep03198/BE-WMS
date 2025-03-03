@@ -76,10 +76,6 @@ export class ReportService {
 				key: 'mo_no'
 			},
 			{
-				header: this.i18nService.t('erp.fields.mat_code', { lang: currentLanguage }),
-				key: 'mat_code'
-			},
-			{
 				header: this.i18nService.t('erp.fields.shoestyle_codefactory', { lang: currentLanguage }),
 				key: 'shoes_style_code_factory'
 			},
@@ -144,8 +140,7 @@ export class ReportService {
 		// * Add title
 		worksheet.insertRow(1, null)
 		worksheet.getRow(1).height = 28
-		worksheet.mergeCells('A1:K1')
-
+		worksheet.mergeCells('A1:J1')
 		worksheet.getCell('A1').value = this.i18nService.t('inoutbound.titles.daily_inbound_report', {
 			args: {
 				factory: this.i18nService.t(`factory.${factoryCode}`, { lang: currentLanguage }),
@@ -170,6 +165,7 @@ export class ReportService {
 		})
 		return await workbook.xlsx.writeBuffer()
 	}
+
 	async exportDailyOutboundToExcel(date: string) {
 		const currentLanguage = I18nContext.current()?.lang
 		const factoryCode = this.request.headers['x-user-company']
