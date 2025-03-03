@@ -2,6 +2,7 @@ import { DATA_SOURCE_ERP } from '@/databases/constants'
 import { Injectable } from '@nestjs/common'
 import { InjectDataSource } from '@nestjs/typeorm'
 import { readFileSync } from 'fs-extra'
+import { uniqBy } from 'lodash'
 import { join } from 'path'
 import { DataSource } from 'typeorm'
 import { RFIDMatchCustomerEntity } from '../rfid/entities/rfid-customer-match.entity'
@@ -9,6 +10,12 @@ import { SizeRun } from './types'
 
 @Injectable()
 export class OrderService {
+	private readonly orderInformationQuery: string = readFileSync(
+		join(__dirname, './sql/order-information.sql'),
+		'utf-8'
+	)
+	private readonly sizeRunQuery = readFileSync(join(__dirname, './sql/order-size-run.sql'), 'utf-8')
+
 	constructor(@InjectDataSource(DATA_SOURCE_ERP) private readonly dataSourceERP: DataSource) {}
 
 	async searchCommandNumber(factoryCode: string, searchTerm: string) {
@@ -19,6 +26,7 @@ export class OrderService {
 			.where(/* SQL */ `manu.cofactory_code = :factoryCode`, { factoryCode })
 			.andWhere(/* SQL */ `manu.mo_no LIKE :searchTerm`, { searchTerm: `%${searchTerm}%` })
 			.andWhere(/* SQL */ `manu.created >= CAST(DATEADD(YEAR, -2, GETDATE()) AS DATE)`)
+			.orderBy(/* SQL */ `manu.created`, 'DESC')
 			.getRawMany()
 	}
 
@@ -33,15 +41,13 @@ export class OrderService {
 	}
 
 	async getCustOrderByCommandNumber(commandNumber: string) {
-		const orderInformationQuery = readFileSync(join(__dirname, './sql/order-information.sql'), 'utf-8').toString()
-		const data = await this.dataSourceERP.query<Partial<RFIDMatchCustomerEntity>[]>(orderInformationQuery, [
+		const data = await this.dataSourceERP.query<Partial<RFIDMatchCustomerEntity>[]>(this.orderInformationQuery, [
 			commandNumber
 		])
-		return data
+		return uniqBy(data, 'mo_no')
 	}
 
 	async getSizeRunByCommandNumber(commandNumber: string) {
-		const sizeRunQuery = readFileSync(join(__dirname, './sql/order-size-run.sql')).toString('utf-8')
-		return await this.dataSourceERP.query<Array<SizeRun>>(sizeRunQuery, [commandNumber])
+		return await this.dataSourceERP.query<Array<SizeRun>>(this.sizeRunQuery, [commandNumber])
 	}
 }
