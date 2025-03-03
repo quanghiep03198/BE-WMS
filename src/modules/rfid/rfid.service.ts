@@ -1,5 +1,5 @@
 import { InjectQueue } from '@nestjs/bullmq'
-import { Inject, Injectable, InternalServerErrorException, NotFoundException, Scope } from '@nestjs/common'
+import { Inject, Injectable, InternalServerErrorException, Logger, NotFoundException, Scope } from '@nestjs/common'
 import { REQUEST } from '@nestjs/core'
 import { InjectModel } from '@nestjs/mongoose'
 import { Queue } from 'bullmq'
@@ -15,6 +15,7 @@ import { TENANCY_DATASOURCE } from '../tenancy/constants'
 import { FALLBACK_VALUE, POST_DATA_QUEUE } from './constants'
 import { ExchangeEpcDTO, PostReaderDataDTO, SearchCustOrderParamsDTO, UpsertStockDTO } from './dto/rfid.dto'
 import { RFIDMatchCustomerEntity } from './entities/rfid-customer-match.entity'
+import { FPIRespository } from './rfid.repository'
 import { Epc, EpcDocument, EpcModel } from './schemas/epc.schema'
 import { DeleteEpcBySizeParams, RFIDSearchParams, StoredRFIDReaderItem } from './types'
 
@@ -30,10 +31,10 @@ export class RFIDService {
 	constructor(
 		@Inject(REQUEST) private readonly request: Request,
 		@Inject(TENANCY_DATASOURCE) private readonly dataSource: DataSource | undefined,
-		@InjectModel(Epc.name)
-		private readonly epcModel: EpcModel,
+		@InjectModel(Epc.name) private readonly epcModel: EpcModel,
 		@InjectQueue(POST_DATA_QUEUE) private readonly postDataQueue: Queue,
-		private readonly i18n: I18nService
+		private readonly i18nService: I18nService,
+		private readonly rfidRepository: FPIRespository
 	) {}
 
 	public async addPostDataQueueJob(tenantId: string, data: PostReaderDataDTO) {
@@ -214,7 +215,9 @@ export class RFIDService {
 		])
 
 		if (epcToExchange.length === 0) {
-			throw new NotFoundException(this.i18n.t('rfid.errors.no_matching_epc', { lang: I18nContext.current().lang }))
+			throw new NotFoundException(
+				this.i18nService.t('rfid.errors.no_matching_epc', { lang: I18nContext.current().lang })
+			)
 		}
 
 		try {
@@ -256,5 +259,28 @@ export class RFIDService {
 			})
 		}
 		return await this.epcModel.deleteMany({ mo_no: filters['mo_no.eq'] })
+	}
+
+	public async combineCustomerEpcsInfo(update: any) {
+		Logger.debug(update)
+
+		const factoryCode = this.request.headers['x-user-company'] as string
+		const tenantId = this.request.headers['x-tenant-id'] as string
+		const epcToCombine = await this.epcModel
+			.find({ mo_no: FALLBACK_VALUE })
+			.select('epc')
+			.limit(update.quantity)
+			.lean(true)
+		const payload = epcToCombine.map((item) => ({
+			epc: item.epc,
+			...update,
+			size_qty: update.size_sumqty,
+			factory_code_orders: factoryCode,
+			factory_name_orders: factoryCode,
+			factory_code_produce: factoryCode,
+			factory_name_produce: factoryCode,
+			remark: 'Upserted from WMS'
+		}))
+		return await this.rfidRepository.upsertBulk(tenantId, payload)
 	}
 }
