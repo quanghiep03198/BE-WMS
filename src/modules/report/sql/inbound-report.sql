@@ -17,6 +17,16 @@ accumulated_counts AS (
     SELECT mo_no, COUNT(DISTINCT EPC_Code) AS accumulated_qty
     FROM datalist
     GROUP BY mo_no
+),
+storage_grouping AS (
+	SELECT mo_no, STRING_AGG(storage_name, ', ') AS storage_name
+	FROM DV_DATA_LAKE.dbo.dv_warehouseccodedet wh 
+    INNER JOIN (
+        SELECT DISTINCT mo_no, storage FROM datalist inv
+        WHERE inv.storage IS NOT NULL
+    ) AS unique_storage
+    ON unique_storage.storage = storage_num 
+    GROUP BY mo_no
 )
 SELECT
 	ISNULL(inv.mo_no, 'Unknown') AS mo_no,
@@ -25,7 +35,7 @@ SELECT
 	ISNULL(prod.mat_ecolor, 'Unknown') AS mat_ecolor,
 	dg.dept_name AS shaping_dept_name,
 	inv.FC_server_code AS factory_code,
-	ISNULL(wh.storage_name, 'Unknown') AS storage,
+	sg.storage_name AS storage,
 	CAST(ISNULL(manf.mo_sumqty, 0) AS INT) AS order_qty,
 	ac.accumulated_qty,
 	COUNT(DISTINCT inv.EPC_Code) AS daily_inbound_qty,
@@ -33,8 +43,8 @@ SELECT
 FROM datalist inv
 LEFT JOIN DV_DATA_LAKE.dbo.dv_rfidmatchmst_cust match 
 	ON inv.EPC_Code = match.EPC_Code
-LEFT JOIN [DV_DATA_LAKE].dbo.[dv_warehouseccodedet] wh 
-    ON inv.storage = wh.storage_num
+LEFT JOIN storage_grouping sg 
+	ON sg.mo_no =  inv.mo_no
 LEFT JOIN wuerp_vnrd.dbo.ta_manufacturmst manf 
 	ON manf.mo_no = COALESCE(inv.mo_no_actual, inv.mo_no)
 LEFT JOIN wuerp_vnrd.dbo.ta_productmst prod 
@@ -58,6 +68,6 @@ GROUP BY
    match.mat_code,
    match.shoestyle_codefactory,
    dg.dept_name,
-   wh.storage_name,
+   sg.storage_name,
    inv.FC_server_code
 ORDER BY inv.mo_no DESC;
