@@ -17,6 +17,7 @@ import {
 } from '@nestjs/common'
 import { Response } from 'express'
 import { DeleteResult } from 'mongoose'
+import { EpcInfoCombinationDTO, epcInfoCombinationValidator } from './dto/combine-epc-info.dto'
 import {
 	deleteEpcValidator,
 	ExchangeEpcDTO,
@@ -160,5 +161,13 @@ export class RFIDController {
 		@Query(new ZodValidationPipe(deleteEpcValidator)) filters: DeleteEpcBySizeParams
 	): Promise<DeleteResult> {
 		return await this.rfidService.deleteScannedEpcs(filters)
+	}
+
+	@Api({
+		method: HttpMethod.PATCH,
+		endpoint: '/combine-epc-info'
+	})
+	async combineEpcInfo(@Body(new ZodValidationPipe(epcInfoCombinationValidator)) payload: EpcInfoCombinationDTO) {
+		return await this.rfidService.combineCustomerEpcsInfo(payload)
 	}
 }
