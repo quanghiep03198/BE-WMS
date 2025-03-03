@@ -16,6 +16,7 @@ export interface IReport {
 
 export interface IInboundReport extends IReport {
 	daily_inbound_qty: number
+	storage: string
 	is_exchanged?: number
 }
 

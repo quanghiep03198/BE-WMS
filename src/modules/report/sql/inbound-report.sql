@@ -1,8 +1,8 @@
 WITH datalist AS (
-   SELECT EPC_Code, mo_no, mo_no_actual, rfid_status, created, stationNO, FC_server_code, dept_name
+   SELECT EPC_Code, mo_no, mo_no_actual, rfid_status, created, stationNO, FC_server_code, dept_name, storage
    FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet
    UNION ALL
-   SELECT EPC_Code, mo_no, mo_no_actual, rfid_status, created, stationNO, FC_server_code, dept_name
+   SELECT EPC_Code, mo_no, mo_no_actual, rfid_status, created, stationNO, FC_server_code, dept_name, storage
    FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet_backup_Daily 
 ),
 dept_grouping AS (
@@ -25,6 +25,7 @@ SELECT
 	ISNULL(prod.mat_ecolor, 'Unknown') AS mat_ecolor,
 	dg.dept_name AS shaping_dept_name,
     inv.FC_server_code AS factory_code,
+    wh.storage_name AS storage,
 	CAST(ISNULL(manf.mo_sumqty, 0) AS INT) AS order_qty,
 	ac.accumulated_qty,
 	COUNT(DISTINCT inv.EPC_Code) AS daily_inbound_qty,
@@ -32,6 +33,8 @@ SELECT
 FROM datalist inv
 LEFT JOIN DV_DATA_LAKE.dbo.dv_rfidmatchmst_cust match 
 	ON inv.EPC_Code = match.EPC_Code
+LEFT JOIN [DV_DATA_LAKE].dbo.[dv_warehouseccodedet] wh 
+    ON inv.storage = wh.storage_num
 LEFT JOIN wuerp_vnrd.dbo.ta_manufacturmst manf 
 	ON manf.mo_no = COALESCE(inv.mo_no_actual, inv.mo_no)
 LEFT JOIN wuerp_vnrd.dbo.ta_productmst prod 
@@ -55,5 +58,6 @@ GROUP BY
    match.mat_code,
    match.shoestyle_codefactory,
    dg.dept_name,
+   wh.storage_name,
    inv.FC_server_code
 ORDER BY inv.mo_no DESC;
