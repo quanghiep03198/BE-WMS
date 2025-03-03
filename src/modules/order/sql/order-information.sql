@@ -10,7 +10,6 @@ SELECT
 	k.size_sumqty AS size_qty
 FROM wuerp_vnrd.dbo.ta_manufacturmst a
 	LEFT JOIN wuerp_vnrd.dbo.ta_manufacturdet b ON a.mo_no=b.mo_no AND b.isactive='Y'
-	LEFT JOIN wuerp_vnrd.dbo.ta_brand c ON c.custbrand_id = a.custbrand_id AND c.isactive = 'Y'
 	LEFT JOIN wuerp_vnrd.dbo.ta_ordermst d ON d.or_no = b.or_no AND d.isactive = 'Y'
 	LEFT JOIN wuerp_vnrd.dbo.ta_productmst f ON f.mat_code= a.mat_code AND f.isactive= 'Y'
 	LEFT JOIN wuerp_vnrd.dbo.ta_shoefactorymst g ON g.shoestyle_systemcodefty = f.shoestyle_systemcodefty AND g.isactive = 'Y'
