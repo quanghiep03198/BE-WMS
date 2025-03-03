@@ -23,6 +23,10 @@ import { DeleteEpcBySizeParams, RFIDSearchParams, StoredRFIDReaderItem } from '.
  */
 @Injectable({ scope: Scope.REQUEST })
 export class RFIDService {
+	private readonly upsertInventoryQuery = readFileSync(resolve(join(__dirname, './sql/upsert-inventory.sql')), {
+		encoding: 'utf-8'
+	})
+
 	constructor(
 		@Inject(REQUEST) private readonly request: Request,
 		@Inject(TENANCY_DATASOURCE) private readonly dataSource: DataSource | undefined,
@@ -126,9 +130,7 @@ export class RFIDService {
 		const queryRunner = this.dataSource.createQueryRunner()
 		const session = await this.epcModel.startSession()
 		await Promise.all([queryRunner.startTransaction(), session.startTransaction()])
-		const upsertInventoryQuery = readFileSync(resolve(join(__dirname, './sql/upsert-inventory.sql'))).toString(
-			'utf-8'
-		)
+
 		try {
 			for (const item of chunk(
 				payload.map((value) => ({
@@ -147,7 +149,7 @@ export class RFIDService {
 					})
 					.join(',')
 
-				await this.dataSource.query(upsertInventoryQuery.replace(':values', values))
+				await this.dataSource.query(this.upsertInventoryQuery.replace(':values', values))
 			}
 			await this.epcModel.delete({ mo_no: orderCode }).exec()
 			await Promise.all([queryRunner.commitTransaction(), session.commitTransaction()])

@@ -3,7 +3,7 @@ import { DATABASE_DATA_LAKE } from '@/databases/constants'
 import { Inject, Injectable } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { InjectModel } from '@nestjs/mongoose'
-import fs from 'fs'
+import { readFileSync } from 'fs'
 import { chunk, groupBy, pick } from 'lodash'
 import { AnyBulkWriteOperation, PaginateModel } from 'mongoose'
 import path, { join, resolve } from 'path'
@@ -20,6 +20,14 @@ import { CustomerOrderSizeDetail } from './types'
  */
 @Injectable()
 export class FPIRespository {
+	private readonly orderDetailByEpcsQuery: string = readFileSync(path.join(__dirname, './sql/order-detail.sql'), {
+		encoding: 'utf-8'
+	})
+
+	private readonly upsertEpcsQuery: string = readFileSync(resolve(join(__dirname, './sql/upsert-rfid-match.sql')), {
+		encoding: 'utf-8'
+	})
+
 	constructor(
 		@Inject(TENANCY_DATASOURCE) private readonly dataSource: DataSource,
 		@InjectModel(Epc.name) private readonly epcModel: PaginateModel<EpcDocument>,
@@ -31,10 +39,10 @@ export class FPIRespository {
 	 * @description Get manufacturing order sizes by EPCs
 	 */
 	async getOrderDetailByEpcs(epcs: Record<'epc' | 'mo_no', string>[]) {
-		const result = await this.dataSource.query<Array<CustomerOrderSizeDetail>>(
-			fs.readFileSync(path.join(__dirname, './sql/order-detail.sql'), { encoding: 'utf-8' }).toString(),
-			[epcs.map((item) => item.epc).join(','), EXCLUDED_ORDERS.join(',')]
-		)
+		const result = await this.dataSource.query<Array<CustomerOrderSizeDetail>>(this.orderDetailByEpcsQuery, [
+			epcs.map((item) => item.epc).join(','),
+			EXCLUDED_ORDERS.join(',')
+		])
 		return Object.entries(groupBy(result, 'mo_no')).map(([order, sizes]) => ({
 			mo_no: order,
 			mat_code: sizes[0].mat_code,
@@ -60,7 +68,7 @@ export class FPIRespository {
 		await queryRunner.connect()
 		try {
 			await Promise.all([session.startTransaction(), queryRunner.startTransaction()])
-			const upsertQuery = fs.readFileSync(resolve(join(__dirname, './sql/upsert-rfid-match.sql'))).toString('utf-8')
+
 			for (const data of chunk(payload, 2000)) {
 				const values = data
 					.map((item) => {
@@ -71,7 +79,7 @@ export class FPIRespository {
 						)`
 					})
 					.join(',')
-				await queryRunner.query(upsertQuery.replace(':values', values))
+				await queryRunner.query(this.upsertEpcsQuery.replace(':values', values))
 			}
 			const bulkWriteOptions: AnyBulkWriteOperation<any>[] = payload.map((item) => ({
 				updateOne: {
