@@ -92,6 +92,10 @@ export class ReportService {
 				key: 'shaping_dept_name'
 			},
 			{
+				header: this.i18nService.t('warehouse.fields.storage_name', { lang: currentLanguage }),
+				key: 'storage'
+			},
+			{
 				header: this.i18nService.t('erp.fields.order_qty', { lang: currentLanguage }),
 				key: 'order_qty'
 			},
@@ -140,7 +144,7 @@ export class ReportService {
 		// * Add title
 		worksheet.insertRow(1, null)
 		worksheet.getRow(1).height = 28
-		worksheet.mergeCells('A1:J1')
+		worksheet.mergeCells('A1:K1')
 
 		worksheet.getCell('A1').value = this.i18nService.t('inoutbound.titles.daily_inbound_report', {
 			args: {

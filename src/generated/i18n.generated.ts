@@ -109,6 +109,41 @@ export type I18nTranslations = {
             "no_matching_epc": string;
         };
     };
+    "warehouse": {
+        "fields": {
+            "warehouse_num": string;
+            "warehouse_name": string;
+            "type_warehouse": string;
+            "storage_position": string;
+            "is_disable": string;
+            "is_default": string;
+            "area": string;
+            "manager": string;
+            "storage_num": string;
+            "storage_name": string;
+            "type_storage": string;
+            "original_warehouse": string;
+            "original_storage_location": string;
+            "transfered_warehouse": string;
+            "new_warehouse": string;
+            "new_storage_location": string;
+            "allocation_warehouse": string;
+        };
+        "warehouse_types": {
+            "production_warehouse": string;
+            "material_warehouse": string;
+            "half_finished_production": string;
+            "finished_production_warehouse": string;
+            "scrap_production_warehouse": string;
+        };
+        "storage_types": {
+            "main_area": string;
+            "finished_production_area": string;
+            "inspection_holding_area": string;
+            "outbound_staging_area": string;
+            "inbound_staging_area": string;
+        };
+    };
 };
 /* prettier-ignore */
 export type I18nPath = Path<I18nTranslations>;
