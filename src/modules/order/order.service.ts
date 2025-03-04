@@ -22,6 +22,7 @@ export class OrderService {
 		return await this.dataSourceERP
 			.createQueryBuilder()
 			.select(/* SQL */ `DISTINCT TOP 5 manu.mo_no`, 'mo_no')
+			.addSelect(/* SQL */ `manu.created`, 'created')
 			.from(/* SQL */ `wuerp_vnrd.dbo.ta_manufacturmst`, 'manu')
 			.where(/* SQL */ `manu.cofactory_code = :factoryCode`, { factoryCode })
 			.andWhere(/* SQL */ `manu.mo_no LIKE :searchTerm`, { searchTerm: `%${searchTerm}%` })
