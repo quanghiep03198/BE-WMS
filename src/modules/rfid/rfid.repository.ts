@@ -6,7 +6,7 @@ import { InjectModel } from '@nestjs/mongoose'
 import { readFileSync } from 'fs'
 import { chunk, groupBy, pick } from 'lodash'
 import { AnyBulkWriteOperation, PaginateModel } from 'mongoose'
-import path, { join, resolve } from 'path'
+import { join, resolve } from 'path'
 import { DataSource } from 'typeorm'
 import { SqlServerConnectionOptions } from 'typeorm/driver/sqlserver/SqlServerConnectionOptions'
 import { TENANCY_DATASOURCE } from '../tenancy/constants'
@@ -20,7 +20,7 @@ import { CustomerOrderSizeDetail } from './types'
  */
 @Injectable()
 export class FPIRespository {
-	private readonly orderDetailByEpcsQuery: string = readFileSync(path.join(__dirname, './sql/order-detail.sql'), {
+	private readonly orderDetailByEpcsQuery: string = readFileSync(resolve(join(__dirname, './sql/order-detail.sql')), {
 		encoding: 'utf-8'
 	})
 
