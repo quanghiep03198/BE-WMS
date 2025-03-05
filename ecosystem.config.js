@@ -9,9 +9,7 @@ module.exports = {
 			cwd: __dirname,
 			watch: false,
 			exec_mode: 'cluster',
-			instances: 2,
 			max_memory_restart: '1G',
-			increment_var: 'PORT',
 			env: {
 				NODE_ENV: process.env.NODE_ENV,
 				PORT: process.env.PORT
@@ -33,6 +31,7 @@ module.exports = {
  * @property {boolean | string | string[]} watch
  * @property {boolean | string | string[]} ignore_watch
  * @property {string} exec_mode
+ * @property {string} increment_var
  * @property {string} max_memory_restart
  * @property {string} cron_restart
  * @property {string} error_file
