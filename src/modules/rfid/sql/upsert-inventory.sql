@@ -7,7 +7,18 @@ USING (
 )
 ON target.EPC_Code = source.EPC_Code
 WHEN MATCHED THEN
-   UPDATE SET created = GETDATE()
+   UPDATE SET 
+      created = GETDATE(),
+      mo_no = source.mo_no, 
+      rfid_status = source.rfid_status, 
+      rfid_use = source.rfid_use, 
+      record_time = CAST(source.record_time AS DATETIME), 
+      stationNO = source.stationNO,
+      quantity = source.quantity,
+      storage = source.storage,
+      FC_server_code = source.FC_server_code,
+      dept_code = source.dept_code,
+      dept_name = source.dept_name
 WHEN NOT MATCHED THEN
    INSERT (
       EPC_Code, mo_no, rfid_status, rfid_use, record_time, stationNO,

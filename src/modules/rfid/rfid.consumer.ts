@@ -3,8 +3,10 @@ import { InjectQueue, OnWorkerEvent, Processor, WorkerHost } from '@nestjs/bullm
 import { ConfigService } from '@nestjs/config'
 import { InjectModel } from '@nestjs/mongoose'
 import { Job, Queue } from 'bullmq'
+import { readFileSync } from 'fs-extra'
 import _ from 'lodash'
 import { AnyBulkWriteOperation, PaginateModel } from 'mongoose'
+import { join, resolve } from 'path'
 import { DataSource } from 'typeorm'
 import { SqlServerConnectionOptions } from 'typeorm/driver/sqlserver/SqlServerConnectionOptions'
 import { Tenant } from '../tenancy/constants'
@@ -18,6 +20,11 @@ import { StoredRFIDReaderItem } from './types'
 
 @Processor(POST_DATA_QUEUE)
 export class RFIDConsumer extends WorkerHost {
+	private readonly epcInformationQuery: string = readFileSync(
+		resolve(join(__dirname, './sql/epc-information.sql')),
+		'utf-8'
+	)
+
 	private readonly dataSources: Map<string, DataSource> = new Map()
 	private readonly tenants = [
 		{
@@ -68,24 +75,12 @@ export class RFIDConsumer extends WorkerHost {
 			const epcList = data.tagList.map((item) => item.epc.trim()).join(',')
 			const excludedOrderList = EXCLUDED_ORDERS.join(',')
 			const stationNO = deviceInformation?.station_no ?? FALLBACK_VALUE
-			const incommingEpcs = await dataSource.query<StoredRFIDReaderItem[]>(
-				/* SQL */ `
-				SELECT DISTINCT a.EPC_Code AS epc, 
-					COALESCE(b.mo_no_actual, b.mo_no, @0) AS mo_no,
-					COALESCE(b.mat_code, @0) AS mat_code,
-					COALESCE(b.shoestyle_codefactory, @0) AS shoes_style_code_factory,
-					COALESCE(b.size_numcode, @0) AS size_numcode
-				FROM (SELECT value AS EPC_Code FROM STRING_SPLIT(@1, ',')) AS a
-				LEFT JOIN DV_DATA_LAKE.dbo.dv_rfidmatchmst_cust b ON a.EPC_Code = b.EPC_Code
-				WHERE 
-					a.EPC_Code NOT LIKE @2
-					AND (
-						b.mo_no IS NULL 
-						OR b.mo_no NOT IN (SELECT value AS mo_no FROM STRING_SPLIT(@3, ','))
-					)
-				`,
-				[FALLBACK_VALUE, epcList, EXCLUDED_EPC_PATTERN, excludedOrderList]
-			)
+			const incommingEpcs = await dataSource.query<StoredRFIDReaderItem[]>(this.epcInformationQuery, [
+				FALLBACK_VALUE,
+				epcList,
+				EXCLUDED_EPC_PATTERN,
+				excludedOrderList
+			])
 
 			if (incommingEpcs.length === 0) return
 
@@ -109,7 +104,12 @@ export class RFIDConsumer extends WorkerHost {
 					upsert: true
 				}
 			}))
-			await this.epcModel.bulkWrite(bulkOperations, { writeConcern: { w: 'majority' } })
+			await this.epcModel.bulkWrite(bulkOperations, {
+				writeConcern: { w: 'majority' },
+				ordered: false,
+				retryWrites: true,
+				timestamps: true
+			})
 		} catch (e) {
 			FileLogger.error(e)
 		}
