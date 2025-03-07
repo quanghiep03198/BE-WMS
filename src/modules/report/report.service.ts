@@ -213,16 +213,16 @@ export class ReportService {
 				key: 'order_qty'
 			},
 			{
+				header: this.i18nService.t('erp.fields.daily_outbound_qty', { lang: currentLanguage }),
+				key: 'daily_outbound_qty'
+			},
+			{
 				header: this.i18nService.t('erp.fields.accumulated_qty', { lang: currentLanguage }),
 				key: 'accumulated_qty'
 			},
 			{
 				header: this.i18nService.t('erp.fields.missing_qty', { lang: currentLanguage }),
 				key: 'missing_qty'
-			},
-			{
-				header: this.i18nService.t('erp.fields.daily_outbound_qty', { lang: currentLanguage }),
-				key: 'daily_outbound_qty'
 			}
 		]
 

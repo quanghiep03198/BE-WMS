@@ -1,9 +1,21 @@
 WITH datalist AS (
 	SELECT EPC_Code, mo_no, mo_no_actual, rfid_status, created, stationNO, FC_server_code, ISNULL(dept_name, 'Unknown') AS dept_name, storage
 	FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet
+	WHERE 
+		rfid_status = 'A'
+		AND stationNO LIKE 'CUS%WH10[12]'
+		AND EPC_Code NOT LIKE '303429%'
+		AND EPC_Code NOT LIKE 'E28%'
+		AND COALESCE(mo_no_actual, mo_no) <> '13D05B006'
 	UNION ALL
 	SELECT EPC_Code, mo_no, mo_no_actual, rfid_status, created, stationNO, FC_server_code, ISNULL(dept_name, 'Unknown') AS dept_name, storage
 	FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet_backup_Daily
+	WHERE 
+		rfid_status = 'A'
+		AND stationNO LIKE 'CUS%WH10[12]'
+		AND EPC_Code NOT LIKE '303429%'
+		AND EPC_Code NOT LIKE 'E28%'
+		AND COALESCE(mo_no_actual, mo_no) <> '13D05B006'
 ),
 dept_grouping AS (
 	SELECT mo_no, STRING_AGG(dept_name, ', ') AS dept_name
@@ -54,13 +66,7 @@ LEFT JOIN accumulated_counts ac
 	ON ac.mo_no = inv.mo_no
 LEFT JOIN dept_grouping dg
 	ON dg.mo_no = inv.mo_no
-WHERE 
-	inv.rfid_status = 'A'
-	AND inv.stationNO LIKE 'CUS%WH10[12]'
-	AND inv.EPC_Code NOT LIKE '303429%'
-	AND inv.EPC_Code NOT LIKE 'E28%'
-	AND COALESCE(inv.mo_no_actual, inv.mo_no) <> '13D05B006'
-	AND CAST(inv.created AS DATE) = @0
+WHERE CAST(inv.created AS DATE) = @0
 GROUP BY 
 inv.mo_no,
 prod.mat_ecolor,
