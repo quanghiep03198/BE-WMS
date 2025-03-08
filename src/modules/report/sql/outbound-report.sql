@@ -15,7 +15,6 @@ accumulated_counts AS (
 )
 SELECT
 	ISNULL(inv.mo_no, 'Unknown') AS mo_no,
-	ISNULL(match.mat_code, 'Unknown') AS mat_code,
 	ISNULL(match.shoestyle_codefactory, 'Unknown') AS shoes_style_code_factory,
 	ISNULL(prod.mat_ecolor, 'Unknown') AS mat_ecolor,
     inv.FC_server_code AS factory_code,
@@ -44,7 +43,6 @@ GROUP BY
    prod.mat_ecolor,
    manf.mo_sumqty,
    ac.accumulated_qty,
-   match.mat_code,
    match.shoestyle_codefactory,
    inv.FC_server_code
 ORDER BY inv.mo_no DESC;
