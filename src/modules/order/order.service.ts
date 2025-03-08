@@ -3,7 +3,7 @@ import { Injectable } from '@nestjs/common'
 import { InjectDataSource } from '@nestjs/typeorm'
 import { readFileSync } from 'fs-extra'
 import { uniqBy } from 'lodash'
-import { join } from 'path'
+import { join, resolve } from 'path'
 import { DataSource } from 'typeorm'
 import { RFIDMatchCustomerEntity } from '../rfid/entities/rfid-customer-match.entity'
 import { SizeRun } from './types'
@@ -11,10 +11,10 @@ import { SizeRun } from './types'
 @Injectable()
 export class OrderService {
 	private readonly orderInformationQuery: string = readFileSync(
-		join(__dirname, './sql/order-information.sql'),
+		resolve(join(__dirname, './sql/order-information.sql')),
 		'utf-8'
 	)
-	private readonly sizeRunQuery = readFileSync(join(__dirname, './sql/order-size-run.sql'), 'utf-8')
+	private readonly sizeRunQuery = readFileSync(resolve(join(__dirname, './sql/order-size-run.sql')), 'utf-8')
 
 	constructor(@InjectDataSource(DATA_SOURCE_ERP) private readonly dataSourceERP: DataSource) {}
 
@@ -42,9 +42,10 @@ export class OrderService {
 	}
 
 	async getCustOrderByCommandNumber(commandNumber: string) {
-		const data = await this.dataSourceERP.query<Partial<RFIDMatchCustomerEntity>[]>(this.orderInformationQuery, [
-			commandNumber
-		])
+		const data = await this.dataSourceERP.query<Array<Partial<RFIDMatchCustomerEntity> & { size_sumqty: number }>>(
+			this.orderInformationQuery,
+			[commandNumber]
+		)
 		return uniqBy(data, 'mo_no')
 	}
 
