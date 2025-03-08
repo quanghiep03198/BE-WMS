@@ -22,6 +22,8 @@ import {
 
 @Injectable()
 export class ThirdPartyApiService {
+	private readonly upsertQuery = readFileSync(resolve(join(__dirname, '../rfid/upsert-rfid-match.sql')), 'utf-8')
+
 	constructor(
 		@Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
 		@Inject(TENANCY_DATASOURCE) private readonly dataSource: DataSource,
@@ -163,13 +165,11 @@ export class ThirdPartyApiService {
 						return `(
 							'${item.epc}', '${item.mo_no}', '${item.mat_code}','${item.mo_noseq}', '${item.or_no}',
 							'${item.or_cust_po}', '${item.shoes_style_code_factory}', '${item.cust_shoes_style}', '${item.size_code}', '${item.size_numcode}',
-							'${item.factory_code_orders}', '${item.factory_name_orders}', '${item.factory_code_produce}', '${item.factory_name_produce}', ${item.size_qty || 1}
+							'${item.factory_code_orders}', '${item.factory_name_orders}', '${item.factory_code_produce}', '${item.factory_name_produce}', ${item.size_sumqty || 1}
 						)`
 					})
 					.join(',')
-				const upsertQuery = readFileSync(resolve(join(__dirname, '../rfid/upsert-rfid-match.sql')))
-					.toString()
-					.replace(':values', sourceValues)
+				const upsertQuery = this.upsertQuery.replace(':values', sourceValues)
 				await queryRunner.manager.query(upsertQuery)
 			}
 			await queryRunner.commitTransaction()
@@ -214,16 +214,14 @@ export class ThirdPartyApiService {
 			factory_name_produce: factoryCode
 		}
 
-		const upsertQuery = readFileSync(resolve(join(__dirname, '../rfid/upsert-rfid-match.sql')))
-			.toString()
-			.replace(
-				':values',
-				`(
+		const upsertQuery = this.upsertQuery.replace(
+			':values',
+			`(
 					'${upsertPayload.epc}', '${upsertPayload.mo_no}', '${upsertPayload.mat_code}','${upsertPayload.mo_noseq}', '${upsertPayload.or_no}', 
 					'${upsertPayload.or_cust_po}', '${upsertPayload.shoes_style_code_factory}', '${upsertPayload.cust_shoes_style}', '${upsertPayload.size_code}', '${upsertPayload.size_numcode}', 
-					'${upsertPayload.factory_code_orders}', '${upsertPayload.factory_name_orders}', '${upsertPayload.factory_code_produce}', '${upsertPayload.factory_name_produce}', ${upsertPayload.size_qty || 1}
+					'${upsertPayload.factory_code_orders}', '${upsertPayload.factory_name_orders}', '${upsertPayload.factory_code_produce}', '${upsertPayload.factory_name_produce}', ${upsertPayload.size_sumqty || 1}
 				)`
-			)
+		)
 
 		await queryRunner.manager.query(upsertQuery)
 
