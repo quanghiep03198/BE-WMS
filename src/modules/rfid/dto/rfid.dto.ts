@@ -37,7 +37,8 @@ export const exchangeEpcValidator = z
 		mo_no: z.string({ required_error: 'Required' }).min(1, { message: 'Required' }),
 		mo_no_actual: z.string({ required_error: 'Required' }).min(1, { message: 'Required' }).toUpperCase(),
 		size_numcode: z.string({ required_error: 'Required' }).min(1, { message: 'Required' }).optional(),
-		mat_code: z.string({ required_error: 'Required' }).min(1, { message: 'Required' }).optional(),
+		shoes_style_code_factory: z.string({ required_error: 'Required' }).min(1, { message: 'Required' }).optional(),
+		mat_ecolor: z.string({ required_error: 'Required' }).min(1, { message: 'Required' }).optional(),
 		quantity: z.number({ required_error: 'Required' }).positive().optional(),
 		multi: z.boolean().default(false)
 	})
@@ -46,8 +47,8 @@ export const exchangeEpcValidator = z
 			if (!values.size_numcode) {
 				ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['size_numcode'], message: 'Required' })
 			}
-			if (!values.mat_code) {
-				ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['mat_code'], message: 'Required' })
+			if (!values.mat_ecolor) {
+				ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['mat_ecolor'], message: 'Required' })
 			}
 			if (!values.quantity) {
 				ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['quantity'], message: 'Required' })
@@ -59,8 +60,8 @@ export const exchangeEpcValidator = z
 
 export const searchCustomerValidator = z.object({
 	'mo_no.eq': z.string(),
-	'mat_code.eq': z.string(),
-	'size_numcode.eq': z.string().optional(),
+	'shoes_style_code_factory.eq': z.string(),
+	'mat_ecolor.eq': z.string(),
 	q: z.string()
 })
 

@@ -1,5 +1,5 @@
 import { InjectQueue } from '@nestjs/bullmq'
-import { Inject, Injectable, InternalServerErrorException, Logger, NotFoundException, Scope } from '@nestjs/common'
+import { Inject, Injectable, InternalServerErrorException, NotFoundException, Scope } from '@nestjs/common'
 import { REQUEST } from '@nestjs/core'
 import { InjectModel } from '@nestjs/mongoose'
 import { Queue } from 'bullmq'
@@ -7,12 +7,12 @@ import { format } from 'date-fns'
 import { Request } from 'express'
 import { readFileSync } from 'fs-extra'
 import { chunk, groupBy, pick } from 'lodash'
-import { DeleteResult, FilterQuery, PipelineStage, RootFilterQuery } from 'mongoose'
+import { DeleteResult, FilterQuery, RootFilterQuery } from 'mongoose'
 import { I18nContext, I18nService } from 'nestjs-i18n'
 import { join, resolve } from 'path'
-import { Brackets, DataSource, FindOptionsWhere, In } from 'typeorm'
+import { DataSource, FindOptionsWhere, In } from 'typeorm'
 import { TENANCY_DATASOURCE } from '../tenancy/constants'
-import { FALLBACK_VALUE, POST_DATA_QUEUE } from './constants'
+import { POST_DATA_QUEUE } from './constants'
 import { ExchangeEpcDTO, PostReaderDataDTO, SearchCustOrderParamsDTO, UpsertStockDTO } from './dto/rfid.dto'
 import { RFIDMatchCustomerEntity } from './entities/rfid-customer-match.entity'
 import { FPIRespository } from './rfid.repository'
@@ -90,13 +90,13 @@ export class RFIDService {
 		if (!Array.isArray(accumulatedData)) throw new Error('Invalid data format')
 		return Object.entries(
 			groupBy(accumulatedData, (item) => {
-				return [item.mo_no, item.mat_code, item.shoes_style_code_factory]
+				return [item.mo_no, item.mat_ecolor, item.shoes_style_code_factory]
 			})
 		).map(([keys, sizes]) => {
-			const [mo_no, mat_code, shoes_style_code_factory] = keys.split(',')
+			const [mo_no, mat_ecolor, shoes_style_code_factory] = keys.split(',')
 			return {
 				mo_no,
-				mat_code,
+				mat_ecolor,
 				shoes_style_code_factory,
 				sizes: Object.entries(groupBy(sizes, 'size_numcode')).map(([size, items]) => ({
 					size_numcode: size,
@@ -106,24 +106,26 @@ export class RFIDService {
 		})
 	}
 
-	public async captureDataChange(onSnapshot: (change?: any) => unknown): Promise<void> {
-		this.epcModel
-			.watch(
-				[
-					{
-						$match: {
-							operationType: {
-								$in: ['insert', 'update', 'delete']
-							}
+	public captureDataChange(onSnapshot: (change?: any) => unknown): ReturnType<typeof this.epcModel.watch> {
+		const listener = this.epcModel.watch(
+			[
+				{
+					$match: {
+						operationType: {
+							$in: ['insert', 'update', 'delete']
 						}
 					}
-				],
-				{
-					fullDocument: 'updateLookup',
-					readPreference: 'nearest'
 				}
-			)
-			.on('change', onSnapshot)
+			],
+			{
+				fullDocument: 'updateLookup',
+				readPreference: 'nearest'
+			}
+		)
+
+		listener.on('change', onSnapshot)
+
+		return listener
 	}
 
 	public async upsertFPStock(orderCode: string, data: UpsertStockDTO) {
@@ -160,58 +162,40 @@ export class RFIDService {
 		}
 	}
 
+	/**
+	 * @deprecated
+	 * @param params
+	 * @returns
+	 */
 	public async searchCustomerOrder(params: SearchCustOrderParamsDTO) {
-		const subQuery = this.dataSource
-			.createQueryBuilder()
-			.select('manu.mo_no', 'mo_no')
-			.from(/* SQL */ `wuerp_vnrd.dbo.ta_manufacturmst`, 'manu')
-			.where(/* SQL */ `manu.cofactory_code = :factory_code`)
-			.andWhere(/* SQL */ `manu.created >= CAST(DATEADD(YEAR, -2, GETDATE()) AS DATE)`)
-			.setParameter('factory_code', params['factory_code.eq'])
+		// const queryRunner = this.dataSource.createQueryRunner()
 
-		return await this.dataSource
-			.createQueryBuilder()
-			.select(/* SQL */ `DISTINCT TOP 5 mo_no AS mo_no`)
-			.from(RFIDMatchCustomerEntity, 'cust')
-			.where(/* SQL */ `mo_no IN (${subQuery.getQuery()})`)
-			.andWhere(/* SQL */ `mo_no LIKE :searchTerm`, { searchTerm: `%${params.q}%` })
-			.andWhere(
-				new Brackets((qb) => {
-					if (params['mat_code.eq'] === FALLBACK_VALUE) return qb
-					return qb.andWhere(/* SQL */ `mat_code = :mat_code`, { mat_code: params['mat_code.eq'] }).andWhere(
-						new Brackets((qb) => {
-							if (!params['size_num_code.eq']) return qb
-							return qb.andWhere(/* SQL */ `size_numcode = :size_numcode`, {
-								size_numcode: params['size_num_code.eq']
-							})
-						})
-					)
-				})
-			)
-			.setParameters(subQuery.getParameters())
-			.getRawMany()
+		return await this.dataSource.query(
+			/* SQL */ `
+			SELECT a.mo_no FROM wuerp_vnrd.dbo.ta_manufacturmst a
+			LEFT JOIN wuerp_vnrd.dbo.ta_productmst b ON b.mat_code = a.mat_code AND b.isactive = 'Y'
+			LEFT JOIN wuerp_vnrd.dbo.ta_shoefactorymst c ON c.shoestyle_systemcodefty = b.shoestyle_systemcodefty AND c.isactive = 'Y'
+			WHERE 
+				a.created >= CAST(DATEADD(YEAR, -2, GETDATE()) AS DATE)
+				AND a.mo_no LIKE CONCAT('%', @0, '%')
+				AND a.cofactory_code = @1
+				AND b.mat_ecolor = @2
+			`,
+			[params.q, params['factory_code.eq'], params['mat_ecolor.eq']]
+		)
 	}
 
 	// TODO: Implement update from stored JSON data file and dv_rfidmatchmst_cust table
-	public async exchangeEpc(payload: ExchangeEpcDTO) {
+	public async exchangeEpcByCommandNumber(payload: ExchangeEpcDTO) {
 		const queryRunner = this.dataSource.createQueryRunner()
 		const session = await this.epcModel.startSession()
-		const filterQuery: FilterQuery<EpcDocument> = payload.multi
-			? {
+		const epcToExchange = await this.epcModel.aggregate<StoredRFIDReaderItem>([
+			{
+				$match: {
 					mo_no: { $in: payload.mo_no.split(',').map((m) => m.trim()), $ne: payload.mo_no_actual }
 				}
-			: {
-					mo_no: payload.mo_no,
-					size_numcode: payload.size_numcode,
-					mat_code: payload.mat_code
-				}
-		const extraPipelineStages: PipelineStage[] =
-			payload.quantity && !payload.multi ? [{ $limit: payload.quantity }] : []
-
-		const epcToExchange = await this.epcModel.aggregate<StoredRFIDReaderItem>([
-			{ $match: filterQuery },
-			{ $project: { epc: 1 } },
-			...extraPipelineStages
+			},
+			{ $project: { epc: 1 } }
 		])
 
 		if (epcToExchange.length === 0) {
@@ -254,27 +238,25 @@ export class RFIDService {
 				.limit(filters['quantity.eq'])
 				.lean(true)
 
-			return await this.epcModel.deleteMany({
+			return await this.epcModel.delete({
 				epc: { $in: epcsToDelete.map((item) => item.epc) }
 			})
 		}
-		return await this.epcModel.deleteMany({ mo_no: filters['mo_no.eq'] })
+		return await this.epcModel.delete({ mo_no: filters['mo_no.eq'] })
 	}
 
-	public async combineCustomerEpcsInfo(update: any) {
-		Logger.debug(update)
-
+	public async exchangeEpcBySize(update: any) {
 		const factoryCode = this.request.headers['x-user-company'] as string
 		const tenantId = this.request.headers['x-tenant-id'] as string
-		const epcToCombine = await this.epcModel
-			.find({ mo_no: FALLBACK_VALUE })
+		const epcToExchange = await this.epcModel
+			.find(pick(update, ['mo_no', 'shoes_style_code_factory', 'mat_ecolor', 'size_numcode']))
 			.select('epc')
 			.limit(update.quantity)
 			.lean(true)
-		const payload = epcToCombine.map((item) => ({
-			epc: item.epc,
+		const payload = epcToExchange.map((item) => ({
 			...update,
-			size_qty: update.size_sumqty,
+			epc: item.epc,
+			mo_no: update.mo_no_actual,
 			factory_code_orders: factoryCode,
 			factory_name_orders: factoryCode,
 			factory_code_produce: factoryCode,

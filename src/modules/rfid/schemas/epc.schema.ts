@@ -26,7 +26,7 @@ export class Epc {
 	mo_no: string
 
 	@Prop({ type: String, required: true })
-	mat_code: string
+	mat_ecolor: string
 
 	@Prop({ type: String, required: true })
 	shoes_style_code_factory: string

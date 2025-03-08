@@ -1,7 +1,12 @@
 import { z } from 'zod'
 
-export const epcInfoCombinationValidator = z.object({
+export const exchangeEpcValidator = z.object({
 	mo_no: z.string({ required_error: 'ns_validation:required' }).nonempty({ message: 'ns_validation:required' }),
+	mo_no_actual: z
+		.string({ required_error: 'ns_validation:required' })
+		.nonempty({ message: 'ns_validation:required' })
+		.optional(),
+	mo_noseq: z.string({ required_error: 'ns_validation:required' }).nonempty({ message: 'ns_validation:required' }),
 	or_no: z.string({ required_error: 'ns_validation:required' }).nonempty({ message: 'ns_validation:required' }),
 	or_cust_po: z.string({ required_error: 'ns_validation:required' }).nonempty({ message: 'ns_validation:required' }),
 	mat_code: z.string({ required_error: 'ns_validation:required' }).nonempty({ message: 'ns_validation:required' }),
@@ -11,10 +16,9 @@ export const epcInfoCombinationValidator = z.object({
 	cust_shoes_style: z
 		.string({ required_error: 'ns_validation:required' })
 		.nonempty({ message: 'ns_validation:required' }),
-	mo_noseq: z.string({ required_error: 'ns_validation:required' }).nonempty({ message: 'ns_validation:required' }),
 	size_numcode: z.string({ required_error: 'ns_validation:required' }).nonempty({ message: 'ns_validation:required' }),
 	size_code: z.string({ required_error: 'ns_validation:required' }).nonempty({ message: 'ns_validation:required' }),
-	size_sumqty: z
+	size_qty: z
 		.number({ required_error: 'ns_validation:required' })
 		.nonnegative({ message: 'ns_validation:nonnegative' })
 		.default(0),
@@ -23,4 +27,4 @@ export const epcInfoCombinationValidator = z.object({
 		.nonnegative({ message: 'ns_validation:nonnegative' })
 })
 
-export type EpcInfoCombinationDTO = z.infer<typeof epcInfoCombinationValidator>
+export type ExchangeEpcDTO = z.infer<typeof exchangeEpcValidator>

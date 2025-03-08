@@ -17,11 +17,9 @@ import {
 } from '@nestjs/common'
 import { Response } from 'express'
 import { DeleteResult } from 'mongoose'
-import { EpcInfoCombinationDTO, epcInfoCombinationValidator } from './dto/combine-epc-info.dto'
+import { ExchangeEpcDTO, exchangeEpcValidator } from './dto/exchange-epc.dto'
 import {
 	deleteEpcValidator,
-	ExchangeEpcDTO,
-	exchangeEpcValidator,
 	PostReaderDataDTO,
 	readerPostDataValidator,
 	searchCustomerValidator,
@@ -57,14 +55,14 @@ export class RFIDController {
 		const data = await this.rfidService.fetchLatestData({ _page: 1, _limit: 50 })
 		postMessage(data)
 
-		this.rfidService.captureDataChange(async () => {
+		const listener = await this.rfidService.captureDataChange(async () => {
 			const data = await this.rfidService.fetchLatestData({ _page: 1, _limit: 50 })
 			if (data) postMessage(data)
 		})
 
 		res.on('close', () => {
-			this.rfidService.cleanupQueue()
 			this.logger.log('Stop receiving data from Android RFID device')
+			listener.removeListener('change', () => this.rfidService.cleanupQueue())
 			res.end()
 		})
 	}
@@ -147,7 +145,7 @@ export class RFIDController {
 	})
 	@AuthGuard()
 	async exchangeEpc(@Body(new ZodValidationPipe(exchangeEpcValidator)) payload: ExchangeEpcDTO) {
-		return await this.rfidService.exchangeEpc(payload)
+		return await this.rfidService.exchangeEpcByCommandNumber(payload)
 	}
 
 	@Api({
@@ -164,10 +162,10 @@ export class RFIDController {
 	}
 
 	@Api({
-		method: HttpMethod.PATCH,
-		endpoint: '/combine-epc-info'
+		method: HttpMethod.PUT,
+		endpoint: '/exchange-epc-by-size'
 	})
-	async combineEpcInfo(@Body(new ZodValidationPipe(epcInfoCombinationValidator)) payload: EpcInfoCombinationDTO) {
-		return await this.rfidService.combineCustomerEpcsInfo(payload)
+	async exchangeEpcBySize(@Body(new ZodValidationPipe(exchangeEpcValidator)) payload: ExchangeEpcDTO) {
+		return await this.rfidService.exchangeEpcBySize(payload)
 	}
 }
