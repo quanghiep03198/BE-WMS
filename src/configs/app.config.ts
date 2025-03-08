@@ -62,6 +62,7 @@ export const appConfigFactory: ConfigFactory = () => ({
 	} satisfies TypeOrmModuleOptions,
 	['mongodb']: {
 		uri: env('MONGO_URI'),
+		dbName: env('MONGO_DB_NAME'),
 		maxPoolSize: 100,
 		connectTimeoutMS: 10000
 	} satisfies MongooseModuleOptions,

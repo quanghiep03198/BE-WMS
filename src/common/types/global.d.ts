@@ -39,6 +39,8 @@ export declare global {
 			DB_CONNECTION_TIMEOUT: string
 
 			MONGO_URI: string
+			MONGO_DB_NAME: string
+
 			// * Third-party API
 			THIRD_PARTY_OAUTH_API_URL: string
 			THIRD_PARTY_API_URL: string
