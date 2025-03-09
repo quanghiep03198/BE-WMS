@@ -22,7 +22,7 @@ import {
 
 @Injectable()
 export class ThirdPartyApiService {
-	private readonly upsertQuery = readFileSync(resolve(join(__dirname, '../rfid/upsert-rfid-match.sql')), 'utf-8')
+	private readonly upsertQuery = readFileSync(resolve(join(__dirname, '../rfid/sql/upsert-rfid-match.sql')), 'utf-8')
 
 	constructor(
 		@Inject(CACHE_MANAGER) private readonly cacheManager: Cache,

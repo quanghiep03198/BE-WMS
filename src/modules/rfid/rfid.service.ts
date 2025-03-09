@@ -24,9 +24,7 @@ import { DeleteEpcBySizeParams, RFIDSearchParams, StoredRFIDReaderItem } from '.
  */
 @Injectable({ scope: Scope.REQUEST })
 export class RFIDService {
-	private readonly upsertInventoryQuery = readFileSync(resolve(join(__dirname, './sql/upsert-inventory.sql')), {
-		encoding: 'utf-8'
-	})
+	private readonly upsertInventoryQuery = readFileSync(resolve(join(__dirname, './sql/upsert-inventory.sql')), 'utf-8')
 
 	constructor(
 		@Inject(REQUEST) private readonly request: Request,

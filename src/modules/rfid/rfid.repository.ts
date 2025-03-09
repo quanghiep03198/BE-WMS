@@ -20,13 +20,15 @@ import { CustomerOrderSizeDetail } from './types'
  */
 @Injectable()
 export class FPIRespository {
-	private readonly orderDetailByEpcsQuery: string = readFileSync(resolve(join(__dirname, './sql/order-detail.sql')), {
-		encoding: 'utf-8'
-	})
+	private readonly orderDetailByEpcsQuery: string = readFileSync(
+		resolve(join(__dirname, './sql/order-detail.sql')),
+		'utf-8'
+	)
 
-	private readonly upsertEpcsQuery: string = readFileSync(resolve(join(__dirname, './sql/upsert-rfid-match.sql')), {
-		encoding: 'utf-8'
-	})
+	private readonly upsertEpcsQuery: string = readFileSync(
+		resolve(join(__dirname, './sql/upsert-rfid-match.sql')),
+		'utf-8'
+	)
 
 	constructor(
 		@Inject(TENANCY_DATASOURCE) private readonly dataSource: DataSource,
