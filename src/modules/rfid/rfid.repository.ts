@@ -13,7 +13,7 @@ import { TENANCY_DATASOURCE } from '../tenancy/constants'
 import { TenancyService } from '../tenancy/tenancy.service'
 import { EXCLUDED_ORDERS } from './constants'
 import { RFIDMatchCustomerEntity } from './entities/rfid-customer-match.entity'
-import { Epc, EpcDocument } from './schemas/epc.schema'
+import { Epc, EpcDocument, EpcSchema } from './schemas/epc.schema'
 import { CustomerOrderSizeDetail } from './types'
 /**
  * @description Repository for Finished Production Inventory (FPI)
@@ -84,9 +84,9 @@ export class FPIRespository {
 					.join(',')
 				await queryRunner.query(this.upsertEpcsQuery.replace(':values', values))
 			}
-			const bulkWriteOptions: AnyBulkWriteOperation<any>[] = payload.map((item) => ({
+			const bulkWriteOptions: AnyBulkWriteOperation<typeof EpcSchema>[] = payload.map((item) => ({
 				updateOne: {
-					filter: { epc: item.epc },
+					filter: { epc: item.epc, scannable: true },
 					update: {
 						$set: pick(item, ['mo_no', 'mat_code', 'shoes_style_code_factory', 'size_numcode'])
 					}

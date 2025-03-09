@@ -36,6 +36,9 @@ export class Epc {
 
 	@Prop({ type: String, required: true })
 	station_no: string
+
+	@Prop({ type: Boolean, required: true, default: true, index: true })
+	scannable: string
 }
 
 export type EpcDocument = HydratedDocument<Epc> & { record_time: string }

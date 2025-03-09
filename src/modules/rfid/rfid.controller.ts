@@ -16,10 +16,10 @@ import {
 	UseFilters
 } from '@nestjs/common'
 import { Response } from 'express'
-import { DeleteResult } from 'mongoose'
 import { ExchangeEpcDTO, exchangeEpcValidator } from './dto/exchange-epc.dto'
 import {
 	deleteEpcValidator,
+	DeleteScannedEpcDTO,
 	PostReaderDataDTO,
 	readerPostDataValidator,
 	searchCustomerValidator,
@@ -28,7 +28,6 @@ import {
 	UpsertStockDTO
 } from './dto/rfid.dto'
 import { RFIDService } from './rfid.service'
-import { DeleteEpcBySizeParams } from './types'
 
 /**
  * @description Controller for Finished Production Inventory (FPI)
@@ -155,9 +154,7 @@ export class RFIDController {
 		message: 'common.deleted'
 	})
 	@AuthGuard()
-	async deleteEpcBySize(
-		@Query(new ZodValidationPipe(deleteEpcValidator)) filters: DeleteEpcBySizeParams
-	): Promise<DeleteResult> {
+	async deleteEpcBySize(@Query(new ZodValidationPipe(deleteEpcValidator)) filters: DeleteScannedEpcDTO) {
 		return await this.rfidService.deleteScannedEpcs(filters)
 	}
 

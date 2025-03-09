@@ -1,3 +1,4 @@
+import { stringToBoolean } from '@/common/utils'
 import { z } from 'zod'
 import { InventoryActions, InventoryStorageType } from '../constants'
 import { FPInventoryEntity } from '../entities/fp-inventory.entity'
@@ -67,6 +68,7 @@ export const searchCustomerValidator = z.object({
 
 export const deleteEpcValidator = z.object({
 	'mo_no.eq': z.string(),
+	'mat_ecolor.eq': z.string(),
 	'size_numcode.eq': z.string().optional(),
 	'quantity.eq': z
 		.string()
@@ -78,6 +80,12 @@ export const deleteEpcValidator = z.object({
 			},
 			{ message: 'Invalid quantity' }
 		)
+		.transform((value) => Number(value)),
+	f: z
+		.string()
+		.optional()
+		.default('false')
+		.transform((value) => stringToBoolean(value))
 })
 
 export const readerPostDataValidator = z.object({
@@ -109,3 +117,4 @@ export type SearchCustOrderParamsDTO = z.infer<typeof searchCustomerValidator> &
 	['factory_code.eq']: string
 }
 export type PostReaderDataDTO = z.infer<typeof readerPostDataValidator>
+export type DeleteScannedEpcDTO = z.infer<typeof deleteEpcValidator>

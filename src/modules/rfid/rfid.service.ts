@@ -7,17 +7,23 @@ import { format } from 'date-fns'
 import { Request } from 'express'
 import { readFileSync } from 'fs-extra'
 import { chunk, groupBy, pick } from 'lodash'
-import { DeleteResult, FilterQuery, RootFilterQuery } from 'mongoose'
+import { FilterQuery, RootFilterQuery } from 'mongoose'
 import { I18nContext, I18nService } from 'nestjs-i18n'
 import { join, resolve } from 'path'
 import { DataSource, FindOptionsWhere, In } from 'typeorm'
 import { TENANCY_DATASOURCE } from '../tenancy/constants'
 import { POST_DATA_QUEUE } from './constants'
-import { ExchangeEpcDTO, PostReaderDataDTO, SearchCustOrderParamsDTO, UpsertStockDTO } from './dto/rfid.dto'
+import {
+	DeleteScannedEpcDTO,
+	ExchangeEpcDTO,
+	PostReaderDataDTO,
+	SearchCustOrderParamsDTO,
+	UpsertStockDTO
+} from './dto/rfid.dto'
 import { RFIDMatchCustomerEntity } from './entities/rfid-customer-match.entity'
 import { FPIRespository } from './rfid.repository'
 import { Epc, EpcDocument, EpcModel } from './schemas/epc.schema'
-import { DeleteEpcBySizeParams, RFIDSearchParams, StoredRFIDReaderItem } from './types'
+import { RFIDSearchParams, StoredRFIDReaderItem } from './types'
 
 /**
  * @description Service for Finished Production Inventory (FPI)
@@ -62,6 +68,7 @@ export class RFIDService {
 	public async getIncomingEpcs(args: RFIDSearchParams) {
 		const factoryCode = this.request.headers['x-user-company']
 		const filterQuery: FilterQuery<EpcDocument> = {
+			scannable: true,
 			station_no: { $regex: new RegExp(`CUS_${factoryCode}_WH10[12]`) },
 			mo_no: args['mo_no.eq']
 		}
@@ -81,7 +88,7 @@ export class RFIDService {
 	public async getOrderDetails() {
 		const factoryCode = this.request.headers['x-user-company']
 		const accumulatedData = await this.epcModel.find(
-			{ station_no: { $regex: new RegExp(`CUS_${factoryCode}_WH10[12]`) } },
+			{ scannable: true, station_no: { $regex: new RegExp(`CUS_${factoryCode}_WH10[12]`) } },
 			null,
 			{ readPreference: 'nearest', lean: true }
 		)
@@ -127,7 +134,7 @@ export class RFIDService {
 	}
 
 	public async upsertFPStock(orderCode: string, data: UpsertStockDTO) {
-		const payload = await this.epcModel.find({ mo_no: orderCode }).lean(true)
+		const payload = await this.epcModel.find({ scannable: true, mo_no: orderCode }).lean(true)
 		const queryRunner = this.dataSource.createQueryRunner()
 		const session = await this.epcModel.startSession()
 		await Promise.all([queryRunner.startTransaction(), session.startTransaction()])
@@ -190,6 +197,7 @@ export class RFIDService {
 		const epcToExchange = await this.epcModel.aggregate<StoredRFIDReaderItem>([
 			{
 				$match: {
+					scannable: true,
 					mo_no: { $in: payload.mo_no.split(',').map((m) => m.trim()), $ne: payload.mo_no_actual }
 				}
 			},
@@ -215,7 +223,7 @@ export class RFIDService {
 				await queryRunner.manager.update(RFIDMatchCustomerEntity, criteria, update)
 			}
 			await this.epcModel.updateMany(
-				{ epc: { $in: epcToExchange.map((item) => item.epc) } },
+				{ epc: { $in: epcToExchange.map((item) => item.epc) }, scannable: true },
 				{ mo_no: payload.mo_no_actual },
 				{ new: true }
 			)
@@ -228,19 +236,31 @@ export class RFIDService {
 		}
 	}
 
-	public async deleteScannedEpcs(filters: DeleteEpcBySizeParams): Promise<DeleteResult> {
+	public async deleteScannedEpcs(filters: DeleteScannedEpcDTO) {
 		const filterQuery: RootFilterQuery<Epc> = !filters['size_numcode.eq'] ? pick(filters, 'mo_no.eq') : filters
 		if (filterQuery['size_numcode.eq'] && filterQuery['quantity.eq']) {
 			const epcsToDelete = await this.epcModel
-				.find({ mo_no: filters['mo_no.eq'], size_numcode: filterQuery['size_numcode.eq'] })
+				.find({
+					mo_no: filters['mo_no.eq'],
+					mat_ecolor: filters['mat_ecolor.eq'],
+					size_numcode: filterQuery['size_numcode.eq']
+				})
 				.limit(filters['quantity.eq'])
 				.lean(true)
 
-			return await this.epcModel.delete({
-				epc: { $in: epcsToDelete.map((item) => item.epc) }
-			})
+			return await this.epcModel
+				.updateMany(
+					{
+						epc: { $in: epcsToDelete.map((item) => item.epc) }
+					},
+					{ deleted: true, scannable: !filters['f'] },
+					{ new: true }
+				)
+				.exec()
 		}
-		return await this.epcModel.delete({ mo_no: filters['mo_no.eq'] })
+		return await this.epcModel
+			.updateMany({ mo_no: filters['mo_no.eq'] }, { deleted: true, scannable: !filters['f'] })
+			.exec()
 	}
 
 	public async exchangeEpcBySize(update: any) {
