@@ -43,10 +43,10 @@ export class RFIDController {
 
 	constructor(private readonly rfidService: RFIDService) {}
 
-	@Get('sse')
+	@Get('sse/inbound')
 	@AuthGuard()
 	@UseFilters(AllExceptionsFilter)
-	async streamRFIDData(@Res() res: Response) {
+	async streamInboundRFIDData(@Res() res: Response) {
 		res.setHeader('Content-Type', 'text/event-stream')
 		res.setHeader('Cache-Control', 'no-cache')
 
@@ -55,11 +55,38 @@ export class RFIDController {
 			res.flush()
 		}
 
-		const data = await this.rfidService.fetchLatestData({ _page: 1, _limit: 50 })
+		const data = await this.rfidService.fetchLatestInboundData({ _page: 1, _limit: 50 })
 		postMessage(data)
 
 		const listener = await this.rfidService.captureDataChange(async () => {
-			const data = await this.rfidService.fetchLatestData({ _page: 1, _limit: 50 })
+			const data = await this.rfidService.fetchLatestInboundData({ _page: 1, _limit: 50 })
+			if (data) postMessage(data)
+		})
+
+		res.on('close', () => {
+			this.logger.log('Stop receiving data from Android RFID device')
+			listener.removeListener('change', () => this.rfidService.cleanupQueue())
+			res.end()
+		})
+	}
+
+	@Get('sse/outbound')
+	@AuthGuard()
+	@UseFilters(AllExceptionsFilter)
+	async streamOutboundRFIDData(@Res() res: Response) {
+		res.setHeader('Content-Type', 'text/event-stream')
+		res.setHeader('Cache-Control', 'no-cache')
+
+		const postMessage = (data) => {
+			res.write(`data: ${JSON.stringify(data)}\n\n`)
+			res.flush()
+		}
+
+		const data = await this.rfidService.fetchLatestOutboundData({ _page: 1, _limit: 50 })
+		postMessage(data)
+
+		const listener = await this.rfidService.captureDataChange(async () => {
+			const data = await this.rfidService.fetchLatestOutboundData({ _page: 1, _limit: 50 })
 			if (data) postMessage(data)
 		})
 
@@ -71,15 +98,27 @@ export class RFIDController {
 	}
 
 	@Api({
-		endpoint: 'fetch-epc',
+		endpoint: 'fetch-epc/inbound',
 		method: HttpMethod.GET
 	})
 	@AuthGuard()
-	async fetchNextItems(
+	async fetchNextInboundEpc(
 		@Query('_page', new DefaultValuePipe(1), ParseIntPipe) page: number,
 		@Query('mo_no.eq', new DefaultValuePipe('')) selectedOrder: string
 	) {
-		return await this.rfidService.getIncomingEpcs({ _page: page, _limit: 50, 'mo_no.eq': selectedOrder })
+		return await this.rfidService.getIncomingInboundEpcs({ _page: page, _limit: 50, 'mo_no.eq': selectedOrder })
+	}
+
+	@Api({
+		endpoint: 'fetch-epc/outbound',
+		method: HttpMethod.GET
+	})
+	@AuthGuard()
+	async fetchNextOutboundEpc(
+		@Query('_page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+		@Query('mo_no.eq', new DefaultValuePipe('')) selectedOrder: string
+	) {
+		return await this.rfidService.getIncomingOutboundEpcs({ _page: page, _limit: 50, 'mo_no.eq': selectedOrder })
 	}
 
 	@Api({
@@ -88,7 +127,7 @@ export class RFIDController {
 	})
 	@AuthGuard()
 	async getOrderDetails() {
-		return this.rfidService.getOrderDetails()
+		return this.rfidService.getInboundOrderDetails()
 	}
 
 	@Api({
@@ -133,11 +172,21 @@ export class RFIDController {
 		statusCode: HttpStatus.CREATED,
 		message: 'common.created'
 	})
-	async postData(
+	async postInboundData(
 		@Param('tenantId') tenantId: string,
 		@Body(new ZodValidationPipe(readerPostDataValidator)) payload: PostReaderDataDTO
 	) {
 		return await this.rfidService.addPostDataQueueJob(tenantId, payload)
+	}
+
+	@Api({
+		endpoint: 'post-data/outbound',
+		method: HttpMethod.POST,
+		statusCode: HttpStatus.CREATED,
+		message: 'common.created'
+	})
+	async postOutboundData(@Body(new ZodValidationPipe(readerPostDataValidator)) payload: PostReaderDataDTO) {
+		return await this.postOutboundData(payload)
 	}
 
 	@Api({
@@ -152,14 +201,14 @@ export class RFIDController {
 	}
 
 	@Api({
-		endpoint: 'delete-scanned-epcs',
+		endpoint: '/inbound/delete-scanned-epcs',
 		method: HttpMethod.DELETE,
 		statusCode: HttpStatus.NO_CONTENT,
 		message: 'common.deleted'
 	})
 	@AuthGuard()
 	async deleteEpcBySize(@Query(new ZodValidationPipe(deleteEpcValidator)) filters: DeleteScannedEpcDTO) {
-		return await this.rfidService.deleteScannedEpcs(filters)
+		return await this.rfidService.deleteScannedInboundEpcs(filters)
 	}
 
 	@Api({
