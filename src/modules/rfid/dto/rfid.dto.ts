@@ -33,31 +33,39 @@ export const updateStockValidator = z
 		return true
 	})
 
-export const exchangeEpcValidator = z
-	.object({
-		mo_no: z.string({ required_error: 'Required' }).min(1, { message: 'Required' }),
-		mo_no_actual: z.string({ required_error: 'Required' }).min(1, { message: 'Required' }).toUpperCase(),
-		size_numcode: z.string({ required_error: 'Required' }).min(1, { message: 'Required' }).optional(),
-		shoes_style_code_factory: z.string({ required_error: 'Required' }).min(1, { message: 'Required' }).optional(),
-		mat_ecolor: z.string({ required_error: 'Required' }).min(1, { message: 'Required' }).optional(),
-		quantity: z.number({ required_error: 'Required' }).positive().optional(),
-		multi: z.boolean().default(false)
-	})
-	.superRefine((values, ctx) => {
-		if (!values.multi) {
-			if (!values.size_numcode) {
-				ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['size_numcode'], message: 'Required' })
-			}
-			if (!values.mat_ecolor) {
-				ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['mat_ecolor'], message: 'Required' })
-			}
-			if (!values.quantity) {
-				ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['quantity'], message: 'Required' })
-			}
-		} else {
-			return true
-		}
-	})
+export const exchangeOrderValidator = z.object({
+	mo_no: z.string({ required_error: 'Required' }).min(1, { message: 'Required' }),
+	mo_no_actual: z.string({ required_error: 'Required' }).min(1, { message: 'Required' }).toUpperCase(),
+	shoes_style_code_factory: z.string({ required_error: 'Required' }).min(1, { message: 'Required' }).optional(),
+	mat_ecolor: z.string({ required_error: 'Required' }).min(1, { message: 'Required' }).optional()
+})
+
+export const exchangeEpcValidator = z.object({
+	mo_no: z.string({ required_error: 'ns_validation:required' }).nonempty({ message: 'ns_validation:required' }),
+	mo_no_actual: z
+		.string({ required_error: 'ns_validation:required' })
+		.nonempty({ message: 'ns_validation:required' })
+		.optional(),
+	mo_noseq: z.string({ required_error: 'ns_validation:required' }).nonempty({ message: 'ns_validation:required' }),
+	or_no: z.string({ required_error: 'ns_validation:required' }).nonempty({ message: 'ns_validation:required' }),
+	or_cust_po: z.string({ required_error: 'ns_validation:required' }).nonempty({ message: 'ns_validation:required' }),
+	mat_code: z.string({ required_error: 'ns_validation:required' }).nonempty({ message: 'ns_validation:required' }),
+	shoes_style_code_factory: z
+		.string({ required_error: 'ns_validation:required' })
+		.nonempty({ message: 'ns_validation:required' }),
+	cust_shoes_style: z
+		.string({ required_error: 'ns_validation:required' })
+		.nonempty({ message: 'ns_validation:required' }),
+	size_numcode: z.string({ required_error: 'ns_validation:required' }).nonempty({ message: 'ns_validation:required' }),
+	size_code: z.string({ required_error: 'ns_validation:required' }).nonempty({ message: 'ns_validation:required' }),
+	size_qty: z
+		.number({ required_error: 'ns_validation:required' })
+		.nonnegative({ message: 'ns_validation:nonnegative' })
+		.default(0),
+	quantity: z
+		.number({ required_error: 'ns_validation:required' })
+		.nonnegative({ message: 'ns_validation:nonnegative' })
+})
 
 export const searchCustomerValidator = z.object({
 	'mo_no.eq': z.string(),
@@ -68,7 +76,6 @@ export const searchCustomerValidator = z.object({
 
 export const deleteEpcValidator = z.object({
 	'mo_no.eq': z.string(),
-	'mat_ecolor.eq': z.string(),
 	'size_numcode.eq': z.string().optional(),
 	'quantity.eq': z
 		.string()
@@ -112,6 +119,7 @@ export const readerPostDataValidator = z.object({
 
 export type UpsertStockDTO = z.infer<typeof updateStockValidator> &
 	Pick<FPInventoryEntity, 'user_code_created' | 'factory_code'>
+export type ExchangeOrderDTO = z.infer<typeof exchangeOrderValidator>
 export type ExchangeEpcDTO = z.infer<typeof exchangeEpcValidator>
 export type SearchCustOrderParamsDTO = z.infer<typeof searchCustomerValidator> & {
 	['factory_code.eq']: string

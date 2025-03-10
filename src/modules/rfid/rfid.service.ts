@@ -16,6 +16,7 @@ import { POST_DATA_QUEUE } from './constants'
 import {
 	DeleteScannedEpcDTO,
 	ExchangeEpcDTO,
+	ExchangeOrderDTO,
 	PostReaderDataDTO,
 	SearchCustOrderParamsDTO,
 	UpsertStockDTO
@@ -167,11 +168,6 @@ export class RFIDService {
 		}
 	}
 
-	/**
-	 * @deprecated
-	 * @param params
-	 * @returns
-	 */
 	public async searchCustomerOrder(params: SearchCustOrderParamsDTO) {
 		// const queryRunner = this.dataSource.createQueryRunner()
 
@@ -185,31 +181,33 @@ export class RFIDService {
 				AND a.mo_no LIKE CONCAT('%', @0, '%')
 				AND a.cofactory_code = @1
 				AND b.mat_ecolor = @2
+			ORDER BY a.created DESC
 			`,
 			[params.q, params['factory_code.eq'], params['mat_ecolor.eq']]
 		)
 	}
 
 	// TODO: Implement update from stored JSON data file and dv_rfidmatchmst_cust table
-	public async exchangeEpcByCommandNumber(payload: ExchangeEpcDTO) {
+	public async exchangeEpcByCommandNumber(payload: ExchangeOrderDTO) {
 		const queryRunner = this.dataSource.createQueryRunner()
 		const session = await this.epcModel.startSession()
 		const epcToExchange = await this.epcModel.aggregate<StoredRFIDReaderItem>([
 			{
 				$match: {
+					deleted: false,
 					scannable: true,
-					mo_no: { $in: payload.mo_no.split(',').map((m) => m.trim()), $ne: payload.mo_no_actual }
+					mo_no: { $in: payload.mo_no.split(',').map((m) => m.trim()) },
+					mat_ecode: payload.mat_ecolor,
+					shoes_style_code_factory: payload.shoes_style_code_factory
 				}
 			},
 			{ $project: { epc: 1 } }
 		])
-
 		if (epcToExchange.length === 0) {
 			throw new NotFoundException(
 				this.i18nService.t('rfid.errors.no_matching_epc', { lang: I18nContext.current().lang })
 			)
 		}
-
 		try {
 			const update = pick(payload, 'mo_no_actual')
 			await Promise.all([session.startTransaction(), queryRunner.startTransaction('READ UNCOMMITTED')])
@@ -223,7 +221,7 @@ export class RFIDService {
 				await queryRunner.manager.update(RFIDMatchCustomerEntity, criteria, update)
 			}
 			await this.epcModel.updateMany(
-				{ epc: { $in: epcToExchange.map((item) => item.epc) }, scannable: true },
+				{ epc: { $in: epcToExchange.map((item) => item.epc) } },
 				{ mo_no: payload.mo_no_actual },
 				{ new: true }
 			)
@@ -242,8 +240,7 @@ export class RFIDService {
 			const epcsToDelete = await this.epcModel
 				.find({
 					mo_no: filters['mo_no.eq'],
-					mat_ecolor: filters['mat_ecolor.eq'],
-					size_numcode: filterQuery['size_numcode.eq']
+					size_numcode: filters['size_numcode.eq']
 				})
 				.limit(filters['quantity.eq'])
 				.lean(true)
@@ -263,11 +260,14 @@ export class RFIDService {
 			.exec()
 	}
 
-	public async exchangeEpcBySize(update: any) {
+	public async exchangeEpcBySize(update: ExchangeEpcDTO) {
 		const factoryCode = this.request.headers['x-user-company'] as string
 		const tenantId = this.request.headers['x-tenant-id'] as string
 		const epcToExchange = await this.epcModel
-			.find(pick(update, ['mo_no', 'shoes_style_code_factory', 'mat_ecolor', 'size_numcode']))
+			.find({
+				...pick(update, ['mo_no', 'shoes_style_code_factory', 'mat_ecolor', 'size_numcode']),
+				scannable: true
+			})
 			.select('epc')
 			.limit(update.quantity)
 			.lean(true)

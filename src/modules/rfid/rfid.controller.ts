@@ -16,10 +16,14 @@ import {
 	UseFilters
 } from '@nestjs/common'
 import { Response } from 'express'
-import { ExchangeEpcDTO, exchangeEpcValidator } from './dto/exchange-epc.dto'
+
 import {
 	deleteEpcValidator,
 	DeleteScannedEpcDTO,
+	ExchangeEpcDTO,
+	exchangeEpcValidator,
+	ExchangeOrderDTO,
+	exchangeOrderValidator,
 	PostReaderDataDTO,
 	readerPostDataValidator,
 	searchCustomerValidator,
@@ -143,7 +147,7 @@ export class RFIDController {
 		message: 'common.updated'
 	})
 	@AuthGuard()
-	async exchangeEpc(@Body(new ZodValidationPipe(exchangeEpcValidator)) payload: ExchangeEpcDTO) {
+	async exchangeEpc(@Body(new ZodValidationPipe(exchangeOrderValidator)) payload: ExchangeOrderDTO) {
 		return await this.rfidService.exchangeEpcByCommandNumber(payload)
 	}
 
