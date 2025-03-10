@@ -24,7 +24,7 @@ import {
 import { RFIDMatchCustomerEntity } from './entities/rfid-customer-match.entity'
 import { FPIRespository } from './rfid.repository'
 import { Epc, EpcDocument, EpcModel } from './schemas/epc.schema'
-import { RFIDSearchParams, StoredRFIDReaderItem } from './types'
+import { RFIDSearchParams } from './types'
 
 /**
  * @description Service for Finished Production Inventory (FPI)
@@ -191,18 +191,17 @@ export class RFIDService {
 	public async exchangeEpcByCommandNumber(payload: ExchangeOrderDTO) {
 		const queryRunner = this.dataSource.createQueryRunner()
 		const session = await this.epcModel.startSession()
-		const epcToExchange = await this.epcModel.aggregate<StoredRFIDReaderItem>([
-			{
-				$match: {
-					deleted: false,
-					scannable: true,
-					mo_no: { $in: payload.mo_no.split(',').map((m) => m.trim()) },
-					mat_ecode: payload.mat_ecolor,
-					shoes_style_code_factory: payload.shoes_style_code_factory
-				}
-			},
-			{ $project: { epc: 1 } }
-		])
+		const epcToExchange = await this.epcModel
+			.find({
+				deleted: false,
+				scannable: true,
+				mo_no: { $in: payload.mo_no.split(',').map((m) => m.trim()) },
+				mat_ecolor: payload.mat_ecolor,
+				shoes_style_code_factory: payload.shoes_style_code_factory
+			})
+			.select('epc')
+			.lean(true)
+
 		if (epcToExchange.length === 0) {
 			throw new NotFoundException(
 				this.i18nService.t('rfid.errors.no_matching_epc', { lang: I18nContext.current().lang })
