@@ -12,7 +12,7 @@ WHEN MATCHED THEN
       mo_no = source.mo_no, 
       rfid_status = source.rfid_status, 
       rfid_use = source.rfid_use, 
-      record_time = CAST(source.record_time AS DATETIME), 
+      record_time = GETDATE(), 
       stationNO = source.stationNO,
       quantity = source.quantity,
       storage = source.storage,
@@ -25,6 +25,6 @@ WHEN NOT MATCHED THEN
       quantity, storage, FC_server_code, dept_code, dept_name
    )
    VALUES (
-      source.EPC_Code, source.mo_no, source.rfid_status, source.rfid_use, CAST(source.record_time AS DATETIME), source.stationNO,
+      source.EPC_Code, source.mo_no, source.rfid_status, source.rfid_use, GETDATE(), source.stationNO,
       source.quantity, source.storage, source.FC_server_code, source.dept_code, source.dept_name
    );
