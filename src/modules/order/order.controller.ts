@@ -1,4 +1,4 @@
-import { Api, HttpMethod } from '@/common/decorators'
+import { Api, AuthGuard, HttpMethod } from '@/common/decorators'
 import { Controller, DefaultValuePipe, Headers, NotFoundException, Param, Query } from '@nestjs/common'
 import { groupBy } from 'lodash'
 import { I18nContext, I18nService } from 'nestjs-i18n'
@@ -12,9 +12,10 @@ export class OrderController {
 	) {}
 
 	@Api({
-		endpoint: '/search',
+		endpoint: '/command-number/search',
 		method: HttpMethod.GET
 	})
+	@AuthGuard()
 	async searchCommandNumber(
 		@Headers('X-User-Company') factoryCode: string,
 		@Query('q', new DefaultValuePipe('')) searchTerm: string
@@ -23,9 +24,19 @@ export class OrderController {
 	}
 
 	@Api({
+		endpoint: '/purchase-order/search',
+		method: HttpMethod.GET
+	})
+	@AuthGuard()
+	async searchPurchaseOrder(@Query('q') searchTerm: string) {
+		return await this.orderService.searchPurchaseOrder(searchTerm)
+	}
+
+	@Api({
 		endpoint: '/detail/:commandNumber',
 		method: HttpMethod.GET
 	})
+	@AuthGuard()
 	async getOrderDetail(@Param('commandNumber') commandNumber: string) {
 		const [orders, sizes] = await Promise.all([
 			this.orderService.getCustOrderByCommandNumber(commandNumber),

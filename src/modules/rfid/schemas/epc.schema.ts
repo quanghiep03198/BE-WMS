@@ -16,7 +16,7 @@ export const EPC_OUTBOUND_COLLECTION = 'epcs_outbound'
 	strict: false,
 	strictQuery: false
 })
-export class Epc {
+export class EpcInbound {
 	@Prop({ type: mongoose.Schema.Types.ObjectId })
 	_id: mongoose.Types.ObjectId
 
@@ -53,10 +53,12 @@ export class Epc {
 	strict: false,
 	strictQuery: false
 })
-export class EpcOutbound extends Epc {}
+export class EpcOutbound extends EpcInbound {}
 
-export type EpcDocument = HydratedDocument<Epc> & { record_time: string }
-export type EpcModel = PaginateModel<EpcDocument> & SoftDeleteModel<EpcDocument>
+export type EpcInboundDocument = HydratedDocument<EpcInbound> & { record_time: string }
+export type EpcOutboundDocument = HydratedDocument<EpcOutbound> & { record_time: string }
+export type EpcInboundModel = PaginateModel<EpcInboundDocument> & SoftDeleteModel<EpcInboundDocument>
+export type EpcOutboundModel = PaginateModel<EpcOutboundDocument> & SoftDeleteModel<EpcInboundDocument>
 
-export const EpcSchema = SchemaFactory.createForClass(Epc)
+export const EpcInboundSchema = SchemaFactory.createForClass(EpcInbound)
 export const EpcOutboundSchema = SchemaFactory.createForClass(EpcOutbound)

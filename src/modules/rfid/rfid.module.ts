@@ -17,7 +17,13 @@ import { RFIDConsumer } from './rfid.consumer'
 import { RFIDController } from './rfid.controller'
 import { FPIRespository } from './rfid.repository'
 import { RFIDService } from './rfid.service'
-import { Epc, EPC_INBOUND_COLLECTION, EPC_OUTBOUND_COLLECTION, EpcOutbound, EpcSchema } from './schemas/epc.schema'
+import {
+	EPC_INBOUND_COLLECTION,
+	EPC_OUTBOUND_COLLECTION,
+	EpcInbound,
+	EpcInboundSchema,
+	EpcOutbound
+} from './schemas/epc.schema'
 import { FPInventoryEntitySubscriber } from './subscribers/fp-inventory.entity.subscriber'
 import { RFIDCustomerEntitySubscriber } from './subscribers/rfid-customer.entity.subscriber'
 
@@ -30,21 +36,21 @@ import { RFIDCustomerEntitySubscriber } from './subscribers/rfid-customer.entity
 		TypeOrmModule.forFeature([FPInventoryEntity, RFIDMatchCustomerEntity, RFIDReaderEntity], DATA_SOURCE_DATA_LAKE),
 		MongooseModule.forFeatureAsync([
 			{
-				name: Epc.name,
+				name: EpcInbound.name,
 				collection: EPC_INBOUND_COLLECTION,
 				useFactory: () => {
-					EpcSchema.plugin(MongoosePaginatePlugin)
-					EpcSchema.plugin(MongooseDeletePlugin, { overrideMethods: true, indexFields: ['deleted'] })
-					return EpcSchema
+					EpcInboundSchema.plugin(MongoosePaginatePlugin)
+					EpcInboundSchema.plugin(MongooseDeletePlugin, { overrideMethods: true, indexFields: ['deleted'] })
+					return EpcInboundSchema
 				}
 			},
 			{
 				name: EpcOutbound.name,
 				collection: EPC_OUTBOUND_COLLECTION,
 				useFactory: () => {
-					EpcSchema.plugin(MongoosePaginatePlugin)
-					EpcSchema.plugin(MongooseDeletePlugin, { overrideMethods: true, indexFields: ['deleted'] })
-					return EpcSchema
+					EpcInboundSchema.plugin(MongoosePaginatePlugin)
+					EpcInboundSchema.plugin(MongooseDeletePlugin, { overrideMethods: true, indexFields: ['deleted'] })
+					return EpcInboundSchema
 				}
 			}
 		])
@@ -57,7 +63,11 @@ export class RFIDModule implements NestModule {
 	configure(consumer: MiddlewareConsumer) {
 		consumer
 			.apply(TenacyMiddleware)
-			.exclude({ path: '/rfid/post-data/:tenantId', method: RequestMethod.POST })
+			.exclude(
+				{ path: '/rfid/sse/outbound', method: RequestMethod.GET },
+				{ path: '/rfid/post-data/:tenantId', method: RequestMethod.POST },
+				{ path: '/rfid/outbound/post-data', method: RequestMethod.POST }
+			)
 			.forRoutes({ path: '/rfid/*', method: RequestMethod.ALL })
 	}
 }

@@ -13,7 +13,7 @@ import { TENANCY_DATASOURCE } from '../tenancy/constants'
 import { TenancyService } from '../tenancy/tenancy.service'
 import { EXCLUDED_ORDERS } from './constants'
 import { RFIDMatchCustomerEntity } from './entities/rfid-customer-match.entity'
-import { Epc, EpcDocument, EpcSchema } from './schemas/epc.schema'
+import { EpcInbound, EpcInboundDocument, EpcInboundSchema } from './schemas/epc.schema'
 import { CustomerOrderSizeDetail } from './types'
 /**
  * @description Repository for Finished Production Inventory (FPI)
@@ -32,7 +32,7 @@ export class FPIRespository {
 
 	constructor(
 		@Inject(TENANCY_DATASOURCE) private readonly dataSource: DataSource,
-		@InjectModel(Epc.name) private readonly epcModel: PaginateModel<EpcDocument>,
+		@InjectModel(EpcInbound.name) private readonly epcModel: PaginateModel<EpcInboundDocument>,
 		private readonly tenancyService: TenancyService,
 		private readonly configService: ConfigService
 	) {}
@@ -84,7 +84,7 @@ export class FPIRespository {
 					.join(',')
 				await queryRunner.query(this.upsertEpcsQuery.replace(':values', values))
 			}
-			const bulkWriteOptions: AnyBulkWriteOperation<typeof EpcSchema>[] = payload.map((item) => ({
+			const bulkWriteOptions: AnyBulkWriteOperation<typeof EpcInboundSchema>[] = payload.map((item) => ({
 				updateOne: {
 					filter: { epc: item.epc, scannable: true },
 					update: {

@@ -180,13 +180,14 @@ export class RFIDController {
 	}
 
 	@Api({
-		endpoint: 'post-data/outbound',
+		endpoint: 'outbound/post-data',
 		method: HttpMethod.POST,
 		statusCode: HttpStatus.CREATED,
 		message: 'common.created'
 	})
 	async postOutboundData(@Body(new ZodValidationPipe(readerPostDataValidator)) payload: PostReaderDataDTO) {
-		return await this.postOutboundData(payload)
+		this.logger.debug(payload)
+		return await this.rfidService.storeOutboundData(payload)
 	}
 
 	@Api({
