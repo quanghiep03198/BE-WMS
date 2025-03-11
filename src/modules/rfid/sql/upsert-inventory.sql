@@ -5,7 +5,7 @@ USING (
    EPC_Code, mo_no, rfid_status, rfid_use, record_time, stationNO,
    quantity, storage, FC_server_code, dept_code, dept_name
 )
-ON target.EPC_Code = source.EPC_Code
+ON target.EPC_Code = source.EPC_Code AND target.stationNO = source.stationNO
 WHEN MATCHED THEN
    UPDATE SET 
       created = GETDATE(),

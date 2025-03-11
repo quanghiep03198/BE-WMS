@@ -1,7 +1,6 @@
-import { FileLogger } from '@/common/helpers'
 import { DATA_SOURCE_DATA_LAKE } from '@/databases/constants'
 import { InjectQueue } from '@nestjs/bullmq'
-import { Inject, Injectable, InternalServerErrorException, NotFoundException, Scope } from '@nestjs/common'
+import { Inject, Injectable, InternalServerErrorException, Logger, NotFoundException, Scope } from '@nestjs/common'
 import { REQUEST } from '@nestjs/core'
 import { InjectModel } from '@nestjs/mongoose'
 import { InjectDataSource } from '@nestjs/typeorm'
@@ -307,6 +306,7 @@ export class RFIDService {
 	public async exchangeEpcBySize(update: ExchangeEpcDTO) {
 		const factoryCode = this.request.headers['x-user-company'] as string
 		const tenantId = this.request.headers['x-tenant-id'] as string
+		Logger.debug(tenantId)
 		const epcToExchange = await this.epcInboundModel
 			.find({
 				...pick(update, ['mo_no', 'shoes_style_code_factory', 'mat_ecolor', 'size_numcode']),
@@ -330,9 +330,6 @@ export class RFIDService {
 
 	// #region Outbound
 	public async storeOutboundData(payload: PostReaderDataDTO) {
-		FileLogger.debug(payload)
-		return
-
 		const deviceInformation = await this.dataSourceDL
 			.getRepository(RFIDReaderEntity)
 			.findOneBy({ device_sn: payload.sn })
