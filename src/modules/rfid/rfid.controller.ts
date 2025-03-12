@@ -49,7 +49,7 @@ export class RFIDController {
 		private readonly rfidService: RFIDService
 	) {}
 
-	@Get('sse/inbound')
+	@Get('inbound/sse')
 	@AuthGuard()
 	@UseFilters(AllExceptionsFilter)
 	async streamInboundRFIDData(@Res() res: Response) {
@@ -76,7 +76,93 @@ export class RFIDController {
 		})
 	}
 
-	@Get('sse/outbound')
+	@Api({
+		endpoint: 'inbound/fetch-epc',
+		method: HttpMethod.GET
+	})
+	@AuthGuard()
+	async fetchNextInboundEpc(
+		@Query('_page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+		@Query('mo_no.eq', new DefaultValuePipe('')) selectedOrder: string
+	) {
+		return await this.rfidService.getIncomingInboundEpcs({ _page: page, _limit: 50, 'mo_no.eq': selectedOrder })
+	}
+
+	@Api({
+		endpoint: 'inbound/manufacturing-order-detail',
+		method: HttpMethod.GET
+	})
+	@AuthGuard()
+	async getOrderDetails() {
+		return this.rfidService.getInboundOrderDetails()
+	}
+
+	@Api({
+		endpoint: 'inbound/update-stock/:orderCode',
+		method: HttpMethod.PUT,
+		statusCode: HttpStatus.CREATED,
+		message: 'common.updated'
+	})
+	@AuthGuard()
+	async updateFPStock(
+		@Param('orderCode') orderCode: string,
+		@User('username') username: string,
+		@Headers('X-User-Company') factoryCode: string,
+		@Body(new ZodValidationPipe(updateStockValidator)) payload: UpsertStockDTO
+	) {
+		return await this.rfidService.upsertFPStock(orderCode, {
+			...payload,
+			user_code_created: username,
+			factory_code: factoryCode
+		})
+	}
+
+	@Api({
+		endpoint: 'inbound/exchange-epc',
+		method: HttpMethod.PATCH,
+		statusCode: HttpStatus.CREATED,
+		message: 'common.updated'
+	})
+	@AuthGuard()
+	async exchangeEpc(@Body(new ZodValidationPipe(exchangeOrderValidator)) payload: ExchangeOrderDTO) {
+		return await this.rfidService.exchangeEpcByCommandNumber(payload)
+	}
+
+	@Api({
+		method: HttpMethod.PUT,
+		endpoint: 'inbound/exchange-epc-by-size'
+	})
+	@AuthGuard()
+	async exchangeEpcBySize(@Body(new ZodValidationPipe(exchangeEpcValidator)) payload: ExchangeEpcDTO) {
+		return await this.rfidService.exchangeEpcBySize(payload)
+	}
+
+	@Api({
+		endpoint: 'inbound/delete-scanned-epcs',
+		method: HttpMethod.DELETE,
+		statusCode: HttpStatus.NO_CONTENT,
+		message: 'common.deleted'
+	})
+	@AuthGuard()
+	async deleteEpcBySize(@Query(new ZodValidationPipe(deleteEpcValidator)) filters: DeleteScannedEpcDTO) {
+		return await this.rfidService.deleteScannedInboundEpcs(filters)
+	}
+
+	@Api({
+		endpoint: 'post-data/:tenantId',
+		method: HttpMethod.POST,
+		statusCode: HttpStatus.CREATED,
+		message: 'common.created'
+	})
+	async postInboundData(
+		@Param('tenantId') tenantId: string,
+		@Body(new ZodValidationPipe(readerPostDataValidator)) payload: PostReaderDataDTO
+	) {
+		return await this.rfidService.addPostDataQueueJob(tenantId, payload)
+	}
+
+	// #region Outbound
+	@Get('outbound/sse')
 	@AuthGuard()
 	@UseFilters(AllExceptionsFilter)
 	async streamOutboundRFIDData(@Res() res: Response) {
@@ -103,19 +189,7 @@ export class RFIDController {
 	}
 
 	@Api({
-		endpoint: 'fetch-epc/inbound',
-		method: HttpMethod.GET
-	})
-	@AuthGuard()
-	async fetchNextInboundEpc(
-		@Query('_page', new DefaultValuePipe(1), ParseIntPipe) page: number,
-		@Query('mo_no.eq', new DefaultValuePipe('')) selectedOrder: string
-	) {
-		return await this.rfidService.getIncomingInboundEpcs({ _page: page, _limit: 50, 'mo_no.eq': selectedOrder })
-	}
-
-	@Api({
-		endpoint: 'fetch-epc/outbound',
+		endpoint: 'outbound/fetch-epc',
 		method: HttpMethod.GET
 	})
 	@AuthGuard()
@@ -127,14 +201,28 @@ export class RFIDController {
 	}
 
 	@Api({
-		endpoint: 'manufacturing-order-detail',
-		method: HttpMethod.GET
+		endpoint: 'outbound/post-data',
+		method: HttpMethod.POST,
+		statusCode: HttpStatus.CREATED,
+		message: 'common.created'
 	})
 	@AuthGuard()
-	async getOrderDetails() {
-		return this.rfidService.getInboundOrderDetails()
+	async postOutboundData(@Body(new ZodValidationPipe(readerPostDataValidator)) payload: PostReaderDataDTO) {
+		return await this.rfidService.storeOutboundData(payload)
 	}
 
+	@Api({
+		endpoint: 'outbound/delete-scanned-epcs',
+		method: HttpMethod.DELETE,
+		statusCode: HttpStatus.NO_CONTENT,
+		message: 'common.created'
+	})
+	@AuthGuard()
+	async deleteScannedOutboundEpc(@Query(new ZodValidationPipe(deleteEpcValidator)) filters: DeleteScannedEpcDTO) {
+		return await this.rfidService.deleteScannedOutboundEpcs(filters)
+	}
+
+	// #region Others
 	@Api({
 		endpoint: 'search-exchangable-order',
 		method: HttpMethod.GET
@@ -149,78 +237,5 @@ export class RFIDController {
 			'factory_code.eq': factory_code,
 			...queries
 		} satisfies SearchCustOrderParamsDTO)
-	}
-
-	@Api({
-		endpoint: 'update-stock/:orderCode',
-		method: HttpMethod.PUT,
-		statusCode: HttpStatus.CREATED,
-		message: 'common.updated'
-	})
-	@AuthGuard()
-	async updateFPStock(
-		@Param('orderCode') orderCode: string,
-		@User('username') username: string,
-		@Headers('X-User-Company') factoryCode: string,
-		@Body(new ZodValidationPipe(updateStockValidator)) payload: UpsertStockDTO
-	) {
-		return await this.rfidService.upsertFPStock(orderCode, {
-			...payload,
-			user_code_created: username,
-			factory_code: factoryCode
-		})
-	}
-
-	@Api({
-		endpoint: 'post-data/:tenantId',
-		method: HttpMethod.POST,
-		statusCode: HttpStatus.CREATED,
-		message: 'common.created'
-	})
-	async postInboundData(
-		@Param('tenantId') tenantId: string,
-		@Body(new ZodValidationPipe(readerPostDataValidator)) payload: PostReaderDataDTO
-	) {
-		return await this.rfidService.addPostDataQueueJob(tenantId, payload)
-	}
-
-	@Api({
-		endpoint: 'outbound/post-data',
-		method: HttpMethod.POST,
-		statusCode: HttpStatus.CREATED,
-		message: 'common.created'
-	})
-	async postOutboundData(@Body(new ZodValidationPipe(readerPostDataValidator)) payload: PostReaderDataDTO) {
-		return await this.rfidService.storeOutboundData(payload)
-	}
-
-	@Api({
-		endpoint: 'exchange-epc',
-		method: HttpMethod.PATCH,
-		statusCode: HttpStatus.CREATED,
-		message: 'common.updated'
-	})
-	@AuthGuard()
-	async exchangeEpc(@Body(new ZodValidationPipe(exchangeOrderValidator)) payload: ExchangeOrderDTO) {
-		return await this.rfidService.exchangeEpcByCommandNumber(payload)
-	}
-
-	@Api({
-		endpoint: '/inbound/delete-scanned-epcs',
-		method: HttpMethod.DELETE,
-		statusCode: HttpStatus.NO_CONTENT,
-		message: 'common.deleted'
-	})
-	@AuthGuard()
-	async deleteEpcBySize(@Query(new ZodValidationPipe(deleteEpcValidator)) filters: DeleteScannedEpcDTO) {
-		return await this.rfidService.deleteScannedInboundEpcs(filters)
-	}
-
-	@Api({
-		method: HttpMethod.PUT,
-		endpoint: '/exchange-epc-by-size'
-	})
-	async exchangeEpcBySize(@Body(new ZodValidationPipe(exchangeEpcValidator)) payload: ExchangeEpcDTO) {
-		return await this.rfidService.exchangeEpcBySize(payload)
 	}
 }

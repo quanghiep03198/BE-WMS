@@ -64,9 +64,11 @@ export class RFIDModule implements NestModule {
 		consumer
 			.apply(TenacyMiddleware)
 			.exclude(
-				{ path: '/rfid/sse/outbound', method: RequestMethod.GET },
 				{ path: '/rfid/post-data/:tenantId', method: RequestMethod.POST },
-				{ path: '/rfid/outbound/post-data', method: RequestMethod.POST }
+				{ path: '/rfid/outbound/sse', method: RequestMethod.GET },
+				{ path: '/rfid/outbound/fetch-epc', method: RequestMethod.GET },
+				{ path: '/rfid/outbound/post-data', method: RequestMethod.POST },
+				{ path: '/rfid/outbound/delete-scanned-epcs', method: RequestMethod.DELETE }
 			)
 			.forRoutes({ path: '/rfid/*', method: RequestMethod.ALL })
 	}
