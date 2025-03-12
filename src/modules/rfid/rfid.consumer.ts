@@ -4,7 +4,6 @@ import { ConfigService } from '@nestjs/config'
 import { InjectModel } from '@nestjs/mongoose'
 import { Job, Queue } from 'bullmq'
 import { readFileSync } from 'fs-extra'
-import _ from 'lodash'
 import { AnyBulkWriteOperation, PaginateModel } from 'mongoose'
 import { join, resolve } from 'path'
 import { DataSource } from 'typeorm'
@@ -15,7 +14,7 @@ import { EXCLUDED_EPC_PATTERN, EXCLUDED_ORDERS, FALLBACK_VALUE, POST_DATA_QUEUE 
 import { PostReaderDataDTO } from './dto/rfid.dto'
 import { RFIDMatchCustomerEntity } from './entities/rfid-customer-match.entity'
 import { RFIDReaderEntity } from './entities/rfid-reader.entity'
-import { Epc, EpcDocument, EpcSchema } from './schemas/epc.schema'
+import { EpcDocument, EpcInbound, EpcInboundSchema } from './schemas/epc.schema'
 import { StoredRFIDReaderItem } from './types'
 
 @Processor(POST_DATA_QUEUE)
@@ -47,7 +46,7 @@ export class RFIDConsumer extends WorkerHost {
 
 	constructor(
 		@InjectQueue(THIRD_PARTY_API_SYNC) private readonly thirdPartyApiSyncQueue: Queue,
-		@InjectModel(Epc.name) private readonly epcModel: PaginateModel<EpcDocument>,
+		@InjectModel(EpcInbound.name) private readonly epcModel: PaginateModel<EpcDocument>,
 		private readonly configService: ConfigService
 	) {
 		super()
@@ -84,20 +83,7 @@ export class RFIDConsumer extends WorkerHost {
 
 			if (incommingEpcs.length === 0) return
 
-			// * Check if EPC have no information, trigger queue to fetch from third party API
-			const validUnknownEpcs = incommingEpcs.filter(
-				(item) => item.mo_no === FALLBACK_VALUE && !item.epc.startsWith('E28')
-			)
-			if (validUnknownEpcs.length > 0) {
-				const uniqueEpcs = _.uniqBy(validUnknownEpcs, (item) => item.epc.substring(0, 22)).map((item) => item.epc)
-				this.thirdPartyApiSyncQueue.add(tenantId, uniqueEpcs, {
-					jobId: deviceInformation.factory_code,
-					attempts: 3,
-					backoff: { type: 'exponential' }
-				})
-			}
-
-			const bulkOperations: AnyBulkWriteOperation<typeof EpcSchema>[] = incommingEpcs.map((item) => ({
+			const bulkOperations: AnyBulkWriteOperation<typeof EpcInboundSchema>[] = incommingEpcs.map((item) => ({
 				updateOne: {
 					filter: { epc: item.epc, scannable: true },
 					update: { ...item, station_no: stationNO, record_time: new Date(), deleted: false },

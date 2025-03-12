@@ -14,6 +14,10 @@ export class OrderService {
 		resolve(join(__dirname, './sql/order-information.sql')),
 		'utf-8'
 	)
+	private readonly searchPurchaseOrderQuery: string = readFileSync(
+		resolve(join(__dirname, './sql/search-purchase-order.sql')),
+		'utf-8'
+	)
 	private readonly sizeRunQuery = readFileSync(resolve(join(__dirname, './sql/order-size-run.sql')), 'utf-8')
 
 	constructor(@InjectDataSource(DATA_SOURCE_ERP) private readonly dataSourceERP: DataSource) {}
@@ -29,6 +33,10 @@ export class OrderService {
 			.andWhere(/* SQL */ `manu.created >= CAST(DATEADD(YEAR, -2, GETDATE()) AS DATE)`)
 			.orderBy(/* SQL */ `manu.created`, 'DESC')
 			.getRawMany()
+	}
+
+	async searchPurchaseOrder(searchTerm: string) {
+		return await this.dataSourceERP.query<Array<{ po: string }>>(this.searchPurchaseOrderQuery, [searchTerm])
 	}
 
 	async getCustOrderDetails(commandNumbers: Array<string>): Promise<Partial<RFIDMatchCustomerEntity>[]> {

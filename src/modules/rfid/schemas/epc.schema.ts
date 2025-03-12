@@ -2,10 +2,11 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose'
 import mongoose, { HydratedDocument, PaginateModel } from 'mongoose'
 import { SoftDeleteModel } from 'mongoose-delete'
 
-export const EPC_COLLECTION = 'epcs'
+export const EPC_INBOUND_COLLECTION = 'epcs'
+export const EPC_OUTBOUND_COLLECTION = 'epcs_outbound'
 
 @Schema({
-	collection: EPC_COLLECTION,
+	collection: EPC_INBOUND_COLLECTION,
 	timestamps: {
 		createdAt: 'record_time',
 		updatedAt: 'modified_at'
@@ -15,7 +16,7 @@ export const EPC_COLLECTION = 'epcs'
 	strict: false,
 	strictQuery: false
 })
-export class Epc {
+export class EpcInbound {
 	@Prop({ type: mongoose.Schema.Types.ObjectId })
 	_id: mongoose.Types.ObjectId
 
@@ -41,8 +42,21 @@ export class Epc {
 	scannable: boolean
 }
 
-export type EpcDocument = HydratedDocument<Epc> & { record_time: string }
+@Schema({
+	collection: EPC_OUTBOUND_COLLECTION,
+	timestamps: {
+		createdAt: 'record_time',
+		updatedAt: 'modified_at'
+	},
+	versionKey: false,
+	suppressReservedKeysWarning: false,
+	strict: false,
+	strictQuery: false
+})
+export class EpcOutbound extends EpcInbound {}
 
+export type EpcDocument = HydratedDocument<EpcInbound | EpcOutbound> & { record_time: string }
 export type EpcModel = PaginateModel<EpcDocument> & SoftDeleteModel<EpcDocument>
 
-export const EpcSchema = SchemaFactory.createForClass(Epc)
+export const EpcInboundSchema = SchemaFactory.createForClass(EpcInbound)
+export const EpcOutboundSchema = SchemaFactory.createForClass(EpcOutbound)

@@ -1,18 +1,20 @@
+import { DATA_SOURCE_DATA_LAKE } from '@/databases/constants'
 import { InjectQueue } from '@nestjs/bullmq'
-import { Inject, Injectable, InternalServerErrorException, NotFoundException, Scope } from '@nestjs/common'
+import { Inject, Injectable, InternalServerErrorException, Logger, NotFoundException, Scope } from '@nestjs/common'
 import { REQUEST } from '@nestjs/core'
 import { InjectModel } from '@nestjs/mongoose'
+import { InjectDataSource } from '@nestjs/typeorm'
 import { Queue } from 'bullmq'
 import { format } from 'date-fns'
 import { Request } from 'express'
 import { readFileSync } from 'fs-extra'
 import { chunk, groupBy, pick } from 'lodash'
-import { FilterQuery, RootFilterQuery } from 'mongoose'
+import { AnyBulkWriteOperation, FilterQuery, RootFilterQuery } from 'mongoose'
 import { I18nContext, I18nService } from 'nestjs-i18n'
 import { join, resolve } from 'path'
 import { DataSource, FindOptionsWhere, In } from 'typeorm'
 import { TENANCY_DATASOURCE } from '../tenancy/constants'
-import { POST_DATA_QUEUE } from './constants'
+import { EXCLUDED_EPC_PATTERN, EXCLUDED_ORDERS, FALLBACK_VALUE, POST_DATA_QUEUE } from './constants'
 import {
 	DeleteScannedEpcDTO,
 	ExchangeEpcDTO,
@@ -22,9 +24,10 @@ import {
 	UpsertStockDTO
 } from './dto/rfid.dto'
 import { RFIDMatchCustomerEntity } from './entities/rfid-customer-match.entity'
+import { RFIDReaderEntity } from './entities/rfid-reader.entity'
 import { FPIRespository } from './rfid.repository'
-import { Epc, EpcDocument, EpcModel } from './schemas/epc.schema'
-import { RFIDSearchParams } from './types'
+import { EpcDocument, EpcInbound, EpcModel, EpcOutbound, EpcOutboundSchema } from './schemas/epc.schema'
+import { RFIDSearchParams, StoredRFIDReaderItem } from './types'
 
 /**
  * @description Service for Finished Production Inventory (FPI)
@@ -32,16 +35,24 @@ import { RFIDSearchParams } from './types'
 @Injectable({ scope: Scope.REQUEST })
 export class RFIDService {
 	private readonly upsertInventoryQuery = readFileSync(resolve(join(__dirname, './sql/upsert-inventory.sql')), 'utf-8')
+	private readonly upsertStockoutQuery = readFileSync(resolve(join(__dirname, './sql/upsert-stock-out.sql')), 'utf-8')
+	private readonly epcInformationQuery: string = readFileSync(
+		resolve(join(__dirname, './sql/epc-information.sql')),
+		'utf-8'
+	)
 
 	constructor(
 		@Inject(REQUEST) private readonly request: Request,
 		@Inject(TENANCY_DATASOURCE) private readonly dataSource: DataSource | undefined,
-		@InjectModel(Epc.name) private readonly epcModel: EpcModel,
+		@InjectDataSource(DATA_SOURCE_DATA_LAKE) private readonly dataSourceDL: DataSource,
+		@InjectModel(EpcInbound.name) private readonly epcInboundModel: EpcModel,
+		@InjectModel(EpcOutbound.name) private readonly epcOutboundModel: EpcModel,
 		@InjectQueue(POST_DATA_QUEUE) private readonly postDataQueue: Queue,
 		private readonly i18nService: I18nService,
 		private readonly rfidRepository: FPIRespository
 	) {}
 
+	// #region Inbound
 	public async addPostDataQueueJob(tenantId: string, data: PostReaderDataDTO) {
 		return await this.postDataQueue.add(tenantId, data, { lifo: true })
 	}
@@ -61,12 +72,12 @@ export class RFIDService {
 		])
 	}
 
-	public async fetchLatestData(args: RFIDSearchParams) {
-		const [epcs, orders] = await Promise.all([this.getIncomingEpcs(args), this.getOrderDetails()])
+	public async fetchLatestInboundData(args: RFIDSearchParams) {
+		const [epcs, orders] = await Promise.all([this.getIncomingInboundEpcs(args), this.getInboundOrderDetails()])
 		return { epcs, orders }
 	}
 
-	public async getIncomingEpcs(args: RFIDSearchParams) {
+	public async getIncomingInboundEpcs(args: RFIDSearchParams) {
 		const factoryCode = this.request.headers['x-user-company']
 		const filterQuery: FilterQuery<EpcDocument> = {
 			scannable: true,
@@ -75,7 +86,7 @@ export class RFIDService {
 		}
 		if (!args['mo_no.eq']) delete filterQuery.mo_no
 
-		return await this.epcModel.paginate(filterQuery, {
+		return await this.epcInboundModel.paginate(filterQuery, {
 			sort: { record_time: -1, epc: 1, mo_no: 1 },
 			select: ['epc', 'mo_no'],
 			lean: true,
@@ -86,9 +97,9 @@ export class RFIDService {
 		})
 	}
 
-	public async getOrderDetails() {
+	public async getInboundOrderDetails() {
 		const factoryCode = this.request.headers['x-user-company']
-		const accumulatedData = await this.epcModel.find(
+		const accumulatedData = await this.epcInboundModel.find(
 			{ scannable: true, station_no: { $regex: new RegExp(`CUS_${factoryCode}_WH10[12]`) } },
 			null,
 			{ readPreference: 'nearest', lean: true }
@@ -112,8 +123,8 @@ export class RFIDService {
 		})
 	}
 
-	public captureDataChange(onSnapshot: (change?: any) => unknown): ReturnType<typeof this.epcModel.watch> {
-		const listener = this.epcModel.watch(
+	public captureDataChange(model: EpcModel, onSnapshot: (change?: any) => unknown): any {
+		const listener = model.watch(
 			[
 				{
 					$match: {
@@ -135,9 +146,9 @@ export class RFIDService {
 	}
 
 	public async upsertFPStock(orderCode: string, data: UpsertStockDTO) {
-		const payload = await this.epcModel.find({ scannable: true, mo_no: orderCode }).lean(true)
+		const payload = await this.epcInboundModel.find({ scannable: true, mo_no: orderCode }).lean(true)
 		const queryRunner = this.dataSource.createQueryRunner()
-		const session = await this.epcModel.startSession()
+		const session = await this.epcInboundModel.startSession()
 		await Promise.all([queryRunner.startTransaction(), session.startTransaction()])
 
 		try {
@@ -160,7 +171,7 @@ export class RFIDService {
 
 				await this.dataSource.query(this.upsertInventoryQuery.replace(':values', values))
 			}
-			await this.epcModel.delete({ mo_no: orderCode }).exec()
+			await this.epcInboundModel.delete({ mo_no: orderCode }).exec()
 			await Promise.all([queryRunner.commitTransaction(), session.commitTransaction()])
 		} catch (e) {
 			await Promise.all([queryRunner.rollbackTransaction(), session.abortTransaction()])
@@ -190,8 +201,8 @@ export class RFIDService {
 	// TODO: Implement update from stored JSON data file and dv_rfidmatchmst_cust table
 	public async exchangeEpcByCommandNumber(payload: ExchangeOrderDTO) {
 		const queryRunner = this.dataSource.createQueryRunner()
-		const session = await this.epcModel.startSession()
-		const epcToExchange = await this.epcModel
+		const session = await this.epcInboundModel.startSession()
+		const epcToExchange = await this.epcInboundModel
 			.find({
 				deleted: false,
 				scannable: true,
@@ -219,8 +230,8 @@ export class RFIDService {
 				}
 				await queryRunner.manager.update(RFIDMatchCustomerEntity, criteria, update)
 			}
-			await this.epcModel.updateMany(
-				{ epc: { $in: epcToExchange.map((item) => item.epc) } },
+			await this.epcInboundModel.updateMany(
+				{ epc: { $in: epcToExchange.map((item) => item.epc) }, mo_no: { $ne: payload.mo_no_actual } },
 				{ mo_no: payload.mo_no_actual },
 				{ new: true }
 			)
@@ -233,10 +244,10 @@ export class RFIDService {
 		}
 	}
 
-	public async deleteScannedEpcs(filters: DeleteScannedEpcDTO) {
-		const filterQuery: RootFilterQuery<Epc> = !filters['size_numcode.eq'] ? pick(filters, 'mo_no.eq') : filters
+	public async deleteScannedInboundEpcs(filters: DeleteScannedEpcDTO) {
+		const filterQuery: RootFilterQuery<EpcInbound> = !filters['size_numcode.eq'] ? pick(filters, 'mo_no.eq') : filters
 		if (filterQuery['size_numcode.eq'] && filterQuery['quantity.eq']) {
-			const epcsToDelete = await this.epcModel
+			const epcsToDelete = await this.epcInboundModel
 				.find({
 					mo_no: filters['mo_no.eq'],
 					size_numcode: filters['size_numcode.eq']
@@ -244,7 +255,7 @@ export class RFIDService {
 				.limit(filters['quantity.eq'])
 				.lean(true)
 
-			return await this.epcModel
+			return await this.epcInboundModel
 				.updateMany(
 					{
 						epc: { $in: epcsToDelete.map((item) => item.epc) }
@@ -254,7 +265,33 @@ export class RFIDService {
 				)
 				.exec()
 		}
-		return await this.epcModel
+		return await this.epcInboundModel
+			.updateMany({ mo_no: filters['mo_no.eq'] }, { deleted: true, scannable: !filters['f'] })
+			.exec()
+	}
+
+	public async deleteScannedOutboundEpcs(filters: DeleteScannedEpcDTO) {
+		const filterQuery: RootFilterQuery<EpcInbound> = !filters['size_numcode.eq'] ? pick(filters, 'mo_no.eq') : filters
+		if (filterQuery['size_numcode.eq'] && filterQuery['quantity.eq']) {
+			const epcsToDelete = await this.epcOutboundModel
+				.find({
+					mo_no: filters['mo_no.eq'],
+					size_numcode: filters['size_numcode.eq']
+				})
+				.limit(filters['quantity.eq'])
+				.lean(true)
+
+			return await this.epcOutboundModel
+				.updateMany(
+					{
+						epc: { $in: epcsToDelete.map((item) => item.epc) }
+					},
+					{ deleted: true, scannable: !filters['f'] },
+					{ new: true }
+				)
+				.exec()
+		}
+		return await this.epcOutboundModel
 			.updateMany({ mo_no: filters['mo_no.eq'] }, { deleted: true, scannable: !filters['f'] })
 			.exec()
 	}
@@ -262,7 +299,8 @@ export class RFIDService {
 	public async exchangeEpcBySize(update: ExchangeEpcDTO) {
 		const factoryCode = this.request.headers['x-user-company'] as string
 		const tenantId = this.request.headers['x-tenant-id'] as string
-		const epcToExchange = await this.epcModel
+		Logger.debug(tenantId)
+		const epcToExchange = await this.epcInboundModel
 			.find({
 				...pick(update, ['mo_no', 'shoes_style_code_factory', 'mat_ecolor', 'size_numcode']),
 				scannable: true
@@ -281,5 +319,114 @@ export class RFIDService {
 			remark: 'Upserted from WMS'
 		}))
 		return await this.rfidRepository.upsertBulk(tenantId, payload)
+	}
+
+	// #region Outbound
+	public async storeOutboundData(payload: PostReaderDataDTO) {
+		const deviceInformation = await this.dataSourceDL
+			.getRepository(RFIDReaderEntity)
+			.findOneBy({ device_sn: payload.sn })
+
+		const epcs = payload.data.tagList.map((item) => item.epc.trim()).join(',')
+		const excludedOrderList = EXCLUDED_ORDERS.join(',')
+
+		const stationNO = deviceInformation?.station_no ?? 'CUS_VA1_WH103'
+		const incommingEpcs = await this.dataSourceDL.query<StoredRFIDReaderItem[]>(this.epcInformationQuery, [
+			FALLBACK_VALUE,
+			epcs,
+			EXCLUDED_EPC_PATTERN,
+			excludedOrderList
+		])
+
+		const bulkWriteOptions: AnyBulkWriteOperation<typeof EpcOutboundSchema>[] = incommingEpcs.map((item) => ({
+			updateOne: {
+				filter: { epc: item.epc, scannable: true },
+				update: { ...item, station_no: stationNO, record_time: new Date(), deleted: false },
+				upsert: true
+			}
+		}))
+		await this.epcOutboundModel.bulkWrite(bulkWriteOptions)
+	}
+
+	public async fetchLatestOutboundData(args: RFIDSearchParams) {
+		const [epcs, orders] = await Promise.all([this.getIncomingOutboundEpcs(args), this.getOutboundOrderDetails()])
+		return { epcs, orders }
+	}
+
+	public async getIncomingOutboundEpcs(args: RFIDSearchParams) {
+		const factoryCode = this.request.headers['x-user-company']
+		const filterQuery: FilterQuery<EpcDocument> = {
+			scannable: true,
+			station_no: { $regex: new RegExp(`CUS_${factoryCode}_WH103`) },
+			mo_no: args['mo_no.eq']
+		}
+		if (!args['mo_no.eq']) delete filterQuery.mo_no
+
+		return await this.epcOutboundModel.paginate(filterQuery, {
+			sort: { record_time: -1, epc: 1, mo_no: 1 },
+			select: ['epc', 'mo_no'],
+			lean: true,
+			page: args._page,
+			limit: args._limit,
+			options: { readPreference: 'nearest' },
+			customLabels: { docs: 'data' }
+		})
+	}
+
+	public async getOutboundOrderDetails() {
+		const factoryCode = this.request.headers['x-user-company']
+		const accumulatedData = await this.epcOutboundModel.find(
+			{ scannable: true, station_no: { $regex: new RegExp(`CUS_${factoryCode}_WH103`) } },
+			null,
+			{ readPreference: 'nearest', lean: true }
+		)
+		if (!Array.isArray(accumulatedData)) throw new Error('Invalid data format')
+		return Object.entries(
+			groupBy(accumulatedData, (item) => {
+				return [item.mo_no, item.mat_ecolor, item.shoes_style_code_factory]
+			})
+		).map(([keys, sizes]) => {
+			const [mo_no, mat_ecolor, shoes_style_code_factory] = keys.split(',')
+			return {
+				mo_no,
+				mat_ecolor,
+				shoes_style_code_factory,
+				sizes: Object.entries(groupBy(sizes, 'size_numcode')).map(([size, items]) => ({
+					size_numcode: size,
+					count: items.length
+				}))
+			}
+		})
+	}
+
+	async updateFPStockOutbound(payload) {
+		const epcToUpsert = await this.epcOutboundModel.find({ deleted: false, scannable: true }).select('epc').lean(true)
+		const session = await this.epcOutboundModel.startSession()
+		const queryRunner = this.dataSourceDL.createQueryRunner()
+
+		await Promise.all([session.startTransaction(), queryRunner.startTransaction()])
+		try {
+			for (const item of chunk(
+				epcToUpsert.map((value) => ({
+					...value,
+					...payload,
+					record_time: format(value.record_time, 'yyyy-MM-dd HH:mm:ss')
+				})),
+				100
+			)) {
+				const values = item
+					.map((value) => {
+						return `('${value.epc}', '${value.mo_no}', '${value.size_numcode}', '${value.station_no}', '${value.factory_code}')`
+					})
+					.join(',')
+
+				await this.dataSourceDL.query(this.upsertStockoutQuery.replace(':values', values))
+			}
+			await this.epcOutboundModel.delete({ deleted: false, scannable: true }).exec()
+			await Promise.all([queryRunner.commitTransaction(), session.commitTransaction()])
+		} catch (error) {
+			await Promise.all([queryRunner.rollbackTransaction(), session.abortTransaction()])
+			throw new InternalServerErrorException(error)
+		}
 	}
 }

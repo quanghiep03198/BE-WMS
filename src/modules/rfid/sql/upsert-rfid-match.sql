@@ -5,6 +5,23 @@ USING (VALUES :values) AS source (
    factory_code_orders, factory_name_orders, factory_code_produce, factory_name_produce, size_qty, remark
 )
 ON target.EPC_Code = source.EPC_Code
+WHEN MATCHED THEN 
+   UPDATE SET 
+      target.mo_no = source.mo_no,
+      target.mat_code = source.mat_code,
+      target.mo_noseq = source.mo_noseq,
+      target.or_no = source.or_no,
+      target.or_custpo = source.or_custpo,
+      target.shoestyle_codefactory = source.shoestyle_codefactory,
+      target.cust_shoestyle = source.cust_shoestyle,
+      target.size_code = source.size_code,
+      target.size_numcode = source.size_numcode,
+      target.factory_code_orders = source.factory_code_orders,
+      target.factory_name_orders = source.factory_name_orders,
+      target.factory_code_produce = source.factory_code_produce,
+      target.factory_name_produce = source.factory_name_produce,
+      target.size_qty = source.size_qty,
+      target.remark = source.remark
 WHEN NOT MATCHED THEN
    INSERT (
       EPC_Code, mo_no, mat_code, mo_noseq, or_no, or_custpo, 
