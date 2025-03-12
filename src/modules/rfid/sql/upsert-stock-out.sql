@@ -1,10 +1,10 @@
 MERGE INTO DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet AS target
-USING (VALUES :values) AS source (EPC_Code, mo_no, size_code, stationNO, FC_server_code)
+USING (VALUES :values) AS source (EPC_Code, po, mo_no, size_code, stationNO, FC_server_code)
 ON target.EPC_Code = source.EPC_Code AND target.po = source.po
 WHEN MATCHED THEN
    UPDATE SET 
       created = CAST(GETDATE() AS DATETIME),
-      mo_no = NULL, 
+      mo_no = source.mo_no, 
       size_code = source.size_code,
       record_time = CAST(GETDATE() AS DATETIME), 
       stationNO = source.stationNO,

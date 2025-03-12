@@ -400,7 +400,7 @@ export class RFIDService {
 	}
 
 	async updateFPStockOutbound(payload) {
-		const epcToUpsert = await this.epcOutboundModel.find({ deleted: false, scannable: true }).select('epc').lean(true)
+		const epcToUpsert = await this.epcOutboundModel.find({ deleted: false, scannable: true }).lean(true)
 		const session = await this.epcOutboundModel.startSession()
 		const queryRunner = this.dataSourceDL.createQueryRunner()
 
@@ -409,13 +409,14 @@ export class RFIDService {
 			for (const item of chunk(
 				epcToUpsert.map((value) => ({
 					...value,
-					...payload
+					...payload,
+					factory_code: this.request.headers['x-user-company']
 				})),
 				100
 			)) {
 				const values = item
 					.map((value) => {
-						return `('${value.epc}', '${value.mo_no}', '${value.size_numcode}', '${value.station_no}', '${value.factory_code}')`
+						return `('${value.epc}', '${value.po}', '${value.mo_no}', '${value.size_numcode}', '${value.station_no}', '${value.factory_code}')`
 					})
 					.join(',')
 
