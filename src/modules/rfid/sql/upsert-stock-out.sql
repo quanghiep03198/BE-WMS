@@ -1,20 +1,20 @@
 MERGE INTO DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet AS target
 USING (VALUES :values) AS source (EPC_Code, mo_no, size_code, stationNO, FC_server_code)
-ON target.EPC_Code = source.EPC_Code
+ON target.EPC_Code = source.EPC_Code AND target.po = source.po
 WHEN MATCHED THEN
    UPDATE SET 
-      created = GETDATE(),
-      mo_no = source.mo_no, 
+      created = CAST(GETDATE() AS DATETIME),
+      mo_no = NULL, 
       size_code = source.size_code,
-      record_time = GETDATE(), 
+      record_time = CAST(GETDATE() AS DATETIME), 
       stationNO = source.stationNO,
       FC_server_code = source.FC_server_code,
-      dept_code = source.dept_code,
-      quantity = -1
+      quantity = -1,
+      po = source.po
 WHEN NOT MATCHED THEN
    INSERT (
-      EPC_Code, mo_no, size_code, rfid_status, rfid_use, record_time, stationNO, FC_server_code, quantity
+      EPC_Code, po, mo_no, size_code, rfid_status, rfid_use, record_time, stationNO, FC_server_code, quantity
    )
    VALUES (
-      source.EPC_Code, source.mo_no, source.size_code, 'A', 'A', GETDATE(), source.stationNO, source.FC_server_code, -1 
+      source.EPC_Code, source.po, source.mo_no, source.size_code, 'A', 'A', CAST(GETDATE() AS DATETIME), source.stationNO, source.FC_server_code, -1 
    );

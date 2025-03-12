@@ -49,6 +49,8 @@ export class RFIDController {
 		private readonly rfidService: RFIDService
 	) {}
 
+	// #region Inbound
+
 	@Get('inbound/sse')
 	@AuthGuard()
 	@UseFilters(AllExceptionsFilter)
@@ -160,6 +162,7 @@ export class RFIDController {
 	) {
 		return await this.rfidService.addPostDataQueueJob(tenantId, payload)
 	}
+	// #endregion
 
 	// #region Outbound
 	@Get('outbound/sse')
@@ -206,9 +209,18 @@ export class RFIDController {
 		statusCode: HttpStatus.CREATED,
 		message: 'common.created'
 	})
-	@AuthGuard()
 	async postOutboundData(@Body(new ZodValidationPipe(readerPostDataValidator)) payload: PostReaderDataDTO) {
 		return await this.rfidService.storeOutboundData(payload)
+	}
+
+	@Api({
+		endpoint: 'outbound/update-stock',
+		method: HttpMethod.PUT,
+		statusCode: HttpStatus.CREATED,
+		message: 'common.created'
+	})
+	async upsertOutboundStock(@Body() payload: any) {
+		return await this.rfidService.updateFPStockOutbound(payload)
 	}
 
 	@Api({
@@ -221,6 +233,7 @@ export class RFIDController {
 	async deleteScannedOutboundEpc(@Query(new ZodValidationPipe(deleteEpcValidator)) filters: DeleteScannedEpcDTO) {
 		return await this.rfidService.deleteScannedOutboundEpcs(filters)
 	}
+	// #endregion
 
 	// #region Others
 	@Api({

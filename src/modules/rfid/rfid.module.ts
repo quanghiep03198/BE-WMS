@@ -68,6 +68,7 @@ export class RFIDModule implements NestModule {
 				{ path: '/rfid/outbound/sse', method: RequestMethod.GET },
 				{ path: '/rfid/outbound/fetch-epc', method: RequestMethod.GET },
 				{ path: '/rfid/outbound/post-data', method: RequestMethod.POST },
+				{ path: '/rfid/outbound/update-stock', method: RequestMethod.PUT },
 				{ path: '/rfid/outbound/delete-scanned-epcs', method: RequestMethod.DELETE }
 			)
 			.forRoutes({ path: '/rfid/*', method: RequestMethod.ALL })

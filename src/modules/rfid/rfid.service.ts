@@ -409,8 +409,7 @@ export class RFIDService {
 			for (const item of chunk(
 				epcToUpsert.map((value) => ({
 					...value,
-					...payload,
-					record_time: format(value.record_time, 'yyyy-MM-dd HH:mm:ss')
+					...payload
 				})),
 				100
 			)) {
