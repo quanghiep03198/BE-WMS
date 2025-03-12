@@ -17,6 +17,7 @@ import {
 } from '@nestjs/common'
 import { Response } from 'express'
 
+import { InjectModel } from '@nestjs/mongoose'
 import {
 	deleteEpcValidator,
 	DeleteScannedEpcDTO,
@@ -32,6 +33,7 @@ import {
 	UpsertStockDTO
 } from './dto/rfid.dto'
 import { RFIDService } from './rfid.service'
+import { EpcInbound, EpcModel, EpcOutbound } from './schemas/epc.schema'
 
 /**
  * @description Controller for Finished Production Inventory (FPI)
@@ -41,7 +43,11 @@ import { RFIDService } from './rfid.service'
 export class RFIDController {
 	private readonly logger = new Logger(RFIDController.name)
 
-	constructor(private readonly rfidService: RFIDService) {}
+	constructor(
+		@InjectModel(EpcInbound.name) private readonly epcInboundModel: EpcModel,
+		@InjectModel(EpcOutbound.name) private readonly epcOutboundModel: EpcModel,
+		private readonly rfidService: RFIDService
+	) {}
 
 	@Get('sse/inbound')
 	@AuthGuard()
@@ -58,7 +64,7 @@ export class RFIDController {
 		const data = await this.rfidService.fetchLatestInboundData({ _page: 1, _limit: 50 })
 		postMessage(data)
 
-		const listener = await this.rfidService.captureDataChange(async () => {
+		const listener = await this.rfidService.captureDataChange(this.epcInboundModel, async () => {
 			const data = await this.rfidService.fetchLatestInboundData({ _page: 1, _limit: 50 })
 			if (data) postMessage(data)
 		})
@@ -85,14 +91,13 @@ export class RFIDController {
 		const data = await this.rfidService.fetchLatestOutboundData({ _page: 1, _limit: 50 })
 		postMessage(data)
 
-		const listener = await this.rfidService.captureDataChange(async () => {
+		this.rfidService.captureDataChange(this.epcOutboundModel, async () => {
 			const data = await this.rfidService.fetchLatestOutboundData({ _page: 1, _limit: 50 })
 			if (data) postMessage(data)
 		})
 
 		res.on('close', () => {
 			this.logger.log('Stop receiving data from Android RFID device')
-			listener.removeListener('change', () => this.rfidService.cleanupQueue())
 			res.end()
 		})
 	}
@@ -186,7 +191,6 @@ export class RFIDController {
 		message: 'common.created'
 	})
 	async postOutboundData(@Body(new ZodValidationPipe(readerPostDataValidator)) payload: PostReaderDataDTO) {
-		this.logger.debug(payload)
 		return await this.rfidService.storeOutboundData(payload)
 	}
 

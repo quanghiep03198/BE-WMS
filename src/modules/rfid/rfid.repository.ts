@@ -13,7 +13,7 @@ import { TENANCY_DATASOURCE } from '../tenancy/constants'
 import { TenancyService } from '../tenancy/tenancy.service'
 import { EXCLUDED_ORDERS } from './constants'
 import { RFIDMatchCustomerEntity } from './entities/rfid-customer-match.entity'
-import { EpcInbound, EpcInboundDocument, EpcInboundSchema } from './schemas/epc.schema'
+import { EpcDocument, EpcInbound, EpcInboundSchema } from './schemas/epc.schema'
 import { CustomerOrderSizeDetail } from './types'
 /**
  * @description Repository for Finished Production Inventory (FPI)
@@ -32,7 +32,7 @@ export class FPIRespository {
 
 	constructor(
 		@Inject(TENANCY_DATASOURCE) private readonly dataSource: DataSource,
-		@InjectModel(EpcInbound.name) private readonly epcModel: PaginateModel<EpcInboundDocument>,
+		@InjectModel(EpcInbound.name) private readonly epcModel: PaginateModel<EpcDocument>,
 		private readonly tenancyService: TenancyService,
 		private readonly configService: ConfigService
 	) {}

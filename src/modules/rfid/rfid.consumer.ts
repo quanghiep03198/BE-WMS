@@ -14,7 +14,7 @@ import { EXCLUDED_EPC_PATTERN, EXCLUDED_ORDERS, FALLBACK_VALUE, POST_DATA_QUEUE 
 import { PostReaderDataDTO } from './dto/rfid.dto'
 import { RFIDMatchCustomerEntity } from './entities/rfid-customer-match.entity'
 import { RFIDReaderEntity } from './entities/rfid-reader.entity'
-import { EpcInbound, EpcInboundDocument, EpcInboundSchema } from './schemas/epc.schema'
+import { EpcDocument, EpcInbound, EpcInboundSchema } from './schemas/epc.schema'
 import { StoredRFIDReaderItem } from './types'
 
 @Processor(POST_DATA_QUEUE)
@@ -46,7 +46,7 @@ export class RFIDConsumer extends WorkerHost {
 
 	constructor(
 		@InjectQueue(THIRD_PARTY_API_SYNC) private readonly thirdPartyApiSyncQueue: Queue,
-		@InjectModel(EpcInbound.name) private readonly epcModel: PaginateModel<EpcInboundDocument>,
+		@InjectModel(EpcInbound.name) private readonly epcModel: PaginateModel<EpcDocument>,
 		private readonly configService: ConfigService
 	) {
 		super()

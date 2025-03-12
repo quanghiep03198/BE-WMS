@@ -55,10 +55,8 @@ export class EpcInbound {
 })
 export class EpcOutbound extends EpcInbound {}
 
-export type EpcInboundDocument = HydratedDocument<EpcInbound> & { record_time: string }
-export type EpcOutboundDocument = HydratedDocument<EpcOutbound> & { record_time: string }
-export type EpcInboundModel = PaginateModel<EpcInboundDocument> & SoftDeleteModel<EpcInboundDocument>
-export type EpcOutboundModel = PaginateModel<EpcOutboundDocument> & SoftDeleteModel<EpcInboundDocument>
+export type EpcDocument = HydratedDocument<EpcInbound | EpcOutbound> & { record_time: string }
+export type EpcModel = PaginateModel<EpcDocument> & SoftDeleteModel<EpcDocument>
 
 export const EpcInboundSchema = SchemaFactory.createForClass(EpcInbound)
 export const EpcOutboundSchema = SchemaFactory.createForClass(EpcOutbound)

@@ -26,14 +26,7 @@ import {
 import { RFIDMatchCustomerEntity } from './entities/rfid-customer-match.entity'
 import { RFIDReaderEntity } from './entities/rfid-reader.entity'
 import { FPIRespository } from './rfid.repository'
-import {
-	EpcInbound,
-	EpcInboundDocument,
-	EpcInboundModel,
-	EpcOutbound,
-	EpcOutboundModel,
-	EpcOutboundSchema
-} from './schemas/epc.schema'
+import { EpcDocument, EpcInbound, EpcModel, EpcOutbound, EpcOutboundSchema } from './schemas/epc.schema'
 import { RFIDSearchParams, StoredRFIDReaderItem } from './types'
 
 /**
@@ -52,8 +45,8 @@ export class RFIDService {
 		@Inject(REQUEST) private readonly request: Request,
 		@Inject(TENANCY_DATASOURCE) private readonly dataSource: DataSource | undefined,
 		@InjectDataSource(DATA_SOURCE_DATA_LAKE) private readonly dataSourceDL: DataSource,
-		@InjectModel(EpcInbound.name) private readonly epcInboundModel: EpcInboundModel,
-		@InjectModel(EpcOutbound.name) private readonly epcOutboundModel: EpcOutboundModel,
+		@InjectModel(EpcInbound.name) private readonly epcInboundModel: EpcModel,
+		@InjectModel(EpcOutbound.name) private readonly epcOutboundModel: EpcModel,
 		@InjectQueue(POST_DATA_QUEUE) private readonly postDataQueue: Queue,
 		private readonly i18nService: I18nService,
 		private readonly rfidRepository: FPIRespository
@@ -86,7 +79,7 @@ export class RFIDService {
 
 	public async getIncomingInboundEpcs(args: RFIDSearchParams) {
 		const factoryCode = this.request.headers['x-user-company']
-		const filterQuery: FilterQuery<EpcInboundDocument> = {
+		const filterQuery: FilterQuery<EpcDocument> = {
 			scannable: true,
 			station_no: { $regex: new RegExp(`CUS_${factoryCode}_WH10[12]`) },
 			mo_no: args['mo_no.eq']
@@ -130,8 +123,8 @@ export class RFIDService {
 		})
 	}
 
-	public captureDataChange(onSnapshot: (change?: any) => unknown): ReturnType<typeof this.epcInboundModel.watch> {
-		const listener = this.epcInboundModel.watch(
+	public captureDataChange(model: EpcModel, onSnapshot: (change?: any) => unknown): any {
+		const listener = model.watch(
 			[
 				{
 					$match: {
@@ -337,7 +330,7 @@ export class RFIDService {
 		const epcs = payload.data.tagList.map((item) => item.epc.trim()).join(',')
 		const excludedOrderList = EXCLUDED_ORDERS.join(',')
 
-		const stationNO = deviceInformation?.station_no ?? 'CUS_VA1_103'
+		const stationNO = deviceInformation?.station_no ?? 'CUS_VA1_WH103'
 		const incommingEpcs = await this.dataSourceDL.query<StoredRFIDReaderItem[]>(this.epcInformationQuery, [
 			FALLBACK_VALUE,
 			epcs,
@@ -348,7 +341,8 @@ export class RFIDService {
 		const bulkWriteOptions: AnyBulkWriteOperation<typeof EpcOutboundSchema>[] = incommingEpcs.map((item) => ({
 			updateOne: {
 				filter: { epc: item.epc, scannable: true },
-				update: { ...item, station_no: stationNO, record_time: new Date(), deleted: false }
+				update: { ...item, station_no: stationNO, record_time: new Date(), deleted: false },
+				upsert: true
 			}
 		}))
 		await this.epcOutboundModel.bulkWrite(bulkWriteOptions)
@@ -361,7 +355,7 @@ export class RFIDService {
 
 	public async getIncomingOutboundEpcs(args: RFIDSearchParams) {
 		const factoryCode = this.request.headers['x-user-company']
-		const filterQuery: FilterQuery<EpcInboundDocument> = {
+		const filterQuery: FilterQuery<EpcDocument> = {
 			scannable: true,
 			station_no: { $regex: new RegExp(`CUS_${factoryCode}_WH103`) },
 			mo_no: args['mo_no.eq']

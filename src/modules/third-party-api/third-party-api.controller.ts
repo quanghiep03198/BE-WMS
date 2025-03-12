@@ -7,7 +7,7 @@ import { Request, Response } from 'express'
 import { uniqBy } from 'lodash'
 import { PaginateModel } from 'mongoose'
 import { FALLBACK_VALUE } from '../rfid/constants'
-import { EpcInbound, EpcInboundDocument } from '../rfid/schemas/epc.schema'
+import { EpcDocument, EpcInbound } from '../rfid/schemas/epc.schema'
 import { IoRedisService } from './../../messages/ioredis.service'
 import { THIRD_PARTY_API_SYNC } from './constants'
 import { ThirdPartyApiService } from './third-party-api.service'
@@ -16,7 +16,7 @@ import { ThirdPartyApiService } from './third-party-api.service'
 export class ThirdPartyApiController {
 	constructor(
 		@InjectQueue(THIRD_PARTY_API_SYNC) private readonly thirdPartyApiSyncQueue: Queue,
-		@InjectModel(EpcInbound.name) private readonly epcModel: PaginateModel<EpcInboundDocument>,
+		@InjectModel(EpcInbound.name) private readonly epcModel: PaginateModel<EpcDocument>,
 		private readonly thirdPartyApiService: ThirdPartyApiService,
 		private readonly ioRedisService: IoRedisService
 	) {}
