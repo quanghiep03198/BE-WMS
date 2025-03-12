@@ -59,9 +59,11 @@ export class UserService extends BaseAbstractService<UserEntity> {
 			.where('u.id = :id', { id })
 			.getRawOne()
 
+		if (!user) throw new NotFoundException('User could not be found')
+
 		return {
 			...user,
-			password: hashSync(user.password, genSaltSync(+this.configService.get('SALT_ROUND'))),
+			password: hashSync(user?.password, genSaltSync(+this.configService.get('SALT_ROUND'))),
 			picture: this.generateAvatar({ name: user?.display_name })
 		}
 	}
