@@ -1,15 +1,14 @@
 import { FileLogger } from '@/common/helpers/file-logger.helper'
-import { InjectQueue, OnWorkerEvent, Processor, WorkerHost } from '@nestjs/bullmq'
+import { OnWorkerEvent, Processor, WorkerHost } from '@nestjs/bullmq'
 import { ConfigService } from '@nestjs/config'
 import { InjectModel } from '@nestjs/mongoose'
-import { Job, Queue } from 'bullmq'
+import { Job } from 'bullmq'
 import { readFileSync } from 'fs-extra'
 import { AnyBulkWriteOperation, PaginateModel } from 'mongoose'
 import { join, resolve } from 'path'
 import { DataSource } from 'typeorm'
 import { SqlServerConnectionOptions } from 'typeorm/driver/sqlserver/SqlServerConnectionOptions'
 import { Tenant } from '../tenancy/constants'
-import { THIRD_PARTY_API_SYNC } from '../third-party-api/constants'
 import { EXCLUDED_EPC_PATTERN, EXCLUDED_ORDERS, FALLBACK_VALUE, POST_DATA_QUEUE } from './constants'
 import { PostReaderDataDTO } from './dto/rfid.dto'
 import { RFIDMatchCustomerEntity } from './entities/rfid-customer-match.entity'
@@ -45,7 +44,6 @@ export class RFIDConsumer extends WorkerHost {
 	]
 
 	constructor(
-		@InjectQueue(THIRD_PARTY_API_SYNC) private readonly thirdPartyApiSyncQueue: Queue,
 		@InjectModel(EpcInbound.name) private readonly epcModel: PaginateModel<EpcDocument>,
 		private readonly configService: ConfigService
 	) {
