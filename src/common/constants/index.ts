@@ -11,5 +11,6 @@ export enum Environment {
 
 export enum CommonRequestHeader {
 	TENANT_ID = 'X-Tenant-Id',
-	FACTORY_CODE = 'X-User-Company'
+	FACTORY_CODE = 'X-User-Company',
+	API_VERSION = 'X-Api-Version'
 }
