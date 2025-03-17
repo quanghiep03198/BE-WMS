@@ -196,11 +196,8 @@ export class RFIDController {
 		method: HttpMethod.GET
 	})
 	@AuthGuard()
-	async fetchNextOutboundEpc(
-		@Query('_page', new DefaultValuePipe(1), ParseIntPipe) page: number,
-		@Query('mo_no.eq', new DefaultValuePipe('')) selectedOrder: string
-	) {
-		return await this.rfidService.getIncomingOutboundEpcs({ _page: page, _limit: 50, 'mo_no.eq': selectedOrder })
+	async fetchNextOutboundEpc(@Query('_page', new DefaultValuePipe(1), ParseIntPipe) page: number) {
+		return await this.rfidService.getIncomingOutboundEpcs({ _page: page, _limit: 50 })
 	}
 
 	@Api({

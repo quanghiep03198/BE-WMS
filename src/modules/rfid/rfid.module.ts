@@ -22,7 +22,8 @@ import {
 	EPC_OUTBOUND_COLLECTION,
 	EpcInbound,
 	EpcInboundSchema,
-	EpcOutbound
+	EpcOutbound,
+	EpcOutboundSchema
 } from './schemas/epc.schema'
 import { FPInventoryEntitySubscriber } from './subscribers/fp-inventory.entity.subscriber'
 import { RFIDCustomerEntitySubscriber } from './subscribers/rfid-customer.entity.subscriber'
@@ -48,9 +49,9 @@ import { RFIDCustomerEntitySubscriber } from './subscribers/rfid-customer.entity
 				name: EpcOutbound.name,
 				collection: EPC_OUTBOUND_COLLECTION,
 				useFactory: () => {
-					EpcInboundSchema.plugin(MongoosePaginatePlugin)
-					EpcInboundSchema.plugin(MongooseDeletePlugin, { overrideMethods: true, indexFields: ['deleted'] })
-					return EpcInboundSchema
+					EpcOutboundSchema.plugin(MongoosePaginatePlugin)
+					EpcOutboundSchema.plugin(MongooseDeletePlugin, { overrideMethods: true, indexFields: ['deleted'] })
+					return EpcOutboundSchema
 				}
 			}
 		])

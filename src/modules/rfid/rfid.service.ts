@@ -357,10 +357,8 @@ export class RFIDService {
 		const factoryCode = this.request.headers['x-user-company']
 		const filterQuery: FilterQuery<EpcDocument> = {
 			scannable: true,
-			station_no: { $regex: new RegExp(`CUS_${factoryCode}_WH103`) },
-			mo_no: args['mo_no.eq']
+			station_no: { $regex: new RegExp(`CUS_${factoryCode}_WH103`) }
 		}
-		if (!args['mo_no.eq']) delete filterQuery.mo_no
 
 		return await this.epcOutboundModel.paginate(filterQuery, {
 			sort: { record_time: -1, epc: 1, mo_no: 1 },
