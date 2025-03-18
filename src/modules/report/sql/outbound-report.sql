@@ -35,7 +35,7 @@ FROM datalist inv
 LEFT JOIN DV_DATA_LAKE.dbo.dv_rfidmatchmst_cust match 
 	ON inv.EPC_Code = match.EPC_Code
 LEFT JOIN wuerp_vnrd.dbo.ta_manufacturmst manf 
-	ON manf.mo_no = COALESCE(inv.mo_no_actual, inv.mo_no)
+	ON manf.mo_no = ISNULL(inv.mo_no, 'Unknown')
 LEFT JOIN wuerp_vnrd.dbo.ta_productmst prod 
 	ON match.mat_code = prod.mat_code
 LEFT JOIN accumulated_counts ac

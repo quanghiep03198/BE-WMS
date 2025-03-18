@@ -21,10 +21,6 @@ export class RFIDMatchCustomerEntity extends BaseAbstractEntity {
 	@Index()
 	mo_no: string
 
-	@Column({ name: 'mo_no_actual', type: 'nvarchar', length: 20, nullable: true })
-	@Index()
-	mo_no_actual: string
-
 	@Column({ type: 'nvarchar', length: 20, nullable: true })
 	mo_noseq: string
 

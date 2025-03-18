@@ -29,10 +29,6 @@ export class FPInventoryEntity extends BaseAbstractEntity {
 	mo_no: string
 
 	@Index()
-	@Column({ name: 'mo_no_actual', type: 'nvarchar', length: 20, nullable: true })
-	mo_no_actual: string
-
-	@Index()
 	@Column({ type: 'nvarchar', length: 20, enum: InventoryActions, default: null })
 	rfid_status: string
 

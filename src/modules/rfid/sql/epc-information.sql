@@ -1,5 +1,5 @@
 SELECT DISTINCT a.EPC_Code AS epc, 
-   COALESCE(b.mo_no_actual, b.mo_no, @0) AS mo_no,
+   ISNULL(b.mo_no, @0) AS mo_no,
    COALESCE(c.mat_ecolor, @0) AS mat_ecolor,
    COALESCE(b.shoestyle_codefactory, @0) AS shoes_style_code_factory,
    COALESCE(b.size_numcode, @0) AS size_numcode

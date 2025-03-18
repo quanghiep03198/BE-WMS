@@ -219,7 +219,6 @@ export class RFIDService {
 			)
 		}
 		try {
-			const update = pick(payload, 'mo_no_actual')
 			await Promise.all([session.startTransaction(), queryRunner.startTransaction('READ UNCOMMITTED')])
 			for (const epcBatch of chunk(
 				epcToExchange.map((item) => item.epc),
@@ -228,7 +227,7 @@ export class RFIDService {
 				const criteria: FindOptionsWhere<RFIDMatchCustomerEntity> = {
 					epc: In(epcBatch)
 				}
-				await queryRunner.manager.update(RFIDMatchCustomerEntity, criteria, update)
+				await queryRunner.manager.update(RFIDMatchCustomerEntity, criteria, { mo_no: payload.mo_no_actual })
 			}
 			await this.epcInboundModel.updateMany(
 				{ epc: { $in: epcToExchange.map((item) => item.epc) }, mo_no: { $ne: payload.mo_no_actual } },
