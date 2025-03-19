@@ -1,6 +1,7 @@
 {
 	"titles": {
 		"daily_inbound_report": "Daily Inbound Report {factory} - {date}",
-		"daily_outbound_report": "Daily Outbound Report {factory} - {date}"
+		"daily_outbound_report": "Daily Outbound Report {factory} - {date}",
+		"file_monthly_inventory_report": "Monthly Inventory Report {factory} - {month}"
 	}
 }
