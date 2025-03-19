@@ -1,6 +1,7 @@
 {
 	"titles": {
 		"daily_inbound_report": "{factory}每日入库报告 - {date}",
-		"daily_outbound_report": "{factory}每日出库报告 - {date}"
+		"daily_outbound_report": "{factory}每日出库报告 - {date}",
+		"file_monthly_inventory_report": "{factory}库存报表 - {month}"
 	}
 }

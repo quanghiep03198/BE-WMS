@@ -1,4 +1,4 @@
-import { Inject, Injectable, Logger } from '@nestjs/common'
+import { Inject, Injectable } from '@nestjs/common'
 import { REQUEST } from '@nestjs/core'
 import { format } from 'date-fns'
 import { Workbook } from 'exceljs'
@@ -62,7 +62,6 @@ export class ReportService {
 		const data = await this.dataSource.query<
 			Array<Omit<IMonthlyInventoryReport, 'size_data'> & { size_data: string }>
 		>(this.inventoryReportQuery, [month])
-
 		return data.map((item) => {
 			return {
 				...item,
@@ -293,8 +292,6 @@ export class ReportService {
 	}
 
 	async exportMonthlyInventoryToExcel(month: string) {
-		Logger.debug(month)
-
 		const currentLanguage = I18nContext.current()?.lang
 		const factoryCode = this.request.headers['x-user-company']
 		const workbook = new Workbook()
@@ -305,7 +302,7 @@ export class ReportService {
 		)
 		worksheet.columns = [
 			{
-				header: this.i18nService.t('erp.mo_no', { lang: currentLanguage }),
+				header: this.i18nService.t('erp.fields.mo_no', { lang: currentLanguage }),
 				key: 'mo_no'
 			},
 			{
@@ -329,18 +326,16 @@ export class ReportService {
 				key: 'total_outstock_qty'
 			},
 			{
-				header: this.i18nService.t('warehouse.fields.actual_inventory_qty', { lang: currentLanguage }),
-				key: 'actual_inv_qty'
-			},
-			{
 				header: this.i18nService.t('erp.fields.final_inventory_qty', { lang: currentLanguage }),
 				key: 'final_inv_qty'
+			},
+			{
+				header: this.i18nService.t('erp.fields.actual_inventory_qty', { lang: currentLanguage }),
+				key: 'actual_inv_qty'
 			}
 		].map((item) => ({ ...item, alignment: { vertical: 'middle', horizontal: 'center' } }))
 
-		const data = await this.getMonthlyInventoryReport(month)
-
-		Logger.debug(data)
+		const data = await this.getMonthlyInventoryReport(format(new Date(month), 'yyyyMM'))
 
 		for (const record of data) {
 			const row = worksheet.addRow(record)
@@ -353,16 +348,18 @@ export class ReportService {
 			for (const subRecord of record.size_data) {
 				const row = worksheet.addRow([])
 				row.alignment = { vertical: 'middle', horizontal: 'center' }
+				worksheet.mergeCells(`B${row.number}:C${row.number}`)
 				row.getCell(2).value = subRecord.size_numcode + '#'
+				row.getCell(2).alignment = { vertical: 'middle', horizontal: 'center' }
 				row.getCell(2).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'fff2cc' } }
-				row.getCell(3).value = subRecord.init_inv_qty
-				row.getCell(3).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'f2dcdb' } }
-				row.getCell(4).value = subRecord.instock_qty
+				row.getCell(4).value = subRecord.init_inv_qty
 				row.getCell(4).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'f2dcdb' } }
-				row.getCell(5).value = subRecord.outstock_qty
+				row.getCell(5).value = subRecord.instock_qty
 				row.getCell(5).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'f2dcdb' } }
-				row.getCell(6).value = subRecord.final_inv_qty
+				row.getCell(6).value = subRecord.outstock_qty
 				row.getCell(6).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'f2dcdb' } }
+				row.getCell(7).value = subRecord.final_inv_qty
+				row.getCell(7).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'f2dcdb' } }
 			}
 		}
 		worksheet.columns.forEach((sheetColumn) => {
@@ -375,15 +372,15 @@ export class ReportService {
 		// * Add title
 		worksheet.insertRow(1, null)
 		worksheet.getRow(1).height = 28
-		worksheet.mergeCells('A1:J1')
-		worksheet.getCell('A1').value = this.i18nService.t('inoutbound.titles.daily_inbound_report', {
+		worksheet.mergeCells('A1:H1')
+		worksheet.getCell('A1').value = this.i18nService.t('inoutbound.titles.file_monthly_inventory_report', {
 			args: {
 				factory: this.i18nService.t(`factory.${factoryCode}`, { lang: currentLanguage }),
-				date: format(new Date(month), 'yyyy-MM')
+				month: format(new Date(month), 'yyyy-MM')
 			},
 			lang: currentLanguage
 		})
-
+		worksheet.views = [{ state: 'frozen', xSplit: 0, ySplit: 2 }]
 		worksheet.getCell('A1').alignment = { vertical: 'middle', horizontal: 'center' }
 		worksheet.getCell('A1').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'e5e5e5' } }
 		worksheet.getCell('A1').font = { bold: true, size: 16 }

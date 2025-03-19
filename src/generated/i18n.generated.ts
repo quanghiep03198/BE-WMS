@@ -112,6 +112,7 @@ export type I18nTranslations = {
         "titles": {
             "daily_inbound_report": string;
             "daily_outbound_report": string;
+            "file_monthly_inventory_report": string;
         };
     };
     "rfid": {
