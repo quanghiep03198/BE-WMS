@@ -27,6 +27,14 @@ export class ReportController {
 		return await this.reportService.getOutboundReportByDate(dateQuery)
 	}
 
+	@Api({ endpoint: 'monthly-inventory-report', method: HttpMethod.GET })
+	@AuthGuard()
+	async getMonthlyInventoryReport(
+		@Query('month.eq', new DefaultValuePipe(format(new Date(), 'yyyy-MM'))) month: string
+	) {
+		return await this.reportService.getMonthlyInventoryReport(format(new Date(month), 'yyyyMM'))
+	}
+
 	@Get('export-daily-inbound')
 	@UseFilters(AllExceptionsFilter)
 	@AuthGuard()
@@ -42,6 +50,17 @@ export class ReportController {
 	@AuthGuard()
 	async exportDailyOutboundToExcel(@Query('date.eq') date: string, @Res() res: Response) {
 		const buffer = await this.reportService.exportDailyOutboundToExcel(date)
+		return res.send(buffer)
+	}
+
+	@Get('export-monthly-inventory-report')
+	@UseFilters(AllExceptionsFilter)
+	@AuthGuard()
+	async exportMonthlyInventoryReport(
+		@Query('month.eq', new DefaultValuePipe(format(new Date(), 'yyyy-MM'))) month: string,
+		@Res() res: Response
+	) {
+		const buffer = await this.reportService.exportMonthlyInventoryToExcel(month)
 		return res.send(buffer)
 	}
 }
