@@ -1,6 +1,7 @@
 {
 	"fields": {
 		"accumulated_qty": "Accumulated quantity",
+		"actual_inventory_qty": "Actual inventory quantity",
 		"brand_name": "Customer branch name",
 		"container_order_code": "Container Order Code",
 		"conversion_rate": "Conversion rate",
@@ -11,9 +12,11 @@
 		"dept_name": "Department",
 		"employee_name": "Employee's name",
 		"export_num": "Qty. of goods shipped",
+		"final_inventory_qty": "Final inventory",
 		"inbound_date": "Inbound date",
 		"inbound_qty": "Inbound quantity",
 		"inspected_qty": "Inspected quantity",
+		"inventory_qty_by_order": "Actual instock quantity",
 		"kg_noend": "Ending Box Number",
 		"kg_nostart": "Starting Box Number",
 		"mat_code": "Finished production code",
@@ -21,6 +24,7 @@
 		"missing_qty": "Missing quantity",
 		"mo_no": "Manufacturing order",
 		"mo_no_actual": "Actual manufacturing order",
+		"mo_noseq": "Manufacturing sub-order",
 		"no_crates_in_stock": "No. crates in stock",
 		"no_pair_in_stock": "No. pairs in stock",
 		"or_custpo": "Customer order code",
@@ -32,6 +36,7 @@
 		"outbound_qty": "Outbound quantity",
 		"order_qty": "Order quantity",
 		"packaging_code": "Packaging number",
+		"po": "Purchase order",
 		"prod_color": "Product color",
 		"required_date": "Required date",
 		"returned_qty": "Returned quantity",
@@ -54,6 +59,7 @@
 		"sno_total_boxes": "Total boxes",
 		"sno_type": "Type",
 		"status_approve": "Approval status",
+		"total_init_qty": "Initial stock quantity",
 		"trans_num": "Number of Boxes Issued",
 		"transfer_order_code": "Transfer order code",
 		"uninspected_qty": "Uninspected quantity"
@@ -63,5 +69,9 @@
 		"finished_goods_receipt": "Finished Product Warehouse Import Order",
 		"inbound_shipment_receipt": "Warehouse Import Transfer Order",
 		"outbound_shipment_receipt": "Warehouse Export Transfer Order"
+	},
+	"rfid_match_craft_form": {
+		"title": "Update EPC information",
+		"description": "Craft EPC's information that does not exist in the system."
 	}
 }

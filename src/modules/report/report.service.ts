@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common'
+import { Inject, Injectable, Logger } from '@nestjs/common'
 import { REQUEST } from '@nestjs/core'
 import { format } from 'date-fns'
 import { Workbook } from 'exceljs'
@@ -7,7 +7,7 @@ import { I18nContext, I18nService } from 'nestjs-i18n'
 import { join } from 'path'
 import { DataSource } from 'typeorm'
 import { TENANCY_DATASOURCE } from '../tenancy/constants'
-import { IInboundReport, IOutboundReport, IReport } from './interfaces'
+import { IInboundReport, IMonthlyInventoryReport, IOutboundReport, IReport } from './interfaces'
 
 @Injectable()
 export class ReportService {
@@ -22,6 +22,7 @@ export class ReportService {
 		join(__dirname, './sql/outbound-size-qty-report.sql'),
 		'utf-8'
 	)
+	private readonly inventoryReportQuery: string = readFileSync(join(__dirname, './sql/inventory-report.sql'), 'utf-8')
 
 	constructor(
 		@Inject(TENANCY_DATASOURCE) private readonly dataSource: DataSource,
@@ -55,6 +56,19 @@ export class ReportService {
 				}
 			})
 		)
+	}
+
+	public async getMonthlyInventoryReport(month): Promise<IMonthlyInventoryReport[]> {
+		const data = await this.dataSource.query<
+			Array<Omit<IMonthlyInventoryReport, 'size_data'> & { size_data: string }>
+		>(this.inventoryReportQuery, [month])
+
+		return data.map((item) => {
+			return {
+				...item,
+				size_data: JSON.parse(item.size_data)
+			}
+		})
 	}
 
 	private async getInboundReportDetailByDate(commandNumber: string, factoryCode: string, date: string) {
@@ -262,6 +276,115 @@ export class ReportService {
 			lang: currentLanguage
 		})
 		worksheet.getRow(1).alignment = { vertical: 'middle', horizontal: 'center' }
+		worksheet.getCell('A1').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'e5e5e5' } }
+		worksheet.getCell('A1').font = { bold: true, size: 16 }
+		worksheet.eachRow({ includeEmpty: false }, (row) => {
+			row.alignment = { vertical: 'middle', horizontal: 'center' }
+			row.eachCell({ includeEmpty: true }, (cell) => {
+				cell.border = {
+					top: { style: 'thin', color: { argb: 'a1a1a1' } },
+					left: { style: 'thin', color: { argb: 'a1a1a1' } },
+					bottom: { style: 'thin', color: { argb: 'a1a1a1' } },
+					right: { style: 'thin', color: { argb: 'a1a1a1' } }
+				}
+			})
+		})
+		return await workbook.xlsx.writeBuffer()
+	}
+
+	async exportMonthlyInventoryToExcel(month: string) {
+		Logger.debug(month)
+
+		const currentLanguage = I18nContext.current()?.lang
+		const factoryCode = this.request.headers['x-user-company']
+		const workbook = new Workbook()
+		const worksheet = workbook.addWorksheet(
+			this.i18nService.t(`factory.${factoryCode}`, { lang: currentLanguage }) +
+				' - ' +
+				format(new Date(month), 'yyyy-MM')
+		)
+		worksheet.columns = [
+			{
+				header: this.i18nService.t('erp.mo_no', { lang: currentLanguage }),
+				key: 'mo_no'
+			},
+			{
+				header: this.i18nService.t('erp.fields.shoestyle_codefactory', { lang: currentLanguage }),
+				key: 'shoes_style_code_factory'
+			},
+			{
+				header: this.i18nService.t('erp.fields.order_qty', { lang: currentLanguage }),
+				key: 'order_qty'
+			},
+			{
+				header: this.i18nService.t('erp.fields.total_init_qty', { lang: currentLanguage }),
+				key: 'init_inv_qty'
+			},
+			{
+				header: this.i18nService.t('erp.fields.inbound_qty', { lang: currentLanguage }),
+				key: 'total_instock_qty'
+			},
+			{
+				header: this.i18nService.t('erp.fields.outbound_qty', { lang: currentLanguage }),
+				key: 'total_outstock_qty'
+			},
+			{
+				header: this.i18nService.t('warehouse.fields.actual_inventory_qty', { lang: currentLanguage }),
+				key: 'actual_inv_qty'
+			},
+			{
+				header: this.i18nService.t('erp.fields.final_inventory_qty', { lang: currentLanguage }),
+				key: 'final_inv_qty'
+			}
+		].map((item) => ({ ...item, alignment: { vertical: 'middle', horizontal: 'center' } }))
+
+		const data = await this.getMonthlyInventoryReport(month)
+
+		Logger.debug(data)
+
+		for (const record of data) {
+			const row = worksheet.addRow(record)
+			row.height = 20
+			row.alignment = { vertical: 'middle', horizontal: 'center' }
+			for (let i = 1; i <= worksheet.columns.length; i++) {
+				row.getCell(i).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'deecf7' } }
+			}
+			// const subrows = await this.getMonthlyInventoryReport(record.mo_no, record.factory_code, month)
+			for (const subRecord of record.size_data) {
+				const row = worksheet.addRow([])
+				row.alignment = { vertical: 'middle', horizontal: 'center' }
+				row.getCell(2).value = subRecord.size_numcode + '#'
+				row.getCell(2).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'fff2cc' } }
+				row.getCell(3).value = subRecord.init_inv_qty
+				row.getCell(3).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'f2dcdb' } }
+				row.getCell(4).value = subRecord.instock_qty
+				row.getCell(4).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'f2dcdb' } }
+				row.getCell(5).value = subRecord.outstock_qty
+				row.getCell(5).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'f2dcdb' } }
+				row.getCell(6).value = subRecord.final_inv_qty
+				row.getCell(6).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'f2dcdb' } }
+			}
+		}
+		worksheet.columns.forEach((sheetColumn) => {
+			sheetColumn.font = { size: 12 }
+			sheetColumn.width = 30
+		})
+		worksheet.getRow(1).font = { bold: true, size: 13 }
+		worksheet.getRow(1).height = 20
+
+		// * Add title
+		worksheet.insertRow(1, null)
+		worksheet.getRow(1).height = 28
+		worksheet.mergeCells('A1:J1')
+		worksheet.getCell('A1').value = this.i18nService.t('inoutbound.titles.daily_inbound_report', {
+			args: {
+				factory: this.i18nService.t(`factory.${factoryCode}`, { lang: currentLanguage }),
+				date: format(new Date(month), 'yyyy-MM')
+			},
+			lang: currentLanguage
+		})
+
+		worksheet.getCell('A1').alignment = { vertical: 'middle', horizontal: 'center' }
 		worksheet.getCell('A1').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'e5e5e5' } }
 		worksheet.getCell('A1').font = { bold: true, size: 16 }
 		worksheet.eachRow({ includeEmpty: false }, (row) => {

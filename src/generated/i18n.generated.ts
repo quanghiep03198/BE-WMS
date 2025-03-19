@@ -26,6 +26,7 @@ export type I18nTranslations = {
         "fields": {
             "accumulated_qty": string;
             "active_date": string;
+            "actual_inventory_qty": string;
             "brand_name": string;
             "container_order_code": string;
             "conversion_rate": string;
@@ -36,9 +37,11 @@ export type I18nTranslations = {
             "dept_name": string;
             "employee_name": string;
             "export_num": string;
+            "final_inventory_qty": string;
             "inbound_date": string;
             "inbound_qty": string;
             "inspected_qty": string;
+            "inventory_qty_by_order": string;
             "kg_noend": string;
             "kg_nostart": string;
             "mat_code": string;
@@ -46,6 +49,7 @@ export type I18nTranslations = {
             "missing_qty": string;
             "mo_no": string;
             "mo_no_actual": string;
+            "mo_noseq": string;
             "no_crates_in_stock": string;
             "no_pair_in_stock": string;
             "or_custpo": string;
@@ -57,6 +61,7 @@ export type I18nTranslations = {
             "outbound_date": string;
             "outbound_qty": string;
             "packaging_code": string;
+            "po": string;
             "prod_color": string;
             "required_date": string;
             "returned_qty": string;
@@ -80,6 +85,7 @@ export type I18nTranslations = {
             "sno_total_boxes": string;
             "sno_type": string;
             "status_approve": string;
+            "total_init_qty": string;
             "trans_num": string;
             "transfer_order_code": string;
             "uninspected_qty": string;
@@ -90,6 +96,10 @@ export type I18nTranslations = {
             "finished_goods_receipt": string;
             "inbound_shipment_receipt": string;
             "outbound_shipment_receipt": string;
+        };
+        "rfid_match_craft_form": {
+            "title": string;
+            "description": string;
         };
     };
     "factory": {

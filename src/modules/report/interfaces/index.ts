@@ -23,3 +23,24 @@ export interface IInboundReport extends IReport {
 export interface IOutboundReport extends IReport {
 	daily_outbound_qty: number
 }
+
+export interface IMonthlyInventoryReport {
+	brand_name: string
+	po: string
+	mo_no: string
+	order_qty: number
+	or_no: string
+	shoes_style_code_factory: string | null
+	init_inv_qty: number
+	total_instock_qty: number
+	total_outstock_qty: number
+	actual_inv_qty: number
+	final_inv_qty: number
+	size_data: Array<{
+		size_numcode: string
+		init_inv_qty: number
+		instock_qty: number
+		outstock_qty: number
+		final_inv_qty: number
+	}>
+}
