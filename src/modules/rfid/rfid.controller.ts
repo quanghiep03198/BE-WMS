@@ -15,9 +15,8 @@ import {
 	Res,
 	UseFilters
 } from '@nestjs/common'
-import { Response } from 'express'
-
 import { InjectModel } from '@nestjs/mongoose'
+import { Response } from 'express'
 import {
 	deleteEpcValidator,
 	DeleteScannedEpcDTO,
@@ -57,23 +56,20 @@ export class RFIDController {
 	async streamInboundRFIDData(@Res() res: Response) {
 		res.setHeader('Content-Type', 'text/event-stream')
 		res.setHeader('Cache-Control', 'no-cache')
-
-		const postMessage = (data) => {
-			res.write(`data: ${JSON.stringify(data)}\n\n`)
-			res.flush()
-		}
-
-		const data = await this.rfidService.fetchLatestInboundData({ _page: 1, _limit: 50 })
-		postMessage(data)
-
-		const listener = await this.rfidService.captureDataChange(this.epcInboundModel, async () => {
+		const handleChange = async () => {
 			const data = await this.rfidService.fetchLatestInboundData({ _page: 1, _limit: 50 })
-			if (data) postMessage(data)
-		})
-
-		res.on('close', () => {
+			if (data) {
+				res.write(`data: ${JSON.stringify(data)}\n\n`)
+				res.flush()
+			}
+		}
+		await handleChange()
+		const changeStream = await this.rfidService.captureDataChange(this.epcInboundModel, handleChange)
+		res.on('close', async () => {
 			this.logger.log('Stop receiving data from Android RFID device')
-			listener.removeListener('change', () => this.rfidService.cleanupQueue())
+			await this.rfidService.cleanupQueue()
+			changeStream.removeListener('change', handleChange)
+			changeStream.close()
 			res.end()
 		})
 	}
@@ -171,22 +167,19 @@ export class RFIDController {
 	async streamOutboundRFIDData(@Res() res: Response) {
 		res.setHeader('Content-Type', 'text/event-stream')
 		res.setHeader('Cache-Control', 'no-cache')
-
-		const postMessage = (data) => {
-			res.write(`data: ${JSON.stringify(data)}\n\n`)
-			res.flush()
-		}
-
-		const data = await this.rfidService.fetchLatestOutboundData({ _page: 1, _limit: 50 })
-		postMessage(data)
-
-		this.rfidService.captureDataChange(this.epcOutboundModel, async () => {
+		const handleChange = async () => {
 			const data = await this.rfidService.fetchLatestOutboundData({ _page: 1, _limit: 50 })
-			if (data) postMessage(data)
-		})
-
+			if (data) {
+				res.write(`data: ${JSON.stringify(data)}\n\n`)
+				res.flush()
+			}
+		}
+		await handleChange()
+		const changeStream = this.rfidService.captureDataChange(this.epcOutboundModel, handleChange)
 		res.on('close', () => {
 			this.logger.log('Stop receiving data from Android RFID device')
+			changeStream.removeListener('change', postMessage)
+			changeStream.close()
 			res.end()
 		})
 	}

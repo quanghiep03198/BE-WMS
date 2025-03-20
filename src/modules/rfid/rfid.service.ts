@@ -123,8 +123,14 @@ export class RFIDService {
 		})
 	}
 
-	public captureDataChange(model: EpcModel, onSnapshot: (change?: any) => unknown): any {
-		const listener = model.watch(
+	/**
+	 *
+	 * @param model
+	 * @param onSnapshot
+	 * @returns {mongodb.ChangeStream<ResultType, ChangeType>}
+	 */
+	public captureDataChange(model: EpcModel, onSnapshot: (change?: any) => unknown): ReturnType<typeof model.watch> {
+		const changeStream = model.watch(
 			[
 				{
 					$match: {
@@ -140,9 +146,9 @@ export class RFIDService {
 			}
 		)
 
-		listener.on('change', onSnapshot)
+		changeStream.on('change', onSnapshot)
 
-		return listener
+		return changeStream
 	}
 
 	public async upsertFPStock(orderCode: string, data: UpsertStockDTO) {
