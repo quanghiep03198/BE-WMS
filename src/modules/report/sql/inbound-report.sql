@@ -1,5 +1,5 @@
-WITH datalist AS (
-	SELECT EPC_Code, ISNULL(mo_no, 'Unknown') AS mo_no, ISNULL(size_code, 'Unknown') AS size_numcode, rfid_status, record_time, stationNO, FC_server_code, ISNULL(dept_name, 'Unknown') AS dept_name, storage
+WITH data_src AS (
+	SELECT DISTINCT EPC_Code, COALESCE(mo_no, 'Unknown') AS mo_no, COALESCE(size_code, 'Unknown') AS size_numcode, rfid_status, record_time, stationNO, FC_server_code AS factory_code, ISNULL(dept_name, 'Unknown') AS dept_name, storage
 	FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet
 	WHERE 
 		rfid_status = 'A'
@@ -7,8 +7,9 @@ WITH datalist AS (
 		AND EPC_Code NOT LIKE 'E28%'
 		AND mo_no <> '13D05B006'
 		AND stationNO LIKE 'CUS%WH10[12]'
+		AND record_time >= CAST(DATEADD(YEAR, -2, GETDATE()) AS DATE)
 	UNION ALL
-	SELECT EPC_Code, ISNULL(mo_no, 'Unknown') AS mo_no, ISNULL(size_code, 'Unknown') AS size_numcode, rfid_status, record_time, stationNO, FC_server_code, ISNULL(dept_name, 'Unknown') AS dept_name, storage
+	SELECT DISTINCT EPC_Code, COALESCE(mo_no, 'Unknown') AS mo_no, COALESCE(size_code, 'Unknown') AS size_numcode, rfid_status, record_time, stationNO, FC_server_code AS factory_code, ISNULL(dept_name, 'Unknown') AS dept_name, storage
 	FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet_backup_Daily
 	WHERE 
 		rfid_status = 'A'
@@ -16,65 +17,66 @@ WITH datalist AS (
 		AND EPC_Code NOT LIKE 'E28%'
 		AND mo_no <> '13D05B006'
 		AND stationNO LIKE 'CUS%WH10[12]'
+		AND record_time >= CAST(DATEADD(YEAR, -2, GETDATE()) AS DATE)
 ),
-dept_grouping AS (
-	SELECT mo_no, STRING_AGG(dept_name, ', ') AS dept_name
-	FROM (
-		SELECT DISTINCT mo_no, dept_name
-		FROM datalist
-	) AS unique_dept
-	GROUP BY mo_no
+cmd_det AS (
+	SELECT DISTINCT mo_no, storage, dept_name, factory_code  FROM data_src
+	WHERE storage IS NOT NULL AND dept_name IS NOT NULL
 ),
-accumulated_counts AS
+dept_ls AS (
+	SELECT mo_no, factory_code, STRING_AGG(dept_name, ', ') WITHIN GROUP (ORDER BY dept_name) AS dept_name
+	FROM (SELECT DISTINCT dept_name, mo_no, factory_code FROM cmd_det) a
+	GROUP BY factory_code, mo_no
+),
+storage_ls AS (
+	SELECT mo_no, factory_code, STRING_AGG(b.storage_name, ', ') WITHIN GROUP (ORDER BY storage) AS storage_name
+	FROM (SELECT DISTINCT storage, mo_no, factory_code FROM cmd_det) a
+	LEFT JOIN DV_DATA_LAKE.dbo.dv_warehouseccodedet b 
+		ON a.storage = b.storage_num
+	GROUP BY factory_code, mo_no
+),
+acc_counts AS
 (
 	SELECT mo_no, COUNT(DISTINCT EPC_Code) AS accumulated_qty
-	FROM datalist
-	GROUP BY mo_no
-),
-storage_grouping AS (
-	SELECT mo_no, STRING_AGG(storage_name, ', ') AS storage_name
-	FROM DV_DATA_LAKE.dbo.dv_warehouseccodedet wh
-	LEFT JOIN (
-		SELECT DISTINCT mo_no, storage FROM datalist inv
-		WHERE inv.storage IS NOT NULL
-	) AS unique_storage
-		ON unique_storage.storage = storage_num
+	FROM data_src
 	GROUP BY mo_no
 )
 SELECT
-	inv.mo_no,
-	ISNULL(match.shoestyle_codefactory,'Unknown') AS shoes_style_code_factory,
-	ISNULL(prod.mat_ecolor, 'Unknown') AS mat_ecolor,
+	ds.factory_code,
+	ds.mo_no,
+	COALESCE(rmc.shoestyle_codefactory,'Unknown') AS shoes_style_code_factory,
+	COALESCE(prod.mat_ecolor, 'Unknown') AS mat_ecolor,
 	dg.dept_name AS shaping_dept_name,
-	inv.FC_server_code AS factory_code,
-	ISNULL(sg.storage_name, 'Unknown') AS storage,
-	CAST(ISNULL(manf.mo_sumqty, 0) AS INT) AS order_qty,
+	sg.storage_name AS storage,
+	COALESCE(manf.mo_sumqty, 0) AS order_qty,
 	ac.accumulated_qty,
-	COUNT(DISTINCT inv.EPC_Code) AS daily_inbound_qty,
-	(manf.mo_sumqty - COALESCE(ac.accumulated_qty, 0)) AS missing_qty,
+	COUNT(DISTINCT ds.EPC_Code) AS daily_inbound_qty,
+	manf.mo_sumqty - ac.accumulated_qty AS missing_qty,
 	sz.size_data
-FROM datalist inv
-LEFT JOIN DV_DATA_LAKE.dbo.dv_rfidmatchmst_cust match
-	ON inv.EPC_Code = match.EPC_Code
-LEFT JOIN storage_grouping sg
-	ON sg.mo_no = inv.mo_no
+FROM data_src ds
+LEFT JOIN DV_DATA_LAKE.dbo.dv_rfidmatchmst_cust rmc
+	ON ds.EPC_Code = rmc.EPC_Code
 LEFT JOIN wuerp_vnrd.dbo.ta_manufacturmst manf
-	ON manf.mo_no = inv.mo_no
+	ON manf.mo_no = ds.mo_no
 LEFT JOIN wuerp_vnrd.dbo.ta_productmst prod
-	ON match.mat_code = prod.mat_code
-LEFT JOIN accumulated_counts ac
-	ON ac.mo_no = inv.mo_no
-LEFT JOIN dept_grouping dg
-	ON dg.mo_no = inv.mo_no
+	ON rmc.mat_code = prod.mat_code
+LEFT JOIN storage_ls sg
+	ON sg.mo_no = ds.mo_no AND sg.factory_code = ds.factory_code
+LEFT JOIN dept_ls dg
+	ON dg.mo_no = ds.mo_no AND dg.factory_code = ds.factory_code
+LEFT JOIN acc_counts ac
+	ON ac.mo_no = ds.mo_no
 OUTER APPLY (
 	SELECT (
-		SELECT size_numcode, COUNT(DISTINCT EPC_Code) AS qty
-		FROM datalist d 
-		WHERE d.mo_no = inv.mo_no AND CAST(d.record_time AS DATE) = @0
+		SELECT size_numcode, COUNT(EPC_Code) AS qty
+		FROM data_src d 
+		WHERE d.mo_no = ds.mo_no AND CAST(d.record_time AS DATE) = @0
 		GROUP BY size_numcode
-		FOR JSON PATH) AS size_data
+		FOR JSON PATH
+	) AS size_data
 ) sz
-WHERE CAST(inv.record_time AS DATE) = @0
+WHERE CAST(ds.record_time AS DATE) = @0
 GROUP BY 
-	inv.mo_no, prod.mat_ecolor, manf.mo_sumqty, ac.accumulated_qty,
-	match.shoestyle_codefactory, dg.dept_name, sg.storage_name, inv.FC_server_code, sz.size_data
+	ds.factory_code, ds.mo_no, rmc.shoestyle_codefactory, 
+	prod.mat_ecolor, manf.mo_sumqty, ac.accumulated_qty,
+	sg.storage_name, dg.dept_name, sz.size_data
