@@ -3,7 +3,7 @@ export interface IReportSearchParams {
 	['date.eq']?: string
 }
 
-export interface IReport {
+export interface IReportQueryResult {
 	mo_no: string
 	mat_code: string
 	mat_ecolor: string
@@ -11,20 +11,31 @@ export interface IReport {
 	shaping_dept_name: string
 	order_qty: number
 	factory_code: string
-	size_run: Array<{ size_numcode: string; qty: number }>
+	size_data: string
 }
 
-export interface IInboundReport extends IReport {
+export interface IInboundReportQueryResult extends IReportQueryResult {
 	daily_inbound_qty: number
 	storage: string
-	is_exchanged?: number
 }
 
-export interface IOutboundReport extends IReport {
+export interface IOutboundReportQueryResult extends IReportQueryResult {
 	daily_outbound_qty: number
 }
 
-export interface IMonthlyInventoryReport {
+export type IInboundReportResponse = Array<
+	Omit<IInboundReportQueryResult, 'size_run'> & {
+		size_data: Array<{ size_numcode: string; qty: number }>
+	}
+>
+
+export type IOutboundReportResponse = Array<
+	Omit<IOutboundReportQueryResult, 'size_run'> & {
+		size_data: Array<{ size_numcode: string; qty: number }>
+	}
+>
+
+export interface IInventoryReportQueryResult {
 	brand_name: string
 	po: string
 	mo_no: string
@@ -36,11 +47,17 @@ export interface IMonthlyInventoryReport {
 	total_outstock_qty: number
 	actual_inv_qty: number
 	final_inv_qty: number
-	size_data: Array<{
-		size_numcode: string
-		init_inv_qty: number
-		instock_qty: number
-		outstock_qty: number
-		final_inv_qty: number
-	}>
+	size_data: string
 }
+
+export type IInventoryReportResponse = Array<
+	Omit<IInventoryReportQueryResult, 'size_data'> & {
+		size_data: Array<{
+			size_numcode: string
+			init_inv_qty: number
+			instock_qty: number
+			outstock_qty: number
+			final_inv_qty: number
+		}>
+	}
+>

@@ -7,21 +7,19 @@ import { I18nContext, I18nService } from 'nestjs-i18n'
 import { join } from 'path'
 import { DataSource } from 'typeorm'
 import { TENANCY_DATASOURCE } from '../tenancy/constants'
-import { IInboundReport, IMonthlyInventoryReport, IOutboundReport, IReport } from './interfaces'
+import {
+	IInboundReportQueryResult,
+	IInboundReportResponse,
+	IInventoryReportQueryResult,
+	IInventoryReportResponse,
+	IOutboundReportQueryResult,
+	IOutboundReportResponse
+} from './interfaces'
 
 @Injectable()
 export class ReportService {
 	private readonly inboundReportQuery: string = readFileSync(join(__dirname, './sql/inbound-report.sql'), 'utf-8')
-	private readonly inboundSizeQtyQuery: string = readFileSync(
-		join(__dirname, './sql/inbound-size-qty-report.sql'),
-		'utf-8'
-	)
-
 	private readonly outboundReportQuery: string = readFileSync(join(__dirname, './sql/outbound-report.sql'), 'utf-8')
-	private readonly outboundSizeQtyQuery: string = readFileSync(
-		join(__dirname, './sql/outbound-size-qty-report.sql'),
-		'utf-8'
-	)
 	private readonly inventoryReportQuery: string = readFileSync(join(__dirname, './sql/inventory-report.sql'), 'utf-8')
 
 	constructor(
@@ -30,38 +28,18 @@ export class ReportService {
 		private readonly i18nService: I18nService
 	) {}
 
-	public async getInboundReportByDate(date: string) {
-		const data = await this.dataSource.query<Partial<IInboundReport>[]>(this.inboundReportQuery, [date])
-		return await Promise.all(
-			data.map(async (item) => {
-				const sizeQtyDetails = await this.getInboundReportDetailByDate(item.mo_no, item.factory_code, date)
-				return {
-					...item,
-					size_run: sizeQtyDetails
-				}
-			})
-		)
+	public async getInboundReportByDate(date: string): Promise<IInboundReportResponse> {
+		const data = await this.dataSource.query<IInboundReportQueryResult[]>(this.inboundReportQuery, [date])
+		return data.map((item) => ({
+			...item,
+			size_data: JSON.parse(item.size_data)
+		}))
 	}
 
-	public async getOutboundReportByDate(date: string) {
+	public async getOutboundReportByDate(date: string): Promise<IOutboundReportResponse> {
 		const queryRunner = this.dataSource.createQueryRunner()
 		await queryRunner.connect()
-		const data = await queryRunner.manager.query<Partial<IOutboundReport>[]>(this.outboundReportQuery, [date])
-		return await Promise.all(
-			data.map(async (item) => {
-				const sizeQtyDetails = await this.getOutboundReportDetailByDate(item.mo_no, item.factory_code, date)
-				return {
-					...item,
-					size_run: sizeQtyDetails
-				}
-			})
-		)
-	}
-
-	public async getMonthlyInventoryReport(month): Promise<IMonthlyInventoryReport[]> {
-		const data = await this.dataSource.query<
-			Array<Omit<IMonthlyInventoryReport, 'size_data'> & { size_data: string }>
-		>(this.inventoryReportQuery, [month])
+		const data = await queryRunner.manager.query<IOutboundReportQueryResult[]>(this.outboundReportQuery, [date])
 		return data.map((item) => {
 			return {
 				...item,
@@ -70,20 +48,14 @@ export class ReportService {
 		})
 	}
 
-	private async getInboundReportDetailByDate(commandNumber: string, factoryCode: string, date: string) {
-		return await this.dataSource.query<IReport['size_run']>(this.inboundSizeQtyQuery, [
-			commandNumber,
-			factoryCode,
-			date
-		])
-	}
-
-	private async getOutboundReportDetailByDate(commandNumber: string, factoryCode: string, date: string) {
-		return await this.dataSource.query<IReport['size_run']>(this.outboundSizeQtyQuery, [
-			commandNumber,
-			factoryCode,
-			date
-		])
+	public async getMonthlyInventoryReport(month): Promise<IInventoryReportResponse> {
+		const data = await this.dataSource.query<IInventoryReportQueryResult[]>(this.inventoryReportQuery, [month])
+		return data.map((item) => {
+			return {
+				...item,
+				size_data: JSON.parse(item.size_data)
+			}
+		})
 	}
 
 	async exportDailyInboundToExcel(date: string) {
@@ -149,8 +121,7 @@ export class ReportService {
 			for (let i = 1; i <= worksheet.columns.length; i++) {
 				row.getCell(i).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'deecf7' } }
 			}
-			const subrows = await this.getInboundReportDetailByDate(record.mo_no, record.factory_code, date)
-			for (const subRecord of subrows) {
+			for (const subRecord of record.size_data) {
 				const row = worksheet.addRow([])
 				row.alignment = { vertical: 'middle', horizontal: 'center' }
 				row.getCell(2).value = subRecord.size_numcode + '#'
@@ -246,12 +217,12 @@ export class ReportService {
 			for (let i = 1; i <= worksheet.columns.length; i++) {
 				row.getCell(i).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'deecf7' } }
 			}
-			const subRecords = await this.getOutboundReportDetailByDate(record.mo_no, record.factory_code, date)
-			for (const _record of subRecords) {
+			// const subRecords = await this.getOutboundReportDetailByDate(record.mo_no, record.factory_code, date)
+			for (const subRecord of record.size_data) {
 				const subRow = worksheet.addRow([])
-				subRow.getCell(2).value = _record.size_numcode + '#'
+				subRow.getCell(2).value = subRecord.size_numcode + '#'
 				subRow.getCell(2).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'fff2cc' } }
-				subRow.getCell(3).value = _record.qty
+				subRow.getCell(3).value = subRecord.qty
 				subRow.getCell(3).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'f2dcdb' } }
 			}
 		}

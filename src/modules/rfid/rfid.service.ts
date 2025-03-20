@@ -156,14 +156,14 @@ export class RFIDService {
 				payload.map((value) => ({
 					...value,
 					...data,
-					record_time: format(value.record_time, 'yyyy-MM-dd HH:mm:ss')
+					record_time: format(new Date(), 'yyyy-MM-dd HH:mm:ss')
 				})),
 				100
 			)) {
 				const values = item
 					.map((value) => {
 						return `(
-							'${value.epc}', '${value.mo_no}', '${value.rfid_status}', '${value.rfid_use}', '${value.record_time}', '${value.station_no}',
+							'${value.epc}', '${value.mo_no}', '${value.size_numcode}', '${value.rfid_status}', '${value.rfid_use}', '${value.record_time}', '${value.station_no}',
 							'${value.quantity}', '${value.storage}', '${value.factory_code}', '${value.dept_code}', '${value.dept_name}'
 						)`
 					})
