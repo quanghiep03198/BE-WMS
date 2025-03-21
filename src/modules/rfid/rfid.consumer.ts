@@ -1,17 +1,15 @@
 import { FileLogger } from '@/common/helpers/file-logger.helper'
+import { DATA_SOURCE_DATA_LAKE } from '@/databases/constants'
 import { OnWorkerEvent, Processor, WorkerHost } from '@nestjs/bullmq'
-import { ConfigService } from '@nestjs/config'
 import { InjectModel } from '@nestjs/mongoose'
+import { InjectDataSource } from '@nestjs/typeorm'
 import { Job } from 'bullmq'
 import { readFileSync } from 'fs-extra'
 import { AnyBulkWriteOperation, PaginateModel } from 'mongoose'
 import { join, resolve } from 'path'
 import { DataSource } from 'typeorm'
-import { SqlServerConnectionOptions } from 'typeorm/driver/sqlserver/SqlServerConnectionOptions'
-import { Tenant } from '../tenancy/constants'
 import { EXCLUDED_EPC_PATTERN, EXCLUDED_ORDERS, FALLBACK_VALUE, POST_DATA_QUEUE } from './constants'
 import { PostReaderDataDTO } from './dto/rfid.dto'
-import { RFIDMatchCustomerEntity } from './entities/rfid-customer-match.entity'
 import { RFIDReaderEntity } from './entities/rfid-reader.entity'
 import { EpcDocument, EpcInbound, EpcInboundSchema } from './schemas/epc.schema'
 import { StoredRFIDReaderItem } from './types'
@@ -23,29 +21,9 @@ export class RFIDConsumer extends WorkerHost {
 		'utf-8'
 	)
 
-	private readonly dataSources: Map<string, DataSource> = new Map()
-	private readonly tenants = [
-		{
-			id: Tenant.DEV,
-			host: this.configService.get('TENANT_DEV')
-		},
-		{
-			id: Tenant.VN_LIANYING_PRIMARY,
-			host: this.configService.get('TENANT_VN_LIANYING_PRIMARY')
-		},
-		{
-			id: Tenant.VN_LIANSHUN_PRIMARY,
-			host: this.configService.get('TENANT_VN_LIANSHUN_PRIMARY')
-		},
-		{
-			id: Tenant.KM_PRIMARY,
-			host: this.configService.get('TENANT_KM_PRIMARY')
-		}
-	]
-
 	constructor(
-		@InjectModel(EpcInbound.name) private readonly epcModel: PaginateModel<EpcDocument>,
-		private readonly configService: ConfigService
+		@InjectDataSource(DATA_SOURCE_DATA_LAKE) private readonly dataSource: DataSource,
+		@InjectModel(EpcInbound.name) private readonly epcModel: PaginateModel<EpcDocument>
 	) {
 		super()
 	}
@@ -57,13 +35,11 @@ export class RFIDConsumer extends WorkerHost {
 	 */
 	public async process(job: Job<PostReaderDataDTO, void, string>): Promise<void> {
 		try {
-			const tenantId = job.name
+			// const tenantId = job.name
 			const { data, sn } = job.data
 
-			const dataSource = await this.getOrCreateDataSource(tenantId)
-
 			// * Get the RFID reader information from the database
-			const deviceInformation = await dataSource.getRepository(RFIDReaderEntity).findOneBy({ device_sn: sn })
+			const deviceInformation = await this.dataSource.getRepository(RFIDReaderEntity).findOneBy({ device_sn: sn })
 
 			/**
 			 * * Get the EPCs information from the database with received data
@@ -72,7 +48,7 @@ export class RFIDConsumer extends WorkerHost {
 			const epcList = data.tagList.map((item) => item.epc.trim()).join(',')
 			const excludedOrderList = EXCLUDED_ORDERS.join(',')
 			const stationNO = deviceInformation?.station_no ?? FALLBACK_VALUE
-			const incommingEpcs = await dataSource.query<StoredRFIDReaderItem[]>(this.epcInformationQuery, [
+			const incommingEpcs = await this.dataSource.query<StoredRFIDReaderItem[]>(this.epcInformationQuery, [
 				FALLBACK_VALUE,
 				epcList,
 				EXCLUDED_EPC_PATTERN,
@@ -107,29 +83,5 @@ export class RFIDConsumer extends WorkerHost {
 	@OnWorkerEvent('failed')
 	onWorkerFailed(job: Job) {
 		FileLogger.error(`Job "${job.name}" failed: ${job.failedReason}`)
-	}
-
-	/**
-	 * @private
-	 * @description Get or create a new data source for the tenant
-	 * @param {string} tenantId
-	 */
-	private async getOrCreateDataSource(tenantId: string): Promise<DataSource> {
-		if (this.dataSources.has(tenantId)) {
-			return this.dataSources.get(tenantId)
-		}
-		const tenant = this.tenants.find((tenant) => tenant.id === tenantId)
-
-		const dataSource = new DataSource({
-			...this.configService.getOrThrow<SqlServerConnectionOptions>('mssql'),
-			host: tenant.host,
-			entities: [RFIDReaderEntity, RFIDMatchCustomerEntity]
-		})
-		if (!dataSource.isInitialized) {
-			await dataSource.initialize()
-		}
-		this.dataSources.set(tenantId, dataSource)
-
-		return dataSource
 	}
 }
