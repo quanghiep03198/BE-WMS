@@ -3,8 +3,8 @@ import { Injectable } from '@nestjs/common'
 import { Cron, CronExpression } from '@nestjs/schedule'
 
 @Injectable()
-export class FileLoggerJobService {
-	@Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT, {
+export class RotateLogJob {
+	@Cron(CronExpression.EVERY_WEEKEND, {
 		name: 'DAILY_ROTATE_LOGS'
 	})
 	handleRotateLogs() {

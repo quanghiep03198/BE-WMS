@@ -14,7 +14,7 @@ import { RedisClientOptions } from 'redis'
 import { AppController } from './app.controller'
 import { FileLogger } from './common/helpers'
 import { appConfigFactory, validateConfig } from './configs'
-import { FileLoggerJobService } from './jobs/file-logger.service.job'
+import { RotateLogJob } from './jobs/rotate-log.job'
 // Feature modules
 import { IoRedisModule } from './messages/ioredis.module'
 import { AuthModule } from './modules/auth/auth.module'
@@ -88,7 +88,7 @@ import { WarehouseModule } from './modules/warehouse/warehouse.module'
 	],
 	controllers: [AppController],
 	providers: [
-		FileLoggerJobService,
+		RotateLogJob,
 		{
 			provide: APP_FILTER,
 			useClass: SentryGlobalFilter
