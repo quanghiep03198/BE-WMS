@@ -81,4 +81,6 @@ export declare global {
 	type ProcessEnv = {
 		[K in keyof NodeJS.ProcessEnv as string extends K ? never : number extends K ? never : K]: NodeJS.ProcessEnv[K]
 	}
+
+	type QueueJobStatus = 'completed' | 'wait' | 'active' | 'paused' | 'prioritized' | 'delayed' | 'failed'
 }
