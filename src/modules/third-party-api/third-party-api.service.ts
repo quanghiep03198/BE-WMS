@@ -1,10 +1,8 @@
 import { FileLogger } from '@/common/helpers/file-logger.helper'
-import { DATA_SOURCE_ERP } from '@/databases/constants'
 import { HttpService } from '@nestjs/axios'
 import { CACHE_MANAGER } from '@nestjs/cache-manager'
 import { Inject, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
-import { InjectDataSource } from '@nestjs/typeorm'
 import { AxiosRequestConfig } from 'axios'
 import { Cache } from 'cache-manager'
 import { readFileSync } from 'fs-extra'
@@ -27,7 +25,6 @@ export class ThirdPartyApiService {
 	constructor(
 		@Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
 		@Inject(TENANCY_DATASOURCE) private readonly dataSource: DataSource,
-		@InjectDataSource(DATA_SOURCE_ERP) private readonly dataSourceERP: DataSource,
 		private readonly httpService: HttpService,
 		private readonly orderService: OrderService,
 		private readonly configService: ConfigService

@@ -6,7 +6,7 @@ import { Job } from 'bullmq'
 import { groupBy } from 'lodash'
 import { OrderService } from '../order/order.service'
 import { RFIDMatchCustomerEntity } from '../rfid/entities/rfid-customer-match.entity'
-import { FPIRespository } from '../rfid/rfid.repository'
+import { RFIDService } from '../rfid/rfid.service'
 import { THIRD_PARTY_API_SYNC } from './constants'
 import { SyncProcessState } from './interfaces/third-party-api.interface'
 import { ThirdPartyApiService } from './third-party-api.service'
@@ -18,7 +18,7 @@ export class ThirdPartyApiConsumer extends WorkerHost {
 
 	constructor(
 		private readonly thirdPartyApiService: ThirdPartyApiService,
-		private readonly rfidRepository: FPIRespository,
+		private readonly rfidService: RFIDService,
 		private readonly orderService: OrderService,
 		private readonly ioRedisService: IoRedisService
 	) {
@@ -140,7 +140,7 @@ export class ThirdPartyApiConsumer extends WorkerHost {
 	}
 
 	// * Step 3: Upsert data to database
-	private async upsertData(tenantId: string, epcs: any[], orderInformation: any[], factoryCode: string) {
+	private async upsertData(epcs: any[], orderInformation: any[], factoryCode: string) {
 		const payload: Partial<RFIDMatchCustomerEntity>[] = epcs.map((item) => ({
 			...orderInformation.find((data) => data.mo_no === item.commandNumber.slice(0, 9)),
 			epc: item.epc,
@@ -150,7 +150,7 @@ export class ThirdPartyApiConsumer extends WorkerHost {
 			factory_code_produce: factoryCode,
 			factory_name_produce: factoryCode
 		}))
-		await this.rfidRepository.upsertBulk(tenantId, payload)
+		await this.rfidService.bulkUpsertRFIDRecords(payload)
 	}
 
 	private async executeSync(data, factoryCode: string, tenantId: string, accessToken: string) {
@@ -175,7 +175,7 @@ export class ThirdPartyApiConsumer extends WorkerHost {
 		this.updateProcessState(2, 'processing')
 		await this.broadcastStateChange(factoryCode)
 
-		await this.upsertData(tenantId, epcs, orderInformation, factoryCode)
+		await this.upsertData(epcs, orderInformation, factoryCode)
 
 		this.updateProcessState(2, 'completed')
 		await this.broadcastStateChange(factoryCode)

@@ -108,7 +108,7 @@ export class RFIDController {
 		@Headers('X-User-Company') factoryCode: string,
 		@Body(new ZodValidationPipe(updateStockValidator)) payload: UpsertStockDTO
 	) {
-		return await this.rfidService.upsertFPStock(orderCode, {
+		return await this.rfidService.upsertStockIn(orderCode, {
 			...payload,
 			user_code_created: username,
 			factory_code: factoryCode
@@ -147,16 +147,13 @@ export class RFIDController {
 	}
 
 	@Api({
-		endpoint: 'post-data/:tenantId',
+		endpoint: '/inbound/post-data',
 		method: HttpMethod.POST,
 		statusCode: HttpStatus.CREATED,
 		message: 'common.created'
 	})
-	async postInboundData(
-		@Param('tenantId') tenantId: string,
-		@Body(new ZodValidationPipe(readerPostDataValidator)) payload: PostReaderDataDTO
-	) {
-		return await this.rfidService.addPostDataQueueJob(tenantId, payload)
+	async postInboundData(@Body(new ZodValidationPipe(readerPostDataValidator)) payload: PostReaderDataDTO) {
+		return await this.rfidService.addPostDataQueueJob(payload)
 	}
 	// #endregion
 
@@ -210,7 +207,7 @@ export class RFIDController {
 		message: 'common.created'
 	})
 	async upsertOutboundStock(@Body() payload: any) {
-		return await this.rfidService.updateFPStockOutbound(payload)
+		return await this.rfidService.upsertStockOut(payload)
 	}
 
 	@Api({
@@ -231,12 +228,12 @@ export class RFIDController {
 		method: HttpMethod.GET
 	})
 	@AuthGuard()
-	async searchCustomerOrder(
+	async searchExchangableOrder(
 		@Headers('X-User-Company') factory_code: string,
 		@Query(new ZodValidationPipe(searchCustomerValidator))
 		queries: SearchCustOrderParamsDTO
 	) {
-		return await this.rfidService.searchCustomerOrder({
+		return await this.rfidService.searchExchangableOrder({
 			'factory_code.eq': factory_code,
 			...queries
 		} satisfies SearchCustOrderParamsDTO)

@@ -15,7 +15,6 @@ import { RFIDMatchCustomerEntity } from './entities/rfid-customer-match.entity'
 import { RFIDReaderEntity } from './entities/rfid-reader.entity'
 import { RFIDConsumer } from './rfid.consumer'
 import { RFIDController } from './rfid.controller'
-import { FPIRespository } from './rfid.repository'
 import { RFIDService } from './rfid.service'
 import {
 	EPC_INBOUND_COLLECTION,
@@ -57,21 +56,13 @@ import { RFIDCustomerEntitySubscriber } from './subscribers/rfid-customer.entity
 		])
 	],
 	controllers: [RFIDController],
-	providers: [RFIDService, RFIDConsumer, FPIRespository, RFIDCustomerEntitySubscriber, FPInventoryEntitySubscriber],
-	exports: [MongooseModule, FPIRespository]
+	providers: [RFIDService, RFIDConsumer, RFIDCustomerEntitySubscriber, FPInventoryEntitySubscriber],
+	exports: [MongooseModule, RFIDService]
 })
 export class RFIDModule implements NestModule {
 	configure(consumer: MiddlewareConsumer) {
 		consumer
 			.apply(TenacyMiddleware)
-			.exclude(
-				{ path: '/rfid/post-data/:tenantId', method: RequestMethod.POST },
-				{ path: '/rfid/outbound/sse', method: RequestMethod.GET },
-				{ path: '/rfid/outbound/fetch-epc', method: RequestMethod.GET },
-				{ path: '/rfid/outbound/post-data', method: RequestMethod.POST },
-				{ path: '/rfid/outbound/update-stock', method: RequestMethod.PUT },
-				{ path: '/rfid/outbound/delete-scanned-epcs', method: RequestMethod.DELETE }
-			)
-			.forRoutes({ path: '/rfid/*', method: RequestMethod.ALL })
+			.forRoutes({ path: '/rfid/inbound/update-stock/:orderCode', method: RequestMethod.PUT })
 	}
 }
