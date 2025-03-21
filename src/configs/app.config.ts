@@ -64,7 +64,11 @@ export const appConfigFactory: ConfigFactory = () => ({
 		uri: env('MONGO_URI'),
 		dbName: env('MONGO_DB_NAME'),
 		maxPoolSize: 100,
-		connectTimeoutMS: 10000
+		connectTimeoutMS: 10000,
+		readPreference: 'nearest',
+		writeConcern: {
+			w: 'majority'
+		}
 	} satisfies MongooseModuleOptions,
 	['bullmq']: {
 		connection: {
