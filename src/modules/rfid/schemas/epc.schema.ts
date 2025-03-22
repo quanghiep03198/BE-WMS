@@ -38,6 +38,9 @@ export class EpcInbound {
 	@Prop({ type: String, required: true })
 	station_no: string
 
+	@Prop({ type: String, required: true })
+	factory_code_produce: string
+
 	@Prop({ type: Boolean, required: true, default: true, index: true })
 	scannable: boolean
 }
