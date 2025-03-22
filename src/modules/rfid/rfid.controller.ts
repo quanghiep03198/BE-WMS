@@ -65,6 +65,7 @@ export class RFIDController {
 		}
 		await handleChange()
 		const changeStream = await this.rfidService.captureDataChange(this.epcInboundModel, handleChange)
+
 		res.on('close', async () => {
 			this.logger.log('Stop receiving data from Android RFID device')
 			await this.rfidService.cleanupQueue()
@@ -102,7 +103,7 @@ export class RFIDController {
 		message: 'common.updated'
 	})
 	@AuthGuard()
-	async updateFPStock(
+	async upsertStockIn(
 		@Param('orderCode') orderCode: string,
 		@User('username') username: string,
 		@Headers('X-User-Company') factoryCode: string,
@@ -206,7 +207,7 @@ export class RFIDController {
 		statusCode: HttpStatus.CREATED,
 		message: 'common.created'
 	})
-	async upsertOutboundStock(@Body() payload: any) {
+	async upsertStockOut(@Body() payload: any) {
 		return await this.rfidService.upsertStockOut(payload)
 	}
 
