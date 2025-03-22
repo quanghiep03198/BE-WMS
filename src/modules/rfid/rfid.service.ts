@@ -9,7 +9,7 @@ import { Queue } from 'bullmq'
 import { format } from 'date-fns'
 import { Request } from 'express'
 import { readFileSync } from 'fs-extra'
-import { chunk, groupBy, pick } from 'lodash'
+import { chunk, debounce, pick } from 'lodash'
 import { AnyBulkWriteOperation, FilterQuery, RootFilterQuery } from 'mongoose'
 import { I18nContext, I18nService } from 'nestjs-i18n'
 import { join, resolve } from 'path'
@@ -109,29 +109,54 @@ export class RFIDService {
 	}
 
 	public async getInboundOrderDetails() {
-		const factoryCode = this.request.headers['x-user-company']
-		const accumulatedData = await this.epcInboundModel.find(
-			{ scannable: true, station_no: { $regex: new RegExp(`CUS_${factoryCode}_WH10[12]`) } },
-			null,
-			{ readPreference: 'nearest', lean: true }
+		return await this.epcInboundModel.aggregate(
+			[
+				// * Match documents that are not deleted
+				{ $match: { deleted: false, scannable: true } },
+				// * Group by mo_no, mat_ecolor, and shoes_style_code_factory, and aggregate sizes
+				{
+					$group: {
+						_id: {
+							mo_no: '$mo_no',
+							mat_ecolor: '$mat_ecolor',
+							shoes_style_code_factory: '$shoes_style_code_factory',
+							factory_code_produce: '$factory_code_produce',
+							size_numcode: '$size_numcode'
+						},
+						count: { $sum: 1 }
+					}
+				},
+				// * Reshape the data to group sizes into an array
+				{
+					$group: {
+						_id: {
+							mo_no: '$_id.mo_no',
+							mat_ecolor: '$_id.mat_ecolor',
+							factory_code_produce: '$_id.factory_code_produce',
+							shoes_style_code_factory: '$_id.shoes_style_code_factory'
+						},
+						sizes: {
+							$push: {
+								size_numcode: '$_id.size_numcode',
+								count: '$count'
+							}
+						}
+					}
+				},
+				// * Reshape the final output
+				{
+					$project: {
+						_id: 0,
+						mo_no: '$_id.mo_no',
+						mat_ecolor: '$_id.mat_ecolor',
+						factory_code_produce: '$_id.factory_code_produce',
+						shoes_style_code_factory: '$_id.shoes_style_code_factory',
+						sizes: 1
+					}
+				}
+			],
+			{ readPreference: 'nearest' }
 		)
-		if (!Array.isArray(accumulatedData)) throw new Error('Invalid data format')
-		return Object.entries(
-			groupBy(accumulatedData, (item) => {
-				return [item.mo_no, item.mat_ecolor, item.shoes_style_code_factory]
-			})
-		).map(([keys, sizes]) => {
-			const [mo_no, mat_ecolor, shoes_style_code_factory] = keys.split(',')
-			return {
-				mo_no,
-				mat_ecolor,
-				shoes_style_code_factory,
-				sizes: Object.entries(groupBy(sizes, 'size_numcode')).map(([size, items]) => ({
-					size_numcode: size,
-					count: items.length
-				}))
-			}
-		})
 	}
 
 	/**
@@ -157,7 +182,7 @@ export class RFIDService {
 			}
 		)
 
-		changeStream.on('change', onSnapshot)
+		changeStream.on('change', debounce(onSnapshot, 50))
 
 		return changeStream
 	}
@@ -266,32 +291,6 @@ export class RFIDService {
 			.exec()
 	}
 
-	public async deleteScannedOutboundEpcs(filters: DeleteScannedEpcDTO) {
-		const filterQuery: RootFilterQuery<EpcInbound> = !filters['size_numcode.eq'] ? pick(filters, 'mo_no.eq') : filters
-		if (filterQuery['size_numcode.eq'] && filterQuery['quantity.eq']) {
-			const epcsToDelete = await this.epcOutboundModel
-				.find({
-					mo_no: filters['mo_no.eq'],
-					size_numcode: filters['size_numcode.eq']
-				})
-				.limit(filters['quantity.eq'])
-				.lean(true)
-
-			return await this.epcOutboundModel
-				.updateMany(
-					{
-						epc: { $in: epcsToDelete.map((item) => item.epc) }
-					},
-					{ deleted: true, scannable: !filters['f'] },
-					{ new: true }
-				)
-				.exec()
-		}
-		return await this.epcOutboundModel
-			.updateMany({ mo_no: filters['mo_no.eq'] }, { deleted: true, scannable: !filters['f'] })
-			.exec()
-	}
-
 	public async exchangeEpcBySize(update: ExchangeEpcDTO) {
 		const factoryCode = this.request.headers['x-user-company'] as string
 		const epcToExchange = await this.epcInboundModel
@@ -366,29 +365,51 @@ export class RFIDService {
 	}
 
 	public async getOutboundOrderDetails() {
-		const factoryCode = this.request.headers['x-user-company']
-		const accumulatedData = await this.epcOutboundModel.find(
-			{ scannable: true, station_no: { $regex: new RegExp(`CUS_${factoryCode}_WH103`) } },
-			null,
-			{ readPreference: 'nearest', lean: true }
+		return await await this.epcOutboundModel.aggregate(
+			[
+				// * Match documents that are not deleted
+				{ $match: { deleted: false, scannable: true } },
+				// * Group by mo_no, mat_ecolor, and shoes_style_code_factory, and aggregate sizes
+				{
+					$group: {
+						_id: {
+							mo_no: '$mo_no',
+							mat_ecolor: '$mat_ecolor',
+							shoes_style_code_factory: '$shoes_style_code_factory',
+							size_numcode: '$size_numcode'
+						},
+						count: { $sum: 1 }
+					}
+				},
+				// * Reshape the data to group sizes into an array
+				{
+					$group: {
+						_id: {
+							mo_no: '$_id.mo_no',
+							mat_ecolor: '$_id.mat_ecolor',
+							shoes_style_code_factory: '$_id.shoes_style_code_factory'
+						},
+						sizes: {
+							$push: {
+								size_numcode: '$_id.size_numcode',
+								count: '$count'
+							}
+						}
+					}
+				},
+				// * Reshape the final output
+				{
+					$project: {
+						_id: 0,
+						mo_no: '$_id.mo_no',
+						mat_ecolor: '$_id.mat_ecolor',
+						shoes_style_code_factory: '$_id.shoes_style_code_factory',
+						sizes: 1
+					}
+				}
+			],
+			{ readPreference: 'nearest' }
 		)
-		if (!Array.isArray(accumulatedData)) throw new Error('Invalid data format')
-		return Object.entries(
-			groupBy(accumulatedData, (item) => {
-				return [item.mo_no, item.mat_ecolor, item.shoes_style_code_factory]
-			})
-		).map(([keys, sizes]) => {
-			const [mo_no, mat_ecolor, shoes_style_code_factory] = keys.split(',')
-			return {
-				mo_no,
-				mat_ecolor,
-				shoes_style_code_factory,
-				sizes: Object.entries(groupBy(sizes, 'size_numcode')).map(([size, items]) => ({
-					size_numcode: size,
-					count: items.length
-				}))
-			}
-		})
 	}
 
 	async upsertStockOut(payload) {
@@ -420,6 +441,32 @@ export class RFIDService {
 			await Promise.all([queryRunner.rollbackTransaction(), session.abortTransaction()])
 			throw new InternalServerErrorException(error)
 		}
+	}
+
+	public async deleteScannedOutboundEpcs(filters: DeleteScannedEpcDTO) {
+		const filterQuery: RootFilterQuery<EpcInbound> = !filters['size_numcode.eq'] ? pick(filters, 'mo_no.eq') : filters
+		if (filterQuery['size_numcode.eq'] && filterQuery['quantity.eq']) {
+			const epcsToDelete = await this.epcOutboundModel
+				.find({
+					mo_no: filters['mo_no.eq'],
+					size_numcode: filters['size_numcode.eq']
+				})
+				.limit(filters['quantity.eq'])
+				.lean(true)
+
+			return await this.epcOutboundModel
+				.updateMany(
+					{
+						epc: { $in: epcsToDelete.map((item) => item.epc) }
+					},
+					{ deleted: true, scannable: !filters['f'] },
+					{ new: true }
+				)
+				.exec()
+		}
+		return await this.epcOutboundModel
+			.updateMany({ mo_no: filters['mo_no.eq'] }, { deleted: true, scannable: !filters['f'] })
+			.exec()
 	}
 
 	// #region Composable
