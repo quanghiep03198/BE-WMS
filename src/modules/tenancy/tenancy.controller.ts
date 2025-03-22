@@ -18,14 +18,4 @@ export class TenancyController {
 		if (!cofactorCode) throw new BadRequestException('Please provide factory code')
 		return this.tenancyService.getByFactory(cofactorCode as FactoryCode)
 	}
-
-	/**
-	 * @deprecated
-	 */
-	@Api({ endpoint: 'default', method: HttpMethod.GET })
-	@AuthGuard()
-	getDefaultTenantByFactory(@Headers('X-User-Company') cofactorCode: string) {
-		if (!cofactorCode) throw new BadRequestException('Please provide factory code')
-		return this.tenancyService.getDefaultTenantByFactory(cofactorCode as FactoryCode)
-	}
 }

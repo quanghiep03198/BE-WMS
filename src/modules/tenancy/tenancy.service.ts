@@ -18,59 +18,33 @@ export class TenancyService implements OnModuleDestroy {
 	private readonly tenants: Array<ITenancy> = [
 		{
 			id: Tenant.DEV,
-			factories: [FactoryCode.GL1, FactoryCode.GL3, FactoryCode.GL4],
+			factory: [FactoryCode.GL1, FactoryCode.GL3, FactoryCode.GL4],
 			host: this.configService.get('TENANT_DEV'),
-			alias: this.getHostAlias(this.configService.get('TENANT_DEV')),
-			active: true
+			alias: this.getHostAlias(this.configService.get('TENANT_DEV'))
 		},
 		{
-			id: Tenant.MAIN_21,
-			factories: [FactoryCode.GL1, FactoryCode.GL3, FactoryCode.GL4],
-			host: this.configService.get('TENANT_MAIN_21'),
-			alias: this.getHostAlias(this.configService.get('TENANT_MAIN_21')),
-			active: true
+			id: Tenant.MAIN,
+			factory: [FactoryCode.GL1, FactoryCode.GL3, FactoryCode.GL4],
+			host: this.configService.get('TENANT_MAIN'),
+			alias: this.getHostAlias(this.configService.get('TENANT_MAIN'))
 		},
 		{
-			id: Tenant.VN_LIANYING_PRIMARY,
-			factories: [FactoryCode.GL1],
-			host: this.configService.get('TENANT_VN_LIANYING_PRIMARY'),
-			alias: this.getHostAlias(this.configService.get('TENANT_VN_LIANYING_PRIMARY')),
-			active: true
+			id: Tenant.VN_LIANYING,
+			factory: FactoryCode.GL1,
+			host: this.configService.get('TENANT_VN_LIANYING'),
+			alias: this.getHostAlias(this.configService.get('TENANT_VN_LIANYING'))
 		},
 		{
-			id: Tenant.VN_LIANYING_SECONDARY,
-			factories: [FactoryCode.GL1],
-			host: this.configService.get('TENANT_VN_LIANYING_SECONDARY'),
-			alias: this.getHostAlias(this.configService.get('TENANT_VN_LIANYING_SECONDARY')),
-			active: false
+			id: Tenant.VN_LIANSHUN,
+			factory: FactoryCode.GL3,
+			host: this.configService.get('TENANT_VN_LIANSHUN'),
+			alias: this.getHostAlias(this.configService.get('TENANT_VN_LIANSHUN'))
 		},
 		{
-			id: Tenant.VN_LIANSHUN_PRIMARY,
-			factories: [FactoryCode.GL3],
-			host: this.configService.get('TENANT_VN_LIANSHUN_PRIMARY'),
-			alias: this.getHostAlias(this.configService.get('TENANT_VN_LIANSHUN_PRIMARY')),
-			active: true
-		},
-		{
-			id: Tenant.VN_LIANSHUN_SECONDARY,
-			factories: [FactoryCode.GL3],
-			host: this.configService.get('TENANT_VN_LIANSHUN_SECONDARY'),
-			alias: this.getHostAlias(this.configService.get('TENANT_VN_LIANSHUN_SECONDARY')),
-			active: false
-		},
-		{
-			id: Tenant.KM_PRIMARY,
-			factories: [FactoryCode.GL4],
-			host: this.configService.get<string>('TENANT_KM_PRIMARY'),
-			alias: this.getHostAlias(this.configService.get('TENANT_KM_PRIMARY')),
-			active: true
-		},
-		{
-			id: Tenant.KM_SECONDARY,
-			factories: [FactoryCode.GL4],
-			host: this.configService.get('TENANT_KM_SECONDARY'),
-			alias: this.getHostAlias(this.configService.get('TENANT_KM_SECONDARY')),
-			active: false
+			id: Tenant.KM_KHRU,
+			factory: FactoryCode.GL4,
+			host: this.configService.get<string>('TENANT_KHRU'),
+			alias: this.getHostAlias(this.configService.get('TENANT_KHRU'))
 		}
 	]
 
@@ -93,36 +67,25 @@ export class TenancyService implements OnModuleDestroy {
 		return tenant
 	}
 
-	public getAll(): Array<Omit<ITenancy, 'host' | 'active'>> {
+	public getAll(): Array<Omit<ITenancy, 'host'>> {
 		return this.tenants
 			.filter((tenant) => {
-				return (
-					tenant.active &&
-					(env('NODE_ENV') === 'production' ? tenant.id !== Tenant.DEV && tenant.id !== Tenant.MAIN_21 : true)
-				)
+				return env('NODE_ENV') === 'production' ? tenant.id !== Tenant.DEV && tenant.id !== Tenant.MAIN : true
 			})
-			.map((tenant) => omit(tenant, ['host', 'active']))
+			.map((tenant) => omit(tenant, ['host']))
 	}
 
 	public getByFactory(factoryCode: FactoryCode) {
-		const matchTenants = this.tenants.filter((tenant) => {
+		const isProduction = env('NODE_ENV') === 'production'
+		const matchedTenant = this.tenants.find((tenant) => {
 			return (
-				tenant.active &&
-				tenant.factories.includes(factoryCode) &&
-				(env('NODE_ENV') === 'production' ? tenant.id !== Tenant.DEV && tenant.id !== Tenant.MAIN_21 : true)
+				tenant.factory.includes(factoryCode) &&
+				(isProduction ? tenant.id !== Tenant.DEV && tenant.id !== Tenant.MAIN : true)
 			)
 		})
-		if (matchTenants.length === 0) throw new NotFoundException('No available tenant')
-		return matchTenants.map((tenant) => omit(tenant, ['host', 'active']))
-	}
-
-	/**
-	 * @deprecated
-	 */
-	public getDefaultTenantByFactory(factoryCode: FactoryCode) {
-		const tenant = this.tenants.find((tenant) => tenant.factories.includes(factoryCode) && tenant.active)
-		if (!tenant) throw new NotFoundException('No available tenant')
-		return omit(tenant, ['host', 'active'])
+		if (!matchedTenant) throw new NotFoundException('No available tenant')
+		if (!isProduction) return this.tenants.find((tenant) => tenant.id === Tenant.DEV)
+		else return matchedTenant
 	}
 
 	public async getTenancyDataSource(host: string) {
