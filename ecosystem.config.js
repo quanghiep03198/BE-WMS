@@ -6,13 +6,15 @@ module.exports = {
 		{
 			name: 'wms-api',
 			script: './dist/main.js',
+			node_args: '--max-old-space-size=8192',
 			cwd: __dirname,
 			exec_mode: 'cluster',
 			max_memory_restart: '1G',
 			exp_backoff_restart_delay: 5000,
 			env: {
 				NODE_ENV: process.env.NODE_ENV,
-				PORT: process.env.PORT
+				PORT: process.env.PORT,
+				NODE_OPTIONS: '--max-old-space-size=8192'
 			}
 		}
 	]
@@ -26,6 +28,7 @@ module.exports = {
  * @property {number} exp_backoff_restart_delay
  * @property {number} instances
  * @property {string} interpreter
+ * @property {string} interpreter_args
  * @property {string} node_args
  * @property {string} cwd
  * @property {boolean} autorestart
