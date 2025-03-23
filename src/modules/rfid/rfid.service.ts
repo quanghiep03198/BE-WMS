@@ -9,7 +9,7 @@ import { Queue } from 'bullmq'
 import { format } from 'date-fns'
 import { Request } from 'express'
 import { readFileSync } from 'fs-extra'
-import { chunk, debounce, pick } from 'lodash'
+import { chunk, pick } from 'lodash'
 import { AnyBulkWriteOperation, FilterQuery, RootFilterQuery } from 'mongoose'
 import { I18nContext, I18nService } from 'nestjs-i18n'
 import { join, resolve } from 'path'
@@ -182,7 +182,7 @@ export class RFIDService {
 			}
 		)
 
-		changeStream.on('change', debounce(onSnapshot, 50))
+		changeStream.on('change', onSnapshot)
 
 		return changeStream
 	}
