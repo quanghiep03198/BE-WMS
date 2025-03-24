@@ -58,6 +58,7 @@ export class ReportService {
 		})
 	}
 
+	// #region Inbound report Excel
 	async exportDailyInboundToExcel(date: string) {
 		const currentLanguage = I18nContext.current()?.lang
 		const factoryCode = this.request.headers['x-user-company']
@@ -148,7 +149,7 @@ export class ReportService {
 			},
 			lang: currentLanguage
 		})
-
+		worksheet.views = [{ state: 'frozen', xSplit: 0, ySplit: 2 }]
 		worksheet.getCell('A1').alignment = { vertical: 'middle', horizontal: 'center' }
 		worksheet.getCell('A1').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'e5e5e5' } }
 		worksheet.getCell('A1').font = { bold: true, size: 16 }
@@ -165,7 +166,9 @@ export class ReportService {
 		})
 		return await workbook.xlsx.writeBuffer()
 	}
+	// #endregion
 
+	// #region Outbound report Excel
 	async exportDailyOutboundToExcel(date: string) {
 		const currentLanguage = I18nContext.current()?.lang
 		const factoryCode = this.request.headers['x-user-company']
@@ -245,6 +248,7 @@ export class ReportService {
 			},
 			lang: currentLanguage
 		})
+		worksheet.views = [{ state: 'frozen', xSplit: 0, ySplit: 2 }]
 		worksheet.getRow(1).alignment = { vertical: 'middle', horizontal: 'center' }
 		worksheet.getCell('A1').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'e5e5e5' } }
 		worksheet.getCell('A1').font = { bold: true, size: 16 }
@@ -261,7 +265,9 @@ export class ReportService {
 		})
 		return await workbook.xlsx.writeBuffer()
 	}
+	// #endregion
 
+	// #region Inventory report Excel
 	async exportMonthlyInventoryToExcel(month: string) {
 		const currentLanguage = I18nContext.current()?.lang
 		const factoryCode = this.request.headers['x-user-company']
