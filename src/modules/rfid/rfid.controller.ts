@@ -17,7 +17,6 @@ import {
 } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
 import { Response } from 'express'
-import { debounce, throttle } from 'lodash'
 import {
 	deleteEpcValidator,
 	DeleteScannedEpcDTO,
@@ -65,7 +64,7 @@ export class RFIDController {
 			}
 		}
 		await handleChange()
-		const changeStream = await this.rfidService.captureDataChange(this.epcInboundModel, debounce(handleChange, 100))
+		const changeStream = await this.rfidService.captureDataChange(this.epcInboundModel, handleChange)
 
 		res.on('close', async () => {
 			this.logger.log('Stop receiving data from Android RFID device')
@@ -174,7 +173,7 @@ export class RFIDController {
 			}
 		}
 		await handleChange()
-		const changeStream = this.rfidService.captureDataChange(this.epcOutboundModel, throttle(handleChange, 1000))
+		const changeStream = this.rfidService.captureDataChange(this.epcOutboundModel, handleChange)
 		res.on('close', () => {
 			this.logger.log('Stop receiving data from Android RFID device')
 			changeStream.removeListener('change', postMessage)
