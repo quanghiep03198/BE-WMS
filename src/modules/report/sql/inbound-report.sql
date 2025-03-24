@@ -68,7 +68,7 @@ LEFT JOIN acc_counts ac
 	ON ac.mo_no = ds.mo_no
 OUTER APPLY (
 	SELECT (
-		SELECT size_numcode, COUNT(EPC_Code) AS qty
+		SELECT size_numcode, COUNT(DISTINCT EPC_Code) AS qty
 		FROM data_src d 
 		WHERE d.mo_no = ds.mo_no AND CAST(d.record_time AS DATE) = @0
 		GROUP BY size_numcode
