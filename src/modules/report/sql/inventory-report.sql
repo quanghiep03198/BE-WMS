@@ -18,12 +18,15 @@ SELECT
          + ',"instock_qty": ' + CAST(CAST(a.inv_istotalqty AS INT)  AS NVARCHAR(50)) + -- Inventory In
          + ',"outstock_qty": ' + CAST(CAST(a.inv_ostotalqty AS INT) AS NVARCHAR(50)) + -- Inventory Out
          + ',"final_inv_qty": '+ CAST(CAST(a.inv_finalqty AS INT) AS NVARCHAR(50)) + -- Ending Inventory
-         '}', ',')
+         '}', ',') 
+      WITHIN GROUP (ORDER BY RIGHT('0000'+IIF(CHARINDEX('.', a.size_numcode) > 0, a.size_numcode, a.size_numcode + '.0'), 5) ASC)
    +']') AS size_data
 FROM DV_DATA_LAKE.dbo.dv_invprodmst a
-LEFT JOIN wuerp_vnrd.dbo.ta_manufacturmst b
-	ON a.mo_no = b.mo_no
-WHERE inv_yearmonth = @0
+LEFT JOIN wuerp_vnrd.dbo.ta_manufacturmst b ON a.mo_no = b.mo_no
+WHERE 
+   a.inv_yearmonth = @0
+   AND a.isactive='Y' 
+   AND a.inv_type='FG'
 GROUP BY
    a.inv_yearmonth, 
    a.brand_name, 
