@@ -29,7 +29,9 @@ import {
 	searchCustomerValidator,
 	SearchCustOrderParamsDTO,
 	updateStockValidator,
-	UpsertStockDTO
+	UpsertStockInDTO,
+	UpsertStockOutDTO,
+	upsertStockOutValidator
 } from './dto/rfid.dto'
 import { RFIDService } from './rfid.service'
 import { EpcInbound, EpcModel, EpcOutbound } from './schemas/epc.schema'
@@ -107,7 +109,7 @@ export class RFIDController {
 		@Param('orderCode') orderCode: string,
 		@User('username') username: string,
 		@Headers('X-User-Company') factoryCode: string,
-		@Body(new ZodValidationPipe(updateStockValidator)) payload: UpsertStockDTO
+		@Body(new ZodValidationPipe(updateStockValidator)) payload: UpsertStockInDTO
 	) {
 		return await this.rfidService.upsertStockIn(orderCode, {
 			...payload,
@@ -207,7 +209,7 @@ export class RFIDController {
 		statusCode: HttpStatus.CREATED,
 		message: 'common.created'
 	})
-	async upsertStockOut(@Body() payload: any) {
+	async upsertStockOut(@Body(new ZodValidationPipe(upsertStockOutValidator)) payload: UpsertStockOutDTO) {
 		return await this.rfidService.upsertStockOut(payload)
 	}
 

@@ -115,8 +115,13 @@ export const readerPostDataValidator = z.object({
 		)
 	})
 })
+export const upsertStockOutValidator = z.object({
+	mo_no: z.array(z.string(), { required_error: 'validation:required' }).nonempty({ message: 'validation:required' }),
+	po: z.string({ required_error: 'validation:required' }).nonempty({ message: 'validation:required' })
+})
 
-export type UpsertStockDTO = z.infer<typeof updateStockValidator> &
+export type UpsertStockOutDTO = z.infer<typeof upsertStockOutValidator>
+export type UpsertStockInDTO = z.infer<typeof updateStockValidator> &
 	Pick<FPInventoryEntity, 'user_code_created' | 'factory_code'>
 export type ExchangeOrderDTO = z.infer<typeof exchangeOrderValidator>
 export type ExchangeEpcDTO = z.infer<typeof exchangeEpcValidator>

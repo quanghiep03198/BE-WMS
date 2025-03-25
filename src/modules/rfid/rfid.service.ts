@@ -22,7 +22,8 @@ import {
 	ExchangeOrderDTO,
 	PostReaderDataDTO,
 	SearchCustOrderParamsDTO,
-	UpsertStockDTO
+	UpsertStockInDTO,
+	UpsertStockOutDTO
 } from './dto/rfid.dto'
 import { RFIDMatchCustomerEntity } from './entities/rfid-customer-match.entity'
 import { RFIDReaderEntity } from './entities/rfid-reader.entity'
@@ -187,7 +188,7 @@ export class RFIDService {
 		return changeStream
 	}
 
-	public async upsertStockIn(orderCode: string, data: UpsertStockDTO) {
+	public async upsertStockIn(orderCode: string, data: UpsertStockInDTO) {
 		const payload = await this.epcInboundModel.find({ scannable: true, mo_no: orderCode }).lean(true)
 		const queryRunner = this.dataSourceTNC.createQueryRunner()
 		const session = await this.epcInboundModel.startSession()
@@ -365,10 +366,17 @@ export class RFIDService {
 	}
 
 	public async getOutboundOrderDetails() {
+		const factoryCode = this.request.headers['x-user-company']
 		return await await this.epcOutboundModel.aggregate(
 			[
 				// * Match documents that are not deleted
-				{ $match: { deleted: false, scannable: true } },
+				{
+					$match: {
+						deleted: false,
+						scannable: true,
+						station_no: { $regex: new RegExp(`CUS_${factoryCode}_WH103`) }
+					}
+				},
 				// * Group by mo_no, mat_ecolor, and shoes_style_code_factory, and aggregate sizes
 				{
 					$group: {
@@ -412,8 +420,10 @@ export class RFIDService {
 		)
 	}
 
-	async upsertStockOut(payload) {
-		const epcToUpsert = await this.epcOutboundModel.find({ deleted: false, scannable: true }).lean(true)
+	async upsertStockOut(payload: UpsertStockOutDTO) {
+		const epcToUpsert = await this.epcOutboundModel
+			.find({ deleted: false, scannable: true, mo_no: { $in: payload.mo_no } })
+			.lean(true)
 		const session = await this.epcOutboundModel.startSession()
 		const queryRunner = this.dataSourceDL.createQueryRunner()
 
@@ -435,7 +445,7 @@ export class RFIDService {
 
 				await this.dataSourceDL.query(this.upsertStockoutQuery.replace(':values', values))
 			}
-			await this.epcOutboundModel.delete({ deleted: false, scannable: true }).exec()
+			await this.epcOutboundModel.delete({ deleted: false, scannable: true, mo_no: { $in: payload.mo_no } }).exec()
 			await Promise.all([queryRunner.commitTransaction(), session.commitTransaction()])
 		} catch (error) {
 			await Promise.all([queryRunner.rollbackTransaction(), session.abortTransaction()])

@@ -5,5 +5,5 @@ WITH CTE AS (
       SELECT custbrand_id FROM wuerp_vnrd.dbo.ta_brand WHERE brand_code IN ('TV','KB','UG')
    )
 ) 
-SELECT TOP 5 po from CTE
+SELECT DISTINCT TOP 5 po from CTE
 WHERE po LIKE CONCAT('%', @0, '%')
