@@ -21,6 +21,7 @@ export class ReportService {
 	private readonly inboundReportQuery: string = readFileSync(join(__dirname, './sql/inbound-report.sql'), 'utf-8')
 	private readonly outboundReportQuery: string = readFileSync(join(__dirname, './sql/outbound-report.sql'), 'utf-8')
 	private readonly inventoryReportQuery: string = readFileSync(join(__dirname, './sql/inventory-report.sql'), 'utf-8')
+	private readonly packingReportQuery: string = readFileSync(join(__dirname, './sql/packing-report.sql'), 'utf-8')
 
 	constructor(
 		@Inject(TENANCY_DATASOURCE) private readonly dataSource: DataSource,
@@ -56,6 +57,10 @@ export class ReportService {
 				size_data: JSON.parse(item.size_data)
 			}
 		})
+	}
+
+	public async getDailyPackingReport(date: string) {
+		return await this.dataSource.query(this.packingReportQuery, [date])
 	}
 
 	// #region Inbound report Excel
@@ -166,6 +171,7 @@ export class ReportService {
 		})
 		return await workbook.xlsx.writeBuffer()
 	}
+
 	// #endregion
 
 	// #region Outbound report Excel
