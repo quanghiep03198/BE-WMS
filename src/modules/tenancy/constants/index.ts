@@ -6,4 +6,4 @@ export enum Tenant {
 	KM_KHRU = 'tenant-khru' // 10.50.5.1
 }
 
-export const TENANCY_DATASOURCE = 'TENANCY_DATASOURCE' as const
+export const TENANCY_DATA_SOURCE = 'TENANCY_DATA_SOURCE' as const

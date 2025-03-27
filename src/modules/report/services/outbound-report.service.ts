@@ -1,4 +1,4 @@
-import { TENANCY_DATASOURCE } from '@/modules/tenancy/constants'
+import { TENANCY_DATA_SOURCE } from '@/modules/tenancy/constants'
 import { Inject, Injectable } from '@nestjs/common'
 import { REQUEST } from '@nestjs/core'
 import { format } from 'date-fns'
@@ -14,7 +14,7 @@ export class OutboundReportService {
 	private readonly outboundReportQuery: string = readFileSync(join(__dirname, '../sql/outbound-report.sql'), 'utf-8')
 
 	constructor(
-		@Inject(TENANCY_DATASOURCE) private readonly dataSource: DataSource,
+		@Inject(TENANCY_DATA_SOURCE) private readonly dataSource: DataSource,
 		@Inject(REQUEST) private readonly request: Request,
 		private readonly i18nService: I18nService
 	) {}

@@ -14,7 +14,7 @@ import { AnyBulkWriteOperation, FilterQuery, RootFilterQuery } from 'mongoose'
 import { I18nContext, I18nService } from 'nestjs-i18n'
 import { join, resolve } from 'path'
 import { DataSource, FindOptionsWhere, In } from 'typeorm'
-import { TENANCY_DATASOURCE } from '../tenancy/constants'
+import { TENANCY_DATA_SOURCE } from '../tenancy/constants'
 import { EXCLUDED_EPC_PATTERN, EXCLUDED_ORDERS, FALLBACK_VALUE, POST_DATA_QUEUE } from './constants'
 import {
 	DeleteScannedEpcDTO,
@@ -55,7 +55,7 @@ export class RFIDService {
 
 	constructor(
 		@Inject(REQUEST) private readonly request: Request,
-		@Inject(TENANCY_DATASOURCE) private readonly dataSourceTNC: DataSource,
+		@Inject(TENANCY_DATA_SOURCE) private readonly dataSourceTNC: DataSource,
 		@InjectDataSource(DATA_SOURCE_DATA_LAKE) private readonly dataSourceDL: DataSource,
 		@InjectDataSource(DATA_SOURCE_ERP) private readonly dataSourceERP: DataSource,
 		@InjectModel(EpcInbound.name) private readonly epcInboundModel: EpcModel,

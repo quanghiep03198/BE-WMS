@@ -31,7 +31,10 @@ FROM DV_DATA_LAKE.dbo.PackingPlan pk
    INNER JOIN po_list pl ON pk.PO = pl.PO
 WHERE 
    CAST(pk.weighing_time AS DATE) = @0
-   AND pk.Factory_code = @1
+   AND pk.Factory_code = CASE WHEN @1 = 'VA1' THEN 'GL1'
+   WHEN @1 = 'VB2' THEN 'GL3'
+   WHEN @1 = 'CA1' THEN 'GL4'
+   ELSE pk.Factory_code END
 GROUP BY pl.brand_name,
 	pk.PO, 
 	pl.shoes_style_code_factory, 

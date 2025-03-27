@@ -70,4 +70,5 @@ export type IDailyPackingReport = Array<{
 	po_qty: number
 	weighed_qty: number
 	unweighed_qty: number
+	size_data: string
 }>

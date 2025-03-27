@@ -11,7 +11,7 @@ import { join, resolve } from 'path'
 import { DataSource } from 'typeorm'
 import { FactoryCode } from '../department/constants'
 import { OrderService } from '../order/order.service'
-import { TENANCY_DATASOURCE } from '../tenancy/constants'
+import { TENANCY_DATA_SOURCE } from '../tenancy/constants'
 import {
 	OAuth2Credentials,
 	OAuth2TokenResponse,
@@ -24,7 +24,7 @@ export class ThirdPartyApiService {
 
 	constructor(
 		@Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
-		@Inject(TENANCY_DATASOURCE) private readonly dataSource: DataSource,
+		@Inject(TENANCY_DATA_SOURCE) private readonly dataSource: DataSource,
 		private readonly httpService: HttpService,
 		private readonly orderService: OrderService,
 		private readonly configService: ConfigService
