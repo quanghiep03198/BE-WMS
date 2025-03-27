@@ -38,9 +38,10 @@ import { WarehouseModule } from './modules/warehouse/warehouse.module'
 			load: [appConfigFactory],
 			validate: validateConfig
 		}),
+		DatabaseModule.forRootAsync(),
+		IoRedisModule.forRoot(),
 		SentryModule.forRoot(),
 		ScheduleModule.forRoot(),
-		IoRedisModule.forRoot(),
 		I18nModule.forRootAsync({
 			inject: [ConfigService],
 			useFactory: (configService: ConfigService) => configService.getOrThrow('i18n'),
@@ -72,7 +73,6 @@ import { WarehouseModule } from './modules/warehouse/warehouse.module'
 			verboseMemoryLeak: true,
 			ignoreErrors: false
 		}),
-		DatabaseModule,
 		// * Feature modules
 		AuthModule,
 		DepartmentModule,

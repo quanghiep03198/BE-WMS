@@ -1,14 +1,18 @@
-import { Module } from '@nestjs/common'
+import { DynamicModule, Module, Scope } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { MongooseModule, MongooseModuleOptions } from '@nestjs/mongoose'
 import { TypeOrmModule, TypeOrmModuleAsyncOptions } from '@nestjs/typeorm'
+import { join } from 'path'
+import { DataSource } from 'typeorm'
+import { SqlServerConnectionOptions } from 'typeorm/driver/sqlserver/SqlServerConnectionOptions'
 import {
 	DATA_SOURCE_DATA_LAKE,
 	DATA_SOURCE_ERP,
 	DATA_SOURCE_SYSCLOUD,
 	DATABASE_DATA_LAKE,
 	DATABASE_ERP,
-	DATABASE_SYSCLOUD
+	DATABASE_SYSCLOUD,
+	MAIN_DATA_SOURCE
 } from './constants'
 
 @Module({
@@ -44,6 +48,7 @@ import {
 				}
 			}
 		}),
+
 		// * MongoDB
 		MongooseModule.forRootAsync({
 			inject: [ConfigService],
@@ -51,4 +56,28 @@ import {
 		})
 	]
 })
-export class DatabaseModule {}
+export class DatabaseModule {
+	static forRootAsync(): DynamicModule {
+		return {
+			module: DatabaseModule,
+			global: true,
+			providers: [
+				{
+					provide: MAIN_DATA_SOURCE,
+					scope: Scope.DEFAULT,
+					inject: [ConfigService],
+					useFactory: async (configService: ConfigService) => {
+						const dataSource = new DataSource({
+							...configService.getOrThrow<SqlServerConnectionOptions>('mssql'),
+							host: configService.getOrThrow<string>('TENANT_MAIN'),
+							entities: [join(__dirname, '../**/*.entity.{ts,js}')]
+						})
+						if (!dataSource.isInitialized) await dataSource.initialize()
+						return dataSource
+					}
+				}
+			],
+			exports: [MAIN_DATA_SOURCE]
+		}
+	}
+}
