@@ -49,6 +49,9 @@ export class PackingEntity extends BaseAbstractEntity {
 	@Column({ name: 'Ref_number', type: 'nvarchar', length: 100, nullable: true })
 	ref_number: string
 
+	@Column({ name: 'weighing_time', type: 'datetime', nullable: true })
+	weighing_time: Date
+
 	constructor(packing: Partial<PackingEntity>) {
 		super()
 		Object.assign(this, packing)

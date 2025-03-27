@@ -23,15 +23,20 @@ SELECT pl.brand_name[brand_name],
    pk.PO AS po, 
    pl.shoes_style_code_factory, 
    pl.mat_ecolor, 
+   pk.Size AS size_data,
    ISNULL(pl.po_qty, 0) AS po_qty, 
    COUNT(DISTINCT Series_number) AS weighed_qty,
-   (pl.po_qty - COUNT(DISTINCT Series_number)) AS unweighed_qty 
+   (pl.po_qty - COUNT(DISTINCT Series_number)) AS unweighed_qty
 FROM DV_DATA_LAKE.dbo.PackingPlan pk
    INNER JOIN po_list pl ON pk.PO = pl.PO
-WHERE CAST(pk.weighing_time AS DATE) = @0
+WHERE 
+   CAST(pk.weighing_time AS DATE) = @0
+   AND pk.Factory_code = @1
 GROUP BY pl.brand_name,
 	pk.PO, 
 	pl.shoes_style_code_factory, 
-	pl.mat_ecolor, 
+	pl.mat_ecolor,
+	pk.Size,
+	pk.Factory_code,
 	pl.po_qty
 ORDER BY pl.shoes_style_code_factory, pk.PO

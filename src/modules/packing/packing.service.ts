@@ -1,23 +1,20 @@
-import { DATA_SOURCE_DATA_LAKE } from '@/databases/constants'
-import { Injectable, NotFoundException } from '@nestjs/common'
-import { InjectRepository } from '@nestjs/typeorm'
-import { Brackets, Repository } from 'typeorm'
+import { MAIN_DATA_SOURCE } from '@/databases/constants'
+import { Inject, Injectable, NotFoundException } from '@nestjs/common'
+import { Brackets, DataSource } from 'typeorm'
 import { UpdatePackingWeightDTO } from './dto/update-packing.dto'
 import { PackingEntity } from './entities/packing.entity'
 
 @Injectable()
 export class PackingService {
-	constructor(
-		@InjectRepository(PackingEntity, DATA_SOURCE_DATA_LAKE)
-		private readonly packingRepository: Repository<PackingEntity>
-	) {}
+	constructor(@Inject(MAIN_DATA_SOURCE) private readonly dataSource: DataSource) {}
 
 	private extractSeriesNumber(seriesNumber: string) {
 		return seriesNumber.slice(11, -1)
 	}
 
 	async getPackingWeightList(scanId?: string) {
-		return await this.packingRepository
+		return await this.dataSource
+			.getRepository(PackingEntity)
 			.createQueryBuilder('p')
 			.select('p.Scan_id', 'scan_id')
 			.addSelect('p.Weight', 'weight')
@@ -32,15 +29,19 @@ export class PackingService {
 	}
 
 	async getOneByScanId(scanId: string) {
-		const data = await this.packingRepository.findOneBy({ series_number: this.extractSeriesNumber(scanId) })
+		const data = await this.dataSource
+			.getRepository(PackingEntity)
+			.findOneBy({ series_number: this.extractSeriesNumber(scanId) })
 		if (!data) throw new NotFoundException('Packing item not found')
 		return data
 	}
 
 	async updatePackingWeight(seriesNumber: string, payload: UpdatePackingWeightDTO) {
-		return await this.packingRepository.update(
-			{ series_number: this.extractSeriesNumber(seriesNumber) },
-			{ actual_weight_in: payload.Actual_weight_in }
-		)
+		return await this.dataSource
+			.getRepository(PackingEntity)
+			.update(
+				{ series_number: this.extractSeriesNumber(seriesNumber) },
+				{ actual_weight_in: payload.Actual_weight_in, weighing_time: new Date() }
+			)
 	}
 }

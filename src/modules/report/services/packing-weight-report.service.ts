@@ -1,6 +1,5 @@
-import { TENANCY_DATASOURCE } from '@/modules/tenancy/constants'
+import { TENANCY_DATA_SOURCE } from '@/modules/tenancy/constants'
 import { Inject, Injectable } from '@nestjs/common'
-import { REQUEST } from '@nestjs/core'
 import { format } from 'date-fns'
 import { Workbook } from 'exceljs'
 import { readFileSync } from 'fs'
@@ -17,18 +16,16 @@ export class PackingWeightReportService {
 	)
 
 	constructor(
-		@Inject(TENANCY_DATASOURCE) private readonly dataSource: DataSource,
-		@Inject(REQUEST) private readonly request: Request,
+		@Inject(TENANCY_DATA_SOURCE) private readonly dataSource: DataSource,
 		private readonly i18nService: I18nService
 	) {}
 
-	public async getDailyPackingReport(date: string) {
-		return await this.dataSource.query<IDailyPackingReport>(this.packingWeightReportQuery, [date])
+	public async getDailyPackingReport(date: string, factoryCode: string) {
+		return await this.dataSource.query<IDailyPackingReport>(this.packingWeightReportQuery, [date, factoryCode])
 	}
 
-	public async exportDailyPackingToExcel(date: string) {
+	public async exportDailyPackingToExcel(date: string, factoryCode: string) {
 		const currentLanguage = I18nContext.current()?.lang
-		const factoryCode = this.request.headers['x-user-company']
 
 		const workbook = new Workbook()
 		const worksheet = workbook.addWorksheet(
@@ -47,16 +44,20 @@ export class PackingWeightReportService {
 				key: 'po'
 			},
 			{
-				header: this.i18nService.t('erp.fields.order_qty', { lang: currentLanguage }),
-				key: 'po_qty'
-			},
-			{
 				header: this.i18nService.t('erp.fields.shoestyle_codefactory', { lang: currentLanguage }),
 				key: 'shoes_style_code_factory'
 			},
 			{
+				header: 'Size',
+				key: 'size_data'
+			},
+			{
 				header: this.i18nService.t('erp.fields.mat_ecolor', { lang: currentLanguage }),
 				key: 'mat_ecolor'
+			},
+			{
+				header: this.i18nService.t('erp.fields.order_qty', { lang: currentLanguage }),
+				key: 'po_qty'
 			},
 			{
 				header: this.i18nService.t('erp.fields.weighed_qty', { lang: currentLanguage }),
@@ -67,7 +68,7 @@ export class PackingWeightReportService {
 				key: 'unweighed_qty'
 			}
 		]
-		const data = await this.getDailyPackingReport(format(new Date(date), 'yyyy-MM-dd'))
+		const data = await this.getDailyPackingReport(format(new Date(date), 'yyyy-MM-dd'), factoryCode)
 
 		for (const record of data) {
 			worksheet.addRow(record)
