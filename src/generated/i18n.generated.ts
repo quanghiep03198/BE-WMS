@@ -27,10 +27,13 @@ export type I18nTranslations = {
             "accumulated_qty": string;
             "active_date": string;
             "actual_inventory_qty": string;
+            "actual_instock_qty": string;
+            "actual_outstock_qty": string;
             "brand_name": string;
             "container_order_code": string;
             "conversion_rate": string;
             "customer_order": string;
+            "cust_shoestyle": string;
             "daily_inbound_qty": string;
             "daily_outbound_qty": string;
             "dept_code": string;
@@ -50,6 +53,8 @@ export type I18nTranslations = {
             "mo_no": string;
             "mo_no_actual": string;
             "mo_noseq": string;
+            "mo_qty": string;
+            "mo_size_qty": string;
             "no_crates_in_stock": string;
             "no_pair_in_stock": string;
             "or_custpo": string;
@@ -89,6 +94,8 @@ export type I18nTranslations = {
             "trans_num": string;
             "transfer_order_code": string;
             "uninspected_qty": string;
+            "unweighed_qty": string;
+            "weighed_qty": string;
             "customer_branch_id": string;
         };
         "inventory_list_type": {
@@ -113,6 +120,11 @@ export type I18nTranslations = {
             "daily_inbound_report": string;
             "daily_outbound_report": string;
             "file_monthly_inventory_report": string;
+        };
+    };
+    "packing": {
+        "titles": {
+            "daily_weighing_report": string;
         };
     };
     "rfid": {

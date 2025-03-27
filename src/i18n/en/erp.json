@@ -2,11 +2,14 @@
 	"fields": {
 		"accumulated_qty": "Accumulated quantity",
 		"actual_inventory_qty": "Actual inventory quantity",
+		"actual_instock_qty": "Actual instock quantity",
+		"actual_outstock_qty": "Actual outstock quantity",
 		"brand_name": "Customer branch name",
 		"container_order_code": "Container Order Code",
 		"conversion_rate": "Conversion rate",
 		"customer_branch_id": "Customer branch ID",
 		"customer_order": "Customer order code",
+		"cust_shoestyle": "Customer shoe style",
 		"daily_inbound_qty": "Daily inbound quantity",
 		"daily_outbound_qty": "Daily outbound quantity",
 		"dept_name": "Department",
@@ -25,6 +28,8 @@
 		"mo_no": "Manufacturing order",
 		"mo_no_actual": "Actual manufacturing order",
 		"mo_noseq": "Manufacturing sub-order",
+		"mo_qty": "Manufacturing quantity",
+		"mo_size_qty": "Quantity by size",
 		"no_crates_in_stock": "No. crates in stock",
 		"no_pair_in_stock": "No. pairs in stock",
 		"or_custpo": "Customer order code",
@@ -62,7 +67,9 @@
 		"total_init_qty": "Initial stock quantity",
 		"trans_num": "Number of Boxes Issued",
 		"transfer_order_code": "Transfer order code",
-		"uninspected_qty": "Uninspected quantity"
+		"uninspected_qty": "Uninspected quantity",
+		"unweighed_qty": "Unweighed quantity",
+		"weighed_qty": "Weighed quantity"
 	},
 	"inventory_list_type": {
 		"finished_goods_dispatch": "Finished Product Delivery Order",

@@ -40,7 +40,7 @@ interface ApiOptions {
  * @param {ApiOptions} options.endpoint  - The endpoint of the API. Default is inherited from controller.
  * @param {HttpMethod} options.method  - HTTP request method.
  * @param {HttpStatus} options.statusCode  - HTTP response status code. Default is 200.
- * @param {string | I18nPath} options.message  - Rresponse message. Default is 'common.ok'.
+ * @param {string | I18nPath} options.message  - Response message. Default is 'common.ok'.
  */
 export const Api = (options: ApiOptions) => {
 	const { endpoint = '', method, statusCode = HttpStatus.OK, message = 'common.ok' } = options
