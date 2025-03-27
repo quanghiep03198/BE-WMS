@@ -62,10 +62,12 @@ export type IInventoryReportResponse = Array<
 	}
 >
 
-export type IDailyPackingReport = {
+export type IDailyPackingReport = Array<{
+	brand_name: string
 	po: string
-	shoestyle_codecust: string
-	color_sn: string
+	shoestyle_codefactory: string
+	mat_ecolor: string
 	po_qty: number
-	packing_qty: number
-}
+	weighed_qty: number
+	unweighed_qty: number
+}>

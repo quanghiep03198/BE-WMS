@@ -6,7 +6,10 @@ import { RFIDMatchCustomerEntity } from '../rfid/entities/rfid-customer-match.en
 import { TenacyMiddleware } from '../tenancy/tenancy.middleware'
 import { TenancyModule } from './../tenancy/tenancy.module'
 import { ReportController } from './report.controller'
-import { ReportService } from './report.service'
+import { InboundReportService } from './services/inbound-report.service'
+import { InventoryReportService } from './services/inventory-report.service'
+import { OutboundReportService } from './services/outbound-report.service'
+import { PackingWeightReportService } from './services/packing-weight-report.service'
 
 @Module({
 	imports: [
@@ -14,7 +17,7 @@ import { ReportService } from './report.service'
 		TypeOrmModule.forFeature([FPInventoryEntity, RFIDMatchCustomerEntity], DATA_SOURCE_DATA_LAKE)
 	],
 	controllers: [ReportController],
-	providers: [ReportService]
+	providers: [InboundReportService, OutboundReportService, InventoryReportService, PackingWeightReportService]
 })
 export class ReportModule {
 	configure(consumer: MiddlewareConsumer) {

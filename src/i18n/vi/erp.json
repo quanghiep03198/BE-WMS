@@ -1,12 +1,15 @@
 {
 	"fields": {
 		"accumulated_qty": "Số lượng tích lũy",
+		"actual_instock_qty": "Số lượng nhập thực tế",
 		"actual_inventory_qty": "Số lượng kiểm kê",
+		"actual_outstock_qty": "Số lượng xuất thực tế",
 		"brand_name": "Nhãn hiệu khách hàng",
 		"container_order_code": "Mã Đơn Xuất Công",
 		"conversion_rate": "Tỷ Lệ Chuyển Đổi",
 		"customer_branch_id": "ID nhã hiệu khách hàng",
 		"customer_order": "Đặt đơn của khách",
+		"cust_shoestyle": "Kiểu giày của khách hàng",
 		"daily_inbound_qty": "Số lượng nhập trong ngày",
 		"daily_outbound_qty": "Số lượng xuất trong ngày",
 		"dept_name": "Bộ phận cập nhật",
@@ -25,6 +28,8 @@
 		"mo_no": "Chỉ lệnh",
 		"mo_no_actual": "Chỉ lệnh thực",
 		"mo_noseq": "Tiểu chỉ lệnh",
+		"mo_qty": "Số lượng chỉ lệnh",
+		"mo_size_qty": "Số lượng theo size",
 		"no_crates_in_stock": "Số thùng nhập kho",
 		"no_pair_in_stock": "Số đôi nhập kho",
 		"or_custpo": "Mã đơn đặt hàng của khách",
@@ -62,7 +67,9 @@
 		"total_init_qty": "Số lượng nhập kỳ đầu",
 		"trans_num": "Lượng thùng đã phát",
 		"transfer_order_code": "Mã đơn chuyển giao",
-		"uninspected_qty": "Số Lượng Chưa Kiểm Tra"
+		"uninspected_qty": "Số Lượng Chưa Kiểm Tra",
+		"unweighed_qty": "Số lượng chưa cân",
+		"weighed_qty": "Số lượng đã cân"
 	},
 	"inventory_list_type": {
 		"finished_goods_dispatch": "Đơn xuất kho thành phẩm",
