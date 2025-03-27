@@ -178,7 +178,7 @@ export class RFIDController {
 		const changeStream = this.rfidService.captureDataChange(this.epcOutboundModel, handleChange)
 		res.on('close', () => {
 			this.logger.log('Stop receiving data from Android RFID device')
-			changeStream.removeListener('change', postMessage)
+			changeStream.removeListener('change', handleChange)
 			changeStream.close()
 			res.end()
 		})
