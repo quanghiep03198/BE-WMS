@@ -1,4 +1,4 @@
-import { FactoryCodeRef } from '@/common/constants/factory-code-ref'
+import { FactoryTransCode } from '@/common/constants/factory'
 import { DATA_SOURCE_DATA_LAKE } from '@/databases/constants'
 import { InjectDataSource } from '@nestjs/typeorm'
 import { format } from 'date-fns'
@@ -20,7 +20,7 @@ export class TransferOrderEntitySubscriber implements EntitySubscriberInterface<
 
 	async beforeInsert(event: InsertEvent<TransferOrderEntity>) {
 		const factoryCode = event.entity.cofactory_code
-		const factoryCodeRef = FactoryCodeRef[factoryCode]
+		const factoryCodeRef = FactoryTransCode[factoryCode]
 		const count = await event.manager
 			.getRepository(TransferOrderEntity)
 			.count({ where: { cofactory_code: factoryCode } })
