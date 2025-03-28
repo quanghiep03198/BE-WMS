@@ -7,6 +7,8 @@ import { readFileSync } from 'fs'
 import { I18nContext, I18nService } from 'nestjs-i18n'
 import { join } from 'path'
 import { DataSource } from 'typeorm'
+import { UpdateInventoryReportDTO, UpdateInventoryReportQuery } from '../dto/inventory-report.dto'
+import { InventoryReportEntity } from '../entities/inventory-report.entity'
 import { IInventoryReportQueryResult, IInventoryReportResponse } from '../interfaces'
 
 @Injectable()
@@ -27,6 +29,10 @@ export class InventoryReportService {
 				size_data: JSON.parse(item.size_data)
 			}
 		})
+	}
+
+	async updateInventoryReport(queries: UpdateInventoryReportQuery, payload: UpdateInventoryReportDTO) {
+		return await this.dataSource.getRepository(InventoryReportEntity).update(queries, payload)
 	}
 
 	// #region Inventory report Excel

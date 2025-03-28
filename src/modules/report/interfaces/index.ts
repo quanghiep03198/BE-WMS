@@ -1,3 +1,5 @@
+import { InventoryType } from '../constants'
+
 export interface IReportSearchParams {
 	['factory_code.eq']: string
 	['date.eq']?: string
@@ -41,6 +43,7 @@ export interface IInventoryReportQueryResult {
 	mo_no: string
 	order_qty: number
 	or_no: string
+	inv_type: InventoryType
 	shoes_style_code_factory: string | null
 	init_inv_qty: number
 	total_instock_qty: number

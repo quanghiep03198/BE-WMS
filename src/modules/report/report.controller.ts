@@ -1,9 +1,16 @@
 import { FACTORY_CODE_REF } from '@/common/constants/factory'
 import { Api, AuthGuard, HttpMethod } from '@/common/decorators'
 import { AllExceptionsFilter } from '@/common/filters'
-import { Controller, DefaultValuePipe, Get, Headers, Logger, Query, Res, UseFilters } from '@nestjs/common'
+import { ZodValidationPipe } from '@/common/pipes'
+import { Body, Controller, DefaultValuePipe, Get, Headers, Logger, Query, Res, UseFilters } from '@nestjs/common'
 import { format } from 'date-fns'
 import { Response } from 'express'
+import {
+	UpdateInventoryReportDTO,
+	updateInventoryReportPayload,
+	updateInventoryReportQuery,
+	UpdateInventoryReportQuery
+} from './dto/inventory-report.dto'
 import { InboundReportService } from './services/inbound-report.service'
 import { InventoryReportService } from './services/inventory-report.service'
 import { OutboundReportService } from './services/outbound-report.service'
@@ -29,7 +36,7 @@ export class ReportController {
 		return await this.inboundReportService.getInboundReportByDate(dateQuery)
 	}
 
-	@Get('export-daily-inbound')
+	@Get('daily-inbound/export')
 	@UseFilters(AllExceptionsFilter)
 	@AuthGuard()
 	async exportDailyInboundToExcel(@Query('date.eq') date: string, @Res() res: Response) {
@@ -52,7 +59,7 @@ export class ReportController {
 		return await this.outboundReportService.getOutboundReportByDate(dateQuery)
 	}
 
-	@Get('export-daily-outbound')
+	@Get('daily-outbound/export')
 	@UseFilters(AllExceptionsFilter)
 	@AuthGuard()
 	async exportDailyOutboundToExcel(@Query('date.eq') date: string, @Res() res: Response) {
@@ -64,7 +71,7 @@ export class ReportController {
 
 	// #region Inventory report
 
-	@Api({ endpoint: 'monthly-inventory-report', method: HttpMethod.GET })
+	@Api({ endpoint: 'monthly-inventory', method: HttpMethod.GET })
 	@AuthGuard()
 	async getMonthlyInventoryReport(
 		@Query('month.eq', new DefaultValuePipe(format(new Date(), 'yyyy-MM'))) month: string
@@ -72,7 +79,7 @@ export class ReportController {
 		return await this.inventoryReportService.getMonthlyInventoryReport(format(new Date(month), 'yyyyMM'))
 	}
 
-	@Get('export-monthly-inventory-report')
+	@Get('monthly-inventory/export')
 	@UseFilters(AllExceptionsFilter)
 	@AuthGuard()
 	async exportMonthlyInventoryReport(
@@ -83,11 +90,19 @@ export class ReportController {
 		return res.send(buffer)
 	}
 
+	@Api({ endpoint: 'monthly-inventory/update', method: HttpMethod.PATCH })
+	@AuthGuard()
+	async updateInventoryReport(
+		@Query(new ZodValidationPipe(updateInventoryReportQuery)) queries: UpdateInventoryReportQuery,
+		@Body(new ZodValidationPipe(updateInventoryReportPayload)) payload: UpdateInventoryReportDTO
+	) {
+		return await this.inventoryReportService.updateInventoryReport(queries, payload)
+	}
 	// #endregion
 
 	// #region Packing weight report
 
-	@Api({ endpoint: 'daily-packing-report', method: HttpMethod.GET })
+	@Api({ endpoint: 'daily-weighing', method: HttpMethod.GET })
 	@AuthGuard()
 	async getDailyPackingReport(
 		@Query('date.eq', new DefaultValuePipe(format(new Date(), 'yyyy-MM-dd'))) date: string,
@@ -97,7 +112,7 @@ export class ReportController {
 		return await this.packingWeightReportService.getDailyPackingReport(date, factoryCode)
 	}
 
-	@Get('export-daily-packing-report')
+	@Get('daily-weighing/export')
 	@UseFilters(AllExceptionsFilter)
 	@AuthGuard()
 	async exportPackingWeightReport(
