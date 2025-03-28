@@ -1,5 +1,5 @@
 WITH datalist AS (
-   SELECT EPC_Code, ISNULL(mo_no, 'Unknown') AS mo_no, ISNULL(size_code, 'Unknown') size_numcode, rfid_status, record_time, stationNO, FC_server_code, dept_name
+   SELECT EPC_Code, COALESCE(po, 'Unknown') AS po, COALESCE(mo_no, 'Unknown') AS mo_no, COALESCE(size_code, 'Unknown') size_numcode, rfid_status, record_time, stationNO, FC_server_code, dept_name
    FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet
    WHERE
 	 	rfid_status = 'B'
@@ -8,7 +8,7 @@ WITH datalist AS (
 		AND mo_no <> '13D05B006'
 		AND stationNO LIKE 'CUS%WH103'
    UNION ALL
-   SELECT EPC_Code, ISNULL(mo_no, 'Unknown') AS mo_no, ISNULL(size_code, 'Unknown') size_numcode, rfid_status, record_time, stationNO, FC_server_code, dept_name
+   SELECT EPC_Code, COALESCE(po, 'Unknown') AS po, COALESCE(mo_no, 'Unknown') AS mo_no, COALESCE(size_code, 'Unknown') size_numcode, rfid_status, record_time, stationNO, FC_server_code, dept_name
    FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet_backup_Daily 
 	WHERE
 	 	rfid_status = 'B'
@@ -23,7 +23,8 @@ accumulated_counts AS (
 	GROUP BY mo_no
 )
 SELECT
-	inv.mo_no AS mo_no,
+	inv.po,
+	inv.mo_no,
 	ISNULL(match.shoestyle_codefactory, 'Unknown') AS shoes_style_code_factory,
 	ISNULL(prod.mat_ecolor, 'Unknown') AS mat_ecolor,
 	inv.FC_server_code AS factory_code,
@@ -52,6 +53,7 @@ OUTER APPLY (
 ) sz
 WHERE CAST(inv.record_time AS DATE) = @0
 GROUP BY 
+   inv.po,
    inv.mo_no,
    prod.mat_ecolor,
    manf.mo_sumqty,
