@@ -6,7 +6,7 @@ import { InventoryActions, InventoryStorageType } from '../constants'
 /**
  * @description RFID Production Management Entity - Describes status of RFID tags in the factory (3034xxx)
  */
-@Entity('dv_InvRFIDrecorddet', { database: DATABASE_DATA_LAKE })
+@Entity('dv_InvRFIDrecorddet', { database: DATABASE_DATA_LAKE, schema: 'dbo' })
 export class FPInventoryEntity extends BaseAbstractEntity {
 	@Column({ name: 'stationNO' })
 	station_no: string

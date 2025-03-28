@@ -1,7 +1,7 @@
 import { DATABASE_DATA_LAKE } from '@/databases/constants'
 import { Column, Entity } from 'typeorm'
 
-@Entity('dv_rfidreader', { database: DATABASE_DATA_LAKE })
+@Entity('dv_rfidreader', { database: DATABASE_DATA_LAKE, schema: 'dbo' })
 export class RFIDReaderEntity {
 	@Column({ name: 'id', primary: true })
 	id: number

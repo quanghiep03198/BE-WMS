@@ -5,7 +5,7 @@ import { Column, Entity, Index } from 'typeorm'
 /**
  * @description RFID Customer Match Entity - Describes the details of customer EPC (which commonly starts with "3034")
  */
-@Entity('dv_rfidmatchmst_cust', { database: DATABASE_DATA_LAKE })
+@Entity('dv_rfidmatchmst_cust', { database: DATABASE_DATA_LAKE, schema: 'dbo' })
 export class RFIDMatchCustomerEntity extends BaseAbstractEntity {
 	@Column({ name: 'EPC_Code' })
 	@Index()
