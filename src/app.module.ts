@@ -19,7 +19,6 @@ import { RotateLogJob } from './jobs/rotate-log.job'
 import { IoRedisModule } from './messages/ioredis.module'
 import { AuthModule } from './modules/auth/auth.module'
 import { DepartmentModule } from './modules/department/department.module'
-import { InventoryModule } from './modules/inventory/inventory.module'
 import { OrderModule } from './modules/order/order.module'
 import { PackingModule } from './modules/packing/packing.module'
 import { ReportModule } from './modules/report/report.module'
@@ -76,7 +75,6 @@ import { WarehouseModule } from './modules/warehouse/warehouse.module'
 		// * Feature modules
 		AuthModule,
 		DepartmentModule,
-		InventoryModule,
 		OrderModule,
 		PackingModule,
 		ReportModule,
