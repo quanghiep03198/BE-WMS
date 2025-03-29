@@ -13,16 +13,17 @@ export interface IReportQueryResult {
 	shaping_dept_name: string
 	order_qty: number
 	factory_code: string
-	size_data: string
 }
 
 export interface IInboundReportQueryResult extends IReportQueryResult {
+	size_data: string
 	daily_inbound_qty: number
 	storage: string
 }
 
 export interface IOutboundReportQueryResult extends IReportQueryResult {
 	daily_outbound_qty: number
+	detail: string
 }
 
 export type IInboundReportResponse = Array<
@@ -33,7 +34,7 @@ export type IInboundReportResponse = Array<
 
 export type IOutboundReportResponse = Array<
 	Omit<IOutboundReportQueryResult, 'size_run'> & {
-		size_data: Array<{ size_numcode: string; qty: number }>
+		detail: Array<{ mo_no: string; mat_ecolor: string; sizes: { size_numcode: string; qty: number } }>
 	}
 >
 
