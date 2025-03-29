@@ -26,7 +26,7 @@ export class OutboundReportService {
 		return data.map((item) => {
 			return {
 				...item,
-				size_data: JSON.parse(item.size_data)
+				detail: JSON.parse(item.detail)
 			}
 		})
 	}
@@ -42,6 +42,10 @@ export class OutboundReportService {
 				format(new Date(date), 'yyyy-MM-dd')
 		)
 		worksheet.columns = [
+			{
+				header: 'PO',
+				key: 'po'
+			},
 			{
 				header: this.i18nService.t('erp.fields.mo_no', { lang: currentLanguage }),
 				key: 'mo_no'
@@ -84,13 +88,14 @@ export class OutboundReportService {
 				row.getCell(i).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'deecf7' } }
 			}
 			// const subRecords = await this.getOutboundReportDetailByDate(record.mo_no, record.factory_code, date)
-			for (const subRecord of record.size_data) {
-				const subRow = worksheet.addRow([])
-				subRow.getCell(2).value = subRecord.size_numcode + '#'
-				subRow.getCell(2).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'fff2cc' } }
-				subRow.getCell(3).value = subRecord.qty
-				subRow.getCell(3).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'f2dcdb' } }
-			}
+			// TODO: Fix this on render to excel
+			// for (const subRecord of record.detail) {
+			// 	const subRow = worksheet.addRow([])
+			// 	subRow.getCell(2).value = subRecord.size_numcode + '#'
+			// 	subRow.getCell(2).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'fff2cc' } }
+			// 	subRow.getCell(3).value = subRecord.qty
+			// 	subRow.getCell(3).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'f2dcdb' } }
+			// }
 		}
 
 		worksheet.columns.forEach((sheetColumn) => {
@@ -103,7 +108,7 @@ export class OutboundReportService {
 		// * Add title
 		worksheet.insertRow(1, null)
 		worksheet.getRow(1).height = 28
-		worksheet.mergeCells('A1:H1')
+		worksheet.mergeCells('A1:I1')
 		worksheet.getCell('A1').value = this.i18nService.t('inoutbound.titles.daily_outbound_report', {
 			args: {
 				factory: this.i18nService.t(`factory.${factoryCode}`, { lang: currentLanguage }),
@@ -112,6 +117,13 @@ export class OutboundReportService {
 			lang: currentLanguage
 		})
 		worksheet.views = [{ state: 'frozen', xSplit: 0, ySplit: 2 }]
+		worksheet.views = [
+			{
+				state: 'frozen',
+				xSplit: 3, // Freeze columns A, B, and H (1-based index, so 3 means columns A, B, and H are sticky)
+				ySplit: 2 // Keeps the first two rows frozen as already defined
+			}
+		]
 		worksheet.getRow(1).alignment = { vertical: 'middle', horizontal: 'center' }
 		worksheet.getCell('A1').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'e5e5e5' } }
 		worksheet.getCell('A1').font = { bold: true, size: 16 }
