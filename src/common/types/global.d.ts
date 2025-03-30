@@ -24,6 +24,8 @@ export declare global {
 			HOST: string
 			PORT: string
 			FALLBACK_LANGUAGE: string
+			POSTMAN_DOCUMENTATION_URL: string | undefined
+
 			// * Throttler
 			THROTTLER_TTL: string
 			THROTTLER_LIMIT: string
