@@ -21,6 +21,9 @@ export type I18nTranslations = {
         "conflict": string;
         "internal_server_error": string;
         "unavailable_service": string;
+        "fields": {
+            "remark": string;
+        };
     };
     "erp": {
         "fields": {

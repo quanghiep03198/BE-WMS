@@ -9,5 +9,8 @@
 	"forbidden": "Forbidden",
 	"conflict": "Conflict",
 	"internal_server_error": "Internal server error",
-	"unavailable_service": "Unavailable service"
+	"unavailable_service": "Unavailable service",
+	"fields": {
+		"remark": "Remark"
+	}
 }

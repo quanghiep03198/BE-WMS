@@ -27,14 +27,14 @@ export interface IOutboundReportQueryResult extends IReportQueryResult {
 }
 
 export type IInboundReportResponse = Array<
-	Omit<IInboundReportQueryResult, 'size_run'> & {
+	IInboundReportQueryResult & {
 		size_data: Array<{ size_numcode: string; qty: number }>
 	}
 >
 
 export type IOutboundReportResponse = Array<
-	Omit<IOutboundReportQueryResult, 'size_run'> & {
-		detail: Array<{ mo_no: string; mat_ecolor: string; sizes: { size_numcode: string; qty: number } }>
+	IOutboundReportQueryResult & {
+		detail: Array<{ mo_no: string; sizes: Array<{ size_numcode: string; qty: number }> }>
 	}
 >
 
