@@ -9,5 +9,8 @@
 	"forbidden": "Không có quyền truy cập",
 	"conflict": "Xung đột dữ liệu",
 	"internal_server_error": "Lỗi Server",
-	"unavailable_service": "Tính năng không khả dụng"
+	"unavailable_service": "Tính năng không khả dụng",
+	"fields": {
+		"remark": "Ghi chú"
+	}
 }

@@ -9,5 +9,8 @@
 	"forbidden": "禁止",
 	"conflict": "冲突",
 	"internal_server_error": "内部服务器错误",
-	"unavailable_service": "服务不可用"
+	"unavailable_service": "服务不可用",
+	"fields": {
+		"remark": "备注"
+	}
 }
