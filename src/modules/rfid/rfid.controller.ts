@@ -227,6 +227,14 @@ export class RFIDController {
 
 	// #region Others
 	@Api({
+		endpoint: 'devices',
+		method: HttpMethod.GET
+	})
+	async getWarehouseRFIDDevices(@Headers('X-User-Company') factoryCode: string) {
+		return await this.rfidService.getWarehouseRFIDDevices(factoryCode)
+	}
+
+	@Api({
 		endpoint: 'search-exchangable-order',
 		method: HttpMethod.GET
 	})

@@ -1,8 +1,9 @@
 import { DATABASE_DATA_LAKE } from '@/databases/constants'
+import { BaseAbstractEntity } from '@/modules/_base/base.abstract.entity'
 import { Column, Entity } from 'typeorm'
 
 @Entity('dv_rfidreader', { database: DATABASE_DATA_LAKE, schema: 'dbo' })
-export class RFIDReaderEntity {
+export class RFIDReaderEntity extends BaseAbstractEntity {
 	@Column({ name: 'id', primary: true })
 	id: number
 

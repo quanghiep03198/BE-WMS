@@ -1,5 +1,5 @@
 import { FileLogger } from '@/common/helpers'
-import { DATA_SOURCE_DATA_LAKE, DATA_SOURCE_ERP } from '@/databases/constants'
+import { DATA_SOURCE_DATA_LAKE, DATA_SOURCE_ERP, MAIN_DATA_SOURCE } from '@/databases/constants'
 import { InjectQueue } from '@nestjs/bullmq'
 import { Inject, Injectable, InternalServerErrorException, NotFoundException, Scope } from '@nestjs/common'
 import { REQUEST } from '@nestjs/core'
@@ -55,6 +55,7 @@ export class RFIDService {
 
 	constructor(
 		@Inject(REQUEST) private readonly request: Request,
+		@Inject(MAIN_DATA_SOURCE) private readonly dataSource: DataSource,
 		@Inject(TENANCY_DATA_SOURCE) private readonly dataSourceTNC: DataSource,
 		@InjectDataSource(DATA_SOURCE_DATA_LAKE) private readonly dataSourceDL: DataSource,
 		@InjectDataSource(DATA_SOURCE_ERP) private readonly dataSourceERP: DataSource,
@@ -479,6 +480,19 @@ export class RFIDService {
 	}
 
 	// #region Composable
+	public async getWarehouseRFIDDevices(factoryCode: string) {
+		return await this.dataSource
+			.getRepository(RFIDReaderEntity)
+			.createQueryBuilder()
+			.select(/* SQL */ `DISTINCT device_sn`)
+			.addSelect(/* SQL */ `device_name`)
+			.addSelect(/* SQL */ `ISNULL(STRING_AGG(device_ant, ','), '0') AS device_ant`)
+			.addSelect(/* SQL */ `isactive AS is_active`)
+			.where(/* SQL */ `device_name LIKE :station_no`, { station_no: `CUS_${factoryCode}_WH10%` })
+			.groupBy(/* SQL */ `device_name, device_sn, isactive, CONCAT(ip_address, ':', ip_port)`)
+			.getRawMany()
+	}
+
 	public async searchExchangableOrder(params: SearchCustOrderParamsDTO) {
 		return await this.dataSourceERP.query(
 			/* SQL */ `
