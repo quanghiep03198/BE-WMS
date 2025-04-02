@@ -1,10 +1,9 @@
-import { DATABASE_DATA_LAKE } from '@/databases/constants'
-import { BaseAbstractEntity } from '@/modules/_base/base.abstract.entity'
-import { Column, Entity } from 'typeorm'
+import { DATABASE_DATA_LAKE, RecordStatus } from '@/databases/constants'
+import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm'
 
 @Entity('dv_rfidreader', { database: DATABASE_DATA_LAKE, schema: 'dbo' })
-export class RFIDReaderEntity extends BaseAbstractEntity {
-	@Column({ name: 'id', primary: true })
+export class RFIDReaderEntity {
+	@PrimaryGeneratedColumn({ name: 'id', type: 'int' })
 	id: number
 
 	@Column({ name: 'device_sn' })
@@ -24,4 +23,7 @@ export class RFIDReaderEntity extends BaseAbstractEntity {
 
 	@Column({ name: 'cofactory_code' })
 	factory_code: string
+
+	@Column({ name: 'isactive', type: 'varchar', length: 1, enum: RecordStatus, default: RecordStatus.ACTIVE })
+	is_active: RecordStatus
 }
