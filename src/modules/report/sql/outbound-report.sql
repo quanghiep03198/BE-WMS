@@ -1,13 +1,15 @@
+DECLARE @FallbackValue NVARCHAR(10) = 'Unknown';
+
 DROP TABLE IF EXISTS #datalist;
 
 -- * Create temporary table to store data
 SELECT
 	EPC_Code,
-	COALESCE(po, 'Unknown') AS po,
-	COALESCE(mo_no, 'Unknown') AS mo_no,
-	COALESCE(shoestyle_codefactory, 'Unknown') AS shoestyle_codefactory,
-	COALESCE(mat_ecolor, 'Unknown') AS mat_ecolor,
-	COALESCE(size_code, 'Unknown') AS size_numcode,
+	COALESCE(po, @FallbackValue) AS po,
+	COALESCE(mo_no, @FallbackValue) AS mo_no,
+	COALESCE(shoestyle_codefactory, @FallbackValue) AS shoestyle_codefactory,
+	COALESCE(mat_ecolor, @FallbackValue) AS mat_ecolor,
+	COALESCE(size_code, @FallbackValue) AS size_numcode,
 	rfid_status,
 	record_time,
 	stationNO,

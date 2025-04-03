@@ -1,3 +1,4 @@
+DECLARE @FallbackValue NVARCHAR(10) = 'Unknown';
 
 WITH
    po_list
@@ -5,8 +6,8 @@ WITH
    (
       SELECT e.brand_name,
 		IIF(ISNULL(a.or_custpoone,'') = '', a.or_custpo, a.or_custpoone)[PO], 
-		COALESCE(c.shoestyle_codefactory, 'Unknown')[shoes_style_code_factory], 
-		COALESCE(b.mat_ecolor, 'Unknown')[mat_ecolor], 
+		COALESCE(c.shoestyle_codefactory, @FallbackValue)[shoes_style_code_factory], 
+		COALESCE(b.mat_ecolor, @FallbackValue)[mat_ecolor], 
 		(SUM(a.or_totalqty) - SUM(a.or_totalcqty))[po_qty]
       FROM wuerp_vnrd.dbo.ta_ordermst a
       LEFT JOIN wuerp_vnrd.dbo.ta_productmst b ON a.mat_code=b.mat_code AND b.isactive='Y'
@@ -16,8 +17,8 @@ WITH
       WHERE a.isactive='Y'
       GROUP BY e.brand_name,
 		IIF(ISNULL(a.or_custpoone,'')='', a.or_custpo, a.or_custpoone), 
-		COALESCE(c.shoestyle_codefactory, 'Unknown'), 
-		COALESCE(b.mat_ecolor, 'Unknown')
+		COALESCE(c.shoestyle_codefactory, @FallbackValue), 
+		COALESCE(b.mat_ecolor, @FallbackValue)
    )
 SELECT pl.brand_name[brand_name],
    pk.PO AS po, 

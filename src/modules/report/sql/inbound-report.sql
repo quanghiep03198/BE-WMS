@@ -1,5 +1,7 @@
+DECLARE @FallbackValue NVARCHAR(10) = 'Unknown';
+
 WITH data_src AS (
-	SELECT DISTINCT EPC_Code, COALESCE(mo_no, 'Unknown') AS mo_no, COALESCE(size_code, 'Unknown') AS size_numcode, rfid_status, record_time, stationNO, FC_server_code AS factory_code, ISNULL(dept_name, 'Unknown') AS dept_name, storage
+	SELECT DISTINCT EPC_Code, COALESCE(mo_no, @FallbackValue) AS mo_no, COALESCE(size_code, @FallbackValue) AS size_numcode, rfid_status, record_time, stationNO, FC_server_code AS factory_code, ISNULL(dept_name, @FallbackValue) AS dept_name, storage
 	FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet
 	WHERE 
 		rfid_status = 'A'
@@ -9,7 +11,7 @@ WITH data_src AS (
 		AND stationNO LIKE 'CUS%WH10[12]'
 		AND record_time >= CAST(DATEADD(YEAR, -2, GETDATE()) AS DATE)
 	UNION ALL
-	SELECT DISTINCT EPC_Code, COALESCE(mo_no, 'Unknown') AS mo_no, COALESCE(size_code, 'Unknown') AS size_numcode, rfid_status, record_time, stationNO, FC_server_code AS factory_code, ISNULL(dept_name, 'Unknown') AS dept_name, storage
+	SELECT DISTINCT EPC_Code, COALESCE(mo_no, @FallbackValue) AS mo_no, COALESCE(size_code, @FallbackValue) AS size_numcode, rfid_status, record_time, stationNO, FC_server_code AS factory_code, ISNULL(dept_name, @FallbackValue) AS dept_name, storage
 	FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet_backup_Daily
 	WHERE 
 		rfid_status = 'A'
@@ -44,8 +46,8 @@ acc_counts AS
 SELECT
 	ds.factory_code,
 	ds.mo_no,
-	COALESCE(rmc.shoestyle_codefactory,'Unknown') AS shoes_style_code_factory,
-	COALESCE(prod.mat_ecolor, 'Unknown') AS mat_ecolor,
+	COALESCE(rmc.shoestyle_codefactory,@FallbackValue) AS shoes_style_code_factory,
+	COALESCE(prod.mat_ecolor, @FallbackValue) AS mat_ecolor,
 	dg.dept_name AS shaping_dept_name,
 	sg.storage_name AS storage,
 	COALESCE(manf.mo_sumqty, 0) AS order_qty,
