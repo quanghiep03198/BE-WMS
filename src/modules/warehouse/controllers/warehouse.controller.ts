@@ -13,7 +13,7 @@ import { WarehouseService } from '../services/warehouse.service'
 
 @Controller('warehouse')
 export class WarehouseController {
-	constructor(private warehouseService: WarehouseService) {}
+	constructor(private readonly warehouseService: WarehouseService) {}
 
 	@Api({ method: HttpMethod.GET })
 	@AuthGuard()

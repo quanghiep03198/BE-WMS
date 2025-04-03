@@ -14,7 +14,7 @@ import { StorageLocationService } from './../services/storage-location.service'
 
 @Controller('warehouse/storage-detail')
 export class StorageLocationController {
-	constructor(private storageLocationService: StorageLocationService) {}
+	constructor(private readonly storageLocationService: StorageLocationService) {}
 
 	@Api({
 		method: HttpMethod.POST,

@@ -9,7 +9,7 @@ import { EmployeeEntity } from '../entities/employee.entity'
 export class EmployeeService extends BaseAbstractService<EmployeeEntity> {
 	constructor(
 		@InjectRepository(EmployeeEntity, DATA_SOURCE_SYSCLOUD)
-		private employeeRepository: Repository<EmployeeEntity>
+		private readonly employeeRepository: Repository<EmployeeEntity>
 	) {
 		super(employeeRepository)
 	}

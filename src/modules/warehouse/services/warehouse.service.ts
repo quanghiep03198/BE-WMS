@@ -9,7 +9,7 @@ import { WarehouseEntity } from '../entities/warehouse.entity'
 export class WarehouseService extends BaseAbstractService<WarehouseEntity> {
 	constructor(
 		@InjectRepository(WarehouseEntity, DATA_SOURCE_DATA_LAKE)
-		private warehouseRepository: Repository<WarehouseEntity>
+		private readonly warehouseRepository: Repository<WarehouseEntity>
 	) {
 		super(warehouseRepository)
 	}

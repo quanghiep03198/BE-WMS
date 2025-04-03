@@ -4,7 +4,7 @@ import { EmployeeService } from '../services/employee.service'
 
 @Controller('employee')
 export class EmployeeController {
-	constructor(private employeeService: EmployeeService) {}
+	constructor(private readonly employeeService: EmployeeService) {}
 
 	@Api({ method: HttpMethod.GET })
 	async searchEmployee(@Query('search') searchTerm: string) {

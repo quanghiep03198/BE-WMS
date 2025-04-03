@@ -9,7 +9,7 @@ import { StorageLocationEntity } from '../entities/storage-location.entity'
 export class StorageLocationService extends BaseAbstractService<StorageLocationEntity> {
 	constructor(
 		@InjectRepository(StorageLocationEntity, DATA_SOURCE_DATA_LAKE)
-		private storageLocationRepository: Repository<StorageLocationEntity>
+		private readonly storageLocationRepository: Repository<StorageLocationEntity>
 	) {
 		super(storageLocationRepository)
 	}
