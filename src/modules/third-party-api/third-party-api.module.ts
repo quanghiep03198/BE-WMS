@@ -45,7 +45,7 @@ export class ThirdPartyApiModule implements NestModule, OnModuleInit {
 		this.httpService.axiosRef.defaults.baseURL = this.configService.get('THIRD_PARTY_API_URL')
 		this.httpService.axiosRef.interceptors.request.use(
 			(config) => config,
-			(error) => Promise.reject(error.message)
+			(error) => Promise.reject(error)
 		)
 
 		this.httpService.axiosRef.interceptors.response.use(
@@ -61,7 +61,7 @@ export class ThirdPartyApiModule implements NestModule, OnModuleInit {
 				const requestURL = error.config.baseURL + error.config.url
 				const errorStatus = error.status
 				FileLogger.error(`${requestMethod} ${requestURL} ${errorStatus}`)
-				return Promise.reject(error.message)
+				return Promise.reject(error)
 			}
 		)
 	}
