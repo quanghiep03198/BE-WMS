@@ -7,7 +7,7 @@ import { PaginationDTO } from './dto/pagination.dto'
 
 @Injectable()
 export abstract class BaseAbstractService<Entity extends BaseAbstractEntity> implements IBaseService<Entity> {
-	protected constructor(private repository: Repository<Entity>) {}
+	protected constructor(private readonly repository: Repository<Entity>) {}
 
 	async insertOne(payload: DeepPartial<Entity>) {
 		const newRecord = this.repository.create(payload)

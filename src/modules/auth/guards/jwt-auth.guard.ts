@@ -8,8 +8,8 @@ import { Request } from 'express'
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
 	constructor(
-		@Inject(CACHE_MANAGER) private cacheManager: Cache,
-		private jwtService: JwtService,
+		@Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
+		private readonly jwtService: JwtService,
 		private readonly configService: ConfigService
 	) {}
 

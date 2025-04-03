@@ -13,9 +13,9 @@ export interface Response<T> {
 @Injectable()
 export class TransformInterceptor<T> implements NestInterceptor<T, Response<T>> {
 	constructor(
-		private reflector: Reflector,
-		private httpAdapterHost: HttpAdapterHost,
-		private i18nService: I18nService
+		private readonly reflector: Reflector,
+		private readonly httpAdapterHost: HttpAdapterHost,
+		private readonly i18nService: I18nService
 	) {}
 	intercept(context: ExecutionContext, next: CallHandler): Observable<Response<T>> {
 		const responseMessage =

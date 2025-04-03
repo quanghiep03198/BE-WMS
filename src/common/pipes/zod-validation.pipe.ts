@@ -3,7 +3,7 @@ import { ArgumentMetadata, PipeTransform, UnprocessableEntityException } from '@
 import { ZodSchema } from 'zod'
 
 export class ZodValidationPipe implements PipeTransform {
-	constructor(private schema: ZodSchema) {}
+	constructor(private readonly schema: ZodSchema) {}
 
 	transform(value: unknown, _metadata: ArgumentMetadata) {
 		try {

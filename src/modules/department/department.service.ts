@@ -8,7 +8,7 @@ import { DepartmentEntity } from './entities/department.entity'
 export class DepartmentService {
 	constructor(
 		@InjectRepository(DepartmentEntity, DATA_SOURCE_SYSCLOUD)
-		private departmentRepository: Repository<DepartmentEntity>
+		private readonly departmentRepository: Repository<DepartmentEntity>
 	) {}
 
 	async getWarehouseDepartments(factoryCode: string) {

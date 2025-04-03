@@ -5,7 +5,7 @@ import { DepartmentService } from './department.service'
 
 @Controller('department')
 export class DepartmentController {
-	constructor(private departmentService: DepartmentService) {}
+	constructor(private readonly departmentService: DepartmentService) {}
 
 	@Api({
 		endpoint: 'warehouse',

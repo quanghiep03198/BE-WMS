@@ -11,14 +11,14 @@ import { LoginDTO, loginValidator } from './dto/auth.dto'
 
 @Injectable()
 export class AuthService {
+	private readonly TOKEN_CACHE_TTL = 60 * 1000 * 60 + 30 * 1000
+
 	constructor(
 		@Inject(CACHE_MANAGER) private cacheManager: Cache,
 		private readonly jwtService: JwtService,
 		private readonly userService: UserService,
 		private readonly i18n: I18nService
 	) {}
-
-	private TOKEN_CACHE_TTL = 60 * 1000 * 60 + 30 * 1000
 
 	@UsePipes(new ZodValidationPipe(loginValidator))
 	async validateUser(payload: LoginDTO) {
