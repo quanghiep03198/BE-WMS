@@ -59,19 +59,19 @@ export class RFIDService {
 		@Inject(TENANCY_DATA_SOURCE) private readonly dataSourceTNC: DataSource,
 		@InjectDataSource(DATA_SOURCE_DATA_LAKE) private readonly dataSourceDL: DataSource,
 		@InjectDataSource(DATA_SOURCE_ERP) private readonly dataSourceERP: DataSource,
+		@InjectQueue(POST_DATA_QUEUE) private readonly postDataQueue: Queue,
 		@InjectModel(EpcInbound.name) private readonly epcInboundModel: EpcModel,
 		@InjectModel(EpcOutbound.name) private readonly epcOutboundModel: EpcModel,
-		@InjectQueue(POST_DATA_QUEUE) private readonly postDataQueue: Queue,
 		private readonly i18nService: I18nService
 	) {}
 
 	// #region Inbound
-	public async addPostDataQueueJob(data: PostReaderDataDTO) {
-		return await this.postDataQueue.add('RFID_STOCK_RECEIVING', data, { lifo: true })
+	public async addInboundRFIDDataJob(data: PostReaderDataDTO) {
+		return await this.postDataQueue.add('RFID_INBOUND', data, { lifo: true })
 	}
 
 	/**
-	 * @description Cleanup the queue by tenant. All existing jobs around 5 minutes old will be removed
+	 * @description Cleanup the queue. All existing jobs around last 5 minutes will be removed
 	 */
 	public async cleanupQueue(): Promise<unknown[]> {
 		const GRACE_PERIOD = 60 * 1000 * 5
