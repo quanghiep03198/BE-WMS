@@ -10,7 +10,6 @@ import {
 	Patch,
 	Post,
 	Put,
-	RequestMethod,
 	UseFilters,
 	UseInterceptors
 } from '@nestjs/common'
@@ -19,13 +18,13 @@ import { TransformInterceptor } from '../interceptors/transform.interceptor'
 import { PluralI18nPath, ResponseMessage } from './response-message.decorator'
 
 export enum HttpMethod {
-	GET = RequestMethod.GET,
-	POST = RequestMethod.POST,
-	PUT = RequestMethod.PUT,
-	PATCH = RequestMethod.PATCH,
-	DELETE = RequestMethod.DELETE,
-	OPTIONS = RequestMethod.OPTIONS,
-	HEAD = RequestMethod.HEAD
+	GET = 'GET',
+	POST = 'POST',
+	PUT = 'PUT',
+	PATCH = 'PATCH',
+	DELETE = 'DELETE',
+	OPTIONS = 'OPTIONS',
+	HEAD = 'HEAD'
 }
 
 interface ApiOptions {
