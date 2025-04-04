@@ -13,12 +13,10 @@ SELECT
 	rfid_status,
 	record_time,
 	stationNO,
-	FC_server_code,
-	dept_name
+	FC_server_code
 INTO #datalist
 FROM (
-	SELECT i.EPC_Code, i.po, i.mo_no, i.size_code, i.rfid_status, i.record_time, i.stationNO, i.FC_server_code, i.dept_name,
-		r.shoestyle_codefactory, p.mat_ecolor
+	SELECT i.EPC_Code, i.po, i.mo_no, i.size_code, i.rfid_status, i.record_time, i.stationNO, i.FC_server_code, r.shoestyle_codefactory, p.mat_ecolor
 	FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet i
 	LEFT JOIN DV_DATA_LAKE.dbo.dv_rfidmatchmst_cust r
 		ON i.EPC_Code = r.EPC_Code
@@ -31,9 +29,8 @@ FROM (
 		AND i.mo_no <> '13D05B006'
 		AND i.stationNO LIKE 'CUS%WH103'
 	UNION ALL
-	SELECT i.EPC_Code, i.po, i.mo_no, i.size_code, i.rfid_status, i.record_time, i.stationNO, i.FC_server_code, i.dept_name,
-		r.shoestyle_codefactory, p.mat_ecolor
-	FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet i
+	SELECT i.EPC_Code, i.po, i.mo_no, i.size_code, i.rfid_status, i.record_time, i.stationNO, i.FC_server_code, r.shoestyle_codefactory, p.mat_ecolor
+	FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet_backup_Daily i
 	LEFT JOIN DV_DATA_LAKE.dbo.dv_rfidmatchmst_cust r
 		ON i.EPC_Code = r.EPC_Code
 	LEFT JOIN wuerp_vnrd.dbo.ta_productmst p
