@@ -423,7 +423,8 @@ export class RFIDService {
 
 	async upsertStockOut(payload: UpsertStockOutDTO) {
 		const epcToUpsert = await this.epcOutboundModel
-			.find({ deleted: false, scannable: true, mo_no: { $in: payload.mo_no } })
+			.find({ deleted: false, scannable: true, mo_no: payload.mo_no, size_numcode: payload.size_numcode })
+			.limit(payload.qty)
 			.lean(true)
 		const session = await this.epcOutboundModel.startSession()
 		const queryRunner = this.dataSourceDL.createQueryRunner()
@@ -445,7 +446,9 @@ export class RFIDService {
 
 				await this.dataSourceDL.query(this.upsertStockoutQuery.replace(':values', values))
 			}
-			await this.epcOutboundModel.delete({ deleted: false, scannable: true, mo_no: { $in: payload.mo_no } }).exec()
+			await this.epcOutboundModel
+				.delete({ deleted: false, scannable: true, epc: { $in: epcToUpsert.map((item) => item.epc) } })
+				.exec()
 			await Promise.all([queryRunner.commitTransaction(), session.commitTransaction()])
 		} catch (error) {
 			await Promise.all([queryRunner.rollbackTransaction(), session.abortTransaction()])

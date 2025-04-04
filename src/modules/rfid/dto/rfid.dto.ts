@@ -116,8 +116,10 @@ export const readerPostDataValidator = z.object({
 	})
 })
 export const upsertStockOutValidator = z.object({
-	mo_no: z.array(z.string(), { required_error: 'validation:required' }).nonempty({ message: 'validation:required' }),
-	po: z.string({ required_error: 'validation:required' }).nonempty({ message: 'validation:required' })
+	mo_no: z.string().nonempty(),
+	po: z.string().nonempty(),
+	size_numcode: z.string().nonempty(),
+	qty: z.number().positive()
 })
 
 export type UpsertStockOutDTO = z.infer<typeof upsertStockOutValidator>
