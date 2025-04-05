@@ -8,16 +8,16 @@ import { readFileSync } from 'fs-extra'
 import { AnyBulkWriteOperation, PaginateModel } from 'mongoose'
 import { join, resolve } from 'path'
 import { DataSource } from 'typeorm'
-import { EXCLUDED_EPC_PATTERN, EXCLUDED_ORDERS, FALLBACK_VALUE, POST_DATA_QUEUE } from './constants'
-import { PostReaderDataDTO } from './dto/rfid.dto'
-import { RFIDReaderEntity } from './entities/rfid-reader.entity'
-import { EpcDocument, EpcInbound, EpcInboundSchema } from './schemas/epc.schema'
-import { StoredRFIDReaderItem } from './types'
+import { EXCLUDED_EPC_PATTERN, EXCLUDED_ORDERS, FALLBACK_VALUE, POST_DATA_QUEUE } from '../constants'
+import { PostReaderDataDTO } from '../dto/rfid.dto'
+import { RFIDReaderEntity } from '../entities/rfid-reader.entity'
+import { EpcDocument, EpcInbound, EpcInboundSchema } from '../schemas/epc.schema'
+import { StoredRFIDReaderItem } from '../types'
 
 @Processor(POST_DATA_QUEUE)
-export class RFIDConsumer extends WorkerHost {
+export class RFIDInboundConsumer extends WorkerHost {
 	private readonly epcInformationQuery: string = readFileSync(
-		resolve(join(__dirname, './sql/epc-information.sql')),
+		resolve(join(__dirname, '../sql/epc-information.sql')),
 		'utf-8'
 	)
 

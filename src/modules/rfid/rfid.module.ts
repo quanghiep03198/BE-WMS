@@ -10,12 +10,13 @@ import { TenancyModule } from '../tenancy/tenancy.module'
 import { THIRD_PARTY_API_SYNC } from '../third-party-api/constants'
 import { ThirdPartyApiModule } from '../third-party-api/third-party-api.module'
 import { POST_DATA_QUEUE } from './constants'
+import { RFIDInboundConsumer } from './consumers/rfid-inbound.consumer'
+import { RFIDInboundController } from './controllers/rfid-inbound.controller'
+import { RFIDOutboundController } from './controllers/rfid-outbound.controller'
+import { RFIDSharedController } from './controllers/rfid-shared.controller'
 import { FPInventoryEntity } from './entities/fp-inventory.entity'
 import { RFIDMatchCustomerEntity } from './entities/rfid-customer-match.entity'
 import { RFIDReaderEntity } from './entities/rfid-reader.entity'
-import { RFIDConsumer } from './rfid.consumer'
-import { RFIDController } from './rfid.controller'
-import { RFIDService } from './rfid.service'
 import {
 	EPC_INBOUND_COLLECTION,
 	EPC_OUTBOUND_COLLECTION,
@@ -24,6 +25,9 @@ import {
 	EpcOutbound,
 	EpcOutboundSchema
 } from './schemas/epc.schema'
+import { RFIDInboundService } from './services/rfid-inbound.service'
+import { RFIDOutboundService } from './services/rfid-outbound.service'
+import { RFIDSharedService } from './services/rfid-shared.service'
 import { FPInventoryEntitySubscriber } from './subscribers/fp-inventory.entity.subscriber'
 import { RFIDCustomerEntitySubscriber } from './subscribers/rfid-customer.entity.subscriber'
 
@@ -55,9 +59,16 @@ import { RFIDCustomerEntitySubscriber } from './subscribers/rfid-customer.entity
 			}
 		])
 	],
-	controllers: [RFIDController],
-	providers: [RFIDService, RFIDConsumer, RFIDCustomerEntitySubscriber, FPInventoryEntitySubscriber],
-	exports: [MongooseModule, RFIDService]
+	controllers: [RFIDSharedController, RFIDInboundController, RFIDOutboundController],
+	providers: [
+		RFIDSharedService,
+		RFIDInboundService,
+		RFIDOutboundService,
+		RFIDInboundConsumer,
+		RFIDCustomerEntitySubscriber,
+		FPInventoryEntitySubscriber
+	],
+	exports: [MongooseModule, RFIDInboundService]
 })
 export class RFIDModule implements NestModule {
 	configure(consumer: MiddlewareConsumer) {

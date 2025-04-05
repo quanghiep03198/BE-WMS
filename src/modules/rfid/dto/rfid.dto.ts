@@ -116,10 +116,10 @@ export const readerPostDataValidator = z.object({
 	})
 })
 export const upsertStockOutValidator = z.object({
-	mo_no: z.string().nonempty(),
+	mo_no: z.string().nonempty().or(z.array(z.string().nonempty()).nonempty()),
 	po: z.string().nonempty(),
-	size_numcode: z.string().nonempty(),
-	qty: z.number().positive()
+	size_numcode: z.string().nonempty().optional(),
+	qty: z.number().positive().optional()
 })
 
 export type UpsertStockOutDTO = z.infer<typeof upsertStockOutValidator>
