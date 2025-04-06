@@ -18,7 +18,7 @@ export class OrderService {
 		resolve(join(__dirname, './sql/search-purchase-order.sql')),
 		'utf-8'
 	)
-	private readonly sizeRunQuery = readFileSync(resolve(join(__dirname, './sql/order-size-run.sql')), 'utf-8')
+	private readonly sizeRunQuery: string = readFileSync(resolve(join(__dirname, './sql/order-size-run.sql')), 'utf-8')
 
 	constructor(@InjectDataSource(DATA_SOURCE_ERP) private readonly dataSourceERP: DataSource) {}
 
