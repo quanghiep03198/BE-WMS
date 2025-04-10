@@ -1,12 +1,12 @@
 SELECT DISTINCT
   a.inv_yearmonth AS inv_year_month --month
-, a.brand_name --Brand
-, a.shoestyle_cofactory -- Factory Type 工廠型體
+, a.brand_name AS brand_name --Brand
+, a.shoestyle_cofactory AS shoes_style_code_factory -- Factory Type 工廠型體
 , a.cust_shoestyle -- 客戶型體
-, a.mo_no --
+, a.mo_no
 , a.po
 , a.inv_type
-, SUM(a.mo_qty)[mo_qty] --TOTAL OF mo_qty 指令數量
+, SUM(a.mo_qty)[order_qty]  --TOTAL OF mo_qty 指令數量
 , SUM(a.inv_initialqty)[init_inv_qty] --TOTAL OF Beginning Inventory 期初庫存
 , (SUM(a.inv_istotalqty) + SUM(inv_manualqty)) [total_instock_qty] -- TOTAL OF Inventory In 入庫
 , (SUM(a.inv_ostotalqty) + SUM(inv_manualqtyout)) [total_outstock_qty] -- TOTAL OF Inventory Out 出庫

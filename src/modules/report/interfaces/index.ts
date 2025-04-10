@@ -57,11 +57,11 @@ export interface IInventoryReportQueryResult {
 export type IInventoryReportResponse = Array<
 	Omit<IInventoryReportQueryResult, 'size_data'> & {
 		size_data: Array<{
-			size_numcode: string
-			init_inv_qty: number
-			instock_qty: number
-			outstock_qty: number
-			final_inv_qty: number
+			size: string
+			int_qty: number
+			ist_qty: number
+			ost_qty: number
+			fnl_qty: number
 		}>
 	}
 >

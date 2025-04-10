@@ -94,16 +94,16 @@ export class InventoryReportService {
 				const row = worksheet.addRow([])
 				row.alignment = { vertical: 'middle', horizontal: 'center' }
 				worksheet.mergeCells(`B${row.number}:C${row.number}`)
-				row.getCell(2).value = subRecord.size_numcode + '#'
+				row.getCell(2).value = subRecord.size + '#'
 				row.getCell(2).alignment = { vertical: 'middle', horizontal: 'center' }
 				row.getCell(2).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'fff2cc' } }
-				row.getCell(4).value = subRecord.init_inv_qty
+				row.getCell(4).value = subRecord.int_qty
 				row.getCell(4).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'f2dcdb' } }
-				row.getCell(5).value = subRecord.instock_qty
+				row.getCell(5).value = subRecord.ist_qty
 				row.getCell(5).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'f2dcdb' } }
-				row.getCell(6).value = subRecord.outstock_qty
+				row.getCell(6).value = subRecord.ost_qty
 				row.getCell(6).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'f2dcdb' } }
-				row.getCell(7).value = subRecord.final_inv_qty
+				row.getCell(7).value = subRecord.fnl_qty
 				row.getCell(7).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'f2dcdb' } }
 			}
 		}
