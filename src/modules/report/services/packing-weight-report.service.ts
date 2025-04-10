@@ -60,12 +60,16 @@ export class PackingWeightReportService {
 				key: 'po_qty'
 			},
 			{
-				header: this.i18nService.t('erp.fields.weighed_qty', { lang: currentLanguage }),
-				key: 'weighed_qty'
+				header: this.i18nService.t('erp.fields.weighed_item_qty', { lang: currentLanguage }),
+				key: 'weighed_item_qty'
 			},
 			{
-				header: this.i18nService.t('erp.fields.unweighed_qty', { lang: currentLanguage }),
-				key: 'unweighed_qty'
+				header: this.i18nService.t('erp.fields.weighed_box_qty', { lang: currentLanguage }),
+				key: 'weighed_box_qty'
+			},
+			{
+				header: this.i18nService.t('erp.fields.unweighed_item_qty', { lang: currentLanguage }),
+				key: 'unweighed_item_qty'
 			}
 		]
 		const data = await this.getDailyPackingReport(format(new Date(date), 'yyyy-MM-dd'), factoryCode)
@@ -84,7 +88,7 @@ export class PackingWeightReportService {
 		// * Add title
 		worksheet.insertRow(1, null)
 		worksheet.getRow(1).height = 28
-		worksheet.mergeCells('A1:G1')
+		worksheet.mergeCells('A1:I1')
 		worksheet.getCell('A1').value = this.i18nService.t('packing.titles.daily_weighing_report', {
 			args: {
 				factory: this.i18nService.t(`factory.${factoryCode}`, { lang: currentLanguage }),

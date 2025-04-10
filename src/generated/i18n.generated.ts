@@ -97,8 +97,9 @@ export type I18nTranslations = {
             "trans_num": string;
             "transfer_order_code": string;
             "uninspected_qty": string;
-            "unweighed_qty": string;
-            "weighed_qty": string;
+            "unweighed_item_qty": string;
+            "weighed_box_qty": string;
+            "weighed_item_qty": string;
             "customer_branch_id": string;
         };
         "inventory_list_type": {

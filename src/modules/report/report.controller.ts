@@ -1,8 +1,7 @@
-import { FACTORY_CODE_REF } from '@/common/constants/factory'
 import { Api, AuthGuard, HttpMethod } from '@/common/decorators'
 import { AllExceptionsFilter } from '@/common/filters'
 import { ZodValidationPipe } from '@/common/pipes'
-import { Body, Controller, DefaultValuePipe, Get, Headers, Logger, Query, Res, UseFilters } from '@nestjs/common'
+import { Body, Controller, DefaultValuePipe, Get, Headers, Query, Res, UseFilters } from '@nestjs/common'
 import { format } from 'date-fns'
 import { Response } from 'express'
 import {
@@ -108,7 +107,6 @@ export class ReportController {
 		@Query('date.eq', new DefaultValuePipe(format(new Date(), 'yyyy-MM-dd'))) date: string,
 		@Headers('X-User-Company') factoryCode: string
 	) {
-		Logger.debug(FACTORY_CODE_REF[factoryCode])
 		return await this.packingWeightReportService.getDailyPackingReport(date, factoryCode)
 	}
 

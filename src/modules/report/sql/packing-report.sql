@@ -1,9 +1,7 @@
 DECLARE @FallbackValue NVARCHAR(10) = 'Unknown';
 
 WITH
-   po_list
-   AS
-   (
+   po_list AS (
       SELECT e.brand_name,
 		IIF(ISNULL(a.or_custpoone,'') = '', a.or_custpo, a.or_custpoone)[PO], 
 		COALESCE(c.shoestyle_codefactory, @FallbackValue)[shoes_style_code_factory], 
@@ -19,16 +17,27 @@ WITH
 		IIF(ISNULL(a.or_custpoone,'')='', a.or_custpo, a.or_custpoone), 
 		COALESCE(c.shoestyle_codefactory, @FallbackValue), 
 		COALESCE(b.mat_ecolor, @FallbackValue)
-   )
+   ),
+weight_qty AS (
+	SELECT 
+		PO,
+		Size,
+		Series_number,
+		SUM(CAST(REPLACE(SUBSTRING(Size, CHARINDEX('(', Size) + 1, CHARINDEX(')', Size) - CHARINDEX('(', Size) - 1), ',', '') AS INT))[weighed_item_qty]
+	FROM DV_DATA_LAKE.dbo.PackingPlan
+   GROUP BY PO, Size, Series_number
+)
 SELECT pl.brand_name[brand_name],
    pk.PO AS po, 
    pl.shoes_style_code_factory, 
-   pl.mat_ecolor, 
+   pl.mat_ecolor,
    pk.Size AS size_data,
-   ISNULL(pl.po_qty, 0) AS po_qty, 
-   COUNT(DISTINCT Series_number) AS weighed_qty,
-   (pl.po_qty - COUNT(DISTINCT Series_number)) AS unweighed_qty
+   CAST(ISNULL(pl.po_qty, 0) AS INT) AS po_qty, 
+   COUNT(DISTINCT pk.Series_number) AS weighed_box_qty,
+   wt.weighed_item_qty,
+   CAST(pl.po_qty - wt.weighed_item_qty AS INT) AS unweighed_item_qty
 FROM DV_DATA_LAKE.dbo.PackingPlan pk
+   LEFT JOIN weight_qty wt ON wt.PO = pk.PO AND wt.Size = pk.Size AND wt.Series_number = pk.Series_number 
    INNER JOIN po_list pl ON pk.PO = pl.PO
 WHERE 
    CAST(pk.weighing_time AS DATE) = @0
@@ -41,6 +50,7 @@ GROUP BY pl.brand_name,
 	pl.shoes_style_code_factory, 
 	pl.mat_ecolor,
 	pk.Size,
+	wt.weighed_item_qty,
 	pk.Factory_code,
 	pl.po_qty
 ORDER BY pl.shoes_style_code_factory, pk.PO

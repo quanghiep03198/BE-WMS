@@ -67,9 +67,9 @@
 		"total_init_qty": "Số lượng nhập kỳ đầu",
 		"trans_num": "Lượng thùng đã phát",
 		"transfer_order_code": "Mã đơn chuyển giao",
-		"uninspected_qty": "Số Lượng Chưa Kiểm Tra",
-		"unweighed_qty": "Số lượng chưa cân",
-		"weighed_qty": "Số lượng đã cân"
+		"unweighed_item_qty": "Số đôi chưa cân",
+		"weighed_box_qty": "Số thùng đã cân",
+		"weighed_item_qty": "Số đôi đã cân"
 	},
 	"inventory_list_type": {
 		"finished_goods_dispatch": "Đơn xuất kho thành phẩm",

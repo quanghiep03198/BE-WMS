@@ -67,9 +67,9 @@
 		"total_init_qty": "Initial stock quantity",
 		"trans_num": "Number of Boxes Issued",
 		"transfer_order_code": "Transfer order code",
-		"uninspected_qty": "Uninspected quantity",
-		"unweighed_qty": "Unweighed quantity",
-		"weighed_qty": "Weighed quantity"
+		"unweighed_item_qty": "Unweighed pairs quantity",
+		"weighed_item_qty": "Weighed pairs quantity",
+		"weighed_box_qty": "Weighed boxes quantity"
 	},
 	"inventory_list_type": {
 		"finished_goods_dispatch": "Finished Product Delivery Order",

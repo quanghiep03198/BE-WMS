@@ -297,7 +297,7 @@ export class RFIDInboundService {
 				updateOne: {
 					filter: { epc: item.epc, scannable: true },
 					update: {
-						$set: pick(item, ['mo_no', 'shoes_style_code_factory', 'size_numcode'])
+						$set: pick(item, ['mo_no', 'shoes_style_code_factory', 'mat_ecolor', 'size_numcode'])
 					}
 				}
 			}))
