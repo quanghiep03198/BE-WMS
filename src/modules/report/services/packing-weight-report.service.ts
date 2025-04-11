@@ -56,20 +56,20 @@ export class PackingWeightReportService {
 				key: 'mat_ecolor'
 			},
 			{
-				header: this.i18nService.t('erp.fields.order_qty', { lang: currentLanguage }),
-				key: 'po_qty'
+				header: this.i18nService.t('erp.fields.target_box_qty', { lang: currentLanguage }),
+				key: 'target_box_qty'
 			},
 			{
-				header: this.i18nService.t('erp.fields.weighed_item_qty', { lang: currentLanguage }),
-				key: 'weighed_item_qty'
+				header: this.i18nService.t('erp.fields.target_item_qty', { lang: currentLanguage }),
+				key: 'target_item_qty'
 			},
 			{
 				header: this.i18nService.t('erp.fields.weighed_box_qty', { lang: currentLanguage }),
 				key: 'weighed_box_qty'
 			},
 			{
-				header: this.i18nService.t('erp.fields.unweighed_item_qty', { lang: currentLanguage }),
-				key: 'unweighed_item_qty'
+				header: this.i18nService.t('erp.fields.unweighed_box_qty', { lang: currentLanguage }),
+				key: 'unweighed_box_qty'
 			}
 		]
 		const data = await this.getDailyPackingReport(format(new Date(date), 'yyyy-MM-dd'), factoryCode)

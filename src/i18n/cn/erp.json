@@ -66,13 +66,14 @@
 		"sno_total_boxes": "箱數合計",
 		"sno_type": "左右",
 		"status_approve": "審核",
+		"target_box_qty": "需称箱数",
+		"target_item_qty": "需称双数",
 		"total_init_qty": "期初库存",
 		"trans_num": "調撥箱數",
 		"transfer_order_code": "轉撥單號",
 		"uninspected_qty": "未驗收量",
-		"unweighed_item_qty": "未称双数",
-		"weighed_box_qty": "已称箱数",
-		"weighed_item_qty": "称重双数"
+		"unweighed_box_qty": "未称箱数",
+		"weighed_box_qty": "已称箱数"
 	},
 	"inventory_list_type": {
 		"finished_goods_dispatch": "成品出庫單",

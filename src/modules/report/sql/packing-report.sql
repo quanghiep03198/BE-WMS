@@ -1,39 +1,51 @@
 DECLARE @FallbackValue NVARCHAR(10) = 'Unknown';
 
 WITH
-   po_list AS (
+   po_list
+   AS
+   (
       SELECT e.brand_name,
-		IIF(ISNULL(a.or_custpoone,'') = '', a.or_custpo, a.or_custpoone)[PO], 
-		COALESCE(c.shoestyle_codefactory, @FallbackValue)[shoes_style_code_factory], 
-		COALESCE(b.mat_ecolor, @FallbackValue)[mat_ecolor], 
-		(SUM(a.or_totalqty) - SUM(a.or_totalcqty))[po_qty]
+         IIF(ISNULL(a.or_custpoone,'') = '', a.or_custpo, a.or_custpoone)[PO],
+         COALESCE(c.shoestyle_codefactory, @FallbackValue)[shoes_style_code_factory],
+         COALESCE(b.mat_ecolor, @FallbackValue)[mat_ecolor]
       FROM wuerp_vnrd.dbo.ta_ordermst a
-      LEFT JOIN wuerp_vnrd.dbo.ta_productmst b ON a.mat_code=b.mat_code AND b.isactive='Y'
-		  LEFT JOIN wuerp_vnrd.dbo.ta_shoefactorymst c ON c.shoestyle_systemcodefty = b.shoestyle_systemcodefty AND c.isactive='Y'
-      LEFT JOIN wuerp_vnrd.dbo.ta_shoestylecolor d ON b.shoestyle_templink=d.shoestyle_templink AND c.isactive='Y'
-			LEFT JOIN wuerp_vnrd.dbo.ta_brand e ON a.custbrand_id=e.custbrand_id AND e.isactive='Y'
+         LEFT JOIN wuerp_vnrd.dbo.ta_productmst b ON a.mat_code = b.mat_code AND b.isactive='Y'
+         LEFT JOIN wuerp_vnrd.dbo.ta_shoefactorymst c ON c.shoestyle_systemcodefty = b.shoestyle_systemcodefty AND c.isactive='Y'
+         LEFT JOIN wuerp_vnrd.dbo.ta_shoestylecolor d ON b.shoestyle_templink = d.shoestyle_templink AND c.isactive='Y'
+         LEFT JOIN wuerp_vnrd.dbo.ta_brand e ON a.custbrand_id = e.custbrand_id AND e.isactive='Y'
       WHERE a.isactive='Y'
       GROUP BY e.brand_name,
-		IIF(ISNULL(a.or_custpoone,'')='', a.or_custpo, a.or_custpoone), 
-		COALESCE(c.shoestyle_codefactory, @FallbackValue), 
-		COALESCE(b.mat_ecolor, @FallbackValue)
+	IIF(ISNULL(a.or_custpoone,'') = '', a.or_custpo, a.or_custpoone), 
+	COALESCE(c.shoestyle_codefactory, @FallbackValue), 
+	COALESCE(b.mat_ecolor, @FallbackValue)
    )
 SELECT pl.brand_name[brand_name],
-   pk.PO AS po, 
-   pl.shoes_style_code_factory, 
+   pk.PO AS po,
+   pl.shoes_style_code_factory,
    pl.mat_ecolor,
    pk.Size AS size_data,
-   CAST(ISNULL(pl.po_qty, 0) AS INT) AS po_qty, 
-	wq.weighed_item_qty AS weighed_item_qty,
+   bq.target_box_qty,
+   wq.target_item_qty,
    COUNT(DISTINCT pk.Series_number) AS weighed_box_qty,
-   CAST(pl.po_qty - wq.weighed_item_qty AS INT) AS unweighed_item_qty
+   CAST(bq.target_box_qty - COUNT(DISTINCT pk.Series_number) AS INT) AS unweighed_box_qty
 FROM DV_DATA_LAKE.dbo.PackingPlan pk
    INNER JOIN po_list pl ON pk.PO = pl.PO
 OUTER APPLY (
+	SELECT COUNT(DISTINCT p.Series_number) AS target_box_qty
+   FROM DV_DATA_LAKE.dbo.PackingPlan p
+   WHERE p.PO = pk.PO AND p.Size = pk.Size
+) bq -- * Total boxes grouped by PO & Size (both weighed and unweighed)
+OUTER APPLY (
 	SELECT
-		SUM(CAST(REPLACE(SUBSTRING(s.value, CHARINDEX('(', s.value) + 1, CHARINDEX(')', s.value) - CHARINDEX('(', s.value) - 1), ',', '') AS INT))[weighed_item_qty]
-		FROM STRING_SPLIT(Size, ',') as s
-) wq
+      SUM(CAST(REPLACE(SUBSTRING(s.value, CHARINDEX('(', s.value) + 1, CHARINDEX(')', s.value) - CHARINDEX('(', s.value) - 1), ',', '') AS INT))[target_item_qty]
+   FROM STRING_SPLIT(Size, ',') as s
+) wq -- * Total quantity of weighing items
+OUTER APPLY (
+	SELECT COUNT(DISTINCT p.Series_number) AS weighed_box_qty
+   FROM DV_DATA_LAKE.dbo.PackingPlan p
+   WHERE p.PO = pk.PO AND CAST(p.weighing_time AS DATE) = @0 
+) wb
+-- * Total weighed boxes in the target day
 WHERE 
    CAST(pk.weighing_time AS DATE) = @0
    AND pk.Factory_code = CASE WHEN @1 = 'VA1' THEN 'GL1'
@@ -43,10 +55,9 @@ WHERE
 GROUP BY pl.brand_name,
 	pk.PO, 
 	pl.shoes_style_code_factory, 
-	pl.mat_ecolor,
 	pk.Size,
-	wq.weighed_item_qty,
-	pk.SerialTo, 
-	pk.Factory_code,
-	pl.po_qty
-ORDER BY pl.shoes_style_code_factory, pk.PO
+	pl.mat_ecolor,
+	wq.target_item_qty,
+	bq.target_box_qty,
+	wb.weighed_box_qty
+ORDER BY pk.PO, pl.shoes_style_code_factory, pl.mat_ecolor, CASE WHEN LEN(Size)>=10 THEN 2 ELSE 0 END, LEFT(Size,3)

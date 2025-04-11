@@ -64,12 +64,13 @@
 		"sno_total_boxes": "Số lượng đóng thùng",
 		"sno_type": "Loại",
 		"status_approve": "Trạng thái duyệt đơn",
+		"target_box_qty": "Số thùng cần cân",
+		"target_item_qty": "Số đôi cần cân",
 		"total_init_qty": "Số lượng nhập kỳ đầu",
 		"trans_num": "Lượng thùng đã phát",
 		"transfer_order_code": "Mã đơn chuyển giao",
-		"unweighed_item_qty": "Số đôi chưa cân",
-		"weighed_box_qty": "Số thùng đã cân",
-		"weighed_item_qty": "Số đôi đã cân"
+		"unweighed_box_qty": "Số thùng chưa cân",
+		"weighed_box_qty": "Số thùng đã cân"
 	},
 	"inventory_list_type": {
 		"finished_goods_dispatch": "Đơn xuất kho thành phẩm",

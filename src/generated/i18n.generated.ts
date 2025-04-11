@@ -93,13 +93,14 @@ export type I18nTranslations = {
             "sno_total_boxes": string;
             "sno_type": string;
             "status_approve": string;
+            "target_box_qty": string;
+            "target_item_qty": string;
             "total_init_qty": string;
             "trans_num": string;
             "transfer_order_code": string;
             "uninspected_qty": string;
-            "unweighed_item_qty": string;
+            "unweighed_box_qty": string;
             "weighed_box_qty": string;
-            "weighed_item_qty": string;
             "customer_branch_id": string;
         };
         "inventory_list_type": {

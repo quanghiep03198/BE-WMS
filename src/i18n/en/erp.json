@@ -64,12 +64,13 @@
 		"sno_total_boxes": "Total boxes",
 		"sno_type": "Type",
 		"status_approve": "Approval status",
+		"target_box_qty": "Target box quantity",
+		"target_item_qty": "Target item quantity",
 		"total_init_qty": "Initial stock quantity",
 		"trans_num": "Number of Boxes Issued",
 		"transfer_order_code": "Transfer order code",
-		"unweighed_item_qty": "Unweighed pairs quantity",
-		"weighed_item_qty": "Weighed pairs quantity",
-		"weighed_box_qty": "Weighed boxes quantity"
+		"unweighed_box_qty": "Unweighed box quantity",
+		"weighed_box_qty": "Weighed box quantity"
 	},
 	"inventory_list_type": {
 		"finished_goods_dispatch": "Finished Product Delivery Order",
