@@ -16,6 +16,7 @@ import { FileLogger } from './common/helpers'
 import { appConfigFactory, validateConfig } from './configs'
 import { RotateLogJob } from './jobs/rotate-log.job'
 // Feature modules
+import { PrometheusModule } from '@willsoto/nestjs-prometheus'
 import { IoRedisModule } from './messages/ioredis.module'
 import { AuthModule } from './modules/auth/auth.module'
 import { DepartmentModule } from './modules/department/department.module'
@@ -31,6 +32,14 @@ import { WarehouseModule } from './modules/warehouse/warehouse.module'
 @Module({
 	imports: [
 		// * Core modules
+		PrometheusModule.register({
+			path: '/metrics',
+			defaultMetrics: {
+				enabled: true,
+				config: {}
+			},
+			global: true
+		}),
 		ConfigModule.forRoot({
 			envFilePath: ['.env'],
 			isGlobal: true,

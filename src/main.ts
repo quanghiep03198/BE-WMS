@@ -12,7 +12,12 @@ async function bootstrap() {
 	try {
 		const app = await NestFactory.create(AppModule, { abortOnError: false })
 		const configService = app.get(ConfigService)
-		app.setGlobalPrefix('/api', { exclude: [{ path: '/', method: RequestMethod.GET }] })
+		app.setGlobalPrefix('/api', {
+			exclude: [
+				{ path: '/', method: RequestMethod.GET },
+				{ path: '/metrics', method: RequestMethod.GET }
+			]
+		})
 		app.enableVersioning({ type: VersioningType.URI })
 		app.enableCors()
 		app.use(helmet())
