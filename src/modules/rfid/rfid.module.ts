@@ -17,6 +17,7 @@ import { FPInventoryEntity } from './entities/fp-inventory.entity'
 import { RFIDMatchCustomerEntity } from './entities/rfid-customer-match.entity'
 import { RFIDReaderEntity } from './entities/rfid-reader.entity'
 import { RFIDInboundConsumer } from './queues/rfid-inbound.consumer'
+import { RFIDOutboundConsumer } from './queues/rfid-outbound.consumer'
 import {
 	EPC_INBOUND_COLLECTION,
 	EPC_OUTBOUND_COLLECTION,
@@ -66,6 +67,7 @@ import { RFIDCustomerEntitySubscriber } from './subscribers/rfid-customer.entity
 		RFIDInboundService,
 		RFIDOutboundService,
 		RFIDInboundConsumer,
+		RFIDOutboundConsumer,
 		RFIDCustomerEntitySubscriber,
 		FPInventoryEntitySubscriber
 	],

@@ -49,7 +49,7 @@ export class RFIDInboundService {
 		private readonly i18nService: I18nService
 	) {}
 
-	public async addInboundRFIDDataJob(data: PostReaderDataDTO) {
+	public async postInboundRFIDData(data: PostReaderDataDTO) {
 		return await this.postDataQueue.add('RFID_INBOUND', data, { lifo: true })
 	}
 

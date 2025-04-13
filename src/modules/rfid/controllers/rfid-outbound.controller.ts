@@ -72,7 +72,7 @@ export class RFIDOutboundController {
 		message: 'common.created'
 	})
 	async postOutboundData(@Body(new ZodValidationPipe(readerPostDataValidator)) payload: PostReaderDataDTO) {
-		return await this.rfidOutboundService.addOutboundRFIDDataJob(payload)
+		return await this.rfidOutboundService.postOutboundRFIDData(payload)
 	}
 
 	@Api({

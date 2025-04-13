@@ -29,7 +29,7 @@ export class RFIDOutboundService {
 		@InjectModel(EpcOutbound.name) private readonly epcOutboundModel: EpcModel
 	) {}
 
-	public async addOutboundRFIDDataJob(payload: PostReaderDataDTO) {
+	public async postOutboundRFIDData(payload: PostReaderDataDTO) {
 		return await this.postDataQueue.add('RFID_OUTBOUND', payload)
 	}
 
