@@ -24,4 +24,5 @@ export const INTERNAL_EPC_PATTERN: string = 'E28%'
 export const FALLBACK_VALUE: string = 'Unknown'
 export const MATCH_EPC_CHAR_LEN = 22
 
-export const POST_DATA_QUEUE = 'POST_DATA_QUEUE'
+export const POST_DATA_INBOUND_QUEUE = 'POST_DATA_INBOUND_QUEUE'
+export const POST_DATA_OUTBOUND_QUEUE = 'POST_DATA_OUTBOUND_QUEUE'

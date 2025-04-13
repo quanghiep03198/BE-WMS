@@ -14,7 +14,7 @@ import { AnyBulkWriteOperation, FilterQuery } from 'mongoose'
 import { I18nContext, I18nService } from 'nestjs-i18n'
 import { join, resolve } from 'path'
 import { DataSource, FindOptionsWhere, In } from 'typeorm'
-import { POST_DATA_QUEUE } from '../constants'
+import { POST_DATA_INBOUND_QUEUE } from '../constants'
 import {
 	DeleteScannedEpcDTO,
 	ExchangeEpcDTO,
@@ -44,7 +44,7 @@ export class RFIDInboundService {
 		@Inject(TENANCY_DATA_SOURCE) private readonly dataSourceTNC: DataSource,
 		@InjectDataSource(DATA_SOURCE_DATA_LAKE) private readonly dataSourceDL: DataSource,
 		@InjectDataSource(DATA_SOURCE_ERP) private readonly dataSourceERP: DataSource,
-		@InjectQueue(POST_DATA_QUEUE) private readonly postDataQueue: Queue,
+		@InjectQueue(POST_DATA_INBOUND_QUEUE) private readonly postDataQueue: Queue<PostReaderDataDTO>,
 		@InjectModel(EpcInbound.name) private readonly epcInboundModel: EpcModel,
 		private readonly i18nService: I18nService
 	) {}

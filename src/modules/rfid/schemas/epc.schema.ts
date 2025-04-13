@@ -1,12 +1,15 @@
-import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose'
+import { Prop, Schema, SchemaFactory, SchemaOptions } from '@nestjs/mongoose'
 import mongoose, { HydratedDocument, PaginateModel } from 'mongoose'
 import { SoftDeleteModel } from 'mongoose-delete'
 
-export const EPC_INBOUND_COLLECTION = 'epcs'
+export const EPC_INBOUND_COLLECTION = 'epcs_inbound'
 export const EPC_OUTBOUND_COLLECTION = 'epcs_outbound'
 
-@Schema({
-	collection: EPC_INBOUND_COLLECTION,
+/**
+ * @description Default schema options for the EPC schemas.
+ * @type {SchemaOptions}
+ */
+const defaultSchemaOptions: SchemaOptions = {
 	timestamps: {
 		createdAt: 'record_time',
 		updatedAt: 'modified_at'
@@ -14,9 +17,15 @@ export const EPC_OUTBOUND_COLLECTION = 'epcs_outbound'
 	versionKey: false,
 	suppressReservedKeysWarning: false,
 	strict: false,
-	strictQuery: false
-})
-export class EpcInbound {
+	strictQuery: false,
+	expireAfterSeconds: 60 * 60 * 24 * 90 // 90 days
+}
+
+/**
+ * @description Class representing the base abstract EPC schema.
+ */
+@Schema(defaultSchemaOptions)
+abstract class BaseAbstractEpcSchema {
 	@Prop({ type: mongoose.Schema.Types.ObjectId })
 	_id: mongoose.Types.ObjectId
 
@@ -43,23 +52,32 @@ export class EpcInbound {
 
 	@Prop({ type: Boolean, required: true, default: true, index: true })
 	scannable: boolean
+
+	@Prop({ type: String })
+	po: string
 }
 
+/**
+ * @description Class representing the inbound EPC schema.
+ */
+@Schema({
+	collection: EPC_INBOUND_COLLECTION,
+	...defaultSchemaOptions
+})
+export class EpcInbound extends BaseAbstractEpcSchema {}
+
+/**
+ * @description Class representing the outbound EPC schema.
+ */
 @Schema({
 	collection: EPC_OUTBOUND_COLLECTION,
-	timestamps: {
-		createdAt: 'record_time',
-		updatedAt: 'modified_at'
-	},
-	versionKey: false,
-	suppressReservedKeysWarning: false,
-	strict: false,
-	strictQuery: false
+	...defaultSchemaOptions
 })
 export class EpcOutbound extends EpcInbound {}
 
-export type EpcDocument = HydratedDocument<EpcInbound | EpcOutbound> & { record_time: string }
-export type EpcModel = PaginateModel<EpcDocument> & SoftDeleteModel<EpcDocument>
-
 export const EpcInboundSchema = SchemaFactory.createForClass(EpcInbound)
 export const EpcOutboundSchema = SchemaFactory.createForClass(EpcOutbound)
+
+export type EpcDocument = HydratedDocument<EpcInbound | EpcOutbound> & { record_time: string }
+export type EpcModel = PaginateModel<EpcDocument> & SoftDeleteModel<EpcDocument>
+export type EpcSchema = typeof EpcInboundSchema | typeof EpcOutboundSchema

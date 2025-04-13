@@ -1,18 +1,19 @@
 import { DATA_SOURCE_DATA_LAKE } from '@/databases/constants'
+import { InjectQueue } from '@nestjs/bullmq'
 import { Inject, Injectable, InternalServerErrorException } from '@nestjs/common'
 import { REQUEST } from '@nestjs/core'
 import { InjectModel } from '@nestjs/mongoose'
 import { InjectDataSource } from '@nestjs/typeorm'
+import { Queue } from 'bullmq'
 import { readFileSync } from 'fs'
 import { chunk, pick } from 'lodash'
-import { AnyBulkWriteOperation, FilterQuery } from 'mongoose'
+import { FilterQuery } from 'mongoose'
 import { join, resolve } from 'path'
 import { DataSource } from 'typeorm'
-import { EXCLUDED_EPC_PATTERN, EXCLUDED_ORDERS, FALLBACK_VALUE } from '../constants'
+import { POST_DATA_OUTBOUND_QUEUE } from '../constants'
 import { DeleteScannedEpcDTO, PostReaderDataDTO, UpsertStockOutDTO } from '../dto/rfid.dto'
-import { RFIDReaderEntity } from '../entities/rfid-reader.entity'
-import { EpcDocument, EpcModel, EpcOutbound, EpcOutboundSchema } from '../schemas/epc.schema'
-import { RFIDSearchParams, StoredRFIDReaderItem } from '../types'
+import { EpcDocument, EpcModel, EpcOutbound } from '../schemas/epc.schema'
+import { RFIDSearchParams } from '../types'
 
 @Injectable()
 export class RFIDOutboundService {
@@ -20,46 +21,16 @@ export class RFIDOutboundService {
 		resolve(join(__dirname, '../sql/upsert-stock-out.sql')),
 		'utf-8'
 	)
-	private readonly epcInformationQuery: string = readFileSync(
-		resolve(join(__dirname, '../sql/epc-information.sql')),
-		'utf-8'
-	)
 
 	constructor(
 		@Inject(REQUEST) private readonly request: Request,
 		@InjectDataSource(DATA_SOURCE_DATA_LAKE) private readonly dataSourceDL: DataSource,
+		@InjectQueue(POST_DATA_OUTBOUND_QUEUE) private readonly postDataQueue: Queue<PostReaderDataDTO>,
 		@InjectModel(EpcOutbound.name) private readonly epcOutboundModel: EpcModel
 	) {}
 
-	public async storeOutboundData(payload: PostReaderDataDTO) {
-		const deviceInformation = await this.dataSourceDL
-			.getRepository(RFIDReaderEntity)
-			.findOneBy({ device_sn: payload.sn })
-
-		const epcs = payload.data.tagList.map((item) => item.epc.trim()).join(',')
-		const excludedOrderList = EXCLUDED_ORDERS.join(',')
-
-		const stationNO = deviceInformation?.station_no ?? 'CUS_VA1_WH103'
-		const incommingEpcs = await this.dataSourceDL.query<StoredRFIDReaderItem[]>(this.epcInformationQuery, [
-			FALLBACK_VALUE,
-			epcs,
-			EXCLUDED_EPC_PATTERN,
-			excludedOrderList
-		])
-
-		const bulkWriteOptions: AnyBulkWriteOperation<typeof EpcOutboundSchema>[] = incommingEpcs.map((item) => ({
-			updateOne: {
-				filter: { epc: item.epc, scannable: true },
-				update: { ...item, station_no: stationNO, record_time: new Date(), deleted: false },
-				upsert: true
-			}
-		}))
-		await this.epcOutboundModel.bulkWrite(bulkWriteOptions, {
-			writeConcern: { w: 'majority' },
-			ordered: false,
-			retryWrites: true,
-			timestamps: true
-		})
+	public async addOutboundRFIDDataJob(payload: PostReaderDataDTO) {
+		return await this.postDataQueue.add('RFID_OUTBOUND', payload)
 	}
 
 	public async fetchLatestOutboundData(args: RFIDSearchParams) {
@@ -178,8 +149,12 @@ export class RFIDOutboundService {
 				await this.dataSourceDL.query(this.upsertStockoutQuery.replace(':values', values))
 			}
 			await this.epcOutboundModel
-				.delete({ ...baseFilterQuery, epc: { $in: epcToUpsert.map((item) => item.epc) } })
+				.updateMany(
+					{ ...baseFilterQuery, epc: { $in: epcToUpsert.map((item) => item.epc) } },
+					{ $set: { deleted: true, po: payload.po } }
+				)
 				.exec()
+
 			await Promise.all([queryRunner.commitTransaction(), session.commitTransaction()])
 		} catch (error) {
 			await Promise.all([queryRunner.rollbackTransaction(), session.abortTransaction()])
@@ -200,9 +175,7 @@ export class RFIDOutboundService {
 
 			return await this.epcOutboundModel
 				.updateMany(
-					{
-						epc: { $in: epcsToDelete.map((item) => item.epc) }
-					},
+					{ epc: { $in: epcsToDelete.map((item) => item.epc) } },
 					{ deleted: true, scannable: !filters['f'] },
 					{ new: true }
 				)
