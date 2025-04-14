@@ -17,8 +17,8 @@ const defaultSchemaOptions: SchemaOptions = {
 	versionKey: false,
 	suppressReservedKeysWarning: false,
 	strict: false,
-	strictQuery: false,
-	expireAfterSeconds: 60 * 60 * 24 * 90 // 90 days
+	strictQuery: false
+	// expireAfterSeconds: 60 * 60 * 24 * 90 // 90 days
 }
 
 /**
