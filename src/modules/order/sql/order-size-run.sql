@@ -56,7 +56,7 @@ OUTER APPLY (
 )
 WHERE b.size_qty <> 0
     AND a.isactive= 'Y'
-    AND a1.mo_no = '14A04C036'
+    AND a1.mo_no = @0
 GROUP BY a.size_code, b.size_numcode
 )
 SELECT 
