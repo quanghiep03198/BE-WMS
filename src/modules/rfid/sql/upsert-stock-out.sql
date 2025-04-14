@@ -2,7 +2,7 @@ MERGE INTO DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet AS target
 USING (VALUES :values) AS source (EPC_Code, po, mo_no, size_code, stationNO, FC_server_code)
 ON 
    target.EPC_Code = source.EPC_Code 
-   AND target.po = source.po
+   AND target.mo_no = source.mo_no
    AND target.stationNO = source.stationNO
 WHEN MATCHED THEN
    UPDATE SET 
