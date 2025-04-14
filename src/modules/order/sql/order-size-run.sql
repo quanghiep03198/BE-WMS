@@ -1,5 +1,8 @@
-SELECT
-    CASE WHEN LEN(b.size_numcode) = 1 THEN CONCAT(0,b.size_numcode) ELSE b.size_numcode END [size_numcode], 
+WITH CTE AS (SELECT
+      CASE 
+        WHEN ISNUMERIC(b.size_numcode) = 1 THEN CAST(b.size_numcode AS FLOAT) 
+        WHEN LEFT(b.size_numcode, 1) = 'K' THEN CAST(SUBSTRING(b.size_numcode, 2, LEN(b.size_numcode)) AS FLOAT)
+		END AS [size_numcode], 
     SUM(CAST(b.size_qty AS INT)) AS size_qty
 FROM wuerp_vnrd.dbo.ta_ordersizerun a
     LEFT JOIN wuerp_vnrd.dbo.ta_ordermst or1 ON or1.or_no= a.or_no
@@ -53,11 +56,16 @@ OUTER APPLY (
 )
 WHERE b.size_qty <> 0
     AND a.isactive= 'Y'
-    AND a1.mo_no = @0
+    AND a1.mo_no = '14A04C036'
 GROUP BY a.size_code, b.size_numcode
-ORDER BY 
+)
+SELECT 
     CASE 
-        WHEN ISNUMERIC(b.size_numcode) = 1 THEN CAST(b.size_numcode AS FLOAT) 
-        WHEN LEFT(b.size_numcode, 1) = 'K' THEN CAST(SUBSTRING(b.size_numcode, 2, LEN(b.size_numcode)) AS FLOAT) + 0.5 -- K6, K8 -> xử lý thêm 0.5
-        ELSE 9999  
-END ASC;
+        WHEN LEN(CAST(size_numcode AS NVARCHAR)) = 1 THEN CONCAT('0', size_numcode)
+        ELSE CAST(size_numcode AS NVARCHAR) 
+    END AS size_numcode,
+    size_qty
+FROM CTE
+ORDER BY size_numcode ASC;
+	
+
