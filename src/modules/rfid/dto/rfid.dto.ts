@@ -40,30 +40,18 @@ export const exchangeOrderValidator = z.object({
 })
 
 export const exchangeEpcValidator = z.object({
-	mo_no: z.string({ required_error: 'ns_validation:required' }).nonempty({ message: 'ns_validation:required' }),
-	mo_no_actual: z
-		.string({ required_error: 'ns_validation:required' })
-		.nonempty({ message: 'ns_validation:required' })
-		.optional(),
-	mo_noseq: z.string({ required_error: 'ns_validation:required' }).nonempty({ message: 'ns_validation:required' }),
-	or_no: z.string({ required_error: 'ns_validation:required' }).nonempty({ message: 'ns_validation:required' }),
-	or_cust_po: z.string({ required_error: 'ns_validation:required' }).nonempty({ message: 'ns_validation:required' }),
-	mat_code: z.string({ required_error: 'ns_validation:required' }).nonempty({ message: 'ns_validation:required' }),
-	shoes_style_code_factory: z
-		.string({ required_error: 'ns_validation:required' })
-		.nonempty({ message: 'ns_validation:required' }),
-	cust_shoes_style: z
-		.string({ required_error: 'ns_validation:required' })
-		.nonempty({ message: 'ns_validation:required' }),
-	size_numcode: z.string({ required_error: 'ns_validation:required' }).nonempty({ message: 'ns_validation:required' }),
-	size_code: z.string({ required_error: 'ns_validation:required' }).nonempty({ message: 'ns_validation:required' }),
-	size_qty: z
-		.number({ required_error: 'ns_validation:required' })
-		.nonnegative({ message: 'ns_validation:nonnegative' })
-		.default(0),
-	quantity: z
-		.number({ required_error: 'ns_validation:required' })
-		.nonnegative({ message: 'ns_validation:nonnegative' })
+	mo_no: z.string().nonempty(),
+	mo_no_actual: z.string().nonempty().optional(),
+	mo_noseq: z.string().nonempty(),
+	or_no: z.string().nonempty(),
+	or_cust_po: z.string().nonempty(),
+	mat_code: z.string().nonempty(),
+	shoes_style_code_factory: z.string().nonempty(),
+	cust_shoes_style: z.string().nonempty(),
+	size_numcode: z.string().nonempty(),
+	size_code: z.string().nonempty(),
+	size_qty: z.number().nonnegative({ message: 'ns_validation:nonnegative' }).default(0),
+	quantity: z.number().nonnegative({ message: 'ns_validation:nonnegative' })
 })
 
 export const searchCustomerValidator = z.object({
@@ -118,8 +106,14 @@ export const readerPostDataValidator = z.object({
 export const upsertStockOutValidator = z.object({
 	mo_no: z.string().nonempty().or(z.array(z.string().nonempty()).nonempty()),
 	po: z.string().nonempty(),
-	size_numcode: z.string().nonempty().optional(),
-	qty: z.number().positive().optional()
+	sizes: z
+		.array(
+			z.object({
+				size_numcode: z.string().nonempty(),
+				qty: z.number().min(1).positive()
+			})
+		)
+		.optional()
 })
 
 export type UpsertStockOutDTO = z.infer<typeof upsertStockOutValidator>

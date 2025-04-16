@@ -7,7 +7,7 @@ import { InjectDataSource } from '@nestjs/typeorm'
 import { Queue } from 'bullmq'
 import { readFileSync } from 'fs'
 import { chunk, pick } from 'lodash'
-import { FilterQuery } from 'mongoose'
+import { FilterQuery, PipelineStage } from 'mongoose'
 import { join, resolve } from 'path'
 import { DataSource } from 'typeorm'
 import { POST_DATA_OUTBOUND_QUEUE } from '../constants'
@@ -122,13 +122,39 @@ export class RFIDOutboundService {
 		 * In case of multiple command numbers, we need to filter by mo_no and size_numcode
 		 * Otherwise, with single command number, we need to filter by mo_no, size_numcode and limit quantity
 		 */
-		const extraFilterQuery: FilterQuery<EpcDocument> = Array.isArray(payload.mo_no)
-			? { mo_no: { $in: payload.mo_no } }
-			: { mo_no: payload.mo_no, size_numcode: payload.size_numcode }
-		const epcToUpsert = await this.epcOutboundModel
-			.find({ ...baseFilterQuery, ...extraFilterQuery })
-			.limit(payload.qty)
-			.lean(true)
+
+		const epcToUpsert = await (async () => {
+			if (Array.isArray(payload.sizes)) {
+				{
+					const facetPipeline = payload.sizes.reduce<PipelineStage.Facet['$facet']>((acc, curr) => {
+						return {
+							...acc,
+							[curr.size_numcode]: [
+								{ $match: { ...baseFilterQuery, mo_no: payload.mo_no, size_numcode: curr.size_numcode } },
+								{
+									$project: {
+										_id: 0,
+										epc: 1,
+										mo_no: 1,
+										size_numcode: 1,
+										station_no: 1,
+										factory_code_produce: 1
+									}
+								},
+								{ $limit: curr.qty }
+							]
+						}
+					}, {})
+					const aggregatedEpcData = await this.epcOutboundModel.aggregate([{ $facet: facetPipeline }])
+					const extractedValues = Object.values<Array<Partial<EpcDocument>>>(aggregatedEpcData[0])
+
+					return extractedValues.every((facetGroup) => Array.isArray(facetGroup)) ? extractedValues.flat() : []
+				}
+			}
+
+			return await this.epcOutboundModel.find({ ...baseFilterQuery, mo_no: payload.mo_no }).lean(true)
+		})()
+
 		const session = await this.epcOutboundModel.startSession()
 		const queryRunner = this.dataSourceDL.createQueryRunner()
 		await Promise.all([session.startTransaction(), queryRunner.startTransaction()])
