@@ -1,7 +1,7 @@
 import { Api, AuthGuard, HttpMethod } from '@/common/decorators'
 import { AllExceptionsFilter } from '@/common/filters'
 import { ZodValidationPipe } from '@/common/pipes'
-import { Body, Controller, DefaultValuePipe, Get, Headers, Query, Res, UseFilters } from '@nestjs/common'
+import { Body, Controller, DefaultValuePipe, Get, Headers, HttpStatus, Query, Res, UseFilters } from '@nestjs/common'
 import { format } from 'date-fns'
 import { Response } from 'express'
 import {
@@ -89,7 +89,7 @@ export class ReportController {
 		return res.send(buffer)
 	}
 
-	@Api({ endpoint: 'monthly-inventory/update', method: HttpMethod.PATCH })
+	@Api({ endpoint: 'monthly-inventory/update', method: HttpMethod.PATCH, statusCode: HttpStatus.CREATED })
 	@AuthGuard()
 	async updateInventoryReport(
 		@Query(new ZodValidationPipe(updateInventoryReportQuery)) queries: UpdateInventoryReportQuery,

@@ -6,7 +6,7 @@ import { Workbook } from 'exceljs'
 import { readFileSync } from 'fs'
 import { I18nContext, I18nService } from 'nestjs-i18n'
 import { join } from 'path'
-import { DataSource } from 'typeorm'
+import { Brackets, DataSource } from 'typeorm'
 import { UpdateInventoryReportDTO, UpdateInventoryReportQuery } from '../dto/inventory-report.dto'
 import { InventoryReportEntity } from '../entities/inventory-report.entity'
 import { IInventoryReportQueryResult, IInventoryReportResponse } from '../interfaces'
@@ -32,7 +32,53 @@ export class InventoryReportService {
 	}
 
 	async updateInventoryReport(queries: UpdateInventoryReportQuery, payload: UpdateInventoryReportDTO) {
-		return await this.dataSource.getRepository(InventoryReportEntity).update(queries, payload)
+		const queryRunner = this.dataSource.createQueryRunner()
+
+		await queryRunner.startTransaction()
+
+		try {
+			const result = await Promise.all(
+				payload.map(
+					(data) =>
+						new Promise((resolve, reject) =>
+							resolve(
+								this.dataSource
+									.getRepository(InventoryReportEntity)
+									.createQueryBuilder()
+									.update()
+									.set({
+										mn_ist_qty: data.mn_ist_qty,
+										mn_ost_qty: data.mn_ost_qty,
+										fnl_qty: () => {
+											return /* SQL */ `init_inv_qty + ist_total_qty + ${data.mn_ist_qty} - ost_total_qty - ${data.mn_ost_qty}`
+										}
+									})
+									.where('size_numcode = :size_numcode', { size_numcode: data.size_numcode })
+									.andWhere('mo_no = :mo_no', { mo_no: queries.mo_no })
+									.andWhere(
+										new Brackets((qb) => {
+											if (queries.po) return qb.andWhere('po = :po', { po: queries.po })
+											else return qb.andWhere(/* SQL */ `po IS NULL`)
+										})
+									)
+									.andWhere('inv_type = :inv_type', { inv_type: queries.inv_type })
+									.andWhere('shoes_style_code_factory = :shoes_style_code_factory', {
+										shoes_style_code_factory: queries.shoes_style_code_factory
+									})
+									.andWhere('cust_shoestyle = :cust_shoestyle', { cust_shoestyle: queries.cust_shoestyle })
+									.andWhere('inv_year_month = :inv_year_month', { inv_year_month: queries.inv_year_month })
+									.execute()
+									.catch(reject)
+							)
+						)
+				)
+			)
+			await queryRunner.commitTransaction()
+			return result
+		} catch (error) {
+			await queryRunner.rollbackTransaction()
+			throw error
+		}
 	}
 
 	// #region Inventory report Excel
@@ -89,7 +135,6 @@ export class InventoryReportService {
 			for (let i = 1; i <= worksheet.columns.length; i++) {
 				row.getCell(i).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'deecf7' } }
 			}
-			// const subrows = await this.getMonthlyInventoryReport(record.mo_no, record.factory_code, month)
 			for (const subRecord of record.size_data) {
 				const row = worksheet.addRow([])
 				row.alignment = { vertical: 'middle', horizontal: 'center' }

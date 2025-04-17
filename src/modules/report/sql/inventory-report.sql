@@ -19,10 +19,10 @@ SELECT DISTINCT
          +',"ms_qty":' + CAST(CAST(a.mo_qty AS INT) AS NVARCHAR(50)) + --指令數量 mo_qty of current size
          +',"int_qty":' + CAST(CAST(a.inv_initialqty AS INT) AS NVARCHAR(50)) + --Beginning Inventory 期初庫存
          +',"ist_qty":' + CAST(CAST(a.inv_istotalqty AS INT)  AS NVARCHAR(50)) + --Inventory In 入庫
-         +',"mn_ist_qty":' + CAST(CAST(a.inv_manualqty AS INT)  AS NVARCHAR(50)) + --Manual Inventory InManual  手填入庫
          +',"ost_qty":' + CAST(CAST(a.inv_ostotalqty AS INT) AS NVARCHAR(50)) + --Inventory Out 出庫
+         +',"mn_ist_qty":' + CAST(CAST(a.inv_manualqty AS INT)  AS NVARCHAR(50)) + --Manual Inventory InManual  手填入庫
          +',"mn_ost_qty":' + CAST(CAST(a.inv_manualqtyout AS INT) AS NVARCHAR(50)) + --Manual Inventory Out 手填出庫
-         +',"fnl_qty":' + CAST(CAST(ISNULL(a.inv_finalqty,0) AS INT) AS NVARCHAR(50)) + --Ending Inventory 期末數量
+         +',"fnl_qty":' + CAST(CAST(ISNULL(a.inv_finalqty, 0) AS INT) AS NVARCHAR(50)) + --Ending Inventory 期末數量
       '}',
       ','
    ) 
