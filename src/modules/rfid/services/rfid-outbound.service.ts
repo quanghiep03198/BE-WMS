@@ -118,41 +118,37 @@ export class RFIDOutboundService {
 			deleted: false,
 			scannable: true
 		}
+
 		/**
-		 * In case of multiple command numbers, we need to filter by mo_no and size_numcode
-		 * Otherwise, with single command number, we need to filter by mo_no, size_numcode and limit quantity
+		 * ? In case of multiple command numbers, filter by mo_no and size_numcode
+		 * ? Otherwise, with single command number, filter by mo_no, size_numcode and limit quantity
 		 */
-
 		const epcToUpsert = await (async () => {
-			if (Array.isArray(payload.sizes)) {
-				{
-					const facetPipeline = payload.sizes.reduce<PipelineStage.Facet['$facet']>((acc, curr) => {
-						return {
-							...acc,
-							[curr.size_numcode]: [
-								{ $match: { ...baseFilterQuery, mo_no: payload.mo_no, size_numcode: curr.size_numcode } },
-								{
-									$project: {
-										_id: 0,
-										epc: 1,
-										mo_no: 1,
-										size_numcode: 1,
-										station_no: 1,
-										factory_code_produce: 1
-									}
-								},
-								{ $limit: curr.qty }
-							]
-						}
-					}, {})
-					const aggregatedEpcData = await this.epcOutboundModel.aggregate([{ $facet: facetPipeline }])
-					const extractedValues = Object.values<Array<Partial<EpcDocument>>>(aggregatedEpcData[0])
-
-					return extractedValues.every((facetGroup) => Array.isArray(facetGroup)) ? extractedValues.flat() : []
-				}
+			if (!Array.isArray(payload.sizes)) {
+				return await this.epcOutboundModel.find({ ...baseFilterQuery, mo_no: payload.mo_no }).lean(true)
 			}
-
-			return await this.epcOutboundModel.find({ ...baseFilterQuery, mo_no: payload.mo_no }).lean(true)
+			const facetPipeline = payload.sizes.reduce<PipelineStage.Facet['$facet']>((acc, curr) => {
+				return {
+					...acc,
+					[curr.size_numcode]: [
+						{ $match: { ...baseFilterQuery, mo_no: payload.mo_no, size_numcode: curr.size_numcode } },
+						{
+							$project: {
+								_id: 0,
+								epc: 1,
+								mo_no: 1,
+								size_numcode: 1,
+								station_no: 1,
+								factory_code_produce: 1
+							}
+						},
+						{ $limit: curr.qty }
+					]
+				}
+			}, {})
+			const aggregatedEpcData = await this.epcOutboundModel.aggregate([{ $facet: facetPipeline }])
+			const extractedValues = Object.values<Array<Partial<EpcDocument>>>(aggregatedEpcData[0])
+			return extractedValues.every((facetGroup) => Array.isArray(facetGroup)) ? extractedValues.flat() : []
 		})()
 
 		const session = await this.epcOutboundModel.startSession()
