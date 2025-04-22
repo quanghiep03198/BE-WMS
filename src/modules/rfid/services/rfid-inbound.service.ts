@@ -313,19 +313,36 @@ export class RFIDInboundService {
 	}
 
 	public async searchExchangableOrder(params: SearchCustOrderParamsDTO) {
-		return await this.dataSourceERP.query(
-			/* SQL */ `
-            SELECT a.mo_no FROM wuerp_vnrd.dbo.ta_manufacturmst a
-            LEFT JOIN wuerp_vnrd.dbo.ta_productmst b ON b.mat_code = a.mat_code AND b.isactive = 'Y'
-            LEFT JOIN wuerp_vnrd.dbo.ta_shoefactorymst c ON c.shoestyle_systemcodefty = b.shoestyle_systemcodefty AND c.isactive = 'Y'
-            WHERE 
-               a.created >= CAST(DATEADD(YEAR, -2, GETDATE()) AS DATE)
-               AND a.mo_no LIKE CONCAT('%', @0, '%')
-               AND a.cofactory_code = @1
-               AND b.mat_ecolor = @2
-            ORDER BY a.created DESC
-            `,
-			[params.q, params['factory_code.eq'], params['mat_ecolor.eq']]
-		)
+		return await this.dataSourceERP
+			.createQueryBuilder()
+			.select(/* SQL */ `DISTINCT TOP 5 a.mo_no`)
+			.addSelect(/* SQL */ `a.created`, 'created')
+			.from('ta_manufacturmst', 'a')
+			.leftJoin('ta_productmst', 'b', /* SQL */ `b.mat_code = a.mat_code AND b.isactive = 'Y'`)
+			.leftJoin(
+				'ta_shoefactorymst',
+				'c',
+				/* SQL */ `c.shoestyle_systemcodefty = b.shoestyle_systemcodefty AND c.isactive = 'Y'`
+			)
+			.where(/* SQL */ `a.created >= CAST(DATEADD(YEAR, -2, GETDATE()) AS DATE)`)
+			.andWhere(/* SQL */ `a.mo_no LIKE CONCAT('%',:search, '%')`)
+			.andWhere(/* SQL */ `a.cofactory_code = :factoryCode`)
+			.andWhere(/* SQL */ `b.mat_ecolor = :color`)
+			.andWhere(
+				/* SQL */ `(
+					(:factoryCode = 'VA1' AND RIGHT(LEFT(a.mo_no, 3), 1) = 'A') OR
+					(:factoryCode = 'VB1' AND RIGHT(LEFT(a.mo_no, 3), 1) = 'B') OR
+					(:factoryCode = 'VB2' AND RIGHT(LEFT(a.mo_no, 3), 1) = 'C') OR
+					(:factoryCode = 'CA1' AND RIGHT(LEFT(a.mo_no, 3), 1) = 'D')
+			  )`
+			)
+			.orderBy('a.mo_no', 'DESC')
+			.addOrderBy('a.created', 'DESC')
+			.setParameters({
+				search: params['q'],
+				factoryCode: params['factory_code.eq'],
+				color: params['mat_ecolor.eq']
+			})
+			.getRawMany()
 	}
 }

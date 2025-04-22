@@ -28,10 +28,19 @@ export class OrderService {
 			.select(/* SQL */ `DISTINCT TOP 5 manu.mo_no`, 'mo_no')
 			.addSelect(/* SQL */ `manu.created`, 'created')
 			.from(/* SQL */ `wuerp_vnrd.dbo.ta_manufacturmst`, 'manu')
-			.where(/* SQL */ `manu.cofactory_code = :factoryCode`, { factoryCode })
-			.andWhere(/* SQL */ `manu.mo_no LIKE :searchTerm`, { searchTerm: `%${searchTerm}%` })
+			.where(/* SQL */ `manu.cofactory_code = :factoryCode`)
+			.andWhere(/* SQL */ `manu.mo_no LIKE :searchTerm`)
 			.andWhere(/* SQL */ `manu.created >= CAST(DATEADD(YEAR, -2, GETDATE()) AS DATE)`)
-			.orderBy(/* SQL */ `manu.created`, 'DESC')
+			.andWhere(
+				/* SQL */ `(
+				(:factoryCode = 'VA1' AND RIGHT(LEFT(manu.mo_no, 3), 1) = 'A') OR
+				(:factoryCode = 'VB1' AND RIGHT(LEFT(manu.mo_no, 3), 1) = 'B') OR
+				(:factoryCode = 'VB2' AND RIGHT(LEFT(manu.mo_no, 3), 1) = 'C') OR
+				(:factoryCode = 'CA1' AND RIGHT(LEFT(manu.mo_no, 3), 1) = 'D')
+		  		)`
+			)
+			.setParameters({ factoryCode, searchTerm: `%${searchTerm}%` })
+			.orderBy('manu.created', 'DESC')
 			.getRawMany()
 	}
 
