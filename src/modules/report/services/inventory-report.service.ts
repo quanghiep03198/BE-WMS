@@ -97,6 +97,10 @@ export class InventoryReportService {
 				key: 'mo_no'
 			},
 			{
+				header: this.i18nService.t('erp.fields.po', { lang: currentLanguage }),
+				key: 'po'
+			},
+			{
 				header: this.i18nService.t('erp.fields.shoestyle_codefactory', { lang: currentLanguage }),
 				key: 'shoes_style_code_factory'
 			},
@@ -162,7 +166,7 @@ export class InventoryReportService {
 		// * Add title
 		worksheet.insertRow(1, null)
 		worksheet.getRow(1).height = 28
-		worksheet.mergeCells('A1:H1')
+		worksheet.mergeCells('A1:I1')
 		worksheet.getCell('A1').value = this.i18nService.t('inoutbound.titles.file_monthly_inventory_report', {
 			args: {
 				factory: this.i18nService.t(`factory.${factoryCode}`, { lang: currentLanguage }),
