@@ -58,7 +58,7 @@ export class RFIDOutboundService {
 
 	public async getOutboundOrderDetails() {
 		const factoryCode = this.request.headers['x-user-company']
-		return await await this.epcOutboundModel.aggregate(
+		return await this.epcOutboundModel.aggregate(
 			[
 				// * Stage 1: Match documents that are not deleted
 				{
@@ -168,7 +168,7 @@ export class RFIDOutboundService {
 					})
 					.join(',')
 
-				await this.dataSourceDL.query(this.upsertStockoutQuery.replace(':values', values))
+				await this.dataSourceDL.query(this.upsertStockoutQuery.replace(/:values/g, values))
 			}
 			await this.epcOutboundModel
 				.updateMany(
