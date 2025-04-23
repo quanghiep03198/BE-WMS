@@ -26,24 +26,24 @@ BEGIN TRY
          source.EPC_Code, source.po, source.mo_no, source.size_code, 'B', 'D', CAST(GETDATE() AS DATETIME), source.stationNO, source.FC_server_code, -1 
       );
 
-   -- Update existing instock records
+   -- Update existing instock records, to avoid conflict while synchronizing, update both dv_InvRFIDrecorddet & dv_InvRFIDrecorddet_backup_Daily
    MERGE INTO DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet AS target
    USING (VALUES :values) AS source (EPC_Code, po, mo_no, size_code, stationNO, FC_server_code)
    ON 
       target.EPC_Code = source.EPC_Code 
       AND target.mo_no = source.mo_no
-      AND target.stationNO = 'A'
-   WHEN MATCHED THEN
-      UPDATE SET po = source.po;
+      AND target.size_code = source.size_code
+      AND target.rfid_status = 'A'
+   WHEN MATCHED THEN UPDATE SET po = source.po;
 
    MERGE INTO DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet_backup_Daily AS target
    USING (VALUES :values) AS source (EPC_Code, po, mo_no, size_code, stationNO, FC_server_code)
    ON 
       target.EPC_Code = source.EPC_Code 
       AND target.mo_no = source.mo_no
-      AND target.stationNO = 'A'
-   WHEN MATCHED THEN
-      UPDATE SET po = source.po;
+      AND target.size_code = source.size_code
+      AND target.rfid_status = 'A'
+   WHEN MATCHED THEN UPDATE SET po = source.po;
 
    -- Commit the transaction if everything is successful
    COMMIT TRANSACTION;
