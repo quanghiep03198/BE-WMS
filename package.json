@@ -9,7 +9,7 @@
 		"build": "nest build && npm run sentry:sourcemaps",
 		"format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
 		"start": "nest start",
-		"start:dev": "nest start -b swc --type-check --watch",
+		"start:dev": "nest start -b swc --watch",
 		"start:debug": "nest start --debug --watch",
 		"start:prod": "node dist/main",
 		"pm2:start": "pm2 start ecosystem.config.js",
