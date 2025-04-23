@@ -127,6 +127,7 @@ export class RFIDOutboundService {
 			if (!Array.isArray(payload.sizes)) {
 				return await this.epcOutboundModel.find({ ...baseFilterQuery, mo_no: payload.mo_no }).lean(true)
 			}
+
 			const facetPipeline = payload.sizes.reduce<PipelineStage.Facet['$facet']>((acc, curr) => {
 				return {
 					...acc,

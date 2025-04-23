@@ -17,7 +17,9 @@ BEGIN TRY
          stationNO = source.stationNO,
          FC_server_code = source.FC_server_code,
          quantity = -1,
-         po = source.po
+         po = source.po,
+         rfid_status = 'B',
+         rfid_use = 'D'
    WHEN NOT MATCHED THEN
       INSERT (
          EPC_Code, po, mo_no, size_code, rfid_status, rfid_use, record_time, stationNO, FC_server_code, quantity
