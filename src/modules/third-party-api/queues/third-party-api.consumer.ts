@@ -4,12 +4,13 @@ import { Processor, WorkerHost } from '@nestjs/bullmq'
 import { Logger } from '@nestjs/common'
 import { Job } from 'bullmq'
 import { groupBy } from 'lodash'
-import { OrderService } from '../order/order.service'
-import { RFIDMatchCustomerEntity } from '../rfid/entities/rfid-customer-match.entity'
-import { RFIDInboundService } from '../rfid/services/rfid-inbound.service'
-import { THIRD_PARTY_API_SYNC } from './constants'
-import { SyncProcessState } from './interfaces/third-party-api.interface'
-import { ThirdPartyApiService } from './third-party-api.service'
+import { OrderService } from '../../order/order.service'
+import { RFIDMatchCustomerEntity } from '../../rfid/entities/rfid-customer-match.entity'
+import { RFIDInboundService } from '../../rfid/services/rfid-inbound.service'
+import { THIRD_PARTY_API_SYNC } from '../constants'
+import { SyncProcessState } from '../interfaces/third-party-api.interface'
+import { ThirdPartyApiOAuth2Service } from '../strategies/third-party-api-oauth2.service'
+import { ThirdPartyApiService } from '../third-party-api.service'
 
 @Processor(THIRD_PARTY_API_SYNC)
 export class ThirdPartyApiConsumer extends WorkerHost {
@@ -18,6 +19,7 @@ export class ThirdPartyApiConsumer extends WorkerHost {
 
 	constructor(
 		private readonly thirdPartyApiService: ThirdPartyApiService,
+		private readonly thirdPartyApiOAuth2Service: ThirdPartyApiOAuth2Service,
 		private readonly rfidInboundService: RFIDInboundService,
 		private readonly orderService: OrderService,
 		private readonly ioRedisService: IoRedisService
@@ -32,13 +34,12 @@ export class ThirdPartyApiConsumer extends WorkerHost {
 	 */
 	public async process(job: Job<string[], void, string>): Promise<void> {
 		const factoryCode: string = job.id
-		const tenantId: string = job.name
 		const data = job.data
 
 		await this.broadcastStateChange(factoryCode)
 		try {
-			const accessToken = await this.authenticateWithDecker(factoryCode)
-			await this.executeSync(data, factoryCode, tenantId, accessToken)
+			const accessToken = await this.authenticate(factoryCode)
+			await this.executeSync(data, factoryCode, accessToken)
 		} catch (error) {
 			this.cancelRemainingSteps()
 			await this.broadcastStateChange(factoryCode)
@@ -70,9 +71,9 @@ export class ThirdPartyApiConsumer extends WorkerHost {
 		await this.ioRedisService.publish(`SYNC_DECKER_DATA:${channelId}`, JSON.stringify(this.processState))
 	}
 
-	// * Step 1: Authenticate with Decker
-	private async authenticateWithDecker(factoryCode: string): Promise<string> {
-		const accessToken = await this.thirdPartyApiService.authenticate(factoryCode)
+	// * Step 1: Authenticate API via Decker OAuth2
+	private async authenticate(factoryCode: string): Promise<string> {
+		const accessToken = await this.thirdPartyApiOAuth2Service.authenticate(factoryCode)
 		if (!accessToken) {
 			this.updateProcessState(0, 'failed')
 			this.cancelRemainingSteps()
@@ -153,7 +154,7 @@ export class ThirdPartyApiConsumer extends WorkerHost {
 		await this.rfidInboundService.bulkUpsertRFIDRecords(payload)
 	}
 
-	private async executeSync(data, factoryCode: string, tenantId: string, accessToken: string) {
+	private async executeSync(data: string[], factoryCode: string, accessToken: string) {
 		this.updateProcessState(1, 'processing')
 		await this.broadcastStateChange(factoryCode)
 		const commandNumbers = await this.fetchCommandNumbers(data, accessToken)

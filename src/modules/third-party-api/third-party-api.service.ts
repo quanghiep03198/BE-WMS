@@ -1,101 +1,24 @@
 import { FileLogger } from '@/common/helpers/file-logger.helper'
 import { HttpService } from '@nestjs/axios'
-import { CACHE_MANAGER } from '@nestjs/cache-manager'
 import { Inject, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common'
-import { ConfigService } from '@nestjs/config'
 import { AxiosRequestConfig } from 'axios'
-import { Cache } from 'cache-manager'
 import { readFileSync } from 'fs-extra'
 import { chunk } from 'lodash'
 import { join, resolve } from 'path'
 import { DataSource } from 'typeorm'
-import { FactoryCode } from '../department/constants'
 import { OrderService } from '../order/order.service'
 import { TENANCY_DATA_SOURCE } from '../tenancy/constants'
-import {
-	OAuth2Credentials,
-	OAuth2TokenResponse,
-	ThirdPartyApiResponseData
-} from './interfaces/third-party-api.interface'
+import { ThirdPartyApiResponseData } from './interfaces/third-party-api.interface'
 
 @Injectable()
 export class ThirdPartyApiService {
 	private readonly upsertQuery = readFileSync(resolve(join(__dirname, '../rfid/sql/upsert-rfid-match.sql')), 'utf-8')
 
 	constructor(
-		@Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
 		@Inject(TENANCY_DATA_SOURCE) private readonly dataSource: DataSource,
 		private readonly httpService: HttpService,
-		private readonly orderService: OrderService,
-		private readonly configService: ConfigService
+		private readonly orderService: OrderService
 	) {}
-
-	private getCredentialsByFactory(factoryCode: string): OAuth2Credentials {
-		switch (factoryCode) {
-			case FactoryCode.GL1:
-				return {
-					client_id: this.configService.get('GL1_CLIENT_ID'),
-					client_secret: this.configService.get('GL1_CLIENT_SECRET')
-				}
-			case FactoryCode.GL3:
-				return {
-					client_id: this.configService.get('GL3_CLIENT_ID'),
-					client_secret: this.configService.get('GL3_CLIENT_SECRET')
-				}
-			case FactoryCode.GL4:
-				return {
-					client_id: this.configService.get('GL4_CLIENT_ID'),
-					client_secret: this.configService.get('GL4_CLIENT_SECRET')
-				}
-			default:
-				throw new NotFoundException('Credential by factory could not be found')
-		}
-	}
-
-	private async setTokenByFactory(factoryCode: string, accessToken: string, expiresIn: number) {
-		return await this.cacheManager.set(`third_party_token:${factoryCode}`, accessToken, expiresIn)
-	}
-
-	private async getTokenByFactory(factoryCode: string): Promise<string | null> {
-		return await this.cacheManager.get<string | null>(`third_party_token:${factoryCode}`)
-	}
-
-	public async authenticate(factoryCode: string) {
-		try {
-			const accessToken = await this.getTokenByFactory(factoryCode)
-
-			if (!accessToken) {
-				const oauth2TokenResponse = await this.fetchOauth2Token(factoryCode)
-				this.setTokenByFactory(factoryCode, oauth2TokenResponse.access_token, oauth2TokenResponse.expires_in)
-				return oauth2TokenResponse.access_token
-			}
-			return accessToken
-		} catch {
-			return null
-		}
-	}
-
-	public async fetchOauth2Token(factoryCode: string): Promise<OAuth2TokenResponse> {
-		try {
-			const credentials = this.getCredentialsByFactory(factoryCode)
-
-			return await this.httpService.axiosRef.request<URLSearchParams, OAuth2TokenResponse>({
-				baseURL: this.configService.get('THIRD_PARTY_OAUTH_API_URL'),
-				url: '',
-				method: 'POST',
-				headers: {
-					['Content-Type']: 'application/x-www-form-urlencoded'
-				},
-				data: new URLSearchParams({
-					...credentials,
-					grant_type: 'client_credentials',
-					scope: 'event:publish'
-				})
-			})
-		} catch (error) {
-			FileLogger.error(error)
-		}
-	}
 
 	public async fetchOneEpc({
 		headers,
@@ -215,10 +138,10 @@ export class ThirdPartyApiService {
 		const upsertQuery = this.upsertQuery.replace(
 			':values',
 			`(
-					'${upsertPayload.epc}', '${upsertPayload.mo_no}', '${upsertPayload.mat_code}','${upsertPayload.mo_noseq}', '${upsertPayload.or_no}', 
-					'${upsertPayload.or_cust_po}', '${upsertPayload.shoes_style_code_factory}', '${upsertPayload.cust_shoes_style}', '${upsertPayload.size_code}', '${upsertPayload.size_numcode}', 
-					'${upsertPayload.factory_code_orders}', '${upsertPayload.factory_name_orders}', '${upsertPayload.factory_code_produce}', '${upsertPayload.factory_name_produce}', ${upsertPayload.size_sumqty || 1}
-				)`
+				'${upsertPayload.epc}', '${upsertPayload.mo_no}', '${upsertPayload.mat_code}','${upsertPayload.mo_noseq}', '${upsertPayload.or_no}', 
+				'${upsertPayload.or_cust_po}', '${upsertPayload.shoes_style_code_factory}', '${upsertPayload.cust_shoes_style}', '${upsertPayload.size_code}', '${upsertPayload.size_numcode}', 
+				'${upsertPayload.factory_code_orders}', '${upsertPayload.factory_name_orders}', '${upsertPayload.factory_code_produce}', '${upsertPayload.factory_name_produce}', ${upsertPayload.size_sumqty || 1}
+			)`
 		)
 
 		await queryRunner.manager.query(upsertQuery)

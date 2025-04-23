@@ -14,7 +14,10 @@ import { RFIDModule } from '../rfid/rfid.module'
 import { TenacyMiddleware } from '../tenancy/tenancy.middleware'
 import { TenancyModule } from '../tenancy/tenancy.module'
 import { THIRD_PARTY_API_SYNC } from './constants'
-import { ThirdPartyApiConsumer } from './third-party-api.consumer'
+import { ThirdPartyApiConsumer } from './queues/third-party-api.consumer'
+
+import { ThirdPartyApiOAuth2Service } from './strategies/third-party-api-oauth2.service'
+import { GL1OAuth2Strategy, GL3OAuth2Strategy, GL4OAuth2Strategy } from './strategies/third-party-api-oauth2.strategy'
 import { ThirdPartyApiController } from './third-party-api.controller'
 import { ThirdPartyApiMiddleware } from './third-party-api.middleware'
 import { ThirdPartyApiService } from './third-party-api.service'
@@ -32,7 +35,14 @@ import { ThirdPartyApiService } from './third-party-api.service'
 		forwardRef(() => RFIDModule)
 	],
 	controllers: [ThirdPartyApiController],
-	providers: [ThirdPartyApiService, ThirdPartyApiConsumer],
+	providers: [
+		ThirdPartyApiService,
+		ThirdPartyApiConsumer,
+		ThirdPartyApiOAuth2Service,
+		GL1OAuth2Strategy,
+		GL3OAuth2Strategy,
+		GL4OAuth2Strategy
+	],
 	exports: [HttpModule, ThirdPartyApiService, BullModule]
 })
 export class ThirdPartyApiModule implements NestModule, OnModuleInit {
