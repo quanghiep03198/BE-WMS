@@ -71,13 +71,13 @@ LEFT JOIN (
 -- Outstock report master data
 OUTER APPLY (
 	SELECT
-	IIF(ISNULL(a.or_custpoone, '') = '', a.or_custpo, a.or_custpoone) AS po,
-	CAST(SUM(a.or_totalqty) - SUM(a.or_totalcqty) AS INT) AS po_qty
-FROM wuerp_vnrd.dbo.ta_ordermst a
-WHERE a.isactive = 'Y' 
-	AND IIF(ISNULL(a.or_custpoone, '') = '', a.or_custpo, a.or_custpoone) = inv.po
-GROUP BY
-	IIF(ISNULL(a.or_custpoone, '') = '', a.or_custpo, a.or_custpoone)
+		IIF(ISNULL(a.or_custpoone, '') = '', a.or_custpo, a.or_custpoone) AS po,
+		CAST(SUM(a.or_totalqty) - SUM(a.or_totalcqty) AS INT) AS po_qty
+	FROM wuerp_vnrd.dbo.ta_ordermst a
+	WHERE a.isactive = 'Y' 
+		AND IIF(ISNULL(a.or_custpoone, '') = '', a.or_custpo, a.or_custpoone) = inv.po
+	GROUP BY
+		IIF(ISNULL(a.or_custpoone, '') = '', a.or_custpo, a.or_custpoone)
 ) pl
 -- Outstock report detail
 CROSS APPLY ( 
