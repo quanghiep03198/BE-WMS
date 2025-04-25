@@ -39,11 +39,7 @@ export class RFIDOutboundService {
 	}
 
 	public async getIncomingOutboundEpcs(args: RFIDSearchParams) {
-		const factoryCode = this.request.headers['x-user-company']
-		const filterQuery: FilterQuery<EpcDocument> = {
-			scannable: true,
-			station_no: { $regex: new RegExp(`CUS_${factoryCode}_WH103`) }
-		}
+		const filterQuery: FilterQuery<EpcDocument> = { scannable: true }
 
 		return await this.epcOutboundModel.paginate(filterQuery, {
 			sort: { record_time: -1, mo_no: 1, epc: 1 },
@@ -57,15 +53,13 @@ export class RFIDOutboundService {
 	}
 
 	public async getOutboundOrderDetails() {
-		const factoryCode = this.request.headers['x-user-company']
 		return await this.epcOutboundModel.aggregate(
 			[
 				// * Stage 1: Match documents that are not deleted
 				{
 					$match: {
 						deleted: false,
-						scannable: true,
-						station_no: { $regex: new RegExp(`CUS_${factoryCode}_WH103`) }
+						scannable: true
 					}
 				},
 				// * Stage 2: Group by mo_no, mat_ecolor, and shoes_style_code_factory, and aggregate sizes
