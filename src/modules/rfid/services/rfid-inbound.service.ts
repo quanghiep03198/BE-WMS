@@ -30,7 +30,7 @@ import { RFIDSearchParams } from '../types'
 @Injectable({ scope: Scope.REQUEST })
 export class RFIDInboundService {
 	private readonly upsertInventoryQuery: string = readFileSync(
-		resolve(join(__dirname, '../sql/upsert-inventory.sql')),
+		resolve(join(__dirname, '../sql/upsert-inbound.sql')),
 		'utf-8'
 	)
 
