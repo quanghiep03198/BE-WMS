@@ -1,4 +1,3 @@
-import { stringToBoolean } from '@/common/utils'
 import { z } from 'zod'
 import { InventoryActions, InventoryStorageType } from '../constants'
 import { FPInventoryEntity } from '../entities/fp-inventory.entity'
@@ -61,26 +60,7 @@ export const searchCustomerValidator = z.object({
 	q: z.string()
 })
 
-export const deleteEpcValidator = z.object({
-	'mo_no.eq': z.string(),
-	'size_numcode.eq': z.string().optional(),
-	'quantity.eq': z
-		.string()
-		.optional()
-		.refine(
-			(value) => {
-				if (!value) return true
-				return !isNaN(Number(value))
-			},
-			{ message: 'Invalid quantity' }
-		)
-		.transform((value) => Number(value)),
-	f: z
-		.string()
-		.optional()
-		.default('false')
-		.transform((value) => stringToBoolean(value))
-})
+export const deleteEpcValidator = z.array(z.string().nonempty()).nonempty()
 
 export const readerPostDataValidator = z.object({
 	method: z.string().optional(),
@@ -93,7 +73,7 @@ export const readerPostDataValidator = z.object({
 		tagList: z.array(
 			z.object({
 				ant: z.number(),
-				epc: z.string(),
+				epc: z.string().nonempty(),
 				firstAnt: z.number(),
 				firstTime: z.number(),
 				lastTime: z.number(),
@@ -116,6 +96,11 @@ export const upsertStockOutValidator = z.object({
 		.optional()
 })
 
+export const findEpcBySizeValidator = z.object({
+	'mo_no.eq': z.string(),
+	'size_numcode.eq': z.string()
+})
+
 export type UpsertStockOutDTO = z.infer<typeof upsertStockOutValidator>
 export type UpsertStockInDTO = z.infer<typeof updateStockValidator> &
 	Pick<FPInventoryEntity, 'user_code_created' | 'factory_code'>
@@ -126,3 +111,4 @@ export type SearchCustOrderParamsDTO = z.infer<typeof searchCustomerValidator> &
 }
 export type PostReaderDataDTO = z.infer<typeof readerPostDataValidator>
 export type DeleteScannedEpcDTO = z.infer<typeof deleteEpcValidator>
+export type FindEpcBySizeDTO = z.infer<typeof findEpcBySizeValidator>

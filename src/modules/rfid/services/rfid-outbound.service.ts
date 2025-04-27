@@ -1,29 +1,27 @@
 import { DATA_SOURCE_DATA_LAKE } from '@/databases/constants'
 import { InjectQueue } from '@nestjs/bullmq'
-import { Inject, Injectable, InternalServerErrorException } from '@nestjs/common'
-import { REQUEST } from '@nestjs/core'
+import { Injectable, InternalServerErrorException } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
 import { InjectDataSource } from '@nestjs/typeorm'
 import { Queue } from 'bullmq'
 import { readFileSync } from 'fs'
-import { chunk, pick } from 'lodash'
-import { FilterQuery, PipelineStage } from 'mongoose'
+import { chunk } from 'lodash'
+import { FilterQuery, PipelineStage, UpdateWriteOpResult } from 'mongoose'
 import { join, resolve } from 'path'
 import { DataSource } from 'typeorm'
 import { POST_DATA_OUTBOUND_QUEUE } from '../constants'
-import { DeleteScannedEpcDTO, PostReaderDataDTO, UpsertStockOutDTO } from '../dto/rfid.dto'
+import { FindEpcBySizeDTO, PostReaderDataDTO, UpsertStockOutDTO } from '../dto/rfid.dto'
 import { EpcDocument, EpcModel, EpcOutbound } from '../schemas/epc.schema'
 import { RFIDSearchParams } from '../types'
 
 @Injectable()
 export class RFIDOutboundService {
 	private readonly upsertStockoutQuery: string = readFileSync(
-		resolve(join(__dirname, '../sql/upsert-stock-out.sql')),
+		resolve(join(__dirname, '../sql/upsert-outbound.sql')),
 		'utf-8'
 	)
 
 	constructor(
-		@Inject(REQUEST) private readonly request: Request,
 		@InjectDataSource(DATA_SOURCE_DATA_LAKE) private readonly dataSourceDL: DataSource,
 		@InjectQueue(POST_DATA_OUTBOUND_QUEUE) private readonly postDataQueue: Queue<PostReaderDataDTO>,
 		@InjectModel(EpcOutbound.name) private readonly epcOutboundModel: EpcModel
@@ -50,6 +48,19 @@ export class RFIDOutboundService {
 			options: { readPreference: 'nearest' },
 			customLabels: { docs: 'data' }
 		})
+	}
+
+	public async findDeletableEpcs(queries: FindEpcBySizeDTO) {
+		const VALID_EPC_LENGTH = 24
+		return await this.epcOutboundModel
+			.find({
+				mo_no: queries['mo_no.eq'],
+				size_numcode: queries['size_numcode.eq'],
+				scannable: true,
+				$expr: { $eq: [{ $strLenCP: '$epc' }, VALID_EPC_LENGTH] }
+			})
+			.select('epc')
+			.lean()
 	}
 
 	public async getOutboundOrderDetails() {
@@ -179,27 +190,15 @@ export class RFIDOutboundService {
 		}
 	}
 
-	public async deleteScannedOutboundEpcs(filters: DeleteScannedEpcDTO) {
-		const filterQuery: FilterQuery<EpcOutbound> = !filters['size_numcode.eq'] ? pick(filters, 'mo_no.eq') : filters
-		if (filterQuery['size_numcode.eq'] && filterQuery['quantity.eq']) {
-			const epcsToDelete = await this.epcOutboundModel
-				.find({
-					mo_no: filters['mo_no.eq'],
-					size_numcode: filters['size_numcode.eq']
-				})
-				.limit(filters['quantity.eq'])
-				.lean(true)
-
-			return await this.epcOutboundModel
-				.updateMany(
-					{ epc: { $in: epcsToDelete.map((item) => item.epc) } },
-					{ deleted: true, scannable: !filters['f'] },
-					{ new: true }
-				)
-				.exec()
-		}
+	public async deleteScannedOrder(commandNumber: string, rescannable: boolean): Promise<UpdateWriteOpResult> {
 		return await this.epcOutboundModel
-			.updateMany({ mo_no: filters['mo_no.eq'] }, { deleted: true, scannable: !filters['f'] })
+			.updateMany({ mo_no: commandNumber }, { deleted: true, scannable: rescannable }, { new: true })
+			.exec()
+	}
+
+	public async deleteBulkEpcs(epcs: string[], rescannable: boolean): Promise<UpdateWriteOpResult> {
+		return await this.epcOutboundModel
+			.updateMany({ epc: { $in: epcs } }, { deleted: true, scannable: rescannable }, { new: true })
 			.exec()
 	}
 }
