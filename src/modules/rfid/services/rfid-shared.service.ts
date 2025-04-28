@@ -3,14 +3,14 @@ import { Inject, Injectable } from '@nestjs/common'
 import { InjectDataSource } from '@nestjs/typeorm'
 import { readFileSync } from 'fs'
 import { throttle } from 'lodash'
-import { AnyBulkWriteOperation } from 'mongoose'
+import { AnyBulkWriteOperation, FilterQuery, UpdateWriteOpResult } from 'mongoose'
 import { join, resolve } from 'path'
 import { DataSource } from 'typeorm'
 import { EXCLUDED_EPC_PATTERN, EXCLUDED_ORDERS, FALLBACK_VALUE } from '../constants'
-import { PostReaderDataDTO } from '../dto/rfid.dto'
+import { FindEpcBySizeDTO, PostReaderDataDTO } from '../dto/rfid.dto'
 import { RFIDReaderEntity } from '../entities/rfid-reader.entity'
-import { EpcModel, EpcSchema } from '../schemas/epc.schema'
-import { StoredRFIDReaderItem } from '../types'
+import { EpcDocument, EpcModel, EpcSchema } from '../schemas/epc.schema'
+import { RFIDSearchParams, StoredRFIDReaderItem } from '../types'
 
 @Injectable()
 export class RFIDSharedService {
@@ -23,6 +23,95 @@ export class RFIDSharedService {
 		@Inject(MAIN_DATA_SOURCE) private readonly dataSource: DataSource,
 		@InjectDataSource(DATA_SOURCE_DATA_LAKE) private readonly dataSourceDL: DataSource
 	) {}
+
+	public async fetchLatestData(model: EpcModel, args: RFIDSearchParams) {
+		const [epcs, orders] = await Promise.all([this.getIncomingEpc(model, args), this.getOrderDetail(model)])
+		return { epcs, orders }
+	}
+
+	public async getIncomingEpc(model: EpcModel, args: RFIDSearchParams) {
+		const filterQuery: FilterQuery<EpcDocument> = {
+			scannable: true,
+			mo_no: args['mo_no.eq']
+		}
+		if (!args['mo_no.eq']) delete filterQuery.mo_no
+
+		return await model.paginate(filterQuery, {
+			sort: { record_time: -1, epc: 1, mo_no: 1 },
+			select: ['epc', 'mo_no'],
+			lean: true,
+			page: args._page,
+			limit: args._limit,
+			options: { readPreference: 'nearest' },
+			customLabels: { docs: 'data' }
+		})
+	}
+
+	public async getOrderDetail(model: EpcModel) {
+		return await model.aggregate(
+			[
+				// * Stage 1: Match documents that are not deleted
+				{ $match: { deleted: false, scannable: true } },
+				// * Stage 2: Group by mo_no, mat_ecolor, and shoes_style_code_factory, and aggregate sizes
+				{
+					$group: {
+						_id: {
+							mo_no: '$mo_no',
+							mat_ecolor: '$mat_ecolor',
+							shoes_style_code_factory: '$shoes_style_code_factory',
+							factory_code_produce: '$factory_code_produce',
+							size_numcode: '$size_numcode'
+						},
+						count: { $sum: 1 }
+					}
+				},
+				// * Stage 3: Reshape the data to group sizes into an array
+				{
+					$group: {
+						_id: {
+							mo_no: '$_id.mo_no',
+							mat_ecolor: '$_id.mat_ecolor',
+							factory_code_produce: '$_id.factory_code_produce',
+							shoes_style_code_factory: '$_id.shoes_style_code_factory'
+						},
+						sizes: {
+							$push: {
+								size_numcode: '$_id.size_numcode',
+								count: '$count'
+							}
+						}
+					}
+				},
+				// * Stage 4: Reshape the final output
+				{
+					$project: {
+						_id: 0,
+						mo_no: '$_id.mo_no',
+						mat_ecolor: '$_id.mat_ecolor',
+						factory_code_produce: '$_id.factory_code_produce',
+						shoes_style_code_factory: '$_id.shoes_style_code_factory',
+						sizes: 1
+					}
+				},
+				// * Stage 5: Sort the results
+				{ $sort: { mo_no: 1, mat_ecolor: 1, shoes_style_code_factory: 1 } }
+			],
+			{ readPreference: 'nearest' }
+		)
+	}
+
+	public async findDeletableEpcs(model: EpcModel, queries: FindEpcBySizeDTO) {
+		const VALID_EPC_LENGTH = 24
+		return await model
+			.find({
+				mo_no: queries['mo_no.eq'],
+				size_numcode: queries['size_numcode.eq'],
+				scannable: true,
+				$expr: { $eq: [{ $strLenCP: '$epc' }, VALID_EPC_LENGTH] }
+			})
+			.select('epc')
+			.lean()
+	}
 
 	/**
 	 *
@@ -98,5 +187,21 @@ export class RFIDSharedService {
 			retryWrites: true,
 			timestamps: true
 		})
+	}
+
+	public async deleteScannedOrder(
+		model: EpcModel,
+		commandNumber: string,
+		rescannable: boolean
+	): Promise<UpdateWriteOpResult> {
+		return await model
+			.updateMany({ mo_no: commandNumber }, { deleted: true, scannable: rescannable }, { new: true })
+			.exec()
+	}
+
+	public async deleteBulkEpcs(model: EpcModel, epcs: string[], rescannable: boolean): Promise<UpdateWriteOpResult> {
+		return await model
+			.updateMany({ epc: { $in: epcs } }, { deleted: true, scannable: rescannable }, { new: true })
+			.exec()
 	}
 }

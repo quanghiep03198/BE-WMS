@@ -10,13 +10,12 @@ import { Queue } from 'bullmq'
 import { format } from 'date-fns'
 import { readFileSync } from 'fs'
 import { chunk, pick } from 'lodash'
-import { AnyBulkWriteOperation, FilterQuery } from 'mongoose'
+import { AnyBulkWriteOperation } from 'mongoose'
 import { I18nContext, I18nService } from 'nestjs-i18n'
 import { join, resolve } from 'path'
 import { DataSource, FindOptionsWhere, In } from 'typeorm'
 import { POST_DATA_INBOUND_QUEUE } from '../constants'
 import {
-	DeleteScannedEpcDTO,
 	ExchangeEpcDTO,
 	ExchangeOrderDTO,
 	PostReaderDataDTO,
@@ -24,8 +23,7 @@ import {
 	UpsertStockInDTO
 } from '../dto/rfid.dto'
 import { RFIDMatchCustomerEntity } from '../entities/rfid-customer-match.entity'
-import { EpcDocument, EpcInbound, EpcInboundSchema, EpcModel } from '../schemas/epc.schema'
-import { RFIDSearchParams } from '../types'
+import { EpcInbound, EpcInboundSchema, EpcModel } from '../schemas/epc.schema'
 
 @Injectable({ scope: Scope.REQUEST })
 export class RFIDInboundService {
@@ -66,82 +64,6 @@ export class RFIDInboundService {
 			this.postDataQueue.clean(GRACE_PERIOD, QUANTITY, 'failed'),
 			this.postDataQueue.clean(GRACE_PERIOD, QUANTITY, 'completed')
 		])
-	}
-
-	public async fetchLatestInboundData(args: RFIDSearchParams) {
-		const [epcs, orders] = await Promise.all([this.getIncomingInboundEpcs(args), this.getInboundOrderDetails()])
-		return { epcs, orders }
-	}
-
-	public async getIncomingInboundEpcs(args: RFIDSearchParams) {
-		const filterQuery: FilterQuery<EpcDocument> = {
-			scannable: true,
-			mo_no: args['mo_no.eq']
-		}
-		if (!args['mo_no.eq']) delete filterQuery.mo_no
-
-		return await this.epcInboundModel.paginate(filterQuery, {
-			sort: { record_time: -1, epc: 1, mo_no: 1 },
-			select: ['epc', 'mo_no'],
-			lean: true,
-			page: args._page,
-			limit: args._limit,
-			options: { readPreference: 'nearest' },
-			customLabels: { docs: 'data' }
-		})
-	}
-
-	public async getInboundOrderDetails() {
-		return await this.epcInboundModel.aggregate(
-			[
-				// * Stage 1: Match documents that are not deleted
-				{ $match: { deleted: false, scannable: true } },
-				// * Stage 2: Group by mo_no, mat_ecolor, and shoes_style_code_factory, and aggregate sizes
-				{
-					$group: {
-						_id: {
-							mo_no: '$mo_no',
-							mat_ecolor: '$mat_ecolor',
-							shoes_style_code_factory: '$shoes_style_code_factory',
-							factory_code_produce: '$factory_code_produce',
-							size_numcode: '$size_numcode'
-						},
-						count: { $sum: 1 }
-					}
-				},
-				// * Stage 3: Reshape the data to group sizes into an array
-				{
-					$group: {
-						_id: {
-							mo_no: '$_id.mo_no',
-							mat_ecolor: '$_id.mat_ecolor',
-							factory_code_produce: '$_id.factory_code_produce',
-							shoes_style_code_factory: '$_id.shoes_style_code_factory'
-						},
-						sizes: {
-							$push: {
-								size_numcode: '$_id.size_numcode',
-								count: '$count'
-							}
-						}
-					}
-				},
-				// * Stage 4: Reshape the final output
-				{
-					$project: {
-						_id: 0,
-						mo_no: '$_id.mo_no',
-						mat_ecolor: '$_id.mat_ecolor',
-						factory_code_produce: '$_id.factory_code_produce',
-						shoes_style_code_factory: '$_id.shoes_style_code_factory',
-						sizes: 1
-					}
-				},
-				// * Stage 5: Sort the results
-				{ $sort: { mo_no: 1, mat_ecolor: 1, shoes_style_code_factory: 1 } }
-			],
-			{ readPreference: 'nearest' }
-		)
 	}
 
 	public async upsertStockIn(orderCode: string, data: UpsertStockInDTO) {
@@ -220,32 +142,6 @@ export class RFIDInboundService {
 		} finally {
 			await queryRunner.release()
 		}
-	}
-
-	public async deleteScannedInboundEpcs(filters: DeleteScannedEpcDTO) {
-		const filterQuery: FilterQuery<EpcInbound> = !filters['size_numcode.eq'] ? pick(filters, 'mo_no.eq') : filters
-		if (filterQuery['size_numcode.eq'] && filterQuery['quantity.eq']) {
-			const epcsToDelete = await this.epcInboundModel
-				.find({
-					mo_no: filters['mo_no.eq'],
-					size_numcode: filters['size_numcode.eq']
-				})
-				.limit(filters['quantity.eq'])
-				.lean(true)
-
-			return await this.epcInboundModel
-				.updateMany(
-					{
-						epc: { $in: epcsToDelete.map((item) => item.epc) }
-					},
-					{ deleted: true, scannable: !filters['f'] },
-					{ new: true }
-				)
-				.exec()
-		}
-		return await this.epcInboundModel
-			.updateMany({ mo_no: filters['mo_no.eq'] }, { deleted: true, scannable: !filters['f'] })
-			.exec()
 	}
 
 	public async exchangeEpcBySize(update: ExchangeEpcDTO) {

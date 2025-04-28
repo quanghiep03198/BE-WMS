@@ -45,7 +45,7 @@ export class RFIDOutboundController {
 		res.setHeader('Content-Type', 'text/event-stream')
 		res.setHeader('Cache-Control', 'no-cache')
 		const handleChange = async () => {
-			const data = await this.rfidOutboundService.fetchLatestOutboundData({ _page: 1, _limit: 50 })
+			const data = await this.rfidSharedService.fetchLatestData(this.epcOutboundModel, { _page: 1, _limit: 50 })
 			if (data) {
 				res.write(`data: ${JSON.stringify(data)}\n\n`)
 				res.flush()
@@ -66,7 +66,7 @@ export class RFIDOutboundController {
 	})
 	@AuthGuard()
 	async fetchNextOutboundEpc(@Query('_page', new DefaultValuePipe(1), ParseIntPipe) page: number) {
-		return await this.rfidOutboundService.getIncomingOutboundEpcs({ _page: page, _limit: 50 })
+		return await this.rfidSharedService.getIncomingEpc(this.epcOutboundModel, { _page: page, _limit: 50 })
 	}
 
 	@Api({
@@ -75,7 +75,7 @@ export class RFIDOutboundController {
 	})
 	@AuthGuard()
 	async getOutboundEpcBySize(@Query(new ZodValidationPipe(findEpcBySizeValidator)) queries: FindEpcBySizeDTO) {
-		return await this.rfidOutboundService.findDeletableEpcs(queries)
+		return await this.rfidSharedService.findDeletableEpcs(this.epcOutboundModel, queries)
 	}
 
 	@Api({
@@ -109,7 +109,7 @@ export class RFIDOutboundController {
 		@Query('rescannable', new DefaultValuePipe(false), ParseBoolPipe) rescannable: boolean,
 		@Param('commandNumber') commandNumber: string
 	) {
-		return await this.rfidOutboundService.deleteScannedOrder(commandNumber, rescannable)
+		return await this.rfidSharedService.deleteScannedOrder(this.epcOutboundModel, commandNumber, rescannable)
 	}
 
 	@Api({
@@ -123,6 +123,6 @@ export class RFIDOutboundController {
 		@Query('rescannable', new DefaultValuePipe(false), ParseBoolPipe) rescannable: boolean,
 		@Body(new ZodValidationPipe(deleteEpcValidator)) epcs: DeleteScannedEpcDTO
 	) {
-		return await this.rfidOutboundService.deleteBulkEpcs(epcs, rescannable)
+		return await this.rfidSharedService.deleteBulkEpcs(this.epcOutboundModel, epcs, rescannable)
 	}
 }

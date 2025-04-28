@@ -6,13 +6,12 @@ import { InjectDataSource } from '@nestjs/typeorm'
 import { Queue } from 'bullmq'
 import { readFileSync } from 'fs'
 import { chunk } from 'lodash'
-import { FilterQuery, PipelineStage, UpdateWriteOpResult } from 'mongoose'
+import { FilterQuery, PipelineStage } from 'mongoose'
 import { join, resolve } from 'path'
 import { DataSource } from 'typeorm'
 import { POST_DATA_OUTBOUND_QUEUE } from '../constants'
-import { FindEpcBySizeDTO, PostReaderDataDTO, UpsertStockOutDTO } from '../dto/rfid.dto'
+import { PostReaderDataDTO, UpsertStockOutDTO } from '../dto/rfid.dto'
 import { EpcDocument, EpcModel, EpcOutbound } from '../schemas/epc.schema'
-import { RFIDSearchParams } from '../types'
 
 @Injectable()
 export class RFIDOutboundService {
@@ -29,38 +28,6 @@ export class RFIDOutboundService {
 
 	public async postOutboundRFIDData(payload: PostReaderDataDTO) {
 		return await this.postDataQueue.add('RFID_OUTBOUND', payload)
-	}
-
-	public async fetchLatestOutboundData(args: RFIDSearchParams) {
-		const [epcs, orders] = await Promise.all([this.getIncomingOutboundEpcs(args), this.getOutboundOrderDetails()])
-		return { epcs, orders }
-	}
-
-	public async getIncomingOutboundEpcs(args: RFIDSearchParams) {
-		const filterQuery: FilterQuery<EpcDocument> = { scannable: true }
-
-		return await this.epcOutboundModel.paginate(filterQuery, {
-			sort: { record_time: -1, mo_no: 1, epc: 1 },
-			select: ['epc', 'mo_no'],
-			lean: true,
-			page: args._page,
-			limit: args._limit,
-			options: { readPreference: 'nearest' },
-			customLabels: { docs: 'data' }
-		})
-	}
-
-	public async findDeletableEpcs(queries: FindEpcBySizeDTO) {
-		const VALID_EPC_LENGTH = 24
-		return await this.epcOutboundModel
-			.find({
-				mo_no: queries['mo_no.eq'],
-				size_numcode: queries['size_numcode.eq'],
-				scannable: true,
-				$expr: { $eq: [{ $strLenCP: '$epc' }, VALID_EPC_LENGTH] }
-			})
-			.select('epc')
-			.lean()
 	}
 
 	public async getOutboundOrderDetails() {
@@ -188,17 +155,5 @@ export class RFIDOutboundService {
 			await Promise.all([queryRunner.rollbackTransaction(), session.abortTransaction()])
 			throw new InternalServerErrorException(error)
 		}
-	}
-
-	public async deleteScannedOrder(commandNumber: string, rescannable: boolean): Promise<UpdateWriteOpResult> {
-		return await this.epcOutboundModel
-			.updateMany({ mo_no: commandNumber }, { deleted: true, scannable: rescannable }, { new: true })
-			.exec()
-	}
-
-	public async deleteBulkEpcs(epcs: string[], rescannable: boolean): Promise<UpdateWriteOpResult> {
-		return await this.epcOutboundModel
-			.updateMany({ epc: { $in: epcs } }, { deleted: true, scannable: rescannable }, { new: true })
-			.exec()
 	}
 }

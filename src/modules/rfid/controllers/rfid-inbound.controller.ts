@@ -10,6 +10,7 @@ import {
 	HttpStatus,
 	Logger,
 	Param,
+	ParseBoolPipe,
 	ParseIntPipe,
 	Query,
 	Res,
@@ -24,6 +25,8 @@ import {
 	exchangeEpcValidator,
 	ExchangeOrderDTO,
 	exchangeOrderValidator,
+	FindEpcBySizeDTO,
+	findEpcBySizeValidator,
 	PostReaderDataDTO,
 	readerPostDataValidator,
 	searchCustomerValidator,
@@ -52,7 +55,7 @@ export class RFIDInboundController {
 		res.setHeader('Content-Type', 'text/event-stream')
 		res.setHeader('Cache-Control', 'no-cache')
 		const handleChange = async () => {
-			const data = await this.rfidInboundService.fetchLatestInboundData({ _page: 1, _limit: 50 })
+			const data = await this.rfidSharedService.fetchLatestData(this.epcInboundModel, { _page: 1, _limit: 50 })
 			if (data) {
 				res.write(`data: ${JSON.stringify(data)}\n\n`)
 				res.flush()
@@ -79,7 +82,7 @@ export class RFIDInboundController {
 		@Query('_page', new DefaultValuePipe(1), ParseIntPipe) page: number,
 		@Query('mo_no.eq', new DefaultValuePipe('')) selectedOrder: string
 	) {
-		return await this.rfidInboundService.getIncomingInboundEpcs({
+		return await this.rfidSharedService.getIncomingEpc(this.epcInboundModel, {
 			_page: page,
 			_limit: 50,
 			'mo_no.eq': selectedOrder
@@ -92,7 +95,16 @@ export class RFIDInboundController {
 	})
 	@AuthGuard()
 	async getOrderDetails() {
-		return this.rfidInboundService.getInboundOrderDetails()
+		return this.rfidSharedService.getOrderDetail(this.epcInboundModel)
+	}
+
+	@Api({
+		endpoint: 'get-epc-by-size',
+		method: HttpMethod.GET
+	})
+	@AuthGuard()
+	async getOutboundEpcBySize(@Query(new ZodValidationPipe(findEpcBySizeValidator)) queries: FindEpcBySizeDTO) {
+		return await this.rfidSharedService.findDeletableEpcs(this.epcInboundModel, queries)
 	}
 
 	@Api({
@@ -136,14 +148,31 @@ export class RFIDInboundController {
 	}
 
 	@Api({
-		endpoint: 'delete-scanned-epcs',
+		endpoint: 'delete-scanned-order/:commandNumber',
 		method: HttpMethod.DELETE,
-		statusCode: HttpStatus.NO_CONTENT,
+		statusCode: HttpStatus.OK,
 		message: 'common.deleted'
 	})
 	@AuthGuard()
-	async deleteEpcBySize(@Query(new ZodValidationPipe(deleteEpcValidator)) filters: DeleteScannedEpcDTO) {
-		return await this.rfidInboundService.deleteScannedInboundEpcs(filters)
+	async deleteScannedOutboundEpc(
+		@Query('rescannable', new DefaultValuePipe(false), ParseBoolPipe) rescannable: boolean,
+		@Param('commandNumber') commandNumber: string
+	) {
+		return await this.rfidSharedService.deleteScannedOrder(this.epcInboundModel, commandNumber, rescannable)
+	}
+
+	@Api({
+		endpoint: 'delete-scanned-epcs',
+		method: HttpMethod.POST,
+		statusCode: HttpStatus.OK,
+		message: 'common.deleted'
+	})
+	@AuthGuard()
+	async deleteBulkEpcs(
+		@Query('rescannable', new DefaultValuePipe(false), ParseBoolPipe) rescannable: boolean,
+		@Body(new ZodValidationPipe(deleteEpcValidator)) epcs: DeleteScannedEpcDTO
+	) {
+		return await this.rfidSharedService.deleteBulkEpcs(this.epcInboundModel, epcs, rescannable)
 	}
 
 	@Api({
