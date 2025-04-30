@@ -1,18 +1,8 @@
 DECLARE @FallbackValue NVARCHAR(10) = 'Unknown';
 
 WITH data_src AS (
-	SELECT DISTINCT EPC_Code, COALESCE(mo_no, @FallbackValue) AS mo_no, COALESCE(size_code, @FallbackValue) AS size_numcode, rfid_status, record_time, stationNO, FC_server_code AS factory_code, ISNULL(dept_name, @FallbackValue) AS dept_name, storage
-	FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet
-	WHERE 
-		rfid_status = 'A'
-		AND EPC_Code NOT LIKE '303429%'
-		AND EPC_Code NOT LIKE 'E28%'
-		AND mo_no <> '13D05B006'
-		AND stationNO LIKE 'CUS%WH10[12]'
-		AND record_time >= CAST(DATEADD(YEAR, -2, GETDATE()) AS DATE)
-	UNION ALL
-	SELECT DISTINCT EPC_Code, COALESCE(mo_no, @FallbackValue) AS mo_no, COALESCE(size_code, @FallbackValue) AS size_numcode, rfid_status, record_time, stationNO, FC_server_code AS factory_code, ISNULL(dept_name, @FallbackValue) AS dept_name, storage
-	FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet_backup_Daily
+	SELECT EPC_Code, COALESCE(mo_no, @FallbackValue) AS mo_no, COALESCE(size_code, @FallbackValue) AS size_numcode, rfid_status, record_time, stationNO, FC_server_code AS factory_code, ISNULL(dept_name, @FallbackValue) AS dept_name, storage
+	FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet_backup_Daily WITH (NOLOCK)
 	WHERE 
 		rfid_status = 'A'
 		AND EPC_Code NOT LIKE '303429%'
@@ -33,7 +23,7 @@ dept_ls AS (
 storage_ls AS (
 	SELECT mo_no, factory_code, STRING_AGG(b.storage_name, ', ') WITHIN GROUP (ORDER BY storage) AS storage_name
 	FROM (SELECT DISTINCT storage, mo_no, factory_code FROM cmd_det) a
-	LEFT JOIN DV_DATA_LAKE.dbo.dv_warehouseccodedet b 
+	LEFT JOIN DV_DATA_LAKE.dbo.dv_warehouseccodedet b WITH (NOLOCK) 
 		ON a.storage = b.storage_num
 	GROUP BY factory_code, mo_no
 ),
@@ -56,11 +46,11 @@ SELECT
 	manf.mo_sumqty - ac.accumulated_qty AS missing_qty,
 	sz.size_data
 FROM data_src ds
-LEFT JOIN DV_DATA_LAKE.dbo.dv_rfidmatchmst_cust rmc
+LEFT JOIN DV_DATA_LAKE.dbo.dv_rfidmatchmst_cust rmc WITH (NOLOCK)
 	ON ds.EPC_Code = rmc.EPC_Code
-LEFT JOIN wuerp_vnrd.dbo.ta_manufacturmst manf
+LEFT JOIN wuerp_vnrd.dbo.ta_manufacturmst manf WITH (NOLOCK)
 	ON manf.mo_no = ds.mo_no
-LEFT JOIN wuerp_vnrd.dbo.ta_productmst prod
+LEFT JOIN wuerp_vnrd.dbo.ta_productmst prod WITH (NOLOCK)
 	ON rmc.mat_code = prod.mat_code
 LEFT JOIN storage_ls sg
 	ON sg.mo_no = ds.mo_no AND sg.factory_code = ds.factory_code
