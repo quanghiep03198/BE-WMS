@@ -25,8 +25,13 @@ export class RFIDSharedService {
 	) {}
 
 	public async fetchLatestData(model: EpcModel, args: RFIDSearchParams) {
-		const [epcs, orders] = await Promise.all([this.getIncomingEpc(model, args), this.getOrderDetail(model)])
-		return { epcs, orders }
+		const [epcs, orders, has_invalid] = await Promise.all([
+			this.getIncomingEpc(model, args),
+			this.getOrderDetail(model),
+			this.checkInvalidEpcExist(model)
+		])
+
+		return { epcs, orders, has_invalid }
 	}
 
 	public async getIncomingEpc(model: EpcModel, args: RFIDSearchParams) {
@@ -43,8 +48,24 @@ export class RFIDSharedService {
 			page: args._page,
 			limit: args._limit,
 			options: { readPreference: 'nearest' },
-			customLabels: { docs: 'data' }
+			customLabels: { docs: 'data' },
+			projection: {
+				_id: 0,
+				epc: 1,
+				mo_no: 1
+			}
 		})
+	}
+
+	private async checkInvalidEpcExist(model: EpcModel): Promise<boolean> {
+		const hasInvalidEpc = await model
+			.exists({
+				scannable: true,
+				epc: { $regex: /^E28/i }
+			})
+			.lean(true)
+
+		return Boolean(hasInvalidEpc)
 	}
 
 	public async getOrderDetail(model: EpcModel) {
