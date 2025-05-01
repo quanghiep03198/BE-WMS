@@ -1,24 +1,21 @@
 DECLARE @FallbackValue NVARCHAR(10) = 'Unknown';
 
-WITH
-   po_list
-   AS
-   (
-      SELECT e.brand_name,
-         IIF(ISNULL(a.or_custpoone,'') = '', a.or_custpo, a.or_custpoone)[PO],
-         COALESCE(c.shoestyle_codefactory, @FallbackValue)[shoes_style_code_factory],
-         COALESCE(b.mat_ecolor, @FallbackValue)[mat_ecolor]
-      FROM wuerp_vnrd.dbo.ta_ordermst a
-         LEFT JOIN wuerp_vnrd.dbo.ta_productmst b ON a.mat_code = b.mat_code AND b.isactive='Y'
-         LEFT JOIN wuerp_vnrd.dbo.ta_shoefactorymst c ON c.shoestyle_systemcodefty = b.shoestyle_systemcodefty AND c.isactive='Y'
-         LEFT JOIN wuerp_vnrd.dbo.ta_shoestylecolor d ON b.shoestyle_templink = d.shoestyle_templink AND c.isactive='Y'
-         LEFT JOIN wuerp_vnrd.dbo.ta_brand e ON a.custbrand_id = e.custbrand_id AND e.isactive='Y'
-      WHERE a.isactive='Y'
-      GROUP BY e.brand_name,
-	IIF(ISNULL(a.or_custpoone,'') = '', a.or_custpo, a.or_custpoone), 
-	COALESCE(c.shoestyle_codefactory, @FallbackValue), 
-	COALESCE(b.mat_ecolor, @FallbackValue)
-   )
+WITH po_list AS (
+   SELECT e.brand_name,
+      IIF(ISNULL(a.or_custpoone,'') = '', a.or_custpo, a.or_custpoone)[PO],
+      COALESCE(c.shoestyle_codefactory, @FallbackValue)[shoes_style_code_factory],
+      COALESCE(b.mat_ecolor, @FallbackValue)[mat_ecolor]
+   FROM wuerp_vnrd.dbo.ta_ordermst a
+   LEFT JOIN wuerp_vnrd.dbo.ta_productmst b ON a.mat_code = b.mat_code AND b.isactive='Y'
+   LEFT JOIN wuerp_vnrd.dbo.ta_shoefactorymst c ON c.shoestyle_systemcodefty = b.shoestyle_systemcodefty AND c.isactive='Y'
+   LEFT JOIN wuerp_vnrd.dbo.ta_shoestylecolor d ON b.shoestyle_templink = d.shoestyle_templink AND c.isactive='Y'
+   LEFT JOIN wuerp_vnrd.dbo.ta_brand e ON a.custbrand_id = e.custbrand_id AND e.isactive='Y'
+   WHERE a.isactive='Y'
+   GROUP BY e.brand_name,
+      IIF(ISNULL(a.or_custpoone,'') = '', a.or_custpo, a.or_custpoone), 
+      COALESCE(c.shoestyle_codefactory, @FallbackValue), 
+      COALESCE(b.mat_ecolor, @FallbackValue)
+)
 SELECT pl.brand_name[brand_name],
    pk.PO AS po,
    pl.shoes_style_code_factory,
@@ -60,4 +57,9 @@ GROUP BY pl.brand_name,
 	wq.target_item_qty,
 	bq.target_box_qty,
 	wb.weighed_box_qty
-ORDER BY pk.PO, pl.shoes_style_code_factory, pl.mat_ecolor, CASE WHEN LEN(Size)>=10 THEN 2 ELSE 0 END, LEFT(Size,3)
+ORDER BY 
+   pk.PO, 
+   pl.shoes_style_code_factory, 
+   pl.mat_ecolor, 
+   CASE WHEN LEN(Size) >= 10 THEN 2 ELSE 0 END, LEFT(Size, 3)
+OPTION (OPTIMIZE FOR UNKNOWN);
