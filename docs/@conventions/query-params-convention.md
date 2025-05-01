@@ -20,15 +20,15 @@ GET /users?q=John
 
 ## Pagination
 
-To paginate results, use the `page` and `limit` parameters:
+To paginate results, use the `_page` and `_limit` parameters:
 
 ```
-GET /users?page=1&limit=10
+GET /users?_page=1&_limit=10
 ```
 
 ## Sorting
 
-To sort results, use the `sort` and `order` parameters. The `sort` parameter specifies the field to sort by, and the `order` parameter specifies the order (`asc` for ascending, `desc` for descending):
+To sort results, use the `_sort` and `_order` parameters. The `sort` parameter specifies the field to sort by, and the `order` parameter specifies the order (`asc` for ascending, `desc` for descending):
 
 ```
 GET /users?sort=name&order=asc
@@ -39,7 +39,7 @@ GET /users?sort=name&order=asc
 To get a range of items, use the `_start` and `_end` parameters:
 
 ```
-GET /users?start=0&end=10
+GET /users?_start=0&_end=10
 ```
 
 ## Example
@@ -47,7 +47,7 @@ GET /users?start=0&end=10
 Here is an example of a complex query that combines multiple conventions:
 
 ```
-GET /users?q=John&page=1&limit=5&sort=name&order=asc
+GET /users?q=John&_page=1&_limit=5&_sort=name&_order=asc
 ```
 
 This query searches for users with the name "John", returns the first page with 5 results per page, and sorts the results by name in ascending order.
