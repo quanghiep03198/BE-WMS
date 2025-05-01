@@ -18,7 +18,7 @@ async function bootstrap() {
 				{ path: '/metrics', method: RequestMethod.GET }
 			]
 		})
-		app.enableVersioning({ type: VersioningType.URI })
+		app.enableVersioning({ type: VersioningType.HEADER, header: 'X-Api-Version' })
 		app.enableCors()
 		app.use(helmet())
 		app.use(bodyParser.json({ limit: '50mb' }))

@@ -1,4 +1,4 @@
-import { Controller, Get, Res } from '@nestjs/common'
+import { Controller, Get, Res, Version } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { Response } from 'express'
 import { I18nContext, I18nService } from 'nestjs-i18n'
@@ -11,6 +11,7 @@ export class AppController {
 	) {}
 
 	@Get()
+	@Version('1.0')
 	index(@Res() res: Response) {
 		if (this.configService.get('NODE_ENV') === 'development')
 			return res.redirect(this.configService.get<string>('POSTMAN_DOCUMENTATION_URL'))
