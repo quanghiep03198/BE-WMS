@@ -17,8 +17,9 @@ const defaultSchemaOptions: SchemaOptions = {
 	versionKey: false,
 	suppressReservedKeysWarning: false,
 	strict: false,
-	strictQuery: false
-	// expireAfterSeconds: 60 * 60 * 24 * 90 // 90 days
+	strictQuery: false,
+	readConcern: { level: 'majority' },
+	writeConcern: { w: 'majority' }
 }
 
 /**
@@ -29,7 +30,7 @@ abstract class BaseAbstractEpcSchema {
 	@Prop({ type: mongoose.Schema.Types.ObjectId })
 	_id: mongoose.Types.ObjectId
 
-	@Prop({ type: String, required: true, unique: true })
+	@Prop({ type: String, required: true, unique: true, length: 24 })
 	epc: string
 
 	@Prop({ type: String, required: true, index: true })

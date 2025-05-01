@@ -1,7 +1,8 @@
+import { FileLogger } from '@/common/helpers'
 import { DATA_SOURCE_DATA_LAKE } from '@/databases/constants'
 import { BullModule } from '@nestjs/bullmq'
-import { MiddlewareConsumer, Module, NestModule, RequestMethod } from '@nestjs/common'
-import { MongooseModule } from '@nestjs/mongoose'
+import { MiddlewareConsumer, Module, NestModule, OnModuleInit, RequestMethod } from '@nestjs/common'
+import { InjectModel, MongooseModule } from '@nestjs/mongoose'
 import { TypeOrmModule } from '@nestjs/typeorm'
 import MongooseDeletePlugin from 'mongoose-delete'
 import MongoosePaginatePlugin from 'mongoose-paginate-v2'
@@ -23,6 +24,7 @@ import {
 	EPC_OUTBOUND_COLLECTION,
 	EpcInbound,
 	EpcInboundSchema,
+	EpcModel,
 	EpcOutbound,
 	EpcOutboundSchema
 } from './schemas/epc.schema'
@@ -45,6 +47,7 @@ import { RFIDCustomerEntitySubscriber } from './subscribers/rfid-customer.entity
 				name: EpcInbound.name,
 				collection: EPC_INBOUND_COLLECTION,
 				useFactory: () => {
+					EpcInboundSchema.index({ record_time: 1 }, { expires: '90d' })
 					EpcInboundSchema.plugin(MongoosePaginatePlugin)
 					EpcInboundSchema.plugin(MongooseDeletePlugin, { overrideMethods: true, indexFields: ['deleted'] })
 					return EpcInboundSchema
@@ -54,6 +57,7 @@ import { RFIDCustomerEntitySubscriber } from './subscribers/rfid-customer.entity
 				name: EpcOutbound.name,
 				collection: EPC_OUTBOUND_COLLECTION,
 				useFactory: () => {
+					EpcOutboundSchema.index({ record_time: 1 }, { expires: '90d' })
 					EpcOutboundSchema.plugin(MongoosePaginatePlugin)
 					EpcOutboundSchema.plugin(MongooseDeletePlugin, { overrideMethods: true, indexFields: ['deleted'] })
 					return EpcOutboundSchema
@@ -73,10 +77,23 @@ import { RFIDCustomerEntitySubscriber } from './subscribers/rfid-customer.entity
 	],
 	exports: [MongooseModule, RFIDInboundService]
 })
-export class RFIDModule implements NestModule {
+export class RFIDModule implements NestModule, OnModuleInit {
+	constructor(
+		@InjectModel(EpcInbound.name) private readonly epcInboundModel: EpcModel,
+		@InjectModel(EpcOutbound.name) private readonly epcOutboundModel: EpcModel
+	) {}
+
 	configure(consumer: MiddlewareConsumer) {
 		consumer
 			.apply(TenacyMiddleware)
 			.forRoutes({ path: '/rfid/inbound/update-stock/:orderCode', method: RequestMethod.PUT })
+	}
+
+	async onModuleInit() {
+		try {
+			await Promise.all([this.epcInboundModel.syncIndexes(), this.epcOutboundModel.syncIndexes()])
+		} catch (error) {
+			FileLogger.error(error)
+		}
 	}
 }
