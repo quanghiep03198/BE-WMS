@@ -2,6 +2,7 @@ import { PluralI18nPath, ResponseMessageKey } from '@/common/decorators/response
 import { I18nPath } from '@/generated/i18n.generated'
 import { CallHandler, ExecutionContext, Injectable, NestInterceptor } from '@nestjs/common'
 import { HttpAdapterHost, Reflector } from '@nestjs/core'
+import { format } from 'date-fns'
 import { I18nContext, I18nService } from 'nestjs-i18n'
 import { Observable } from 'rxjs'
 import { map } from 'rxjs/operators'
@@ -17,6 +18,7 @@ export class TransformInterceptor<T> implements NestInterceptor<T, Response<T>> 
 		private readonly httpAdapterHost: HttpAdapterHost,
 		private readonly i18nService: I18nService
 	) {}
+
 	intercept(context: ExecutionContext, next: CallHandler): Observable<Response<T>> {
 		const responseMessage =
 			this.reflector.get<string | PluralI18nPath | I18nPath>(ResponseMessageKey, context.getHandler()) ?? ''
@@ -32,7 +34,7 @@ export class TransformInterceptor<T> implements NestInterceptor<T, Response<T>> 
 					defaultValue: message,
 					...messageBindings
 				}),
-				timestamp: new Date().toISOString(),
+				timestamp: format(new Date(), 'yyyy-MM-dd HH:mm:ss'),
 				path: httpAdapter.getRequestUrl(context.switchToHttp().getRequest())
 			}))
 		)
