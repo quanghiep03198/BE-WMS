@@ -1,6 +1,5 @@
 import { TENANCY_DATA_SOURCE } from '@/modules/tenancy/constants'
 import { Inject, Injectable } from '@nestjs/common'
-import { REQUEST } from '@nestjs/core'
 import { format } from 'date-fns'
 import { Workbook } from 'exceljs'
 import { readFileSync } from 'fs'
@@ -15,14 +14,11 @@ export class OutboundReportService {
 
 	constructor(
 		@Inject(TENANCY_DATA_SOURCE) private readonly dataSource: DataSource,
-		@Inject(REQUEST) private readonly request: Request,
 		private readonly i18nService: I18nService
 	) {}
 
 	public async getOutboundReportByDate(date: string): Promise<IOutboundReportResponse> {
-		const queryRunner = this.dataSource.createQueryRunner()
-		await queryRunner.connect()
-		const data = await queryRunner.manager.query<IOutboundReportQueryResult[]>(this.outboundReportQuery, [date])
+		const data = await this.dataSource.query<IOutboundReportQueryResult[]>(this.outboundReportQuery, [date])
 		return data.map((item) => {
 			return {
 				...item,
@@ -32,9 +28,8 @@ export class OutboundReportService {
 	}
 
 	// #region Outbound report Excel
-	async exportDailyOutboundToExcel(date: string) {
+	async exportDailyOutboundToExcel(factoryCode: string, date: string) {
 		const currentLanguage = I18nContext.current()?.lang
-		const factoryCode = this.request.headers['x-user-company']
 		const workbook = new Workbook()
 		const worksheet = workbook.addWorksheet(
 			this.i18nService.t(`factory.${factoryCode}`, { lang: currentLanguage }) +

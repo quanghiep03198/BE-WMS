@@ -61,8 +61,12 @@ export class ReportController {
 	@Get('daily-outbound/export')
 	@UseFilters(AllExceptionsFilter)
 	@AuthGuard()
-	async exportDailyOutboundToExcel(@Query('date.eq') date: string, @Res() res: Response) {
-		const buffer = await this.outboundReportService.exportDailyOutboundToExcel(date)
+	async exportDailyOutboundToExcel(
+		@Headers('X-User-Company') factoryCode: string,
+		@Query('date.eq') date: string,
+		@Res() res: Response
+	) {
+		const buffer = await this.outboundReportService.exportDailyOutboundToExcel(factoryCode, date)
 		return res.send(buffer)
 	}
 
