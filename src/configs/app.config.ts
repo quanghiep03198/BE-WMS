@@ -11,65 +11,7 @@ import path from 'path'
 import { RedisClientOptions } from 'redis'
 
 export const appConfigFactory: ConfigFactory = () => ({
-	['cache']: {
-		store: redisStore,
-		host: env('REDIS_HOST'),
-		port: env('REDIS_PORT', { serialize: (value): number => parseInt(value) }),
-		password: env('REDIS_PASSWORD')
-	} as CacheModuleOptions<RedisClientOptions>,
-	['i18n']: {
-		fallbackLanguage: env('FALLBACK_LANGUAGE', { fallbackValue: 'en' }),
-		loaderOptions: {
-			path: path.join(__dirname, '..', '/i18n/'),
-			watch: env('NODE_ENV') === 'development'
-		},
-		typesOutputPath: path.join(__dirname, '../..', '/src/generated/i18n.generated.ts'),
-		resolvers: [AcceptLanguageResolver, new HeaderResolver(['Accept-Language'])]
-	} satisfies I18nOptions,
-	['mssql']: {
-		type: 'mssql',
-		host: env('DB_HOST'),
-		port: env('DB_PORT', { serialize: (value): number => parseInt(value) }),
-		username: env('DB_USERNAME'),
-		password: env('DB_PASSWORD'),
-		schema: 'dbo',
-		entities: [path.join(__dirname, '**', '*.entity.{ts,js}')],
-		subscribers: [path.join(__dirname, '**', '*.subscriber.{ts,js}')],
-		migrations: [path.join(__dirname, '/migrations/**/*.{ts,js}')],
-		autoLoadEntities: true,
-		synchronize: false,
-		logging: ['error'],
-		requestTimeout: 30000,
-		options: {
-			trustServerCertificate: env('DB_TRUST_SERVER_CERTIFICATE', {
-				serialize: (value): boolean => value === 'true'
-			}),
-			encrypt: false,
-			enableArithAbort: true,
-			connectTimeout: env('DB_CONNECTION_TIMEOUT', { serialize: (value): number => parseInt(value) })
-		},
-		['cache']: {
-			type: 'redis',
-			options: {
-				socket: {
-					host: env('REDIS_HOST'),
-					port: env('REDIS_PORT', { serialize: (value): number => parseInt(value) }),
-					password: env('REDIS_PASSWORD')
-				}
-			},
-			ignoreErrors: true
-		}
-	} satisfies TypeOrmModuleOptions,
-	['mongodb']: {
-		uri: env('MONGO_URI'),
-		dbName: env('MONGO_DB_NAME'),
-		maxPoolSize: 100,
-		connectTimeoutMS: 10000,
-		readPreference: 'nearest',
-		writeConcern: {
-			w: 'majority'
-		}
-	} satisfies MongooseModuleOptions,
+	// * Redis BullMQ configuration
 	['bullmq']: {
 		connection: {
 			host: env('REDIS_HOST'),
@@ -85,6 +27,80 @@ export const appConfigFactory: ConfigFactory = () => ({
 			}
 		}
 	} satisfies BullRootModuleOptions,
+
+	// * Redis cache configuration
+	['cache']: {
+		store: redisStore,
+		host: env('REDIS_HOST'),
+		port: env('REDIS_PORT', { serialize: (value): number => parseInt(value) }),
+		password: env('REDIS_PASSWORD')
+	} as CacheModuleOptions<RedisClientOptions>,
+
+	// * Internationalization configuration
+	['i18n']: {
+		fallbackLanguage: env('FALLBACK_LANGUAGE', { fallbackValue: 'en' }),
+		loaderOptions: {
+			path: path.join(__dirname, '..', '/i18n/'),
+			watch: env('NODE_ENV') === 'development'
+		},
+		typesOutputPath: path.join(__dirname, '../..', '/src/generated/i18n.generated.ts'),
+		resolvers: [AcceptLanguageResolver, new HeaderResolver(['Accept-Language'])]
+	} satisfies I18nOptions,
+
+	// * Mongoose configuration
+	['mongodb']: {
+		uri: env('MONGO_URI'),
+		dbName: env('MONGO_DB_NAME'),
+		maxPoolSize: 100,
+		connectTimeoutMS: 10000,
+		readPreference: 'nearest',
+		writeConcern: {
+			w: 'majority'
+		}
+	} satisfies MongooseModuleOptions,
+
+	// * TypeORM - MSSQL Server configuration
+	['mssql']: {
+		type: 'mssql',
+		host: env('DB_HOST'),
+		port: env('DB_PORT', { serialize: (value): number => parseInt(value) }),
+		username: env('DB_USERNAME'),
+		password: env('DB_PASSWORD'),
+		schema: 'dbo',
+		entities: [path.join(__dirname, '**', '*.entity.{ts,js}')],
+		subscribers: [path.join(__dirname, '**', '*.subscriber.{ts,js}')],
+		migrations: [path.join(__dirname, '/migrations/**/*.{ts,js}')],
+		autoLoadEntities: true,
+		synchronize: false,
+		logging: ['error'],
+		requestTimeout: 30000,
+		cache: {
+			type: 'redis',
+			options: {
+				socket: {
+					host: env('REDIS_HOST'),
+					port: env('REDIS_PORT', { serialize: (value): number => parseInt(value) }),
+					password: env('REDIS_PASSWORD')
+				}
+			},
+			ignoreErrors: true
+		},
+		options: {
+			trustServerCertificate: env('DB_TRUST_SERVER_CERTIFICATE', {
+				serialize: (value): boolean => value === 'true'
+			}),
+			encrypt: false,
+			enableArithAbort: true,
+			connectTimeout: env('DB_CONNECTION_TIMEOUT', { serialize: (value): number => parseInt(value) })
+		},
+		extra: {
+			connectionLimit: 10,
+			connectTimeout: 30000,
+			acquireTimeout: 30000
+		}
+	} satisfies TypeOrmModuleOptions,
+
+	// * Request throttler configuration
 	['throttler']: [
 		{
 			name: 'short',
