@@ -7,17 +7,17 @@ SELECT DISTINCT
    a.inv_type,
    STUFF(  
       (
-         SELECT ',' + ISNULL(B.PO, '')
-         FROM dv_invprodmst B
-         WHERE B.mo_no = A.mo_no
+         SELECT ',' + ISNULL(b.PO, '')
+         FROM DV_DATA_LAKE.dbo.dv_invprodmst B
+         WHERE b.mo_no = A.mo_no
             AND b.inv_yearmonth = a.inv_yearmonth
             AND b.brand_name = a.brand_name
             AND b.shoestyle_cofactory = a.shoestyle_cofactory
             AND b.mo_no = a.mo_no
             AND b.inv_type = a.inv_type
             AND b.cust_shoestyle = a.cust_shoestyle
-            AND ISNULL(B.PO,'') <> ''
-         GROUP BY ISNULL(B.PO, '')
+            AND ISNULL(b.PO,'') <> ''
+         GROUP BY ISNULL(b.PO, '')
          FOR XML PATH('')
       ), 1, 1, ''
    ) AS po,
@@ -38,7 +38,7 @@ SELECT DISTINCT
             +',"mn_ost_qty":' + CAST(CAST(sum(c.inv_manualqtyout) AS FLOAT) AS NVARCHAR(50)) + --Inventory Out 手填出庫
             +',"fnl_qty":' + CAST(CAST(ISNULL(sum(c.inv_finalqty), 0) AS FLOAT) AS NVARCHAR(50)) + --Ending Inventory 期末數量
             '}'
-         FROM dv_invprodmst c
+         FROM DV_DATA_LAKE.dbo.dv_invprodmst c
          WHERE c.mo_no = A.mo_no
             AND c.inv_yearmonth = a.inv_yearmonth
             AND c.brand_name = a.brand_name
@@ -60,3 +60,5 @@ GROUP BY
    a.mo_no,
    a.inv_type,
    a.cust_shoestyle
+-- * Avoid parameter sniffing and set max degree of parallelism;
+OPTION (OPTIMIZE FOR UNKNOWN, MAXDOP 4);
