@@ -107,4 +107,4 @@ GROUP BY
    aq.accumulated_qty
 ORDER BY fd.po ASC
 -- * Avoid parameter sniffing and set max degree of parallelism;
-OPTION (OPTIMIZE FOR UNKNOWN, MAXDOP 4, FAST 50);
+OPTION (OPTIMIZE FOR UNKNOWN);

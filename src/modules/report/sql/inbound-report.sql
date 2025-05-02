@@ -61,7 +61,7 @@ INNER JOIN DV_DATA_LAKE.dbo.dv_rfidmatchmst_cust rmc WITH (NOLOCK)
 	ON ds.EPC_Code = rmc.EPC_Code
 INNER JOIN wuerp_vnrd.dbo.ta_manufacturmst manf WITH (NOLOCK)
 	ON manf.mo_no = ds.mo_no
-LEFT JOIN wuerp_vnrd.dbo.ta_productmst prod WITH (NOLOCK)
+INNER JOIN wuerp_vnrd.dbo.ta_productmst prod WITH (NOLOCK)
 	ON rmc.mat_code = prod.mat_code
 LEFT JOIN storage_list sg
 	ON sg.mo_no = ds.mo_no AND sg.factory_code = ds.factory_code
@@ -85,4 +85,4 @@ GROUP BY
 	sg.storage_name, dg.dept_name, sz.size_data
 	
 -- * Avoid parameter sniffing and set max degree of parallelism;
-OPTION (OPTIMIZE FOR UNKNOWN, MAXDOP 4);
+OPTION (OPTIMIZE FOR UNKNOWN);
