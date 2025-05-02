@@ -97,7 +97,7 @@ export class InventoryReportService {
 				key: 'mo_no'
 			},
 			{
-				header: this.i18nService.t('erp.fields.po', { lang: currentLanguage }),
+				header: 'PO',
 				key: 'po'
 			},
 			{
