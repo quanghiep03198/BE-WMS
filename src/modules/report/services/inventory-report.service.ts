@@ -6,7 +6,7 @@ import { Workbook } from 'exceljs'
 import { readFileSync } from 'fs'
 import { I18nContext, I18nService } from 'nestjs-i18n'
 import { join } from 'path'
-import { Brackets, DataSource } from 'typeorm'
+import { DataSource } from 'typeorm'
 import { UpdateInventoryReportDTO, UpdateInventoryReportQuery } from '../dto/inventory-report.dto'
 import { InventoryReportEntity } from '../entities/inventory-report.entity'
 import { IInventoryReportQueryResult, IInventoryReportResponse } from '../interfaces'
@@ -55,12 +55,6 @@ export class InventoryReportService {
 									})
 									.where('size_numcode = :size_numcode', { size_numcode: data.size_numcode })
 									.andWhere('mo_no = :mo_no', { mo_no: queries.mo_no })
-									.andWhere(
-										new Brackets((qb) => {
-											if (queries.po) return qb.andWhere('po = :po', { po: queries.po })
-											else return qb.andWhere(/* SQL */ `po IS NULL`)
-										})
-									)
 									.andWhere('inv_type = :inv_type', { inv_type: queries.inv_type })
 									.andWhere('shoes_style_code_factory = :shoes_style_code_factory', {
 										shoes_style_code_factory: queries.shoes_style_code_factory
@@ -91,6 +85,7 @@ export class InventoryReportService {
 				' - ' +
 				format(new Date(month), 'yyyy-MM')
 		)
+
 		worksheet.columns = [
 			{
 				header: this.i18nService.t('erp.fields.mo_no', { lang: currentLanguage }),
@@ -135,17 +130,13 @@ export class InventoryReportService {
 		for (const record of data) {
 			const row = worksheet.addRow(record)
 			row.height = 20
-			row.alignment = { vertical: 'middle', horizontal: 'center' }
 			for (let i = 1; i <= worksheet.columns.length; i++) {
 				row.getCell(i).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'deecf7' } }
 			}
 			for (const subRecord of record.size_data) {
 				const row = worksheet.addRow([])
-				row.alignment = { vertical: 'middle', horizontal: 'center' }
-				worksheet.mergeCells(`B${row.number}:C${row.number}`)
-				row.getCell(2).value = subRecord.size + '#'
-				row.getCell(2).alignment = { vertical: 'middle', horizontal: 'center' }
-				row.getCell(2).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'fff2cc' } }
+				row.getCell(3).value = subRecord.size + '#'
+				row.getCell(3).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'fff2cc' } }
 				row.getCell(4).value = subRecord.int_qty
 				row.getCell(4).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'f2dcdb' } }
 				row.getCell(5).value = subRecord.ist_qty
@@ -156,12 +147,20 @@ export class InventoryReportService {
 				row.getCell(7).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'f2dcdb' } }
 			}
 		}
-		worksheet.columns.forEach((sheetColumn) => {
-			sheetColumn.font = { size: 12 }
-			sheetColumn.width = 30
+
+		// * Auto-fit columns
+		worksheet.columns.forEach((column, index) => {
+			let maxColumnWidth = 0
+			const minColumnWidth = 10
+			column.alignment = { vertical: 'middle', horizontal: index <= 2 ? 'left' : 'right' }
+			if (column) {
+				column.eachCell({ includeEmpty: true }, (cell) => {
+					const cellWidth = cell.value ? cell.value.toString().length : 0
+					maxColumnWidth = Math.max(maxColumnWidth, minColumnWidth, cellWidth)
+				})
+				column.width = column.key === 'po' ? minColumnWidth : maxColumnWidth + 2
+			}
 		})
-		worksheet.getRow(1).font = { bold: true, size: 13 }
-		worksheet.getRow(1).height = 20
 
 		// * Add title
 		worksheet.insertRow(1, null)
@@ -178,8 +177,10 @@ export class InventoryReportService {
 		worksheet.getCell('A1').alignment = { vertical: 'middle', horizontal: 'center' }
 		worksheet.getCell('A1').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'e5e5e5' } }
 		worksheet.getCell('A1').font = { bold: true, size: 16 }
-		worksheet.eachRow({ includeEmpty: false }, (row) => {
-			row.alignment = { vertical: 'middle', horizontal: 'center' }
+		worksheet.eachRow({ includeEmpty: false }, (row, index) => {
+			if (index < 2) {
+				row.eachCell((cell) => (cell.font = { bold: true, size: 12 }))
+			}
 			row.eachCell({ includeEmpty: true }, (cell) => {
 				cell.border = {
 					top: { style: 'thin', color: { argb: 'a1a1a1' } },
@@ -189,6 +190,7 @@ export class InventoryReportService {
 				}
 			})
 		})
+
 		return await workbook.xlsx.writeBuffer()
 	}
 }
