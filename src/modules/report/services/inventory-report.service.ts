@@ -6,7 +6,7 @@ import { Workbook } from 'exceljs'
 import { readFileSync } from 'fs'
 import { I18nContext, I18nService } from 'nestjs-i18n'
 import { join } from 'path'
-import { DataSource } from 'typeorm'
+import { DataSource, Equal, IsNull, Or } from 'typeorm'
 import { UpdateInventoryReportDTO, UpdateInventoryReportQuery } from '../dto/inventory-report.dto'
 import { InventoryReportEntity } from '../entities/inventory-report.entity'
 import { IInventoryReportQueryResult, IInventoryReportResponse } from '../interfaces'
@@ -55,6 +55,7 @@ export class InventoryReportService {
 									})
 									.where('size_numcode = :size_numcode', { size_numcode: data.size_numcode })
 									.andWhere('mo_no = :mo_no', { mo_no: queries.mo_no })
+									.andWhere({ po: Or(IsNull(), Equal('')) })
 									.andWhere('inv_type = :inv_type', { inv_type: queries.inv_type })
 									.andWhere('shoes_style_code_factory = :shoes_style_code_factory', {
 										shoes_style_code_factory: queries.shoes_style_code_factory
