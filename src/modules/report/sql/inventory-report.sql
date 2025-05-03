@@ -1,4 +1,4 @@
--- CTE để lấy thông tin PO (tối ưu hóa)
+-- * CTE for POs list
 WITH POs AS (
 SELECT 
 	mo_no, 
@@ -13,7 +13,7 @@ FROM (
 GROUP BY mo_no
 ),
 
--- CTE chính với dữ liệu tổng hợp (aggregate sớm)
+-- * CTE for aggregated data
 AggregatedData AS (
 	SELECT
 		mo_no,
@@ -42,7 +42,7 @@ AggregatedData AS (
 		inv_type
 )
 
--- Truy vấn chính
+-- * Stage 0: Main query
 SELECT
 	a.mo_no,
 	a.inv_yearmonth AS inv_year_month,
@@ -57,6 +57,7 @@ SELECT
 	CAST(a.inv_ostotalqty + a.inv_manualqtyout AS INT) AS total_outstock_qty,
 	CAST((a.inv_istotalqty + a.inv_manualqty) - (a.inv_ostotalqty + a.inv_manualqtyout) AS INT) AS actual_inv_qty,
 	CAST(a.inv_finalqty AS INT) AS final_inv_qty,
+	-- * Stage 2: JSON data for size
 	(
 		SELECT  
 			c.size_numcode AS size,
@@ -66,7 +67,7 @@ SELECT
 			CAST(SUM(c.inv_manualqty) AS INT) AS mn_ist_qty,
 			CAST(SUM(c.inv_ostotalqty) AS INT) AS ost_qty,
 			CAST(SUM(c.inv_manualqtyout) AS INT) AS mn_ost_qty,
-			CAST(ISNULL(SUM(c.inv_finalqty), 0) AS INT) AS fnl_qty
+			CAST(SUM(ISNULL(c.inv_finalqty, 0)) AS INT) AS fnl_qty
 		FROM DV_DATA_LAKE.dbo.dv_invprodmst c WITH (NOLOCK)
 		WHERE c.mo_no = a.mo_no
 			AND c.inv_yearmonth = a.inv_yearmonth
@@ -74,11 +75,14 @@ SELECT
 			AND c.shoestyle_cofactory = a.shoestyle_cofactory
 			AND c.inv_type = a.inv_type
 			AND c.cust_shoestyle = a.cust_shoestyle
+			AND c.isactive = 'Y'
+			AND c.inv_type = 'FG'
+			AND c.inv_yearmonth = @0
 		GROUP BY c.size_numcode
 		ORDER BY 
 			CASE 
-					WHEN CHARINDEX('.', c.size_numcode) > 0 THEN c.size_numcode
-					ELSE c.size_numcode + '.0'
+				WHEN CHARINDEX('.', c.size_numcode) > 0 THEN c.size_numcode
+				ELSE c.size_numcode + '.0'
 			END ASC
 		FOR JSON PATH
 	) AS size_data
