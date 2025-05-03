@@ -99,7 +99,7 @@ export class ReportController {
 		@Query(new ZodValidationPipe(updateInventoryReportQuery)) queries: UpdateInventoryReportQuery,
 		@Body(new ZodValidationPipe(updateInventoryReportPayload)) payload: UpdateInventoryReportDTO
 	) {
-		return await this.inventoryReportService.updateInventoryReport(queries, payload)
+		return await this.inventoryReportService.bulkUpdateInventoryReport(queries, payload)
 	}
 	// #endregion
 

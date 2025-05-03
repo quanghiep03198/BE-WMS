@@ -1,12 +1,14 @@
 import { TENANCY_DATA_SOURCE } from '@/modules/tenancy/constants'
 import { Inject, Injectable } from '@nestjs/common'
 import { REQUEST } from '@nestjs/core'
-import { format } from 'date-fns'
+import { addMonths, format } from 'date-fns'
 import { Workbook } from 'exceljs'
 import { readFileSync } from 'fs'
+import { isNil } from 'lodash'
 import { I18nContext, I18nService } from 'nestjs-i18n'
 import { join } from 'path'
-import { DataSource, Equal, IsNull, Or } from 'typeorm'
+import { DataSource, UpdateResult } from 'typeorm'
+import { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity'
 import { UpdateInventoryReportDTO, UpdateInventoryReportQuery } from '../dto/inventory-report.dto'
 import { InventoryReportEntity } from '../entities/inventory-report.entity'
 import { IInventoryReportQueryResult, IInventoryReportResponse } from '../interfaces'
@@ -31,49 +33,89 @@ export class InventoryReportService {
 		})
 	}
 
-	async updateInventoryReport(queries: UpdateInventoryReportQuery, payload: UpdateInventoryReportDTO) {
+	async bulkUpdateInventoryReport(queries: UpdateInventoryReportQuery, payload: UpdateInventoryReportDTO) {
 		const queryRunner = this.dataSource.createQueryRunner()
+		const nextYearMonth = addMonths(new Date(queries.inv_year_month), 1)
 
 		await queryRunner.startTransaction()
-
 		try {
-			const result = await Promise.all(
-				payload.map(
-					(data) =>
-						new Promise((resolve, reject) =>
-							resolve(
-								this.dataSource
-									.getRepository(InventoryReportEntity)
-									.createQueryBuilder()
-									.update()
-									.set({
-										mn_ist_qty: data.mn_ist_qty,
-										mn_ost_qty: data.mn_ost_qty,
-										fnl_qty: () => {
-											return /* SQL */ `init_inv_qty + ist_total_qty + ${data.mn_ist_qty} - ost_total_qty - ${data.mn_ost_qty}`
-										}
-									})
-									.where('size_numcode = :size_numcode', { size_numcode: data.size_numcode })
-									.andWhere('mo_no = :mo_no', { mo_no: queries.mo_no })
-									.andWhere({ po: Or(IsNull(), Equal('')) })
-									.andWhere('inv_type = :inv_type', { inv_type: queries.inv_type })
-									.andWhere('shoes_style_code_factory = :shoes_style_code_factory', {
-										shoes_style_code_factory: queries.shoes_style_code_factory
-									})
-									.andWhere('cust_shoestyle = :cust_shoestyle', { cust_shoestyle: queries.cust_shoestyle })
-									.andWhere('inv_year_month = :inv_year_month', { inv_year_month: queries.inv_year_month })
-									.execute()
-									.catch(reject)
-							)
-						)
-				)
+			const bulkUpdatePromise = payload.map(
+				(data) =>
+					new Promise<UpdateResult[] | void>((resolve, reject) =>
+						resolve(this.updateManyInventoryRecord({ ...queries, next_month: nextYearMonth }, data).catch(reject))
+					)
 			)
+			const updateResults = await Promise.all(bulkUpdatePromise)
 			await queryRunner.commitTransaction()
-			return result
+			return updateResults
 		} catch (error) {
 			await queryRunner.rollbackTransaction()
 			throw error
 		}
+	}
+
+	private async updateManyInventoryRecord(
+		queries: UpdateInventoryReportQuery & { next_month?: Date },
+		data: UpdateInventoryReportDTO[number]
+	): Promise<UpdateResult[] | void> {
+		const currFinalInv: Awaited<Promise<{ final_qty: number }>> = await this.dataSource
+			.getRepository(InventoryReportEntity)
+			.createQueryBuilder()
+			.select(
+				/* SQL */ `COALESCE(inv_initialqty, 0) + COALESCE(inv_istotalqty, 0) - COALESCE(inv_ostotalqty, 0)`,
+				'final_qty'
+			)
+			.where({
+				size_numcode: data.size_numcode,
+				inv_type: queries.inv_type,
+				mo_no: queries.mo_no,
+				po: queries.po,
+				shoes_style_code_factory: queries.shoes_style_code_factory,
+				cust_shoestyle: queries.cust_shoestyle,
+				inv_year_month: format(new Date(queries.inv_year_month), 'yyyyMM')
+			})
+			.getRawOne()
+		if (isNil(currFinalInv)) return
+		const updateQuantity = currFinalInv.final_qty + data.mn_ist_qty - data.mn_ost_qty
+		return await Promise.all([
+			this.updateOneInventoryRecord(
+				{ ...queries, size_numcode: data.size_numcode, inv_year_month: format(queries.inv_year_month, 'yyyyMM') },
+				{
+					mn_ist_qty: data.mn_ist_qty,
+					mn_ost_qty: data.mn_ost_qty,
+					fnl_qty: updateQuantity
+				}
+			),
+			this.updateOneInventoryRecord(
+				{ ...queries, size_numcode: data.size_numcode, inv_year_month: format(queries.next_month, 'yyyyMM') },
+				{
+					init_inv_qty: updateQuantity,
+					fnl_qty: () =>
+						/* SQL */ `${updateQuantity} + ist_total_qty + inv_manualqty - inv_ostotalqty - inv_manualqtyout`
+				}
+			)
+		])
+	}
+
+	private async updateOneInventoryRecord(
+		queries: UpdateInventoryReportQuery & { size_numcode: string },
+		update: QueryDeepPartialEntity<InventoryReportEntity>
+	) {
+		return await this.dataSource
+			.getRepository(InventoryReportEntity)
+			.createQueryBuilder()
+			.update()
+			.set(update)
+			.where('size_numcode = :size_numcode', { size_numcode: queries.size_numcode })
+			.andWhere('mo_no = :mo_no', { mo_no: queries.mo_no })
+			.andWhere('po = :po', { po: queries.po })
+			.andWhere('inv_type = :inv_type', { inv_type: queries.inv_type })
+			.andWhere('shoes_style_code_factory = :shoes_style_code_factory', {
+				shoes_style_code_factory: queries.shoes_style_code_factory
+			})
+			.andWhere('cust_shoestyle = :cust_shoestyle', { cust_shoestyle: queries.cust_shoestyle })
+			.andWhere('inv_year_month = :inv_year_month', { inv_year_month: queries.inv_year_month })
+			.execute()
 	}
 
 	// #region Inventory report Excel
