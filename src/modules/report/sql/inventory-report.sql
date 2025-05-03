@@ -79,11 +79,7 @@ SELECT
 			AND c.inv_type = 'FG'
 			AND c.inv_yearmonth = @0
 		GROUP BY c.size_numcode
-		ORDER BY 
-			CASE 
-				WHEN CHARINDEX('.', c.size_numcode) > 0 THEN c.size_numcode
-				ELSE c.size_numcode + '.0'
-			END ASC
+		ORDER BY RIGHT('0000' + IIF(CHARINDEX('.', c.size_numcode) > 0, c.size_numcode, c.size_numcode + '.0'), 5) ASC
 		FOR JSON PATH
 	) AS size_data
 FROM AggregatedData a
