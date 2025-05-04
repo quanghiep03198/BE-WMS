@@ -1,11 +1,13 @@
 {
 	"compilerOptions": {
-		"module": "commonjs",
+		"module": "NodeNext",
+		"moduleResolution": "nodenext",
 		"declaration": true,
 		"removeComments": true,
 		"emitDecoratorMetadata": true,
 		"experimentalDecorators": true,
 		"allowSyntheticDefaultImports": true,
+		"lib": ["ESNext"],
 		"target": "ES2021",
 		"sourceMap": true,
 		"outDir": "./dist",
