@@ -39,13 +39,9 @@ export class InventoryReportService {
 
 		await queryRunner.startTransaction()
 		try {
-			const bulkUpdatePromise = payload.map(
-				(data) =>
-					new Promise<UpdateResult[] | void>((resolve, reject) =>
-						resolve(this.updateManyInventoryRecord({ ...queries, next_month: nextYearMonth }, data).catch(reject))
-					)
-			)
-			const updateResults = await Promise.all(bulkUpdatePromise)
+			const updateResults = Array.fromAsync(payload, (data) => {
+				return this.updateManyInventoryRecord({ ...queries, inv_next_month: nextYearMonth }, data)
+			})
 			await queryRunner.commitTransaction()
 			return updateResults
 		} catch (error) {
@@ -55,7 +51,7 @@ export class InventoryReportService {
 	}
 
 	private async updateManyInventoryRecord(
-		queries: UpdateInventoryReportQuery & { next_month?: Date },
+		queries: UpdateInventoryReportQuery & { inv_next_month?: Date },
 		data: UpdateInventoryReportDTO[number]
 	): Promise<UpdateResult[] | void> {
 		const currFinalInv: Awaited<Promise<{ final_qty: number }>> = await this.dataSource
@@ -87,7 +83,7 @@ export class InventoryReportService {
 				}
 			),
 			this.updateOneInventoryRecord(
-				{ ...queries, size_numcode: data.size_numcode, inv_year_month: format(queries.next_month, 'yyyyMM') },
+				{ ...queries, size_numcode: data.size_numcode, inv_year_month: format(queries.inv_next_month, 'yyyyMM') },
 				{
 					init_inv_qty: updateQuantity,
 					fnl_qty: () =>
