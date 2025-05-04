@@ -36,7 +36,6 @@ export class InventoryReportService {
 	async bulkUpdateInventoryReport(queries: UpdateInventoryReportQuery, payload: UpdateInventoryReportDTO) {
 		const queryRunner = this.dataSource.createQueryRunner()
 		const nextYearMonth = addMonths(new Date(queries.inv_year_month), 1)
-
 		await queryRunner.startTransaction()
 		try {
 			const updateResults = Array.fromAsync(payload, (data) => {
@@ -50,11 +49,10 @@ export class InventoryReportService {
 		}
 	}
 
-	private async updateManyInventoryRecord(
-		queries: UpdateInventoryReportQuery & { inv_next_month?: Date },
-		data: UpdateInventoryReportDTO[number]
-	): Promise<UpdateResult[] | void> {
-		const currFinalInv: Awaited<Promise<{ final_qty: number }>> = await this.dataSource
+	private async getFinalInventoryQuantity(
+		queries: UpdateInventoryReportQuery & { size_numcode: string }
+	): Promise<number | null> {
+		const result: Awaited<Promise<{ final_qty: number }>> = await this.dataSource
 			.getRepository(InventoryReportEntity)
 			.createQueryBuilder()
 			.select(
@@ -62,7 +60,7 @@ export class InventoryReportService {
 				'final_qty'
 			)
 			.where({
-				size_numcode: data.size_numcode,
+				size_numcode: queries.size_numcode,
 				inv_type: queries.inv_type,
 				mo_no: queries.mo_no,
 				po: queries.po,
@@ -71,8 +69,27 @@ export class InventoryReportService {
 				inv_year_month: format(new Date(queries.inv_year_month), 'yyyyMM')
 			})
 			.getRawOne()
-		if (isNil(currFinalInv)) return
-		const updateQuantity = currFinalInv.final_qty + data.mn_ist_qty - data.mn_ost_qty
+
+		if (isNil(result)) return null
+		return result.final_qty
+	}
+
+	private async updateManyInventoryRecord(
+		queries: UpdateInventoryReportQuery & { inv_next_month?: Date },
+		data: UpdateInventoryReportDTO[number]
+	): Promise<UpdateResult[]> {
+		const currFinalQty: Awaited<Promise<number | null>> = await this.getFinalInventoryQuantity({
+			...queries,
+			size_numcode: data.size_numcode
+		})
+		if (isNil(currFinalQty)) {
+			return Array.from(new Array(2), () => ({
+				generatedMaps: [],
+				affected: 0,
+				raw: undefined
+			})) satisfies UpdateResult[]
+		}
+		const updateQuantity = currFinalQty + data.mn_ist_qty - data.mn_ost_qty
 		return await Promise.all([
 			this.updateOneInventoryRecord(
 				{ ...queries, size_numcode: data.size_numcode, inv_year_month: format(queries.inv_year_month, 'yyyyMM') },
