@@ -4,10 +4,10 @@ import { REQUEST } from '@nestjs/core'
 import { addMonths, format } from 'date-fns'
 import { Workbook } from 'exceljs'
 import { readFileSync } from 'fs'
-import { isNil } from 'lodash'
+import { isEmpty, isNil } from 'lodash'
 import { I18nContext, I18nService } from 'nestjs-i18n'
 import { join } from 'path'
-import { DataSource, UpdateResult } from 'typeorm'
+import { Brackets, DataSource, IsNull, UpdateResult } from 'typeorm'
 import { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity'
 import { UpdateInventoryReportDTO, UpdateInventoryReportQuery } from '../dto/inventory-report.dto'
 import { InventoryReportEntity } from '../entities/inventory-report.entity'
@@ -103,8 +103,9 @@ export class InventoryReportService {
 				{ ...queries, size_numcode: data.size_numcode, inv_year_month: format(queries.inv_next_month, 'yyyyMM') },
 				{
 					init_inv_qty: updateQuantity,
-					fnl_qty: () =>
-						/* SQL */ `${updateQuantity} + ist_total_qty + inv_manualqty - inv_ostotalqty - inv_manualqtyout`
+					fnl_qty: () => {
+						return /* SQL */ `${updateQuantity} + ist_total_qty + inv_manualqty - inv_ostotalqty - inv_manualqtyout`
+					}
 				}
 			)
 		])
@@ -119,15 +120,18 @@ export class InventoryReportService {
 			.createQueryBuilder()
 			.update()
 			.set(update)
-			.where('size_numcode = :size_numcode', { size_numcode: queries.size_numcode })
-			.andWhere('mo_no = :mo_no', { mo_no: queries.mo_no })
-			.andWhere('po = :po', { po: queries.po })
-			.andWhere('inv_type = :inv_type', { inv_type: queries.inv_type })
-			.andWhere('shoes_style_code_factory = :shoes_style_code_factory', {
-				shoes_style_code_factory: queries.shoes_style_code_factory
-			})
-			.andWhere('cust_shoestyle = :cust_shoestyle', { cust_shoestyle: queries.cust_shoestyle })
-			.andWhere('inv_year_month = :inv_year_month', { inv_year_month: queries.inv_year_month })
+			.where({ size_numcode: queries.size_numcode })
+			.andWhere({ mo_no: queries.mo_no })
+			.andWhere(
+				new Brackets((qb) => {
+					if (isEmpty(queries.po)) return qb.andWhere({ po: IsNull() })
+					return qb.andWhere({ po: queries.po })
+				})
+			)
+			.andWhere({ inv_type: queries.inv_type })
+			.andWhere({ shoes_style_code_factory: queries.shoes_style_code_factory })
+			.andWhere({ cust_shoestyle: queries.cust_shoestyle })
+			.andWhere({ inv_year_month: queries.inv_year_month })
 			.execute()
 	}
 
