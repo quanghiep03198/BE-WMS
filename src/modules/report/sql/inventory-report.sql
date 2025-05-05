@@ -56,7 +56,7 @@ SELECT
 		WHEN LEFT(p.po, 1) = ',' THEN TRIM(STUFF(p.po, 1, 1, '')) 
 		ELSE TRIM(p.po) 
 	END AS po,
-	p.actual_po,
+	ISNULL(p.actual_po, '') actual_po,
 	CAST(a.mo_qty AS INT) AS order_qty,
 	CAST(a.inv_initialqty AS INT) AS init_inv_qty,
 	CAST(a.inv_istotalqty + a.inv_manualqty AS INT) AS total_instock_qty,
