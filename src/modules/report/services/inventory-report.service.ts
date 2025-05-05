@@ -63,11 +63,16 @@ export class InventoryReportService {
 				size_numcode: queries.size_numcode,
 				inv_type: queries.inv_type,
 				mo_no: queries.mo_no,
-				po: queries.po,
 				shoes_style_code_factory: queries.shoes_style_code_factory,
 				cust_shoestyle: queries.cust_shoestyle,
 				inv_year_month: format(new Date(queries.inv_year_month), 'yyyyMM')
 			})
+			.andWhere(
+				new Brackets((qb) => {
+					if (isEmpty(queries.po)) return qb.andWhere({ po: IsNull() })
+					return qb.andWhere({ po: queries.po })
+				})
+			)
 			.getRawOne()
 
 		if (isNil(result)) return null
@@ -120,18 +125,20 @@ export class InventoryReportService {
 			.createQueryBuilder()
 			.update()
 			.set(update)
-			.where({ size_numcode: queries.size_numcode })
-			.andWhere({ mo_no: queries.mo_no })
+			.where({
+				inv_type: queries.inv_type,
+				size_numcode: queries.size_numcode,
+				mo_no: queries.mo_no,
+				shoes_style_code_factory: queries.shoes_style_code_factory,
+				cust_shoestyle: queries.cust_shoestyle,
+				inv_year_month: queries.inv_year_month
+			})
 			.andWhere(
 				new Brackets((qb) => {
 					if (isEmpty(queries.po)) return qb.andWhere({ po: IsNull() })
 					return qb.andWhere({ po: queries.po })
 				})
 			)
-			.andWhere({ inv_type: queries.inv_type })
-			.andWhere({ shoes_style_code_factory: queries.shoes_style_code_factory })
-			.andWhere({ cust_shoestyle: queries.cust_shoestyle })
-			.andWhere({ inv_year_month: queries.inv_year_month })
 			.execute()
 	}
 
