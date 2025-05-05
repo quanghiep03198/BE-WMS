@@ -25,10 +25,70 @@ WITH filtered_data AS (
       AND i.po IS NOT NULL
       AND CAST(i.record_time AS DATE) = @0
 ),
+purchase_order_sizes AS (
+   SELECT 
+      IIF(ISNULL(or1.or_custpoone, '') = '', or1.or_custpo, or1.or_custpoone) AS po,
+      CASE 
+         WHEN ISNUMERIC(b.size_numcode) = 1 THEN CAST(b.size_numcode AS FLOAT) 
+         WHEN LEFT(b.size_numcode, 1) = 'K' THEN CAST(SUBSTRING(b.size_numcode, 2, LEN(b.size_numcode)) AS FLOAT)
+      END AS [size_numcode], 
+   SUM(CAST(b.size_qty AS INT)) AS qty
+   FROM wuerp_vnrd.dbo.ta_ordersizerun a
+   LEFT JOIN wuerp_vnrd.dbo.ta_ordermst or1 ON or1.or_no = a.or_no
+      AND or1.isactive= 'Y'
+   OUTER APPLY (
+   VALUES
+      ([size_numcode01], [size_qty01]),
+      ([size_numcode02], [size_qty02]),
+      ([size_numcode03], [size_qty03]),
+      ([size_numcode04], [size_qty04]),
+      ([size_numcode05], [size_qty05]),
+      ([size_numcode06], [size_qty06]),
+      ([size_numcode07], [size_qty07]),
+      ([size_numcode08], [size_qty08]),
+      ([size_numcode09], [size_qty09]),
+      ([size_numcode10], [size_qty10]),
+      ([size_numcode11], [size_qty11]),
+      ([size_numcode12], [size_qty12]),
+      ([size_numcode13], [size_qty13]),
+      ([size_numcode14], [size_qty14]),
+      ([size_numcode15], [size_qty15]),
+      ([size_numcode16], [size_qty16]),
+      ([size_numcode17], [size_qty17]),
+      ([size_numcode18], [size_qty18]),
+      ([size_numcode19], [size_qty19]),
+      ([size_numcode20], [size_qty20]),
+      ([size_numcode21], [size_qty21]),
+      ([size_numcode22], [size_qty22]),
+      ([size_numcode23], [size_qty23]),
+      ([size_numcode24], [size_qty24]),
+      ([size_numcode25], [size_qty25]),
+      ([size_numcode26], [size_qty26]),
+      ([size_numcode27], [size_qty27]),
+      ([size_numcode28], [size_qty28]),
+      ([size_numcode29], [size_qty29]),
+      ([size_numcode30], [size_qty30]),
+      ([size_numcode31], [size_qty31]),
+      ([size_numcode32], [size_qty32]),
+      ([size_numcode33], [size_qty33]),
+      ([size_numcode34], [size_qty34]),
+      ([size_numcode35], [size_qty35]),
+      ([size_numcode36], [size_qty36]),
+      ([size_numcode37], [size_qty37]),
+      ([size_numcode38], [size_qty38]),
+      ([size_numcode39], [size_qty39]),
+      ([size_numcode40], [size_qty40])
+   ) b (
+   [size_numcode],[size_qty]
+   )
+   WHERE b.size_qty <> 0
+   AND a.isactive= 'Y'
+   GROUP BY IIF(ISNULL(or1.or_custpoone, '') = '', or1.or_custpo, or1.or_custpoone), a.size_code, b.size_numcode
+),
 -- Accumulated quantity calculation
 accumulated_qty AS (
    SELECT 
-      po, 
+      po,
       COUNT(DISTINCT EPC_Code) AS accumulated_qty
    FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet_backup_Daily
    WHERE
@@ -39,6 +99,21 @@ accumulated_qty AS (
       AND stationNO LIKE 'CUS%WH103'
       AND po IS NOT NULL
    GROUP BY po
+),
+accumulated_size_qty AS (
+   SELECT 
+      po,
+      size_code,
+      COUNT(DISTINCT EPC_Code) AS accumulated_qty
+   FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet_backup_Daily
+   WHERE
+      rfid_status = 'B'
+      AND EPC_Code NOT LIKE '303429%'
+      AND EPC_Code NOT LIKE 'E28%'
+      AND mo_no <> '13D05B006'
+      AND stationNO LIKE 'CUS%WH103'
+      AND po IS NOT NULL
+   GROUP BY po, size_code
 ),
 -- Purchase order information
 order_info AS (
@@ -95,7 +170,21 @@ SELECT
       GROUP BY 
          sd.po, sd.mo_no, sd.shoestyle_codefactory, sd.mat_ecolor
       FOR JSON PATH
-   ) AS detail
+   ) AS detail,
+   (
+      SELECT CASE 
+            WHEN LEN(CAST(size_numcode AS NVARCHAR)) = 1 THEN CONCAT('0', size_numcode)
+            ELSE CAST(size_numcode AS NVARCHAR) 
+         END AS size_numcode,
+      ps.qty AS po_size_qty,
+      aq.accumulated_qty,
+      (ps.qty - aq.accumulated_qty) AS missing_qty
+      FROM purchase_order_sizes ps
+      INNER JOIN accumulated_size_qty aq ON aq.po = ps.po AND aq.size_code = ps.size_numcode
+      WHERE ps.po = fd.po
+      ORDER BY ps.size_numcode ASC
+      FOR JSON PATH
+   ) overall
 FROM filtered_data fd
 LEFT JOIN accumulated_qty aq ON aq.po = fd.po
 LEFT JOIN order_info oi ON oi.po = fd.po

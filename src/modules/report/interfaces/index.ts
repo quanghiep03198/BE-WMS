@@ -24,6 +24,7 @@ export interface IInboundReportQueryResult extends IReportQueryResult {
 export interface IOutboundReportQueryResult extends IReportQueryResult {
 	daily_outbound_qty: number
 	detail: string
+	overall: string
 }
 
 export type IInboundReportResponse = Array<
@@ -35,6 +36,7 @@ export type IInboundReportResponse = Array<
 export type IOutboundReportResponse = Array<
 	IOutboundReportQueryResult & {
 		detail: Array<{ mo_no: string; sizes: Array<{ size_numcode: string; qty: number }> }>
+		overall: Array<{ size_numcode: string; po_size_qty: number; accumulated_qty: number; missing_qty: number }>
 	}
 >
 

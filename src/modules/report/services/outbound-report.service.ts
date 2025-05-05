@@ -1,3 +1,4 @@
+import { SuperJson } from '@/common/utils'
 import { TENANCY_DATA_SOURCE } from '@/modules/tenancy/constants'
 import { Inject, Injectable } from '@nestjs/common'
 import { format } from 'date-fns'
@@ -14,6 +15,7 @@ export class OutboundReportService {
 
 	constructor(
 		@Inject(TENANCY_DATA_SOURCE) private readonly dataSource: DataSource,
+
 		private readonly i18nService: I18nService
 	) {}
 
@@ -22,7 +24,8 @@ export class OutboundReportService {
 		return data.map((item) => {
 			return {
 				...item,
-				detail: JSON.parse(item.detail)
+				detail: SuperJson.parse(item.detail) ?? [],
+				overall: SuperJson.parse(item.overall) ?? []
 			}
 		})
 	}
