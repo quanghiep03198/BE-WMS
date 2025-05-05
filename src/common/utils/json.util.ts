@@ -5,7 +5,8 @@ import { isPrimitive } from './common.util'
  * JSON strictify handler
  * @class
  */
-export class Json {
+
+export class SuperJson {
 	/**
 	 * @description Check if string is valid JSON
 	 * @param value
@@ -26,8 +27,8 @@ export class Json {
 	 * @returns
 	 */
 	public static parse<T>(value: any): T | null | any {
-		if (!Json.isValid(value)) return value
-		return JSON.parse(value)
+		if (!this.isValid(value)) return value
+		return JSON.parse(value) as T
 	}
 
 	/**
