@@ -3,14 +3,13 @@ WITH PurchaseOrderList AS (
 SELECT 
 	mo_no, 
 	STRING_AGG(po, ',') AS po,
-	MIN(PO) AS actual_po
+	MIN(COALESCE(po, '')) AS actual_po 
 FROM (
 	SELECT DISTINCT po, mo_no 
 	FROM DV_DATA_LAKE.dbo.dv_invprodmst WITH (NOLOCK)
 	WHERE inv_yearmonth = @0
 		AND inv_type = 'FG'
 		AND isactive = 'Y'
-		AND (po IS NOT NULL OR po <> '')
 ) t
 GROUP BY mo_no
 ),
@@ -89,6 +88,6 @@ SELECT
 		FOR JSON PATH
 	) AS size_data
 FROM AggregatedData a
-LEFT JOIN PurchaseOrderList p ON p.mo_no = a.mo_no
+INNER JOIN PurchaseOrderList p ON p.mo_no = a.mo_no
 ORDER BY a.mo_no DESC
 OPTION (OPTIMIZE FOR UNKNOWN, MAXDOP 8, FAST 100);
