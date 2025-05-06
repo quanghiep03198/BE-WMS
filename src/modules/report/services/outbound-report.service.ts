@@ -1,8 +1,9 @@
+import { type AutoFitColumnOptions, autoFitColumns } from '@/common/helpers/excel.helper'
 import { SuperJson } from '@/common/utils'
 import { TENANCY_DATA_SOURCE } from '@/modules/tenancy/constants'
 import { Inject, Injectable } from '@nestjs/common'
 import { format } from 'date-fns'
-import { Workbook } from 'exceljs'
+import { Workbook, Worksheet } from 'exceljs'
 import { readFileSync } from 'fs'
 import { I18nContext, I18nService } from 'nestjs-i18n'
 import { join } from 'path'
@@ -33,12 +34,16 @@ export class OutboundReportService {
 	// #region Outbound report Excel
 	async exportDailyOutboundToExcel(factoryCode: string, date: string) {
 		const currentLanguage = I18nContext.current()?.lang
+
+		// * Create a new workbook and worksheet
 		const workbook = new Workbook()
-		const worksheet = workbook.addWorksheet(
+		const worksheet: Worksheet = workbook.addWorksheet(
 			this.i18nService.t(`factory.${factoryCode}`, { lang: currentLanguage }) +
 				' - ' +
 				format(new Date(date), 'yyyy-MM-dd')
 		)
+
+		// * Worksheet columns declaration
 		worksheet.columns = [
 			{
 				header: 'PO',
@@ -73,6 +78,7 @@ export class OutboundReportService {
 			}
 		]
 
+		// * Add data to worksheet
 		const data = await this.getOutboundReportByDate(date)
 		for (const record of data) {
 			const row = worksheet.addRow(record)
@@ -80,37 +86,28 @@ export class OutboundReportService {
 			for (let i = 1; i <= worksheet.columns.length; i++) {
 				row.getCell(i).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'deecf7' } }
 			}
-			// TODO: Fix this on render to excel
-			record.detail.forEach((subRecord) => {
-				const subRowHead = worksheet.addRow([])
-				worksheet.getRow(subRowHead.number).font = { bold: true }
-				worksheet.getRow(subRowHead.number).height = 30
-				subRowHead.getCell(2).value = subRecord.mo_no
-				subRowHead.getCell(2).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'ebf1de' } }
-				subRowHead.getCell(2).alignment = { vertical: 'middle', horizontal: 'center' }
-				worksheet.mergeCells(`B${subRowHead.number}:C${subRowHead.number}`)
-				subRecord.sizes.forEach((size) => {
-					const subRow = worksheet.addRow([])
-					subRow.getCell(2).value = size.size_numcode + '#'
-					subRow.getCell(2).font = { bold: true }
-					subRow.getCell(2).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'fff2cc' } }
-					subRow.getCell(3).value = size.qty
-					subRow.getCell(3).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'f2dcdb' } }
-				})
+			record.overall.forEach((subRecord) => {
+				const subRow = worksheet.addRow([])
+				subRow.getCell(2).value = subRecord.size_numcode + '#'
+				subRow.getCell(2).font = { bold: true }
+				subRow.getCell(2).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'fff2cc' } }
+				subRow.getCell(3).value = subRecord.accumulated_qty
+				subRow.getCell(3).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'f2dcdb' } }
 			})
 		}
 
-		worksheet.columns.forEach((sheetColumn) => {
-			sheetColumn.font = { size: 12 }
-			sheetColumn.width = 30
-		})
-		worksheet.getRow(1).font = { bold: true, size: 13 }
-		worksheet.getRow(1).height = 20
+		// * Auto fit columns
+		autoFitColumns.call(worksheet, { minWidth: 10 } satisfies AutoFitColumnOptions)
 
-		// * Add title
+		// * Add  header title
 		worksheet.insertRow(1, null)
-		worksheet.getRow(1).height = 30
 		worksheet.mergeCells('A1:H1')
+		worksheet.getRow(1).height = 30
+		worksheet.getRow(1).alignment = { vertical: 'middle', horizontal: 'center' }
+		worksheet.getRow(1).font = { size: 14, bold: true }
+		worksheet.getRow(2).font = { bold: true }
+		worksheet.getRow(2).height = 30
+		worksheet.getCell('A1').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'e5e5e5' } }
 		worksheet.getCell('A1').value = this.i18nService.t('inoutbound.titles.daily_outbound_report', {
 			args: {
 				factory: this.i18nService.t(`factory.${factoryCode}`, { lang: currentLanguage }),
@@ -118,11 +115,11 @@ export class OutboundReportService {
 			},
 			lang: currentLanguage
 		})
+
+		// * Freeze header row
 		worksheet.views = [{ state: 'frozen', xSplit: 0, ySplit: 2 }]
-		worksheet.getRow(1).alignment = { vertical: 'middle', horizontal: 'center' }
-		worksheet.getRow(2).height = 30
-		worksheet.getCell('A1').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'e5e5e5' } }
-		worksheet.getCell('A1').font = { bold: true, size: 16 }
+
+		// * Cell styles
 		worksheet.eachRow({ includeEmpty: false }, (row) => {
 			row.alignment = { vertical: 'middle', horizontal: 'center' }
 			row.eachCell({ includeEmpty: true }, (cell) => {
@@ -134,6 +131,7 @@ export class OutboundReportService {
 				}
 			})
 		})
+
 		return await workbook.xlsx.writeBuffer()
 	}
 	// #endregion

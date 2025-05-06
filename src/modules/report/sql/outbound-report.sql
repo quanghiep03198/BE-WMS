@@ -100,7 +100,7 @@ accumulated_qty AS (
       AND po IS NOT NULL
    GROUP BY po
 ),
-accumulated_size_qty AS (
+daily_productivity AS (
    SELECT 
       po,
       size_code,
@@ -113,6 +113,7 @@ accumulated_size_qty AS (
       AND mo_no <> '13D05B006'
       AND stationNO LIKE 'CUS%WH103'
       AND po IS NOT NULL
+      AND CAST(record_time AS DATE) = @0
    GROUP BY po, size_code
 ),
 -- Purchase order information
@@ -145,8 +146,8 @@ SELECT
    COALESCE(fd.mat_ecolor, @FallbackValue) AS mat_ecolor,
    oi.po_qty AS order_qty,
    COUNT(DISTINCT fd.EPC_Code) AS daily_outbound_qty,
-   aq.accumulated_qty,
-   CAST(oi.po_qty - aq.accumulated_qty AS INT) AS missing_qty,
+   dp.accumulated_qty,
+   CAST(oi.po_qty - dp.accumulated_qty AS INT) AS missing_qty,
    (
       SELECT 
          sd.mo_no,
@@ -177,23 +178,23 @@ SELECT
             ELSE CAST(size_numcode AS NVARCHAR) 
          END AS size_numcode,
       ps.qty AS po_size_qty,
-      aq.accumulated_qty,
-      (ps.qty - aq.accumulated_qty) AS missing_qty
+      dp.accumulated_qty,
+      (ps.qty - dp.accumulated_qty) AS missing_qty
       FROM purchase_order_sizes ps
-      INNER JOIN accumulated_size_qty aq ON aq.po = ps.po AND aq.size_code = ps.size_numcode
+      INNER JOIN daily_productivity dp ON dp.po = ps.po AND dp.size_code = ps.size_numcode
       WHERE ps.po = fd.po
       ORDER BY ps.size_numcode ASC
       FOR JSON PATH
    ) overall
 FROM filtered_data fd
-LEFT JOIN accumulated_qty aq ON aq.po = fd.po
+LEFT JOIN accumulated_qty dp ON dp.po = fd.po
 LEFT JOIN order_info oi ON oi.po = fd.po
 GROUP BY
    fd.po,
    fd.shoestyle_codefactory,
    fd.mat_ecolor,
    oi.po_qty,
-   aq.accumulated_qty
+   dp.accumulated_qty
 ORDER BY fd.po ASC
 -- * Avoid parameter sniffing and set max degree of parallelism;
-OPTION (OPTIMIZE FOR UNKNOWN);
+OPTION (OPTIMIZE FOR UNKNOWN, MAXDOP 4);
