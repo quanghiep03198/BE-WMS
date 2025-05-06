@@ -76,7 +76,7 @@ export class OutboundReportService {
 			{
 				header: this.i18nService.t('common.fields.remark', { lang: currentLanguage })
 			}
-		]
+		].map((item) => ({ ...item, alignment: { vertical: 'middle', horizontal: 'center' } }))
 
 		// * Add data to worksheet
 		const data = await this.getOutboundReportByDate(date)

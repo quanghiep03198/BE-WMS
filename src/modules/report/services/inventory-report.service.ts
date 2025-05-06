@@ -1,3 +1,5 @@
+import { type AutoFitColumnOptions, autoFitColumns } from '@/common/helpers/excel.helper'
+import { SuperJson } from '@/common/utils'
 import { TENANCY_DATA_SOURCE } from '@/modules/tenancy/constants'
 import { Inject, Injectable } from '@nestjs/common'
 import { REQUEST } from '@nestjs/core'
@@ -28,7 +30,7 @@ export class InventoryReportService {
 		return data.map((item) => {
 			return {
 				...item,
-				size_data: JSON.parse(item.size_data)
+				size_data: SuperJson.parse(item.size_data) ?? []
 			}
 		})
 	}
@@ -194,9 +196,10 @@ export class InventoryReportService {
 
 		const data = await this.getMonthlyInventoryReport(format(new Date(month), 'yyyyMM'))
 
+		// * Add data to worksheet
 		for (const record of data) {
 			const row = worksheet.addRow(record)
-			row.height = 20
+			row.height = 30
 			for (let i = 1; i <= worksheet.columns.length; i++) {
 				row.getCell(i).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'deecf7' } }
 			}
@@ -204,6 +207,7 @@ export class InventoryReportService {
 				const row = worksheet.addRow([])
 				row.getCell(3).value = subRecord.size + '#'
 				row.getCell(3).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'fff2cc' } }
+				row.getCell(3).font = { bold: true }
 				row.getCell(4).value = subRecord.int_qty
 				row.getCell(4).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'f2dcdb' } }
 				row.getCell(5).value = subRecord.ist_qty
@@ -216,23 +220,20 @@ export class InventoryReportService {
 		}
 
 		// * Auto-fit columns
-		worksheet.columns.forEach((column, index) => {
-			let maxColumnWidth = 0
-			const minColumnWidth = 10
-			column.alignment = { vertical: 'middle', horizontal: index <= 2 ? 'left' : 'right' }
-			if (column) {
-				column.eachCell({ includeEmpty: true }, (cell) => {
-					const cellWidth = cell.value ? cell.value.toString().length : 0
-					maxColumnWidth = Math.max(maxColumnWidth, minColumnWidth, cellWidth)
-				})
-				column.width = column.key === 'po' ? minColumnWidth : maxColumnWidth + 2
-			}
-		})
+		autoFitColumns.call(worksheet, { minWidth: 10, excludeColumns: ['po'] } satisfies AutoFitColumnOptions)
 
-		// * Add title
+		// * Add header title
 		worksheet.insertRow(1, null)
-		worksheet.getRow(1).height = 28
 		worksheet.mergeCells('A1:I1')
+		worksheet.getRow(1).font = { size: 14, bold: true }
+		worksheet.getRow(1).height = 30
+		worksheet.getRow(1).alignment = { vertical: 'middle', horizontal: 'center' }
+		worksheet.getRow(2).font = { bold: true }
+		worksheet.getRow(2).height = 30
+		worksheet.getRow(2).alignment = { vertical: 'middle', horizontal: 'center' }
+
+		worksheet.getCell('A1').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'e5e5e5' } }
+		worksheet.getCell('A1').alignment = { vertical: 'middle', horizontal: 'center' }
 		worksheet.getCell('A1').value = this.i18nService.t('inoutbound.titles.file_monthly_inventory_report', {
 			args: {
 				factory: this.i18nService.t(`factory.${factoryCode}`, { lang: currentLanguage }),
@@ -240,14 +241,13 @@ export class InventoryReportService {
 			},
 			lang: currentLanguage
 		})
+
+		// * Freeze header row
 		worksheet.views = [{ state: 'frozen', xSplit: 0, ySplit: 2 }]
-		worksheet.getCell('A1').alignment = { vertical: 'middle', horizontal: 'center' }
-		worksheet.getCell('A1').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'e5e5e5' } }
-		worksheet.getCell('A1').font = { bold: true, size: 16 }
-		worksheet.eachRow({ includeEmpty: false }, (row, index) => {
-			if (index < 2) {
-				row.eachCell((cell) => (cell.font = { bold: true, size: 12 }))
-			}
+
+		// * Cell styles
+		worksheet.eachRow({ includeEmpty: false }, (row) => {
+			row.alignment = { ...row.alignment, vertical: 'middle' }
 			row.eachCell({ includeEmpty: true }, (cell) => {
 				cell.border = {
 					top: { style: 'thin', color: { argb: 'a1a1a1' } },
