@@ -42,22 +42,22 @@ export class InventoryReportEntity extends BaseAbstractEntity {
 	mo_qty: number
 
 	@Column({ name: 'inv_initialqty', type: 'numeric', precision: 16, scale: 4 })
-	init_inv_qty: number
+	initial_stock_qty: number
 
 	@Column({ name: 'inv_istotalqty', type: 'numeric', precision: 16, scale: 4 })
-	ist_total_qty: number
+	instock_qty: number
 
 	@Column({ name: 'inv_ostotalqty', type: 'numeric', precision: 16, scale: 4 })
-	ost_total_qty: number
+	outstock_qty: number
 
 	@Column({ name: 'inv_manualqty', type: 'numeric', precision: 16, scale: 4 })
-	mn_ist_qty: number
+	actual_instock_qty: number
 
 	@Column({ name: 'inv_manualqtyout', type: 'numeric', precision: 16, scale: 4 })
-	mn_ost_qty: number
+	actual_outstock_qty: number
 
 	@Column({ name: 'inv_finalqty', type: 'numeric', precision: 16, scale: 4 })
-	fnl_qty: number
+	final_stock_qty: number
 
 	constructor(warehouse: Partial<InventoryReportEntity>) {
 		super()

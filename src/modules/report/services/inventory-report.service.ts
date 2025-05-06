@@ -30,7 +30,7 @@ export class InventoryReportService {
 		return data.map((item) => {
 			return {
 				...item,
-				size_data: SuperJson.parse(item.size_data) ?? []
+				detail: SuperJson.parse(item.detail) ?? []
 			}
 		})
 	}
@@ -101,17 +101,17 @@ export class InventoryReportService {
 			this.updateOneInventoryRecord(
 				{ ...queries, size_numcode: data.size_numcode, inv_year_month: format(queries.inv_year_month, 'yyyyMM') },
 				{
-					mn_ist_qty: data.mn_ist_qty,
-					mn_ost_qty: data.mn_ost_qty,
-					fnl_qty: updateQuantity
+					actual_instock_qty: data.mn_ist_qty,
+					actual_outstock_qty: data.mn_ost_qty,
+					final_stock_qty: updateQuantity
 				}
 			),
 			this.updateOneInventoryRecord(
 				{ ...queries, size_numcode: data.size_numcode, inv_year_month: format(queries.inv_next_month, 'yyyyMM') },
 				{
-					init_inv_qty: updateQuantity,
-					fnl_qty: () => {
-						return /* SQL */ `${updateQuantity} + ist_total_qty + inv_manualqty - inv_ostotalqty - inv_manualqtyout`
+					initial_stock_qty: updateQuantity,
+					final_stock_qty: () => {
+						return /* SQL */ `${updateQuantity} + inv_istotalqty + inv_manualqty - inv_ostotalqty - inv_manualqtyout`
 					}
 				}
 			)
@@ -203,18 +203,18 @@ export class InventoryReportService {
 			for (let i = 1; i <= worksheet.columns.length; i++) {
 				row.getCell(i).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'deecf7' } }
 			}
-			for (const subRecord of record.size_data) {
+			for (const subRecord of record.detail) {
 				const row = worksheet.addRow([])
 				row.getCell(3).value = subRecord.size + '#'
 				row.getCell(3).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'fff2cc' } }
 				row.getCell(3).font = { bold: true }
-				row.getCell(4).value = subRecord.int_qty
+				row.getCell(4).value = subRecord.initial_stock_qty
 				row.getCell(4).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'f2dcdb' } }
-				row.getCell(5).value = subRecord.ist_qty
+				row.getCell(5).value = subRecord.instock_qty
 				row.getCell(5).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'f2dcdb' } }
-				row.getCell(6).value = subRecord.ost_qty
+				row.getCell(6).value = subRecord.outstock_qty
 				row.getCell(6).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'f2dcdb' } }
-				row.getCell(7).value = subRecord.fnl_qty
+				row.getCell(7).value = subRecord.final_stock_qty
 				row.getCell(7).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'f2dcdb' } }
 			}
 		}

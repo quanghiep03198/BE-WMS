@@ -1,5 +1,6 @@
--- * CTE for PurchaseOrderList list
-WITH PurchaseOrderList AS (
+
+-- * CTE for po_list list
+WITH po_list AS (
 SELECT 
 	mo_no, 
 	STRING_AGG(po, ',') AS po,
@@ -13,9 +14,8 @@ FROM (
 ) t
 GROUP BY mo_no
 ),
-
--- * CTE for aggregated data
-AggregatedData AS (
+-- * CTE for aggregated data master
+agg_data_mst AS (
 	SELECT
 		mo_no,
 		inv_yearmonth,
@@ -32,7 +32,37 @@ AggregatedData AS (
 		SUM(inv_finalqty) AS inv_finalqty
 	FROM DV_DATA_LAKE.dbo.dv_invprodmst WITH (NOLOCK)
 	WHERE isactive = 'Y' 
-	AND inv_type = 'FG' 
+		AND inv_type = 'FG' 
+		AND inv_yearmonth = @0
+		AND mo_no IS NOT NULL 
+		AND mo_no <> 'undefined'
+	GROUP BY
+		mo_no,
+		inv_yearmonth,
+		brand_name,
+		shoestyle_cofactory,
+		cust_shoestyle,
+		inv_type,
+      po
+),
+-- * CTE for aggregated data
+agg_data AS (
+	SELECT
+		mo_no,
+		inv_yearmonth,
+		brand_name,
+		shoestyle_cofactory,
+		cust_shoestyle,
+		inv_type,
+		MAX(mo_qty) AS mo_qty,
+		SUM(inv_initialqty) AS inv_initialqty,
+		SUM(inv_istotalqty) AS inv_istotalqty,
+		SUM(inv_manualqty) AS inv_manualqty,
+		SUM(inv_ostotalqty) AS inv_ostotalqty,
+		SUM(inv_manualqtyout) AS inv_manualqtyout,
+		SUM(inv_finalqty) AS inv_finalqty
+	FROM agg_data_mst WITH (NOLOCK)
+	WHERE inv_type = 'FG' 
 	AND inv_yearmonth = @0
 	GROUP BY
 		mo_no,
@@ -66,13 +96,13 @@ SELECT
 	(
 		SELECT  
 			c.size_numcode AS size,
-			CAST(MAX(c.mo_qty) AS INT) AS ms_qty,
-			CAST(SUM(c.inv_initialqty) AS INT) AS int_qty,
-			CAST(SUM(c.inv_istotalqty) AS INT) AS ist_qty,
-			CAST(SUM(c.inv_manualqty) AS INT) AS mn_ist_qty,
-			CAST(SUM(c.inv_ostotalqty) AS INT) AS ost_qty,
-			CAST(SUM(c.inv_manualqtyout) AS INT) AS mn_ost_qty,
-			CAST(SUM(ISNULL(c.inv_finalqty, 0)) AS INT) AS fnl_qty
+			CAST(MAX(c.mo_qty) AS INT) AS order_qty_by_size,
+			CAST(SUM(c.inv_initialqty) AS INT) AS initial_stock_qty,
+			CAST(SUM(c.inv_istotalqty) AS INT) AS instock_qty,
+			CAST(SUM(c.inv_ostotalqty) AS INT) AS outstock_qty,
+			CAST(SUM(c.inv_manualqty) AS INT) AS actual_instock_qty,
+			CAST(SUM(c.inv_manualqtyout) AS INT) AS actual_outstock_qty,
+			CAST(SUM(ISNULL(c.inv_finalqty, 0)) AS INT) AS final_stock_qty
 		FROM DV_DATA_LAKE.dbo.dv_invprodmst c WITH (NOLOCK)
 		WHERE c.mo_no = a.mo_no
 			AND c.inv_yearmonth = a.inv_yearmonth
@@ -86,8 +116,8 @@ SELECT
 		GROUP BY c.size_numcode
 		ORDER BY RIGHT('0000' + IIF(CHARINDEX('.', c.size_numcode) > 0, c.size_numcode, c.size_numcode + '.0'), 5) ASC
 		FOR JSON PATH
-	) AS size_data
-FROM AggregatedData a
-INNER JOIN PurchaseOrderList p ON p.mo_no = a.mo_no
+	) AS detail
+FROM agg_data a
+INNER JOIN po_list p ON p.mo_no = a.mo_no
 ORDER BY a.mo_no DESC
 OPTION (OPTIMIZE FOR UNKNOWN, MAXDOP 8, FAST 100);
