@@ -1,3 +1,4 @@
+import { AutoFitColumnOptions, autoFitColumns } from '@/common/helpers/excel.helper'
 import { TENANCY_DATA_SOURCE } from '@/modules/tenancy/constants'
 import { Inject, Injectable } from '@nestjs/common'
 import { format } from 'date-fns'
@@ -71,24 +72,27 @@ export class PackingWeightReportService {
 				header: this.i18nService.t('erp.fields.unweighed_box_qty', { lang: currentLanguage }),
 				key: 'unweighed_box_qty'
 			}
-		]
+		].map((item) => ({ ...item, alignment: { vertical: 'middle', horizontal: 'center' } }))
+
 		const data = await this.getDailyPackingReport(format(new Date(date), 'yyyy-MM-dd'), factoryCode)
 
 		for (const record of data) {
 			worksheet.addRow(record)
 		}
 
-		worksheet.columns.forEach((sheetColumn) => {
-			sheetColumn.font = { size: 12 }
-			sheetColumn.width = 30
-		})
-		worksheet.getRow(1).font = { bold: true, size: 13 }
-		worksheet.getRow(1).height = 20
+		// * Auto fit columns
+		autoFitColumns.call(worksheet, { minWidth: 16, excludeColumns: ['size_data'] } satisfies AutoFitColumnOptions)
 
 		// * Add title
 		worksheet.insertRow(1, null)
-		worksheet.getRow(1).height = 28
+		worksheet.getRow(1).height = 30
+		worksheet.getRow(1).font = { bold: true, size: 14 }
+		worksheet.getRow(2).height = 30
+		worksheet.getRow(2).font = { bold: true }
+
 		worksheet.mergeCells('A1:I1')
+		worksheet.getCell('A1').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'e5e5e5' } }
+		worksheet.getCell('A1').alignment = { vertical: 'middle', horizontal: 'center' }
 		worksheet.getCell('A1').value = this.i18nService.t('packing.titles.daily_weighing_report', {
 			args: {
 				factory: this.i18nService.t(`factory.${factoryCode}`, { lang: currentLanguage }),
@@ -96,10 +100,11 @@ export class PackingWeightReportService {
 			},
 			lang: currentLanguage
 		})
+
+		// * Freeze header row
 		worksheet.views = [{ state: 'frozen', xSplit: 0, ySplit: 2 }]
-		worksheet.getCell('A1').alignment = { vertical: 'middle', horizontal: 'center' }
-		worksheet.getCell('A1').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'e5e5e5' } }
-		worksheet.getCell('A1').font = { bold: true, size: 16 }
+
+		// * Cell styles
 		worksheet.eachRow({ includeEmpty: false }, (row) => {
 			row.alignment = { vertical: 'middle', horizontal: 'center' }
 			row.eachCell({ includeEmpty: true }, (cell) => {
