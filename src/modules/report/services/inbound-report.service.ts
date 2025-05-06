@@ -1,3 +1,4 @@
+import { type AutoFitColumnOptions, autoFitColumns } from '@/common/helpers/excel.helper'
 import { TENANCY_DATA_SOURCE } from '@/modules/tenancy/constants'
 import { Inject, Injectable } from '@nestjs/common'
 import { REQUEST } from '@nestjs/core'
@@ -99,17 +100,23 @@ export class InboundReportService {
 				row.getCell(3).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'f2dcdb' } }
 			}
 		}
-		worksheet.columns.forEach((sheetColumn) => {
-			sheetColumn.font = { size: 12 }
-			sheetColumn.width = 30
-		})
-		worksheet.getRow(1).font = { bold: true, size: 13 }
-		worksheet.getRow(1).height = 20
+
+		// * Auto fit columns
+		autoFitColumns.call(worksheet, {
+			minWidth: 20,
+			excludeColumns: ['shaping_dept_name', 'storage']
+		} satisfies AutoFitColumnOptions)
 
 		// * Add title
 		worksheet.insertRow(1, null)
-		worksheet.getRow(1).height = 28
+		worksheet.getRow(1).font = { bold: true, size: 14 }
+		worksheet.getRow(1).height = 30
+		worksheet.getRow(2).font = { bold: true }
+		worksheet.getRow(2).height = 30
 		worksheet.mergeCells('A1:J1')
+		worksheet.getCell('A1').alignment = { vertical: 'middle', horizontal: 'center' }
+		worksheet.getCell('A1').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'e5e5e5' } }
+		worksheet.getCell('A1').font = { bold: true, size: 16 }
 		worksheet.getCell('A1').value = this.i18nService.t('inoutbound.titles.daily_inbound_report', {
 			args: {
 				factory: this.i18nService.t(`factory.${factoryCode}`, { lang: currentLanguage }),
@@ -117,10 +124,11 @@ export class InboundReportService {
 			},
 			lang: currentLanguage
 		})
+
+		// * Freeze header row
 		worksheet.views = [{ state: 'frozen', xSplit: 0, ySplit: 2 }]
-		worksheet.getCell('A1').alignment = { vertical: 'middle', horizontal: 'center' }
-		worksheet.getCell('A1').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'e5e5e5' } }
-		worksheet.getCell('A1').font = { bold: true, size: 16 }
+
+		// * Cell styles
 		worksheet.eachRow({ includeEmpty: false }, (row) => {
 			row.alignment = { vertical: 'middle', horizontal: 'center' }
 			row.eachCell({ includeEmpty: true }, (cell) => {
