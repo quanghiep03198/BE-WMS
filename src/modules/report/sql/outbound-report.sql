@@ -30,7 +30,7 @@ purchase_order_sizes AS (
       IIF(ISNULL(or1.or_custpoone, '') = '', or1.or_custpo, or1.or_custpoone) AS po,
       CASE 
          WHEN ISNUMERIC(b.size_numcode) = 1 THEN CAST(b.size_numcode AS FLOAT) 
-         WHEN LEFT(b.size_numcode, 1) = 'K' THEN CAST(SUBSTRING(b.size_numcode, 2, LEN(b.size_numcode)) AS FLOAT)
+         WHEN LEFT(b.size_numcode, 1) IN ('T', 'K') THEN CAST(SUBSTRING(b.size_numcode, 2, LEN(b.size_numcode)) AS FLOAT)
       END AS [size_numcode], 
    SUM(CAST(b.size_qty AS INT)) AS qty
    FROM wuerp_vnrd.dbo.ta_ordersizerun a
