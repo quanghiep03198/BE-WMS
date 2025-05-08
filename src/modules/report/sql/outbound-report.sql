@@ -173,15 +173,16 @@ SELECT
       FOR JSON PATH
    ) AS detail,
    (
-      SELECT CASE 
+      SELECT 
+         CASE 
             WHEN LEN(CAST(size_numcode AS NVARCHAR)) = 1 THEN CONCAT('0', size_numcode)
             ELSE CAST(size_numcode AS NVARCHAR) 
          END AS size_numcode,
       ps.qty AS po_size_qty,
-      dp.accumulated_qty,
-      (ps.qty - dp.accumulated_qty) AS missing_qty
+      COALESCE(dp.accumulated_qty, 0) accumulated_qty,
+      (ps.qty - COALESCE(dp.accumulated_qty, 0)) AS missing_qty
       FROM purchase_order_sizes ps
-      INNER JOIN daily_productivity dp ON dp.po = ps.po AND dp.size_code = ps.size_numcode
+      LEFT JOIN daily_productivity dp ON dp.po = ps.po AND dp.size_code = ps.size_numcode
       WHERE ps.po = fd.po
       ORDER BY ps.size_numcode ASC
       FOR JSON PATH
