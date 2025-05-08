@@ -62,7 +62,7 @@ export class OutboundReportService {
 				key: 'order_qty'
 			},
 			{
-				header: this.i18nService.t('erp.fields.daily_outbound_qty', { lang: currentLanguage }),
+				header: this.i18nService.t('erp.fields.daily_productivity', { lang: currentLanguage }),
 				key: 'daily_outbound_qty'
 			},
 			{
@@ -86,6 +86,18 @@ export class OutboundReportService {
 			for (let i = 1; i <= worksheet.columns.length; i++) {
 				row.getCell(i).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'deecf7' } }
 			}
+			//
+			const subHeaderRow = worksheet.addRow([])
+			subHeaderRow.font = { bold: true }
+			subHeaderRow.getCell(2).value = this.i18nService.t('erp.fields.size', { lang: currentLanguage })
+			subHeaderRow.getCell(2).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'fff2cc' } }
+			subHeaderRow.getCell(3).value = this.i18nService.t('erp.fields.daily_productivity', { lang: currentLanguage })
+			subHeaderRow.getCell(3).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'f2dcdb' } }
+			subHeaderRow.getCell(4).value = this.i18nService.t('erp.fields.order_qty', { lang: currentLanguage })
+			subHeaderRow.getCell(4).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'fff2cc' } }
+			subHeaderRow.getCell(5).value = this.i18nService.t('erp.fields.missing_qty', { lang: currentLanguage })
+			subHeaderRow.getCell(5).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'f2dcdb' } }
+
 			record.overall.forEach((subRecord) => {
 				const subRow = worksheet.addRow([])
 				subRow.getCell(2).value = subRecord.size_numcode + '#'
@@ -93,6 +105,10 @@ export class OutboundReportService {
 				subRow.getCell(2).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'fff2cc' } }
 				subRow.getCell(3).value = subRecord.accumulated_qty
 				subRow.getCell(3).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'f2dcdb' } }
+				subRow.getCell(4).value = subRecord.po_size_qty
+				subRow.getCell(4).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'fff2cc' } }
+				subRow.getCell(5).value = subRecord.missing_qty
+				subRow.getCell(5).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'f2dcdb' } }
 			})
 		}
 

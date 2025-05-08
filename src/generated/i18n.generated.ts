@@ -39,6 +39,7 @@ export type I18nTranslations = {
             "cust_shoestyle": string;
             "daily_inbound_qty": string;
             "daily_outbound_qty": string;
+            "daily_productivity": string;
             "dept_code": string;
             "dept_name": string;
             "employee_name": string;
@@ -102,6 +103,7 @@ export type I18nTranslations = {
             "unweighed_box_qty": string;
             "weighed_box_qty": string;
             "customer_branch_id": string;
+            "size": string;
         };
         "inventory_list_type": {
             "finished_goods_dispatch": string;
