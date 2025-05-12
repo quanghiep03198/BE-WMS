@@ -177,7 +177,13 @@ export class RFIDSharedService {
 
 	public async bulkWriteRFIDData(model: EpcModel, { data, sn }: PostReaderDataDTO) {
 		// * Get the RFID reader information from the database
-		const deviceInformation = await this.dataSourceDL.getRepository(RFIDReaderEntity).findOneBy({ device_sn: sn })
+		const deviceInformation = await this.dataSourceDL.getRepository(RFIDReaderEntity).findOne({
+			where: { device_sn: sn },
+			cache: {
+				id: sn,
+				milliseconds: 1000 * 60 * 60
+			}
+		})
 
 		/**
 		 * * Get the EPCs information from the database with received data
