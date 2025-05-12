@@ -51,10 +51,10 @@ SELECT
 	COALESCE(prod.mat_ecolor, @FallbackValue) AS mat_ecolor,
 	dg.dept_name AS shaping_dept_name,
 	sg.storage_name AS storage,
-	COALESCE(manf.mo_sumqty, 0) AS order_qty,
+	COALESCE(manf.mo_totalqty, 0) AS order_qty,
 	ac.accumulated_qty,
 	COUNT(DISTINCT ds.EPC_Code) AS daily_inbound_qty,
-	manf.mo_sumqty - ac.accumulated_qty AS missing_qty,
+	manf.mo_totalqty - ac.accumulated_qty AS missing_qty,
 	sz.size_data
 FROM filtered_data ds
 LEFT JOIN DV_DATA_LAKE.dbo.dv_rfidmatchmst_cust rmc WITH (NOLOCK)
@@ -81,7 +81,7 @@ OUTER APPLY (
 WHERE CAST(ds.record_time AS DATE) = @0
 GROUP BY 
 	ds.factory_code, ds.mo_no, rmc.shoestyle_codefactory, 
-	prod.mat_ecolor, manf.mo_sumqty, ac.accumulated_qty,
+	prod.mat_ecolor, manf.mo_totalqty, ac.accumulated_qty,
 	sg.storage_name, dg.dept_name, sz.size_data
 	
 -- * Avoid parameter sniffing and set max degree of parallelism;
