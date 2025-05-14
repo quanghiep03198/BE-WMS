@@ -1,7 +1,7 @@
 import { type AutoFitColumnOptions, autoFitColumns } from '@/common/helpers/excel.helper'
 import { SuperJson } from '@/common/utils'
 import { TENANCY_DATA_SOURCE } from '@/modules/tenancy/constants'
-import { Inject, Injectable } from '@nestjs/common'
+import { Inject, Injectable, Logger } from '@nestjs/common'
 import { REQUEST } from '@nestjs/core'
 import { addMonths, format } from 'date-fns'
 import { Workbook } from 'exceljs'
@@ -65,8 +65,6 @@ export class InventoryReportService {
 				size_numcode: queries.size_numcode,
 				inv_type: queries.inv_type,
 				mo_no: queries.mo_no,
-				shoes_style_code_factory: queries.shoes_style_code_factory,
-				cust_shoestyle: queries.cust_shoestyle,
 				inv_year_month: format(new Date(queries.inv_year_month), 'yyyyMM')
 			})
 			.andWhere(
@@ -122,6 +120,7 @@ export class InventoryReportService {
 		queries: UpdateInventoryReportQuery & { size_numcode: string },
 		update: QueryDeepPartialEntity<InventoryReportEntity>
 	) {
+		Logger.debug(queries)
 		return await this.dataSource
 			.getRepository(InventoryReportEntity)
 			.createQueryBuilder()
@@ -131,8 +130,6 @@ export class InventoryReportService {
 				inv_type: queries.inv_type,
 				size_numcode: queries.size_numcode,
 				mo_no: queries.mo_no,
-				shoes_style_code_factory: queries.shoes_style_code_factory,
-				cust_shoestyle: queries.cust_shoestyle,
 				inv_year_month: queries.inv_year_month
 			})
 			.andWhere(
@@ -167,6 +164,10 @@ export class InventoryReportService {
 			{
 				header: this.i18nService.t('erp.fields.shoestyle_codefactory', { lang: currentLanguage }),
 				key: 'shoes_style_code_factory'
+			},
+			{
+				header: this.i18nService.t('erp.fields.mat_ecolor', { lang: currentLanguage }),
+				key: 'mat_ecolor'
 			},
 			{
 				header: this.i18nService.t('erp.fields.order_qty', { lang: currentLanguage }),
@@ -224,7 +225,7 @@ export class InventoryReportService {
 
 		// * Add header title
 		worksheet.insertRow(1, null)
-		worksheet.mergeCells('A1:I1')
+		worksheet.mergeCells('A1:J1')
 		worksheet.getRow(1).font = { size: 14, bold: true }
 		worksheet.getRow(1).height = 30
 		worksheet.getRow(1).alignment = { vertical: 'middle', horizontal: 'center' }

@@ -1,5 +1,6 @@
+-- DECLARE @0 NVARCHAR(10)='202505';
 
--- * CTE for po_list list
+-- * CTE for PO list
 WITH po_list AS (
 SELECT 
 	mo_no, 
@@ -20,8 +21,6 @@ agg_data_mst AS (
 		mo_no,
 		inv_yearmonth,
 		brand_name,
-		shoestyle_cofactory,
-		cust_shoestyle,
 		inv_type,
 		SUM(mo_qty) AS mo_qty,
 		SUM(inv_initialqty) AS inv_initialqty,
@@ -40,8 +39,6 @@ agg_data_mst AS (
 		mo_no,
 		inv_yearmonth,
 		brand_name,
-		shoestyle_cofactory,
-		cust_shoestyle,
 		inv_type,
       po
 ),
@@ -51,8 +48,6 @@ agg_data AS (
 		mo_no,
 		inv_yearmonth,
 		brand_name,
-		shoestyle_cofactory,
-		cust_shoestyle,
 		inv_type,
 		MAX(mo_qty) AS mo_qty,
 		SUM(inv_initialqty) AS inv_initialqty,
@@ -68,19 +63,18 @@ agg_data AS (
 		mo_no,
 		inv_yearmonth,
 		brand_name,
-		shoestyle_cofactory,
-		cust_shoestyle,
 		inv_type
 )
 
--- * Stage 0: Main query
+-- * Main query
 SELECT
 	a.mo_no,
 	a.inv_yearmonth AS inv_year_month,
 	a.brand_name,
-	a.shoestyle_cofactory AS shoes_style_code_factory,
-	a.cust_shoestyle,
 	a.inv_type,
+	(d.shoestyle_codecust) shoes_style_code_factory,
+	(ISNULL(d.shoestyle_codecust, '') + '/' +ISNULL(d.shoestyle_namecust, '')) cust_shoestyle,
+	c.mat_ecolor,
 	CASE 
 		WHEN LEFT(p.po, 1) = ',' THEN TRIM(STUFF(p.po, 1, 1, '')) 
 		ELSE TRIM(p.po) 
@@ -92,7 +86,7 @@ SELECT
 	CAST(a.inv_ostotalqty + a.inv_manualqtyout AS INT) AS total_outstock_qty,
 	CAST((a.inv_istotalqty + a.inv_manualqty) - (a.inv_ostotalqty + a.inv_manualqtyout) AS INT) AS actual_inv_qty,
 	CAST(a.inv_finalqty AS INT) AS final_inv_qty,
-	-- * Stage 2: JSON data for size
+	-- * Add get JSON data pipeline for size
 	(
 		SELECT  
 			c.size_numcode AS size,
@@ -107,9 +101,7 @@ SELECT
 		WHERE c.mo_no = a.mo_no
 			AND c.inv_yearmonth = a.inv_yearmonth
 			AND c.brand_name = a.brand_name
-			AND c.shoestyle_cofactory = a.shoestyle_cofactory
 			AND c.inv_type = a.inv_type
-			AND c.cust_shoestyle = a.cust_shoestyle
 			AND c.isactive = 'Y'
 			AND c.inv_type = 'FG'
 			AND c.inv_yearmonth = @0
@@ -119,5 +111,8 @@ SELECT
 	) AS detail
 FROM agg_data a
 INNER JOIN po_list p ON p.mo_no = a.mo_no
+lEFT JOIN wuerp_vnrd.dbo.ta_manufacturmst b ON b.mo_no = a.mo_no AND b.isactive = 'Y'
+LEFT JOIN wuerp_vnrd.dbo.ta_productmst c ON c.isactive = 'Y' AND c.mat_code = b.mat_code
+LEFT JOIN wuerp_vnrd.dbo.ta_shoestylecolor d ON d.isactive = 'Y' AND c.shoestyle_templink = d.shoestyle_templink
 ORDER BY a.mo_no DESC
 OPTION (OPTIMIZE FOR UNKNOWN, MAXDOP 8, FAST 100);

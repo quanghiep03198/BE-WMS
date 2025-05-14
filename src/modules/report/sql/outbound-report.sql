@@ -87,9 +87,7 @@ purchase_order_sizes AS (
 ),
 -- Accumulated quantity calculation
 accumulated_qty AS (
-   SELECT 
-      po,
-      COUNT(DISTINCT EPC_Code) AS accumulated_qty
+   SELECT po, COUNT(DISTINCT EPC_Code) AS accumulated_qty
    FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet_backup_Daily
    WHERE
       rfid_status = 'B'
@@ -101,10 +99,7 @@ accumulated_qty AS (
    GROUP BY po
 ),
 daily_productivity AS (
-   SELECT 
-      po,
-      size_code,
-      COUNT(DISTINCT EPC_Code) AS accumulated_qty
+   SELECT po, size_code, COUNT(DISTINCT EPC_Code) AS accumulated_qty
    FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet_backup_Daily
    WHERE
       rfid_status = 'B'
@@ -152,22 +147,20 @@ SELECT
       SELECT 
          sd.mo_no,
          (
-            SELECT 
-               sd2.size_code AS size_numcode,
-               sd2.qty
+            SELECT sd2.size_code AS size_numcode, sd2.qty
             FROM size_details sd2
             WHERE 
-               sd2.po = sd.po AND 
-               sd2.mo_no = sd.mo_no AND
-               sd2.shoestyle_codefactory = sd.shoestyle_codefactory AND
-               sd2.mat_ecolor = sd.mat_ecolor
+               sd2.po = sd.po  
+               AND sd2.mo_no = sd.mo_no 
+               AND sd2.shoestyle_codefactory = sd.shoestyle_codefactory 
+               AND sd2.mat_ecolor = sd.mat_ecolor
             FOR JSON PATH
          ) AS sizes
       FROM size_details sd
       WHERE 
-         sd.po = fd.po AND
-         sd.shoestyle_codefactory = fd.shoestyle_codefactory AND
-         sd.mat_ecolor = fd.mat_ecolor
+         sd.po = fd.po 
+         AND sd.shoestyle_codefactory = fd.shoestyle_codefactory 
+         AND sd.mat_ecolor = fd.mat_ecolor
       GROUP BY 
          sd.po, sd.mo_no, sd.shoestyle_codefactory, sd.mat_ecolor
       FOR JSON PATH
@@ -190,12 +183,7 @@ SELECT
 FROM filtered_data fd
 LEFT JOIN accumulated_qty dp ON dp.po = fd.po
 LEFT JOIN order_info oi ON oi.po = fd.po
-GROUP BY
-   fd.po,
-   fd.shoestyle_codefactory,
-   fd.mat_ecolor,
-   oi.po_qty,
-   dp.accumulated_qty
+GROUP BY fd.po, fd.shoestyle_codefactory, fd.mat_ecolor, oi.po_qty, dp.accumulated_qty
 ORDER BY fd.po ASC
 -- * Avoid parameter sniffing and set max degree of parallelism;
 OPTION (OPTIMIZE FOR UNKNOWN, MAXDOP 4);
