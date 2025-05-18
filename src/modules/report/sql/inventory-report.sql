@@ -74,7 +74,7 @@ SELECT
 	a.inv_type,
 	(d.shoestyle_codecust) shoes_style_code_factory,
 	(ISNULL(d.shoestyle_codecust, '') + '/' +ISNULL(d.shoestyle_namecust, '')) cust_shoestyle,
-	c.mat_ecolor,
+	c.color_sn,
 	CASE 
 		WHEN LEFT(p.po, 1) = ',' THEN TRIM(STUFF(p.po, 1, 1, '')) 
 		ELSE TRIM(p.po) 

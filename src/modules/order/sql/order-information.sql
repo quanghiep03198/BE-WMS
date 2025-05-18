@@ -4,7 +4,7 @@ SELECT
 	b.mo_noseq AS mo_noseq,
 	b.or_no AS or_no,
 	d.or_custpo AS or_cust_po,
-	f.mat_ecolor AS mat_ecolor,
+	f.color_sn AS color_sn,
 	g.shoestyle_codefactory AS shoes_style_code_factory,
 	CAST(ISNULL(i.shoestyle_codecust,'') + '/' + ISNULL( i.shoestyle_namecust, '' ) AS NVARCHAR(255)) AS cust_shoes_style,
 	k.size_code AS size_code,

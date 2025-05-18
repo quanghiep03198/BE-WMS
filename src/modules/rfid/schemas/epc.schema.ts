@@ -37,7 +37,7 @@ abstract class BaseAbstractEpcSchema {
 	mo_no: string
 
 	@Prop({ type: String, required: true })
-	mat_ecolor: string
+	color_sn: string
 
 	@Prop({ type: String, required: true })
 	shoes_style_code_factory: string

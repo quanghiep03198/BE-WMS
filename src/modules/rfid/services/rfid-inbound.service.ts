@@ -108,7 +108,7 @@ export class RFIDInboundService {
 				deleted: false,
 				scannable: true,
 				mo_no: { $in: payload.mo_no.split(',').map((m) => m.trim()) },
-				mat_ecolor: payload.mat_ecolor,
+				color_sn: payload.color_sn,
 				shoes_style_code_factory: payload.shoes_style_code_factory
 			})
 			.select('epc')
@@ -148,7 +148,7 @@ export class RFIDInboundService {
 		const factoryCode = this.request.headers['x-user-company'] as string
 		const epcToExchange = await this.epcInboundModel
 			.find({
-				...pick(update, ['mo_no', 'shoes_style_code_factory', 'mat_ecolor', 'size_numcode']),
+				...pick(update, ['mo_no', 'shoes_style_code_factory', 'color_sn', 'size_numcode']),
 				scannable: true
 			})
 			.select('epc')
@@ -191,7 +191,7 @@ export class RFIDInboundService {
 				updateOne: {
 					filter: { epc: item.epc, scannable: true },
 					update: {
-						$set: pick(item, ['mo_no', 'shoes_style_code_factory', 'mat_ecolor', 'size_numcode'])
+						$set: pick(item, ['mo_no', 'shoes_style_code_factory', 'color_sn', 'size_numcode'])
 					}
 				}
 			}))
@@ -221,7 +221,7 @@ export class RFIDInboundService {
 			.where(/* SQL */ `a.created >= CAST(DATEADD(YEAR, -2, GETDATE()) AS DATE)`)
 			.andWhere(/* SQL */ `a.mo_no LIKE CONCAT('%',:search, '%')`)
 			.andWhere(/* SQL */ `a.cofactory_code = :factoryCode`)
-			.andWhere(/* SQL */ `b.mat_ecolor = :color`)
+			.andWhere(/* SQL */ `b.color_sn = :color`)
 			.andWhere(
 				/* SQL */ `(
 					(:factoryCode = 'VA1' AND RIGHT(LEFT(a.mo_no, 3), 1) = 'A') OR
@@ -235,7 +235,7 @@ export class RFIDInboundService {
 			.setParameters({
 				search: params['q'],
 				factoryCode: params['factory_code.eq'],
-				color: params['mat_ecolor.eq']
+				color: params['color_sn.eq']
 			})
 			.getRawMany()
 	}

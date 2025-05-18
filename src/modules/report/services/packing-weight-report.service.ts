@@ -53,8 +53,8 @@ export class PackingWeightReportService {
 				key: 'size_data'
 			},
 			{
-				header: this.i18nService.t('erp.fields.mat_ecolor', { lang: currentLanguage }),
-				key: 'mat_ecolor'
+				header: this.i18nService.t('erp.fields.color_sn', { lang: currentLanguage }),
+				key: 'color_sn'
 			},
 			{
 				header: this.i18nService.t('erp.fields.target_box_qty', { lang: currentLanguage }),

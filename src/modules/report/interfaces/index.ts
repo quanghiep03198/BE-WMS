@@ -8,7 +8,7 @@ export interface IReportSearchParams {
 export interface IReportQueryResult {
 	mo_no: string
 	mat_code: string
-	mat_ecolor: string
+	color_sn: string
 	shoes_style_code_factory: string
 	shaping_dept_name: string
 	order_qty: number
@@ -75,7 +75,7 @@ export type IDailyPackingReport = Array<{
 	brand_name: string
 	po: string
 	shoestyle_codefactory: string
-	mat_ecolor: string
+	color_sn: string
 	po_qty: number
 	weighed_qty: number
 	unweighed_qty: number

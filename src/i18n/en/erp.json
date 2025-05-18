@@ -24,7 +24,7 @@
 		"kg_noend": "Ending Box Number",
 		"kg_nostart": "Starting Box Number",
 		"mat_code": "Finished production code",
-		"mat_ecolor": "Product color",
+		"color_sn": "Product color",
 		"missing_qty": "Missing quantity",
 		"mo_no": "Manufacturing order",
 		"mo_no_actual": "Actual manufacturing order",

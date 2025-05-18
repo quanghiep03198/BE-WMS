@@ -166,8 +166,8 @@ export class InventoryReportService {
 				key: 'shoes_style_code_factory'
 			},
 			{
-				header: this.i18nService.t('erp.fields.mat_ecolor', { lang: currentLanguage }),
-				key: 'mat_ecolor'
+				header: this.i18nService.t('erp.fields.color_sn', { lang: currentLanguage }),
+				key: 'color_sn'
 			},
 			{
 				header: this.i18nService.t('erp.fields.order_qty', { lang: currentLanguage }),

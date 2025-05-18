@@ -35,7 +35,7 @@ export const exchangeOrderValidator = z.object({
 	mo_no: z.string({ required_error: 'Required' }).min(1, { message: 'Required' }),
 	mo_no_actual: z.string({ required_error: 'Required' }).min(1, { message: 'Required' }).toUpperCase(),
 	shoes_style_code_factory: z.string({ required_error: 'Required' }).min(1, { message: 'Required' }).optional(),
-	mat_ecolor: z.string({ required_error: 'Required' }).min(1, { message: 'Required' }).optional()
+	color_sn: z.string({ required_error: 'Required' }).min(1, { message: 'Required' }).optional()
 })
 
 export const exchangeEpcValidator = z.object({
@@ -56,7 +56,7 @@ export const exchangeEpcValidator = z.object({
 export const searchCustomerValidator = z.object({
 	'mo_no.eq': z.string(),
 	'shoes_style_code_factory.eq': z.string(),
-	'mat_ecolor.eq': z.string(),
+	'color_sn.eq': z.string(),
 	q: z.string()
 })
 

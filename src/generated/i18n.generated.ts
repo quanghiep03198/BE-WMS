@@ -52,7 +52,7 @@ export type I18nTranslations = {
             "kg_noend": string;
             "kg_nostart": string;
             "mat_code": string;
-            "mat_ecolor": string;
+            "color_sn": string;
             "missing_qty": string;
             "mo_no": string;
             "mo_no_actual": string;

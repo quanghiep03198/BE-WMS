@@ -40,12 +40,12 @@ export class RFIDOutboundService {
 						scannable: true
 					}
 				},
-				// * Stage 2: Group by mo_no, mat_ecolor, and shoes_style_code_factory, and aggregate sizes
+				// * Stage 2: Group by mo_no, color_sn, and shoes_style_code_factory, and aggregate sizes
 				{
 					$group: {
 						_id: {
 							mo_no: '$mo_no',
-							mat_ecolor: '$mat_ecolor',
+							color_sn: '$color_sn',
 							shoes_style_code_factory: '$shoes_style_code_factory',
 							size_numcode: '$size_numcode'
 						},
@@ -57,7 +57,7 @@ export class RFIDOutboundService {
 					$group: {
 						_id: {
 							mo_no: '$_id.mo_no',
-							mat_ecolor: '$_id.mat_ecolor',
+							color_sn: '$_id.color_sn',
 							shoes_style_code_factory: '$_id.shoes_style_code_factory'
 						},
 						sizes: {
@@ -73,13 +73,13 @@ export class RFIDOutboundService {
 					$project: {
 						_id: 0,
 						mo_no: '$_id.mo_no',
-						mat_ecolor: '$_id.mat_ecolor',
+						color_sn: '$_id.color_sn',
 						shoes_style_code_factory: '$_id.shoes_style_code_factory',
 						sizes: 1
 					}
 				},
 				// * Stage 5: Sort the results
-				{ $sort: { mo_no: 1, mat_ecolor: 1, shoes_style_code_factory: 1 } }
+				{ $sort: { mo_no: 1, color_sn: 1, shoes_style_code_factory: 1 } }
 			],
 			{ readPreference: 'nearest' }
 		)
