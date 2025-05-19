@@ -186,12 +186,12 @@ export class InventoryReportService {
 				key: 'total_outstock_qty'
 			},
 			{
-				header: this.i18nService.t('erp.fields.final_inventory_qty', { lang: currentLanguage }),
-				key: 'final_inv_qty'
-			},
-			{
 				header: this.i18nService.t('erp.fields.actual_inventory_qty', { lang: currentLanguage }),
 				key: 'actual_inv_qty'
+			},
+			{
+				header: this.i18nService.t('erp.fields.final_inventory_qty', { lang: currentLanguage }),
+				key: 'final_inv_qty'
 			}
 		].map((item) => ({ ...item, alignment: { vertical: 'middle', horizontal: 'center' } }))
 
