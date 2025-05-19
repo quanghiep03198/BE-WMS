@@ -30,7 +30,7 @@ export class GL3OAuth2Strategy implements OAuth2Strategy {
 export class GL4OAuth2Strategy implements OAuth2Strategy {
 	public getCredentials(): OAuth2Credentials {
 		return {
-			client_id: env('GL3_CLIENT_ID'),
+			client_id: env('GL4_CLIENT_ID'),
 			client_secret: env('GL4_CLIENT_SECRET')
 		}
 	}
