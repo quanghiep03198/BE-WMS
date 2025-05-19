@@ -157,7 +157,7 @@ export class RFIDSharedService {
 			}
 		)
 
-		changeStream.on('change', throttle(onSnapshot, 500))
+		changeStream.on('change', throttle(onSnapshot, 500, { leading: true, trailing: true }))
 
 		return changeStream
 	}
