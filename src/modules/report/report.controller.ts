@@ -1,4 +1,4 @@
-import { Api, AuthGuard, HttpMethod } from '@/common/decorators'
+import { Api, AuthGuard, HttpMethod, User } from '@/common/decorators'
 import { AllExceptionsFilter } from '@/common/filters'
 import { ZodValidationPipe } from '@/common/pipes'
 import { Body, Controller, DefaultValuePipe, Get, Headers, HttpStatus, Query, Res, UseFilters } from '@nestjs/common'
@@ -97,9 +97,13 @@ export class ReportController {
 	@AuthGuard()
 	async updateInventoryReport(
 		@Query(new ZodValidationPipe(updateInventoryReportQuery)) queries: UpdateInventoryReportQuery,
-		@Body(new ZodValidationPipe(updateInventoryReportPayload)) payload: UpdateInventoryReportDTO
+		@Body(new ZodValidationPipe(updateInventoryReportPayload)) payload: UpdateInventoryReportDTO,
+		@User('username') username: string
 	) {
-		return await this.inventoryReportService.bulkUpdateInventoryReport(queries, payload)
+		return await this.inventoryReportService.bulkUpdateInventoryReport(
+			queries,
+			payload.map((item) => ({ ...item, user_code_updated: username, user_name_updated: username }))
+		)
 	}
 	// #endregion
 

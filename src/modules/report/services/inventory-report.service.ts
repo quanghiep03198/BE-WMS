@@ -1,7 +1,8 @@
 import { type AutoFitColumnOptions, autoFitColumns } from '@/common/helpers/excel.helper'
 import { SuperJson } from '@/common/utils'
 import { TENANCY_DATA_SOURCE } from '@/modules/tenancy/constants'
-import { Inject, Injectable, Logger } from '@nestjs/common'
+import { UserEntity } from '@/modules/user/entities/user.entity'
+import { Inject, Injectable } from '@nestjs/common'
 import { REQUEST } from '@nestjs/core'
 import { addMonths, format } from 'date-fns'
 import { Workbook } from 'exceljs'
@@ -35,8 +36,12 @@ export class InventoryReportService {
 		})
 	}
 
-	async bulkUpdateInventoryReport(queries: UpdateInventoryReportQuery, payload: UpdateInventoryReportDTO) {
+	async bulkUpdateInventoryReport(
+		queries: UpdateInventoryReportQuery,
+		payload: Array<UpdateInventoryReportDTO[number] & Pick<UserEntity, 'user_code_updated' | 'user_name_updated'>>
+	) {
 		const queryRunner = this.dataSource.createQueryRunner()
+
 		const nextYearMonth = addMonths(new Date(queries.inv_year_month), 1)
 		await queryRunner.startTransaction()
 		try {
@@ -81,7 +86,7 @@ export class InventoryReportService {
 
 	private async updateManyInventoryRecord(
 		queries: UpdateInventoryReportQuery & { inv_next_month?: Date },
-		data: UpdateInventoryReportDTO[number]
+		data: UpdateInventoryReportDTO[number] & Pick<UserEntity, 'user_code_updated' | 'user_name_updated'>
 	): Promise<UpdateResult[]> {
 		const currFinalQty: Awaited<Promise<number | null>> = await this.getFinalInventoryQuantity({
 			...queries,
@@ -99,6 +104,8 @@ export class InventoryReportService {
 			this.updateOneInventoryRecord(
 				{ ...queries, size_numcode: data.size_numcode, inv_year_month: format(queries.inv_year_month, 'yyyyMM') },
 				{
+					user_code_updated: data.user_code_updated,
+					user_name_updated: data.user_name_updated,
 					actual_instock_qty: data.mn_ist_qty,
 					actual_outstock_qty: data.mn_ost_qty,
 					final_stock_qty: updateQuantity
@@ -120,7 +127,6 @@ export class InventoryReportService {
 		queries: UpdateInventoryReportQuery & { size_numcode: string },
 		update: QueryDeepPartialEntity<InventoryReportEntity>
 	) {
-		Logger.debug(queries)
 		return await this.dataSource
 			.getRepository(InventoryReportEntity)
 			.createQueryBuilder()
