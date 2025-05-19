@@ -84,7 +84,7 @@ SELECT
 	CAST(a.inv_initialqty AS INT) AS init_inv_qty,
 	CAST(a.inv_istotalqty + a.inv_manualqty AS INT) AS total_instock_qty,
 	CAST(a.inv_ostotalqty + a.inv_manualqtyout AS INT) AS total_outstock_qty,
-	CAST((a.inv_istotalqty + a.inv_manualqty) - (a.inv_ostotalqty + a.inv_manualqtyout) AS INT) AS actual_inv_qty,
+	CAST(a.inv_manualqty -  a.inv_manualqtyout AS INT) AS actual_inv_qty,
 	CAST(a.inv_finalqty AS INT) AS final_inv_qty,
 	-- * Add get JSON data pipeline for size
 	(
