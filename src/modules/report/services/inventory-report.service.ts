@@ -204,7 +204,15 @@ export class InventoryReportService {
 		const data = await this.getMonthlyInventoryReport(format(new Date(month), 'yyyyMM'))
 
 		// * Add data to worksheet
-		for (const record of data) {
+		const filteredData = data.filter(
+			(item) =>
+				item.init_inv_qty > 0 ||
+				item.total_instock_qty > 0 ||
+				item.total_outstock_qty > 0 ||
+				item.actual_inv_qty > 0 ||
+				item.final_inv_qty > 0
+		)
+		for (const record of filteredData) {
 			const row = worksheet.addRow(record)
 			row.height = 30
 			for (let i = 1; i <= worksheet.columns.length; i++) {
