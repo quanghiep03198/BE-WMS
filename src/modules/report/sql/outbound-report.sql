@@ -1,7 +1,7 @@
 DECLARE @FallbackValue NVARCHAR(10) = 'Unknown';
 
--- Retrieves outbound report data for a specific date, including details about shoes, colors, and sizes.
-WITH filtered_data AS (
+-- Gom các điều kiện WHERE giống nhau vào CTE đầu tiên để tái sử dụng
+WITH base_data AS (
    SELECT 
       i.EPC_Code, 
       i.po, 
@@ -23,7 +23,11 @@ WITH filtered_data AS (
       AND i.mo_no <> '13D05B006'
       AND i.stationNO LIKE 'CUS%WH103'
       AND i.po IS NOT NULL
-      AND CAST(i.record_time AS DATE) = @0
+),
+daily_data AS (
+   SELECT *
+   FROM base_data
+   WHERE CAST(record_time AS DATE) = @0
 ),
 -- Size quantity by purchase order 
 purchase_order_sizes AS (
@@ -39,7 +43,7 @@ purchase_order_sizes AS (
       ON or1.or_no = a.or_no
       AND a.isactive = 'Y'
       AND or1.isactive = 'Y'
-   OUTER APPLY (
+   CROSS APPLY (
    VALUES
       ([size_numcode01], [size_qty01] - [size_qtycancel01]),
       ([size_numcode02], [size_qty02] - [size_qtycancel02]),
@@ -95,28 +99,19 @@ purchase_order_sizes AS (
 -- Accumulated quantity calculation
 accumulated_qty AS (
    SELECT po, COUNT(DISTINCT EPC_Code) AS accumulated_qty
-   FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet_backup_Daily
-   WHERE
-      rfid_status = 'B'
-      AND EPC_Code NOT LIKE '303429%'
-      AND EPC_Code NOT LIKE 'E28%'
-      AND mo_no <> '13D05B006'
-      AND stationNO LIKE 'CUS%WH103'
-      AND po IS NOT NULL
+   FROM base_data
    GROUP BY po
+),
+-- Accumulated quantity calculation
+accumulated_size_qty AS (
+   SELECT po, size_code, COUNT(DISTINCT EPC_Code) AS accumulated_qty
+   FROM base_data
+   GROUP BY po, size_code
 ),
 -- Daily productivity calculation
 daily_productivity AS (
-   SELECT po, size_code, COUNT(DISTINCT EPC_Code) AS accumulated_qty
-   FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet_backup_Daily
-   WHERE
-      rfid_status = 'B'
-      AND EPC_Code NOT LIKE '303429%'
-      AND EPC_Code NOT LIKE 'E28%'
-      AND mo_no <> '13D05B006'
-      AND stationNO LIKE 'CUS%WH103'
-      AND po IS NOT NULL
-      AND CAST(record_time AS DATE) = @0
+   SELECT po, size_code, COUNT(DISTINCT EPC_Code) AS qty
+   FROM daily_data
    GROUP BY po, size_code
 ),
 -- Purchase order information
@@ -137,20 +132,20 @@ size_details AS (
       fd.color_sn,
       fd.size_code,
       COUNT(DISTINCT fd.EPC_Code) AS qty
-   FROM filtered_data fd
+   FROM daily_data fd
    GROUP BY 
       fd.po, fd.mo_no, fd.shoestyle_codefactory, 
       fd.color_sn, fd.size_code
 )
--- Main query with JSON output
+-- Main query với các JOIN đã tối ưu
 SELECT
    fd.po,
    COALESCE(fd.shoestyle_codefactory, @FallbackValue) AS shoes_style_code_factory,
    COALESCE(fd.color_sn, @FallbackValue) AS color_sn,
    oi.po_qty AS order_qty,
    COUNT(DISTINCT fd.EPC_Code) AS daily_outbound_qty,
-   dp.accumulated_qty,
-   CAST(oi.po_qty - dp.accumulated_qty AS INT) AS missing_qty,
+   aq.accumulated_qty,
+   CAST(oi.po_qty - aq.accumulated_qty AS INT) AS missing_qty,
    (
       SELECT 
          sd.mo_no,
@@ -180,18 +175,18 @@ SELECT
             ELSE CAST(size_numcode AS NVARCHAR) 
          END AS size_numcode,
       ps.qty AS po_size_qty,
-      COALESCE(dp.accumulated_qty, 0) accumulated_qty,
-      (ps.qty - COALESCE(dp.accumulated_qty, 0)) AS missing_qty
+      COALESCE(dp.qty, 0) accumulated_qty, -- đã xuất trong ngày
+      (ps.qty - COALESCE(asq.accumulated_qty, 0)) AS missing_qty -- còn thiếu đến hiện tại
       FROM purchase_order_sizes ps
+      LEFT JOIN accumulated_size_qty asq ON asq.po = ps.po AND asq.size_code = ps.size_numcode
       LEFT JOIN daily_productivity dp ON dp.po = ps.po AND dp.size_code = ps.size_numcode
       WHERE ps.po = fd.po
       ORDER BY ps.size_numcode ASC
       FOR JSON PATH
    ) overall
-FROM filtered_data fd
-LEFT JOIN accumulated_qty dp ON dp.po = fd.po
+FROM daily_data fd
+LEFT JOIN accumulated_qty aq ON aq.po = fd.po
 LEFT JOIN order_info oi ON oi.po = fd.po
-GROUP BY fd.po, fd.shoestyle_codefactory, fd.color_sn, oi.po_qty, dp.accumulated_qty
+GROUP BY fd.po, fd.shoestyle_codefactory, fd.color_sn, oi.po_qty, aq.accumulated_qty
 ORDER BY fd.po ASC
--- * Avoid parameter sniffing and set max degree of parallelism;
 OPTION (OPTIMIZE FOR UNKNOWN, MAXDOP 4);
