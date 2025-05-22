@@ -8,15 +8,15 @@ import MongooseDeletePlugin from 'mongoose-delete'
 import MongoosePaginatePlugin from 'mongoose-paginate-v2'
 import { TenacyMiddleware } from '../tenancy/tenancy.middleware'
 import { TenancyModule } from '../tenancy/tenancy.module'
-import { THIRD_PARTY_API_SYNC } from '../third-party-api/constants'
 import { ThirdPartyApiModule } from '../third-party-api/third-party-api.module'
-import { POST_DATA_INBOUND_QUEUE, POST_DATA_OUTBOUND_QUEUE } from './constants'
+import { IMPORT_DATA_QUEUE, POST_DATA_INBOUND_QUEUE, POST_DATA_OUTBOUND_QUEUE } from './constants'
 import { RFIDInboundController } from './controllers/rfid-inbound.controller'
 import { RFIDOutboundController } from './controllers/rfid-outbound.controller'
 import { RFIDSharedController } from './controllers/rfid-shared.controller'
 import { FPInventoryEntity } from './entities/fp-inventory.entity'
 import { RFIDMatchCustomerEntity } from './entities/rfid-customer-match.entity'
 import { RFIDReaderEntity } from './entities/rfid-reader.entity'
+import { RFIDImportDataConsumer } from './queues/rfid-import-data.consumer'
 import { RFIDInboundConsumer } from './queues/rfid-inbound.consumer'
 import { RFIDOutboundConsumer } from './queues/rfid-outbound.consumer'
 import {
@@ -40,7 +40,7 @@ import { RFIDCustomerEntitySubscriber } from './subscribers/rfid-customer.entity
 		ThirdPartyApiModule,
 		BullModule.registerQueue({ name: POST_DATA_INBOUND_QUEUE }),
 		BullModule.registerQueue({ name: POST_DATA_OUTBOUND_QUEUE }),
-		BullModule.registerQueue({ name: THIRD_PARTY_API_SYNC }),
+		BullModule.registerQueue({ name: IMPORT_DATA_QUEUE }),
 		TypeOrmModule.forFeature([FPInventoryEntity, RFIDMatchCustomerEntity, RFIDReaderEntity], DATA_SOURCE_DATA_LAKE),
 		MongooseModule.forFeatureAsync([
 			{
@@ -72,6 +72,7 @@ import { RFIDCustomerEntitySubscriber } from './subscribers/rfid-customer.entity
 		RFIDOutboundService,
 		RFIDInboundConsumer,
 		RFIDOutboundConsumer,
+		RFIDImportDataConsumer,
 		RFIDCustomerEntitySubscriber,
 		FPInventoryEntitySubscriber
 	],

@@ -34,3 +34,5 @@ export type CustomerOrderSizeDetail = Pick<
 > & {
 	count: number
 }
+
+export type UploadActions = 'inbound' | 'outbound'
