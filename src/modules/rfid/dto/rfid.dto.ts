@@ -101,6 +101,14 @@ export const findEpcBySizeValidator = z.object({
 	'size_numcode.eq': z.string()
 })
 
+export const uploadDataValidator = z.object({
+	files: z.any(),
+	station: z
+		.string()
+		.nonempty()
+		.transform((val) => val.toUpperCase())
+})
+
 export type UpsertStockOutDTO = z.infer<typeof upsertStockOutValidator>
 export type UpsertStockInDTO = z.infer<typeof updateStockValidator> &
 	Pick<FPInventoryEntity, 'user_code_created' | 'factory_code'>
@@ -112,3 +120,4 @@ export type SearchCustOrderParamsDTO = z.infer<typeof searchCustomerValidator> &
 export type PostReaderDataDTO = z.infer<typeof readerPostDataValidator>
 export type DeleteScannedEpcDTO = z.infer<typeof deleteEpcValidator>
 export type FindEpcBySizeDTO = z.infer<typeof findEpcBySizeValidator>
+export type UploadDataDTO = z.infer<typeof uploadDataValidator>
