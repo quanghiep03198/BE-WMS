@@ -63,7 +63,7 @@ export class RFIDImportDataConsumer extends WorkerHost {
 		const bulkWriteOptions: AnyBulkWriteOperation<EpcSchema>[] = incommingEpcs.map((item) => ({
 			updateOne: {
 				filter: { epc: item.epc, scannable: true },
-				update: { ...item, station_no: station, record_time: new Date(), deleted: false },
+				update: { ...item, station_no: station },
 				upsert: true
 			}
 		}))
