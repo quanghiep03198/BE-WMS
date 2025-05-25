@@ -3,12 +3,12 @@ import { InjectQueue } from '@nestjs/bullmq'
 import { Controller, Get, Headers, HttpStatus, Param, Req, Res } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
 import { Queue } from 'bullmq'
-import { Request, Response } from 'express'
+import { type Request, type Response } from 'express'
 import { uniqBy } from 'lodash'
 import { PaginateModel } from 'mongoose'
+import { RedisService } from '../../redis/redis.service'
 import { FALLBACK_VALUE } from '../rfid/constants'
 import { EpcDocument, EpcInbound } from '../rfid/schemas/epc.schema'
-import { IoRedisService } from './../../messages/ioredis.service'
 import { THIRD_PARTY_API_SYNC } from './constants'
 import { ThirdPartyApiService } from './third-party-api.service'
 
@@ -18,7 +18,7 @@ export class ThirdPartyApiController {
 		@InjectQueue(THIRD_PARTY_API_SYNC) private readonly thirdPartyApiSyncQueue: Queue,
 		@InjectModel(EpcInbound.name) private readonly epcModel: PaginateModel<EpcDocument>,
 		private readonly thirdPartyApiService: ThirdPartyApiService,
-		private readonly ioRedisService: IoRedisService
+		private readonly ioRedisService: RedisService
 	) {}
 
 	@Api({
@@ -31,7 +31,7 @@ export class ThirdPartyApiController {
 	async syncDeckerData(@Headers('X-Tenant-Id') tenantId: string, @Headers('X-User-Company') factoryCode: string) {
 		const validUnknownEpcs = await this.epcModel.find({ mo_no: FALLBACK_VALUE }).lean(true)
 		return await this.thirdPartyApiSyncQueue.add(
-			tenantId,
+			'SYNC_DECKER_DATA',
 			uniqBy(validUnknownEpcs, (item) => item.epc.substring(0, 22)).map((item) => item.epc),
 			{
 				jobId: factoryCode,
@@ -60,14 +60,17 @@ export class ThirdPartyApiController {
 
 	@Get('sync-state')
 	@AuthGuard()
-	async sendSyncState(@Headers('X-User-Company') factoryCode: string, @Res() res: Response) {
+	async sendSyncState(@Res() res: Response) {
 		res.setHeader('Content-Type', 'text/event-stream')
 		res.setHeader('Cache-Control', 'no-cache')
 		const postMessage = (data) => {
 			res.write(`data: ${data}\n\n`)
 			res.flush()
 		}
-		await this.ioRedisService.subscribe(`SYNC_DECKER_DATA:${factoryCode}`, postMessage)
-		res.on('close', res.end)
+		postMessage(JSON.stringify([]))
+		await this.ioRedisService.subscribe('SYNC_DECKER_DATA', postMessage)
+		res.on('close', async () => {
+			await this.ioRedisService.unsubscribe('SYNC_DECKER_DATA')
+		})
 	}
 }
