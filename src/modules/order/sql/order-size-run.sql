@@ -1,14 +1,14 @@
 WITH CTE AS (
 	SELECT
-	CASE 
-	WHEN ISNUMERIC(b.size_numcode) = 1 THEN CAST(b.size_numcode AS FLOAT) 
-	WHEN LEFT(b.size_numcode, 1) = 'K' THEN CAST(SUBSTRING(b.size_numcode, 2, LEN(b.size_numcode)) AS FLOAT)
-	END AS [size_numcode], 
-	SUM(CAST(b.size_qty AS INT)) AS size_qty
+		CASE 
+			WHEN ISNUMERIC(b.size_numcode) = 1 THEN CAST(b.size_numcode AS FLOAT) 
+			WHEN LEFT(b.size_numcode, 1) = 'K' THEN CAST(SUBSTRING(b.size_numcode, 2, LEN(b.size_numcode)) AS FLOAT)
+		END AS [size_numcode], 
+		SUM(CAST(b.size_qty AS INT)) AS size_qty
 	FROM wuerp_vnrd.dbo.ta_ordersizerun a
-	LEFT JOIN wuerp_vnrd.dbo.ta_ordermst or1 ON or1.or_no= a.or_no
-		AND or1.isactive= 'Y'
-	LEFT JOIN wuerp_vnrd.dbo.ta_manufacturdet a1 ON or1.or_no= a1.or_no
+	LEFT JOIN wuerp_vnrd.dbo.ta_ordermst or1 ON or1.or_no = a.or_no
+		AND or1.isactive = 'Y'
+	LEFT JOIN wuerp_vnrd.dbo.ta_manufacturdet a1 ON or1.or_no = a1.or_no
 		AND a1.isactive = 'Y'
 	OUTER APPLY (
 	VALUES
@@ -52,20 +52,18 @@ WITH CTE AS (
 		([size_numcode38], [size_qty38]),
 		([size_numcode39], [size_qty39]),
 		([size_numcode40], [size_qty40])
-	) b (
-	[size_numcode],[size_qty]
-	)
+	) b ([size_numcode],[size_qty])
 	WHERE b.size_qty <> 0
 	AND a.isactive= 'Y'
 	AND a1.mo_no = @0
 	GROUP BY a.size_code, b.size_numcode
 )
 SELECT 
-CASE 
-	WHEN LEN(CAST(size_numcode AS NVARCHAR)) = 1 THEN CONCAT('0', size_numcode)
-	ELSE CAST(size_numcode AS NVARCHAR) 
-END AS size_numcode,
-size_qty
+	CASE 
+		WHEN LEN(CAST(size_numcode AS NVARCHAR)) = 1 THEN CONCAT('0', size_numcode)
+		ELSE CAST(size_numcode AS NVARCHAR) 
+	END AS size_numcode,
+	size_qty
 FROM CTE
 ORDER BY size_numcode ASC;
 

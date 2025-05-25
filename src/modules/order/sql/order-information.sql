@@ -6,7 +6,7 @@ SELECT
 	d.or_custpo AS or_cust_po,
 	f.color_sn AS color_sn,
 	g.shoestyle_codefactory AS shoes_style_code_factory,
-	CAST(ISNULL(i.shoestyle_codecust,'') + '/' + ISNULL( i.shoestyle_namecust, '' ) AS NVARCHAR(255)) AS cust_shoes_style,
+	CAST(ISNULL(i.shoestyle_codecust, '') + '/' + ISNULL( i.shoestyle_namecust, '' ) AS NVARCHAR(255)) AS cust_shoes_style,
 	k.size_code AS size_code,
 	k.size_sumqty AS size_sumqty
 FROM wuerp_vnrd.dbo.ta_manufacturmst a
