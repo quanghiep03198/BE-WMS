@@ -17,7 +17,7 @@ import { appConfigFactory, validateConfig } from './configs'
 import { RotateLogJob } from './jobs/rotate-log.job'
 // Feature modules
 import { PrometheusModule } from '@willsoto/nestjs-prometheus'
-import { IoRedisModule } from './messages/ioredis.module'
+import { EventGateway } from './events/event.gateway'
 import { AuthModule } from './modules/auth/auth.module'
 import { DepartmentModule } from './modules/department/department.module'
 import { OrderModule } from './modules/order/order.module'
@@ -28,17 +28,18 @@ import { TenancyModule } from './modules/tenancy/tenancy.module'
 import { ThirdPartyApiModule } from './modules/third-party-api/third-party-api.module'
 import { UserModule } from './modules/user/user.module'
 import { WarehouseModule } from './modules/warehouse/warehouse.module'
+import { RedisModule } from './redis/redis.module'
 
 @Module({
 	imports: [
 		// * Core modules
 		PrometheusModule.register({
+			global: true,
 			path: '/metrics',
 			defaultMetrics: {
 				enabled: true,
 				config: {}
-			},
-			global: true
+			}
 		}),
 		ConfigModule.forRoot({
 			envFilePath: ['.env'],
@@ -47,7 +48,7 @@ import { WarehouseModule } from './modules/warehouse/warehouse.module'
 			validate: validateConfig
 		}),
 		DatabaseModule.forRootAsync(),
-		IoRedisModule.forRoot(),
+		RedisModule.forRoot(),
 		SentryModule.forRoot(),
 		ScheduleModule.forRoot(),
 		I18nModule.forRootAsync({
@@ -95,6 +96,7 @@ import { WarehouseModule } from './modules/warehouse/warehouse.module'
 	],
 	controllers: [AppController],
 	providers: [
+		EventGateway,
 		RotateLogJob,
 		{
 			provide: APP_FILTER,

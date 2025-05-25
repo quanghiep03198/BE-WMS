@@ -3,8 +3,8 @@ import { Redis } from 'ioredis'
 import { REDIS_PUBLISHER, REDIS_SUBSCRIBER } from './constants'
 
 @Injectable()
-export class IoRedisService implements OnModuleDestroy, OnApplicationShutdown {
-	private readonly logger = new Logger(IoRedisService.name)
+export class RedisService implements OnModuleDestroy, OnApplicationShutdown {
+	private readonly logger = new Logger(RedisService.name)
 
 	constructor(
 		@Inject(REDIS_PUBLISHER) private readonly publisher: Redis,
