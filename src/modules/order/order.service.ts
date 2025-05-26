@@ -78,7 +78,6 @@ export class OrderService {
 				/* SQL */ `IIF(ISNULL(a.or_custpoone, '') = '', a.or_custpo, a.or_custpoone) LIKE CONCAT('%', :searchTerm, '%')`,
 				{ searchTerm }
 			)
-			.andWhere(/* SQL */ `IIF(ISNULL(a.or_custpoone, '') = '', a.or_custpo, a.or_custpoone) = c.po`)
 			.limit(5)
 			.groupBy(/* SQL */ `IIF(ISNULL(a.or_custpoone, '') = '', a.or_custpo, a.or_custpoone)`)
 			.addGroupBy(/* SQL */ `c.total_outbound_qty`)
