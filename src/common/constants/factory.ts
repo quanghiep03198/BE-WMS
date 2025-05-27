@@ -14,6 +14,7 @@ export const FactoryTransCode = {
  */
 export const FACTORY_CODE_REF = {
 	['VA1']: 'GL1',
+	['VB1']: 'GL2',
 	['VB2']: 'GL3',
 	['CA1']: 'GL4'
 } as const

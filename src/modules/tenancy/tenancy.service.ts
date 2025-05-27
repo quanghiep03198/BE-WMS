@@ -18,22 +18,23 @@ export class TenancyService implements OnModuleDestroy {
 	private readonly tenants: Array<ITenancy> = [
 		{
 			id: Tenant.DEV,
-			factory: [FactoryCode.GL1, FactoryCode.GL3, FactoryCode.GL4],
+			factory: [FactoryCode.GL1, FactoryCode.GL2, FactoryCode.GL3, FactoryCode.GL4],
 			host: this.configService.get('TENANT_DEV'),
 			alias: this.getHostAlias(this.configService.get('TENANT_DEV'))
 		},
 		{
 			id: Tenant.MAIN,
-			factory: [FactoryCode.GL1, FactoryCode.GL3, FactoryCode.GL4],
+			factory: [FactoryCode.GL1, FactoryCode.GL2, FactoryCode.GL3, FactoryCode.GL4],
 			host: this.configService.get('TENANT_MAIN'),
 			alias: this.getHostAlias(this.configService.get('TENANT_MAIN'))
 		},
 		{
 			id: Tenant.VN_LIANYING,
-			factory: FactoryCode.GL1,
+			factory: [FactoryCode.GL1, FactoryCode.GL2],
 			host: this.configService.get('TENANT_VN_LIANYING'),
 			alias: this.getHostAlias(this.configService.get('TENANT_VN_LIANYING'))
 		},
+
 		{
 			id: Tenant.VN_LIANSHUN,
 			factory: FactoryCode.GL3,
