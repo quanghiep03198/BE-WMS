@@ -1,14 +1,13 @@
 import { env } from '@/common/utils'
-import { BullRootModuleOptions } from '@nestjs/bullmq'
-import { CacheModuleOptions } from '@nestjs/cache-manager'
-import { ConfigFactory } from '@nestjs/config'
-import { MongooseModuleOptions } from '@nestjs/mongoose'
-import { ThrottlerOptions } from '@nestjs/throttler'
-import { TypeOrmModuleOptions } from '@nestjs/typeorm'
-import * as redisStore from 'cache-manager-redis-store'
+import KeyvRedis, { RedisClientOptions } from '@keyv/redis'
+import { type BullRootModuleOptions } from '@nestjs/bullmq'
+import { type CacheModuleOptions } from '@nestjs/cache-manager'
+import { type ConfigFactory } from '@nestjs/config'
+import { type MongooseModuleOptions } from '@nestjs/mongoose'
+import { type ThrottlerOptions } from '@nestjs/throttler'
+import { type TypeOrmModuleOptions } from '@nestjs/typeorm'
 import { AcceptLanguageResolver, HeaderResolver, I18nOptions } from 'nestjs-i18n'
 import path from 'path'
-import { RedisClientOptions } from 'redis'
 
 export const appConfigFactory: ConfigFactory = () => ({
 	// * Redis BullMQ configuration
@@ -30,10 +29,15 @@ export const appConfigFactory: ConfigFactory = () => ({
 
 	// * Redis cache configuration
 	['cache']: {
-		store: redisStore,
-		host: env('REDIS_HOST'),
-		port: env('REDIS_PORT', { serialize: (value): number => parseInt(value) }),
-		password: env('REDIS_PASSWORD')
+		stores: [
+			new KeyvRedis({
+				socket: {
+					host: env('REDIS_HOST'),
+					port: env('REDIS_PORT', { serialize: (value): number => parseInt(value) })
+				},
+				password: env('REDIS_PASSWORD')
+			})
+		]
 	} as CacheModuleOptions<RedisClientOptions>,
 
 	// * Internationalization configuration
