@@ -5,6 +5,7 @@ ON
    AND target.mo_no = source.mo_no
    AND target.stationNO = source.stationNO
    AND target.rfid_status = 'B'
+   AND target.rfid_use = 'D'
 WHEN MATCHED THEN
    UPDATE SET 
       created = CAST(GETDATE() AS DATETIME),
