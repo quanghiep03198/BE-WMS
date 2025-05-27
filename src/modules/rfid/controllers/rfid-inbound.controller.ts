@@ -51,11 +51,14 @@ export class RFIDInboundController {
 	@Get('sse')
 	@AuthGuard()
 	@UseFilters(AllExceptionsFilter)
-	async streamInboundRFIDData(@Res() res: Response) {
+	async streamInboundRFIDData(@Headers('X-User-Company') factory: string, @Res() res: Response) {
 		res.setHeader('Content-Type', 'text/event-stream')
 		res.setHeader('Cache-Control', 'no-cache')
 		const handleChange = async () => {
-			const data = await this.rfidSharedService.fetchLatestData(this.epcInboundModel, { _page: 1, _limit: 50 })
+			const data = await this.rfidSharedService.fetchLatestData(this.epcInboundModel, factory, {
+				_page: 1,
+				_limit: 50
+			})
 			if (data) {
 				res.write(`data: ${JSON.stringify(data)}\n\n`)
 				res.flush()
@@ -79,10 +82,11 @@ export class RFIDInboundController {
 	})
 	@AuthGuard()
 	async fetchNextInboundEpc(
+		@Headers('X-User-Company') factory: string,
 		@Query('_page', new DefaultValuePipe(1), ParseIntPipe) page: number,
 		@Query('mo_no.eq', new DefaultValuePipe('')) selectedOrder: string
 	) {
-		return await this.rfidSharedService.getIncomingEpc(this.epcInboundModel, {
+		return await this.rfidSharedService.getIncomingEpc(this.epcInboundModel, factory, {
 			_page: page,
 			_limit: 50,
 			'mo_no.eq': selectedOrder
@@ -94,8 +98,8 @@ export class RFIDInboundController {
 		method: HttpMethod.GET
 	})
 	@AuthGuard()
-	async getOrderDetails() {
-		return this.rfidSharedService.getOrderDetail(this.epcInboundModel)
+	async getOrderDetails(@Headers('X-User-Company') factory: string) {
+		return this.rfidSharedService.getOrderDetail(this.epcInboundModel, factory)
 	}
 
 	@Api({

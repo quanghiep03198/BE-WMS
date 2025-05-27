@@ -7,7 +7,7 @@ import { PostReaderDataDTO } from '../dto/rfid.dto'
 import { EpcModel, EpcOutbound } from '../schemas/epc.schema'
 import { RFIDSharedService } from '../services/rfid-shared.service'
 
-@Processor(POST_DATA_OUTBOUND_QUEUE)
+@Processor(POST_DATA_OUTBOUND_QUEUE, { concurrency: 2 })
 export class RFIDOutboundConsumer extends WorkerHost {
 	constructor(
 		@InjectModel(EpcOutbound.name) private readonly epcModel: EpcModel,
@@ -23,7 +23,7 @@ export class RFIDOutboundConsumer extends WorkerHost {
 	 */
 	public async process(job: Job<PostReaderDataDTO, void, string>): Promise<void> {
 		const { data, sn } = job.data
-		return await this.rfidSharedService.bulkWriteRFIDData(this.epcModel, { data, sn })
+		return await this.rfidSharedService.bulkWriteRFIDData(this.epcModel, { code: '103' }, { data, sn })
 	}
 
 	@OnWorkerEvent('completed')

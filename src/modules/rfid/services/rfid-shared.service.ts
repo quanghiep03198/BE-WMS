@@ -2,7 +2,7 @@ import { DATA_SOURCE_DATA_LAKE, MAIN_DATA_SOURCE } from '@/databases/constants'
 import { Inject, Injectable } from '@nestjs/common'
 import { InjectDataSource } from '@nestjs/typeorm'
 import { readFileSync } from 'fs'
-import { throttle } from 'lodash'
+import { isNil, throttle } from 'lodash'
 import { AnyBulkWriteOperation, FilterQuery, UpdateWriteOpResult } from 'mongoose'
 import { join, resolve } from 'path'
 import { DataSource } from 'typeorm'
@@ -24,20 +24,21 @@ export class RFIDSharedService {
 		@InjectDataSource(DATA_SOURCE_DATA_LAKE) private readonly dataSourceDL: DataSource
 	) {}
 
-	public async fetchLatestData(model: EpcModel, args: RFIDSearchParams) {
+	public async fetchLatestData(model: EpcModel, factory: string, args: RFIDSearchParams) {
 		const [epcs, orders, has_invalid] = await Promise.all([
-			this.getIncomingEpc(model, args),
-			this.getOrderDetail(model),
+			this.getIncomingEpc(model, factory, args),
+			this.getOrderDetail(model, factory),
 			this.checkInvalidEpcExist(model)
 		])
 
 		return { epcs, orders, has_invalid }
 	}
 
-	public async getIncomingEpc(model: EpcModel, args: RFIDSearchParams) {
+	public async getIncomingEpc(model: EpcModel, factory: string, args: RFIDSearchParams) {
 		const filterQuery: FilterQuery<EpcDocument> = {
 			scannable: true,
-			mo_no: args['mo_no.eq']
+			mo_no: args['mo_no.eq'],
+			station_no: { $regex: new RegExp(factory, 'i') }
 		}
 		if (!args['mo_no.eq']) delete filterQuery.mo_no
 
@@ -68,11 +69,17 @@ export class RFIDSharedService {
 		return Boolean(hasInvalidEpc)
 	}
 
-	public async getOrderDetail(model: EpcModel) {
+	public async getOrderDetail(model: EpcModel, factory: string) {
 		return await model.aggregate(
 			[
 				// * Stage 1: Match documents that are not deleted
-				{ $match: { deleted: false, scannable: true } },
+				{
+					$match: {
+						deleted: false,
+						scannable: true,
+						station_no: { $regex: new RegExp(factory, 'i') }
+					}
+				},
 				// * Stage 2: Group by mo_no, color_sn, and shoes_style_code_factory, and aggregate sizes
 				{
 					$group: {
@@ -175,7 +182,11 @@ export class RFIDSharedService {
 			.getRawMany()
 	}
 
-	public async bulkWriteRFIDData(model: EpcModel, { data, sn }: PostReaderDataDTO) {
+	public async bulkWriteRFIDData(
+		$model: EpcModel,
+		$station: { readonly prefix?: string; readonly code: '101' | '103' } = { prefix: 'CUS', code: null },
+		{ data, sn }: PostReaderDataDTO
+	) {
 		// * Get the RFID reader information from the database
 		const deviceInformation = await this.dataSourceDL.getRepository(RFIDReaderEntity).findOne({
 			where: { device_sn: sn },
@@ -189,9 +200,11 @@ export class RFIDSharedService {
 		 * * Get the EPCs information from the database with received data
 		 * * Do not receive EPCs that start with '303429' (Dansko's EPCs)
 		 */
+		const station = !isNil(deviceInformation?.factory_code)
+			? `${$station.prefix}_${deviceInformation?.factory_code?.toUpperCase()}_${$station.code}`
+			: FALLBACK_VALUE
 		const epcList = data.tagList.map((item) => item.epc.trim()).join(',')
 		const excludedOrderList = EXCLUDED_ORDERS.join(',')
-		const stationNO = deviceInformation?.station_no ?? FALLBACK_VALUE
 		const incommingEpcs = await this.dataSourceDL.query<StoredRFIDReaderItem[]>(this.epcInformationQuery, [
 			FALLBACK_VALUE,
 			epcList,
@@ -204,11 +217,11 @@ export class RFIDSharedService {
 		const bulkWriteOptions: AnyBulkWriteOperation<EpcSchema>[] = incommingEpcs.map((item) => ({
 			updateOne: {
 				filter: { epc: item.epc, scannable: true },
-				update: { ...item, station_no: stationNO, record_time: new Date(), deleted: false },
+				update: { ...item, station_no: station, record_time: new Date(), deleted: false },
 				upsert: true
 			}
 		}))
-		await model.bulkWrite(bulkWriteOptions, {
+		await $model.bulkWrite(bulkWriteOptions, {
 			writeConcern: { w: 'majority' },
 			ordered: false,
 			retryWrites: true,
