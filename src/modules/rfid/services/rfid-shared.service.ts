@@ -2,7 +2,7 @@ import { DATA_SOURCE_DATA_LAKE, MAIN_DATA_SOURCE } from '@/databases/constants'
 import { Inject, Injectable } from '@nestjs/common'
 import { InjectDataSource } from '@nestjs/typeorm'
 import { readFileSync } from 'fs'
-import { isNil, throttle } from 'lodash'
+import { throttle } from 'lodash'
 import { AnyBulkWriteOperation, FilterQuery, UpdateWriteOpResult } from 'mongoose'
 import { join, resolve } from 'path'
 import { DataSource } from 'typeorm'
@@ -182,11 +182,7 @@ export class RFIDSharedService {
 			.getRawMany()
 	}
 
-	public async bulkWriteRFIDData(
-		$model: EpcModel,
-		$station: { readonly prefix?: string; readonly code: '101' | '103' } = { prefix: 'CUS', code: null },
-		{ data, sn }: PostReaderDataDTO
-	) {
+	public async bulkWriteRFIDData($model: EpcModel, $stationCode: 'WH101' | 'WH103', { data, sn }: PostReaderDataDTO) {
 		// * Get the RFID reader information from the database
 		const deviceInformation = await this.dataSourceDL.getRepository(RFIDReaderEntity).findOne({
 			where: { device_sn: sn },
@@ -196,15 +192,15 @@ export class RFIDSharedService {
 			}
 		})
 
+		const factory = deviceInformation?.factory_code
+		const STATION_PREFIX = 'CUS' as const
+		const station = !!factory ? `${STATION_PREFIX}_${factory}_${$stationCode}` : FALLBACK_VALUE
+		const epcList = data.tagList.map((item) => item.epc.trim()).join(',')
+		const excludedOrderList = EXCLUDED_ORDERS.join(',')
 		/**
 		 * * Get the EPCs information from the database with received data
 		 * * Do not receive EPCs that start with '303429' (Dansko's EPCs)
 		 */
-		const station = !isNil(deviceInformation?.factory_code)
-			? `${$station.prefix}_${deviceInformation?.factory_code?.toUpperCase()}_${$station.code}`
-			: FALLBACK_VALUE
-		const epcList = data.tagList.map((item) => item.epc.trim()).join(',')
-		const excludedOrderList = EXCLUDED_ORDERS.join(',')
 		const incommingEpcs = await this.dataSourceDL.query<StoredRFIDReaderItem[]>(this.epcInformationQuery, [
 			FALLBACK_VALUE,
 			epcList,
@@ -217,7 +213,7 @@ export class RFIDSharedService {
 		const bulkWriteOptions: AnyBulkWriteOperation<EpcSchema>[] = incommingEpcs.map((item) => ({
 			updateOne: {
 				filter: { epc: item.epc, scannable: true },
-				update: { ...item, station_no: station, record_time: new Date(), deleted: false },
+				update: { ...item, station_no: station.toUpperCase(), record_time: new Date(), deleted: false },
 				upsert: true
 			}
 		}))
