@@ -18,13 +18,21 @@ This is a **RESTful API** for a **Warehouse Management System** built with **Nes
 
 ## Features
 
-- **Product Management**: Create, update, delete, and list products.
-- **Inventory Management**: Track stock levels, update quantities, and monitor stock movements.
-- **Order Processing**: Manage incoming and outgoing orders, including validations.
-- **Warehouse Zones**: Manage different storage zones and sections within the warehouse.
-- **Redis Caching**: Improve API performance by caching frequently accessed data.
-- **Database Transactions**: Ensure data integrity using SQL Server and TypeORM.
-- **Authentication and Authorization**: Secure API endpoints using JWT authentication (optional).
+- Product catalog and inventory tracking\*\*
+- Inbound and outbound stock management
+- Warehouse transfer operations
+- RFID-based item tracking
+- User and role management
+- Audit logs for warehouse activities
+- Multi-language support for warehouse operations
+- Reporting and analytics for inventory and warehouse performance
+- Notification system for critical warehouse events
+- Support for multiple warehouses and locations
+- Stocktaking and inventory adjustment workflows
+- Supplier and customer management
+- Order processing and fulfillment
+- Barcode and QR code integration for inventory handling
+- Customizable business rules for warehouse processes
 
 ## Technologies Stack
 
@@ -55,7 +63,11 @@ Before you begin, ensure you have the following installed:
 
 - **Node.js** (v18.x or higher)
 - **SQL Server** (Local or remote instance)
+- **MongoDB Replication set** (Local or remote instance)
+- **Redis 7.x or higher** (Local or remote instance)
 - **NPM** or **PNPM**
+
+If you are confusing about NestJS (A progressive NodeJS Framework), we already wrote a [documentation](./docs/@framework/nestjs.md) about **NestJS** for **absolute beginner** to provide you crucial knowledgement about this framework, you might need to checkout [Official NestJS Documentation](https://nestjs.com/) as well.
 
 ### Folder Structure
 
@@ -91,6 +103,8 @@ Before you begin, ensure you have the following installed:
 │   │   ├── data-source.ts
 │   │   ├── database.module.ts
 │   │   └── seed.ts
+│   ├── events/
+│   │   └── event.gateway.ts
 │   ├── generated/
 │   │   └── i18n.generated.ts
 │   ├── i18n/
@@ -98,9 +112,11 @@ Before you begin, ensure you have the following installed:
 │   │   ├── en/
 │   │   └── vi/
 │   ├── jobs/
-│   │   └── file-logger.service.job.ts
-│   ├── messages/
-│   │   └── ioredis.service.ts
+│   │   └── rotate-log.job.ts
+│   ├── redis/
+│   │   ├── constants
+│   │   ├── redis.module.ts
+│   │   └── redis.service.ts
 │   ├── modules/
 │   │   ├── auth/
 │   │   ├── users/
