@@ -3,7 +3,10 @@ USING (VALUES :values) AS source (
    EPC_Code, mo_no, size_code, rfid_status, rfid_use, record_time, stationNO,
    quantity, storage, FC_server_code, dept_code, dept_name
 )
-ON target.EPC_Code = source.EPC_Code AND target.stationNO = source.stationNO
+ON target.EPC_Code = source.EPC_Code 
+   AND target.mo_no = source.mo_no
+   AND target.stationNO = source.stationNO
+   AND target.rfid_status = 'A'
 WHEN MATCHED THEN
    UPDATE SET 
       created = GETDATE(),
