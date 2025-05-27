@@ -16,6 +16,7 @@ import { TenancyModule } from '../tenancy/tenancy.module'
 import { THIRD_PARTY_API_SYNC } from './constants'
 import { ThirdPartyApiConsumer } from './queues/third-party-api.consumer'
 
+import { EventGateway } from '@/events/event.gateway'
 import { ThirdPartyApiOAuth2Service } from './strategies/third-party-api-oauth2.service'
 import { GL1OAuth2Strategy, GL3OAuth2Strategy, GL4OAuth2Strategy } from './strategies/third-party-api-oauth2.strategy'
 import { ThirdPartyApiController } from './third-party-api.controller'
@@ -36,6 +37,7 @@ import { ThirdPartyApiService } from './third-party-api.service'
 	],
 	controllers: [ThirdPartyApiController],
 	providers: [
+		EventGateway,
 		ThirdPartyApiService,
 		ThirdPartyApiConsumer,
 		ThirdPartyApiOAuth2Service,

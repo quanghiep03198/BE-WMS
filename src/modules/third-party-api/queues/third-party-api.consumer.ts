@@ -1,5 +1,5 @@
 import { FileLogger } from '@/common/helpers/file-logger.helper'
-import { IoRedisService } from '@/messages/ioredis.service'
+import { EventGateway } from '@/events/event.gateway'
 import { Processor, WorkerHost } from '@nestjs/bullmq'
 import { Logger } from '@nestjs/common'
 import { Job } from 'bullmq'
@@ -22,7 +22,7 @@ export class ThirdPartyApiConsumer extends WorkerHost {
 		private readonly thirdPartyApiOAuth2Service: ThirdPartyApiOAuth2Service,
 		private readonly rfidInboundService: RFIDInboundService,
 		private readonly orderService: OrderService,
-		private readonly ioRedisService: IoRedisService
+		private readonly eventGateway: EventGateway
 	) {
 		super()
 		this.initializeProcessState()
@@ -36,13 +36,13 @@ export class ThirdPartyApiConsumer extends WorkerHost {
 		const factoryCode: string = job.id
 		const data = job.data
 
-		await this.broadcastStateChange(factoryCode)
+		await this.broadcastStateChange()
 		try {
 			const accessToken = await this.authenticate(factoryCode)
 			await this.executeSync(data, factoryCode, accessToken)
 		} catch (error) {
 			this.cancelRemainingSteps()
-			await this.broadcastStateChange(factoryCode)
+			await this.broadcastStateChange()
 			FileLogger.error(error)
 			throw new Error(error.message)
 		}
@@ -52,7 +52,8 @@ export class ThirdPartyApiConsumer extends WorkerHost {
 		this.processState = [
 			{ id: 1, name: 'sync_data_steps.step_1', status: 'processing' },
 			{ id: 2, name: 'sync_data_steps.step_2', status: 'waiting' },
-			{ id: 3, name: 'sync_data_steps.step_3', status: 'waiting' }
+			{ id: 3, name: 'sync_data_steps.step_3', status: 'waiting' },
+			{ id: 4, name: 'sync_data_steps.step_4', status: 'waiting' }
 		]
 	}
 
@@ -67,8 +68,8 @@ export class ThirdPartyApiConsumer extends WorkerHost {
 		}
 	}
 
-	private async broadcastStateChange(channelId: string) {
-		await this.ioRedisService.publish(`SYNC_DECKER_DATA:${channelId}`, JSON.stringify(this.processState))
+	private async broadcastStateChange() {
+		this.eventGateway.server.emit('sync_decker_data', this.processState)
 	}
 
 	// * Step 1: Authenticate API via Decker OAuth2
@@ -77,11 +78,11 @@ export class ThirdPartyApiConsumer extends WorkerHost {
 		if (!accessToken) {
 			this.updateProcessState(0, 'failed')
 			this.cancelRemainingSteps()
-			await this.broadcastStateChange(factoryCode)
+			await this.broadcastStateChange()
 			throw new Error('Failed to get Decker OAuth2 token')
 		}
 		this.updateProcessState(0, 'completed')
-		await this.broadcastStateChange(factoryCode)
+		await this.broadcastStateChange()
 		return accessToken
 	}
 
@@ -127,15 +128,15 @@ export class ThirdPartyApiConsumer extends WorkerHost {
 	}
 
 	// * Step 2.2.2: Get order information from ERP
-	private async getOrderInformation(commandNumbers: string[], factoryCode: string): Promise<any[]> {
+	private async getOrderInformation(commandNumbers: string[]): Promise<any[]> {
 		try {
 			const data = await this.orderService.getCustOrderDetails(commandNumbers)
 			this.updateProcessState(2, 'processing')
-			await this.broadcastStateChange(factoryCode)
+			await this.broadcastStateChange()
 			return data
 		} catch {
 			this.updateProcessState(2, 'failed')
-			await this.broadcastStateChange(factoryCode)
+			await this.broadcastStateChange()
 			throw new Error('Failed to get order information from ERP')
 		}
 	}
@@ -156,23 +157,25 @@ export class ThirdPartyApiConsumer extends WorkerHost {
 
 	private async executeSync(data: string[], factoryCode: string, accessToken: string) {
 		this.updateProcessState(1, 'processing')
-		await this.broadcastStateChange(factoryCode)
+		await this.broadcastStateChange()
 		const commandNumbers = await this.fetchCommandNumbers(data, accessToken)
 		if (commandNumbers.length === 0) {
 			this.updateProcessState(1, 'completed')
 			this.cancelRemainingSteps()
-			await this.broadcastStateChange(factoryCode)
+			this.updateProcessState(3, 'completed')
+			await this.broadcastStateChange()
 			this.logger.warn('No data fetched from the customer')
 			return
 		}
 		const epcs = await this.fetchEpcsByCommandNumbers(commandNumbers, accessToken)
 		const availableCommandNumbers = this.extractCommandNumbers(epcs)
-		const orderInformation = await this.getOrderInformation(availableCommandNumbers, factoryCode)
+		const orderInformation = await this.getOrderInformation(availableCommandNumbers)
 		this.updateProcessState(1, 'completed')
 		this.updateProcessState(2, 'processing')
-		await this.broadcastStateChange(factoryCode)
+		await this.broadcastStateChange()
 		await this.upsertData(epcs, orderInformation, factoryCode)
 		this.updateProcessState(2, 'completed')
-		await this.broadcastStateChange(factoryCode)
+		this.updateProcessState(3, 'completed')
+		await this.broadcastStateChange()
 	}
 }
