@@ -46,6 +46,7 @@ This is a **RESTful API** for a **Warehouse Management System** built with **Nes
 ![MicrosoftSQLServer](https://img.shields.io/badge/Microsoft%20SQL%20Server-CC2927?style=for-the-badge&logo=microsoft%20sql%20server&logoColor=white)
 ![MongoDB](https://img.shields.io/badge/MongoDB-%234ea94b.svg?style=for-the-badge&logo=mongodb&logoColor=white)
 ![Redis](https://img.shields.io/badge/redis-%23DD0031.svg?style=for-the-badge&logo=redis&logoColor=white)
+![BullMQ](https://img.shields.io/badge/bullmq-%230f172a.svg?style=for-the-badge)
 ![Jest](https://img.shields.io/badge/-jest-%23C21325?style=for-the-badge&logo=jest&logoColor=white)
 ![Sentry](https://img.shields.io/badge/sentry-%23362D59.svg?style=for-the-badge&logo=sentry&logoColor=white)
 ![SonarQube](https://img.shields.io/badge/SonarQube-black?style=for-the-badge&logo=sonarqube&logoColor=4E9BCD)
@@ -114,7 +115,7 @@ If you are confusing about NestJS (A progressive NodeJS Framework), we already w
 │   ├── jobs/
 │   │   └── rotate-log.job.ts
 │   ├── redis/
-│   │   ├── constants
+│   │   ├── constants/
 │   │   ├── redis.module.ts
 │   │   └── redis.service.ts
 │   ├── modules/
@@ -126,6 +127,7 @@ If you are confusing about NestJS (A progressive NodeJS Framework), we already w
 │   ├── app.controller.ts
 │   ├── main.ts
 │   └── ...
+├── test/
 ├── .env.example
 ├── commitlint.config.js
 ├── docker-compose.yaml
