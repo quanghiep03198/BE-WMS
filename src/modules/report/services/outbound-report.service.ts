@@ -103,7 +103,7 @@ export class OutboundReportService {
 				subRow.getCell(2).value = subRecord.size_numcode + '#'
 				subRow.getCell(2).font = { bold: true }
 				subRow.getCell(2).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'fff2cc' } }
-				subRow.getCell(3).value = subRecord.accumulated_qty
+				subRow.getCell(3).value = subRecord.daily_qty
 				subRow.getCell(3).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'f2dcdb' } }
 				subRow.getCell(4).value = subRecord.po_size_qty
 				subRow.getCell(4).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'fff2cc' } }
