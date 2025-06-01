@@ -3,20 +3,20 @@ SELECT
 	a.mat_code AS mat_code,
 	b.mo_noseq AS mo_noseq,
 	b.or_no AS or_no,
-	d.or_custpo AS or_cust_po,
-	f.color_sn AS color_sn,
-	g.shoestyle_codefactory AS shoes_style_code_factory,
-	CAST(ISNULL(i.shoestyle_codecust, '') + '/' + ISNULL( i.shoestyle_namecust, '' ) AS NVARCHAR(255)) AS cust_shoes_style,
-	k.size_code AS size_code,
-	k.size_sumqty AS size_sumqty
+	c.or_custpo AS or_cust_po,
+	d.color_sn AS color_sn,
+	e.shoestyle_codefactory AS shoes_style_code_factory,
+	CAST(ISNULL(g.shoestyle_codecust, '') + '/' + ISNULL( g.shoestyle_namecust, '' ) AS NVARCHAR(255)) AS cust_shoes_style,
+	h.size_code AS size_code,
+	h.size_sumqty AS size_sumqty
 FROM wuerp_vnrd.dbo.ta_manufacturmst a
 	LEFT JOIN wuerp_vnrd.dbo.ta_manufacturdet b ON a.mo_no=b.mo_no AND b.isactive='Y'
-	LEFT JOIN wuerp_vnrd.dbo.ta_ordermst d ON d.or_no = b.or_no AND d.isactive = 'Y'
-	LEFT JOIN wuerp_vnrd.dbo.ta_productmst f ON f.mat_code= a.mat_code AND f.isactive= 'Y'
-	LEFT JOIN wuerp_vnrd.dbo.ta_shoefactorymst g ON g.shoestyle_systemcodefty = f.shoestyle_systemcodefty AND g.isactive = 'Y'
-	LEFT JOIN wuerp_vnrd.dbo.ta_ordersizerun h ON h.or_no = b.or_no AND h.isactive= 'Y'
-	LEFT JOIN wuerp_vnrd.dbo.ta_shoestylecolor i ON i.shoestyle_templink = f.shoestyle_templink and i.isactive = 'Y'
-	LEFT JOIN wuerp_vnrd.dbo.ta_ordersizerun k ON k.or_no = d.or_no AND k.isactive = 'Y'
+	LEFT JOIN wuerp_vnrd.dbo.ta_ordermst c ON c.or_no = b.or_no AND c.isactive = 'Y'
+	LEFT JOIN wuerp_vnrd.dbo.ta_productmst d ON d.mat_code= a.mat_code AND d.isactive= 'Y'
+	LEFT JOIN wuerp_vnrd.dbo.ta_shoefactorymst e ON e.shoestyle_systemcodefty = d.shoestyle_systemcodefty AND e.isactive = 'Y'
+	LEFT JOIN wuerp_vnrd.dbo.ta_ordersizerun f ON f.or_no = b.or_no AND f.isactive= 'Y'
+	LEFT JOIN wuerp_vnrd.dbo.ta_shoestylecolor g ON g.shoestyle_templink = d.shoestyle_templink and g.isactive = 'Y'
+	LEFT JOIN wuerp_vnrd.dbo.ta_ordersizerun h ON h.or_no = c.or_no AND h.isactive = 'Y'
 WHERE
 	a.created >= CAST(DATEADD(YEAR, -2, GETDATE()) AS DATE)
 	AND a.isactive = 'Y' 
