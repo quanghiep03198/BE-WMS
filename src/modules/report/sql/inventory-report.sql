@@ -1,5 +1,3 @@
--- DECLARE @0 NVARCHAR(10)='202505';
-
 -- * CTE for PO list
 WITH po_list AS (
 SELECT 
@@ -22,6 +20,7 @@ agg_data_mst AS (
 		inv_yearmonth,
 		brand_name,
 		inv_type,
+		shoestyle_cofactory AS shoes_style_code_factory,
 		SUM(mo_qty) AS mo_qty,
 		SUM(inv_initialqty) AS inv_initialqty,
 		SUM(inv_istotalqty) AS inv_istotalqty,
@@ -39,6 +38,7 @@ agg_data_mst AS (
 		mo_no,
 		inv_yearmonth,
 		brand_name,
+		shoestyle_cofactory,
 		inv_type,
       po
 ),
@@ -48,6 +48,7 @@ agg_data AS (
 		mo_no,
 		inv_yearmonth,
 		brand_name,
+		shoes_style_code_factory,
 		inv_type,
 		MAX(mo_qty) AS mo_qty,
 		SUM(inv_initialqty) AS inv_initialqty,
@@ -61,6 +62,7 @@ agg_data AS (
 	AND inv_yearmonth = @0
 	GROUP BY
 		mo_no,
+		shoes_style_code_factory,
 		inv_yearmonth,
 		brand_name,
 		inv_type
@@ -68,18 +70,17 @@ agg_data AS (
 
 -- * Main query
 SELECT
-	a.mo_no,
-	a.inv_yearmonth AS inv_year_month,
 	a.brand_name,
-	a.inv_type,
-	(d.shoestyle_codecust) shoes_style_code_factory,
-	(ISNULL(d.shoestyle_codecust, '') + '/' +ISNULL(d.shoestyle_namecust, '')) cust_shoestyle,
-	c.color_sn,
 	CASE 
 		WHEN LEFT(p.po, 1) = ',' THEN TRIM(STUFF(p.po, 1, 1, '')) 
 		ELSE TRIM(p.po) 
 	END AS po,
 	ISNULL(p.actual_po, '') actual_po,
+	a.mo_no,
+	
+	a.shoes_style_code_factory,
+	(ISNULL(d.shoestyle_codecust, '') + '/' +ISNULL(d.shoestyle_namecust, '')) cust_shoestyle,
+	c.color_sn,
 	CAST(a.mo_qty AS INT) AS order_qty,
 	CAST(a.inv_initialqty AS INT) AS init_inv_qty,
 	CAST(a.inv_istotalqty AS INT) AS total_instock_qty,
@@ -108,10 +109,12 @@ SELECT
 		GROUP BY c.size_numcode
 		ORDER BY RIGHT('0000' + IIF(CHARINDEX('.', c.size_numcode) > 0, c.size_numcode, c.size_numcode + '.0'), 5) ASC
 		FOR JSON PATH
-	) AS detail
+	) AS detail,
+	a.inv_type,
+	a.inv_yearmonth AS inv_year_month
 FROM agg_data a
 INNER JOIN po_list p ON p.mo_no = a.mo_no
-lEFT JOIN wuerp_vnrd.dbo.ta_manufacturmst b ON b.mo_no = a.mo_no AND b.isactive = 'Y'
+LEFT JOIN wuerp_vnrd.dbo.ta_manufacturmst b ON b.mo_no = a.mo_no AND b.isactive = 'Y'
 LEFT JOIN wuerp_vnrd.dbo.ta_productmst c ON c.isactive = 'Y' AND c.mat_code = b.mat_code
 LEFT JOIN wuerp_vnrd.dbo.ta_shoestylecolor d ON d.isactive = 'Y' AND c.shoestyle_templink = d.shoestyle_templink
 ORDER BY a.mo_no DESC
