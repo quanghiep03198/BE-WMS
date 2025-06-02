@@ -94,32 +94,43 @@ export class OrderService {
 	async getCustOrderByCommandNumber(
 		commandNumber: string
 	): Promise<Array<Partial<RFIDMatchCustomerEntity> & { size_sumqty: number }>> {
-		// prettier-ignore
 		return await this.dataSourceERP
 			.createQueryBuilder()
-			.select(/* SQL */`a.mo_no`, 'mo_no')
-			.addSelect(/* SQL */ `a.mat_code`, 'mat_code')
-			.addSelect(/* SQL */ `b.mo_noseq`, 'mo_noseq')
-			.addSelect(/* SQL */ `b.or_no`, 'or_no')
-			.addSelect(/* SQL */ `c.or_custpo`, 'or_cust_po')
-			.addSelect(/* SQL */ `d.color_sn`, 'color_sn')
-			.addSelect(/* SQL */ `e.shoestyle_codefactory`, 'shoes_style_code_factory')
-			.addSelect(/* SQL */ `CAST(ISNULL(g.shoestyle_codecust, '') + '/' + ISNULL(g.shoestyle_namecust, '') AS NVARCHAR(255))`,'cust_shoes_style')
-			.addSelect(/* SQL */ `h.size_code`, 'size_code')
-			.addSelect(/* SQL */ `h.size_sumqty`, 'size_sumqty')
-			.from(/* SQL */ `wuerp_vnrd.dbo.ta_manufacturmst`, 'a')
-			.leftJoin(/* SQL */ `wuerp_vnrd.dbo.ta_manufacturdet`, 'b', /* SQL */ `a.mo_no = b.mo_no AND b.isactive = 'Y'`)
-			.leftJoin(/* SQL */ `wuerp_vnrd.dbo.ta_ordermst`, 'c', /* SQL */ `c.or_no = b.or_no AND c.isactive = 'Y'`)
-			.leftJoin(/* SQL */ `wuerp_vnrd.dbo.ta_productmst`, 'd', /* SQL */ `d.mat_code= a.mat_code AND d.isactive= 'Y'`)
-			.leftJoin(/* SQL */ `wuerp_vnrd.dbo.ta_shoefactorymst`, 'e', /* SQL */ `e.shoestyle_systemcodefty = d.shoestyle_systemcodefty AND e.isactive = 'Y'`)
-			.leftJoin(/* SQL */ `wuerp_vnrd.dbo.ta_ordersizerun`, 'f', /* SQL */ `f.or_no = b.or_no AND f.isactive= 'Y'`)
-			.leftJoin(/* SQL */ `wuerp_vnrd.dbo.ta_shoestylecolor`, 'g', /* SQL */ `g.shoestyle_templink = d.shoestyle_templink AND g.isactive = 'Y'`)
-			.leftJoin(/* SQL */ `wuerp_vnrd.dbo.ta_ordersizerun`, 'h', /* SQL */ `h.or_no = c.or_no AND h.isactive = 'Y'`)
-			.where(/* SQL */ `a.mo_no = :commandNumber`, { commandNumber })
-			.andWhere(/* SQL */ `a.isactive = :recordStatus`, { recordStatus: RecordStatus.ACTIVE })
-			.andWhere(/* SQL */ `a.created >= CAST(DATEADD(YEAR, -2, GETDATE()) AS DATE)`)
-			.orderBy(/* SQL */ `a.mo_no`, /* SQL */ `DESC`)
-			.addOrderBy(/* SQL */ `a.created`, /* SQL */ `DESC`)
+			.select('a.mo_no', 'mo_no')
+			.addSelect('a.mat_code', 'mat_code')
+			.addSelect('b.mo_noseq', 'mo_noseq')
+			.addSelect('b.or_no', 'or_no')
+			.addSelect('c.or_custpo', 'or_cust_po')
+			.addSelect('d.color_sn', 'color_sn')
+			.addSelect('e.shoestyle_codefactory', 'shoes_style_code_factory')
+			.addSelect(
+				`CAST(ISNULL(g.shoestyle_codecust, '') + '/' + ISNULL(g.shoestyle_namecust, '') AS NVARCHAR(255))`,
+				'cust_shoes_style'
+			)
+			.addSelect('h.size_code', 'size_code')
+			.addSelect('h.size_sumqty', 'size_sumqty')
+			.from('ta_manufacturmst', 'a')
+			.leftJoin('ta_manufacturdet', 'b', 'a.mo_no = b.mo_no AND b.isactive = :recordStatus')
+			.leftJoin('ta_ordermst', 'c', 'c.or_no = b.or_no AND c.isactive = :recordStatus')
+			.leftJoin('ta_productmst', 'd', 'd.mat_code = a.mat_code AND d.isactive = :recordStatus')
+			.leftJoin(
+				'ta_shoefactorymst',
+				'e',
+				'e.shoestyle_systemcodefty = d.shoestyle_systemcodefty AND e.isactive = :recordStatus'
+			)
+			.leftJoin('ta_ordersizerun', 'f', 'f.or_no = b.or_no AND f.isactive = :recordStatus')
+			.leftJoin(
+				'ta_shoestylecolor',
+				'g',
+				'g.shoestyle_templink = d.shoestyle_templink AND g.isactive = :recordStatus'
+			)
+			.leftJoin('ta_ordersizerun', 'h', 'h.or_no = c.or_no AND h.isactive = :recordStatus')
+			.where('a.mo_no = :commandNumber', { commandNumber })
+			.andWhere('a.isactive = :recordStatus', { recordStatus: RecordStatus.ACTIVE })
+			.andWhere('a.created >= CAST(DATEADD(YEAR, -2, GETDATE()) AS DATE)')
+			.orderBy('a.mo_no', 'DESC')
+			.addOrderBy('a.created', 'DESC')
+			.setParameters({ commandNumber, recordStatus: RecordStatus.ACTIVE })
 			.getRawMany<Partial<RFIDMatchCustomerEntity> & { size_sumqty: number }>()
 	}
 
