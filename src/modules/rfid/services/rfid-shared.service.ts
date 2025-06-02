@@ -201,16 +201,25 @@ export class RFIDSharedService {
 		 * * Get the EPCs information from the database with received data
 		 * * Do not receive EPCs that start with '303429' (Dansko's EPCs)
 		 */
-		const incommingEpcs = await this.dataSourceDL.query<StoredRFIDReaderItem[]>(this.epcInformationQuery, [
+		let scannedEpcs = await this.dataSourceDL.query<StoredRFIDReaderItem[]>(this.epcInformationQuery, [
 			FALLBACK_VALUE,
 			epcList,
 			EXCLUDED_EPC_PATTERN,
 			excludedOrderList
 		])
 
-		if (incommingEpcs.length === 0) return
+		if (scannedEpcs.length === 0)
+			scannedEpcs = data.tagList.map<StoredRFIDReaderItem>((item) => ({
+				epc: item.epc.trim(),
+				mo_no: FALLBACK_VALUE,
+				color_sn: FALLBACK_VALUE,
+				size_numcode: FALLBACK_VALUE,
+				shoes_style_code_factory: FALLBACK_VALUE,
+				factory_code_produce: factory,
+				station_no: station
+			}))
 
-		const bulkWriteOptions: AnyBulkWriteOperation<EpcSchema>[] = incommingEpcs.map((item) => ({
+		const bulkWriteOptions: AnyBulkWriteOperation<EpcSchema>[] = scannedEpcs.map((item) => ({
 			updateOne: {
 				filter: { epc: item.epc, scannable: true },
 				update: { ...item, station_no: station.toUpperCase(), record_time: new Date(), deleted: false },
