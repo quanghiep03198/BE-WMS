@@ -14,6 +14,7 @@ import {
 	WebSocketServer
 } from '@nestjs/websockets'
 import { Queue } from 'bullmq'
+import { uniqBy } from 'lodash'
 
 import { PaginateModel } from 'mongoose'
 import { Socket } from 'socket.io'
@@ -41,8 +42,12 @@ export class EventGateway implements OnGatewayConnection, OnGatewayDisconnect {
 	@SubscribeMessage('sync_decker_data')
 	protected async onSyncDeckerData(@ConnectedSocket() socket: Socket, @MessageBody() payload: string) {
 		const validUnknownEpcs = await this.epcModel.find({ mo_no: FALLBACK_VALUE }).lean(true)
-		this.thirdApiSyncQueue.add(payload, validUnknownEpcs, {
-			jobId: socket.handshake.headers['x-user-company'] as string
-		})
+		this.thirdApiSyncQueue.add(
+			payload,
+			uniqBy(validUnknownEpcs, (item) => item.epc.substring(0, 22)).map((item) => item.epc),
+			{
+				jobId: socket.handshake.headers['x-user-company'] as string
+			}
+		)
 	}
 }
