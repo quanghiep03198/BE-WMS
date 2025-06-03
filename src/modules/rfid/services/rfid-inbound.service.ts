@@ -103,7 +103,7 @@ export class RFIDInboundService {
 			if (queryRunner.isTransactionActive) await queryRunner.rollbackTransaction()
 			throw new InternalServerErrorException(error.message)
 		} finally {
-			await session.endSession()
+			if (!session.hasEnded) await session.endSession()
 			await queryRunner.release()
 		}
 	}
@@ -225,7 +225,7 @@ export class RFIDInboundService {
 			if (queryRunner.isTransactionActive) await queryRunner.rollbackTransaction()
 			throw new Error(error.message)
 		} finally {
-			await session.endSession()
+			if (!session.hasEnded) await session.endSession()
 			await queryRunner.release()
 		}
 	}

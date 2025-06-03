@@ -128,8 +128,8 @@ export class RFIDOutboundService {
 		const session = await this.epcOutboundModel.startSession()
 		const queryRunner = this.dataSourceDL.createQueryRunner()
 		try {
-			await session.commitTransaction()
-			await queryRunner.commitTransaction()
+			await session.startTransaction()
+			await queryRunner.startTransaction()
 
 			const data = epcToUpsert.map((value) => {
 				return {
@@ -161,7 +161,7 @@ export class RFIDOutboundService {
 			if (queryRunner.isTransactionActive) await queryRunner.rollbackTransaction()
 			throw new InternalServerErrorException(error.message)
 		} finally {
-			await session.endSession()
+			if (!session.hasEnded) await session.endSession()
 			await queryRunner.release()
 		}
 	}
