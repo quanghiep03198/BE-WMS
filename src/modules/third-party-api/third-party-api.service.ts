@@ -76,9 +76,10 @@ export class ThirdPartyApiService {
 		const chunkPayload = chunk(sourceData, 2000)
 
 		await queryRunner.connect()
-		await queryRunner.startTransaction()
 
 		try {
+			await queryRunner.startTransaction()
+
 			for (const payload of chunkPayload) {
 				const sourceValues = payload
 					.map((item) => {
@@ -96,8 +97,8 @@ export class ThirdPartyApiService {
 			await queryRunner.commitTransaction()
 			return { affected: sourceData.length }
 		} catch (error) {
-			await queryRunner.rollbackTransaction()
 			FileLogger.error(error)
+			await queryRunner.rollbackTransaction()
 			throw new InternalServerErrorException(error)
 		} finally {
 			await queryRunner.release()

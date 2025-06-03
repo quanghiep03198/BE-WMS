@@ -14,15 +14,14 @@ import { RFIDSearchParams, StoredRFIDReaderItem } from '../types'
 
 @Injectable()
 export class RFIDSharedService {
-	private readonly epcInformationQuery: string = readFileSync(
-		resolve(join(__dirname, '../sql/epc-information.sql')),
-		'utf-8'
-	)
+	private readonly epcInformationQuery: string
 
 	constructor(
 		@Inject(MAIN_DATA_SOURCE) private readonly dataSource: DataSource,
 		@InjectDataSource(DATA_SOURCE_DATA_LAKE) private readonly dataSourceDL: DataSource
-	) {}
+	) {
+		this.epcInformationQuery = readFileSync(resolve(join(__dirname, '../sql/epc-information.sql')), 'utf-8')
+	}
 
 	public async fetchLatestData(model: EpcModel, factory: string, args: RFIDSearchParams) {
 		const [epcs, orders, has_invalid] = await Promise.all([
@@ -198,30 +197,21 @@ export class RFIDSharedService {
 		const epcList = data.tagList
 			.map((item) => item.epc.trim().toUpperCase())
 			.filter((item) => !item.startsWith(EXCLUDED_EPC_PREFIX))
+			.join(',')
 
 		const excludedOrderList = EXCLUDED_ORDERS.join(',')
 		/**
 		 * * Get the EPCs information from the database with received data
 		 * * Do not receive EPCs that start with '303429' (Dansko's EPCs)
 		 */
-		let scannedEpcs = await this.dataSourceDL.query<StoredRFIDReaderItem[]>(this.epcInformationQuery, [
+		const scannedEpcs = await this.dataSourceDL.query<StoredRFIDReaderItem[]>(this.epcInformationQuery, [
 			FALLBACK_VALUE,
-			epcList.join(','),
+			epcList,
 			EXCLUDED_EPC_PATTERN,
 			excludedOrderList
 		])
 
-		if (scannedEpcs.length === 0) {
-			scannedEpcs = epcList.map<StoredRFIDReaderItem>((epc) => ({
-				epc,
-				mo_no: FALLBACK_VALUE,
-				color_sn: FALLBACK_VALUE,
-				size_numcode: FALLBACK_VALUE,
-				shoes_style_code_factory: FALLBACK_VALUE,
-				factory_code_produce: factory,
-				station_no: station
-			}))
-		}
+		if (scannedEpcs.length === 0) return
 
 		const bulkWriteOptions: AnyBulkWriteOperation<EpcSchema>[] = scannedEpcs.map((item) => ({
 			updateOne: {

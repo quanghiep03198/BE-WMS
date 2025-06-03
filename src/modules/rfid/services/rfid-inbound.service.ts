@@ -70,9 +70,11 @@ export class RFIDInboundService {
 		const payload = await this.epcInboundModel.find({ scannable: true, mo_no: orderCode }).lean(true)
 		const queryRunner = this.dataSourceTNC.createQueryRunner()
 		const session = await this.epcInboundModel.startSession()
-		await Promise.all([queryRunner.startTransaction(), session.startTransaction()])
 
 		try {
+			await session.startTransaction()
+			await queryRunner.startTransaction()
+
 			for (const item of chunk(
 				payload.map((value) => ({
 					...value,
@@ -93,10 +95,16 @@ export class RFIDInboundService {
 				await this.dataSourceDL.query(this.upsertInventoryQuery.replace(':values', values))
 			}
 			await this.epcInboundModel.delete({ mo_no: orderCode }).exec()
-			await Promise.all([queryRunner.commitTransaction(), session.commitTransaction()])
-		} catch (e) {
-			await Promise.all([queryRunner.rollbackTransaction(), session.abortTransaction()])
-			throw new InternalServerErrorException(e)
+			await queryRunner.commitTransaction()
+			await session.commitTransaction()
+		} catch (error) {
+			FileLogger.error(error)
+			if (session.inTransaction()) await session.abortTransaction()
+			if (queryRunner.isTransactionActive) await queryRunner.rollbackTransaction()
+			throw new InternalServerErrorException(error.message)
+		} finally {
+			await session.endSession()
+			await queryRunner.release()
 		}
 	}
 
@@ -120,7 +128,9 @@ export class RFIDInboundService {
 			)
 		}
 		try {
-			await Promise.all([session.startTransaction(), queryRunner.startTransaction('READ UNCOMMITTED')])
+			await session.startTransaction()
+			await queryRunner.startTransaction()
+
 			for (const epcBatch of chunk(
 				epcToExchange.map((item) => item.epc),
 				2000
@@ -135,7 +145,8 @@ export class RFIDInboundService {
 				{ mo_no: payload.mo_no_actual },
 				{ new: true }
 			)
-			await Promise.all([queryRunner.commitTransaction(), session.commitTransaction()])
+			await queryRunner.commitTransaction()
+			await session.commitTransaction()
 		} catch (e) {
 			await Promise.all([queryRunner.rollbackTransaction(), session.abortTransaction()])
 			throw new InternalServerErrorException(e.message)
@@ -172,7 +183,8 @@ export class RFIDInboundService {
 		const queryRunner = this.dataSourceDL.createQueryRunner()
 		await queryRunner.connect()
 		try {
-			await Promise.all([session.startTransaction(), queryRunner.startTransaction()])
+			await session.startTransaction()
+			await queryRunner.startTransaction()
 
 			for (const data of chunk(payload, 2000)) {
 				const values = data
@@ -187,6 +199,7 @@ export class RFIDInboundService {
 					.join(',')
 				await queryRunner.query(this.upsertEpcsQuery.replace(':values', values))
 			}
+
 			const bulkWriteOptions: AnyBulkWriteOperation<typeof EpcInboundSchema>[] = payload.map((item) => ({
 				updateOne: {
 					filter: { epc: item.epc, scannable: true },
@@ -195,13 +208,24 @@ export class RFIDInboundService {
 					}
 				}
 			}))
-			await this.epcInboundModel.bulkWrite(bulkWriteOptions)
-			await Promise.all([queryRunner.commitTransaction(), session.commitTransaction()])
+
+			await this.epcInboundModel.bulkWrite(bulkWriteOptions, {
+				session,
+				writeConcern: { w: 'majority' },
+				readPreference: 'nearest',
+				ordered: false,
+				retryWrites: true
+			})
+
+			await session.commitTransaction()
+			await queryRunner.commitTransaction()
 		} catch (error) {
 			FileLogger.error(error)
-			await Promise.all([session.abortTransaction(), queryRunner.rollbackTransaction()])
-			throw new Error(error)
+			if (session.inTransaction()) await session.abortTransaction()
+			if (queryRunner.isTransactionActive) await queryRunner.rollbackTransaction()
+			throw new Error(error.message)
 		} finally {
+			await session.endSession()
 			await queryRunner.release()
 		}
 	}

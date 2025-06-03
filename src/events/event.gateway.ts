@@ -46,7 +46,8 @@ export class EventGateway implements OnGatewayConnection, OnGatewayDisconnect {
 			payload,
 			uniqBy(validUnknownEpcs, (item) => item.epc.substring(0, 22)).map((item) => item.epc),
 			{
-				jobId: socket.handshake.headers['x-user-company'] as string
+				jobId: socket.handshake.headers['x-user-company'] as string,
+				removeOnComplete: true
 			}
 		)
 	}

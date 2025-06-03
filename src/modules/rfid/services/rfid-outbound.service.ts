@@ -1,3 +1,4 @@
+import { FileLogger } from '@/common/helpers'
 import { DATA_SOURCE_DATA_LAKE } from '@/databases/constants'
 import { InjectQueue } from '@nestjs/bullmq'
 import { Injectable, InternalServerErrorException } from '@nestjs/common'
@@ -126,8 +127,10 @@ export class RFIDOutboundService {
 
 		const session = await this.epcOutboundModel.startSession()
 		const queryRunner = this.dataSourceDL.createQueryRunner()
-		await Promise.all([session.startTransaction(), queryRunner.startTransaction()])
 		try {
+			await session.commitTransaction()
+			await queryRunner.commitTransaction()
+
 			const data = epcToUpsert.map((value) => {
 				return {
 					...value,
@@ -150,10 +153,16 @@ export class RFIDOutboundService {
 				)
 				.exec()
 
-			await Promise.all([queryRunner.commitTransaction(), session.commitTransaction()])
+			await queryRunner.commitTransaction()
+			await session.commitTransaction()
 		} catch (error) {
-			await Promise.all([queryRunner.rollbackTransaction(), session.abortTransaction()])
-			throw new InternalServerErrorException(error)
+			FileLogger.error(error)
+			if (session.inTransaction()) await session.abortTransaction()
+			if (queryRunner.isTransactionActive) await queryRunner.rollbackTransaction()
+			throw new InternalServerErrorException(error.message)
+		} finally {
+			await session.endSession()
+			await queryRunner.release()
 		}
 	}
 }
