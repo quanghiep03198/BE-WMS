@@ -59,19 +59,18 @@ export class OrderService {
 						.addSelect(/* SQL */ `COUNT(DISTINCT EPC_Code)`, 'total_outbound_qty')
 						.from(/* SQL */ `DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet_backup_Daily`, 'c')
 						.where(/* SQL */ `c.rfid_status = 'B'`)
-						.andWhere(/* SQL */ `c.rfid_use = 'D'`)
 						.andWhere(/* SQL */ `c.stationNO LIKE 'CUS%WH103'`)
 						.groupBy('po')
 				},
 				'c',
 				/* SQL */ `c.po = IIF(ISNULL(a.or_custpoone, '') = '', a.or_custpo, a.or_custpoone)`
 			)
-			.where(/* SQL */ `a.custbrand_id IN (${cusBrandSubQuery})`)
-			.andWhere(/* SQL */ `a.isactive = :recordStatus`, { recordStatus: RecordStatus.ACTIVE })
-			.andWhere(
+			.where(
 				/* SQL */ `IIF(ISNULL(a.or_custpoone, '') = '', a.or_custpo, a.or_custpoone) LIKE CONCAT('%', :searchTerm, '%')`,
 				{ searchTerm }
 			)
+			.andWhere(/* SQL */ `a.custbrand_id IN (${cusBrandSubQuery})`)
+			.andWhere(/* SQL */ `a.isactive = :recordStatus`, { recordStatus: RecordStatus.ACTIVE })
 			.limit(5)
 			.groupBy(/* SQL */ `IIF(ISNULL(a.or_custpoone, '') = '', a.or_custpo, a.or_custpoone)`)
 			.addGroupBy(/* SQL */ `c.total_outbound_qty`)
@@ -129,7 +128,9 @@ export class OrderService {
 			.andWhere('a.isactive = :recordStatus', { recordStatus: RecordStatus.ACTIVE })
 			.andWhere('a.created >= CAST(DATEADD(YEAR, -2, GETDATE()) AS DATE)')
 			.orderBy('a.mo_no', 'DESC')
+			.orderBy('b.mo_noseq', 'ASC')
 			.addOrderBy('a.created', 'DESC')
+			.limit(1)
 			.setParameters({ commandNumber, recordStatus: RecordStatus.ACTIVE })
 			.getRawMany<Partial<RFIDMatchCustomerEntity> & { size_sumqty: number }>()
 	}
