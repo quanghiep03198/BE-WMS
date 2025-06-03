@@ -6,7 +6,7 @@ import { throttle } from 'lodash'
 import { AnyBulkWriteOperation, FilterQuery, UpdateWriteOpResult } from 'mongoose'
 import { join, resolve } from 'path'
 import { DataSource } from 'typeorm'
-import { EXCLUDED_EPC_PATTERN, EXCLUDED_ORDERS, FALLBACK_VALUE } from '../constants'
+import { EXCLUDED_EPC_PATTERN, EXCLUDED_EPC_PREFIX, EXCLUDED_ORDERS, FALLBACK_VALUE } from '../constants'
 import { FindEpcBySizeDTO, PostReaderDataDTO } from '../dto/rfid.dto'
 import { RFIDReaderEntity } from '../entities/rfid-reader.entity'
 import { EpcDocument, EpcModel, EpcSchema } from '../schemas/epc.schema'
@@ -195,7 +195,10 @@ export class RFIDSharedService {
 		const factory = deviceInformation?.factory_code
 		const STATION_PREFIX = 'CUS' as const
 		const station = !!factory ? `${STATION_PREFIX}_${factory}_${$stationCode}` : FALLBACK_VALUE
-		const epcList = data.tagList.map((item) => item.epc.trim()).join(',')
+		const epcList = data.tagList
+			.map((item) => item.epc.trim().toUpperCase())
+			.filter((item) => !item.startsWith(EXCLUDED_EPC_PREFIX))
+
 		const excludedOrderList = EXCLUDED_ORDERS.join(',')
 		/**
 		 * * Get the EPCs information from the database with received data
@@ -203,14 +206,14 @@ export class RFIDSharedService {
 		 */
 		let scannedEpcs = await this.dataSourceDL.query<StoredRFIDReaderItem[]>(this.epcInformationQuery, [
 			FALLBACK_VALUE,
-			epcList,
+			epcList.join(','),
 			EXCLUDED_EPC_PATTERN,
 			excludedOrderList
 		])
 
-		if (scannedEpcs.length === 0)
-			scannedEpcs = data.tagList.map<StoredRFIDReaderItem>((item) => ({
-				epc: item.epc.trim(),
+		if (scannedEpcs.length === 0) {
+			scannedEpcs = epcList.map<StoredRFIDReaderItem>((epc) => ({
+				epc,
 				mo_no: FALLBACK_VALUE,
 				color_sn: FALLBACK_VALUE,
 				size_numcode: FALLBACK_VALUE,
@@ -218,6 +221,7 @@ export class RFIDSharedService {
 				factory_code_produce: factory,
 				station_no: station
 			}))
+		}
 
 		const bulkWriteOptions: AnyBulkWriteOperation<EpcSchema>[] = scannedEpcs.map((item) => ({
 			updateOne: {
