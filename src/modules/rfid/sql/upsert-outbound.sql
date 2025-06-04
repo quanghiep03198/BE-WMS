@@ -8,14 +8,14 @@ ON
    AND target.rfid_use = 'D'
 WHEN MATCHED THEN
    UPDATE SET 
-      created = CAST(GETDATE() AS DATETIME),
+      po = source.po,
       mo_no = source.mo_no, 
       size_code = source.size_code,
-      record_time = CAST(GETDATE() AS DATETIME), 
       stationNO = source.stationNO,
       FC_server_code = source.FC_server_code,
+      created = CAST(GETDATE() AS DATETIME),
+      record_time = CAST(GETDATE() AS DATETIME), 
       quantity = -1,
-      po = source.po,
       rfid_status = 'B',
       rfid_use = 'D'
 WHEN NOT MATCHED THEN
