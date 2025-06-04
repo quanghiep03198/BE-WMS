@@ -1,4 +1,4 @@
-import { DATA_SOURCE_ERP, RecordStatus } from '@/databases/constants'
+import { DATA_SOURCE_DATA_LAKE, DATA_SOURCE_ERP, RecordStatus } from '@/databases/constants'
 import { Injectable } from '@nestjs/common'
 import { InjectDataSource } from '@nestjs/typeorm'
 import { readFileSync } from 'fs-extra'
@@ -11,7 +11,10 @@ import { SizeRun } from './types'
 export class OrderService {
 	private readonly sizeRunQuery: string = readFileSync(resolve(join(__dirname, './sql/order-size-run.sql')), 'utf-8')
 
-	constructor(@InjectDataSource(DATA_SOURCE_ERP) private readonly dataSourceERP: DataSource) {}
+	constructor(
+		@InjectDataSource(DATA_SOURCE_ERP) private readonly dataSourceERP: DataSource,
+		@InjectDataSource(DATA_SOURCE_DATA_LAKE) private readonly dataSourceDL: DataSource
+	) {}
 
 	async searchCommandNumber(factoryCode: string, searchTerm: string) {
 		return await this.dataSourceERP

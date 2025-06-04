@@ -1,3 +1,4 @@
+import { FileLogger } from '@/common/helpers'
 import { DATA_SOURCE_DATA_LAKE, MAIN_DATA_SOURCE } from '@/databases/constants'
 import { Inject, Injectable } from '@nestjs/common'
 import { InjectDataSource } from '@nestjs/typeorm'
@@ -6,7 +7,13 @@ import { throttle } from 'lodash'
 import { AnyBulkWriteOperation, FilterQuery, UpdateWriteOpResult } from 'mongoose'
 import { join, resolve } from 'path'
 import { DataSource } from 'typeorm'
-import { EXCLUDED_EPC_PATTERN, EXCLUDED_EPC_PREFIX, EXCLUDED_ORDERS, FALLBACK_VALUE } from '../constants'
+import {
+	EXCLUDED_EPC_PATTERN,
+	EXCLUDED_EPC_PREFIX,
+	EXCLUDED_ORDERS,
+	FALLBACK_VALUE,
+	InventoryActions
+} from '../constants'
 import { FindEpcBySizeDTO, PostReaderDataDTO } from '../dto/rfid.dto'
 import { RFIDReaderEntity } from '../entities/rfid-reader.entity'
 import { EpcDocument, EpcModel, EpcSchema } from '../schemas/epc.schema'
@@ -242,5 +249,36 @@ export class RFIDSharedService {
 		return await model
 			.updateMany({ epc: { $in: epcs } }, { deleted: true, scannable: rescannable }, { new: true })
 			.exec()
+	}
+
+	public async getArchivedEpcs(factoryCode: string, commandNumber: string) {
+		const subQuery = this.dataSourceDL
+			.createQueryBuilder()
+			.select('b.EPC_Code', 'EPC_Code')
+			.from('dv_InvRFIDrecorddet_backup_Daily', 'b')
+			.where('b.rfid_status = :_status')
+			.andWhere('b.stationNO = :_station')
+			.andWhere('b.mo_no = :mo_no')
+			.getQuery()
+
+		const queryBuilder = this.dataSourceDL
+			.createQueryBuilder()
+			.select('DISTINCT a.EPC_Code', 'epc')
+			.from('dv_InvRFIDrecorddet_backup_Daily', 'a')
+			.where('a.rfid_status = :status')
+			.andWhere('a.mo_no = :mo_no')
+			.andWhere('a.stationNO = :station')
+			.andWhere(`a.EPC_Code NOT IN (${subQuery})`)
+			.setParameters({
+				mo_no: commandNumber.toUpperCase(),
+				status: InventoryActions.INBOUND,
+				_status: InventoryActions.OUTBOUND,
+				station: `CUS_${factoryCode}_WH101`,
+				_station: `CUS_${factoryCode}_WH103`
+			})
+
+		FileLogger.debug(queryBuilder.getSql())
+
+		return await queryBuilder.getRawMany<Record<'epc', string>>()
 	}
 }

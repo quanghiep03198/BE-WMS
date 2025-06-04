@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import { Api, HttpMethod } from '@/common/decorators'
+import { Api, AuthGuard, HttpMethod } from '@/common/decorators'
 import { ZodValidationPipe } from '@/common/pipes'
 import { InjectQueue } from '@nestjs/bullmq'
-import { Body, Controller, Headers, HttpStatus, UploadedFiles, UseInterceptors } from '@nestjs/common'
+import { Body, Controller, Headers, HttpStatus, Param, UploadedFiles, UseInterceptors } from '@nestjs/common'
 import { FileFieldsInterceptor } from '@nestjs/platform-express'
 import { Queue } from 'bullmq'
 import { IMPORT_DATA_QUEUE } from '../constants'
@@ -20,10 +20,25 @@ export class RFIDSharedController {
 	// #region Others
 	@Api({
 		endpoint: 'devices',
-		method: HttpMethod.GET
+		method: HttpMethod.GET,
+		statusCode: HttpStatus.OK
 	})
+	@AuthGuard()
 	async getWarehouseRFIDDevices(@Headers('X-User-Company') factoryCode: string) {
 		return await this.rfidSharedService.getWarehouseRFIDDevices(factoryCode)
+	}
+
+	@Api({
+		endpoint: 'archived-epcs/:commandNumber',
+		method: HttpMethod.GET,
+		statusCode: HttpStatus.OK
+	})
+	@AuthGuard()
+	async getArchivedEpcs(
+		@Headers('X-User-Company') factoryCode: string,
+		@Param('commandNumber') commandNumber: string
+	) {
+		return await this.rfidSharedService.getArchivedEpcs(factoryCode, commandNumber)
 	}
 
 	@Api({
