@@ -3,7 +3,6 @@ import { DATA_SOURCE_DATA_LAKE, DATA_SOURCE_ERP } from '@/databases/constants'
 import { TENANCY_DATA_SOURCE } from '@/modules/tenancy/constants'
 import { InjectQueue } from '@nestjs/bullmq'
 import { Inject, Injectable, InternalServerErrorException, NotFoundException, Scope } from '@nestjs/common'
-import { REQUEST } from '@nestjs/core'
 import { InjectModel } from '@nestjs/mongoose'
 import { InjectDataSource } from '@nestjs/typeorm'
 import { Queue } from 'bullmq'
@@ -38,7 +37,6 @@ export class RFIDInboundService {
 	)
 
 	constructor(
-		@Inject(REQUEST) private readonly request: Request,
 		@Inject(TENANCY_DATA_SOURCE) private readonly dataSourceTNC: DataSource,
 		@InjectDataSource(DATA_SOURCE_DATA_LAKE) private readonly dataSourceDL: DataSource,
 		@InjectDataSource(DATA_SOURCE_ERP) private readonly dataSourceERP: DataSource,
@@ -155,8 +153,7 @@ export class RFIDInboundService {
 		}
 	}
 
-	public async exchangeEpcBySize(update: ExchangeEpcDTO) {
-		const factoryCode = this.request.headers['x-user-company'] as string
+	public async exchangeEpcBySize(factoryCode: string, update: ExchangeEpcDTO) {
 		const epcToExchange = await this.epcInboundModel
 			.find({
 				...pick(update, ['mo_no', 'shoes_style_code_factory', 'color_sn', 'size_numcode']),

@@ -147,8 +147,11 @@ export class RFIDInboundController {
 		endpoint: 'exchange-epc-by-size'
 	})
 	@AuthGuard()
-	async exchangeEpcBySize(@Body(new ZodValidationPipe(exchangeEpcValidator)) payload: ExchangeEpcDTO) {
-		return await this.rfidInboundService.exchangeEpcBySize(payload)
+	async exchangeEpcBySize(
+		@Headers('X-User-Company') factoryCode: string,
+		@Body(new ZodValidationPipe(exchangeEpcValidator)) payload: ExchangeEpcDTO
+	) {
+		return await this.rfidInboundService.exchangeEpcBySize(factoryCode, payload)
 	}
 
 	@Api({
