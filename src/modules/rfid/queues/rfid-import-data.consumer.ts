@@ -9,7 +9,13 @@ import { readFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { Readable } from 'node:stream'
 import { DataSource } from 'typeorm'
-import { EXCLUDED_EPC_PATTERN, EXCLUDED_ORDERS, FALLBACK_VALUE, IMPORT_DATA_QUEUE } from '../constants'
+import {
+	EXCLUDED_EPC_PATTERN,
+	EXCLUDED_EPC_PREFIX,
+	EXCLUDED_ORDERS,
+	FALLBACK_VALUE,
+	IMPORT_DATA_QUEUE
+} from '../constants'
 import { EpcInbound, EpcModel, EpcOutbound, EpcSchema } from '../schemas/epc.schema'
 import { StoredRFIDReaderItem } from '../types'
 
@@ -32,7 +38,7 @@ export class RFIDImportDataConsumer extends WorkerHost {
 		/**
 		 * @description Dansko's EPC prefix to exclude from the import
 		 */
-		const EXCLUDE_EPC_PREFIX = '303429'
+
 		const station = job.id
 		const files = job.data
 		const results: Set<string> = new Set()
@@ -41,7 +47,7 @@ export class RFIDImportDataConsumer extends WorkerHost {
 				Readable.from(Buffer.from(file.buffer))
 					.pipe(csvParser())
 					.on('data', (data: { epc: string }) => {
-						if (data.epc && !data.epc.startsWith(EXCLUDE_EPC_PREFIX) && !results.has(data.epc))
+						if (data.epc && !data.epc.startsWith(EXCLUDED_EPC_PREFIX) && !results.has(data.epc))
 							results.add(data.epc.trim())
 					})
 					.on('end', resolve)
@@ -68,9 +74,9 @@ export class RFIDImportDataConsumer extends WorkerHost {
 			}
 		}))
 
-		const model = station.endsWith('101') ? this.inboundEpcModel : this.outboundEpcModel
+		const $model = station.endsWith('101') ? this.inboundEpcModel : this.outboundEpcModel
 
-		await model.bulkWrite(bulkWriteOptions, {
+		await $model.bulkWrite(bulkWriteOptions, {
 			writeConcern: { w: 'majority' },
 			ordered: false,
 			retryWrites: true,
