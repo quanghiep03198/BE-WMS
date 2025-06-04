@@ -1,3 +1,5 @@
+SET STATISTICS TIME, IO ON;
+
 DECLARE @FallbackValue NVARCHAR(10) = 'Unknown';
 
 -- * Retrieves inbound report data around last 2 years
@@ -6,11 +8,11 @@ WITH filtered_data AS (
 	FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet_backup_Daily WITH (NOLOCK)
 	WHERE 
 		rfid_status = 'A'
+		AND record_time >= CAST(DATEADD(YEAR, -2, GETDATE()) AS DATE)
 		AND EPC_Code NOT LIKE '303429%'
 		AND EPC_Code NOT LIKE 'E28%'
-		AND mo_no <> '13D05B006'
+		AND mo_no NOT IN ('13D05B006', '13A08C003')
 		AND stationNO LIKE 'CUS%WH10[12]'
-		AND record_time >= CAST(DATEADD(YEAR, -2, GETDATE()) AS DATE)
 ),
 
 -- * Command number details
@@ -55,7 +57,13 @@ SELECT
 	ac.accumulated_qty,
 	COUNT(DISTINCT ds.EPC_Code) AS daily_inbound_qty,
 	CAST((manf.mo_totalqty - ac.accumulated_qty) AS INT) AS missing_qty,
-	sz.size_data
+	(
+		SELECT size_numcode, COUNT(DISTINCT EPC_Code) AS qty
+		FROM filtered_data d 
+		WHERE d.mo_no = ds.mo_no AND CAST(d.record_time AS DATE) = @0
+		GROUP BY size_numcode
+		FOR JSON PATH
+	) AS size_data
 FROM filtered_data ds
 LEFT JOIN DV_DATA_LAKE.dbo.dv_rfidmatchmst_cust rmc WITH (NOLOCK)
 	ON ds.EPC_Code = rmc.EPC_Code
@@ -69,20 +77,20 @@ LEFT JOIN department_list dg
 	ON dg.mo_no = ds.mo_no AND dg.factory_code = ds.factory_code
 LEFT JOIN accumulated ac
 	ON ac.mo_no = ds.mo_no
-OUTER APPLY (
-	SELECT (
-		SELECT size_numcode, COUNT(DISTINCT EPC_Code) AS qty
-		FROM filtered_data d 
-		WHERE d.mo_no = ds.mo_no AND CAST(d.record_time AS DATE) = @0
-		GROUP BY size_numcode
-		FOR JSON PATH
-	) AS size_data
-) sz
 WHERE CAST(ds.record_time AS DATE) = @0
 GROUP BY 
 	ds.factory_code, ds.mo_no, rmc.shoestyle_codefactory, 
 	prod.color_sn, manf.mo_totalqty, ac.accumulated_qty,
-	sg.storage_name, dg.dept_name, sz.size_data
-	
+	sg.storage_name, dg.dept_name
+ORDER BY ds.mo_no DESC
 -- * Avoid parameter sniffing and set max degree of parallelism;
-OPTION (OPTIMIZE FOR UNKNOWN);
+OPTION (
+	OPTIMIZE FOR UNKNOWN,                        -- * Avoid "Paramenter Sniffing" issues
+	USE HINT('ENABLE_PARALLEL_PLAN_PREFERENCE'), -- * Prioritize parallel plan
+	QUERYTRACEON 2371,									-- * Enable automatic statistics updates for large tables
+	QUERYTRACEON 4199,									-- * Enable all query optimizer fixes
+   QUERYTRACEON 8649,                           -- * Force parallel plan
+	FAST 100,                                    -- * Prioritize first 100 rows for faster response
+	MAXDOP 8,                                    -- * Limit parallelism to 8 cores         
+	RECOMPILE                                    -- * Recompile for each execution to ensure optimal plan
+);
