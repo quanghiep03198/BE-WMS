@@ -1,5 +1,5 @@
 import { env } from '@/common/utils'
-import KeyvRedis, { RedisClientOptions } from '@keyv/redis'
+import KeyvRedis, { type RedisClientOptions } from '@keyv/redis'
 import { type BullRootModuleOptions } from '@nestjs/bullmq'
 import { type CacheModuleOptions } from '@nestjs/cache-manager'
 import { type ConfigFactory } from '@nestjs/config'
@@ -29,15 +29,14 @@ export const appConfigFactory: ConfigFactory = () => ({
 
 	// * Redis cache configuration
 	['cache']: {
-		stores: [
-			new KeyvRedis({
-				socket: {
-					host: env('REDIS_HOST'),
-					port: env('REDIS_PORT', { serialize: (value): number => parseInt(value) })
-				},
-				password: env('REDIS_PASSWORD')
-			})
-		]
+		isGlobal: true,
+		store: new KeyvRedis({
+			socket: {
+				host: env('REDIS_HOST'),
+				port: env('REDIS_PORT', { serialize: (value): number => parseInt(value) })
+			},
+			password: env('REDIS_PASSWORD')
+		})
 	} as CacheModuleOptions<RedisClientOptions>,
 
 	// * Internationalization configuration
