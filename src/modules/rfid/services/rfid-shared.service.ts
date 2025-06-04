@@ -1,4 +1,3 @@
-import { FileLogger } from '@/common/helpers'
 import { DATA_SOURCE_DATA_LAKE, MAIN_DATA_SOURCE } from '@/databases/constants'
 import { Inject, Injectable } from '@nestjs/common'
 import { InjectDataSource } from '@nestjs/typeorm'
@@ -261,7 +260,7 @@ export class RFIDSharedService {
 			.andWhere('b.mo_no = :mo_no')
 			.getQuery()
 
-		const queryBuilder = this.dataSourceDL
+		return await this.dataSourceDL
 			.createQueryBuilder()
 			.select('DISTINCT a.EPC_Code', 'epc')
 			.from('dv_InvRFIDrecorddet_backup_Daily', 'a')
@@ -276,9 +275,6 @@ export class RFIDSharedService {
 				station: `CUS_${factoryCode}_WH101`,
 				_station: `CUS_${factoryCode}_WH103`
 			})
-
-		FileLogger.debug(queryBuilder.getSql())
-
-		return await queryBuilder.getRawMany<Record<'epc', string>>()
+			.getRawMany<Record<'epc', string>>()
 	}
 }
