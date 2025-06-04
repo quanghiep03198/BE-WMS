@@ -6,10 +6,10 @@ export enum InventoryActions {
 export enum InventoryStorageType {
 	NORMAL_IMPORT = 'A',
 	NORMAL_EXPORT = 'B',
-	SCRAP = 'C',
-	TRANSFER_INBOUND = 'D',
-	TRANSFER_OUTBOUND = 'E',
-	RECYCLING = 'F'
+	RECYCLING = 'C',
+	SCRAP = 'F'
+	// TRANSFER_INBOUND = 'D',
+	// TRANSFER_OUTBOUND = 'E',
 }
 
 export enum ProducingProcessSuffix {
