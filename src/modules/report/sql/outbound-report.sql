@@ -20,9 +20,10 @@ WITH base_data AS (
       ON p.mat_code = r.mat_code AND p.isactive = 'Y'
    WHERE
       i.rfid_status = 'B'
+      AND i.record_time >= CAST(DATEADD(YEAR, -2, GETDATE()) AS DATE)
       AND i.EPC_Code NOT LIKE '303429%'
       AND i.EPC_Code NOT LIKE 'E28%'
-      AND i.mo_no <> '13D05B006'
+      AND i.mo_no NOT IN ('13D05B006', '13A08C003')
       AND i.stationNO LIKE 'CUS%WH103'
       AND i.po IS NOT NULL
 ),
@@ -210,6 +211,8 @@ GROUP BY dd.po, dd.shoestyle_codefactory, dd.color_sn, pi.po_qty, paoq.po_acc_ou
 ORDER BY dd.po ASC
 OPTION (
 	OPTIMIZE FOR UNKNOWN,                        -- * Avoid "Paramenter Sniffing" issues
+   QUERYTRACEON 2371,									-- * Enable automatic statistics updates for large tables
+	QUERYTRACEON 4199,									-- * Enable all query optimizer fixes
    QUERYTRACEON 8649,                           -- * Force parallel plan
 	USE HINT('ENABLE_PARALLEL_PLAN_PREFERENCE'), -- * Prioritize parallel plan
 	HASH GROUP,                                  -- * Use hash aggregation instead of stream aggregation 
