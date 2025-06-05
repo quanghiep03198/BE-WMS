@@ -86,7 +86,7 @@ export class RFIDOutboundService {
 		)
 	}
 
-	async upsertStockOut(payload: UpsertStockOutDTO) {
+	public async upsertStockOut(payload: UpsertStockOutDTO) {
 		const baseFilterQuery: FilterQuery<EpcDocument> = {
 			deleted: false,
 			scannable: true
@@ -164,5 +164,24 @@ export class RFIDOutboundService {
 			if (!session.hasEnded) await session.endSession()
 			await queryRunner.release()
 		}
+	}
+
+	public async getArchivedEpcs(factoryCode: string) {
+		return await this.epcOutboundModel
+			.findWithDeleted({
+				epc: { $not: { $regex: /^(E28|303429)/i } },
+				factory_code_produce: factoryCode,
+				po: null,
+				deleted: true,
+				scannable: true
+			})
+			.select(['epc', 'mo_no', 'shoes_style_code_factory', 'size_numcode', 'color_sn'])
+			.exec()
+	}
+
+	public async restoreArchivedEpcs(epcs: string[]) {
+		return await this.epcOutboundModel
+			.restore({ $and: [{ epc: { $in: epcs } }, { epc: { $not: { $regex: /^(E28|303429)/i } } }] })
+			.exec()
 	}
 }

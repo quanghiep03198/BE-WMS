@@ -24,6 +24,8 @@ import {
 	findEpcBySizeValidator,
 	PostReaderDataDTO,
 	readerPostDataValidator,
+	RestoreArchivedEpcsDTO,
+	restoreArchivedEpcValidator,
 	UpsertStockOutDTO,
 	upsertStockOutValidator
 } from '../dto/rfid.dto'
@@ -131,5 +133,27 @@ export class RFIDOutboundController {
 		@Body(new ZodValidationPipe(deleteEpcValidator)) epcs: DeleteScannedEpcDTO
 	) {
 		return await this.rfidSharedService.deleteBulkEpcs(this.epcOutboundModel, epcs, rescannable)
+	}
+
+	@Api({
+		endpoint: 'archived-epcs',
+		method: HttpMethod.GET,
+		statusCode: HttpStatus.OK
+	})
+	@AuthGuard()
+	async getArchivedEpcs(@Headers('X-User-Company') factoryCode: string) {
+		return await this.rfidOutboundService.getArchivedEpcs(factoryCode)
+	}
+
+	@Api({
+		endpoint: 'restore-archived-epcs',
+		method: HttpMethod.PATCH,
+		statusCode: HttpStatus.CREATED
+	})
+	@AuthGuard()
+	async restoreArchivedEpcs(
+		@Body(new ZodValidationPipe(restoreArchivedEpcValidator)) payload: RestoreArchivedEpcsDTO
+	) {
+		return await this.rfidOutboundService.restoreArchivedEpcs(payload)
 	}
 }

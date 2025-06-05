@@ -83,7 +83,7 @@ export class RFIDSharedService {
 				// * Stage 1: Match documents that are not deleted
 				{
 					$match: {
-						deleted: false,
+						$or: [{ deleted: false }, { deleted: null }],
 						scannable: true,
 						station_no: { $regex: new RegExp(factory, 'i') }
 					}
@@ -306,18 +306,5 @@ export class RFIDSharedService {
 				...subQuery.getParameters()
 			})
 			.getRawMany<EpcInformation>()
-	}
-
-	public async getArchivedEpcs(factoryCode: string) {
-		return await this.epcOutboundModel
-			.findWithDeleted({
-				epc: { $not: { $regex: /^(E28|303429)/i } },
-				factory_code_produce: factoryCode,
-				po: null,
-				deleted: true,
-				scannable: true
-			})
-			.select(['epc', 'mo_no', 'shoes_style_code_factory', 'size_numcode', 'color_sn'])
-			.exec()
 	}
 }

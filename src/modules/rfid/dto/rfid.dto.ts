@@ -109,6 +109,8 @@ export const uploadDataValidator = z.object({
 		.transform((val) => val.toUpperCase())
 })
 
+export const restoreArchivedEpcValidator = z.array(z.string().nonempty()).nonempty()
+
 export type UpsertStockOutDTO = z.infer<typeof upsertStockOutValidator>
 export type UpsertStockInDTO = z.infer<typeof updateStockValidator> &
 	Pick<FPInventoryEntity, 'user_code_created' | 'factory_code'>
@@ -121,3 +123,4 @@ export type PostReaderDataDTO = z.infer<typeof readerPostDataValidator>
 export type DeleteScannedEpcDTO = z.infer<typeof deleteEpcValidator>
 export type FindEpcBySizeDTO = z.infer<typeof findEpcBySizeValidator>
 export type UploadDataDTO = z.infer<typeof uploadDataValidator>
+export type RestoreArchivedEpcsDTO = z.infer<typeof restoreArchivedEpcValidator>
