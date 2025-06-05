@@ -29,16 +29,26 @@ export class RFIDSharedController {
 	}
 
 	@Api({
+		endpoint: 'archived-epcs',
+		method: HttpMethod.GET,
+		statusCode: HttpStatus.OK
+	})
+	@AuthGuard()
+	async getArchivedEpcs(@Headers('X-User-Company') factoryCode: string) {
+		return await this.rfidSharedService.getArchivedEpcs(factoryCode)
+	}
+
+	@Api({
 		endpoint: 'archived-epcs/:commandNumber',
 		method: HttpMethod.GET,
 		statusCode: HttpStatus.OK
 	})
 	@AuthGuard()
-	async getArchivedEpcs(
+	async getArchivedEpcsByOrder(
 		@Headers('X-User-Company') factoryCode: string,
 		@Param('commandNumber') commandNumber: string
 	) {
-		return await this.rfidSharedService.getArchivedEpcs(factoryCode, commandNumber)
+		return await this.rfidSharedService.getArchivedEpcsByOrder(factoryCode, commandNumber)
 	}
 
 	@Api({

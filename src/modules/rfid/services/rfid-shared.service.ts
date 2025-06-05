@@ -1,5 +1,6 @@
-import { DATA_SOURCE_DATA_LAKE, MAIN_DATA_SOURCE } from '@/databases/constants'
+import { DATA_SOURCE_DATA_LAKE, MAIN_DATA_SOURCE, RecordStatus } from '@/databases/constants'
 import { Inject, Injectable } from '@nestjs/common'
+import { InjectModel } from '@nestjs/mongoose'
 import { InjectDataSource } from '@nestjs/typeorm'
 import { readFileSync } from 'fs'
 import { throttle } from 'lodash'
@@ -15,19 +16,21 @@ import {
 } from '../constants'
 import { FindEpcBySizeDTO, PostReaderDataDTO } from '../dto/rfid.dto'
 import { RFIDReaderEntity } from '../entities/rfid-reader.entity'
-import { EpcDocument, EpcModel, EpcSchema } from '../schemas/epc.schema'
-import { RFIDSearchParams, StoredRFIDReaderItem } from '../types'
+import { EpcDocument, EpcModel, EpcOutbound, EpcSchema } from '../schemas/epc.schema'
+import { EpcInformation, RFIDSearchParams, StoredRFIDReaderItem } from '../types'
 
 @Injectable()
 export class RFIDSharedService {
-	private readonly epcInformationQuery: string
+	private readonly epcInformationQuery: string = readFileSync(
+		resolve(join(__dirname, '../sql/epc-information.sql')),
+		'utf-8'
+	)
 
 	constructor(
 		@Inject(MAIN_DATA_SOURCE) private readonly dataSource: DataSource,
-		@InjectDataSource(DATA_SOURCE_DATA_LAKE) private readonly dataSourceDL: DataSource
-	) {
-		this.epcInformationQuery = readFileSync(resolve(join(__dirname, '../sql/epc-information.sql')), 'utf-8')
-	}
+		@InjectDataSource(DATA_SOURCE_DATA_LAKE) private readonly dataSourceDL: DataSource,
+		@InjectModel(EpcOutbound.name) private readonly epcOutboundModel: EpcModel
+	) {}
 
 	public async fetchLatestData(model: EpcModel, factory: string, args: RFIDSearchParams) {
 		const [epcs, orders, has_invalid] = await Promise.all([
@@ -250,31 +253,71 @@ export class RFIDSharedService {
 			.exec()
 	}
 
-	public async getArchivedEpcs(factoryCode: string, commandNumber: string) {
+	public async getArchivedEpcsByOrder(factoryCode: string, commandNumber: string) {
 		const subQuery = this.dataSourceDL
 			.createQueryBuilder()
 			.select('b.EPC_Code', 'EPC_Code')
 			.from('dv_InvRFIDrecorddet_backup_Daily', 'b')
 			.where('b.rfid_status = :_status')
 			.andWhere('b.stationNO = :_station')
-			.andWhere('b.mo_no = :mo_no')
-			.getQuery()
+			.andWhere('b.mo_no = :commandNumber')
+			.setParameters({
+				_status: InventoryActions.OUTBOUND,
+				_station: `CUS_${factoryCode}_WH103`
+			})
 
 		return await this.dataSourceDL
 			.createQueryBuilder()
-			.select('DISTINCT a.EPC_Code', 'epc')
+			.distinct()
+			.select('a.EPC_Code', 'epc')
+			.addSelect('a.mo_no', 'mo_no')
+			.addSelect('a.size_code', 'size_numcode')
+			.addSelect('c.shoestyle_codefactory', 'shoes_style_code_factory')
+			.addSelect('d.color_sn', 'color_sn')
 			.from('dv_InvRFIDrecorddet_backup_Daily', 'a')
+			.innerJoin(
+				'dv_rfidmatchmst_cust',
+				'c',
+				'a.EPC_Code = c.EPC_Code AND a.mo_no = c.mo_no AND a.size_code = c.size_numcode'
+			)
+			.innerJoin(
+				(qb) => {
+					return qb
+						.subQuery()
+						.select('d.color_sn')
+						.addSelect('d.mat_code')
+						.from('wuerp_vnrd.dbo.ta_productmst', 'd')
+						.where('d.isactive = :record_status')
+						.setParameters({ record_status: RecordStatus.ACTIVE })
+				},
+				'd',
+				'c.mat_code = d.mat_code'
+			)
 			.where('a.rfid_status = :status')
-			.andWhere('a.mo_no = :mo_no')
+			.andWhere('a.mo_no = :commandNumber')
 			.andWhere('a.stationNO = :station')
-			.andWhere(`a.EPC_Code NOT IN (${subQuery})`)
+			.andWhere(`a.EPC_Code NOT IN (${subQuery.getQuery()})`)
+			.orderBy('a.size_code', 'ASC')
+			.addOrderBy('a.EPC_Code', 'ASC')
 			.setParameters({
-				mo_no: commandNumber.toUpperCase(),
+				commandNumber: commandNumber.toUpperCase(),
 				status: InventoryActions.INBOUND,
-				_status: InventoryActions.OUTBOUND,
 				station: `CUS_${factoryCode}_WH101`,
-				_station: `CUS_${factoryCode}_WH103`
+				...subQuery.getParameters()
 			})
-			.getRawMany<Record<'epc', string>>()
+			.getRawMany<EpcInformation>()
+	}
+
+	public async getArchivedEpcs(factoryCode: string) {
+		return await this.epcOutboundModel
+			.findWithDeleted({
+				epc: { $not: { $regex: /^(E28|303429)/i } },
+				factory_code_produce: factoryCode,
+				po: null,
+				deleted: true,
+				scannable: true
+			})
+			.select(['epc', 'mo_no', 'shoes_style_code_factory', 'size_numcode', 'color_sn'])
+			.exec()
 	}
 }

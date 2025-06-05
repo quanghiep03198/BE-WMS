@@ -1,10 +1,9 @@
 import { RFIDMatchCustomerEntity } from '../entities/rfid-customer-match.entity'
 
-export type StoredRFIDReaderItem = Pick<
-	RFIDMatchCustomerEntity,
-	'epc' | 'mo_no' | 'size_numcode' | 'shoes_style_code_factory' | 'factory_code_produce'
-> &
-	Record<'station_no' | 'color_sn', string>
+export type EpcInformation = Record<'color_sn', string> &
+	Pick<RFIDMatchCustomerEntity, 'epc' | 'mo_no' | 'size_numcode' | 'shoes_style_code_factory'>
+
+export type StoredRFIDReaderItem = EpcInformation & Record<'station_no' | 'factory_code_produce', string>
 
 export type StoredRFIDReaderData = {
 	epcs: Array<StoredRFIDReaderItem>
