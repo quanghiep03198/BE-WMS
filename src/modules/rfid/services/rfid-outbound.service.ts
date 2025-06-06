@@ -13,6 +13,7 @@ import { DataSource } from 'typeorm'
 import { POST_DATA_OUTBOUND_QUEUE } from '../constants'
 import { PostReaderDataDTO, UpsertStockOutDTO } from '../dto/rfid.dto'
 import { EpcDocument, EpcModel, EpcOutbound } from '../schemas/epc.schema'
+import { RFIDSearchParams } from '../types'
 
 @Injectable()
 export class RFIDOutboundService {
@@ -166,17 +167,33 @@ export class RFIDOutboundService {
 		}
 	}
 
-	public async getArchivedEpcs(factoryCode: string) {
-		return await this.epcOutboundModel
-			.findWithDeleted({
+	public async getArchivedEpcs(factoryCode: string, args?: RFIDSearchParams) {
+		return await this.epcOutboundModel.paginate(
+			{
 				epc: { $not: { $regex: /^(E28|303429)/i } },
 				factory_code_produce: factoryCode,
 				po: null,
 				deleted: true,
 				scannable: true
-			})
-			.select(['epc', 'mo_no', 'shoes_style_code_factory', 'size_numcode', 'color_sn'])
-			.exec()
+			},
+			{
+				sort: { mo_no: 1, epc: 1 },
+				select: ['epc', 'mo_no', 'shoes_style_code_factory', 'color_sn', 'size_numcode'],
+				lean: true,
+				page: args?._page ?? 1,
+				limit: args?._limit ?? 100,
+				options: { readPreference: 'nearest' },
+				customLabels: { docs: 'data' },
+				projection: {
+					_id: 0,
+					epc: 1,
+					mo_no: 1,
+					shoes_style_code_factory: 1,
+					size_numcode: 1,
+					color_sn: 1
+				}
+			}
+		)
 	}
 
 	public async restoreArchivedEpcs(epcs: string[]) {
