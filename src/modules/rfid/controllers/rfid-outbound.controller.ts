@@ -141,8 +141,11 @@ export class RFIDOutboundController {
 		statusCode: HttpStatus.OK
 	})
 	@AuthGuard()
-	async getArchivedEpcs(@Headers('X-User-Company') factoryCode: string) {
-		return await this.rfidOutboundService.getArchivedEpcs(factoryCode)
+	async getArchivedEpcs(
+		@Headers('X-User-Company') factoryCode: string,
+		@Query('_page', new DefaultValuePipe(1), ParseIntPipe) page: number
+	) {
+		return await this.rfidOutboundService.getArchivedEpcs(factoryCode, { _page: page, _limit: 100 })
 	}
 
 	@Api({
