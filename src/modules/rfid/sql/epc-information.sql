@@ -1,5 +1,3 @@
--- DECLARE @values NVARCHAR(MAX) = @1;
-
 SELECT DISTINCT a.EPC_Code AS epc, 
    ISNULL(b.mo_no, @0) AS mo_no,
    COALESCE(c.color_sn, @0) AS color_sn,
@@ -11,7 +9,6 @@ LEFT JOIN DV_DATA_LAKE.dbo.dv_rfidmatchmst_cust b ON a.EPC_Code = b.EPC_Code
 LEFT JOIN wuerp_vnrd.dbo.ta_productmst c ON b.mat_code = c.mat_code
 WHERE 
    a.EPC_Code NOT LIKE @2
-   AND c.isactive = 'Y'
    AND (
       b.mo_no IS NULL 
       OR b.mo_no NOT IN (SELECT value AS mo_no FROM STRING_SPLIT(@3, ','))

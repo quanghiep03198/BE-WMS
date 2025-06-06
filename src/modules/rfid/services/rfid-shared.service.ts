@@ -1,6 +1,5 @@
 import { DATA_SOURCE_DATA_LAKE, MAIN_DATA_SOURCE, RecordStatus } from '@/databases/constants'
 import { Inject, Injectable } from '@nestjs/common'
-import { InjectModel } from '@nestjs/mongoose'
 import { InjectDataSource } from '@nestjs/typeorm'
 import { readFileSync } from 'fs'
 import { throttle } from 'lodash'
@@ -16,7 +15,7 @@ import {
 } from '../constants'
 import { FindEpcBySizeDTO, PostReaderDataDTO } from '../dto/rfid.dto'
 import { RFIDReaderEntity } from '../entities/rfid-reader.entity'
-import { EpcDocument, EpcModel, EpcOutbound, EpcSchema } from '../schemas/epc.schema'
+import { EpcDocument, EpcModel, EpcSchema } from '../schemas/epc.schema'
 import { EpcInformation, RFIDSearchParams, StoredRFIDReaderItem } from '../types'
 
 @Injectable()
@@ -28,8 +27,7 @@ export class RFIDSharedService {
 
 	constructor(
 		@Inject(MAIN_DATA_SOURCE) private readonly dataSource: DataSource,
-		@InjectDataSource(DATA_SOURCE_DATA_LAKE) private readonly dataSourceDL: DataSource,
-		@InjectModel(EpcOutbound.name) private readonly epcOutboundModel: EpcModel
+		@InjectDataSource(DATA_SOURCE_DATA_LAKE) private readonly dataSourceDL: DataSource
 	) {}
 
 	public async fetchLatestData(model: EpcModel, factory: string, args: RFIDSearchParams) {
