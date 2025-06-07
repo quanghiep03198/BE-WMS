@@ -1,3 +1,4 @@
+import { EXCLUDED_EPC_REGEX } from '@/common/constants/regex'
 import { FileLogger } from '@/common/helpers'
 import { DATA_SOURCE_DATA_LAKE } from '@/databases/constants'
 import { InjectQueue } from '@nestjs/bullmq'
@@ -99,7 +100,7 @@ export class RFIDOutboundService {
 		 */
 		const epcToUpsert = await (async () => {
 			if (!Array.isArray(payload.sizes)) {
-				return await this.epcOutboundModel.find({ ...baseFilterQuery, mo_no: payload.mo_no }).lean(true)
+				return await this.epcOutboundModel.findWithDeleted({ ...baseFilterQuery, mo_no: payload.mo_no }).lean(true)
 			}
 
 			const facetPipeline = payload.sizes.reduce<PipelineStage.Facet['$facet']>((acc, curr) => {
@@ -121,7 +122,7 @@ export class RFIDOutboundService {
 					]
 				}
 			}, {})
-			const aggregatedEpcData = await this.epcOutboundModel.aggregate([{ $facet: facetPipeline }])
+			const aggregatedEpcData = await this.epcOutboundModel.aggregateWithDeleted([{ $facet: facetPipeline }])
 			const extractedValues = Object.values<Array<Partial<EpcDocument>>>(aggregatedEpcData[0])
 			return extractedValues.every((facetGroup) => Array.isArray(facetGroup)) ? extractedValues.flat() : []
 		})()
@@ -148,7 +149,7 @@ export class RFIDOutboundService {
 				await this.dataSourceDL.query(this.upsertStockoutQuery.replace(/:values/g, values))
 			}
 			await this.epcOutboundModel
-				.updateMany(
+				.updateManyWithDeleted(
 					{ ...baseFilterQuery, epc: { $in: epcToUpsert.map((item) => item.epc) } },
 					{ $set: { deleted: true, po: payload.po } }
 				)
@@ -173,7 +174,7 @@ export class RFIDOutboundService {
 			scannable: true,
 			factory_code_produce: factoryCode,
 			po: '',
-			epc: { $not: { $regex: /^(E28|303429)/i } },
+			epc: { $not: { $regex: EXCLUDED_EPC_REGEX } },
 			...(args.q && { epc: { $regex: args.q, $options: 'i' } }),
 			...(args['shoes_style.eq'] && { shoes_style_code_factory: args['shoes_style.eq'] }),
 			...(args['color_sn.eq'] && { color_sn: args['color_sn.eq'] }),
@@ -207,7 +208,7 @@ export class RFIDOutboundService {
 			.aggregateWithDeleted([
 				{
 					$match: {
-						epc: { $not: { $regex: /^(E28|303429)/i } },
+						epc: { $not: { $regex: EXCLUDED_EPC_REGEX } },
 						deleted: true,
 						scannable: true,
 						po: ''
@@ -273,7 +274,7 @@ export class RFIDOutboundService {
 
 	public async restoreArchivedEpcs(epcs: string[]) {
 		return await this.epcOutboundModel
-			.restore({ $and: [{ epc: { $in: epcs } }, { epc: { $not: { $regex: /^(E28|303429)/i } } }] })
+			.restore({ $and: [{ epc: { $in: epcs } }, { epc: { $not: { $regex: EXCLUDED_EPC_REGEX } } }] })
 			.exec()
 	}
 }
