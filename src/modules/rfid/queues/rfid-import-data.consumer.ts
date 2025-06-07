@@ -1,3 +1,4 @@
+import { EXCLUDED_EPC_REGEX } from '@/common/constants/regex'
 import { DATA_SOURCE_DATA_LAKE } from '@/databases/constants'
 import { Processor, WorkerHost } from '@nestjs/bullmq'
 import { InjectModel } from '@nestjs/mongoose'
@@ -9,13 +10,7 @@ import { readFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { Readable } from 'node:stream'
 import { DataSource } from 'typeorm'
-import {
-	EXCLUDED_EPC_PATTERN,
-	EXCLUDED_EPC_PREFIX,
-	EXCLUDED_ORDERS,
-	FALLBACK_VALUE,
-	IMPORT_DATA_QUEUE
-} from '../constants'
+import { EXCLUDED_EPC_PATTERN, EXCLUDED_ORDERS, FALLBACK_VALUE, IMPORT_DATA_QUEUE } from '../constants'
 import { EpcInbound, EpcModel, EpcOutbound, EpcSchema } from '../schemas/epc.schema'
 import { StoredRFIDReaderItem } from '../types'
 
@@ -42,12 +37,13 @@ export class RFIDImportDataConsumer extends WorkerHost {
 		const station = job.id
 		const files = job.data
 		const results: Set<string> = new Set()
+
 		for (const file of files) {
 			await new Promise<void>((resolve, reject) => {
 				Readable.from(Buffer.from(file.buffer))
 					.pipe(csvParser())
 					.on('data', (data: { epc: string }) => {
-						if (data.epc && !data.epc.startsWith(EXCLUDED_EPC_PREFIX) && !results.has(data.epc))
+						if (typeof data.epc === 'string' && !EXCLUDED_EPC_REGEX.test(data.epc) && !results.has(data.epc))
 							results.add(data.epc.trim())
 					})
 					.on('end', resolve)
