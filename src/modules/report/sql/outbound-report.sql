@@ -8,15 +8,19 @@ WITH base_data AS (
       i.EPC_Code, 
       i.po, 
       i.mo_no, 
-      i.size_code, 
+      CASE 
+         WHEN LEFT(CAST(i.size_code AS NVARCHAR(10)), 1) = '0' THEN i.size_code
+         WHEN CAST(i.size_code AS FLOAT) < 10 THEN CAST(CONCAT('0', i.size_code) AS NVARCHAR(10))
+         ELSE CAST(i.size_code AS NVARCHAR(10)) 
+      END AS size_code, 
       i.record_time,
       r.shoestyle_codefactory, 
       p.color_sn,
       i.FC_server_code
-   FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet_backup_Daily i WITH (NOLOCK)
-   INNER JOIN DV_DATA_LAKE.dbo.dv_rfidmatchmst_cust r WITH (NOLOCK)
+   FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet_backup_Daily i 
+   INNER JOIN DV_DATA_LAKE.dbo.dv_rfidmatchmst_cust r 
       ON i.EPC_Code = r.EPC_Code
-   INNER JOIN wuerp_vnrd.dbo.ta_productmst p WITH (NOLOCK)
+   INNER JOIN wuerp_vnrd.dbo.ta_productmst p 
       ON p.mat_code = r.mat_code AND p.isactive = 'Y'
    WHERE
       i.rfid_status = 'B'
@@ -115,7 +119,7 @@ po_info AS (
    SELECT
       IIF(ISNULL(a.or_custpoone, '') = '', a.or_custpo, a.or_custpoone) AS po,
       CAST(SUM(a.or_totalqty) - SUM(a.or_totalcqty) AS INT) AS po_qty
-   FROM wuerp_vnrd.dbo.ta_ordermst a WITH (NOLOCK)
+   FROM wuerp_vnrd.dbo.ta_ordermst a
    WHERE a.isactive = 'Y'
    GROUP BY IIF(ISNULL(a.or_custpoone, '') = '', a.or_custpo, a.or_custpoone)
 ),
@@ -131,8 +135,7 @@ daily_mo_productivity AS (
       COUNT(DISTINCT dd.EPC_Code) AS qty
    FROM daily_data dd
    GROUP BY 
-      dd.po, dd.mo_no, dd.shoestyle_codefactory, 
-      dd.color_sn, dd.size_code
+      dd.po, dd.mo_no, dd.shoestyle_codefactory, dd.color_sn, dd.po, dd.mo_no, dd.shoestyle_codefactory, dd.color_sn, dd.size_code
 ),
 
 -- * Aggregate size data for each purchase order
@@ -140,7 +143,7 @@ agg_size_data AS (
    SELECT 
       ps.po,
       CASE 
-         WHEN LEN(CAST(ps.size_numcode AS NVARCHAR(10))) = 1 THEN CONCAT('0', ps.size_numcode)
+         WHEN CAST(ps.size_numcode AS FLOAT) < 10 THEN CAST(CONCAT('0', ps.size_numcode) AS NVARCHAR(10))
          ELSE CAST(ps.size_numcode AS NVARCHAR(10)) 
       END AS size_numcode,
       ps.qty AS po_size_qty,
@@ -148,16 +151,16 @@ agg_size_data AS (
          SELECT COUNT(DISTINCT EPC_Code) 
          FROM daily_data dd 
          WHERE dd.po = ps.po AND dd.size_code = CASE 
-            WHEN LEN(CAST(ps.size_numcode AS NVARCHAR(10))) = 1 THEN CONCAT('0', ps.size_numcode)
+            WHEN CAST(ps.size_numcode AS FLOAT) < 10 THEN CAST(CONCAT('0', ps.size_numcode) AS NVARCHAR(10))
             ELSE CAST(ps.size_numcode AS NVARCHAR(10)) 
          END
       ) AS daily_qty,
       (
          SELECT COUNT(DISTINCT EPC_Code) FROM base_data bd 
          WHERE bd.po = ps.po AND bd.size_code = CASE 
-            WHEN LEN(CAST(ps.size_numcode AS NVARCHAR(10))) = 1 THEN CONCAT('0', ps.size_numcode)
+            WHEN CAST(ps.size_numcode AS FLOAT) < 10 THEN CAST(CONCAT('0', ps.size_numcode) AS NVARCHAR(10))
             ELSE CAST(ps.size_numcode AS NVARCHAR(10)) 
-         END 
+         END
       ) AS acc_qty
    FROM po_size_qty ps
 )
