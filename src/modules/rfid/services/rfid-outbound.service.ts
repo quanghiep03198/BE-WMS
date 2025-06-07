@@ -167,33 +167,108 @@ export class RFIDOutboundService {
 		}
 	}
 
-	public async getArchivedEpcs(factoryCode: string, args?: RFIDSearchParams) {
-		return await this.epcOutboundModel.paginate(
-			{
-				epc: { $not: { $regex: /^(E28|303429)/i } },
-				factory_code_produce: factoryCode,
-				po: null,
-				deleted: true,
-				scannable: true
-			},
-			{
-				sort: { mo_no: 1, epc: 1 },
-				select: ['epc', 'mo_no', 'shoes_style_code_factory', 'color_sn', 'size_numcode'],
-				lean: true,
-				page: args?._page ?? 1,
-				limit: args?._limit ?? 100,
-				options: { readPreference: 'nearest' },
-				customLabels: { docs: 'data' },
-				projection: {
-					_id: 0,
-					epc: 1,
-					mo_no: 1,
-					shoes_style_code_factory: 1,
-					size_numcode: 1,
-					color_sn: 1
-				}
+	public async getArchivedEpcs(factoryCode: string, args: RFIDSearchParams) {
+		const filterQuery: FilterQuery<EpcDocument> = {
+			deleted: true,
+			scannable: true,
+			factory_code_produce: factoryCode,
+			po: '',
+			epc: { $not: { $regex: /^(E28|303429)/i } },
+			...(args.q && { epc: { $regex: args.q, $options: 'i' } }),
+			...(args['shoes_style.eq'] && { shoes_style_code_factory: args['shoes_style.eq'] }),
+			...(args['color_sn.eq'] && { color_sn: args['color_sn.eq'] }),
+			...(args['mo_no.eq'] && { mo_no: args['mo_no.eq'] }),
+			...(args['size_numcode.eq'] && { size_numcode: args['size_numcode.eq'] })
+		}
+
+		return await this.epcOutboundModel.paginate(filterQuery, {
+			lean: true,
+			page: args?._page ?? 1,
+			limit: args?._limit ?? 100,
+			select: ['epc', 'mo_no', 'shoes_style_code_factory', 'color_sn', 'size_numcode'],
+			sort: { mo_no: 1, epc: 1 },
+			options: { readPreference: 'nearest' },
+			customLabels: { docs: 'data' },
+			customFind: 'findWithDeleted',
+			useCustomCountFn: async () => await this.epcOutboundModel.countDocumentsWithDeleted(filterQuery),
+			projection: {
+				_id: 0,
+				epc: 1,
+				mo_no: 1,
+				shoes_style_code_factory: 1,
+				size_numcode: 1,
+				color_sn: 1
 			}
-		)
+		})
+	}
+
+	public async getArchivedEpcFeatures() {
+		return await this.epcOutboundModel
+			.aggregateWithDeleted([
+				{
+					$match: {
+						epc: { $not: { $regex: /^(E28|303429)/i } },
+						deleted: true,
+						scannable: true,
+						po: ''
+					}
+				},
+				{
+					$group: {
+						_id: {
+							shoes_style_code_factory: '$shoes_style_code_factory',
+							color_sn: '$color_sn',
+							mo_no: '$mo_no',
+							size_numcode: '$size_numcode'
+						}
+					}
+				},
+				{
+					$group: {
+						_id: {
+							shoes_style_code_factory: '$_id.shoes_style_code_factory',
+							color_sn: '$_id.color_sn',
+							mo_no: '$_id.mo_no'
+						},
+						sizes: {
+							$push: '$_id.size_numcode'
+						}
+					}
+				},
+				{
+					$group: {
+						_id: {
+							shoes_style_code_factory: '$_id.shoes_style_code_factory',
+							color_sn: '$_id.color_sn'
+						},
+						batches: {
+							$push: {
+								mo_no: '$_id.mo_no',
+								sizes: '$sizes'
+							}
+						}
+					}
+				},
+				{
+					$group: {
+						_id: '$_id.shoes_style_code_factory',
+						colorways: {
+							$push: {
+								color_sn: '$_id.color_sn',
+								batches: '$batches'
+							}
+						}
+					}
+				},
+				{
+					$project: {
+						_id: 0,
+						shoes_style_factory_code: '$_id',
+						colorways: '$colorways'
+					}
+				}
+			])
+			.exec()
 	}
 
 	public async restoreArchivedEpcs(epcs: string[]) {

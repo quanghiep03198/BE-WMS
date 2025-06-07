@@ -143,9 +143,32 @@ export class RFIDOutboundController {
 	@AuthGuard()
 	async getArchivedEpcs(
 		@Headers('X-User-Company') factoryCode: string,
-		@Query('_page', new DefaultValuePipe(1), ParseIntPipe) page: number
+		@Query('_page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+		@Query('q', new DefaultValuePipe('')) search: string,
+		@Query('mo_no.eq', new DefaultValuePipe('')) mo_no: string,
+		@Query('shoes_style.eq', new DefaultValuePipe('')) shoes_style: string,
+		@Query('color_sn.eq', new DefaultValuePipe('')) color_sn: string,
+		@Query('size_numcode.eq', new DefaultValuePipe('')) size_numcode: string
 	) {
-		return await this.rfidOutboundService.getArchivedEpcs(factoryCode, { _page: page, _limit: 100 })
+		return await this.rfidOutboundService.getArchivedEpcs(factoryCode, {
+			_page: page,
+			_limit: 100,
+			q: search,
+			['shoes_style.eq']: shoes_style,
+			['mo_no.eq']: mo_no,
+			['color_sn.eq']: color_sn,
+			['size_numcode.eq']: size_numcode
+		})
+	}
+
+	@Api({
+		endpoint: 'archived-epc-features',
+		method: HttpMethod.GET,
+		statusCode: HttpStatus.OK
+	})
+	@AuthGuard()
+	async getArchivedEpcFeatures() {
+		return await this.rfidOutboundService.getArchivedEpcFeatures()
 	}
 
 	@Api({

@@ -12,7 +12,11 @@ export type StoredRFIDReaderData = {
 export type RFIDSearchParams = {
 	_page: number
 	_limit: number
+	q?: string
 	'mo_no.eq'?: string
+	'shoes_style.eq'?: string
+	'color_sn.eq'?: string
+	'size_numcode.eq'?: string
 }
 
 export type SearchCustOrderParams = {
