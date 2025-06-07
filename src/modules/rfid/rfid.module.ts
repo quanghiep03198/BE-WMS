@@ -49,7 +49,10 @@ import { RFIDCustomerEntitySubscriber } from './subscribers/rfid-customer.entity
 				useFactory: () => {
 					EpcInboundSchema.index({ record_time: 1 }, { expires: '365d' })
 					EpcInboundSchema.plugin(MongoosePaginatePlugin)
-					EpcInboundSchema.plugin(MongooseDeletePlugin, { overrideMethods: true, indexFields: ['deleted'] })
+					EpcInboundSchema.plugin(MongooseDeletePlugin, {
+						overrideMethods: ['find', 'findOne', 'aggregate', 'countDocuments'],
+						indexFields: ['deleted']
+					})
 					return EpcInboundSchema
 				}
 			},
@@ -59,7 +62,10 @@ import { RFIDCustomerEntitySubscriber } from './subscribers/rfid-customer.entity
 				useFactory: () => {
 					EpcOutboundSchema.index({ record_time: 1 }, { expires: '365d' })
 					EpcOutboundSchema.plugin(MongoosePaginatePlugin)
-					EpcOutboundSchema.plugin(MongooseDeletePlugin, { overrideMethods: true, indexFields: ['deleted'] })
+					EpcOutboundSchema.plugin(MongooseDeletePlugin, {
+						overrideMethods: ['find', 'findOne', 'aggregate', 'countDocuments'],
+						indexFields: ['deleted']
+					})
 					return EpcOutboundSchema
 				}
 			}
