@@ -173,7 +173,7 @@ export class RFIDOutboundService {
 			deleted: true,
 			scannable: true,
 			factory_code_produce: factoryCode,
-			po: '',
+			po: null,
 			epc: { $not: { $regex: EXCLUDED_EPC_REGEX } },
 			...(args.q && { epc: { $regex: args.q, $options: 'i' } }),
 			...(args['shoes_style.eq'] && { shoes_style_code_factory: args['shoes_style.eq'] }),
@@ -264,7 +264,7 @@ export class RFIDOutboundService {
 				{
 					$project: {
 						_id: 0,
-						shoes_style_factory_code: '$_id',
+						shoes_style_code_factory: '$_id',
 						colorways: '$colorways'
 					}
 				}

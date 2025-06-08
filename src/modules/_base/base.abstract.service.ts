@@ -61,6 +61,8 @@ export abstract class BaseAbstractService<Entity extends BaseAbstractEntity> imp
 			totalPages,
 			hasNextPage: page < totalPages,
 			hasPrevPage: page > 1,
+			nextPage: page < totalPages ? page + 1 : null,
+			prevPage: page > 1 ? page - 1 : null,
 			limit,
 			page
 		} satisfies Pagination<Entity>

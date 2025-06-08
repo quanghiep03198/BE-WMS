@@ -12,6 +12,8 @@ export declare global {
 		data: Array<T>
 		hasNextPage: boolean
 		hasPrevPage: boolean
+		nextPage: number
+		prevPage: number
 		totalDocs: number
 		totalPages: number
 	}
