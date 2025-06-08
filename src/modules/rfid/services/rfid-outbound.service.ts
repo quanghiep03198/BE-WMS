@@ -211,7 +211,7 @@ export class RFIDOutboundService {
 						epc: { $not: { $regex: EXCLUDED_EPC_REGEX } },
 						deleted: true,
 						scannable: true,
-						po: ''
+						po: null
 					}
 				},
 				{
