@@ -6,6 +6,8 @@ export const DATA_SOURCE_DATA_LAKE = 'DATA_LAKE' as const
 export const DATA_SOURCE_SYSCLOUD = 'SYSCLOUD' as const
 export const DATA_SOURCE_ERP = 'ERP' as const
 
+export const DATABASE_SCHEMA = 'dbo' as const
+
 export const MAIN_DATA_SOURCE = 'MAIN_DATA_SOURCE' as const
 
 export enum RecordStatus {

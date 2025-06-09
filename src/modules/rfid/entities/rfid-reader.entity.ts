@@ -1,7 +1,7 @@
-import { DATABASE_DATA_LAKE, RecordStatus } from '@/databases/constants'
+import { DATABASE_DATA_LAKE, DATABASE_SCHEMA, RecordStatus } from '@/databases/constants'
 import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm'
 
-@Entity('dv_rfidreader', { database: DATABASE_DATA_LAKE, schema: 'dbo' })
+@Entity('dv_rfidreader', { database: DATABASE_DATA_LAKE, schema: DATABASE_SCHEMA })
 export class RFIDReaderEntity {
 	@PrimaryGeneratedColumn({ name: 'id', type: 'int' })
 	id: number

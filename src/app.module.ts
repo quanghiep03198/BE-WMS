@@ -20,6 +20,7 @@ import { PrometheusModule } from '@willsoto/nestjs-prometheus'
 import { EventGateway } from './events/event.gateway'
 import { AuthModule } from './modules/auth/auth.module'
 import { DepartmentModule } from './modules/department/department.module'
+import { InventoryModule } from './modules/inventory/inventory.module'
 import { OrderModule } from './modules/order/order.module'
 import { PackingModule } from './modules/packing/packing.module'
 import { ReportModule } from './modules/report/report.module'
@@ -91,6 +92,7 @@ import { RedisModule } from './redis/redis.module'
 		RFIDModule,
 		TenancyModule,
 		ThirdPartyApiModule,
+		InventoryModule,
 		UserModule,
 		WarehouseModule
 	],

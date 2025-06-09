@@ -1,11 +1,11 @@
-import { DATABASE_DATA_LAKE } from '@/databases/constants'
+import { DATABASE_DATA_LAKE, DATABASE_SCHEMA } from '@/databases/constants'
 import { BaseAbstractEntity } from '@/modules/_base/base.abstract.entity'
 import { Column, Entity, Index } from 'typeorm'
 
 /**
  * @description RFID Customer Match Entity - Describes the details of customer EPC (which commonly starts with "3034")
  */
-@Entity('dv_rfidmatchmst_cust', { database: DATABASE_DATA_LAKE, schema: 'dbo' })
+@Entity('dv_rfidmatchmst_cust', { database: DATABASE_DATA_LAKE, schema: DATABASE_SCHEMA })
 export class RFIDMatchCustomerEntity extends BaseAbstractEntity {
 	@Column({ name: 'EPC_Code' })
 	@Index()

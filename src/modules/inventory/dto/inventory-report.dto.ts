@@ -18,5 +18,14 @@ export const updateInventoryReportPayload = z.array(
 	})
 )
 
-export type UpdateInventoryReportQuery = z.infer<typeof updateInventoryReportQuery>
+export const productInventoryReportQuery = z.object({
+	'shoes_style.eq': z.string().nonempty(),
+	'color_sn.eq': z
+		.string()
+		.nonempty()
+		.transform((value) => value.toUpperCase())
+})
+
+export type UpdateInventoryReportQueryDTO = z.infer<typeof updateInventoryReportQuery>
 export type UpdateInventoryReportDTO = z.infer<typeof updateInventoryReportPayload>
+export type ProductInventoryReportQueryDTO = z.infer<typeof productInventoryReportQuery>
