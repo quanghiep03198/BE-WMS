@@ -1,5 +1,6 @@
 import { TENANCY_DATA_SOURCE } from '@/modules/tenancy/constants'
 import { Inject, Injectable } from '@nestjs/common'
+import { uniqBy } from 'lodash'
 import { DataSource, FindOptionsWhere } from 'typeorm'
 import { ProductInventoryReportQueryDTO } from '../dto/inventory-report.dto'
 import { InboundInventoryEntity } from '../entities/inbound-inventory.entity'
@@ -30,12 +31,16 @@ export class ProductionInventoryService {
 	}
 
 	public async getProductionInventoryFeatures() {
-		return await this.dataSourceTNC
+		const result = await this.dataSourceTNC
 			.getRepository(ProductSizeInventoryEntity)
 			.createQueryBuilder('a')
-			.distinct()
 			.select('a.shoes_style', 'shoes_style')
 			.addSelect('a.color', 'color')
 			.getRawMany<Pick<ProductSizeInventoryEntity, 'shoes_style' | 'color'>>()
+
+		return {
+			shoes_style: uniqBy(result, (item) => item.shoes_style).map((item) => item.shoes_style),
+			color: uniqBy(result, (item) => item.color).map((item) => item.color)
+		}
 	}
 }
