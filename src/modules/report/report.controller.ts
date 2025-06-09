@@ -1,17 +1,9 @@
-import { Api, AuthGuard, HttpMethod, User } from '@/common/decorators'
+import { Api, AuthGuard, HttpMethod } from '@/common/decorators'
 import { AllExceptionsFilter } from '@/common/filters'
-import { ZodValidationPipe } from '@/common/pipes'
-import { Body, Controller, DefaultValuePipe, Get, Headers, HttpStatus, Query, Res, UseFilters } from '@nestjs/common'
+import { Controller, DefaultValuePipe, Get, Headers, Query, Res, UseFilters } from '@nestjs/common'
 import { format } from 'date-fns'
 import { Response } from 'express'
-import {
-	UpdateInventoryReportDTO,
-	updateInventoryReportPayload,
-	updateInventoryReportQuery,
-	UpdateInventoryReportQuery
-} from './dto/inventory-report.dto'
 import { InboundReportService } from './services/inbound-report.service'
-import { InventoryReportService } from './services/inventory-report.service'
 import { OutboundReportService } from './services/outbound-report.service'
 import { PackingWeightReportService } from './services/packing-weight-report.service'
 
@@ -20,7 +12,6 @@ export class ReportController {
 	constructor(
 		private readonly inboundReportService: InboundReportService,
 		private readonly outboundReportService: OutboundReportService,
-		private readonly inventoryReportService: InventoryReportService,
 		private readonly packingWeightReportService: PackingWeightReportService
 	) {}
 
@@ -70,41 +61,6 @@ export class ReportController {
 		return res.send(buffer)
 	}
 
-	// #endregion
-
-	// #region Inventory report
-
-	@Api({ endpoint: 'monthly-inventory', method: HttpMethod.GET })
-	@AuthGuard()
-	async getMonthlyInventoryReport(
-		@Query('month.eq', new DefaultValuePipe(format(new Date(), 'yyyy-MM'))) month: string
-	) {
-		return await this.inventoryReportService.getMonthlyInventoryReport(format(new Date(month), 'yyyyMM'))
-	}
-
-	@Get('monthly-inventory/export')
-	@UseFilters(AllExceptionsFilter)
-	@AuthGuard()
-	async exportMonthlyInventoryReport(
-		@Query('month.eq', new DefaultValuePipe(format(new Date(), 'yyyy-MM'))) month: string,
-		@Res() res: Response
-	) {
-		const buffer = await this.inventoryReportService.exportMonthlyInventoryToExcel(month)
-		return res.send(buffer)
-	}
-
-	@Api({ endpoint: 'monthly-inventory/update', method: HttpMethod.PATCH, statusCode: HttpStatus.CREATED })
-	@AuthGuard()
-	async updateInventoryReport(
-		@Query(new ZodValidationPipe(updateInventoryReportQuery)) queries: UpdateInventoryReportQuery,
-		@Body(new ZodValidationPipe(updateInventoryReportPayload)) payload: UpdateInventoryReportDTO,
-		@User('username') username: string
-	) {
-		return await this.inventoryReportService.bulkUpdateInventoryReport(
-			queries,
-			payload.map((item) => ({ ...item, user_code_updated: username, user_name_updated: username }))
-		)
-	}
 	// #endregion
 
 	// #region Packing weight report

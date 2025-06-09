@@ -1,4 +1,4 @@
-import { DATABASE_DATA_LAKE } from '@/databases/constants'
+import { DATABASE_DATA_LAKE, DATABASE_SCHEMA } from '@/databases/constants'
 import { BaseAbstractEntity } from '@/modules/_base/base.abstract.entity'
 import { Column, Entity, Index } from 'typeorm'
 import { InventoryActions, InventoryStorageType } from '../constants'
@@ -6,7 +6,7 @@ import { InventoryActions, InventoryStorageType } from '../constants'
 /**
  * @description RFID Production Management Entity - Describes status of RFID tags in the factory (3034xxx)
  */
-@Entity('dv_InvRFIDrecorddet', { database: DATABASE_DATA_LAKE, schema: 'dbo' })
+@Entity('dv_InvRFIDrecorddet', { database: DATABASE_DATA_LAKE, schema: DATABASE_SCHEMA })
 export class FPInventoryEntity extends BaseAbstractEntity {
 	@Column({ name: 'stationNO' })
 	station_no: string

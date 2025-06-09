@@ -12,12 +12,12 @@ import { I18nContext, I18nService } from 'nestjs-i18n'
 import { join } from 'path'
 import { Brackets, DataSource, IsNull, UpdateResult } from 'typeorm'
 import { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity'
-import { UpdateInventoryReportDTO, UpdateInventoryReportQuery } from '../dto/inventory-report.dto'
+import { UpdateInventoryReportDTO, UpdateInventoryReportQueryDTO } from '../dto/inventory-report.dto'
 import { InventoryReportEntity } from '../entities/inventory-report.entity'
 import { IInventoryReportQueryResult, IInventoryReportResponse } from '../interfaces'
 
 @Injectable()
-export class InventoryReportService {
+export class InventoryAuditService {
 	private readonly inventoryReportQuery: string = readFileSync(join(__dirname, '../sql/inventory-report.sql'), 'utf-8')
 
 	constructor(
@@ -37,7 +37,7 @@ export class InventoryReportService {
 	}
 
 	async bulkUpdateInventoryReport(
-		queries: UpdateInventoryReportQuery,
+		queries: UpdateInventoryReportQueryDTO,
 		payload: Array<UpdateInventoryReportDTO[number] & Pick<UserEntity, 'user_code_updated' | 'user_name_updated'>>
 	) {
 		const queryRunner = this.dataSource.createQueryRunner()
@@ -57,7 +57,7 @@ export class InventoryReportService {
 	}
 
 	private async getFinalInventoryQuantity(
-		queries: UpdateInventoryReportQuery & { size_numcode: string }
+		queries: UpdateInventoryReportQueryDTO & { size_numcode: string }
 	): Promise<number | null> {
 		const result: Awaited<Promise<{ final_qty: number }>> = await this.dataSource
 			.getRepository(InventoryReportEntity)
@@ -85,7 +85,7 @@ export class InventoryReportService {
 	}
 
 	private async updateManyInventoryRecord(
-		queries: UpdateInventoryReportQuery & { inv_next_month?: Date },
+		queries: UpdateInventoryReportQueryDTO & { inv_next_month?: Date },
 		data: UpdateInventoryReportDTO[number] & Pick<UserEntity, 'user_code_updated' | 'user_name_updated'>
 	): Promise<UpdateResult[]> {
 		const currFinalQty: Awaited<Promise<number | null>> = await this.getFinalInventoryQuantity({
@@ -124,7 +124,7 @@ export class InventoryReportService {
 	}
 
 	private async updateOneInventoryRecord(
-		queries: UpdateInventoryReportQuery & { size_numcode: string },
+		queries: UpdateInventoryReportQueryDTO & { size_numcode: string },
 		update: QueryDeepPartialEntity<InventoryReportEntity>
 	) {
 		return await this.dataSource

@@ -1,4 +1,5 @@
 import { env } from '@/common/utils'
+import { DATABASE_SCHEMA } from '@/databases/constants'
 import KeyvRedis, { type RedisClientOptions } from '@keyv/redis'
 import { type BullRootModuleOptions } from '@nestjs/bullmq'
 import { type CacheModuleOptions } from '@nestjs/cache-manager'
@@ -69,7 +70,7 @@ export const appConfigFactory: ConfigFactory = () => ({
 		port: env('DB_PORT', { serialize: (value): number => parseInt(value) }),
 		username: env('DB_USERNAME'),
 		password: env('DB_PASSWORD'),
-		schema: 'dbo',
+		schema: DATABASE_SCHEMA,
 		entities: [path.join(__dirname, '**', '*.entity.{ts,js}')],
 		subscribers: [path.join(__dirname, '**', '*.subscriber.{ts,js}')],
 		migrations: [path.join(__dirname, '/migrations/**/*.{ts,js}')],
