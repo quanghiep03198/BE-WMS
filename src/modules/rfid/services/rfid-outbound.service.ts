@@ -149,7 +149,7 @@ export class RFIDOutboundService {
 				await this.dataSourceDL.query(this.upsertStockoutQuery.replace(/:values/g, values))
 			}
 			await this.epcOutboundModel
-				.updateManyWithDeleted(
+				.updateMany(
 					{ ...baseFilterQuery, epc: { $in: epcToUpsert.map((item) => item.epc) } },
 					{ $set: { deleted: true, po: payload.po } }
 				)
