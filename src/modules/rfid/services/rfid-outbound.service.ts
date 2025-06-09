@@ -129,6 +129,7 @@ export class RFIDOutboundService {
 
 		const session = await this.epcOutboundModel.startSession()
 		const queryRunner = this.dataSourceDL.createQueryRunner()
+		const upsertStockoutQuery: string = readFileSync(resolve(join(__dirname, '../sql/upsert-outbound.sql')), 'utf-8')
 		try {
 			await session.startTransaction()
 			await queryRunner.startTransaction()
@@ -146,7 +147,7 @@ export class RFIDOutboundService {
 					})
 					.join(',')
 
-				await this.dataSourceDL.query(this.upsertStockoutQuery.replace(/:values/g, values))
+				await this.dataSourceDL.query(upsertStockoutQuery.replace(/:values/g, values))
 			}
 			await this.epcOutboundModel
 				.updateMany(
