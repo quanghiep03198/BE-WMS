@@ -45,9 +45,11 @@ export class ProductionInventoryService {
 		return {
 			shoes_style: uniqBy(result, (item) => item.shoes_style)
 				.map((item) => item.shoes_style)
+				.filter((item) => item !== 'ALL')
 				.sort(),
 			color: uniqBy(result, (item) => item.color)
 				.map((item) => item.color)
+				.filter((item) => item !== 'ALL')
 				.sort()
 		}
 	}
