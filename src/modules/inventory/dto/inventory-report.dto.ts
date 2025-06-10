@@ -20,7 +20,7 @@ export const updateInventoryReportPayload = z.array(
 
 export const productInventoryReportQuery = z.object({
 	'shoes_style.eq': z.string().nonempty(),
-	'color_sn.eq': z
+	'color.eq': z
 		.string()
 		.nonempty()
 		.transform((value) => value.toUpperCase())

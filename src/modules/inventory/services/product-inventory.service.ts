@@ -4,14 +4,18 @@ import { uniqBy } from 'lodash'
 import { DataSource, FindOptionsWhere } from 'typeorm'
 import { ProductInventoryReportQueryDTO } from '../dto/inventory-report.dto'
 import { InboundInventoryEntity } from '../entities/inbound-inventory.entity'
-import { OutboundInventoryEntity } from '../entities/outbound-inventory.entity'
+import { OutboundExpectationEntity } from '../entities/outbound-inventory.entity'
 import { ProductSizeInventoryEntity } from '../entities/product-size-inventory.entity'
 
 @Injectable()
 export class ProductionInventoryService {
 	constructor(@Inject(TENANCY_DATA_SOURCE) private readonly dataSourceTNC: DataSource) {}
 
-	public async getProductInventory(queries: ProductInventoryReportQueryDTO) {
+	public async getProductInventory(queries: ProductInventoryReportQueryDTO): Promise<{
+		sizes: ProductSizeInventoryEntity[]
+		inbound: InboundInventoryEntity[]
+		outbound: OutboundExpectationEntity[]
+	}> {
 		const filterQuery: FindOptionsWhere<ProductSizeInventoryEntity> = {
 			shoes_style: queries['shoes_style.eq'],
 			color: queries['color_sn.eq']
@@ -20,11 +24,11 @@ export class ProductionInventoryService {
 		const [productSizeInventory, inboundInventory, outboundInventory] = await Promise.all([
 			this.dataSourceTNC.getRepository(ProductSizeInventoryEntity).findBy(filterQuery),
 			this.dataSourceTNC.getRepository(InboundInventoryEntity).findBy(filterQuery),
-			this.dataSourceTNC.getRepository(OutboundInventoryEntity).findBy(filterQuery)
+			this.dataSourceTNC.getRepository(OutboundExpectationEntity).findBy(filterQuery)
 		])
 
 		return {
-			size: productSizeInventory,
+			sizes: productSizeInventory,
 			inbound: inboundInventory,
 			outbound: outboundInventory
 		}
@@ -39,8 +43,12 @@ export class ProductionInventoryService {
 			.getRawMany<Pick<ProductSizeInventoryEntity, 'shoes_style' | 'color'>>()
 
 		return {
-			shoes_style: uniqBy(result, (item) => item.shoes_style).map((item) => item.shoes_style),
-			color: uniqBy(result, (item) => item.color).map((item) => item.color)
+			shoes_style: uniqBy(result, (item) => item.shoes_style)
+				.map((item) => item.shoes_style)
+				.sort(),
+			color: uniqBy(result, (item) => item.color)
+				.map((item) => item.color)
+				.sort()
 		}
 	}
 }

@@ -3,7 +3,12 @@ import { BaseAbstractEntity } from '@/modules/_base/base.abstract.entity'
 import { Column, Entity } from 'typeorm'
 import { InventoryType } from '../constants'
 
-@Entity({ database: DATABASE_DATA_LAKE, schema: DATABASE_SCHEMA, name: 'dv_invprodmst', synchronize: false })
+@Entity({
+	database: DATABASE_DATA_LAKE,
+	schema: DATABASE_SCHEMA,
+	name: 'dv_invprodmst',
+	synchronize: false
+})
 export class InventoryReportEntity extends BaseAbstractEntity {
 	@Column({ name: 'inv_type', enum: InventoryType, type: 'nvarchar', length: 10 })
 	inv_type: InventoryType
