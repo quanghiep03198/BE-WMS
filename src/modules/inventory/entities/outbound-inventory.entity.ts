@@ -1,9 +1,13 @@
 import { DATABASE_DATA_LAKE, DATABASE_SCHEMA } from '@/databases/constants'
 import { ViewColumn, ViewEntity } from 'typeorm'
 
-@ViewEntity({ database: DATABASE_DATA_LAKE, schema: DATABASE_SCHEMA, name: 'dvview_invoub' })
-export class OutboundInventoryEntity {
-	@ViewColumn({ name: 'shoestyle' })
+@ViewEntity({
+	database: DATABASE_DATA_LAKE,
+	schema: DATABASE_SCHEMA,
+	name: 'dvview_invoub'
+})
+export class OutboundExpectationEntity {
+	@ViewColumn({ name: 'shoes_style' })
 	shoes_style: string
 
 	@ViewColumn({ name: 'color' })
@@ -12,9 +16,12 @@ export class OutboundInventoryEntity {
 	@ViewColumn({ name: 'po' })
 	po: string
 
-	@ViewColumn({ name: 'or_deliverdate_confirm' })
-	deliver_date: Date
+	@ViewColumn({ name: 'po_qty' })
+	po_qty: number
 
-	@ViewColumn({ name: 'oub_QTY' })
+	@ViewColumn({ name: 'outbound_date' })
+	outbound_date: Date
+
+	@ViewColumn({ name: 'outbound_qty' })
 	outbound_qty: number
 }
