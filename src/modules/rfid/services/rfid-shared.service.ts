@@ -6,13 +6,7 @@ import { throttle } from 'lodash'
 import { AnyBulkWriteOperation, FilterQuery, UpdateWriteOpResult } from 'mongoose'
 import { join, resolve } from 'path'
 import { DataSource } from 'typeorm'
-import {
-	EXCLUDED_EPC_PATTERN,
-	EXCLUDED_EPC_PREFIX,
-	EXCLUDED_ORDERS,
-	FALLBACK_VALUE,
-	InventoryActions
-} from '../constants'
+import { EXCLUDED_EPC_PREFIX, EXCLUDED_ORDERS, FALLBACK_VALUE, InventoryActions } from '../constants'
 import { FindEpcBySizeDTO, PostReaderDataDTO } from '../dto/rfid.dto'
 import { RFIDReaderEntity } from '../entities/rfid-reader.entity'
 import { EpcDocument, EpcModel, EpcSchema } from '../schemas/epc.schema'
@@ -30,25 +24,25 @@ export class RFIDSharedService {
 		@InjectDataSource(DATA_SOURCE_DATA_LAKE) private readonly dataSourceDL: DataSource
 	) {}
 
-	public async fetchLatestData(model: EpcModel, factory: string, args: RFIDSearchParams) {
+	public async fetchLatestData($model: EpcModel, factory: string, args: RFIDSearchParams) {
 		const [epcs, orders, has_invalid] = await Promise.all([
-			this.getIncomingEpc(model, factory, args),
-			this.getOrderDetail(model, factory),
-			this.checkInvalidEpcExist(model)
+			this.getIncomingEpc($model, factory, args),
+			this.getOrderDetail($model, factory),
+			this.checkInvalidEpcExist($model, factory)
 		])
 
 		return { epcs, orders, has_invalid }
 	}
 
-	public async getIncomingEpc(model: EpcModel, factory: string, args: RFIDSearchParams) {
+	public async getIncomingEpc($model: EpcModel, factory: string, args: RFIDSearchParams) {
 		const filterQuery: FilterQuery<EpcDocument> = {
 			scannable: true,
-			mo_no: args['mo_no.eq'],
-			station_no: { $regex: new RegExp(factory, 'i') }
+			station_no: { $regex: new RegExp(factory, 'i') },
+			mo_no: args['mo_no.eq']
 		}
 		if (!args['mo_no.eq']) delete filterQuery.mo_no
 
-		return await model.paginate(filterQuery, {
+		return await $model.paginate(filterQuery, {
 			sort: { record_time: -1, epc: 1, mo_no: 1 },
 			select: ['epc', 'mo_no'],
 			lean: true,
@@ -64,19 +58,20 @@ export class RFIDSharedService {
 		})
 	}
 
-	private async checkInvalidEpcExist(model: EpcModel): Promise<boolean> {
-		const hasInvalidEpc = await model
+	private async checkInvalidEpcExist($model: EpcModel, factory: string): Promise<boolean> {
+		const hasInvalidEpc = await $model
 			.exists({
 				scannable: true,
-				epc: { $regex: /^E28/i }
+				epc: { $regex: /^E28/i },
+				station_no: { $regex: new RegExp(factory, 'i') }
 			})
 			.lean(true)
 
 		return Boolean(hasInvalidEpc)
 	}
 
-	public async getOrderDetail(model: EpcModel, factory: string) {
-		return await model.aggregate(
+	public async getOrderDetail($model: EpcModel, factory: string) {
+		return await $model.aggregate(
 			[
 				// * Stage 1: Match documents that are not deleted
 				{
@@ -134,13 +129,13 @@ export class RFIDSharedService {
 		)
 	}
 
-	public async findDeletableEpcs(model: EpcModel, queries: FindEpcBySizeDTO) {
+	public async findDeletableEpcs($model: EpcModel, queries: FindEpcBySizeDTO) {
 		const VALID_EPC_LENGTH = 24
-		return await model
+		return await $model
 			.find({
+				scannable: true,
 				mo_no: queries['mo_no.eq'],
 				size_numcode: queries['size_numcode.eq'],
-				scannable: true,
 				$expr: { $eq: [{ $strLenCP: '$epc' }, VALID_EPC_LENGTH] }
 			})
 			.select('epc')
@@ -149,12 +144,12 @@ export class RFIDSharedService {
 
 	/**
 	 *
-	 * @param model
+	 * @param $model
 	 * @param onSnapshot
 	 * @returns {mongodb.ChangeStream<ResultType, ChangeType>}
 	 */
-	public captureDataChange(model: EpcModel, onSnapshot: (change?: any) => unknown): ReturnType<typeof model.watch> {
-		const changeStream = model.watch(
+	public captureDataChange($model: EpcModel, onSnapshot: (change?: any) => unknown): ReturnType<typeof $model.watch> {
+		const changeStream = $model.watch(
 			[
 				{
 					$match: {
@@ -212,9 +207,7 @@ export class RFIDSharedService {
 		 * * Do not receive EPCs that start with '303429' (Dansko's EPCs)
 		 */
 		const scannedEpcs = await this.dataSourceDL.query<StoredRFIDReaderItem[]>(this.epcInformationQuery, [
-			FALLBACK_VALUE,
 			epcList,
-			EXCLUDED_EPC_PATTERN,
 			excludedOrderList
 		])
 
@@ -236,17 +229,17 @@ export class RFIDSharedService {
 	}
 
 	public async deleteScannedOrder(
-		model: EpcModel,
+		$model: EpcModel,
 		commandNumber: string,
 		rescannable: boolean
 	): Promise<UpdateWriteOpResult> {
-		return await model
+		return await $model
 			.updateMany({ mo_no: commandNumber }, { deleted: true, scannable: rescannable }, { new: true })
 			.exec()
 	}
 
-	public async deleteBulkEpcs(model: EpcModel, epcs: string[], rescannable: boolean): Promise<UpdateWriteOpResult> {
-		return await model
+	public async deleteBulkEpcs($model: EpcModel, epcs: string[], rescannable: boolean): Promise<UpdateWriteOpResult> {
+		return await $model
 			.updateMany({ epc: { $in: epcs } }, { deleted: true, scannable: rescannable }, { new: true })
 			.exec()
 	}
