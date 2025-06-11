@@ -6,6 +6,7 @@ import { TenancyModule } from '../tenancy/tenancy.module'
 import { InboundInventoryEntity } from './entities/inbound-inventory.entity'
 import { InventoryReportEntity } from './entities/inventory-report.entity'
 import { OutboundEstimationEntity } from './entities/outbound-inventory.entity'
+import { ProductInventoryReportEntity } from './entities/product-inventory-report.entity'
 import { ProductSizeInventoryEntity } from './entities/product-size-inventory.entity'
 import { InventoryController } from './inventory.controller'
 import { InventoryAuditService } from './services/inventory-report.service'
@@ -15,7 +16,13 @@ import { ProductionInventoryService } from './services/product-inventory.service
 	imports: [
 		TenancyModule,
 		TypeOrmModule.forFeature(
-			[InventoryReportEntity, ProductSizeInventoryEntity, InboundInventoryEntity, OutboundEstimationEntity],
+			[
+				InventoryReportEntity,
+				ProductInventoryReportEntity,
+				ProductSizeInventoryEntity,
+				InboundInventoryEntity,
+				OutboundEstimationEntity
+			],
 			DATA_SOURCE_DATA_LAKE
 		)
 	],

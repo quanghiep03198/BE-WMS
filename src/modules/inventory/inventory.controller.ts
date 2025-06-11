@@ -1,7 +1,8 @@
+import { CommonRequestHeader } from '@/common/constants'
 import { Api, AuthGuard, HttpMethod, User } from '@/common/decorators'
 import { AllExceptionsFilter } from '@/common/filters'
 import { ZodValidationPipe } from '@/common/pipes'
-import { Body, Controller, DefaultValuePipe, Get, HttpStatus, Query, Res, UseFilters } from '@nestjs/common'
+import { Body, Controller, DefaultValuePipe, Get, Headers, HttpStatus, Query, Res, UseFilters } from '@nestjs/common'
 import { format } from 'date-fns'
 import { type Response } from 'express'
 import {
@@ -22,7 +23,7 @@ export class InventoryController {
 		private readonly productionInventoryService: ProductionInventoryService
 	) {}
 
-	// #region Inventory report
+	// #region Inventory Audit
 
 	@Api({ endpoint: 'audit', method: HttpMethod.GET })
 	@AuthGuard()
@@ -43,20 +44,6 @@ export class InventoryController {
 		return res.send(buffer)
 	}
 
-	@Api({ endpoint: 'production', method: HttpMethod.GET, statusCode: HttpStatus.OK })
-	@AuthGuard()
-	async getProductInventory(
-		@Query(new ZodValidationPipe(productInventoryReportQuery)) filterQueries: ProductInventoryReportQueryDTO
-	) {
-		return await this.productionInventoryService.getProductInventory(filterQueries)
-	}
-
-	@Api({ endpoint: 'production-features', method: HttpMethod.GET, statusCode: HttpStatus.OK })
-	@AuthGuard()
-	async getProductInventoryFeatures() {
-		return await this.productionInventoryService.getProductionInventoryFeatures()
-	}
-
 	@Api({ endpoint: 'audit/update', method: HttpMethod.PATCH, statusCode: HttpStatus.CREATED })
 	@AuthGuard()
 	async updateInventoryReport(
@@ -68,6 +55,30 @@ export class InventoryController {
 			queries,
 			payload.map((item) => ({ ...item, user_code_updated: username, user_name_updated: username }))
 		)
+	}
+	// #endregion
+
+	// #region Inventory Summary
+	@Api({ endpoint: 'summary', method: HttpMethod.GET, statusCode: HttpStatus.OK })
+	@AuthGuard()
+	async getProductInventory(
+		@Query(new ZodValidationPipe(productInventoryReportQuery)) filterQueries: ProductInventoryReportQueryDTO
+	) {
+		return await this.productionInventoryService.getProductInventory(filterQueries)
+	}
+
+	@Get('summary/export')
+	@UseFilters(AllExceptionsFilter)
+	@AuthGuard()
+	async exportInventorySummary(@Headers(CommonRequestHeader.FACTORY_CODE) factory: string, @Res() res: Response) {
+		const buffer = await this.productionInventoryService.exportProductionInventorySummary(factory)
+		return res.send(buffer)
+	}
+
+	@Api({ endpoint: 'production-features', method: HttpMethod.GET, statusCode: HttpStatus.OK })
+	@AuthGuard()
+	async getProductInventoryFeatures() {
+		return await this.productionInventoryService.getProductionInventoryFeatures()
 	}
 	// #endregion
 }

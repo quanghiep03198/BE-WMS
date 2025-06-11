@@ -219,18 +219,18 @@ export class InventoryAuditService {
 				row.getCell(i).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'deecf7' } }
 			}
 			for (const subRecord of record.detail) {
-				const row = worksheet.addRow([])
-				row.getCell(3).value = subRecord.size + '#'
-				row.getCell(3).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'fff2cc' } }
-				row.getCell(3).font = { bold: true }
-				row.getCell(4).value = subRecord.initial_stock_qty
-				row.getCell(4).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'f2dcdb' } }
-				row.getCell(5).value = subRecord.instock_qty
-				row.getCell(5).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'f2dcdb' } }
-				row.getCell(6).value = subRecord.outstock_qty
-				row.getCell(6).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'f2dcdb' } }
-				row.getCell(7).value = subRecord.final_stock_qty
-				row.getCell(7).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'f2dcdb' } }
+				const subRow = worksheet.addRow([])
+				subRow.getCell(3).value = subRecord.size + '#'
+				subRow.getCell(3).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'fff2cc' } }
+				subRow.getCell(3).font = { bold: true }
+				subRow.getCell(4).value = subRecord.initial_stock_qty
+				subRow.getCell(4).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'f2dcdb' } }
+				subRow.getCell(5).value = subRecord.instock_qty
+				subRow.getCell(5).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'f2dcdb' } }
+				subRow.getCell(6).value = subRecord.outstock_qty
+				subRow.getCell(6).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'f2dcdb' } }
+				subRow.getCell(7).value = subRecord.final_stock_qty
+				subRow.getCell(7).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'f2dcdb' } }
 			}
 		}
 
@@ -264,6 +264,7 @@ export class InventoryAuditService {
 		worksheet.eachRow({ includeEmpty: false }, (row) => {
 			row.alignment = { ...row.alignment, vertical: 'middle' }
 			row.eachCell({ includeEmpty: true }, (cell) => {
+				cell.font = { ...cell.font, name: 'Calibri', family: 1 }
 				cell.border = {
 					top: { style: 'thin', color: { argb: 'a1a1a1' } },
 					left: { style: 'thin', color: { argb: 'a1a1a1' } },
