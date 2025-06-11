@@ -6,7 +6,7 @@ import { ViewColumn, ViewEntity } from 'typeorm'
 	schema: DATABASE_SCHEMA,
 	name: 'dvview_invoub'
 })
-export class OutboundExpectationEntity {
+export class OutboundEstimationEntity {
 	@ViewColumn({ name: 'shoes_style' })
 	shoes_style: string
 
