@@ -33,8 +33,17 @@ abstract class BaseAbstractEpcSchema {
 	@Prop({ type: String, required: true, unique: true, length: 24 })
 	epc: string
 
-	@Prop({ type: String, required: true, index: true })
+	@Prop({ type: Boolean, required: true, default: true, index: true })
+	scannable: boolean
+
+	@Prop({ type: String, required: true })
 	mo_no: string
+
+	@Prop({ type: String })
+	po: string
+
+	@Prop({ type: String, required: true })
+	factory_code_produce: string
 
 	@Prop({ type: String, required: true })
 	color_sn: string
@@ -45,17 +54,8 @@ abstract class BaseAbstractEpcSchema {
 	@Prop({ type: String, required: true })
 	size_numcode: string
 
-	@Prop({ type: String, required: true })
+	@Prop({ type: String, required: true, index: true })
 	station_no: string
-
-	@Prop({ type: String, required: true })
-	factory_code_produce: string
-
-	@Prop({ type: Boolean, required: true, default: true, index: true })
-	scannable: boolean
-
-	@Prop({ type: String })
-	po: string
 }
 
 /**
@@ -74,7 +74,7 @@ export class EpcInbound extends BaseAbstractEpcSchema {}
 	collection: EPC_OUTBOUND_COLLECTION,
 	...defaultSchemaOptions
 })
-export class EpcOutbound extends EpcInbound {}
+export class EpcOutbound extends BaseAbstractEpcSchema {}
 
 export const EpcInboundSchema = SchemaFactory.createForClass(EpcInbound)
 export const EpcOutboundSchema = SchemaFactory.createForClass(EpcOutbound)
