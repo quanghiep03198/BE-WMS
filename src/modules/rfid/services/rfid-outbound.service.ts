@@ -33,64 +33,9 @@ export class RFIDOutboundService {
 		return await this.postDataQueue.add('RFID_OUTBOUND', payload)
 	}
 
-	public async getOutboundOrderDetails() {
-		return await this.epcOutboundModel.aggregate(
-			[
-				// * Stage 1: Match documents that are not deleted
-				{
-					$match: {
-						deleted: false,
-						scannable: true
-					}
-				},
-				// * Stage 2: Group by mo_no, color_sn, and shoes_style_code_factory, and aggregate sizes
-				{
-					$group: {
-						_id: {
-							mo_no: '$mo_no',
-							color_sn: '$color_sn',
-							shoes_style_code_factory: '$shoes_style_code_factory',
-							size_numcode: '$size_numcode'
-						},
-						count: { $sum: 1 }
-					}
-				},
-				// * Stage 3: Reshape the data to group sizes into an array
-				{
-					$group: {
-						_id: {
-							mo_no: '$_id.mo_no',
-							color_sn: '$_id.color_sn',
-							shoes_style_code_factory: '$_id.shoes_style_code_factory'
-						},
-						sizes: {
-							$push: {
-								size_numcode: '$_id.size_numcode',
-								count: '$count'
-							}
-						}
-					}
-				},
-				// * Stage 4: Reshape the final output
-				{
-					$project: {
-						_id: 0,
-						mo_no: '$_id.mo_no',
-						color_sn: '$_id.color_sn',
-						shoes_style_code_factory: '$_id.shoes_style_code_factory',
-						sizes: 1
-					}
-				},
-				// * Stage 5: Sort the results
-				{ $sort: { mo_no: 1, color_sn: 1, shoes_style_code_factory: 1 } }
-			],
-			{ readPreference: 'nearest' }
-		)
-	}
-
 	public async upsertStockOut(payload: UpsertStockOutDTO) {
 		const baseFilterQuery: FilterQuery<EpcDocument> = {
-			deleted: false,
+			$or: [{ deleted: false }, { deleted: null }],
 			scannable: true
 		}
 
@@ -275,7 +220,11 @@ export class RFIDOutboundService {
 
 	public async restoreArchivedEpcs(epcs: string[]) {
 		return await this.epcOutboundModel
-			.restore({ $and: [{ epc: { $in: epcs } }, { epc: { $not: { $regex: EXCLUDED_EPC_REGEX } } }] })
+			.restore({
+				$and: [{ epc: { $in: epcs } }, { epc: { $not: { $regex: EXCLUDED_EPC_REGEX } } }],
+				po: null,
+				scannable: true
+			})
 			.exec()
 	}
 }
