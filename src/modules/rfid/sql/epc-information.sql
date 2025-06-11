@@ -1,15 +1,18 @@
+DECLARE @FallbackValue NVARCHAR(10) = 'Unknown';
+
 SELECT DISTINCT a.EPC_Code AS epc, 
-   ISNULL(b.mo_no, @0) AS mo_no,
-   COALESCE(c.color_sn, @0) AS color_sn,
-   COALESCE(b.shoestyle_codefactory, @0) AS shoes_style_code_factory,
-   COALESCE(b.size_numcode, @0) AS size_numcode,
+   ISNULL(b.mo_no, @FallbackValue) AS mo_no,
+   COALESCE(b.shoestyle_codefactory, @FallbackValue) AS shoes_style_code_factory,
+   COALESCE(c.color_sn, @FallbackValue) AS color_sn,
+   COALESCE(b.size_numcode, @FallbackValue) AS size_numcode,
    b.factory_code_produce
-FROM (SELECT value AS EPC_Code FROM STRING_SPLIT(@1 , ',')) AS a
+FROM (SELECT value AS EPC_Code FROM STRING_SPLIT(CAST(@0 AS NVARCHAR(MAX)), ',')) AS a
 LEFT JOIN DV_DATA_LAKE.dbo.dv_rfidmatchmst_cust b ON a.EPC_Code = b.EPC_Code
 LEFT JOIN wuerp_vnrd.dbo.ta_productmst c ON b.mat_code = c.mat_code
 WHERE 
-   a.EPC_Code NOT LIKE @2
+   a.EPC_Code NOT LIKE '303429%'
+   AND LEN(a.EPC_Code) = 24
    AND (
       b.mo_no IS NULL 
-      OR b.mo_no NOT IN (SELECT value AS mo_no FROM STRING_SPLIT(@3, ','))
+      OR b.mo_no NOT IN (SELECT value AS mo_no FROM STRING_SPLIT(@1, ','))
    )
