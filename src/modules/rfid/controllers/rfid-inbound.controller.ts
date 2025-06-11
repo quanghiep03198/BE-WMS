@@ -113,19 +113,19 @@ export class RFIDInboundController {
 	}
 
 	@Api({
-		endpoint: 'update-stock/:orderCode',
+		endpoint: 'update-stock/:commandNumber',
 		method: HttpMethod.PUT,
 		statusCode: HttpStatus.CREATED,
 		message: 'common.updated'
 	})
 	@AuthGuard()
 	async upsertStockIn(
-		@Param('orderCode') orderCode: string,
+		@Param('commandNumber') commandNumber: string,
 		@User('username') username: string,
 		@Headers(CommonRequestHeader.FACTORY_CODE) factoryCode: string,
 		@Body(new ZodValidationPipe(updateStockValidator)) payload: UpsertStockInDTO
 	) {
-		return await this.rfidInboundService.upsertStockIn(orderCode, {
+		return await this.rfidInboundService.upsertStockIn(commandNumber, {
 			...payload,
 			user_code_created: username,
 			factory_code: factoryCode
