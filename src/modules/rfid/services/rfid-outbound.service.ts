@@ -18,11 +18,6 @@ import { RFIDSearchParams } from '../types'
 
 @Injectable()
 export class RFIDOutboundService {
-	private readonly upsertStockoutQuery: string = readFileSync(
-		resolve(join(__dirname, '../sql/upsert-outbound.sql')),
-		'utf-8'
-	)
-
 	constructor(
 		@InjectDataSource(DATA_SOURCE_DATA_LAKE) private readonly dataSourceDL: DataSource,
 		@InjectQueue(POST_DATA_OUTBOUND_QUEUE) private readonly postDataQueue: Queue<PostReaderDataDTO>,
@@ -118,9 +113,9 @@ export class RFIDOutboundService {
 		const filterQuery: FilterQuery<EpcDocument> = {
 			deleted: true,
 			scannable: true,
+			epc: { $not: { $regex: EXCLUDED_EPC_REGEX } },
 			factory_code_produce: factoryCode,
 			po: null,
-			epc: { $not: { $regex: EXCLUDED_EPC_REGEX } },
 			...(args.q && { epc: { $regex: args.q, $options: 'i' } }),
 			...(args['shoes_style.eq'] && { shoes_style_code_factory: args['shoes_style.eq'] }),
 			...(args['color_sn.eq'] && { color_sn: args['color_sn.eq'] }),
@@ -154,9 +149,9 @@ export class RFIDOutboundService {
 			.aggregateWithDeleted([
 				{
 					$match: {
-						epc: { $not: { $regex: EXCLUDED_EPC_REGEX } },
 						deleted: true,
 						scannable: true,
+						epc: { $not: { $regex: EXCLUDED_EPC_REGEX } },
 						po: null
 					}
 				},
@@ -221,9 +216,9 @@ export class RFIDOutboundService {
 	public async restoreArchivedEpcs(epcs: string[]) {
 		return await this.epcOutboundModel
 			.restore({
+				scannable: true,
 				$and: [{ epc: { $in: epcs } }, { epc: { $not: { $regex: EXCLUDED_EPC_REGEX } } }],
-				po: null,
-				scannable: true
+				po: null
 			})
 			.exec()
 	}
