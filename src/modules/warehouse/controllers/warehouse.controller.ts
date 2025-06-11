@@ -1,3 +1,4 @@
+import { CommonRequestHeader } from '@/common/constants'
 import { Api, AuthGuard, HttpMethod } from '@/common/decorators'
 import { ZodValidationPipe } from '@/common/pipes'
 import { Body, Controller, Headers, HttpStatus, Param } from '@nestjs/common'
@@ -17,7 +18,7 @@ export class WarehouseController {
 
 	@Api({ method: HttpMethod.GET })
 	@AuthGuard()
-	async getWarehouses(@Headers('X-User-Company') cofactorCode: string) {
+	async getWarehouses(@Headers(CommonRequestHeader.FACTORY_CODE) cofactorCode: string) {
 		return await this.warehouseService.findAllByFactory(cofactorCode)
 	}
 
@@ -37,7 +38,7 @@ export class WarehouseController {
 	})
 	@AuthGuard()
 	async createWarehouse(
-		@Headers('X-User-Company') factoryCode: string,
+		@Headers(CommonRequestHeader.FACTORY_CODE) factoryCode: string,
 		@Body(new ZodValidationPipe(createWarehouseValidator)) payload: CreateWarehouseDTO
 	) {
 		return await this.warehouseService.insertOne({ ...payload, cofactory_code: factoryCode } as any)

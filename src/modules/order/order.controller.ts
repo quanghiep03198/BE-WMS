@@ -1,3 +1,4 @@
+import { CommonRequestHeader } from '@/common/constants'
 import { Api, AuthGuard, HttpMethod } from '@/common/decorators'
 import { Controller, DefaultValuePipe, Headers, NotFoundException, Param, Query } from '@nestjs/common'
 import { groupBy } from 'lodash'
@@ -17,7 +18,7 @@ export class OrderController {
 	})
 	@AuthGuard()
 	async searchCommandNumber(
-		@Headers('X-User-Company') factoryCode: string,
+		@Headers(CommonRequestHeader.FACTORY_CODE) factoryCode: string,
 		@Query('q', new DefaultValuePipe('')) searchTerm: string
 	) {
 		return await this.orderService.searchCommandNumber(factoryCode, searchTerm)

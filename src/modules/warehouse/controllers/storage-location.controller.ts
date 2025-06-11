@@ -1,3 +1,4 @@
+import { CommonRequestHeader } from '@/common/constants'
 import { Api, AuthGuard } from '@/common/decorators'
 import { ZodValidationPipe } from '@/common/pipes'
 import { BadRequestException, Body, Controller, Headers, HttpStatus, Param } from '@nestjs/common'
@@ -23,7 +24,7 @@ export class StorageLocationController {
 	})
 	@AuthGuard()
 	async createStorageLocation(
-		@Headers('X-User-Company') factoryCode: string,
+		@Headers(CommonRequestHeader.FACTORY_CODE) factoryCode: string,
 		@Body(new ZodValidationPipe(createStorageLocationValidator)) payload: CreateStorageLocationDTO
 	) {
 		if (!factoryCode) throw new BadRequestException('Factory code is required')
@@ -40,7 +41,7 @@ export class StorageLocationController {
 	})
 	@AuthGuard()
 	async getStorageLocationByWarhouse(
-		@Headers('X-User-Company') factoryCode: string,
+		@Headers(CommonRequestHeader.FACTORY_CODE) factoryCode: string,
 		@Param('warehouseCode') warehouseCode: string
 	) {
 		return await this.storageLocationService.findByWarehouse(warehouseCode, factoryCode)

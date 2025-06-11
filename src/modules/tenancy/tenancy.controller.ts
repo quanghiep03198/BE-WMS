@@ -1,3 +1,4 @@
+import { CommonRequestHeader } from '@/common/constants'
 import { Api, AuthGuard, HttpMethod } from '@/common/decorators'
 import { BadRequestException, Controller, Headers } from '@nestjs/common'
 import { FactoryCode } from '../department/constants'
@@ -14,7 +15,7 @@ export class TenancyController {
 	}
 	@Api({ endpoint: 'by-factory', method: HttpMethod.GET })
 	@AuthGuard()
-	getByFactory(@Headers('X-User-Company') cofactorCode: string) {
+	getByFactory(@Headers(CommonRequestHeader.FACTORY_CODE) cofactorCode: string) {
 		if (!cofactorCode) throw new BadRequestException('Please provide factory code')
 		return this.tenancyService.getByFactory(cofactorCode as FactoryCode)
 	}

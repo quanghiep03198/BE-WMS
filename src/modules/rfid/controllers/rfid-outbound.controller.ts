@@ -1,3 +1,4 @@
+import { CommonRequestHeader } from '@/common/constants'
 import { Api, AuthGuard, HttpMethod } from '@/common/decorators'
 import { AllExceptionsFilter } from '@/common/filters'
 import { ZodValidationPipe } from '@/common/pipes'
@@ -44,7 +45,7 @@ export class RFIDOutboundController {
 	@Get('sse')
 	@AuthGuard()
 	@UseFilters(AllExceptionsFilter)
-	async streamOutboundRFIDData(@Headers('X-User-Company') factoryCode: string, @Res() res: Response) {
+	async streamOutboundRFIDData(@Headers(CommonRequestHeader.FACTORY_CODE) factoryCode: string, @Res() res: Response) {
 		res.setHeader('Content-Type', 'text/event-stream')
 		res.setHeader('Cache-Control', 'no-cache')
 		const handleChange = async () => {
@@ -72,7 +73,7 @@ export class RFIDOutboundController {
 	})
 	@AuthGuard()
 	async fetchNextOutboundEpc(
-		@Headers('X-User-Company') factory: string,
+		@Headers(CommonRequestHeader.FACTORY_CODE) factory: string,
 		@Query('_page', new DefaultValuePipe(1), ParseIntPipe) page: number
 	) {
 		return await this.rfidSharedService.getIncomingEpc(this.epcOutboundModel, factory, { _page: page, _limit: 50 })
@@ -142,7 +143,7 @@ export class RFIDOutboundController {
 	})
 	@AuthGuard()
 	async getArchivedEpcs(
-		@Headers('X-User-Company') factoryCode: string,
+		@Headers(CommonRequestHeader.FACTORY_CODE) factoryCode: string,
 		@Query('_page', new DefaultValuePipe(1), ParseIntPipe) page: number,
 		@Query('q', new DefaultValuePipe('')) search: string,
 		@Query('mo_no.eq', new DefaultValuePipe('')) mo_no: string,

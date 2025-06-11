@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
+import { CommonRequestHeader } from '@/common/constants'
 import { Api, AuthGuard, HttpMethod } from '@/common/decorators'
 import { ZodValidationPipe } from '@/common/pipes'
 import { InjectQueue } from '@nestjs/bullmq'
@@ -24,7 +25,7 @@ export class RFIDSharedController {
 		statusCode: HttpStatus.OK
 	})
 	@AuthGuard()
-	async getWarehouseRFIDDevices(@Headers('X-User-Company') factoryCode: string) {
+	async getWarehouseRFIDDevices(@Headers(CommonRequestHeader.FACTORY_CODE) factoryCode: string) {
 		return await this.rfidSharedService.getWarehouseRFIDDevices(factoryCode)
 	}
 
@@ -35,7 +36,7 @@ export class RFIDSharedController {
 	})
 	@AuthGuard()
 	async getArchivedEpcsByOrder(
-		@Headers('X-User-Company') factoryCode: string,
+		@Headers(CommonRequestHeader.FACTORY_CODE) factoryCode: string,
 		@Param('commandNumber') commandNumber: string
 	) {
 		return await this.rfidSharedService.getArchivedEpcsByOrder(factoryCode, commandNumber)

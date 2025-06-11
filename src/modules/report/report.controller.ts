@@ -1,3 +1,4 @@
+import { CommonRequestHeader } from '@/common/constants'
 import { Api, AuthGuard, HttpMethod } from '@/common/decorators'
 import { AllExceptionsFilter } from '@/common/filters'
 import { Controller, DefaultValuePipe, Get, Headers, Query, Res, UseFilters } from '@nestjs/common'
@@ -53,7 +54,7 @@ export class ReportController {
 	@UseFilters(AllExceptionsFilter)
 	@AuthGuard()
 	async exportDailyOutboundToExcel(
-		@Headers('X-User-Company') factoryCode: string,
+		@Headers(CommonRequestHeader.FACTORY_CODE) factoryCode: string,
 		@Query('date.eq') date: string,
 		@Res() res: Response
 	) {
@@ -69,7 +70,7 @@ export class ReportController {
 	@AuthGuard()
 	async getDailyPackingReport(
 		@Query('date.eq', new DefaultValuePipe(format(new Date(), 'yyyy-MM-dd'))) date: string,
-		@Headers('X-User-Company') factoryCode: string
+		@Headers(CommonRequestHeader.FACTORY_CODE) factoryCode: string
 	) {
 		return await this.packingWeightReportService.getDailyPackingReport(date, factoryCode)
 	}
@@ -79,7 +80,7 @@ export class ReportController {
 	@AuthGuard()
 	async exportPackingWeightReport(
 		@Query('date.eq', new DefaultValuePipe(format(new Date(), 'yyyy-MM-dd'))) date: string,
-		@Headers('X-User-Company') factoryCode: string,
+		@Headers(CommonRequestHeader.FACTORY_CODE) factoryCode: string,
 		@Res() res: Response
 	) {
 		const buffer = await this.packingWeightReportService.exportDailyPackingToExcel(date, factoryCode)

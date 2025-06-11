@@ -1,3 +1,4 @@
+import { CommonRequestHeader } from '@/common/constants'
 import { Api, AuthGuard, HttpMethod } from '@/common/decorators'
 import { InjectQueue } from '@nestjs/bullmq'
 import { Controller, Headers, HttpStatus, Param, Req } from '@nestjs/common'
@@ -26,7 +27,7 @@ export class ThirdPartyApiController {
 		message: 'common.created'
 	})
 	@AuthGuard()
-	async syncDeckerData(@Headers('X-User-Company') factoryCode: string) {
+	async syncDeckerData(@Headers(CommonRequestHeader.FACTORY_CODE) factoryCode: string) {
 		const validUnknownEpcs = await this.epcModel.find({ mo_no: FALLBACK_VALUE }).lean(true)
 		return await this.thirdPartyApiSyncQueue.add(
 			'SYNC_DECKER_DATA',

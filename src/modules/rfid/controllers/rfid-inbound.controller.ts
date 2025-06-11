@@ -1,3 +1,4 @@
+import { CommonRequestHeader } from '@/common/constants'
 import { Api, AuthGuard, HttpMethod, User } from '@/common/decorators'
 import { AllExceptionsFilter } from '@/common/filters'
 import { ZodValidationPipe } from '@/common/pipes'
@@ -51,7 +52,7 @@ export class RFIDInboundController {
 	@Get('sse')
 	@AuthGuard()
 	@UseFilters(AllExceptionsFilter)
-	async streamInboundRFIDData(@Headers('X-User-Company') factory: string, @Res() res: Response) {
+	async streamInboundRFIDData(@Headers(CommonRequestHeader.FACTORY_CODE) factory: string, @Res() res: Response) {
 		res.setHeader('Content-Type', 'text/event-stream')
 		res.setHeader('Cache-Control', 'no-cache')
 		const handleChange = async () => {
@@ -82,7 +83,7 @@ export class RFIDInboundController {
 	})
 	@AuthGuard()
 	async fetchNextInboundEpc(
-		@Headers('X-User-Company') factory: string,
+		@Headers(CommonRequestHeader.FACTORY_CODE) factory: string,
 		@Query('_page', new DefaultValuePipe(1), ParseIntPipe) page: number,
 		@Query('mo_no.eq', new DefaultValuePipe('')) selectedOrder: string
 	) {
@@ -98,7 +99,7 @@ export class RFIDInboundController {
 		method: HttpMethod.GET
 	})
 	@AuthGuard()
-	async getOrderDetails(@Headers('X-User-Company') factory: string) {
+	async getOrderDetails(@Headers(CommonRequestHeader.FACTORY_CODE) factory: string) {
 		return this.rfidSharedService.getOrderDetail(this.epcInboundModel, factory)
 	}
 
@@ -121,7 +122,7 @@ export class RFIDInboundController {
 	async upsertStockIn(
 		@Param('orderCode') orderCode: string,
 		@User('username') username: string,
-		@Headers('X-User-Company') factoryCode: string,
+		@Headers(CommonRequestHeader.FACTORY_CODE) factoryCode: string,
 		@Body(new ZodValidationPipe(updateStockValidator)) payload: UpsertStockInDTO
 	) {
 		return await this.rfidInboundService.upsertStockIn(orderCode, {
@@ -148,7 +149,7 @@ export class RFIDInboundController {
 	})
 	@AuthGuard()
 	async exchangeEpcBySize(
-		@Headers('X-User-Company') factoryCode: string,
+		@Headers(CommonRequestHeader.FACTORY_CODE) factoryCode: string,
 		@Body(new ZodValidationPipe(exchangeEpcValidator)) payload: ExchangeEpcDTO
 	) {
 		return await this.rfidInboundService.exchangeEpcBySize(factoryCode, payload)
@@ -198,7 +199,7 @@ export class RFIDInboundController {
 	})
 	@AuthGuard()
 	async searchExchangableOrder(
-		@Headers('X-User-Company') factory_code: string,
+		@Headers(CommonRequestHeader.FACTORY_CODE) factory_code: string,
 		@Query(new ZodValidationPipe(searchCustomerValidator))
 		queries: SearchCustOrderParamsDTO
 	) {
