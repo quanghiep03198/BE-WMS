@@ -26,16 +26,6 @@ import { EpcInbound, EpcInboundSchema, EpcModel } from '../schemas/epc.schema'
 
 @Injectable({ scope: Scope.REQUEST })
 export class RFIDInboundService {
-	private readonly upsertInventoryQuery: string = readFileSync(
-		resolve(join(__dirname, '../sql/upsert-inbound.sql')),
-		'utf-8'
-	)
-
-	private readonly upsertEpcsQuery: string = readFileSync(
-		resolve(join(__dirname, '../sql/upsert-rfid-match.sql')),
-		'utf-8'
-	)
-
 	constructor(
 		@Inject(TENANCY_DATA_SOURCE) private readonly dataSourceTNC: DataSource,
 		@InjectDataSource(DATA_SOURCE_DATA_LAKE) private readonly dataSourceDL: DataSource,
@@ -70,6 +60,10 @@ export class RFIDInboundService {
 		const session = await this.epcInboundModel.startSession()
 
 		try {
+			const upsertInventoryQuery: string = readFileSync(
+				resolve(join(__dirname, '../sql/upsert-inbound.sql')),
+				'utf-8'
+			)
 			await session.startTransaction()
 			await queryRunner.startTransaction()
 
@@ -90,7 +84,7 @@ export class RFIDInboundService {
 					})
 					.join(',')
 
-				await this.dataSourceDL.query(this.upsertInventoryQuery.replace(':values', values))
+				await this.dataSourceDL.query(upsertInventoryQuery.replace(':values', values))
 			}
 			await this.epcInboundModel.delete({ mo_no: orderCode }).exec()
 			await queryRunner.commitTransaction()
@@ -180,6 +174,8 @@ export class RFIDInboundService {
 		const queryRunner = this.dataSourceDL.createQueryRunner()
 		await queryRunner.connect()
 		try {
+			const upsertEpcsQuery: string = readFileSync(resolve(join(__dirname, '../sql/upsert-rfid-match.sql')), 'utf-8')
+
 			await session.startTransaction()
 			await queryRunner.startTransaction()
 
@@ -194,7 +190,7 @@ export class RFIDInboundService {
 						)`
 					})
 					.join(',')
-				await queryRunner.query(this.upsertEpcsQuery.replace(':values', values))
+				await queryRunner.query(upsertEpcsQuery.replace(':values', values))
 			}
 
 			const bulkWriteOptions: AnyBulkWriteOperation<typeof EpcInboundSchema>[] = payload.map((item) => ({
