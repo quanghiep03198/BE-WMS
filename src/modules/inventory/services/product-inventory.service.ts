@@ -4,7 +4,7 @@ import { uniqBy } from 'lodash'
 import { DataSource, FindOptionsWhere } from 'typeorm'
 import { ProductInventoryReportQueryDTO } from '../dto/inventory-report.dto'
 import { InboundInventoryEntity } from '../entities/inbound-inventory.entity'
-import { OutboundExpectationEntity } from '../entities/outbound-inventory.entity'
+import { OutboundEstimationEntity } from '../entities/outbound-inventory.entity'
 import { ProductSizeInventoryEntity } from '../entities/product-size-inventory.entity'
 
 @Injectable()
@@ -14,7 +14,7 @@ export class ProductionInventoryService {
 	public async getProductInventory(queries: ProductInventoryReportQueryDTO): Promise<{
 		sizes: ProductSizeInventoryEntity[]
 		inbound: InboundInventoryEntity[]
-		outbound: OutboundExpectationEntity[]
+		outbound: OutboundEstimationEntity[]
 	}> {
 		const filterQuery: FindOptionsWhere<ProductSizeInventoryEntity> = {
 			shoes_style: queries['shoes_style.eq'],
@@ -24,7 +24,7 @@ export class ProductionInventoryService {
 		const [productSizeInventory, inboundInventory, outboundInventory] = await Promise.all([
 			this.dataSourceTNC.getRepository(ProductSizeInventoryEntity).findBy(filterQuery),
 			this.dataSourceTNC.getRepository(InboundInventoryEntity).findBy(filterQuery),
-			this.dataSourceTNC.getRepository(OutboundExpectationEntity).findBy(filterQuery)
+			this.dataSourceTNC.getRepository(OutboundEstimationEntity).findBy(filterQuery)
 		])
 
 		return {
