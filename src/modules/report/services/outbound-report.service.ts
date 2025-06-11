@@ -139,6 +139,7 @@ export class OutboundReportService {
 		worksheet.eachRow({ includeEmpty: false }, (row) => {
 			row.alignment = { vertical: 'middle', horizontal: 'center' }
 			row.eachCell({ includeEmpty: true }, (cell) => {
+				cell.font = { ...cell.font, name: 'Calibri', family: 1 }
 				cell.border = {
 					top: { style: 'thin', color: { argb: 'a1a1a1' } },
 					left: { style: 'thin', color: { argb: 'a1a1a1' } },
