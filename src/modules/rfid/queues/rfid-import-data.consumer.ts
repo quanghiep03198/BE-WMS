@@ -10,7 +10,7 @@ import { readFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { Readable } from 'node:stream'
 import { DataSource } from 'typeorm'
-import { EXCLUDED_EPC_PATTERN, EXCLUDED_ORDERS, FALLBACK_VALUE, IMPORT_DATA_QUEUE } from '../constants'
+import { EXCLUDED_ORDERS, IMPORT_DATA_QUEUE } from '../constants'
 import { EpcInbound, EpcModel, EpcOutbound, EpcSchema } from '../schemas/epc.schema'
 import { StoredRFIDReaderItem } from '../types'
 
@@ -54,9 +54,7 @@ export class RFIDImportDataConsumer extends WorkerHost {
 		const excludedOrderList = EXCLUDED_ORDERS.join(',')
 
 		const incommingEpcs = await this.dataSourceDL.query<StoredRFIDReaderItem[]>(this.epcInformationQuery, [
-			FALLBACK_VALUE,
 			epcList,
-			EXCLUDED_EPC_PATTERN,
 			excludedOrderList
 		])
 
