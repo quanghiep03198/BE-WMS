@@ -1,5 +1,4 @@
 import { DatabaseModule } from '@/databases'
-import { type RedisClientOptions } from '@keyv/redis'
 import { BullModule } from '@nestjs/bullmq'
 import { CacheModule } from '@nestjs/cache-manager'
 import { Module, type OnApplicationBootstrap, type OnApplicationShutdown, type OnModuleInit } from '@nestjs/common'
@@ -61,7 +60,7 @@ import { RedisModule } from './redis/redis.module'
 				AcceptLanguageResolver
 			]
 		}),
-		CacheModule.registerAsync<RedisClientOptions>({
+		CacheModule.registerAsync({
 			isGlobal: true,
 			inject: [ConfigService],
 			useFactory: (configService: ConfigService) => configService.getOrThrow('cache')
