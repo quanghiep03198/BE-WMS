@@ -6,7 +6,7 @@ SELECT
 	MIN(COALESCE(po, '')) AS actual_po 
 FROM (
 	SELECT DISTINCT po, mo_no 
-	FROM DV_DATA_LAKE.dbo.dv_invprodmst WITH (NOLOCK)
+	FROM DV_DATA_LAKE.dbo.dv_invprodmst
 	WHERE inv_yearmonth = @0
 		AND inv_type = 'FG'
 		AND isactive = 'Y'
@@ -21,14 +21,14 @@ agg_data_mst AS (
 		brand_name,
 		inv_type,
 		shoestyle_cofactory AS shoes_style_code_factory,
-		SUM(mo_qty) AS mo_qty,
-		SUM(inv_initialqty) AS inv_initialqty,
-		SUM(inv_istotalqty) AS inv_istotalqty,
-		SUM(inv_manualqty) AS inv_manualqty,
-		SUM(inv_ostotalqty) AS inv_ostotalqty,
-		SUM(inv_manualqtyout) AS inv_manualqtyout,
-		SUM(inv_finalqty) AS inv_finalqty
-	FROM DV_DATA_LAKE.dbo.dv_invprodmst WITH (NOLOCK)
+		SUM(ISNULL(mo_qty, 0)) AS mo_qty,
+		SUM(ISNULL(inv_initialqty, 0)) AS inv_initialqty,
+		SUM(ISNULL(inv_istotalqty, 0)) AS inv_istotalqty,
+		SUM(ISNULL(inv_manualqty, 0)) AS inv_manualqty,
+		SUM(ISNULL(inv_ostotalqty, 0)) AS inv_ostotalqty,
+		SUM(ISNULL(inv_manualqtyout, 0)) AS inv_manualqtyout,
+		SUM(ISNULL(inv_finalqty, 0)) AS inv_finalqty
+	FROM DV_DATA_LAKE.dbo.dv_invprodmst
 	WHERE isactive = 'Y' 
 		AND inv_type = 'FG' 
 		AND inv_yearmonth = @0
@@ -57,7 +57,7 @@ agg_data AS (
 		SUM(inv_ostotalqty) AS inv_ostotalqty,
 		SUM(inv_manualqtyout) AS inv_manualqtyout,
 		SUM(inv_finalqty) AS inv_finalqty
-	FROM agg_data_mst WITH (NOLOCK)
+	FROM agg_data_mst
 	WHERE inv_type = 'FG' 
 	AND inv_yearmonth = @0
 	GROUP BY
@@ -77,7 +77,6 @@ SELECT
 	END AS po,
 	ISNULL(p.actual_po, '') actual_po,
 	a.mo_no,
-	
 	a.shoes_style_code_factory,
 	(ISNULL(d.shoestyle_codecust, '') + '/' +ISNULL(d.shoestyle_namecust, '')) cust_shoestyle,
 	c.color_sn,
@@ -85,20 +84,20 @@ SELECT
 	CAST(a.inv_initialqty AS INT) AS init_inv_qty,
 	CAST(a.inv_istotalqty AS INT) AS total_instock_qty,
 	CAST(a.inv_ostotalqty AS INT) AS total_outstock_qty,
-	CAST(a.inv_manualqty -  a.inv_manualqtyout AS INT) AS actual_inv_qty,
+	CAST(a.inv_manualqty - a.inv_manualqtyout AS INT) AS actual_inv_qty,
 	CAST(a.inv_finalqty AS INT) AS final_inv_qty,
 	-- * Add get JSON data pipeline for size
 	(
 		SELECT  
 			c.size_numcode AS size,
-			CAST(MAX(c.mo_qty) AS INT) AS order_qty_by_size,
-			CAST(SUM(c.inv_initialqty) AS INT) AS initial_stock_qty,
-			CAST(SUM(c.inv_istotalqty) AS INT) AS instock_qty,
-			CAST(SUM(c.inv_ostotalqty) AS INT) AS outstock_qty,
-			CAST(SUM(c.inv_manualqty) AS INT) AS actual_instock_qty,
-			CAST(SUM(c.inv_manualqtyout) AS INT) AS actual_outstock_qty,
+			CAST(MAX(ISNULL(c.mo_qty, 0)) AS INT) AS order_qty_by_size,
+			CAST(SUM(ISNULL(c.inv_initialqty, 0)) AS INT) AS initial_stock_qty,
+			CAST(SUM(ISNULL(c.inv_istotalqty, 0)) AS INT) AS instock_qty,
+			CAST(SUM(ISNULL(c.inv_ostotalqty, 0)) AS INT) AS outstock_qty,
+			CAST(SUM(ISNULL(c.inv_manualqty, 0)) AS INT) AS actual_instock_qty,
+			CAST(SUM(ISNULL(c.inv_manualqtyout, 0)) AS INT) AS actual_outstock_qty,
 			CAST(SUM(ISNULL(c.inv_finalqty, 0)) AS INT) AS final_stock_qty
-		FROM DV_DATA_LAKE.dbo.dv_invprodmst c WITH (NOLOCK)
+		FROM DV_DATA_LAKE.dbo.dv_invprodmst c
 		WHERE c.mo_no = a.mo_no
 			AND c.inv_yearmonth = a.inv_yearmonth
 			AND c.brand_name = a.brand_name
