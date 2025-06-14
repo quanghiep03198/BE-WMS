@@ -48,6 +48,7 @@ export class RFIDSharedController {
 		statusCode: HttpStatus.CREATED,
 		message: 'common.created'
 	})
+	@AuthGuard()
 	@UseInterceptors(FileFieldsInterceptor([{ name: 'files', maxCount: 200 }]))
 	async uploadDataFile(
 		@UploadedFiles(new CsvFileValidationPipe()) files: Express.Multer.File[],
