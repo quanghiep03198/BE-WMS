@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 import { CommonRequestHeader } from '@/common/constants'
 import { Api, AuthGuard, HttpMethod } from '@/common/decorators'
 import { ZodValidationPipe } from '@/common/pipes'
@@ -49,7 +48,7 @@ export class RFIDSharedController {
 		message: 'common.created'
 	})
 	@AuthGuard()
-	@UseInterceptors(FileFieldsInterceptor([{ name: 'files', maxCount: 200 }]))
+	@UseInterceptors(FileFieldsInterceptor([{ name: 'files', maxCount: 500 }]))
 	async uploadDataFile(
 		@UploadedFiles(new CsvFileValidationPipe()) files: Express.Multer.File[],
 		@Body(new ZodValidationPipe(uploadDataValidator)) payload: UploadDataDTO

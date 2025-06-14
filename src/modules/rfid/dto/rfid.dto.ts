@@ -102,7 +102,6 @@ export const findEpcBySizeValidator = z.object({
 })
 
 export const uploadDataValidator = z.object({
-	files: z.any(),
 	station: z
 		.string()
 		.nonempty()
