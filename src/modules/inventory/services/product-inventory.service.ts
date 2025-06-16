@@ -27,7 +27,7 @@ export class ProductionInventoryService {
 	}> {
 		const filterQuery: FindOptionsWhere<ProductSizeInventoryEntity> = {
 			shoes_style: queries['shoes_style.eq'],
-			color: queries['color_sn.eq']
+			color: queries['color.eq']
 		}
 
 		const [productSizeInventory, inboundInventory, outboundInventory] = await Promise.all([
@@ -38,8 +38,8 @@ export class ProductionInventoryService {
 
 		return {
 			sizes: productSizeInventory,
-			inbound: inboundInventory,
-			outbound: outboundInventory
+			inbound: uniqBy(inboundInventory, (item) => item.mo_no),
+			outbound: uniqBy(outboundInventory, (item) => item.po)
 		}
 	}
 
