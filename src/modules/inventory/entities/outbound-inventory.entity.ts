@@ -1,4 +1,5 @@
 import { DATABASE_DATA_LAKE, DATABASE_SCHEMA } from '@/databases/constants'
+import { JsonParserTransformer } from '@/databases/transformers/json-parser.transformer'
 import { ViewColumn, ViewEntity } from 'typeorm'
 
 @ViewEntity({
@@ -24,4 +25,10 @@ export class OutboundEstimationEntity {
 
 	@ViewColumn({ name: 'outbound_qty' })
 	outbound_qty: number
+
+	@ViewColumn({
+		name: 'inv_sizes',
+		transformer: new JsonParserTransformer<Array<{ size_numcode: string; qty: number }>>()
+	})
+	inv_sizes: Array<{ size_numcode: string; qty: number }>
 }
