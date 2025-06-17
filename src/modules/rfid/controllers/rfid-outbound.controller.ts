@@ -2,6 +2,7 @@ import { CommonRequestHeader } from '@/common/constants'
 import { Api, AuthGuard, HttpMethod } from '@/common/decorators'
 import { AllExceptionsFilter } from '@/common/filters'
 import { ZodValidationPipe } from '@/common/pipes'
+import { stringToBoolean } from '@/common/utils'
 import {
 	Body,
 	Controller,
@@ -9,6 +10,7 @@ import {
 	Get,
 	Headers,
 	HttpStatus,
+	Logger,
 	Param,
 	ParseBoolPipe,
 	ParseIntPipe,
@@ -18,6 +20,7 @@ import {
 } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
 import { Response } from 'express'
+import { isEmpty, isNil, pickBy } from 'lodash'
 import {
 	deleteEpcValidator,
 	DeleteScannedEpcDTO,
@@ -145,20 +148,37 @@ export class RFIDOutboundController {
 	async getArchivedEpcs(
 		@Headers(CommonRequestHeader.FACTORY_CODE) factoryCode: string,
 		@Query('_page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+		@Query('_limit', new DefaultValuePipe(10), ParseIntPipe) limit: number,
 		@Query('q', new DefaultValuePipe('')) search: string,
 		@Query('mo_no.eq', new DefaultValuePipe('')) mo_no: string,
 		@Query('shoes_style_code_factory.eq', new DefaultValuePipe('')) shoes_style: string,
 		@Query('color_sn.eq', new DefaultValuePipe('')) color_sn: string,
-		@Query('size_numcode.eq', new DefaultValuePipe('')) size_numcode: string
+		@Query('size_numcode.eq', new DefaultValuePipe('')) size_numcode: string,
+		@Query('scanned.eq') scanned: string
 	) {
+		const extraFilterQuery: Record<string, any> = pickBy(
+			{
+				q: search,
+				['shoes_style.eq']: shoes_style,
+				['mo_no.eq']: mo_no,
+				['color_sn.eq']: color_sn,
+				['size_numcode.eq']: size_numcode,
+				['scanned.eq']: scanned
+			},
+			(item) => !isNil(item) && !isEmpty(item)
+		)
+		if (extraFilterQuery['scanned.eq']) {
+			extraFilterQuery['scanned.eq'] = stringToBoolean(extraFilterQuery['scanned.eq'])
+		} else {
+			delete extraFilterQuery['scanned.eq']
+		}
+
+		Logger.debug(extraFilterQuery)
+
 		return await this.rfidOutboundService.getArchivedEpcs(factoryCode, {
-			_page: page,
-			_limit: 100,
-			q: search,
-			['shoes_style.eq']: shoes_style,
-			['mo_no.eq']: mo_no,
-			['color_sn.eq']: color_sn,
-			['size_numcode.eq']: size_numcode
+			_page: page || 1,
+			_limit: limit,
+			...extraFilterQuery
 		})
 	}
 
