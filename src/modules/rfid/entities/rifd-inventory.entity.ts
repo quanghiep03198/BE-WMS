@@ -1,13 +1,13 @@
 import { DATABASE_DATA_LAKE, DATABASE_SCHEMA } from '@/databases/constants'
 import { BaseAbstractEntity } from '@/modules/_base/base.abstract.entity'
-import { Column, Entity, Index } from 'typeorm'
+import { Column, Entity } from 'typeorm'
 import { InventoryActions, InventoryStorageType } from '../constants'
 
 /**
  * @description RFID Production Management Entity - Describes status of RFID tags in the factory (3034xxx)
  */
-@Entity('dv_InvRFIDrecorddet', { database: DATABASE_DATA_LAKE, schema: DATABASE_SCHEMA })
-export class FPInventoryEntity extends BaseAbstractEntity {
+@Entity()
+export class BaseRFIDInventoryEntity extends BaseAbstractEntity {
 	@Column({ name: 'stationNO' })
 	station_no: string
 
@@ -20,15 +20,12 @@ export class FPInventoryEntity extends BaseAbstractEntity {
 	@Column({ name: 'dept_name', type: 'nvarchar', length: 20 })
 	dept_name: string
 
-	@Index()
 	@Column({ name: 'EPC_Code' })
 	epc: string
 
-	@Index()
 	@Column({ name: 'mo_no', type: 'nvarchar', length: 20 })
 	mo_no: string
 
-	@Index()
 	@Column({ type: 'nvarchar', length: 20, enum: InventoryActions, default: null })
 	rfid_status: string
 
@@ -44,8 +41,14 @@ export class FPInventoryEntity extends BaseAbstractEntity {
 	@Column({ type: 'numeric', default: 0 })
 	quantity: number
 
-	constructor(item: Partial<FPInventoryEntity>) {
+	constructor(item: Partial<BaseRFIDInventoryEntity>) {
 		super()
 		Object.assign(this, item)
 	}
 }
+
+@Entity('dv_InvRFIDrecorddet', { database: DATABASE_DATA_LAKE, schema: DATABASE_SCHEMA })
+export class RFIDInventoryEntity extends BaseRFIDInventoryEntity {}
+
+@Entity('dv_InvRFIDrecorddet_backup_Daily', { database: DATABASE_DATA_LAKE, schema: DATABASE_SCHEMA })
+export class RFIDInventoryBackupEntity extends BaseRFIDInventoryEntity {}
