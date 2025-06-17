@@ -13,9 +13,9 @@ import { IMPORT_DATA_QUEUE, POST_DATA_INBOUND_QUEUE, POST_DATA_OUTBOUND_QUEUE } 
 import { RFIDInboundController } from './controllers/rfid-inbound.controller'
 import { RFIDOutboundController } from './controllers/rfid-outbound.controller'
 import { RFIDSharedController } from './controllers/rfid-shared.controller'
-import { FPInventoryEntity } from './entities/fp-inventory.entity'
 import { RFIDMatchCustomerEntity } from './entities/rfid-customer-match.entity'
 import { RFIDReaderEntity } from './entities/rfid-reader.entity'
+import { RFIDInventoryBackupEntity, RFIDInventoryEntity } from './entities/rifd-inventory.entity'
 import { RFIDImportDataConsumer } from './queues/rfid-import-data.consumer'
 import { RFIDInboundConsumer } from './queues/rfid-inbound.consumer'
 import { RFIDOutboundConsumer } from './queues/rfid-outbound.consumer'
@@ -41,7 +41,10 @@ import { RFIDCustomerEntitySubscriber } from './subscribers/rfid-customer.entity
 		BullModule.registerQueue({ name: POST_DATA_INBOUND_QUEUE }),
 		BullModule.registerQueue({ name: POST_DATA_OUTBOUND_QUEUE }),
 		BullModule.registerQueue({ name: IMPORT_DATA_QUEUE }),
-		TypeOrmModule.forFeature([FPInventoryEntity, RFIDMatchCustomerEntity, RFIDReaderEntity], DATA_SOURCE_DATA_LAKE),
+		TypeOrmModule.forFeature(
+			[RFIDInventoryEntity, RFIDInventoryBackupEntity, RFIDMatchCustomerEntity, RFIDReaderEntity],
+			DATA_SOURCE_DATA_LAKE
+		),
 		MongooseModule.forFeatureAsync([
 			{
 				name: EpcInbound.name,

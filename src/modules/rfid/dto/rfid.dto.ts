@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { InventoryActions, InventoryStorageType } from '../constants'
-import { FPInventoryEntity } from '../entities/fp-inventory.entity'
+import { BaseRFIDInventoryEntity } from '../entities/rifd-inventory.entity'
 
 export const updateStockValidator = z
 	.object({
@@ -112,7 +112,7 @@ export const restoreArchivedEpcValidator = z.array(z.string().nonempty()).nonemp
 
 export type UpsertStockOutDTO = z.infer<typeof upsertStockOutValidator>
 export type UpsertStockInDTO = z.infer<typeof updateStockValidator> &
-	Pick<FPInventoryEntity, 'user_code_created' | 'factory_code'>
+	Pick<BaseRFIDInventoryEntity, 'user_code_created' | 'factory_code'>
 export type ExchangeOrderDTO = z.infer<typeof exchangeOrderValidator>
 export type ExchangeEpcDTO = z.infer<typeof exchangeEpcValidator>
 export type SearchCustOrderParamsDTO = z.infer<typeof searchCustomerValidator> & {

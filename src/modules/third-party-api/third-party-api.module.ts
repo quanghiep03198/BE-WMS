@@ -10,7 +10,7 @@ import { AxiosError, AxiosResponse } from 'axios'
 import { Agent } from 'https'
 import { upperCase } from 'lodash'
 import { OrderModule } from '../order/order.module'
-import { FPInventoryEntity } from '../rfid/entities/fp-inventory.entity'
+import { BaseRFIDInventoryEntity } from '../rfid/entities/rifd-inventory.entity'
 import { RFIDModule } from '../rfid/rfid.module'
 import { TenacyMiddleware } from '../tenancy/tenancy.middleware'
 import { TenancyModule } from '../tenancy/tenancy.module'
@@ -26,7 +26,7 @@ import { ThirdPartyApiService } from './third-party-api.service'
 	imports: [
 		TenancyModule,
 		OrderModule,
-		TypeOrmModule.forFeature([FPInventoryEntity], DATA_SOURCE_DATA_LAKE),
+		TypeOrmModule.forFeature([BaseRFIDInventoryEntity], DATA_SOURCE_DATA_LAKE),
 		HttpModule.register({ httpsAgent: new Agent({ keepAlive: true }) }),
 		BullModule.registerQueue({
 			name: THIRD_PARTY_API_SYNC,
