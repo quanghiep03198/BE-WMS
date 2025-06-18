@@ -120,23 +120,13 @@ export class RFIDOutboundService {
 			factory_code_produce: factoryCode,
 			po: null,
 			...(args.q && { epc: { $regex: args.q, $options: 'i' } }),
-			...(args['shoes_style.eq'] && { shoes_style_code_factory: args['shoes_style.eq'] }),
-			...(args['color_sn.eq'] && { color_sn: args['color_sn.eq'] }),
-			...(args['mo_no.eq'] && { mo_no: args['mo_no.eq'] }),
-			...(args['size_numcode.eq'] && { size_numcode: args['size_numcode.eq'] })
+			...(args['mo_no.eq'] && { mo_no: { $regex: args['mo_no.eq'], $options: 'i' } }),
+			...(args['size_numcode.eq'] && { size_numcode: { $regex: args['size_numcode.eq'], $options: 'i' } }),
+			...(args['shoes_style.eq'] && { shoes_style_code_factory: { $regex: args['shoes_style.eq'], $options: 'i' } }),
+			...(args['color_sn.eq'] && { color_sn: { $regex: args['color_sn.eq'], $options: 'i' } })
 		}
 
-		const deletedEpcs = await this.epcOutboundModel.aggregateDeleted([
-			{ $match: filterQuery },
-			{ $addFields: { scanned: 1 } },
-			{
-				$project: {
-					_id: 0,
-					epc: 1,
-					scanned: 1
-				}
-			}
-		])
+		const deletedEpcs = await this.epcOutboundModel.distinct('epc', filterQuery)
 
 		const subQuery = this.dataSourceDL
 			.createQueryBuilder()
@@ -152,17 +142,18 @@ export class RFIDOutboundService {
 		const queryBuilder = await this.dataSourceDL
 			.getRepository(RFIDInventoryBackupEntity)
 			.createQueryBuilder('a')
-			.distinct()
-			.select('a.EPC_Code', 'epc')
-			.addSelect('a.mo_no', 'mo_no')
-			.addSelect('a.size_code', 'size_numcode')
-			.addSelect('c.shoestyle_codefactory', 'shoes_style_code_factory')
-			.addSelect('d.color_sn', 'color_sn')
-			.addSelect(/* SQL */ `CAST(ISNULL(e.scanned, 0) AS BIT)`, 'scanned')
+			.select([
+				/* SQL */ `DISTINCT a.EPC_Code AS epc`,
+				/* SQL */ `a.mo_no AS mo_no`,
+				/* SQL */ `a.size_code AS size_numcode`,
+				/* SQL */ `c.shoestyle_codefactory AS shoes_style_code_factory`,
+				/* SQL */ `d.color_sn AS color_sn`,
+				/* SQL */ `CAST(COALESCE(e.scanned, 0) AS BIT) AS scanned`
+			])
 			.innerJoin(
 				'dv_rfidmatchmst_cust',
 				'c',
-				'a.EPC_Code = c.EPC_Code AND a.mo_no = c.mo_no AND a.size_code = c.size_numcode'
+				/* SQL */ `a.EPC_Code = c.EPC_Code AND a.mo_no = c.mo_no AND a.size_code = c.size_numcode`
 			)
 			.innerJoin(
 				(qb) => {
@@ -175,73 +166,74 @@ export class RFIDOutboundService {
 						.setParameters({ record_status: RecordStatus.ACTIVE })
 				},
 				'd',
-				'c.mat_code = d.mat_code'
+				/* SQL */ `c.mat_code = d.mat_code`
 			)
 			.leftJoin(
 				(qb) => {
 					return qb
-						.select(/* SQL */ `JSON_VALUE(value, '$.epc')`, 'epc')
-						.addSelect(/* SQL */ `JSON_VALUE(value, '$.scanned')`, 'scanned')
+						.select(/* SQL */ `value`, 'epc')
+						.addSelect(/* SQL */ `CAST(1 AS BIT)`, 'scanned')
 						.from(/* SQL */ `OPENJSON(N'${JSON.stringify(deletedEpcs)}')`, 'e')
 						.disableEscaping()
 				},
 				'e',
-				'a.EPC_Code = e.epc'
+				/* SQL */ `a.EPC_Code = e.epc`
 			)
-			.where('a.rfid_status = :status')
 			.andWhere('a.stationNO = :station')
+			.where('a.rfid_status = :status')
 			.andWhere(/* SQL */ `a.EPC_Code NOT IN (${subQuery.getQuery()})`)
 			.andWhere(
 				new Brackets((qb) => {
 					// Filter by EPC code (search query)
 					if (args.q) {
-						qb.andWhere(/* SQL */ `a.EPC_Code LIKE :search`, { search: `%${args.q}%` })
+						qb.andWhere(/* SQL */ `a.EPC_Code LIKE CONCAT('%',:search, '%')`, { search: args.q })
 					}
 
 					// Filter by manufacturing order number
 					if (args['mo_no.eq']) {
-						qb.andWhere('a.mo_no = :mo_no', { mo_no: args['mo_no.eq'] })
+						qb.andWhere(/* SQL */ `a.mo_no = :mo_no`, { mo_no: args['mo_no.eq'] })
 					}
 
 					// Filter by size number code
 					if (args['size_numcode.eq']) {
-						qb.andWhere('a.size_code = :size_numcode', { size_numcode: args['size_numcode.eq'] })
+						qb.andWhere(/* SQL */ `a.size_code = :size_numcode`, { size_numcode: args['size_numcode.eq'] })
 					}
 
 					// Filter by shoes style code (factory)
 					if (args['shoes_style.eq']) {
-						qb.andWhere('c.shoestyle_codefactory = :shoes_style', {
-							shoes_style: args['shoes_style.eq']
+						qb.andWhere(/* SQL */ `c.shoestyle_codefactory = :shoes_style_code`, {
+							shoes_style_code: args['shoes_style.eq']
 						})
 					}
 
 					// Filter by color serial number
 					if (args['color_sn.eq']) {
-						qb.andWhere('d.color_sn = :color_sn', { color_sn: args['color_sn.eq'] })
+						qb.andWhere(/* SQL */ `d.color_sn = :color_sn`, { color_sn: args['color_sn.eq'] })
 					}
 
 					// Filter by scanned status (boolean)
 					if (typeof args['scanned.eq'] === 'boolean') {
-						qb.andWhere(/* SQL */ `CAST(ISNULL(e.scanned, 0) AS BIT) = :scanned`, {
+						qb.andWhere(/* SQL */ `CAST(COALESCE(e.scanned, 0) AS BIT) = :scanned`, {
 							scanned: args['scanned.eq'] ? 1 : 0
 						})
 					}
 					return qb
 				})
 			)
-
-			.offset((args._page - 1) * args._limit)
-			.limit(args._limit)
-			.orderBy(/* SQL */ `CAST(ISNULL(e.scanned, 0) AS BIT)`, 'DESC')
+			.orderBy(/* SQL */ `CAST(COALESCE(e.scanned, 0) AS BIT)`, 'DESC')
 			.addOrderBy('a.mo_no', 'DESC')
 			.addOrderBy('a.size_code', 'DESC')
 			.addOrderBy('c.shoestyle_codefactory', 'ASC')
 			.addOrderBy('d.color_sn', 'ASC')
+			.addOrderBy('a.EPC_Code')
+			.offset((args._page - 1) * args._limit)
+			.limit(args._limit)
 			.setParameters({
 				status: InventoryActions.INBOUND,
 				station: `CUS_${factoryCode}_WH101`,
 				...subQuery.getParameters()
 			})
+			.maxExecutionTime(3000)
 
 		const [totalDocs, data] = await Promise.all([queryBuilder.getCount(), queryBuilder.getRawMany<EpcInformation>()])
 
@@ -255,8 +247,8 @@ export class RFIDOutboundService {
 			limit: args._limit,
 			hasNextPage: args._page < totalPages,
 			hasPrevPage: args._page > 1,
-			nextPage: args._page + 1,
-			prevPage: args._page - 1
+			nextPage: args._page < totalPages ? args._page + 1 : null,
+			prevPage: args._page > 1 ? args._page - 1 : null
 		} satisfies Pagination<EpcInformation>
 	}
 

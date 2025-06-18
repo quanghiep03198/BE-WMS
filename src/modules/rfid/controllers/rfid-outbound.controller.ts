@@ -10,7 +10,6 @@ import {
 	Get,
 	Headers,
 	HttpStatus,
-	Logger,
 	Param,
 	ParseBoolPipe,
 	ParseIntPipe,
@@ -172,8 +171,6 @@ export class RFIDOutboundController {
 		} else {
 			delete extraFilterQuery['scanned.eq']
 		}
-
-		Logger.debug(extraFilterQuery)
 
 		return await this.rfidOutboundService.getArchivedEpcs(factoryCode, {
 			_page: page || 1,
