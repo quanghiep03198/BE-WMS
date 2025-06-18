@@ -150,7 +150,7 @@ export class RFIDOutboundController {
 		@Query('_limit', new DefaultValuePipe(10), ParseIntPipe) limit: number,
 		@Query('q', new DefaultValuePipe('')) search: string,
 		@Query('mo_no.eq', new DefaultValuePipe('')) mo_no: string,
-		@Query('shoes_style_code_factory.eq', new DefaultValuePipe('')) shoes_style: string,
+		@Query('shoes_style.eq', new DefaultValuePipe('')) shoes_style: string,
 		@Query('color_sn.eq', new DefaultValuePipe('')) color_sn: string,
 		@Query('size_numcode.eq', new DefaultValuePipe('')) size_numcode: string,
 		@Query('scanned.eq') scanned: string

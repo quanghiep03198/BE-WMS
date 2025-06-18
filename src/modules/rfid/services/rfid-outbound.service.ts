@@ -12,7 +12,7 @@ import { FilterQuery, PipelineStage } from 'mongoose'
 import { join, resolve } from 'path'
 // import { DataSource } from 'typeorm'
 import { Brackets, DataSource } from 'typeorm'
-import { InventoryActions, POST_DATA_OUTBOUND_QUEUE } from '../constants'
+import { FALLBACK_VALUE, InventoryActions, POST_DATA_OUTBOUND_QUEUE } from '../constants'
 import { PostReaderDataDTO, UpsertStockOutDTO } from '../dto/rfid.dto'
 import { RFIDInventoryBackupEntity } from '../entities/rifd-inventory.entity'
 import { EpcDocument, EpcModel, EpcOutbound } from '../schemas/epc.schema'
@@ -173,7 +173,7 @@ export class RFIDOutboundService {
 					return qb
 						.select(/* SQL */ `value`, 'epc')
 						.addSelect(/* SQL */ `CAST(1 AS BIT)`, 'scanned')
-						.from(/* SQL */ `OPENJSON(N'${JSON.stringify(deletedEpcs)}')`, 'e')
+						.from(/* SQL */ `STRING_SPLIT(N'${deletedEpcs.join(',')}', ',')`, 'e')
 						.disableEscaping()
 				},
 				'e',
@@ -233,7 +233,6 @@ export class RFIDOutboundService {
 				station: `CUS_${factoryCode}_WH101`,
 				...subQuery.getParameters()
 			})
-			.maxExecutionTime(3000)
 
 		const [totalDocs, data] = await Promise.all([queryBuilder.getCount(), queryBuilder.getRawMany<EpcInformation>()])
 
@@ -249,18 +248,19 @@ export class RFIDOutboundService {
 			hasPrevPage: args._page > 1,
 			nextPage: args._page < totalPages ? args._page + 1 : null,
 			prevPage: args._page > 1 ? args._page - 1 : null
-		} satisfies Pagination<EpcInformation>
+		} as Pagination<EpcInformation>
 	}
 
 	public async getArchivedEpcFeatures() {
 		return await this.epcOutboundModel
-			.aggregateDeleted([
+			.aggregateWithDeleted([
 				{
 					$match: {
-						deleted: true,
-						scannable: true,
 						epc: { $not: { $regex: EXCLUDED_EPC_REGEX } },
-						po: null
+						mo_no: { $ne: FALLBACK_VALUE },
+						size_numcode: { $ne: FALLBACK_VALUE },
+						shoes_style_code_factory: { $ne: FALLBACK_VALUE },
+						color_sn: { $ne: FALLBACK_VALUE }
 					}
 				},
 				{
