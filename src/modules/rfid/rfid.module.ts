@@ -66,6 +66,7 @@ import { RFIDCustomerEntitySubscriber } from './subscribers/rfid-customer.entity
 				useFactory: () => {
 					EpcOutboundSchema.index({ record_time: 1 }, { expires: '365d' })
 					EpcOutboundSchema.index({ mo_no: 1, size_numcode: 1, shoes_style_code_factory: 1, color_sn: 1 })
+					EpcOutboundSchema.index({ po: 1 })
 					EpcOutboundSchema.plugin(MongoosePaginatePlugin)
 					EpcOutboundSchema.plugin(MongooseDeletePlugin, {
 						overrideMethods: true,
