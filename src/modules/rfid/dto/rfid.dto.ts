@@ -108,7 +108,18 @@ export const uploadDataValidator = z.object({
 		.transform((val) => val.toUpperCase())
 })
 
-export const restoreArchivedEpcValidator = z.array(z.string().nonempty()).nonempty()
+export const restoreArchivedEpcValidator = z
+	.array(
+		z.object({
+			epc: z.string().nonempty(),
+			shoes_style_code_factory: z.string().nonempty(),
+			station_no: z.string().nonempty(),
+			color_sn: z.string().nonempty(),
+			mo_no: z.string().nonempty(),
+			size_numcode: z.string().nonempty()
+		})
+	)
+	.nonempty()
 
 export type UpsertStockOutDTO = z.infer<typeof upsertStockOutValidator>
 export type UpsertStockInDTO = z.infer<typeof updateStockValidator> &

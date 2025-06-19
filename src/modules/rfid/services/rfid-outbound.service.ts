@@ -8,14 +8,15 @@ import { InjectDataSource } from '@nestjs/typeorm'
 import { Queue } from 'bullmq'
 import { readFileSync } from 'fs'
 import { chunk } from 'lodash'
-import { FilterQuery, PipelineStage } from 'mongoose'
+import { AnyBulkWriteOperation, FilterQuery, PipelineStage } from 'mongoose'
 import { join, resolve } from 'path'
 // import { DataSource } from 'typeorm'
+import { mongo } from 'mongoose'
 import { Brackets, DataSource } from 'typeorm'
 import { FALLBACK_VALUE, InventoryActions, POST_DATA_OUTBOUND_QUEUE } from '../constants'
-import { PostReaderDataDTO, UpsertStockOutDTO } from '../dto/rfid.dto'
+import { PostReaderDataDTO, RestoreArchivedEpcsDTO, UpsertStockOutDTO } from '../dto/rfid.dto'
 import { RFIDInventoryBackupEntity } from '../entities/rifd-inventory.entity'
-import { EpcDocument, EpcModel, EpcOutbound } from '../schemas/epc.schema'
+import { EpcDocument, EpcModel, EpcOutbound, EpcSchema } from '../schemas/epc.schema'
 import { EpcInformation, RFIDSearchParams } from '../types'
 
 @Injectable()
@@ -321,13 +322,19 @@ export class RFIDOutboundService {
 			.exec()
 	}
 
-	public async restoreArchivedEpcs(epcs: string[]) {
-		return await this.epcOutboundModel
-			.restore({
-				scannable: true,
-				$and: [{ epc: { $in: epcs } }, { epc: { $not: { $regex: EXCLUDED_EPC_REGEX } } }],
-				po: null
-			})
-			.exec()
+	public async restoreArchivedEpcs(epcs: RestoreArchivedEpcsDTO): Promise<mongo.BulkWriteResult> {
+		const bulkWriteOptions: AnyBulkWriteOperation<EpcSchema>[] = epcs.map((item) => ({
+			updateOne: {
+				filter: { epc: item.epc, scannable: true },
+				update: { ...item, deleted: false },
+				upsert: true
+			}
+		}))
+		return await this.epcOutboundModel.bulkWrite(bulkWriteOptions, {
+			writeConcern: { w: 'majority' },
+			readPreference: 'nearest',
+			ordered: false,
+			retryWrites: true
+		})
 	}
 }

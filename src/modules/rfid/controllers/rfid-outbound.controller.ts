@@ -20,6 +20,7 @@ import {
 import { InjectModel } from '@nestjs/mongoose'
 import { Response } from 'express'
 import { isEmpty, isNil, pickBy } from 'lodash'
+import { mongo } from 'mongoose'
 import {
 	deleteEpcValidator,
 	DeleteScannedEpcDTO,
@@ -197,7 +198,7 @@ export class RFIDOutboundController {
 	@AuthGuard()
 	async restoreArchivedEpcs(
 		@Body(new ZodValidationPipe(restoreArchivedEpcValidator)) payload: RestoreArchivedEpcsDTO
-	) {
+	): Promise<mongo.BulkWriteResult> {
 		return await this.rfidOutboundService.restoreArchivedEpcs(payload)
 	}
 }
