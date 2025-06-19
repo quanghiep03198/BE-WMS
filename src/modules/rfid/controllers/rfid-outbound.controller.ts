@@ -36,6 +36,7 @@ import {
 import { EpcModel, EpcOutbound } from '../schemas/epc.schema'
 import { RFIDOutboundService } from '../services/rfid-outbound.service'
 import { RFIDSharedService } from '../services/rfid-shared.service'
+import { generateStation } from '../utils'
 
 @Controller('rfid/outbound')
 export class RFIDOutboundController {
@@ -197,8 +198,11 @@ export class RFIDOutboundController {
 	})
 	@AuthGuard()
 	async restoreArchivedEpcs(
+		@Headers(CommonRequestHeader.FACTORY_CODE) factoryCode: string,
 		@Body(new ZodValidationPipe(restoreArchivedEpcValidator)) payload: RestoreArchivedEpcsDTO
 	): Promise<mongo.BulkWriteResult> {
-		return await this.rfidOutboundService.restoreArchivedEpcs(payload)
+		const station = generateStation(factoryCode, 'WH103')
+		const data = payload.map((item) => ({ ...item, station_no: station, factory_code_produce: factoryCode }))
+		return await this.rfidOutboundService.restoreArchivedEpcs(data as RestoreArchivedEpcsDTO)
 	}
 }

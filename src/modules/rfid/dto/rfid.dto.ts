@@ -113,10 +113,11 @@ export const restoreArchivedEpcValidator = z
 		z.object({
 			epc: z.string().nonempty(),
 			shoes_style_code_factory: z.string().nonempty(),
-			station_no: z.string().nonempty(),
 			color_sn: z.string().nonempty(),
 			mo_no: z.string().nonempty(),
-			size_numcode: z.string().nonempty()
+			size_numcode: z.string().nonempty(),
+			station_no: z.string().optional(),
+			factory_code_produce: z.string().optional()
 		})
 	)
 	.nonempty()

@@ -11,6 +11,7 @@ import { FindEpcBySizeDTO, PostReaderDataDTO } from '../dto/rfid.dto'
 import { RFIDReaderEntity } from '../entities/rfid-reader.entity'
 import { EpcDocument, EpcModel, EpcSchema } from '../schemas/epc.schema'
 import { EpcInformation, RFIDSearchParams, StoredRFIDReaderItem } from '../types'
+import { generateStation } from '../utils'
 
 @Injectable()
 export class RFIDSharedService {
@@ -254,7 +255,7 @@ export class RFIDSharedService {
 			.andWhere('b.mo_no = :commandNumber')
 			.setParameters({
 				_status: InventoryActions.OUTBOUND,
-				_station: `CUS_${factoryCode}_WH103`
+				_station: generateStation(factoryCode, 'WH103')
 			})
 
 		return await this.dataSourceDL
@@ -293,7 +294,7 @@ export class RFIDSharedService {
 			.setParameters({
 				commandNumber: commandNumber.toUpperCase(),
 				status: InventoryActions.INBOUND,
-				station: `CUS_${factoryCode}_WH101`,
+				station: generateStation(factoryCode, 'WH101'),
 				...subQuery.getParameters()
 			})
 			.getRawMany<EpcInformation>()

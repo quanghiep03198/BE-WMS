@@ -18,6 +18,7 @@ import { PostReaderDataDTO, RestoreArchivedEpcsDTO, UpsertStockOutDTO } from '..
 import { RFIDInventoryBackupEntity } from '../entities/rifd-inventory.entity'
 import { EpcDocument, EpcModel, EpcOutbound, EpcSchema } from '../schemas/epc.schema'
 import { EpcInformation, RFIDSearchParams } from '../types'
+import { generateStation } from '../utils'
 
 @Injectable()
 export class RFIDOutboundService {
@@ -137,7 +138,7 @@ export class RFIDOutboundService {
 			.andWhere('b.stationNO = :_station')
 			.setParameters({
 				_status: InventoryActions.OUTBOUND,
-				_station: `CUS_${factoryCode}_WH103`
+				_station: generateStation(factoryCode, 'WH103')
 			})
 
 		const queryBuilder = await this.dataSourceDL
@@ -231,7 +232,7 @@ export class RFIDOutboundService {
 			.limit(args._limit)
 			.setParameters({
 				status: InventoryActions.INBOUND,
-				station: `CUS_${factoryCode}_WH101`,
+				station: generateStation(factoryCode, 'WH101'),
 				...subQuery.getParameters()
 			})
 
