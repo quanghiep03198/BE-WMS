@@ -108,8 +108,11 @@ export class RFIDOutboundController {
 		statusCode: HttpStatus.CREATED,
 		message: 'common.created'
 	})
-	async upsertStockOut(@Body(new ZodValidationPipe(upsertStockOutValidator)) payload: UpsertStockOutDTO) {
-		return await this.rfidOutboundService.upsertStockOut(payload)
+	async upsertStockOut(
+		@Headers(CommonRequestHeader.FACTORY_CODE) factoryCode: string,
+		@Body(new ZodValidationPipe(upsertStockOutValidator)) payload: UpsertStockOutDTO
+	) {
+		return await this.rfidOutboundService.upsertStockOut(factoryCode, payload)
 	}
 
 	@Api({

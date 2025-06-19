@@ -33,7 +33,7 @@ export class RFIDOutboundService {
 		return await this.postDataQueue.add('RFID_OUTBOUND', payload)
 	}
 
-	public async upsertStockOut(payload: UpsertStockOutDTO) {
+	public async upsertStockOut(factoryCode: string, payload: UpsertStockOutDTO) {
 		const baseFilterQuery: FilterQuery<EpcDocument> = {
 			$or: [{ deleted: false }, { deleted: null }],
 			scannable: true
@@ -82,18 +82,20 @@ export class RFIDOutboundService {
 			const data = epcToUpsert.map((value) => {
 				return {
 					...value,
+					factory_code_produce: factoryCode,
 					po: payload.po
 				}
 			})
+
 			for (const item of chunk(data, 100)) {
 				const values = item
 					.map((value) => {
 						return `('${value.epc}', '${value.po}', '${value.mo_no}', '${value.size_numcode}', '${value.station_no}', '${value.factory_code_produce}')`
 					})
 					.join(',')
-
 				await this.dataSourceDL.query(upsertStockoutQuery.replace(/:values/g, values))
 			}
+
 			await this.epcOutboundModel
 				.updateMany(
 					{ ...baseFilterQuery, epc: { $in: epcToUpsert.map((item) => item.epc) } },
