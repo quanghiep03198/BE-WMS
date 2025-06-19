@@ -8,10 +8,10 @@ import { uniqBy } from 'lodash'
 import { I18nContext, I18nService } from 'nestjs-i18n'
 import { DataSource, FindOptionsWhere } from 'typeorm'
 import { type ProductInventoryReportQueryDTO } from '../dto/inventory-report.dto'
-import { InboundInventoryEntity } from '../entities/inbound-inventory.entity'
-import { OutboundEstimationEntity } from '../entities/outbound-inventory.entity'
-import { ProductInventoryReportEntity } from '../entities/product-inventory-report.entity'
-import { ProductSizeInventoryEntity } from '../entities/product-size-inventory.entity'
+import { InboundInventoryEntity } from '../entities/inbound-inventory.view.entity'
+import { OutboundEstimationEntity } from '../entities/outbound-inventory.view.entity'
+import { ProductInventoryReportEntity } from '../entities/product-inventory.view.entity'
+import { SizeInventoryEntity } from '../entities/size-inventory.view.entity'
 
 @Injectable()
 export class ProductionInventoryService {
@@ -21,19 +21,23 @@ export class ProductionInventoryService {
 	) {}
 
 	public async getProductInventory(queries: ProductInventoryReportQueryDTO): Promise<{
-		sizes: ProductSizeInventoryEntity[]
+		sizes: SizeInventoryEntity[]
 		inbound: InboundInventoryEntity[]
 		outbound: OutboundEstimationEntity[]
 	}> {
-		const filterQuery: FindOptionsWhere<ProductSizeInventoryEntity> = {
+		const filterQuery: FindOptionsWhere<SizeInventoryEntity> = {
 			shoes_style: queries['shoes_style.eq'],
 			color: queries['color.eq']
 		}
 
 		const [productSizeInventory, inboundInventory, outboundInventory] = await Promise.all([
-			this.dataSourceTNC.getRepository(ProductSizeInventoryEntity).findBy(filterQuery),
-			this.dataSourceTNC.getRepository(InboundInventoryEntity).findBy(filterQuery),
-			this.dataSourceTNC.getRepository(OutboundEstimationEntity).findBy(filterQuery)
+			this.dataSourceTNC.getRepository(SizeInventoryEntity).findBy(filterQuery),
+			this.dataSourceTNC
+				.getRepository(InboundInventoryEntity)
+				.find({ where: filterQuery, order: { mo_no: 'DESC' } }),
+			this.dataSourceTNC
+				.getRepository(OutboundEstimationEntity)
+				.find({ where: filterQuery, order: { outbound_date: 'DESC' } })
 		])
 
 		return {
@@ -45,11 +49,11 @@ export class ProductionInventoryService {
 
 	public async getProductionInventoryFeatures() {
 		const result = await this.dataSourceTNC
-			.getRepository(ProductSizeInventoryEntity)
+			.getRepository(SizeInventoryEntity)
 			.createQueryBuilder('a')
 			.select('a.shoes_style', 'shoes_style')
 			.addSelect('a.color', 'color')
-			.getRawMany<Pick<ProductSizeInventoryEntity, 'shoes_style' | 'color'>>()
+			.getRawMany<Pick<SizeInventoryEntity, 'shoes_style' | 'color'>>()
 
 		return {
 			shoes_style: uniqBy(result, (item) => item.shoes_style)

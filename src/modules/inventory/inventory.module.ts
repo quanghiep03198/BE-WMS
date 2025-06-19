@@ -3,11 +3,11 @@ import { MiddlewareConsumer, Module, NestModule, RequestMethod } from '@nestjs/c
 import { TypeOrmModule } from '@nestjs/typeorm'
 import { TenacyMiddleware } from '../tenancy/tenancy.middleware'
 import { TenancyModule } from '../tenancy/tenancy.module'
-import { InboundInventoryEntity } from './entities/inbound-inventory.entity'
+import { InboundInventoryEntity } from './entities/inbound-inventory.view.entity'
 import { InventoryReportEntity } from './entities/inventory-report.entity'
-import { OutboundEstimationEntity } from './entities/outbound-inventory.entity'
-import { ProductInventoryReportEntity } from './entities/product-inventory-report.entity'
-import { ProductSizeInventoryEntity } from './entities/product-size-inventory.entity'
+import { OutboundEstimationEntity } from './entities/outbound-inventory.view.entity'
+import { ProductInventoryReportEntity } from './entities/product-inventory.view.entity'
+import { SizeInventoryEntity } from './entities/size-inventory.view.entity'
 import { InventoryController } from './inventory.controller'
 import { InventoryAuditService } from './services/inventory-report.service'
 import { ProductionInventoryService } from './services/product-inventory.service'
@@ -19,7 +19,7 @@ import { ProductionInventoryService } from './services/product-inventory.service
 			[
 				InventoryReportEntity,
 				ProductInventoryReportEntity,
-				ProductSizeInventoryEntity,
+				SizeInventoryEntity,
 				InboundInventoryEntity,
 				OutboundEstimationEntity
 			],
