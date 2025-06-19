@@ -231,15 +231,11 @@ export class RFIDSharedService {
 		commandNumber: string,
 		rescannable: boolean
 	): Promise<UpdateWriteOpResult> {
-		return await $model
-			.updateMany({ mo_no: commandNumber }, { deleted: true, scannable: rescannable }, { new: true })
-			.exec()
+		return await $model.updateMany({ mo_no: commandNumber }, { deleted: true, scannable: rescannable }).exec()
 	}
 
 	public async deleteBulkEpcs($model: EpcModel, epcs: string[], rescannable: boolean): Promise<UpdateWriteOpResult> {
-		return await $model
-			.updateMany({ epc: { $in: epcs } }, { deleted: true, scannable: rescannable }, { new: true })
-			.exec()
+		return await $model.updateMany({ epc: { $in: epcs } }, { deleted: true, scannable: rescannable }).exec()
 	}
 
 	public async getArchivedEpcsByOrder(factoryCode: string, commandNumber: string) {

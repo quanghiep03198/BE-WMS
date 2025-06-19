@@ -125,10 +125,9 @@ export class RFIDInboundController {
 		@Headers(CommonRequestHeader.FACTORY_CODE) factoryCode: string,
 		@Body(new ZodValidationPipe(updateStockValidator)) payload: UpsertStockInDTO
 	) {
-		return await this.rfidInboundService.upsertStockIn(commandNumber, {
+		return await this.rfidInboundService.upsertStockIn(commandNumber, factoryCode, {
 			...payload,
-			user_code_created: username,
-			factory_code: factoryCode
+			user_code_created: username
 		})
 	}
 

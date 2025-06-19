@@ -54,7 +54,7 @@ export class RFIDInboundService {
 		])
 	}
 
-	public async upsertStockIn(orderCode: string, data: UpsertStockInDTO) {
+	public async upsertStockIn(orderCode: string, factoryCode: string, data: UpsertStockInDTO) {
 		const payload = await this.epcInboundModel.find({ scannable: true, mo_no: orderCode }).lean(true)
 		const queryRunner = this.dataSourceTNC.createQueryRunner()
 		const session = await this.epcInboundModel.startSession()
@@ -71,6 +71,7 @@ export class RFIDInboundService {
 				payload.map((value) => ({
 					...value,
 					...data,
+					factory_code: factoryCode,
 					record_time: format(new Date(), 'yyyy-MM-dd HH:mm:ss')
 				})),
 				100
@@ -86,7 +87,9 @@ export class RFIDInboundService {
 
 				await this.dataSourceDL.query(upsertInventoryQuery.replace(':values', values))
 			}
-			await this.epcInboundModel.delete({ mo_no: orderCode }).exec()
+			await this.epcInboundModel
+				.updateMany({ mo_no: orderCode }, { $set: { deleted: true, factory_code_produce: factoryCode } })
+				.exec()
 			await queryRunner.commitTransaction()
 			await session.commitTransaction()
 		} catch (error) {
@@ -134,8 +137,7 @@ export class RFIDInboundService {
 			}
 			await this.epcInboundModel.updateMany(
 				{ epc: { $in: epcToExchange.map((item) => item.epc) }, mo_no: { $ne: payload.mo_no_actual } },
-				{ mo_no: payload.mo_no_actual },
-				{ new: true }
+				{ mo_no: payload.mo_no_actual }
 			)
 			await queryRunner.commitTransaction()
 			await session.commitTransaction()
