@@ -51,20 +51,25 @@ export class ProductionInventoryService {
 		const result = await this.dataSourceTNC
 			.getRepository(SizeInventoryEntity)
 			.createQueryBuilder('a')
-			.select('a.shoes_style', 'shoes_style')
-			.addSelect('a.color', 'color')
+			.distinct()
+			.select(['a.shoes_style AS shoes_style', 'a.color AS color'])
 			.getRawMany<Pick<SizeInventoryEntity, 'shoes_style' | 'color'>>()
 
-		return {
-			shoes_style: uniqBy(result, (item) => item.shoes_style)
-				.map((item) => item.shoes_style)
-				.filter((item) => item !== 'ALL')
-				.sort(),
-			color: uniqBy(result, (item) => item.color)
-				.map((item) => item.color)
-				.filter((item) => item !== 'ALL')
-				.sort()
-		}
+		return Object.entries(Object.groupBy(result, (item) => item.shoes_style)).map(([shoes_style, colorways]) => ({
+			shoes_style: shoes_style,
+			colors: uniqBy(colorways, (item) => item.color).map((item) => item.color)
+		}))
+
+		// return {
+		// 	shoes_styles: uniqBy(result, (item) => item.shoes_style)
+		// 		.map((item) => item.shoes_style)
+		// 		.filter((item) => item !== 'ALL')
+		// 		.sort(),
+		// 	colors: uniqBy(result, (item) => item.color)
+		// 		.map((item) => item.color)
+		// 		.filter((item) => item !== 'ALL')
+		// 		.sort()
+		// }
 	}
 
 	public async exportProductionInventorySummary(factory: string) {
