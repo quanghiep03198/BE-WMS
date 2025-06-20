@@ -330,8 +330,8 @@ export class RFIDOutboundService {
 	public async restoreArchivedEpcs(epcs: RestoreArchivedEpcsDTO): Promise<mongo.BulkWriteResult> {
 		const bulkWriteOptions: AnyBulkWriteOperation<EpcSchema>[] = epcs.map((item) => ({
 			updateOne: {
-				filter: { epc: item.epc, scannable: true },
-				update: { ...item, deleted: false },
+				filter: { epc: item.epc },
+				update: { ...item, deleted: false, scannable: true },
 				upsert: true
 			}
 		}))
