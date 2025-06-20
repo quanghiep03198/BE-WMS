@@ -124,10 +124,10 @@ export class RFIDOutboundService {
 			factory_code_produce: factoryCode,
 			po: null,
 			...(args.q && { epc: { $regex: args.q, $options: 'i' } }),
-			...(args['mo_no.eq'] && { mo_no: { $regex: args['mo_no.eq'], $options: 'i' } }),
-			...(args['size_numcode.eq'] && { size_numcode: { $regex: args['size_numcode.eq'], $options: 'i' } }),
-			...(args['shoes_style.eq'] && { shoes_style_code_factory: { $regex: args['shoes_style.eq'], $options: 'i' } }),
-			...(args['color_sn.eq'] && { color_sn: { $regex: args['color_sn.eq'], $options: 'i' } })
+			...(args['mo_no.eq'] && { mo_no: args['mo_no.eq'] }),
+			...(args['size_numcode.eq'] && { size_numcode: args['size_numcode.eq'] }),
+			...(args['shoes_style.eq'] && { shoes_style_code_factory: args['shoes_style.eq'] }),
+			...(args['color_sn.eq'] && { color_sn: args['color_sn.eq'] })
 		}
 
 		const deletedEpcs = await this.epcOutboundModel.distinct('epc', filterQuery)
@@ -237,6 +237,8 @@ export class RFIDOutboundService {
 				station: generateStation(factoryCode, 'WH101'),
 				...subQuery.getParameters()
 			})
+
+		FileLogger.debug(queryBuilder.getQueryAndParameters())
 
 		const [totalDocs, data] = await Promise.all([queryBuilder.getCount(), queryBuilder.getRawMany<EpcInformation>()])
 

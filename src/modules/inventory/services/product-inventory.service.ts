@@ -59,17 +59,6 @@ export class ProductionInventoryService {
 			shoes_style: shoes_style,
 			colors: uniqBy(colorways, (item) => item.color).map((item) => item.color)
 		}))
-
-		// return {
-		// 	shoes_styles: uniqBy(result, (item) => item.shoes_style)
-		// 		.map((item) => item.shoes_style)
-		// 		.filter((item) => item !== 'ALL')
-		// 		.sort(),
-		// 	colors: uniqBy(result, (item) => item.color)
-		// 		.map((item) => item.color)
-		// 		.filter((item) => item !== 'ALL')
-		// 		.sort()
-		// }
 	}
 
 	public async exportProductionInventorySummary(factory: string) {

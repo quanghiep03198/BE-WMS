@@ -18,13 +18,19 @@ export const updateInventoryReportPayload = z.array(
 	})
 )
 
-export const productInventoryReportQuery = z.object({
-	'shoes_style.eq': z.string().nonempty(),
-	'color.eq': z
-		.string()
-		.nonempty()
-		.transform((value) => value.toUpperCase())
-})
+export const productInventoryReportQuery = z
+	.object({
+		'shoes_style.eq': z.string().nonempty(),
+		'color.eq': z
+			.string()
+			.nonempty()
+			.transform((value) => value.toUpperCase())
+	})
+	.transform((values) => {
+		if (values['shoes_style.eq'] === 'ALL') delete values['shoes_style.eq']
+		if (values['color.eq'] === 'ALL') delete values['color.eq']
+		return values
+	})
 
 export type UpdateInventoryReportQueryDTO = z.infer<typeof updateInventoryReportQuery>
 export type UpdateInventoryReportDTO = z.infer<typeof updateInventoryReportPayload>
