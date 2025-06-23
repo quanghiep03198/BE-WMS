@@ -22,10 +22,10 @@ import { Response } from 'express'
 import {
 	deleteEpcValidator,
 	DeleteScannedEpcDTO,
-	ExchangeEpcDTO,
-	exchangeEpcValidator,
 	ExchangeOrderDTO,
 	exchangeOrderValidator,
+	FillEpcDataDTO,
+	fillEpcDataSchema,
 	FindEpcBySizeDTO,
 	findEpcBySizeValidator,
 	PostReaderDataDTO,
@@ -144,14 +144,14 @@ export class RFIDInboundController {
 
 	@Api({
 		method: HttpMethod.PUT,
-		endpoint: 'exchange-epc-by-size'
+		endpoint: 'fill-epc-data'
 	})
 	@AuthGuard()
 	async exchangeEpcBySize(
 		@Headers(CommonRequestHeader.FACTORY_CODE) factoryCode: string,
-		@Body(new ZodValidationPipe(exchangeEpcValidator)) payload: ExchangeEpcDTO
+		@Body(new ZodValidationPipe(fillEpcDataSchema)) payload: FillEpcDataDTO
 	) {
-		return await this.rfidInboundService.exchangeEpcBySize(factoryCode, payload)
+		return await this.rfidInboundService.fillEpcData(factoryCode, payload)
 	}
 
 	@Api({

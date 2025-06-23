@@ -2,7 +2,7 @@ import { FileLogger } from '@/common/helpers'
 import { DATA_SOURCE_DATA_LAKE, DATA_SOURCE_ERP } from '@/databases/constants'
 import { TENANCY_DATA_SOURCE } from '@/modules/tenancy/constants'
 import { InjectQueue } from '@nestjs/bullmq'
-import { Inject, Injectable, InternalServerErrorException, NotFoundException, Scope } from '@nestjs/common'
+import { Inject, Injectable, InternalServerErrorException, Logger, NotFoundException, Scope } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
 import { InjectDataSource } from '@nestjs/typeorm'
 import { Queue } from 'bullmq'
@@ -15,8 +15,8 @@ import { join, resolve } from 'path'
 import { DataSource, FindOptionsWhere, In } from 'typeorm'
 import { POST_DATA_INBOUND_QUEUE } from '../constants'
 import {
-	ExchangeEpcDTO,
 	ExchangeOrderDTO,
+	FillEpcDataDTO,
 	PostReaderDataDTO,
 	SearchCustOrderParamsDTO,
 	UpsertStockInDTO
@@ -149,7 +149,8 @@ export class RFIDInboundService {
 		}
 	}
 
-	public async exchangeEpcBySize(factoryCode: string, update: ExchangeEpcDTO) {
+	public async fillEpcData(factoryCode: string, update: FillEpcDataDTO) {
+		Logger.debug(pick(update, ['mo_no', 'shoes_style_code_factory', 'color_sn', 'size_numcode']))
 		const epcToExchange = await this.epcInboundModel
 			.find({
 				...pick(update, ['mo_no', 'shoes_style_code_factory', 'color_sn', 'size_numcode']),
@@ -158,10 +159,14 @@ export class RFIDInboundService {
 			.select('epc')
 			.limit(update.quantity)
 			.lean(true)
+
 		const payload = epcToExchange.map((item) => ({
 			...update,
 			epc: item.epc,
 			mo_no: update.mo_no_actual,
+			shoes_style_code_factory: update.shoes_style_code_factory_actual,
+			color_sn: update.color_sn_actual,
+			size_numcode: update.size_numcode_actual,
 			factory_code_orders: factoryCode,
 			factory_name_orders: factoryCode,
 			factory_code_produce: factoryCode,
@@ -175,6 +180,8 @@ export class RFIDInboundService {
 		const session = await this.epcInboundModel.startSession()
 		const queryRunner = this.dataSourceDL.createQueryRunner()
 		await queryRunner.connect()
+
+		Logger.debug(payload)
 		try {
 			const upsertEpcsQuery: string = readFileSync(resolve(join(__dirname, '../sql/upsert-rfid-match.sql')), 'utf-8')
 
@@ -199,7 +206,13 @@ export class RFIDInboundService {
 				updateOne: {
 					filter: { epc: item.epc, scannable: true },
 					update: {
-						$set: pick(item, ['mo_no', 'shoes_style_code_factory', 'color_sn', 'size_numcode'])
+						$set: pick(item, [
+							'mo_no',
+							'shoes_style_code_factory',
+							'color_sn',
+							'size_numcode',
+							'factory_code_produce'
+						])
 					}
 				}
 			}))
