@@ -30,14 +30,21 @@ export class ProductionInventoryService {
 			color: queries['color.eq']
 		}
 
+		if (queries['shoes_style.eq'] === 'ALL') delete filterQuery.shoes_style
+		if (queries['color.eq'] === 'ALL') delete filterQuery.color
+
 		const [productSizeInventory, inboundInventory, outboundInventory] = await Promise.all([
-			this.dataSourceTNC.getRepository(SizeInventoryEntity).findBy(filterQuery),
+			this.dataSourceTNC.getRepository(SizeInventoryEntity).findBy({
+				shoes_style: queries['shoes_style.eq'],
+				color: queries['color.eq']
+			}),
 			this.dataSourceTNC
 				.getRepository(InboundInventoryEntity)
 				.find({ where: filterQuery, order: { mo_no: 'DESC' } }),
-			this.dataSourceTNC
-				.getRepository(OutboundEstimationEntity)
-				.find({ where: filterQuery, order: { outbound_date: 'DESC' } })
+			this.dataSourceTNC.getRepository(OutboundEstimationEntity).find({
+				where: filterQuery,
+				order: { outbound_date: 'DESC' }
+			})
 		])
 
 		return {
