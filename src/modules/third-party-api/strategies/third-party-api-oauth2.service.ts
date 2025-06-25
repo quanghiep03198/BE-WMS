@@ -1,10 +1,11 @@
-import { FileLogger } from '@/common/helpers'
 import { FactoryCode } from '@/modules/department/constants'
 import { HttpService } from '@nestjs/axios'
 import { CACHE_MANAGER } from '@nestjs/cache-manager'
 import { Inject, Injectable, NotFoundException } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { Cache } from 'cache-manager'
+import { WINSTON_MODULE_NEST_PROVIDER } from 'nest-winston'
+import { Logger } from 'winston'
 import { OAuth2TokenResponse } from '../interfaces/third-party-api.interface'
 import { GL1OAuth2Strategy, GL3OAuth2Strategy, GL4OAuth2Strategy } from './third-party-api-oauth2.strategy'
 
@@ -12,6 +13,7 @@ import { GL1OAuth2Strategy, GL3OAuth2Strategy, GL4OAuth2Strategy } from './third
 export class ThirdPartyApiOAuth2Service {
 	constructor(
 		@Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
+		@Inject(WINSTON_MODULE_NEST_PROVIDER) private readonly logger: Logger,
 		private readonly configService: ConfigService,
 		private readonly httpService: HttpService,
 		private readonly gl1Credentials: GL1OAuth2Strategy,
@@ -50,7 +52,7 @@ export class ThirdPartyApiOAuth2Service {
 				})
 			})
 		} catch (error) {
-			FileLogger.error(error)
+			this.logger.error(error)
 			return null
 		}
 	}

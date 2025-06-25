@@ -1,12 +1,16 @@
-import { ArgumentsHost, Catch, ExceptionFilter, HttpException, HttpStatus } from '@nestjs/common'
+import { ArgumentsHost, Catch, ExceptionFilter, HttpException, HttpStatus, Inject } from '@nestjs/common'
 import { HttpAdapterHost } from '@nestjs/core'
 import { SentryExceptionCaptured } from '@sentry/nestjs'
-import { FileLogger } from '../helpers/file-logger.helper'
+import { WINSTON_MODULE_NEST_PROVIDER } from 'nest-winston'
+import { Logger } from 'winston'
 import { IResponseBody } from '../helpers/transform-response.helper'
 
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
-	constructor(private readonly httpAdapterHost: HttpAdapterHost) {}
+	constructor(
+		@Inject(WINSTON_MODULE_NEST_PROVIDER) private readonly logger: Logger,
+		private readonly httpAdapterHost: HttpAdapterHost
+	) {}
 
 	/**
 	 *	@description Catch all exceptions and log the error
@@ -25,7 +29,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
 			timestamp: new Date().toISOString(),
 			path: httpAdapter.getRequestUrl(ctx.getRequest())
 		}
-		if (httpStatus === HttpStatus.INTERNAL_SERVER_ERROR) FileLogger.error(exception)
+		if (httpStatus === HttpStatus.INTERNAL_SERVER_ERROR) this.logger.error(exception)
 		httpAdapter.reply(ctx.getResponse(), responseBody, httpStatus)
 	}
 }

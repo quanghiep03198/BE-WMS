@@ -1,9 +1,11 @@
-import { FileLogger } from '@/common/helpers/file-logger.helper'
 import { EventGateway } from '@/events/event.gateway'
 import { Processor, WorkerHost } from '@nestjs/bullmq'
-import { Logger } from '@nestjs/common'
+// import { Logger } from '@nestjs/common'
+import { Inject } from '@nestjs/common'
 import { Job } from 'bullmq'
 import { groupBy } from 'lodash'
+import { WINSTON_MODULE_NEST_PROVIDER } from 'nest-winston'
+import { Logger } from 'winston'
 import { OrderService } from '../../order/order.service'
 import { RFIDMatchCustomerEntity } from '../../rfid/entities/rfid-customer-match.entity'
 import { RFIDInboundService } from '../../rfid/services/rfid-inbound.service'
@@ -15,9 +17,10 @@ import { ThirdPartyApiService } from '../third-party-api.service'
 @Processor(THIRD_PARTY_API_SYNC)
 export class ThirdPartyApiConsumer extends WorkerHost {
 	private processState: SyncProcessState[]
-	private readonly logger = new Logger(ThirdPartyApiConsumer.name)
+	// private readonly logger = new Logger(ThirdPartyApiConsumer.name)
 
 	constructor(
+		@Inject(WINSTON_MODULE_NEST_PROVIDER) private readonly logger: Logger,
 		private readonly thirdPartyApiService: ThirdPartyApiService,
 		private readonly thirdPartyApiOAuth2Service: ThirdPartyApiOAuth2Service,
 		private readonly rfidInboundService: RFIDInboundService,
@@ -43,7 +46,7 @@ export class ThirdPartyApiConsumer extends WorkerHost {
 		} catch (error) {
 			this.cancelRemainingSteps()
 			await this.broadcastStateChange()
-			FileLogger.error(error)
+			this.logger.error(error)
 			throw new Error(error.message)
 		}
 	}

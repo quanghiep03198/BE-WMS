@@ -1,8 +1,7 @@
 import { EXCLUDED_EPC_REGEX } from '@/common/constants/regex'
-import { FileLogger } from '@/common/helpers'
 import { DATA_SOURCE_DATA_LAKE, RecordStatus } from '@/databases/constants'
 import { InjectQueue } from '@nestjs/bullmq'
-import { Injectable, InternalServerErrorException } from '@nestjs/common'
+import { Inject, Injectable, InternalServerErrorException } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
 import { InjectDataSource } from '@nestjs/typeorm'
 import { Queue } from 'bullmq'
@@ -12,7 +11,9 @@ import { AnyBulkWriteOperation, FilterQuery, PipelineStage } from 'mongoose'
 import { join, resolve } from 'path'
 // import { DataSource } from 'typeorm'
 import { mongo } from 'mongoose'
+import { WINSTON_MODULE_NEST_PROVIDER } from 'nest-winston'
 import { Brackets, DataSource } from 'typeorm'
+import { Logger } from 'winston'
 import { FALLBACK_VALUE, InventoryActions, POST_DATA_OUTBOUND_QUEUE } from '../constants'
 import { PostReaderDataDTO, RestoreArchivedEpcsDTO, UpsertStockOutDTO } from '../dto/rfid.dto'
 import { RFIDInventoryBackupEntity } from '../entities/rifd-inventory.entity'
@@ -23,6 +24,7 @@ import { generateStation } from '../utils'
 @Injectable()
 export class RFIDOutboundService {
 	constructor(
+		@Inject(WINSTON_MODULE_NEST_PROVIDER) private readonly logger: Logger,
 		@InjectDataSource(DATA_SOURCE_DATA_LAKE) private readonly dataSourceDL: DataSource,
 		@InjectQueue(POST_DATA_OUTBOUND_QUEUE)
 		private readonly postDataQueue: Queue<PostReaderDataDTO>,
@@ -106,7 +108,7 @@ export class RFIDOutboundService {
 			await queryRunner.commitTransaction()
 			await session.commitTransaction()
 		} catch (error) {
-			FileLogger.error(error)
+			this.logger.error(error)
 			if (session.inTransaction()) await session.abortTransaction()
 			if (queryRunner.isTransactionActive) await queryRunner.rollbackTransaction()
 			throw new InternalServerErrorException(error.message)
@@ -237,8 +239,6 @@ export class RFIDOutboundService {
 				station: generateStation(factoryCode, 'WH101'),
 				...subQuery.getParameters()
 			})
-
-		FileLogger.debug(queryBuilder.getQueryAndParameters())
 
 		const [totalDocs, data] = await Promise.all([queryBuilder.getCount(), queryBuilder.getRawMany<EpcInformation>()])
 

@@ -1,4 +1,3 @@
-import { FileLogger } from '@/common/helpers'
 import { DATA_SOURCE_DATA_LAKE, DATA_SOURCE_ERP } from '@/databases/constants'
 import { TENANCY_DATA_SOURCE } from '@/modules/tenancy/constants'
 import { InjectQueue } from '@nestjs/bullmq'
@@ -10,6 +9,7 @@ import { format } from 'date-fns'
 import { readFileSync } from 'fs'
 import { chunk, pick } from 'lodash'
 import { AnyBulkWriteOperation } from 'mongoose'
+import { WINSTON_MODULE_NEST_PROVIDER } from 'nest-winston'
 import { I18nContext, I18nService } from 'nestjs-i18n'
 import { join, resolve } from 'path'
 import { DataSource, FindOptionsWhere, In } from 'typeorm'
@@ -27,6 +27,7 @@ import { EpcInbound, EpcInboundSchema, EpcModel } from '../schemas/epc.schema'
 @Injectable({ scope: Scope.REQUEST })
 export class RFIDInboundService {
 	constructor(
+		@Inject(WINSTON_MODULE_NEST_PROVIDER) private readonly logger: Logger,
 		@Inject(TENANCY_DATA_SOURCE) private readonly dataSourceTNC: DataSource,
 		@InjectDataSource(DATA_SOURCE_DATA_LAKE) private readonly dataSourceDL: DataSource,
 		@InjectDataSource(DATA_SOURCE_ERP) private readonly dataSourceERP: DataSource,
@@ -93,7 +94,7 @@ export class RFIDInboundService {
 			await queryRunner.commitTransaction()
 			await session.commitTransaction()
 		} catch (error) {
-			FileLogger.error(error)
+			this.logger.error(error)
 			if (session.inTransaction()) await session.abortTransaction()
 			if (queryRunner.isTransactionActive) await queryRunner.rollbackTransaction()
 			throw new InternalServerErrorException(error.message)
@@ -228,7 +229,7 @@ export class RFIDInboundService {
 			await session.commitTransaction()
 			await queryRunner.commitTransaction()
 		} catch (error) {
-			FileLogger.error(error)
+			this.logger.error(error)
 			if (session.inTransaction()) await session.abortTransaction()
 			if (queryRunner.isTransactionActive) await queryRunner.rollbackTransaction()
 			throw new Error(error.message)
