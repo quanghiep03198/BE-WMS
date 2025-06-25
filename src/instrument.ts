@@ -6,5 +6,12 @@ Sentry.init({
 	dsn: env('SENTRY_DSN'),
 	integrations: [nodeProfilingIntegration()],
 	tracesSampleRate: 1.0,
-	enabled: env('NODE_ENV') === 'production'
+	enabled: env('NODE_ENV') === 'production',
+	_experiments: {
+		enableLogs: true,
+		beforeSendLog: (log) => {
+			if (log.level !== 'error') return null
+			return log
+		}
+	}
 })

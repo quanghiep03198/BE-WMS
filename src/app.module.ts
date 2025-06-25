@@ -1,7 +1,7 @@
 import { DatabaseModule } from '@/databases'
 import { BullModule } from '@nestjs/bullmq'
 import { CacheModule } from '@nestjs/cache-manager'
-import { Module, type OnApplicationBootstrap, type OnApplicationShutdown, type OnModuleInit } from '@nestjs/common'
+import { Module, type OnApplicationBootstrap, type OnApplicationShutdown } from '@nestjs/common'
 import { ConfigModule, ConfigService } from '@nestjs/config'
 import { APP_FILTER } from '@nestjs/core'
 import { EventEmitterModule } from '@nestjs/event-emitter'
@@ -9,13 +9,14 @@ import { ScheduleModule } from '@nestjs/schedule'
 import { ThrottlerModule } from '@nestjs/throttler'
 import * as Sentry from '@sentry/nestjs'
 import { SentryGlobalFilter, SentryModule } from '@sentry/nestjs/setup'
+import { PrometheusModule } from '@willsoto/nestjs-prometheus'
+import { WinstonModule } from 'nest-winston'
 import { AcceptLanguageResolver, HeaderResolver, I18nModule, QueryResolver } from 'nestjs-i18n'
+import * as winston from 'winston'
 import { AppController } from './app.controller'
-import { FileLogger } from './common/helpers'
 import { appConfigFactory, validateConfig } from './configs'
 import { RotateLogJob } from './jobs/rotate-log.job'
 // Feature modules
-import { PrometheusModule } from '@willsoto/nestjs-prometheus'
 import { EventGateway } from './events/event.gateway'
 import { AuthModule } from './modules/auth/auth.module'
 import { DepartmentModule } from './modules/department/department.module'
@@ -47,6 +48,7 @@ import { RedisModule } from './redis/redis.module'
 			load: [appConfigFactory],
 			validate: validateConfig
 		}),
+
 		DatabaseModule.forRootAsync(),
 		RedisModule.forRoot(),
 		SentryModule.forRoot(),
@@ -82,6 +84,26 @@ import { RedisModule } from './redis/redis.module'
 			verboseMemoryLeak: true,
 			ignoreErrors: false
 		}),
+		WinstonModule.forRootAsync({
+			useFactory: (configService: ConfigService) => {
+				return {
+					transports: [
+						new winston.transports.File({
+							...configService.get('logger.default'),
+							...configService.get('logger.debug')
+						}),
+						new winston.transports.File({
+							...configService.get('logger.default'),
+							...configService.get('logger.error')
+						}),
+						new winston.transports.File({
+							...configService.get('logger.default'),
+							...configService.get('logger.info')
+						})
+					]
+				}
+			}
+		}),
 		// * Feature modules
 		AuthModule,
 		DepartmentModule,
@@ -105,10 +127,7 @@ import { RedisModule } from './redis/redis.module'
 		}
 	]
 })
-export class AppModule implements OnModuleInit, OnApplicationBootstrap, OnApplicationShutdown {
-	onModuleInit() {
-		FileLogger.initialize()
-	}
+export class AppModule implements OnApplicationBootstrap, OnApplicationShutdown {
 	onApplicationBootstrap() {
 		Sentry.profiler.startProfiler()
 	}

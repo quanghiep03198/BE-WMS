@@ -1,7 +1,9 @@
-import { FileLogger } from '@/common/helpers/file-logger.helper'
 import { OnWorkerEvent, Processor, WorkerHost } from '@nestjs/bullmq'
+import { Inject } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
 import { Job } from 'bullmq'
+import { WINSTON_MODULE_NEST_PROVIDER } from 'nest-winston'
+import { Logger } from 'winston'
 import { POST_DATA_INBOUND_QUEUE } from '../constants'
 import { PostReaderDataDTO } from '../dto/rfid.dto'
 import { EpcInbound, EpcModel } from '../schemas/epc.schema'
@@ -10,6 +12,7 @@ import { RFIDSharedService } from '../services/rfid-shared.service'
 @Processor(POST_DATA_INBOUND_QUEUE, { concurrency: 2 })
 export class RFIDInboundConsumer extends WorkerHost {
 	constructor(
+		@Inject(WINSTON_MODULE_NEST_PROVIDER) private readonly logger: Logger,
 		@InjectModel(EpcInbound.name) private readonly epcModel: EpcModel,
 		private readonly rfidSharedService: RFIDSharedService
 	) {
@@ -28,11 +31,11 @@ export class RFIDInboundConsumer extends WorkerHost {
 
 	@OnWorkerEvent('completed')
 	onWorkerCompleted(job: Job) {
-		FileLogger.info(`Job "${job.name}" completed`)
+		this.logger.info(`Job "${job.name}" completed`)
 	}
 
 	@OnWorkerEvent('failed')
 	onWorkerFailed(job: Job) {
-		FileLogger.error(`Job "${job.name}" failed: ${job.failedReason}`)
+		this.logger.error(`Job "${job.name}" failed: ${job.failedReason}`)
 	}
 }

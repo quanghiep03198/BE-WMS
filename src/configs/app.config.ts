@@ -7,8 +7,10 @@ import { type ConfigFactory } from '@nestjs/config'
 import { type MongooseModuleOptions } from '@nestjs/mongoose'
 import { type ThrottlerOptions } from '@nestjs/throttler'
 import { type TypeOrmModuleOptions } from '@nestjs/typeorm'
+import { format } from 'date-fns'
 import { AcceptLanguageResolver, HeaderResolver, I18nOptions } from 'nestjs-i18n'
 import path from 'path'
+import winston from 'winston'
 
 export const appConfigFactory: ConfigFactory = () => ({
 	// * Redis BullMQ configuration
@@ -127,5 +129,55 @@ export const appConfigFactory: ConfigFactory = () => ({
 			ttl: 60000,
 			limit: 100
 		}
-	] satisfies ThrottlerOptions[]
+	] satisfies ThrottlerOptions[],
+
+	['logger']: {
+		default: {
+			eol: '\n\n',
+			tailable: true,
+			options: {
+				encoding: 'utf-8',
+				mode: 0o666, // quyền truy cập tệp
+				flag: 'a+',
+				tail: '-f'
+			}
+		} satisfies Partial<winston.transports.FileTransportOptions>,
+		error: {
+			level: 'error',
+			dirname: 'logs',
+			filename: 'error.log',
+			format: winston.format.combine(
+				winston.format.errors({ stack: true }),
+				winston.format.printf((info) => {
+					const timestamp = format(new Date(), 'yyyy-MM-dd HH:mm:ss.SSS')
+					const errorStackTrace = info.stack || info.message
+					return `[${timestamp}] ${errorStackTrace}`
+				})
+			)
+		},
+		debug: {
+			level: 'debug',
+			dirname: 'logs',
+			filename: 'debug.log',
+			format: winston.format.combine(
+				winston.format.prettyPrint(),
+				winston.format.printf((info) => {
+					const timestamp = format(new Date(), 'yyyy-MM-dd HH:mm:ss.SSS')
+					return `[${timestamp}] ${info.level} ${info.message}`
+				})
+			)
+		},
+		info: {
+			level: 'info',
+			dirname: 'logs',
+			filename: 'info.log',
+			format: winston.format.combine(
+				winston.format.prettyPrint(),
+				winston.format.printf((info) => {
+					const timestamp = format(new Date(), 'yyyy-MM-dd HH:mm:ss.SSS')
+					return `[${timestamp}] ${info.level} ${info.message}`
+				})
+			)
+		}
+	} satisfies Record<'debug' | 'default' | 'error' | 'info', winston.transports.FileTransportOptions>
 })

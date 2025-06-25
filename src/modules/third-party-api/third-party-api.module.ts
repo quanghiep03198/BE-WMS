@@ -1,14 +1,15 @@
-import { FileLogger } from '@/common/helpers/file-logger.helper'
 import { DATA_SOURCE_DATA_LAKE } from '@/databases/constants'
 import { EventGateway } from '@/events/event.gateway'
 import { HttpModule, HttpService } from '@nestjs/axios'
 import { BullModule } from '@nestjs/bullmq'
-import { forwardRef, MiddlewareConsumer, Module, NestModule, OnModuleInit } from '@nestjs/common'
+import { forwardRef, Inject, MiddlewareConsumer, Module, NestModule, OnModuleInit } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { TypeOrmModule } from '@nestjs/typeorm'
 import { AxiosError, AxiosResponse } from 'axios'
 import { Agent } from 'https'
 import { upperCase } from 'lodash'
+import { WINSTON_MODULE_NEST_PROVIDER } from 'nest-winston'
+import { Logger } from 'winston'
 import { OrderModule } from '../order/order.module'
 import { BaseRFIDInventoryEntity } from '../rfid/entities/rifd-inventory.entity'
 import { RFIDModule } from '../rfid/rfid.module'
@@ -48,6 +49,7 @@ import { ThirdPartyApiService } from './third-party-api.service'
 })
 export class ThirdPartyApiModule implements NestModule, OnModuleInit {
 	constructor(
+		@Inject(WINSTON_MODULE_NEST_PROVIDER) private readonly logger: Logger,
 		private readonly httpService: HttpService,
 		private readonly configService: ConfigService
 	) {}
@@ -64,14 +66,14 @@ export class ThirdPartyApiModule implements NestModule, OnModuleInit {
 				const requestMethod = upperCase(response.config.method)
 				const requestURL = response.config.baseURL + response.config.url
 				const errorStatus = response.status
-				FileLogger.info(`${requestMethod} ${requestURL} ${errorStatus}`)
+				this.logger.info(`${requestMethod} ${requestURL} ${errorStatus}`)
 				return response.data
 			},
 			(error: AxiosError) => {
 				const requestMethod = upperCase(error.config.method)
 				const requestURL = error.config.baseURL + error.config.url
 				const errorStatus = error.status
-				FileLogger.error(`${requestMethod} ${requestURL} ${errorStatus}`)
+				this.logger.error(`${requestMethod} ${requestURL} ${errorStatus}`)
 				return Promise.reject(error)
 			}
 		)
