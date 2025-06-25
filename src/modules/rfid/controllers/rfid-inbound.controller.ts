@@ -24,8 +24,6 @@ import {
 	DeleteScannedEpcDTO,
 	ExchangeOrderDTO,
 	exchangeOrderValidator,
-	FillEpcDataDTO,
-	fillEpcDataSchema,
 	FindEpcBySizeDTO,
 	findEpcBySizeValidator,
 	PostReaderDataDTO,
@@ -33,6 +31,8 @@ import {
 	searchCustomerValidator,
 	SearchCustOrderParamsDTO,
 	updateStockValidator,
+	UpsertEpcInformationDTO,
+	upsertEpcInformationSchema,
 	UpsertStockInDTO
 } from '../dto/rfid.dto'
 import { EpcInbound, EpcModel } from '../schemas/epc.schema'
@@ -144,14 +144,14 @@ export class RFIDInboundController {
 
 	@Api({
 		method: HttpMethod.PUT,
-		endpoint: 'fill-epc-data'
+		endpoint: 'upsert-epc-information'
 	})
 	@AuthGuard()
-	async exchangeEpcBySize(
+	async upsertEpcInformation(
 		@Headers(CommonRequestHeader.FACTORY_CODE) factoryCode: string,
-		@Body(new ZodValidationPipe(fillEpcDataSchema)) payload: FillEpcDataDTO
+		@Body(new ZodValidationPipe(upsertEpcInformationSchema)) payload: UpsertEpcInformationDTO
 	) {
-		return await this.rfidInboundService.fillEpcData(factoryCode, payload)
+		return await this.rfidInboundService.upsertEpcInformation(factoryCode, payload)
 	}
 
 	@Api({

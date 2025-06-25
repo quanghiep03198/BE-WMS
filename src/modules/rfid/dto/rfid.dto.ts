@@ -38,7 +38,7 @@ export const exchangeOrderValidator = z.object({
 	color_sn: z.string({ required_error: 'Required' }).min(1, { message: 'Required' }).optional()
 })
 
-export const fillEpcDataSchema = z
+export const upsertEpcInformationSchema = z
 	.object({
 		color_sn: z.string({ required_error: 'ns_validation:required' }).nonempty({ message: 'ns_validation:required' }),
 		color_sn_actual: z
@@ -156,7 +156,7 @@ export type UpsertStockOutDTO = z.infer<typeof upsertStockOutValidator>
 export type UpsertStockInDTO = z.infer<typeof updateStockValidator> &
 	Pick<BaseRFIDInventoryEntity, 'user_code_created' | 'factory_code'>
 export type ExchangeOrderDTO = z.infer<typeof exchangeOrderValidator>
-export type FillEpcDataDTO = z.infer<typeof fillEpcDataSchema>
+export type UpsertEpcInformationDTO = z.infer<typeof upsertEpcInformationSchema>
 export type SearchCustOrderParamsDTO = z.infer<typeof searchCustomerValidator> & {
 	['factory_code.eq']: string
 }

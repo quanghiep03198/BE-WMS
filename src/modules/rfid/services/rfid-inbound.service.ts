@@ -16,9 +16,9 @@ import { DataSource, FindOptionsWhere, In } from 'typeorm'
 import { POST_DATA_INBOUND_QUEUE } from '../constants'
 import {
 	ExchangeOrderDTO,
-	FillEpcDataDTO,
 	PostReaderDataDTO,
 	SearchCustOrderParamsDTO,
+	UpsertEpcInformationDTO,
 	UpsertStockInDTO
 } from '../dto/rfid.dto'
 import { RFIDMatchCustomerEntity } from '../entities/rfid-customer-match.entity'
@@ -150,8 +150,7 @@ export class RFIDInboundService {
 		}
 	}
 
-	public async fillEpcData(factoryCode: string, update: FillEpcDataDTO) {
-		Logger.debug(pick(update, ['mo_no', 'shoes_style_code_factory', 'color_sn', 'size_numcode']))
+	public async upsertEpcInformation(factoryCode: string, update: UpsertEpcInformationDTO) {
 		const epcToExchange = await this.epcInboundModel
 			.find({
 				...pick(update, ['mo_no', 'shoes_style_code_factory', 'color_sn', 'size_numcode']),
