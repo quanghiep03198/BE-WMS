@@ -85,6 +85,7 @@ import { RedisModule } from './redis/redis.module'
 			ignoreErrors: false
 		}),
 		WinstonModule.forRootAsync({
+			inject: [ConfigService],
 			useFactory: (configService: ConfigService) => {
 				return {
 					transports: [
