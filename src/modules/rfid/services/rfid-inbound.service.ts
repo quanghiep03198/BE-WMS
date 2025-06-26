@@ -181,7 +181,6 @@ export class RFIDInboundService {
 		const queryRunner = this.dataSourceDL.createQueryRunner()
 		await queryRunner.connect()
 
-		Logger.debug(payload)
 		try {
 			const upsertEpcsQuery: string = readFileSync(resolve(join(__dirname, '../sql/upsert-rfid-match.sql')), 'utf-8')
 
