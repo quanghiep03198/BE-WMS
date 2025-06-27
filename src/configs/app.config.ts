@@ -8,6 +8,7 @@ import { type MongooseModuleOptions } from '@nestjs/mongoose'
 import { type ThrottlerOptions } from '@nestjs/throttler'
 import { type TypeOrmModuleOptions } from '@nestjs/typeorm'
 import { format } from 'date-fns'
+import { capitalize } from 'lodash'
 import { AcceptLanguageResolver, HeaderResolver, I18nOptions } from 'nestjs-i18n'
 import path from 'path'
 import winston from 'winston'
@@ -137,9 +138,8 @@ export const appConfigFactory: ConfigFactory = () => ({
 			tailable: true,
 			options: {
 				encoding: 'utf-8',
-				mode: 0o666, // quyền truy cập tệp
-				flag: 'a+',
-				tail: '-f'
+				flags: 'a', // Ghi tiếp vào file, không ghi đè
+				mode: 0o666
 			}
 		} satisfies Partial<winston.transports.FileTransportOptions>,
 		error: {
@@ -163,7 +163,9 @@ export const appConfigFactory: ConfigFactory = () => ({
 				winston.format.prettyPrint(),
 				winston.format.printf((info) => {
 					const timestamp = format(new Date(), 'yyyy-MM-dd HH:mm:ss.SSS')
-					return `[${timestamp}] ${info.level} ${info.message}`
+					const logLevel = capitalize(info.level)
+					const message = info.message
+					return `[${timestamp}] ${logLevel}: ${message}`
 				})
 			)
 		},
@@ -175,7 +177,9 @@ export const appConfigFactory: ConfigFactory = () => ({
 				winston.format.prettyPrint(),
 				winston.format.printf((info) => {
 					const timestamp = format(new Date(), 'yyyy-MM-dd HH:mm:ss.SSS')
-					return `[${timestamp}] ${info.level} ${info.message}`
+					const logLevel = capitalize(info.level)
+					const message = info.message
+					return `[${timestamp}] ${logLevel}: ${message}`
 				})
 			)
 		}
