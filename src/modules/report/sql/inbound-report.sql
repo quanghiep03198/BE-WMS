@@ -13,6 +13,7 @@ WITH filtered_data AS (
 		AND EPC_Code NOT LIKE 'E28%'
 		AND mo_no NOT IN ('13D05B006', '13A08C003')
 		AND stationNO LIKE 'CUS%WH10[12]'
+		AND FC_server_code = @0
 ),
 
 -- * Command number details
@@ -60,7 +61,7 @@ SELECT
 	(
 		SELECT size_numcode, COUNT(DISTINCT EPC_Code) AS qty
 		FROM filtered_data d 
-		WHERE d.mo_no = ds.mo_no AND CAST(d.record_time AS DATE) = @0
+		WHERE d.mo_no = ds.mo_no AND CAST(d.record_time AS DATE) = @1
 		GROUP BY size_numcode
 		FOR JSON PATH
 	) AS size_data
@@ -77,7 +78,7 @@ LEFT JOIN department_list dg
 	ON dg.mo_no = ds.mo_no AND dg.factory_code = ds.factory_code
 LEFT JOIN accumulated ac
 	ON ac.mo_no = ds.mo_no
-WHERE CAST(ds.record_time AS DATE) = @0
+WHERE CAST(ds.record_time AS DATE) = @1
 GROUP BY 
 	ds.factory_code, ds.mo_no, rmc.shoestyle_codefactory, 
 	prod.color_sn, manf.mo_totalqty, ac.accumulated_qty,

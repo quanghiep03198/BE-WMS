@@ -21,7 +21,10 @@ export class InboundReportService {
 	) {}
 
 	public async getInboundReportByDate(date: string): Promise<IInboundReportResponse> {
-		const data = await this.dataSource.query<IInboundReportQueryResult[]>(this.inboundReportQuery, [date])
+		const data = await this.dataSource.query<IInboundReportQueryResult[]>(this.inboundReportQuery, [
+			this.request.headers['x-user-company'],
+			date
+		])
 		return data.map((item) => ({
 			...item,
 			size_data: JSON.parse(item.size_data)
