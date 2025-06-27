@@ -17,7 +17,6 @@ import { ThirdPartyApiService } from '../third-party-api.service'
 @Processor(THIRD_PARTY_API_SYNC)
 export class ThirdPartyApiConsumer extends WorkerHost {
 	private processState: SyncProcessState[]
-	// private readonly logger = new Logger(ThirdPartyApiConsumer.name)
 
 	constructor(
 		@Inject(WINSTON_MODULE_NEST_PROVIDER) private readonly logger: Logger,
