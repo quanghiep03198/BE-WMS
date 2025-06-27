@@ -81,9 +81,4 @@ ORDER BY
    pl.shoes_style_code_factory, 
    pl.color_sn,
    CASE WHEN LEN(Size) >= 3 THEN 2 ELSE 0 END, LEFT(Size, 3)
-OPTION
-(
-OPTIMIZE
-FOR
-UNKNOWN
-);
+OPTION (OPTIMIZE FOR UNKNOWN);
