@@ -1,0 +1,11 @@
+{
+	"files.readonlyInclude": {
+		"**/i18n.generated.ts": true
+	},
+	"files.watcherExclude": {
+		"**/i18n.generated.ts": true
+	},
+	"search.exclude": {
+		"**/i18n.generated.ts": true
+	}
+}
