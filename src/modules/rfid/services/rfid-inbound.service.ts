@@ -40,21 +40,6 @@ export class RFIDInboundService {
 		return await this.postDataQueue.add('RFID_INBOUND', data, { lifo: true })
 	}
 
-	/**
-	 * @description Cleanup the queue. All existing jobs around last 5 minutes will be removed
-	 */
-	public async cleanupQueue(): Promise<unknown[]> {
-		const GRACE_PERIOD = 60 * 1000 * 5
-		const QUANTITY = 1000
-		return await Promise.all([
-			this.postDataQueue.drain(),
-			this.postDataQueue.clean(GRACE_PERIOD, QUANTITY, 'active'),
-			this.postDataQueue.clean(GRACE_PERIOD, QUANTITY, 'paused'),
-			this.postDataQueue.clean(GRACE_PERIOD, QUANTITY, 'failed'),
-			this.postDataQueue.clean(GRACE_PERIOD, QUANTITY, 'completed')
-		])
-	}
-
 	public async upsertStockIn(orderCode: string, factoryCode: string, data: UpsertStockInDTO) {
 		const payload = await this.epcInboundModel.find({ scannable: true, mo_no: orderCode }).lean(true)
 		const queryRunner = this.dataSourceTNC.createQueryRunner()

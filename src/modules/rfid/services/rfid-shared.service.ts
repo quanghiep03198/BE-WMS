@@ -1,11 +1,12 @@
 import { DATA_SOURCE_DATA_LAKE, MAIN_DATA_SOURCE, RecordStatus } from '@/databases/constants'
 import { Inject, Injectable } from '@nestjs/common'
 import { InjectDataSource } from '@nestjs/typeorm'
+import { Queue } from 'bullmq'
 import { readFileSync } from 'fs'
 import { throttle } from 'lodash'
 import { AnyBulkWriteOperation, FilterQuery, UpdateWriteOpResult } from 'mongoose'
 import { join, resolve } from 'path'
-import { DataSource } from 'typeorm'
+import { DataSource, Like } from 'typeorm'
 import { EXCLUDED_EPC_PREFIX, EXCLUDED_ORDERS, FALLBACK_VALUE, InventoryActions } from '../constants'
 import { FindEpcBySizeDTO, PostReaderDataDTO } from '../dto/rfid.dto'
 import { RFIDReaderEntity } from '../entities/rfid-reader.entity'
@@ -24,6 +25,18 @@ export class RFIDSharedService {
 		@Inject(MAIN_DATA_SOURCE) private readonly dataSource: DataSource,
 		@InjectDataSource(DATA_SOURCE_DATA_LAKE) private readonly dataSourceDL: DataSource
 	) {}
+
+	public async cleanupQueue($queue: Queue): Promise<unknown[]> {
+		const GRACE_PERIOD = 60 * 1000 * 5
+		const QUANTITY = 1000
+		return await Promise.all([
+			$queue.drain(),
+			$queue.clean(GRACE_PERIOD, QUANTITY, 'active'),
+			$queue.clean(GRACE_PERIOD, QUANTITY, 'paused'),
+			$queue.clean(GRACE_PERIOD, QUANTITY, 'failed'),
+			$queue.clean(GRACE_PERIOD, QUANTITY, 'completed')
+		])
+	}
 
 	public async fetchLatestData($model: EpcModel, factory: string, args: RFIDSearchParams) {
 		const [epcs, orders, has_invalid] = await Promise.all([
@@ -184,7 +197,7 @@ export class RFIDSharedService {
 	public async bulkWriteRFIDData($model: EpcModel, $stationCode: 'WH101' | 'WH103', { data, sn }: PostReaderDataDTO) {
 		// * Get the RFID reader information from the database
 		const deviceInformation = await this.dataSourceDL.getRepository(RFIDReaderEntity).findOne({
-			where: { device_sn: sn },
+			where: { device_sn: sn, station_no: Like('%' + $stationCode) },
 			cache: {
 				id: sn,
 				milliseconds: 1000 * 60 * 60

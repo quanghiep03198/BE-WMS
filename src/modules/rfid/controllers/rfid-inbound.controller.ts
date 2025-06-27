@@ -2,6 +2,7 @@ import { CommonRequestHeader } from '@/common/constants'
 import { Api, AuthGuard, HttpMethod, User } from '@/common/decorators'
 import { AllExceptionsFilter } from '@/common/filters'
 import { ZodValidationPipe } from '@/common/pipes'
+import { InjectQueue } from '@nestjs/bullmq'
 import {
 	Body,
 	Controller,
@@ -9,6 +10,7 @@ import {
 	Get,
 	Headers,
 	HttpStatus,
+	Inject,
 	Logger,
 	Param,
 	ParseBoolPipe,
@@ -18,7 +20,10 @@ import {
 	UseFilters
 } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
+import { Queue } from 'bullmq'
 import { Response } from 'express'
+import { WINSTON_MODULE_NEST_PROVIDER } from 'nest-winston'
+import { POST_DATA_INBOUND_QUEUE } from '../constants'
 import {
 	deleteEpcValidator,
 	DeleteScannedEpcDTO,
@@ -41,10 +46,10 @@ import { RFIDSharedService } from '../services/rfid-shared.service'
 
 @Controller('rfid/inbound')
 export class RFIDInboundController {
-	private readonly logger = new Logger(RFIDInboundController.name)
-
 	constructor(
+		@Inject(WINSTON_MODULE_NEST_PROVIDER) private readonly logger: Logger,
 		@InjectModel(EpcInbound.name) private readonly epcInboundModel: EpcModel,
+		@InjectQueue(POST_DATA_INBOUND_QUEUE) private readonly postInboundDataQueue: Queue<PostReaderDataDTO>,
 		private readonly rfidSharedService: RFIDSharedService,
 		private readonly rfidInboundService: RFIDInboundService
 	) {}
@@ -70,7 +75,7 @@ export class RFIDInboundController {
 
 		res.on('close', async () => {
 			this.logger.log('Stop receiving data from Android RFID device')
-			await this.rfidInboundService.cleanupQueue()
+			await this.rfidSharedService.cleanupQueue(this.postInboundDataQueue)
 			changeStream.removeListener('change', handleChange)
 			changeStream.close()
 			res.end()
@@ -165,7 +170,10 @@ export class RFIDInboundController {
 		@Query('rescannable', new DefaultValuePipe(false), ParseBoolPipe) rescannable: boolean,
 		@Param('commandNumber') commandNumber: string
 	) {
-		return await this.rfidSharedService.deleteScannedOrder(this.epcInboundModel, commandNumber, rescannable)
+		return await Promise.all([
+			this.rfidSharedService.cleanupQueue(this.postInboundDataQueue),
+			this.rfidSharedService.deleteScannedOrder(this.epcInboundModel, commandNumber, rescannable)
+		])
 	}
 
 	@Api({
@@ -179,7 +187,10 @@ export class RFIDInboundController {
 		@Query('rescannable', new DefaultValuePipe(false), ParseBoolPipe) rescannable: boolean,
 		@Body(new ZodValidationPipe(deleteEpcValidator)) epcs: DeleteScannedEpcDTO
 	) {
-		return await this.rfidSharedService.deleteBulkEpcs(this.epcInboundModel, epcs, rescannable)
+		return await Promise.all([
+			this.rfidSharedService.cleanupQueue(this.postInboundDataQueue),
+			this.rfidSharedService.deleteBulkEpcs(this.epcInboundModel, epcs, rescannable)
+		])
 	}
 
 	@Api({

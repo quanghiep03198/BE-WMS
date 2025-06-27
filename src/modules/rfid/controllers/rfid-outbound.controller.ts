@@ -3,6 +3,7 @@ import { Api, AuthGuard, HttpMethod } from '@/common/decorators'
 import { AllExceptionsFilter } from '@/common/filters'
 import { ZodValidationPipe } from '@/common/pipes'
 import { stringToBoolean } from '@/common/utils'
+import { InjectQueue } from '@nestjs/bullmq'
 import {
 	Body,
 	Controller,
@@ -18,9 +19,11 @@ import {
 	UseFilters
 } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
+import { Queue } from 'bullmq'
 import { Response } from 'express'
 import { isEmpty, isNil, pickBy } from 'lodash'
 import { mongo } from 'mongoose'
+import { POST_DATA_OUTBOUND_QUEUE } from '../constants'
 import {
 	deleteEpcValidator,
 	DeleteScannedEpcDTO,
@@ -41,6 +44,7 @@ import { generateStation } from '../utils'
 @Controller('rfid/outbound')
 export class RFIDOutboundController {
 	constructor(
+		@InjectQueue(POST_DATA_OUTBOUND_QUEUE) private readonly postOutboundDataQueue: Queue<PostReaderDataDTO>,
 		@InjectModel(EpcOutbound.name) private readonly epcOutboundModel: EpcModel,
 		private readonly rfidSharedService: RFIDSharedService,
 		private readonly rfidOutboundService: RFIDOutboundService
@@ -126,7 +130,10 @@ export class RFIDOutboundController {
 		@Query('rescannable', new DefaultValuePipe(false), ParseBoolPipe) rescannable: boolean,
 		@Param('commandNumber') commandNumber: string
 	) {
-		return await this.rfidSharedService.deleteScannedOrder(this.epcOutboundModel, commandNumber, rescannable)
+		return await Promise.all([
+			this.rfidSharedService.cleanupQueue(this.postOutboundDataQueue),
+			this.rfidSharedService.deleteScannedOrder(this.epcOutboundModel, commandNumber, rescannable)
+		])
 	}
 
 	@Api({
@@ -140,7 +147,10 @@ export class RFIDOutboundController {
 		@Query('rescannable', new DefaultValuePipe(false), ParseBoolPipe) rescannable: boolean,
 		@Body(new ZodValidationPipe(deleteEpcValidator)) epcs: DeleteScannedEpcDTO
 	) {
-		return await this.rfidSharedService.deleteBulkEpcs(this.epcOutboundModel, epcs, rescannable)
+		return await Promise.all([
+			this.rfidSharedService.cleanupQueue(this.postOutboundDataQueue),
+			this.rfidSharedService.deleteBulkEpcs(this.epcOutboundModel, epcs, rescannable)
+		])
 	}
 
 	@Api({
