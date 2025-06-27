@@ -31,11 +31,11 @@ export class RFIDInboundConsumer extends WorkerHost {
 
 	@OnWorkerEvent('completed')
 	onWorkerCompleted(job: Job) {
-		this.logger.info(`Job "${job.name}" completed`)
+		this.logger.log('info', `Job "${job.name}" completed`)
 	}
 
 	@OnWorkerEvent('failed')
 	onWorkerFailed(job: Job) {
-		this.logger.error(`Job "${job.name}" failed: ${job.failedReason}`)
+		this.logger.log('error', `Job "${job.name}" failed: ${job.failedReason}`)
 	}
 }
