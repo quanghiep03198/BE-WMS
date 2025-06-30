@@ -236,7 +236,6 @@ export class RFIDInboundService {
 			)
 			.where(/* SQL */ `a.created >= CAST(DATEADD(YEAR, -2, GETDATE()) AS DATE)`)
 			.andWhere(/* SQL */ `a.mo_no LIKE CONCAT('%',:search, '%')`)
-			.andWhere(/* SQL */ `a.cofactory_code = :factoryCode`)
 			.andWhere(/* SQL */ `b.color_sn = :color`)
 			.andWhere(
 				/* SQL */ `(
@@ -246,6 +245,7 @@ export class RFIDInboundService {
 					(:factoryCode = 'CA1' AND RIGHT(LEFT(a.mo_no, 3), 1) = 'D')
 			  )`
 			)
+			// .andWhere(/* SQL */ `a.cofactory_code = :factoryCode`)
 			.orderBy('a.mo_no', 'DESC')
 			.addOrderBy('a.created', 'DESC')
 			.setParameters({
