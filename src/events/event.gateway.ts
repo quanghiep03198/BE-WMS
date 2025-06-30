@@ -1,11 +1,13 @@
+import { WsExceptionsFilter } from '@/common/filters/ws-exception.filter'
+import { WsZodValidationPipe } from '@/common/pipes/ws-validation.pipe'
 import { FALLBACK_VALUE } from '@/modules/rfid/constants'
 import { EpcDocument, EpcInbound } from '@/modules/rfid/schemas/epc.schema'
 import { THIRD_PARTY_API_SYNC } from '@/modules/third-party-api/constants'
+import { SyncDataMessageDTO, syncDataMessageValidator } from '@/modules/third-party-api/dto/third-party-api.dto'
 import { InjectQueue } from '@nestjs/bullmq'
-import { Logger } from '@nestjs/common'
+import { Logger, UseFilters, UsePipes } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
 import {
-	ConnectedSocket,
 	MessageBody,
 	OnGatewayConnection,
 	OnGatewayDisconnect,
@@ -40,13 +42,15 @@ export class EventGateway implements OnGatewayConnection, OnGatewayDisconnect {
 	}
 
 	@SubscribeMessage('sync_decker_data')
-	protected async onSyncDeckerData(@ConnectedSocket() socket: Socket, @MessageBody() payload: string) {
+	@UseFilters(new WsExceptionsFilter())
+	@UsePipes(new WsZodValidationPipe(syncDataMessageValidator))
+	protected async onSyncDeckerData(@MessageBody() payload: SyncDataMessageDTO) {
 		const validUnknownEpcs = await this.epcModel.find({ mo_no: FALLBACK_VALUE }).lean(true)
 		this.thirdApiSyncQueue.add(
-			payload,
+			payload.id,
 			uniqBy(validUnknownEpcs, (item) => item.epc.substring(0, 22)).map((item) => item.epc),
 			{
-				jobId: socket.handshake.headers['x-user-company'] as string,
+				jobId: payload.factory,
 				removeOnComplete: true
 			}
 		)

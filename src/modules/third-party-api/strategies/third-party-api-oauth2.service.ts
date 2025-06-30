@@ -25,6 +25,8 @@ export class ThirdPartyApiOAuth2Service {
 		switch (factoryCode) {
 			case FactoryCode.GL1:
 				return this.gl1Credentials.getCredentials()
+			case FactoryCode.GL2:
+				return this.gl1Credentials.getCredentials()
 			case FactoryCode.GL3:
 				return this.gl3Credentials.getCredentials()
 			case FactoryCode.GL4:

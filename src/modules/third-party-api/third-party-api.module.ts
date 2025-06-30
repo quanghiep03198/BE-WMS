@@ -66,7 +66,7 @@ export class ThirdPartyApiModule implements NestModule, OnModuleInit {
 				const requestMethod = upperCase(response.config.method)
 				const requestURL = response.config.baseURL + response.config.url
 				const errorStatus = response.status
-				this.logger.info(`${requestMethod} ${requestURL} ${errorStatus}`)
+				this.logger.log('info', `${requestMethod} ${requestURL} ${errorStatus}`)
 				return response.data
 			},
 			(error: AxiosError) => {

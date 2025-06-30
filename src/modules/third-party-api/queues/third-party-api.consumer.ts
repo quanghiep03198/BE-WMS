@@ -71,7 +71,12 @@ export class ThirdPartyApiConsumer extends WorkerHost {
 	}
 
 	private async broadcastStateChange() {
-		this.eventGateway.server.emit('sync_decker_data', this.processState)
+		this.eventGateway.server.emit('sync_decker_data', {
+			event: 'sync_decker_data',
+			ok: true,
+			metadata: this.processState,
+			error: null
+		})
 	}
 
 	// * Step 1: Authenticate API via Decker OAuth2
