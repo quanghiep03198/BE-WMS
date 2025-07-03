@@ -118,6 +118,7 @@ export type I18nTranslations = {
     };
     "factory": {
         "factory": string;
+        "VB1": string;
         "VA1": string;
         "VB2": string;
         "CA1": string;
