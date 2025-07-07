@@ -25,8 +25,8 @@ export class OutboundReportService {
 		return data.map((item) => {
 			return {
 				...item,
-				detail: SuperJson.parse(item.detail) ?? [],
-				overall: SuperJson.parse(item.overall) ?? []
+				detail: SuperJson.parse<IOutboundReportResponse[number]['detail']>(item.detail),
+				overall: SuperJson.parse<IOutboundReportResponse[number]['overall']>(item.overall)
 			}
 		})
 	}

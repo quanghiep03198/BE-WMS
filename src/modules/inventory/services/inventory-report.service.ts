@@ -31,7 +31,7 @@ export class InventoryAuditService {
 		return data.map((item) => {
 			return {
 				...item,
-				detail: SuperJson.parse(item.detail) ?? []
+				detail: SuperJson.parse<IInventoryReportResponse[number]['detail']>(item.detail)
 			}
 		})
 	}

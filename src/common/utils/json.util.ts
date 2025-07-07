@@ -26,11 +26,10 @@ export class SuperJson {
 	 * @param value
 	 * @returns
 	 */
-	public static parse<T>(value: any): T | null | any {
+	public static parse<T>(value: any): T {
 		if (!this.isValid(value)) return value
 		return JSON.parse(value) as T
 	}
-
 	/**
 	 * @description Safely stringify value
 	 * @param value
