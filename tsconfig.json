@@ -8,7 +8,7 @@
 		"experimentalDecorators": true,
 		"allowSyntheticDefaultImports": true,
 		"lib": ["ESNext"],
-		"target": "ES2021",
+		"target": "es2021",
 		"sourceMap": true,
 		"outDir": "./dist",
 		"incremental": true,
