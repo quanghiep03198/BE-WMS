@@ -2,6 +2,7 @@ import { type AutoFitColumnOptions, autoFitColumns } from '@/common/helpers/exce
 import { SuperJson } from '@/common/utils'
 import { TENANCY_DATA_SOURCE } from '@/modules/tenancy/constants'
 import { Inject, Injectable } from '@nestjs/common'
+import { REQUEST } from '@nestjs/core'
 import { format } from 'date-fns'
 import { Workbook, Worksheet } from 'exceljs'
 import { readFileSync } from 'fs'
@@ -16,12 +17,15 @@ export class OutboundReportService {
 
 	constructor(
 		@Inject(TENANCY_DATA_SOURCE) private readonly dataSource: DataSource,
-
+		@Inject(REQUEST) private readonly request: Request,
 		private readonly i18nService: I18nService
 	) {}
 
 	public async getOutboundReportByDate(date: string): Promise<IOutboundReportResponse> {
-		const data = await this.dataSource.query<IOutboundReportQueryResult[]>(this.outboundReportQuery, [date])
+		const data = await this.dataSource.query<IOutboundReportQueryResult[]>(this.outboundReportQuery, [
+			this.request.headers['x-user-company'],
+			date
+		])
 		return data.map((item) => {
 			return {
 				...item,

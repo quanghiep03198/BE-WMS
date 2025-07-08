@@ -30,13 +30,14 @@ WITH base_data AS (
       AND i.mo_no NOT IN ('13D05B006', '13A08C003')
       AND i.stationNO LIKE 'CUS%WH103'
       AND i.po IS NOT NULL
+      AND i.FC_server_code = @0
 ),
 
 -- * Daily data (Filtered by date)
 daily_data AS (
    SELECT *
    FROM base_data
-   WHERE CAST(record_time AS DATE) = @0
+   WHERE CAST(record_time AS DATE) = @1
 ),
 
 -- * Size quantity by purchase order 
