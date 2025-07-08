@@ -60,13 +60,21 @@ export class RFIDImportDataConsumer extends WorkerHost {
 
 		if (incommingEpcs.length === 0) return
 
-		const bulkWriteOptions: AnyBulkWriteOperation<EpcSchema>[] = incommingEpcs.map((item) => ({
-			updateOne: {
-				filter: { epc: item.epc, scannable: true },
-				update: { ...item, station_no: station },
-				upsert: true
+		const bulkWriteOptions = incommingEpcs.map((item) => {
+			const options: AnyBulkWriteOperation<EpcSchema> = {
+				updateOne: {
+					filter: { epc: item.epc, scannable: true },
+					update: { ...item, station_no: station },
+					upsert: true
+				}
 			}
-		}))
+			if (station.endsWith('103')) {
+				options.updateOne.filter['po'] = null
+				options.updateOne.update['deleted'] = false
+				return options
+			}
+			return options
+		})
 
 		const $model = station.endsWith('101') ? this.inboundEpcModel : this.outboundEpcModel
 
