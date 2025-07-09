@@ -5,7 +5,7 @@ DECLARE @FallbackValue NVARCHAR(10) = 'Unknown';
 -- * Retrieves inbound report data around last 2 years
 WITH filtered_data AS (
 	SELECT EPC_Code, COALESCE(mo_no, @FallbackValue) AS mo_no, COALESCE(size_code, @FallbackValue) AS size_numcode, rfid_status, record_time, stationNO, FC_server_code AS factory_code, ISNULL(dept_name, @FallbackValue) AS dept_name, storage
-	FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet_backup_Daily WITH (NOLOCK)
+	FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet_backup_Daily WITH (READUNCOMMITTED)
 	WHERE 
 		rfid_status = 'A'
 		AND record_time >= CAST(DATEADD(YEAR, -2, GETDATE()) AS DATE)
@@ -33,7 +33,7 @@ department_list AS (
 storage_list AS (
 	SELECT mo_no, factory_code, STRING_AGG(b.storage_name, ', ') WITHIN GROUP (ORDER BY storage) AS storage_name
 	FROM (SELECT DISTINCT storage, mo_no, factory_code FROM command_number_details) a
-	LEFT JOIN DV_DATA_LAKE.dbo.dv_warehouseccodedet b WITH (NOLOCK) 
+	LEFT JOIN DV_DATA_LAKE.dbo.dv_warehouseccodedet b WITH (FORCESEEK) 
 		ON a.storage = b.storage_num
 	GROUP BY factory_code, mo_no
 ),
@@ -66,17 +66,17 @@ SELECT
 		FOR JSON PATH
 	) AS size_data
 FROM filtered_data ds
-LEFT JOIN DV_DATA_LAKE.dbo.dv_rfidmatchmst_cust rmc WITH (NOLOCK)
+LEFT JOIN DV_DATA_LAKE.dbo.dv_rfidmatchmst_cust rmc WITH (FORCESEEK)
 	ON ds.EPC_Code = rmc.EPC_Code
-LEFT JOIN wuerp_vnrd.dbo.ta_manufacturmst manf WITH (NOLOCK)
+LEFT JOIN wuerp_vnrd.dbo.ta_manufacturmst manf WITH (FORCESEEK)
 	ON manf.mo_no = ds.mo_no
-LEFT JOIN wuerp_vnrd.dbo.ta_productmst prod WITH (NOLOCK)
+LEFT JOIN wuerp_vnrd.dbo.ta_productmst prod WITH (FORCESEEK)
 	ON rmc.mat_code = prod.mat_code
-LEFT JOIN storage_list sg
+LEFT JOIN storage_list sg WITH (NOWAIT)
 	ON sg.mo_no = ds.mo_no AND sg.factory_code = ds.factory_code
-LEFT JOIN department_list dg
+LEFT JOIN department_list dg WITH (NOWAIT)
 	ON dg.mo_no = ds.mo_no AND dg.factory_code = ds.factory_code
-LEFT JOIN accumulated ac
+LEFT JOIN accumulated ac WITH (NOWAIT)
 	ON ac.mo_no = ds.mo_no
 WHERE CAST(ds.record_time AS DATE) = @1
 GROUP BY 
@@ -84,14 +84,20 @@ GROUP BY
 	prod.color_sn, manf.mo_totalqty, ac.accumulated_qty,
 	sg.storage_name, dg.dept_name
 ORDER BY ds.mo_no DESC
--- * Avoid parameter sniffing and set max degree of parallelism;
 OPTION (
-	OPTIMIZE FOR UNKNOWN,                        -- * Avoid "Paramenter Sniffing" issues
-	USE HINT('ENABLE_PARALLEL_PLAN_PREFERENCE'), -- * Prioritize parallel plan
-	QUERYTRACEON 2371,									-- * Enable automatic statistics updates for large tables
-	QUERYTRACEON 4199,									-- * Enable all query optimizer fixes
-   QUERYTRACEON 8649,                           -- * Force parallel plan
-	FAST 100,                                    -- * Prioritize first 100 rows for faster response
-	MAXDOP 8,                                    -- * Limit parallelism to 8 cores         
-	RECOMPILE                                    -- * Recompile for each execution to ensure optimal plan
+	OPTIMIZE FOR (@1 UNKNOWN),                        			-- * Avoid "Parameter Sniffing" issues
+	NO_PERFORMANCE_SPOOL,                             			-- * Disable performance spool operators                          			
+	USE HINT(
+		'ENABLE_PARALLEL_PLAN_PREFERENCE',       					-- * Prioritize parallel execution plans
+		'ASSUME_JOIN_PREDICATE_DEPENDS_ON_FILTERS', 				-- * Better cardinality estimation for joins
+		'ASSUME_MIN_SELECTIVITY_FOR_FILTER_ESTIMATES' 			-- * Conservative filter estimates
+	),     		
+	QUERYTRACEON 2371,                                			-- * Enable automatic statistics updates for large tables
+	QUERYTRACEON 4199,                                			-- * Enable all query optimizer fixes
+	QUERYTRACEON 4138,                                			-- * Enable batch mode for rowstore (SQL 2019+)
+	MAXRECURSION 0,                                   			-- * No recursion limit
+	FAST 100,                                         			-- * Optimize for first 100 rows
+	MAXDOP 0,                                         			-- * Use server's max degree of parallelism
+	ROBUST PLAN,                                      			-- * Generate robust plan for memory grant
+	RECOMPILE                                         			-- * Re-optimize for each execution
 );
