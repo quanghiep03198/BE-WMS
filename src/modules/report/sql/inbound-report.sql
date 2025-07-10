@@ -33,7 +33,7 @@ department_list AS (
 storage_list AS (
 	SELECT mo_no, factory_code, STRING_AGG(b.storage_name, ', ') WITHIN GROUP (ORDER BY storage) AS storage_name
 	FROM (SELECT DISTINCT storage, mo_no, factory_code FROM command_number_details) a
-	LEFT JOIN DV_DATA_LAKE.dbo.dv_warehouseccodedet b WITH (FORCESEEK) 
+	LEFT JOIN DV_DATA_LAKE.dbo.dv_warehouseccodedet b
 		ON a.storage = b.storage_num
 	GROUP BY factory_code, mo_no
 ),
@@ -72,11 +72,11 @@ LEFT JOIN wuerp_vnrd.dbo.ta_manufacturmst manf WITH (FORCESEEK)
 	ON manf.mo_no = ds.mo_no
 LEFT JOIN wuerp_vnrd.dbo.ta_productmst prod WITH (FORCESEEK)
 	ON rmc.mat_code = prod.mat_code
-LEFT JOIN storage_list sg WITH (NOWAIT)
+LEFT JOIN storage_list sg 
 	ON sg.mo_no = ds.mo_no AND sg.factory_code = ds.factory_code
-LEFT JOIN department_list dg WITH (NOWAIT)
+LEFT JOIN department_list dg 
 	ON dg.mo_no = ds.mo_no AND dg.factory_code = ds.factory_code
-LEFT JOIN accumulated ac WITH (NOWAIT)
+LEFT JOIN accumulated ac 
 	ON ac.mo_no = ds.mo_no
 WHERE CAST(ds.record_time AS DATE) = @1
 GROUP BY 
