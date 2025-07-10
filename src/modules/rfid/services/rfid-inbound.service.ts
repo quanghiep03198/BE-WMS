@@ -1,3 +1,4 @@
+import { EXCLUDED_EPC_REGEX } from '@/common/constants/regex'
 import { DATA_SOURCE_DATA_LAKE, DATA_SOURCE_ERP } from '@/databases/constants'
 import { TENANCY_DATA_SOURCE } from '@/modules/tenancy/constants'
 import { InjectQueue } from '@nestjs/bullmq'
@@ -8,7 +9,7 @@ import { Queue } from 'bullmq'
 import { format } from 'date-fns'
 import { readFileSync } from 'fs'
 import { chunk, pick } from 'lodash'
-import { AnyBulkWriteOperation } from 'mongoose'
+import { AnyBulkWriteOperation, FilterQuery } from 'mongoose'
 import { WINSTON_MODULE_NEST_PROVIDER } from 'nest-winston'
 import { I18nContext, I18nService } from 'nestjs-i18n'
 import { join, resolve } from 'path'
@@ -22,7 +23,8 @@ import {
 	UpsertStockInDTO
 } from '../dto/rfid.dto'
 import { RFIDMatchCustomerEntity } from '../entities/rfid-customer-match.entity'
-import { EpcInbound, EpcInboundSchema, EpcModel } from '../schemas/epc.schema'
+import { EpcDocument, EpcInbound, EpcInboundSchema, EpcModel } from '../schemas/epc.schema'
+import { RFIDSearchParams } from '../types'
 
 @Injectable({ scope: Scope.REQUEST })
 export class RFIDInboundService {
@@ -74,7 +76,10 @@ export class RFIDInboundService {
 				await this.dataSourceDL.query(upsertInventoryQuery.replace(':values', values))
 			}
 			await this.epcInboundModel
-				.updateMany({ mo_no: orderCode }, { $set: { deleted: true, factory_code_produce: factoryCode } })
+				.updateMany(
+					{ mo_no: orderCode },
+					{ $set: { deleted: true, stored_at: new Date(), factory_code_produce: factoryCode } }
+				)
 				.exec()
 			await queryRunner.commitTransaction()
 			await session.commitTransaction()
@@ -254,5 +259,34 @@ export class RFIDInboundService {
 				color: params['color_sn.eq']
 			})
 			.getRawMany()
+	}
+
+	public async retrieveDeletedEpcs(factoryCode: string, args: RFIDSearchParams & { 'scannable.eq'?: boolean }) {
+		const filterQuery: FilterQuery<EpcDocument> = {
+			deleted: true,
+			stored_at: null,
+			epc: { $not: { $regex: EXCLUDED_EPC_REGEX } },
+			factory_code_produce: factoryCode,
+			...(typeof args['scannable.eq'] === 'boolean' && { scannable: args['scannable.eq'] }),
+			...(args.q && { epc: { $regex: args.q, $options: 'i' } }),
+			...(args['mo_no.eq'] && { mo_no: args['mo_no.eq'] }),
+			...(args['size_numcode.eq'] && { size_numcode: args['size_numcode.eq'] }),
+			...(args['shoes_style.eq'] && { shoes_style_code_factory: args['shoes_style.eq'] }),
+			...(args['color_sn.eq'] && { color_sn: args['color_sn.eq'] })
+		}
+
+		return await this.epcInboundModel.paginate(filterQuery, {
+			sort: { record_time: -1, epc: 1, mo_no: 1 },
+			lean: true,
+			page: args.page,
+			limit: args.limit,
+			options: { readPreference: 'nearest' },
+			customLabels: { docs: 'data' },
+			customFind: 'findDeleted',
+			useCustomCountFn: async () => await this.epcInboundModel.countDocumentsDeleted(filterQuery),
+			projection: {
+				_id: 0
+			}
+		})
 	}
 }

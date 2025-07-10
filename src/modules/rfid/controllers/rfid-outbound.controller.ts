@@ -2,7 +2,6 @@ import { CommonRequestHeader } from '@/common/constants'
 import { Api, AuthGuard, HttpMethod } from '@/common/decorators'
 import { AllExceptionsFilter } from '@/common/filters'
 import { ZodValidationPipe } from '@/common/pipes'
-import { stringToBoolean } from '@/common/utils'
 import { InjectQueue } from '@nestjs/bullmq'
 import {
 	Body,
@@ -22,7 +21,6 @@ import { InjectModel } from '@nestjs/mongoose'
 import { Queue } from 'bullmq'
 import { Response } from 'express'
 import { isEmpty, isNil, pickBy } from 'lodash'
-import { mongo } from 'mongoose'
 import { POST_DATA_OUTBOUND_QUEUE } from '../constants'
 import {
 	deleteEpcValidator,
@@ -31,15 +29,13 @@ import {
 	findEpcBySizeValidator,
 	PostReaderDataDTO,
 	readerPostDataValidator,
-	RestoreArchivedEpcsDTO,
-	restoreArchivedEpcValidator,
 	UpsertStockOutDTO,
 	upsertStockOutValidator
 } from '../dto/rfid.dto'
 import { EpcModel, EpcOutbound } from '../schemas/epc.schema'
 import { RFIDOutboundService } from '../services/rfid-outbound.service'
 import { RFIDSharedService } from '../services/rfid-shared.service'
-import { generateStation } from '../utils'
+import { RFIDSearchParams } from '../types'
 
 @Controller('rfid/outbound')
 export class RFIDOutboundController {
@@ -58,8 +54,8 @@ export class RFIDOutboundController {
 		res.setHeader('Cache-Control', 'no-cache')
 		const handleChange = async () => {
 			const data = await this.rfidSharedService.fetchLatestData(this.epcOutboundModel, factoryCode, {
-				_page: 1,
-				_limit: 50
+				page: 1,
+				limit: 50
 			})
 			if (data) {
 				res.write(`data: ${JSON.stringify(data)}\n\n`)
@@ -84,7 +80,7 @@ export class RFIDOutboundController {
 		@Headers(CommonRequestHeader.FACTORY_CODE) factory: string,
 		@Query('_page', new DefaultValuePipe(1), ParseIntPipe) page: number
 	) {
-		return await this.rfidSharedService.getIncomingEpc(this.epcOutboundModel, factory, { _page: page, _limit: 50 })
+		return await this.rfidSharedService.getIncomingEpc(this.epcOutboundModel, factory, { page: page, limit: 50 })
 	}
 
 	@Api({
@@ -168,10 +164,12 @@ export class RFIDOutboundController {
 		@Query('shoes_style.eq', new DefaultValuePipe('')) shoes_style: string,
 		@Query('color_sn.eq', new DefaultValuePipe('')) color_sn: string,
 		@Query('size_numcode.eq', new DefaultValuePipe('')) size_numcode: string,
-		@Query('scanned.eq') scanned: string
+		@Query('scanned.eq', ParseBoolPipe) scanned: string
 	) {
-		const extraFilterQuery: Record<string, any> = pickBy(
+		const filterQuery = pickBy(
 			{
+				page,
+				limit,
 				q: search,
 				['shoes_style.eq']: shoes_style,
 				['mo_no.eq']: mo_no,
@@ -180,42 +178,8 @@ export class RFIDOutboundController {
 				['scanned.eq']: scanned
 			},
 			(item) => !isNil(item) && !isEmpty(item)
-		)
-		if (extraFilterQuery['scanned.eq']) {
-			extraFilterQuery['scanned.eq'] = stringToBoolean(extraFilterQuery['scanned.eq'])
-		} else {
-			delete extraFilterQuery['scanned.eq']
-		}
+		) as unknown as RFIDSearchParams & { 'scanned.eq'?: boolean }
 
-		return await this.rfidOutboundService.getArchivedEpcs(factoryCode, {
-			_page: page || 1,
-			_limit: limit,
-			...extraFilterQuery
-		})
-	}
-
-	@Api({
-		endpoint: 'archived-epc-features',
-		method: HttpMethod.GET,
-		statusCode: HttpStatus.OK
-	})
-	@AuthGuard()
-	async getArchivedEpcFeatures() {
-		return await this.rfidOutboundService.getArchivedEpcFeatures()
-	}
-
-	@Api({
-		endpoint: 'restore-archived-epcs',
-		method: HttpMethod.PATCH,
-		statusCode: HttpStatus.CREATED
-	})
-	@AuthGuard()
-	async restoreArchivedEpcs(
-		@Headers(CommonRequestHeader.FACTORY_CODE) factoryCode: string,
-		@Body(new ZodValidationPipe(restoreArchivedEpcValidator)) payload: RestoreArchivedEpcsDTO
-	): Promise<mongo.BulkWriteResult> {
-		const station = generateStation(factoryCode, 'WH103')
-		const data = payload.map((item) => ({ ...item, station_no: station, factory_code_produce: factoryCode }))
-		return await this.rfidOutboundService.restoreArchivedEpcs(data as RestoreArchivedEpcsDTO)
+		return await this.rfidOutboundService.getArchivedEpcs(factoryCode, filterQuery)
 	}
 }

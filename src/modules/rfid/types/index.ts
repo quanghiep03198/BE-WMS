@@ -10,8 +10,8 @@ export type StoredRFIDReaderData = {
 }
 
 export type RFIDSearchParams = {
-	_page: number
-	_limit: number
+	page: number
+	limit: number
 	q?: string
 	'mo_no.eq'?: string
 	'shoes_style.eq'?: string

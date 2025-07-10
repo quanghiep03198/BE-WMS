@@ -56,6 +56,9 @@ abstract class BaseAbstractEpcSchema {
 
 	@Prop({ type: String, required: true, index: true })
 	station_no: string
+
+	@Prop({ type: Date })
+	stored_at: Date
 }
 
 /**

@@ -7,15 +7,15 @@ import { InjectDataSource } from '@nestjs/typeorm'
 import { Queue } from 'bullmq'
 import { readFileSync } from 'fs'
 import { chunk } from 'lodash'
-import { AnyBulkWriteOperation, FilterQuery, mongo, PipelineStage } from 'mongoose'
+import { FilterQuery, PipelineStage } from 'mongoose'
 import { WINSTON_MODULE_NEST_PROVIDER } from 'nest-winston'
 import { join, resolve } from 'path'
 import { Brackets, DataSource } from 'typeorm'
 import { Logger } from 'winston'
-import { FALLBACK_VALUE, InventoryActions, POST_DATA_OUTBOUND_QUEUE } from '../constants'
-import { PostReaderDataDTO, RestoreArchivedEpcsDTO, UpsertStockOutDTO } from '../dto/rfid.dto'
+import { InventoryActions, POST_DATA_OUTBOUND_QUEUE } from '../constants'
+import { PostReaderDataDTO, UpsertStockOutDTO } from '../dto/rfid.dto'
 import { RFIDInventoryBackupEntity } from '../entities/rifd-inventory.entity'
-import { EpcDocument, EpcModel, EpcOutbound, EpcSchema } from '../schemas/epc.schema'
+import { EpcDocument, EpcModel, EpcOutbound } from '../schemas/epc.schema'
 import { EpcInformation, RFIDSearchParams } from '../types'
 import { generateStation } from '../utils'
 
@@ -99,7 +99,7 @@ export class RFIDOutboundService {
 			await this.epcOutboundModel
 				.updateMany(
 					{ ...baseFilterQuery, epc: { $in: epcToUpsert.map((item) => item.epc) } },
-					{ $set: { deleted: true, factory_code_produce: factoryCode, po: payload.po } }
+					{ $set: { deleted: true, stored_at: new Date(), factory_code_produce: factoryCode, po: payload.po } }
 				)
 				.exec()
 
@@ -117,9 +117,11 @@ export class RFIDOutboundService {
 	}
 
 	public async getArchivedEpcs(factoryCode: string, args: RFIDSearchParams & { 'scanned.eq'?: boolean }) {
+		console.log(args)
 		const filterQuery: FilterQuery<EpcDocument> = {
 			deleted: true,
 			scannable: true,
+			stored_at: { $ne: null },
 			epc: { $not: { $regex: EXCLUDED_EPC_REGEX } },
 			factory_code_produce: factoryCode,
 			po: null,
@@ -230,8 +232,8 @@ export class RFIDOutboundService {
 			.addOrderBy('c.shoestyle_codefactory', 'ASC')
 			.addOrderBy('d.color_sn', 'ASC')
 			.addOrderBy('a.EPC_Code')
-			.offset((args._page - 1) * args._limit)
-			.limit(args._limit)
+			.offset((args.page - 1) * args.limit)
+			.limit(args.limit)
 			.setParameters({
 				status: InventoryActions.INBOUND,
 				station: generateStation(factoryCode, 'WH101'),
@@ -240,104 +242,18 @@ export class RFIDOutboundService {
 
 		const [totalDocs, data] = await Promise.all([queryBuilder.getCount(), queryBuilder.getRawMany<EpcInformation>()])
 
-		const totalPages = Math.ceil(totalDocs / args._limit)
+		const totalPages = Math.ceil(totalDocs / args.limit)
 
 		return {
 			data,
 			totalDocs,
 			totalPages,
-			page: args._page,
-			limit: args._limit,
-			hasNextPage: args._page < totalPages,
-			hasPrevPage: args._page > 1,
-			nextPage: args._page < totalPages ? args._page + 1 : null,
-			prevPage: args._page > 1 ? args._page - 1 : null
+			page: args.page,
+			limit: args.limit,
+			hasNextPage: args.page < totalPages,
+			hasPrevPage: args.page > 1,
+			nextPage: args.page < totalPages ? args.page + 1 : null,
+			prevPage: args.page > 1 ? args.page - 1 : null
 		} as Pagination<EpcInformation>
-	}
-
-	public async getArchivedEpcFeatures() {
-		return await this.epcOutboundModel
-			.aggregateWithDeleted([
-				{
-					$match: {
-						epc: { $not: { $regex: EXCLUDED_EPC_REGEX } },
-						mo_no: { $ne: FALLBACK_VALUE },
-						size_numcode: { $ne: FALLBACK_VALUE },
-						shoes_style_code_factory: { $ne: FALLBACK_VALUE },
-						color_sn: { $ne: FALLBACK_VALUE }
-					}
-				},
-				{
-					$group: {
-						_id: {
-							shoes_style_code_factory: '$shoes_style_code_factory',
-							color_sn: '$color_sn',
-							mo_no: '$mo_no',
-							size_numcode: '$size_numcode'
-						}
-					}
-				},
-				{
-					$group: {
-						_id: {
-							shoes_style_code_factory: '$_id.shoes_style_code_factory',
-							color_sn: '$_id.color_sn',
-							mo_no: '$_id.mo_no'
-						},
-						sizes: {
-							$push: '$_id.size_numcode'
-						}
-					}
-				},
-				{
-					$group: {
-						_id: {
-							shoes_style_code_factory: '$_id.shoes_style_code_factory',
-							color_sn: '$_id.color_sn'
-						},
-						batches: {
-							$push: {
-								mo_no: '$_id.mo_no',
-								sizes: '$sizes'
-							}
-						}
-					}
-				},
-				{
-					$group: {
-						_id: '$_id.shoes_style_code_factory',
-						colorways: {
-							$push: {
-								color_sn: '$_id.color_sn',
-								batches: '$batches'
-							}
-						}
-					}
-				},
-				{
-					$project: {
-						_id: 0,
-						shoes_style_code_factory: '$_id',
-						colorways: '$colorways'
-					}
-				}
-			])
-			.exec()
-	}
-
-	public async restoreArchivedEpcs(epcs: RestoreArchivedEpcsDTO): Promise<mongo.BulkWriteResult> {
-		const bulkWriteOptions: AnyBulkWriteOperation<EpcSchema>[] = epcs.map((item) => ({
-			updateOne: {
-				filter: { epc: item.epc },
-				update: { ...item, deleted: false, scannable: true },
-				upsert: true
-			}
-		}))
-		return await this.epcOutboundModel.bulkWrite(bulkWriteOptions, {
-			writeConcern: { w: 'majority' },
-			readPreference: 'nearest',
-			ordered: false,
-			retryWrites: true
-		})
 	}
 }

@@ -1,18 +1,19 @@
-import { DATA_SOURCE_DATA_LAKE, MAIN_DATA_SOURCE, RecordStatus } from '@/databases/constants'
+import { EXCLUDED_EPC_REGEX } from '@/common/constants/regex'
+import { DATA_SOURCE_DATA_LAKE, MAIN_DATA_SOURCE } from '@/databases/constants'
 import { Inject, Injectable } from '@nestjs/common'
+import { InjectModel } from '@nestjs/mongoose'
 import { InjectDataSource } from '@nestjs/typeorm'
 import { Queue } from 'bullmq'
 import { readFileSync } from 'fs'
 import { throttle } from 'lodash'
-import { AnyBulkWriteOperation, FilterQuery, UpdateWriteOpResult } from 'mongoose'
+import { AnyBulkWriteOperation, FilterQuery, mongo, UpdateWriteOpResult } from 'mongoose'
 import { join, resolve } from 'path'
 import { DataSource, Like } from 'typeorm'
-import { EXCLUDED_EPC_PREFIX, EXCLUDED_ORDERS, FALLBACK_VALUE, InventoryActions } from '../constants'
-import { FindEpcBySizeDTO, PostReaderDataDTO } from '../dto/rfid.dto'
+import { EXCLUDED_EPC_PREFIX, EXCLUDED_ORDERS, FALLBACK_VALUE } from '../constants'
+import { FindEpcBySizeDTO, PostReaderDataDTO, RestoreArchivedEpcsDTO } from '../dto/rfid.dto'
 import { RFIDReaderEntity } from '../entities/rfid-reader.entity'
-import { EpcDocument, EpcModel, EpcSchema } from '../schemas/epc.schema'
-import { EpcInformation, RFIDSearchParams, StoredRFIDReaderItem } from '../types'
-import { generateStation } from '../utils'
+import { EpcDocument, EpcInbound, EpcModel, EpcOutbound, EpcSchema } from '../schemas/epc.schema'
+import { RFIDSearchParams, StoredRFIDReaderItem } from '../types'
 
 @Injectable()
 export class RFIDSharedService {
@@ -23,7 +24,9 @@ export class RFIDSharedService {
 
 	constructor(
 		@Inject(MAIN_DATA_SOURCE) private readonly dataSource: DataSource,
-		@InjectDataSource(DATA_SOURCE_DATA_LAKE) private readonly dataSourceDL: DataSource
+		@InjectDataSource(DATA_SOURCE_DATA_LAKE) private readonly dataSourceDL: DataSource,
+		@InjectModel(EpcInbound.name) private readonly epcInboundModel: EpcModel,
+		@InjectModel(EpcOutbound.name) private readonly epcOutboundModel: EpcModel
 	) {}
 
 	public async cleanupQueue($queue: Queue): Promise<unknown[]> {
@@ -60,8 +63,8 @@ export class RFIDSharedService {
 			sort: { record_time: -1, epc: 1, mo_no: 1 },
 			select: ['epc', 'mo_no'],
 			lean: true,
-			page: args._page,
-			limit: args._limit,
+			page: args.page,
+			limit: args.limit,
 			options: { readPreference: 'nearest' },
 			customLabels: { docs: 'data' },
 			projection: {
@@ -251,58 +254,95 @@ export class RFIDSharedService {
 		return await $model.updateMany({ epc: { $in: epcs } }, { deleted: true, scannable: rescannable }).exec()
 	}
 
-	public async getArchivedEpcsByOrder(factoryCode: string, commandNumber: string) {
-		const subQuery = this.dataSourceDL
-			.createQueryBuilder()
-			.select('b.EPC_Code', 'EPC_Code')
-			.from('dv_InvRFIDrecorddet_backup_Daily', 'b')
-			.where('b.rfid_status = :_status')
-			.andWhere('b.stationNO = :_station')
-			.andWhere('b.mo_no = :commandNumber')
-			.setParameters({
-				_status: InventoryActions.OUTBOUND,
-				_station: generateStation(factoryCode, 'WH103')
-			})
-
-		return await this.dataSourceDL
-			.createQueryBuilder()
-			.distinct()
-			.select('a.EPC_Code', 'epc')
-			.addSelect('a.mo_no', 'mo_no')
-			.addSelect('a.size_code', 'size_numcode')
-			.addSelect('c.shoestyle_codefactory', 'shoes_style_code_factory')
-			.addSelect('d.color_sn', 'color_sn')
-			.from('dv_InvRFIDrecorddet_backup_Daily', 'a')
-			.innerJoin(
-				'dv_rfidmatchmst_cust',
-				'c',
-				'a.EPC_Code = c.EPC_Code AND a.mo_no = c.mo_no AND a.size_code = c.size_numcode'
-			)
-			.innerJoin(
-				(qb) => {
-					return qb
-						.subQuery()
-						.select('d.color_sn')
-						.addSelect('d.mat_code')
-						.from('wuerp_vnrd.dbo.ta_productmst', 'd')
-						.where('d.isactive = :record_status')
-						.setParameters({ record_status: RecordStatus.ACTIVE })
+	public async getArchivedEpcFeatures(type: 'inbound' | 'outbound') {
+		const $model = type === 'inbound' ? this.epcInboundModel : this.epcOutboundModel
+		return await $model
+			.aggregateWithDeleted([
+				{
+					$match: {
+						epc: { $not: { $regex: EXCLUDED_EPC_REGEX } },
+						mo_no: { $ne: FALLBACK_VALUE },
+						size_numcode: { $ne: FALLBACK_VALUE },
+						shoes_style_code_factory: { $ne: FALLBACK_VALUE },
+						color_sn: { $ne: FALLBACK_VALUE }
+					}
 				},
-				'd',
-				'c.mat_code = d.mat_code'
-			)
-			.where('a.rfid_status = :status')
-			.andWhere('a.mo_no = :commandNumber')
-			.andWhere('a.stationNO = :station')
-			.andWhere(`a.EPC_Code NOT IN (${subQuery.getQuery()})`)
-			.orderBy('a.size_code', 'ASC')
-			.addOrderBy('a.EPC_Code', 'ASC')
-			.setParameters({
-				commandNumber: commandNumber.toUpperCase(),
-				status: InventoryActions.INBOUND,
-				station: generateStation(factoryCode, 'WH101'),
-				...subQuery.getParameters()
-			})
-			.getRawMany<EpcInformation>()
+				{
+					$group: {
+						_id: {
+							shoes_style_code_factory: '$shoes_style_code_factory',
+							color_sn: '$color_sn',
+							mo_no: '$mo_no',
+							size_numcode: '$size_numcode'
+						}
+					}
+				},
+				{
+					$group: {
+						_id: {
+							shoes_style_code_factory: '$_id.shoes_style_code_factory',
+							color_sn: '$_id.color_sn',
+							mo_no: '$_id.mo_no'
+						},
+						sizes: {
+							$push: '$_id.size_numcode'
+						}
+					}
+				},
+				{
+					$group: {
+						_id: {
+							shoes_style_code_factory: '$_id.shoes_style_code_factory',
+							color_sn: '$_id.color_sn'
+						},
+						batches: {
+							$push: {
+								mo_no: '$_id.mo_no',
+								sizes: '$sizes'
+							}
+						}
+					}
+				},
+				{
+					$group: {
+						_id: '$_id.shoes_style_code_factory',
+						colorways: {
+							$push: {
+								color_sn: '$_id.color_sn',
+								batches: '$batches'
+							}
+						}
+					}
+				},
+				{
+					$project: {
+						_id: 0,
+						shoes_style_code_factory: '$_id',
+						colorways: '$colorways'
+					}
+				}
+			])
+			.exec()
+	}
+
+	public async restoreArchivedEpcs(
+		type: 'inbound' | 'outbound',
+		epcs: RestoreArchivedEpcsDTO
+	): Promise<mongo.BulkWriteResult> {
+		const $model = type === 'inbound' ? this.epcInboundModel : this.epcOutboundModel
+
+		const bulkWriteOptions: AnyBulkWriteOperation<EpcSchema>[] = epcs.map((item) => ({
+			updateOne: {
+				filter: { epc: item.epc, stored_at: null },
+				update: { ...item, deleted: false, scannable: true },
+				upsert: true
+			}
+		}))
+		return await $model.bulkWrite(bulkWriteOptions, {
+			writeConcern: { w: 'majority' },
+			readPreference: 'nearest',
+			ordered: false,
+			retryWrites: true
+		})
 	}
 }

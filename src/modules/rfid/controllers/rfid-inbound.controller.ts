@@ -22,6 +22,7 @@ import {
 import { InjectModel } from '@nestjs/mongoose'
 import { Queue } from 'bullmq'
 import { Response } from 'express'
+import { isEmpty, isNil, pickBy } from 'lodash'
 import { WINSTON_MODULE_NEST_PROVIDER } from 'nest-winston'
 import { POST_DATA_INBOUND_QUEUE } from '../constants'
 import {
@@ -43,6 +44,7 @@ import {
 import { EpcInbound, EpcModel } from '../schemas/epc.schema'
 import { RFIDInboundService } from '../services/rfid-inbound.service'
 import { RFIDSharedService } from '../services/rfid-shared.service'
+import { RFIDSearchParams } from '../types'
 
 @Controller('rfid/inbound')
 export class RFIDInboundController {
@@ -62,8 +64,8 @@ export class RFIDInboundController {
 		res.setHeader('Cache-Control', 'no-cache')
 		const handleChange = async () => {
 			const data = await this.rfidSharedService.fetchLatestData(this.epcInboundModel, factory, {
-				_page: 1,
-				_limit: 50
+				page: 1,
+				limit: 50
 			})
 			if (data) {
 				res.write(`data: ${JSON.stringify(data)}\n\n`)
@@ -93,8 +95,8 @@ export class RFIDInboundController {
 		@Query('mo_no.eq', new DefaultValuePipe('')) selectedOrder: string
 	) {
 		return await this.rfidSharedService.getIncomingEpc(this.epcInboundModel, factory, {
-			_page: page,
-			_limit: 50,
+			page,
+			limit: 50,
 			'mo_no.eq': selectedOrder
 		})
 	}
@@ -217,5 +219,37 @@ export class RFIDInboundController {
 			'factory_code.eq': factory_code,
 			...queries
 		} satisfies SearchCustOrderParamsDTO)
+	}
+
+	@Api({
+		endpoint: '/retrive-deleted-epcs',
+		method: HttpMethod.GET
+	})
+	async retrieveDeletedEpcs(
+		@Headers(CommonRequestHeader.FACTORY_CODE) factoryCode: string,
+		@Query('_page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+		@Query('_limit', new DefaultValuePipe(10), ParseIntPipe) limit: number,
+		@Query('q', new DefaultValuePipe('')) search: string,
+		@Query('mo_no.eq', new DefaultValuePipe('')) mo_no: string,
+		@Query('shoes_style.eq', new DefaultValuePipe('')) shoes_style: string,
+		@Query('color_sn.eq', new DefaultValuePipe('')) color_sn: string,
+		@Query('size_numcode.eq', new DefaultValuePipe('')) size_numcode: string,
+		@Query('scannable.eq', ParseBoolPipe) scannable: string
+	) {
+		const filterQuery = pickBy(
+			{
+				page,
+				limit,
+				q: search,
+				['shoes_style.eq']: shoes_style,
+				['mo_no.eq']: mo_no,
+				['color_sn.eq']: color_sn,
+				['size_numcode.eq']: size_numcode,
+				['scannable.eq']: scannable
+			},
+			(item) => !isNil(item) && !isEmpty(item)
+		) as RFIDSearchParams
+
+		return await this.rfidInboundService.retrieveDeletedEpcs(factoryCode, filterQuery)
 	}
 }
