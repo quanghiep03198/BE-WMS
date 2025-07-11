@@ -31,7 +31,7 @@ import { ThirdPartyApiService } from './third-party-api.service'
 		HttpModule.register({ httpsAgent: new Agent({ keepAlive: true }) }),
 		BullModule.registerQueue({
 			name: THIRD_PARTY_API_SYNC,
-			defaultJobOptions: { removeOnComplete: true }
+			defaultJobOptions: { removeOnComplete: true, removeOnFail: true }
 		}),
 		forwardRef(() => RFIDModule)
 	],
