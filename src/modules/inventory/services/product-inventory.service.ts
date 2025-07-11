@@ -6,7 +6,7 @@ import { format } from 'date-fns'
 import { Workbook } from 'exceljs'
 import { uniqBy } from 'lodash'
 import { I18nContext, I18nService } from 'nestjs-i18n'
-import { DataSource, FindOptionsWhere } from 'typeorm'
+import { DataSource, FindOptionsWhere, IsNull, Not } from 'typeorm'
 import { type ProductInventoryReportQueryDTO } from '../dto/inventory-report.dto'
 import { InboundInventoryEntity } from '../entities/inbound-inventory.view.entity'
 import { OutboundEstimationEntity } from '../entities/outbound-inventory.view.entity'
@@ -27,7 +27,8 @@ export class ProductionInventoryService {
 	}> {
 		const filterQuery: FindOptionsWhere<SizeInventoryEntity> = {
 			shoes_style: queries['shoes_style.eq'],
-			color: queries['color.eq']
+			color: queries['color.eq'],
+			inv_sizes: Not(IsNull())
 		}
 
 		if (queries['shoes_style.eq'] === 'ALL') delete filterQuery.shoes_style
