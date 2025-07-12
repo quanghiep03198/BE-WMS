@@ -1,4 +1,5 @@
 import { type AutoFitColumnOptions, autoFitColumns } from '@/common/helpers/excel.helper'
+import { SuperJson } from '@/common/utils'
 import { FactoryAgencyCode } from '@/modules/department/constants'
 import { TENANCY_DATA_SOURCE } from '@/modules/tenancy/constants'
 import { Inject, Injectable } from '@nestjs/common'
@@ -6,6 +7,8 @@ import { format } from 'date-fns'
 import { Workbook } from 'exceljs'
 import { uniqBy } from 'lodash'
 import { I18nContext, I18nService } from 'nestjs-i18n'
+import { readFileSync } from 'node:fs'
+import { join, resolve } from 'node:path'
 import { DataSource, FindOptionsWhere, IsNull, Not } from 'typeorm'
 import { type ProductInventoryReportQueryDTO } from '../dto/inventory-report.dto'
 import { InboundInventoryEntity } from '../entities/inbound-inventory.view.entity'
@@ -15,6 +18,10 @@ import { SizeInventoryEntity } from '../entities/size-inventory.view.entity'
 
 @Injectable()
 export class ProductionInventoryService {
+	private readonly productionFeaturesQuery: string = readFileSync(
+		resolve(join(__dirname, '../sql/production-features.sql'))
+	).toString('utf-8')
+
 	constructor(
 		@Inject(TENANCY_DATA_SOURCE) private readonly dataSourceTNC: DataSource,
 		private readonly i18nService: I18nService
@@ -37,7 +44,8 @@ export class ProductionInventoryService {
 		const [productSizeInventory, inboundInventory, outboundInventory] = await Promise.all([
 			this.dataSourceTNC.getRepository(SizeInventoryEntity).findBy({
 				shoes_style: queries['shoes_style.eq'],
-				color: queries['color.eq']
+				color: queries['color.eq'],
+				brand_name: queries['brand_name.eq']
 			}),
 			this.dataSourceTNC
 				.getRepository(InboundInventoryEntity)
@@ -56,16 +64,17 @@ export class ProductionInventoryService {
 	}
 
 	public async getProductionInventoryFeatures() {
-		const result = await this.dataSourceTNC
-			.getRepository(SizeInventoryEntity)
-			.createQueryBuilder('a')
-			.distinct()
-			.select(['a.shoes_style AS shoes_style', 'a.color AS color'])
-			.getRawMany<Pick<SizeInventoryEntity, 'shoes_style' | 'color'>>()
-
-		return Object.entries(Object.groupBy(result, (item) => item.shoes_style)).map(([shoes_style, colorways]) => ({
-			shoes_style: shoes_style,
-			colors: uniqBy(colorways, (item) => item.color).map((item) => item.color)
+		const results = await this.dataSourceTNC.query<Array<{ brand_name: string; product_variants: string }>>(
+			this.productionFeaturesQuery
+		)
+		return results.map((item) => ({
+			brand_name: item.brand_name,
+			product_variants: SuperJson.parse<
+				Array<{
+					shoes_style: string
+					colors: Record<'color', string>[]
+				}>
+			>(item.product_variants)
 		}))
 	}
 

@@ -26,6 +26,9 @@ export class InboundInventoryEntity {
 	@ViewColumn({ name: 'inspected_qty' })
 	inspected_qty: number
 
+	@ViewColumn({ name: 'last_inbound_time' })
+	last_inbound_time: Date
+
 	@ViewColumn({
 		name: 'inv_sizes',
 		transformer: new JsonParserTransformer<Array<{ size_numcode: string; qty: number }>>()
