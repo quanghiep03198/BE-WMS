@@ -23,6 +23,9 @@ export class OutboundEstimationEntity {
 	@ViewColumn({ name: 'outbound_date' })
 	outbound_date: Date
 
+	@ViewColumn({ name: 'last_outbound_time' })
+	last_outbound_time: Date
+
 	@ViewColumn({ name: 'outbound_qty' })
 	outbound_qty: number
 

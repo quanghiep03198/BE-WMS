@@ -19,6 +19,7 @@ export const updateInventoryReportPayload = z.array(
 )
 
 export const productInventoryReportQuery = z.object({
+	'brand_name.eq': z.string().nonempty(),
 	'shoes_style.eq': z.string().nonempty(),
 	'color.eq': z.string().nonempty()
 })
