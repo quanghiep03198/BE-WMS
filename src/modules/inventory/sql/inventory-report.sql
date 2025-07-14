@@ -116,5 +116,14 @@ INNER JOIN po_list p ON p.mo_no = a.mo_no
 LEFT JOIN wuerp_vnrd.dbo.ta_manufacturmst b ON b.mo_no = a.mo_no AND b.isactive = 'Y'
 LEFT JOIN wuerp_vnrd.dbo.ta_productmst c ON c.isactive = 'Y' AND c.mat_code = b.mat_code
 LEFT JOIN wuerp_vnrd.dbo.ta_shoestylecolor d ON d.isactive = 'Y' AND c.shoestyle_templink = d.shoestyle_templink
+WHERE 
+	b.created >= CAST(DATEADD(YEAR, -2, GETDATE()) AS DATE)
+	AND (
+		CAST(a.inv_initialqty AS INT) > 0
+		OR CAST(a.inv_istotalqty AS INT) > 0
+		OR CAST(a.inv_ostotalqty AS INT) > 0
+		OR CAST(a.inv_manualqty - a.inv_manualqtyout AS INT) > 0
+		OR CAST(a.inv_finalqty AS INT) > 0
+	)
 ORDER BY a.mo_no DESC
 OPTION (OPTIMIZE FOR UNKNOWN, MAXDOP 8, FAST 100);
