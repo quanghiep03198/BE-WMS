@@ -5,11 +5,10 @@ import { TENANCY_DATA_SOURCE } from '@/modules/tenancy/constants'
 import { Inject, Injectable } from '@nestjs/common'
 import { format } from 'date-fns'
 import { Workbook } from 'exceljs'
-import { uniqBy } from 'lodash'
 import { I18nContext, I18nService } from 'nestjs-i18n'
 import { readFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
-import { DataSource, FindOptionsWhere, IsNull, Not } from 'typeorm'
+import { DataSource } from 'typeorm'
 import { type ProductInventoryReportQueryDTO } from '../dto/inventory-report.dto'
 import { InboundInventoryEntity } from '../entities/inbound-inventory.view.entity'
 import { OutboundEstimationEntity } from '../entities/outbound-inventory.view.entity'
@@ -20,6 +19,12 @@ import { SizeInventoryEntity } from '../entities/size-inventory.view.entity'
 export class ProductionInventoryService {
 	private readonly productionFeaturesQuery: string = readFileSync(
 		resolve(join(__dirname, '../sql/production-features.sql'))
+	).toString('utf-8')
+	private readonly productionInboundQuery: string = readFileSync(
+		resolve(join(__dirname, '../sql/production-inbound.sql'))
+	).toString('utf-8')
+	private readonly productionOutboundQuery: string = readFileSync(
+		resolve(join(__dirname, '../sql/production-outbound.sql'))
 	).toString('utf-8')
 
 	constructor(
@@ -32,34 +37,34 @@ export class ProductionInventoryService {
 		inbound: InboundInventoryEntity[]
 		outbound: OutboundEstimationEntity[]
 	}> {
-		const filterQuery: FindOptionsWhere<SizeInventoryEntity> = {
-			shoes_style: queries['shoes_style.eq'],
-			color: queries['color.eq'],
-			inv_sizes: Not(IsNull())
-		}
-
-		if (queries['shoes_style.eq'] === 'ALL') delete filterQuery.shoes_style
-		if (queries['color.eq'] === 'ALL') delete filterQuery.color
-
 		const [productSizeInventory, inboundInventory, outboundInventory] = await Promise.all([
 			this.dataSourceTNC.getRepository(SizeInventoryEntity).findBy({
 				shoes_style: queries['shoes_style.eq'],
 				color: queries['color.eq'],
 				brand_name: queries['brand_name.eq']
 			}),
-			this.dataSourceTNC
-				.getRepository(InboundInventoryEntity)
-				.find({ where: filterQuery, order: { mo_no: 'DESC' } }),
-			this.dataSourceTNC.getRepository(OutboundEstimationEntity).find({
-				where: filterQuery,
-				order: { outbound_date: 'DESC' }
-			})
+			this.dataSourceTNC.query(this.productionInboundQuery, [
+				queries['brand_name.eq'],
+				queries['shoes_style.eq'],
+				queries['color.eq']
+			]),
+			this.dataSourceTNC.query(this.productionOutboundQuery, [
+				queries['brand_name.eq'],
+				queries['shoes_style.eq'],
+				queries['color.eq']
+			])
 		])
 
 		return {
 			sizes: productSizeInventory,
-			inbound: uniqBy(inboundInventory, (item) => item.mo_no),
-			outbound: uniqBy(outboundInventory, (item) => item.po)
+			inbound: inboundInventory.map((item) => ({
+				...item,
+				inv_sizes: SuperJson.isValid(item.inv_sizes) ? SuperJson.parse(item.inv_sizes) : []
+			})),
+			outbound: outboundInventory.map((item) => ({
+				...item,
+				inv_sizes: SuperJson.isValid(item.inv_sizes) ? SuperJson.parse(item.inv_sizes) : []
+			}))
 		}
 	}
 

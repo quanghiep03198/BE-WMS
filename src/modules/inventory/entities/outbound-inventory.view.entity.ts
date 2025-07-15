@@ -8,6 +8,9 @@ import { ViewColumn, ViewEntity } from 'typeorm'
 	name: 'dvview_invoub'
 })
 export class OutboundEstimationEntity {
+	@ViewColumn({ name: 'brand_name' })
+	brand_name: string
+
 	@ViewColumn({ name: 'shoes_style' })
 	shoes_style: string
 
