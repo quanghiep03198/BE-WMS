@@ -117,7 +117,6 @@ export class RFIDOutboundService {
 	}
 
 	public async getArchivedEpcs(factoryCode: string, args: RFIDSearchParams & { 'scanned.eq'?: boolean }) {
-		console.log(args)
 		const filterQuery: FilterQuery<EpcDocument> = {
 			deleted: true,
 			scannable: true,
@@ -132,7 +131,14 @@ export class RFIDOutboundService {
 			...(args['color_sn.eq'] && { color_sn: args['color_sn.eq'] })
 		}
 
-		const deletedEpcs = await this.epcOutboundModel.distinct('epc', filterQuery)
+		const [undeletedEpcs, deletedEpcs] = await Promise.all([
+			this.epcOutboundModel.distinct('epc', {
+				deleted: false,
+				scannable: true,
+				stored_at: null
+			}),
+			this.epcOutboundModel.distinct('epc', filterQuery)
+		])
 
 		const subQuery = this.dataSourceDL
 			.createQueryBuilder()
@@ -190,6 +196,13 @@ export class RFIDOutboundService {
 			.andWhere(/* SQL */ `a.EPC_Code NOT IN (${subQuery.getQuery()})`)
 			.andWhere(
 				new Brackets((qb) => {
+					if (undeletedEpcs.length > 0) {
+						qb.andWhere(/* SQL */ `a.EPC_Code NOT IN (:...undeleted)`)
+					}
+				})
+			)
+			.andWhere(
+				new Brackets((qb) => {
 					// Filter by EPC code (search query)
 					if (args.q) {
 						qb.andWhere(/* SQL */ `a.EPC_Code LIKE CONCAT('%',:search, '%')`, { search: args.q })
@@ -237,6 +250,7 @@ export class RFIDOutboundService {
 			.setParameters({
 				status: InventoryActions.INBOUND,
 				station: generateStation(factoryCode, 'WH101'),
+				undeleted: undeletedEpcs,
 				...subQuery.getParameters()
 			})
 
