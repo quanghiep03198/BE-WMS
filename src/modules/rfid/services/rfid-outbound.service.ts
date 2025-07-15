@@ -120,7 +120,6 @@ export class RFIDOutboundService {
 		const filterQuery: FilterQuery<EpcDocument> = {
 			deleted: true,
 			scannable: true,
-			stored_at: { $ne: null },
 			epc: { $not: { $regex: EXCLUDED_EPC_REGEX } },
 			factory_code_produce: factoryCode,
 			po: null,
@@ -137,7 +136,7 @@ export class RFIDOutboundService {
 				scannable: true,
 				stored_at: null
 			}),
-			this.epcOutboundModel.distinct('epc', filterQuery)
+			this.epcOutboundModel.findWithDeleted(filterQuery, { _id: 0, epc: 1, stored_at: 1 }).lean(true)
 		])
 
 		const subQuery = this.dataSourceDL
@@ -160,7 +159,8 @@ export class RFIDOutboundService {
 				/* SQL */ `a.size_code AS size_numcode`,
 				/* SQL */ `c.shoestyle_codefactory AS shoes_style_code_factory`,
 				/* SQL */ `d.color_sn AS color_sn`,
-				/* SQL */ `CAST(COALESCE(e.scanned, 0) AS BIT) AS scanned`
+				/* SQL */ `CAST(COALESCE(e.scanned, 0) AS BIT) AS scanned`,
+				/* SQL */ `e.stored_at AS stored_at`
 			])
 			.innerJoin(
 				'dv_rfidmatchmst_cust',
@@ -183,9 +183,10 @@ export class RFIDOutboundService {
 			.leftJoin(
 				(qb) => {
 					return qb
-						.select(/* SQL */ `value`, 'epc')
+						.select(/* SQL */ `JSON_VALUE(value, '$.epc')`, 'epc')
+						.addSelect(/* SQL */ `JSON_VALUE(value, '$.stored_at')`, 'stored_at')
 						.addSelect(/* SQL */ `CAST(1 AS BIT)`, 'scanned')
-						.from(/* SQL */ `STRING_SPLIT(N'${deletedEpcs.join(',')}', ',')`, 'e')
+						.from(/* SQL */ `OPENJSON(N'${JSON.stringify(deletedEpcs)}')`, 'e')
 						.disableEscaping()
 				},
 				'e',
