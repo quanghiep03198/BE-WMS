@@ -29,7 +29,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
 			timestamp: new Date().toISOString(),
 			path: httpAdapter.getRequestUrl(ctx.getRequest())
 		}
-		if (httpStatus === HttpStatus.INTERNAL_SERVER_ERROR) this.logger.error(exception)
+		if (httpStatus === HttpStatus.INTERNAL_SERVER_ERROR) this.logger.log('error', exception)
 		httpAdapter.reply(ctx.getResponse(), responseBody, httpStatus)
 	}
 }
