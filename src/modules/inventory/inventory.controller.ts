@@ -2,7 +2,18 @@ import { CommonRequestHeader } from '@/common/constants'
 import { Api, AuthGuard, HttpMethod, User } from '@/common/decorators'
 import { AllExceptionsFilter } from '@/common/filters'
 import { ZodValidationPipe } from '@/common/pipes'
-import { Body, Controller, DefaultValuePipe, Get, Headers, HttpStatus, Query, Res, UseFilters } from '@nestjs/common'
+import {
+	Body,
+	Controller,
+	DefaultValuePipe,
+	Get,
+	Headers,
+	HttpStatus,
+	ParseArrayPipe,
+	Query,
+	Res,
+	UseFilters
+} from '@nestjs/common'
 import { format } from 'date-fns'
 import { type Response } from 'express'
 import {
@@ -38,9 +49,10 @@ export class InventoryController {
 	@AuthGuard()
 	async exportMonthlyInventoryReport(
 		@Query('month.eq', new DefaultValuePipe(format(new Date(), 'yyyy-MM'))) month: string,
+		@Query('mo_no.in', new DefaultValuePipe([]), ParseArrayPipe) commandNumbers: string[],
 		@Res() res: Response
 	) {
-		const buffer = await this.inventoryReportService.exportMonthlyInventoryToExcel(month)
+		const buffer = await this.inventoryReportService.exportMonthlyInventoryToExcel(month, commandNumbers)
 		return res.send(buffer)
 	}
 

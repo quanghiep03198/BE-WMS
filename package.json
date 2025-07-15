@@ -59,6 +59,7 @@
 		"body-parser": "^1.20.3",
 		"bullmq": "^5.34.10",
 		"cache-manager": "^7.0.0",
+		"class-transformer": "^0.5.1",
 		"compression": "^1.7.4",
 		"csv-parser": "^3.2.0",
 		"date-fns": "^3.6.0",

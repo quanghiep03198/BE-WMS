@@ -148,7 +148,7 @@ export class InventoryAuditService {
 	}
 
 	// #region Inventory report Excel
-	async exportMonthlyInventoryToExcel(month: string) {
+	async exportMonthlyInventoryToExcel(month: string, commandNumbers: string[]) {
 		const currentLanguage = I18nContext.current()?.lang
 		const factoryCode = this.request.headers['x-user-company']
 		const workbook = new Workbook()
@@ -206,11 +206,12 @@ export class InventoryAuditService {
 		// * Add data to worksheet
 		const filteredData = data.filter(
 			(item) =>
-				item.init_inv_qty > 0 ||
-				item.total_instock_qty > 0 ||
-				item.total_outstock_qty > 0 ||
-				item.actual_inv_qty > 0 ||
-				item.final_inv_qty > 0
+				(item.init_inv_qty > 0 ||
+					item.total_instock_qty > 0 ||
+					item.total_outstock_qty > 0 ||
+					item.actual_inv_qty > 0 ||
+					item.final_inv_qty > 0) &&
+				(Array.isArray(commandNumbers) && commandNumbers.length > 0 ? commandNumbers.includes(item.mo_no) : true)
 		)
 		for (const record of filteredData) {
 			const row = worksheet.addRow(record)
