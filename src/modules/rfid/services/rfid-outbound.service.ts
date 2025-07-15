@@ -255,7 +255,33 @@ export class RFIDOutboundService {
 				...subQuery.getParameters()
 			})
 
-		const [totalDocs, data] = await Promise.all([queryBuilder.getCount(), queryBuilder.getRawMany<EpcInformation>()])
+		const [query, parameters] = queryBuilder.getQueryAndParameters()
+
+		const [totalDocs, data] = await Promise.all([
+			queryBuilder.getCount(),
+			this.dataSourceDL.query<EpcInformation[]>(
+				query.concat(/* SQL */ `
+				OPTION(
+					OPTIMIZE FOR UNKNOWN,
+					NO_PERFORMANCE_SPOOL,                             			                       			
+					USE HINT(
+						'ENABLE_PARALLEL_PLAN_PREFERENCE',       					
+						'ASSUME_JOIN_PREDICATE_DEPENDS_ON_FILTERS', 				
+						'ASSUME_MIN_SELECTIVITY_FOR_FILTER_ESTIMATES' 			
+					),     		
+					QUERYTRACEON 2371,                                			
+					QUERYTRACEON 4199,                                			
+					QUERYTRACEON 4138,                                		
+					MAXRECURSION 0,
+					HASH JOIN,
+					FAST 100,
+					MAXDOP 0,
+					ROBUST PLAN,
+					RECOMPILE 
+				)`),
+				parameters
+			)
+		])
 
 		const totalPages = Math.ceil(totalDocs / args.limit)
 
