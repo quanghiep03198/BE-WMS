@@ -8,11 +8,12 @@ import { readFileSync } from 'fs'
 import { I18nContext, I18nService } from 'nestjs-i18n'
 import { join } from 'path'
 import { DataSource } from 'typeorm'
-import { IInboundReportQueryResult, IInboundReportResponse } from '../interfaces'
+import { IInboundHistory, IInboundReportQueryResult, IInboundReportResponse } from '../interfaces'
 
 @Injectable()
 export class InboundReportService {
 	private readonly inboundReportQuery: string = readFileSync(join(__dirname, '../sql/inbound-report.sql'), 'utf-8')
+	private readonly inboundHistoryQuery: string = readFileSync(join(__dirname, '../sql/inbound-history.sql'), 'utf-8')
 
 	constructor(
 		@Inject(TENANCY_DATA_SOURCE) private readonly dataSource: DataSource,
@@ -29,6 +30,10 @@ export class InboundReportService {
 			...item,
 			size_data: JSON.parse(item.size_data)
 		}))
+	}
+
+	public async getInboundHistory(commandNumber: string) {
+		return await this.dataSource.query<IInboundHistory[]>(this.inboundHistoryQuery, [commandNumber])
 	}
 
 	async exportDailyInboundToExcel(date: string) {

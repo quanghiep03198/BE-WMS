@@ -1,7 +1,7 @@
 import { CommonRequestHeader } from '@/common/constants'
 import { Api, AuthGuard, HttpMethod } from '@/common/decorators'
 import { AllExceptionsFilter } from '@/common/filters'
-import { Controller, DefaultValuePipe, Get, Headers, Query, Res, UseFilters } from '@nestjs/common'
+import { Controller, DefaultValuePipe, Get, Headers, Param, Query, Res, UseFilters } from '@nestjs/common'
 import { format } from 'date-fns'
 import { Response } from 'express'
 import { InboundReportService } from './services/inbound-report.service'
@@ -27,6 +27,12 @@ export class ReportController {
 		return await this.inboundReportService.getInboundReportByDate(dateQuery)
 	}
 
+	@Api({ endpoint: 'inbound-history/:commandNumber', method: HttpMethod.GET })
+	@AuthGuard()
+	async getInboundHistory(@Param('commandNumber') commandNumber: string) {
+		return await this.inboundReportService.getInboundHistory(commandNumber)
+	}
+
 	@Get('daily-inbound/export')
 	@UseFilters(AllExceptionsFilter)
 	@AuthGuard()
@@ -48,6 +54,12 @@ export class ReportController {
 		dateQuery: any
 	) {
 		return await this.outboundReportService.getOutboundReportByDate(dateQuery)
+	}
+
+	@Api({ endpoint: 'outbound-history/:po', method: HttpMethod.GET })
+	@AuthGuard()
+	async getOutboundHistory(@Param('po') po: string) {
+		return await this.outboundReportService.getOutboundHistory(po)
 	}
 
 	@Get('daily-outbound/export')

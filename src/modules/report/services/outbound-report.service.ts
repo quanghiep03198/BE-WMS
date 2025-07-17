@@ -1,22 +1,26 @@
 import { type AutoFitColumnOptions, autoFitColumns } from '@/common/helpers/excel.helper'
 import { SuperJson } from '@/common/utils'
+import { DATA_SOURCE_DATA_LAKE } from '@/databases/constants'
 import { TENANCY_DATA_SOURCE } from '@/modules/tenancy/constants'
 import { Inject, Injectable } from '@nestjs/common'
 import { REQUEST } from '@nestjs/core'
+import { InjectDataSource } from '@nestjs/typeorm'
 import { format } from 'date-fns'
 import { Workbook, Worksheet } from 'exceljs'
 import { readFileSync } from 'fs'
 import { I18nContext, I18nService } from 'nestjs-i18n'
 import { join } from 'path'
 import { DataSource } from 'typeorm'
-import { IOutboundReportQueryResult, IOutboundReportResponse } from '../interfaces'
+import { IOutboundHistory, IOutboundReportQueryResult, IOutboundReportResponse } from '../interfaces'
 
 @Injectable()
 export class OutboundReportService {
 	private readonly outboundReportQuery: string = readFileSync(join(__dirname, '../sql/outbound-report.sql'), 'utf-8')
+	private readonly outboundHistoryQuery: string = readFileSync(join(__dirname, '../sql/outbound-history.sql'), 'utf-8')
 
 	constructor(
 		@Inject(TENANCY_DATA_SOURCE) private readonly dataSource: DataSource,
+		@InjectDataSource(DATA_SOURCE_DATA_LAKE) private readonly dataSourcedl: DataSource,
 		@Inject(REQUEST) private readonly request: Request,
 		private readonly i18nService: I18nService
 	) {}
@@ -33,6 +37,9 @@ export class OutboundReportService {
 				overall: SuperJson.parse<IOutboundReportResponse[number]['overall']>(item.overall)
 			}
 		})
+	}
+	public async getOutboundHistory(po: string) {
+		return await this.dataSource.query<IOutboundHistory[]>(this.outboundHistoryQuery, [po])
 	}
 
 	// #region Outbound report Excel

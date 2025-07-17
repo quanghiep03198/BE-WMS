@@ -81,3 +81,22 @@ export type IDailyPackingReport = Array<{
 	unweighed_qty: number
 	size_data: string
 }>
+
+export interface IInboundHistory {
+	mo_no: string
+	brand_name: string
+	shoes_style_code_factory: string
+	color_sn: string
+	mo_qty: number
+	inbound_qty: number
+	inbound_date: Date
+}
+export interface IOutboundHistory {
+	po: string
+	po_qty: number
+	outbound_qty: number
+	brand_name: string
+	shoes_style_code_factory: string
+	color_sn: string
+	outbound_date: Date
+}
