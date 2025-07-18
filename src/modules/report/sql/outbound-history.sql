@@ -19,7 +19,7 @@ FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet_backup_Daily a
    LEFT JOIN wuerp_vnrd.dbo.ta_shoefactorymst f ON f.shoestyle_systemcodefty = e.shoestyle_systemcodefty AND f.isactive = 'Y'
    LEFT JOIN wuerp_vnrd.dbo.ta_brand g ON g.custbrand_id = e.custbrand_id
 WHERE 
-   a.po = '523068308'
+   a.po = @0
    AND a.rfid_status = 'B'
    AND a.rfid_use = 'D'
    AND a.record_time >= CAST(DATEADD(YEAR, -2, GETDATE()) AS DATE)
