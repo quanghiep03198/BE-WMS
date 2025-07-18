@@ -139,7 +139,7 @@ export class RFIDOutboundService {
 			this.epcOutboundModel.findWithDeleted(filterQuery, { _id: 0, epc: 1, stored_at: 1 }).lean(true)
 		])
 
-		const subQuery = this.dataSourceDL
+		const outboundSubQuery = this.dataSourceDL
 			.createQueryBuilder()
 			.select('b.EPC_Code', 'EPC_Code')
 			.from('dv_InvRFIDrecorddet_backup_Daily', 'b')
@@ -149,6 +149,12 @@ export class RFIDOutboundService {
 				_status: InventoryActions.OUTBOUND,
 				_station: generateStation(factoryCode, 'WH103')
 			})
+
+		const undeletedSubQuery = this.dataSourceDL
+			.createQueryBuilder()
+			.select('a.value', 'EPC_Code')
+			.from(/* SQL */ `STRING_SPLIT('${undeletedEpcs.join(',')}', ',')`, 'a')
+			.disableEscaping()
 
 		const queryBuilder = await this.dataSourceDL
 			.getRepository(RFIDInventoryBackupEntity)
@@ -194,44 +200,38 @@ export class RFIDOutboundService {
 			)
 			.andWhere('a.stationNO = :station')
 			.where('a.rfid_status = :status')
-			.andWhere(/* SQL */ `a.EPC_Code NOT IN (${subQuery.getQuery()})`)
 			.andWhere(
-				new Brackets((qb) => {
-					if (undeletedEpcs.length > 0) {
-						qb.andWhere(/* SQL */ `a.EPC_Code NOT IN (:...undeleted)`)
-					}
-				})
+				/* SQL */ `a.EPC_Code NOT IN (
+					${outboundSubQuery.getQuery()} 
+					UNION ALL
+					${undeletedSubQuery.getQuery()}
+				)`
 			)
 			.andWhere(
 				new Brackets((qb) => {
-					// Filter by EPC code (search query)
+					// * Filter by EPC code (search query)
 					if (args.q) {
 						qb.andWhere(/* SQL */ `a.EPC_Code LIKE CONCAT('%',:search, '%')`, { search: args.q })
 					}
-
-					// Filter by manufacturing order number
+					// * Filter by manufacturing order number
 					if (args['mo_no.eq']) {
 						qb.andWhere(/* SQL */ `a.mo_no = :mo_no`, { mo_no: args['mo_no.eq'] })
 					}
-
-					// Filter by size number code
+					// * Filter by size number code
 					if (args['size_numcode.eq']) {
 						qb.andWhere(/* SQL */ `a.size_code = :size_numcode`, { size_numcode: args['size_numcode.eq'] })
 					}
-
-					// Filter by shoes style code (factory)
+					// * Filter by shoes style code (factory)
 					if (args['shoes_style.eq']) {
 						qb.andWhere(/* SQL */ `c.shoestyle_codefactory = :shoes_style_code`, {
 							shoes_style_code: args['shoes_style.eq']
 						})
 					}
-
-					// Filter by color serial number
+					// * Filter by color serial number
 					if (args['color_sn.eq']) {
 						qb.andWhere(/* SQL */ `d.color_sn = :color_sn`, { color_sn: args['color_sn.eq'] })
 					}
-
-					// Filter by scanned status (boolean)
+					// * Filter by scanned status (boolean)
 					if (typeof args['scanned.eq'] === 'boolean') {
 						qb.andWhere(/* SQL */ `CAST(COALESCE(e.scanned, 0) AS BIT) = :scanned`, {
 							scanned: args['scanned.eq'] ? 1 : 0
@@ -242,17 +242,17 @@ export class RFIDOutboundService {
 			)
 			.orderBy(/* SQL */ `CAST(COALESCE(e.scanned, 0) AS BIT)`, 'DESC')
 			.addOrderBy('a.mo_no', 'DESC')
-			.addOrderBy('a.size_code', 'DESC')
+			.addOrderBy('a.size_code', 'ASC')
 			.addOrderBy('c.shoestyle_codefactory', 'ASC')
 			.addOrderBy('d.color_sn', 'ASC')
-			.addOrderBy('a.EPC_Code')
+			.addOrderBy('a.EPC_Code', 'ASC')
 			.offset((args.page - 1) * args.limit)
 			.limit(args.limit)
 			.setParameters({
 				status: InventoryActions.INBOUND,
 				station: generateStation(factoryCode, 'WH101'),
 				undeleted: undeletedEpcs,
-				...subQuery.getParameters()
+				...outboundSubQuery.getParameters()
 			})
 
 		const [query, parameters] = queryBuilder.getQueryAndParameters()
@@ -263,21 +263,20 @@ export class RFIDOutboundService {
 				query.concat(/* SQL */ `
 				OPTION(
 					OPTIMIZE FOR UNKNOWN,
-					NO_PERFORMANCE_SPOOL,                             			                       			
+					NO_PERFORMANCE_SPOOL,
 					USE HINT(
 						'ENABLE_PARALLEL_PLAN_PREFERENCE',       					
 						'ASSUME_JOIN_PREDICATE_DEPENDS_ON_FILTERS', 				
 						'ASSUME_MIN_SELECTIVITY_FOR_FILTER_ESTIMATES' 			
-					),     		
+					),    
 					QUERYTRACEON 2371,                                			
 					QUERYTRACEON 4199,                                			
-					QUERYTRACEON 4138,                                		
+					QUERYTRACEON 4138,   
 					MAXRECURSION 0,
 					HASH JOIN,
 					FAST 100,
 					MAXDOP 0,
-					ROBUST PLAN,
-					RECOMPILE 
+					RECOMPILE
 				)`),
 				parameters
 			)
