@@ -24,7 +24,7 @@ import {
 	updateInventoryReportQuery,
 	UpdateInventoryReportQueryDTO
 } from './dto/inventory-report.dto'
-import { InventoryAuditService } from './services/inventory-report.service'
+import { InventoryAuditService } from './services/inventory-audit.service'
 import { ProductionInventoryService } from './services/product-inventory.service'
 
 @Controller('inventory')

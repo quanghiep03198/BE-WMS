@@ -85,5 +85,12 @@ export declare global {
 		[K in keyof NodeJS.ProcessEnv as string extends K ? never : number extends K ? never : K]: NodeJS.ProcessEnv[K]
 	}
 
+	type WsResponseBody<T> = {
+		event: string
+		ok: boolean
+		error: null | string | object
+		metadata: T
+	}
+
 	type QueueJobStatus = 'completed' | 'wait' | 'active' | 'paused' | 'prioritized' | 'delayed' | 'failed'
 }
