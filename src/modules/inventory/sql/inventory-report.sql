@@ -98,13 +98,21 @@ SELECT
 			CAST(SUM(ISNULL(c.inv_manualqtyout, 0)) AS INT) AS actual_outstock_qty,
 			CAST(SUM(ISNULL(c.inv_finalqty, 0)) AS INT) AS final_stock_qty
 		FROM DV_DATA_LAKE.dbo.dv_invprodmst c
-		WHERE c.mo_no = a.mo_no
+		WHERE 
+			c.mo_no = a.mo_no
 			AND c.inv_yearmonth = a.inv_yearmonth
 			AND c.brand_name = a.brand_name
 			AND c.inv_type = a.inv_type
 			AND c.isactive = 'Y'
 			AND c.inv_type = 'FG'
 			AND c.inv_yearmonth = @0
+			AND (
+				CAST(c.inv_initialqty AS INT) > 0
+				OR CAST(c.inv_istotalqty AS INT) > 0
+				OR CAST(c.inv_ostotalqty AS INT) > 0
+				OR CAST(c.inv_manualqty - c.inv_manualqtyout AS INT) > 0
+				OR CAST(c.inv_finalqty AS INT) > 0
+		)
 		GROUP BY c.size_numcode
 		ORDER BY RIGHT('0000' + IIF(CHARINDEX('.', c.size_numcode) > 0, c.size_numcode, c.size_numcode + '.0'), 5) ASC
 		FOR JSON PATH
@@ -117,13 +125,10 @@ LEFT JOIN wuerp_vnrd.dbo.ta_manufacturmst b ON b.mo_no = a.mo_no AND b.isactive 
 LEFT JOIN wuerp_vnrd.dbo.ta_productmst c ON c.isactive = 'Y' AND c.mat_code = b.mat_code
 LEFT JOIN wuerp_vnrd.dbo.ta_shoestylecolor d ON d.isactive = 'Y' AND c.shoestyle_templink = d.shoestyle_templink
 WHERE 
-	b.created >= CAST(DATEADD(YEAR, -2, GETDATE()) AS DATE)
-	AND (
-		CAST(a.inv_initialqty AS INT) > 0
-		OR CAST(a.inv_istotalqty AS INT) > 0
-		OR CAST(a.inv_ostotalqty AS INT) > 0
-		OR CAST(a.inv_manualqty - a.inv_manualqtyout AS INT) > 0
-		OR CAST(a.inv_finalqty AS INT) > 0
-	)
+	CAST(a.inv_initialqty AS INT) > 0
+	OR CAST(a.inv_istotalqty AS INT) > 0
+	OR CAST(a.inv_ostotalqty AS INT) > 0
+	OR CAST(a.inv_manualqty - a.inv_manualqtyout AS INT) > 0
+	OR CAST(a.inv_finalqty AS INT) > 0
 ORDER BY a.mo_no DESC
 OPTION (OPTIMIZE FOR UNKNOWN, MAXDOP 8, FAST 100);
