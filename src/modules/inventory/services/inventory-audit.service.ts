@@ -18,7 +18,7 @@ import { IInventoryReportQueryResult, IInventoryReportResponse } from '../interf
 
 @Injectable()
 export class InventoryAuditService {
-	private readonly inventoryReportQuery: string = readFileSync(join(__dirname, '../sql/inventory-report.sql'), 'utf-8')
+	private readonly inventoryReportQuery: string = readFileSync(join(__dirname, '../sql/inventory-audit.sql'), 'utf-8')
 
 	constructor(
 		@Inject(TENANCY_DATA_SOURCE) private readonly dataSource: DataSource,
@@ -27,7 +27,11 @@ export class InventoryAuditService {
 	) {}
 
 	public async getMonthlyInventoryReport(month): Promise<IInventoryReportResponse> {
-		const data = await this.dataSource.query<IInventoryReportQueryResult[]>(this.inventoryReportQuery, [month])
+		const factory = this.request.headers['x-user-company']
+		const data = await this.dataSource.query<IInventoryReportQueryResult[]>(this.inventoryReportQuery, [
+			month,
+			factory
+		])
 		return data.map((item) => {
 			return {
 				...item,
