@@ -264,19 +264,10 @@ export class RFIDOutboundService {
 				OPTION(
 					OPTIMIZE FOR UNKNOWN,
 					NO_PERFORMANCE_SPOOL,
-					USE HINT(
-						'ENABLE_PARALLEL_PLAN_PREFERENCE',       					
-						'ASSUME_JOIN_PREDICATE_DEPENDS_ON_FILTERS', 				
-						'ASSUME_MIN_SELECTIVITY_FOR_FILTER_ESTIMATES' 			
-					),    
-					QUERYTRACEON 2371,                                			
-					QUERYTRACEON 4199,                                			
-					QUERYTRACEON 4138,   
-					MAXRECURSION 0,
 					HASH JOIN,
-					FAST 100,
-					MAXDOP 0,
-					RECOMPILE
+					FAST 10,
+					ROBUST PLAN,
+					MAXDOP 4
 				)`),
 				parameters
 			)
