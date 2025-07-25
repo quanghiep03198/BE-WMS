@@ -220,11 +220,6 @@ export class RFIDOutboundService {
 					return qb
 				})
 			)
-			// .andWhere(
-			// 	/* SQL */ `NOT EXISTS (
-			// 		SELECT 1 FROM (VALUE ${undeletedEpcs.map((epc) => `('${epc}')`).join(',')}) AS undeleted_epcs (EPC_Code) WHERE EPC_Code = a.EPC_Code
-			// 	)`
-			// )
 			.andWhere(
 				/* SQL */ `NOT EXISTS (
 					SELECT 1 FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet_backup_Daily
