@@ -130,11 +130,13 @@ export class RFIDOutboundService {
 		}
 
 		const [undeletedEpcs, deletedEpcs] = await Promise.all([
-			this.epcOutboundModel.distinct('epc', {
-				...omit(filterQuery, ['deleted']),
-				deleted: false,
-				stored_at: null
-			}),
+			this.epcOutboundModel
+				.distinct('epc', {
+					...omit(filterQuery, ['deleted']),
+					deleted: false,
+					stored_at: null
+				})
+				.lean(true),
 			this.epcOutboundModel.findWithDeleted(filterQuery, { _id: 0, epc: 1, stored_at: 1 }).lean(true)
 		])
 

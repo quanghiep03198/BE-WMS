@@ -333,7 +333,11 @@ export class RFIDSharedService {
 
 		const bulkWriteOptions: AnyBulkWriteOperation<EpcSchema>[] = epcs.map((item) => ({
 			updateOne: {
-				filter: { epc: item.epc, stored_at: null },
+				filter: {
+					epc: item.epc
+					// ? Temporarily exclude deleted items
+					// stored_at: null
+				},
 				update: { ...item, deleted: false, scannable: true },
 				upsert: true
 			}
