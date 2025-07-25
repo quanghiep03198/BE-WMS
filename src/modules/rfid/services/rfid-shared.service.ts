@@ -338,7 +338,13 @@ export class RFIDSharedService {
 					// ? Temporarily exclude deleted items
 					// stored_at: null
 				},
-				update: { ...item, deleted: false, scannable: true },
+				update: {
+					...item,
+					deleted: false,
+					scannable: true,
+					stored_at: null,
+					...(type === 'outbound' && { po: null })
+				},
 				upsert: true
 			}
 		}))
