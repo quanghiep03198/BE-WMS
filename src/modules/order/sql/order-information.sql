@@ -5,7 +5,7 @@ SELECT
 	b.or_no AS or_no,
 	c.or_custpo AS or_cust_po,
 	d.color_sn AS color_sn,
-	e.shoestyle_codefactory AS shoes_style_code_factory,
+	e.shoestyle_codefactory AS factory_shoes_style,
 	CAST(ISNULL(g.shoestyle_codecust, '') + '/' + ISNULL( g.shoestyle_namecust, '' ) AS NVARCHAR(255)) AS cust_shoes_style,
 	h.size_code AS size_code,
 	h.size_sumqty AS size_sumqty

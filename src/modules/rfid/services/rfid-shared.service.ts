@@ -98,13 +98,13 @@ export class RFIDSharedService {
 						station_no: { $regex: new RegExp(factory, 'i') }
 					}
 				},
-				// * Stage 2: Group by mo_no, color_sn, and shoes_style_code_factory, and aggregate sizes
+				// * Stage 2: Group by mo_no, color_sn, and factory_shoes_style, and aggregate sizes
 				{
 					$group: {
 						_id: {
 							mo_no: '$mo_no',
 							color_sn: '$color_sn',
-							shoes_style_code_factory: '$shoes_style_code_factory',
+							factory_shoes_style: '$factory_shoes_style',
 							size_numcode: '$size_numcode'
 						},
 						count: { $sum: 1 }
@@ -116,7 +116,7 @@ export class RFIDSharedService {
 						_id: {
 							mo_no: '$_id.mo_no',
 							color_sn: '$_id.color_sn',
-							shoes_style_code_factory: '$_id.shoes_style_code_factory'
+							factory_shoes_style: '$_id.factory_shoes_style'
 						},
 						sizes: {
 							$push: {
@@ -132,12 +132,12 @@ export class RFIDSharedService {
 						_id: 0,
 						mo_no: '$_id.mo_no',
 						color_sn: '$_id.color_sn',
-						shoes_style_code_factory: '$_id.shoes_style_code_factory',
+						factory_shoes_style: '$_id.factory_shoes_style',
 						sizes: 1
 					}
 				},
 				// * Stage 5: Sort the results
-				{ $sort: { mo_no: 1, color_sn: 1, shoes_style_code_factory: 1 } }
+				{ $sort: { mo_no: 1, color_sn: 1, factory_shoes_style: 1 } }
 			],
 			{ readPreference: 'nearest' }
 		)
@@ -263,14 +263,14 @@ export class RFIDSharedService {
 						epc: { $not: { $regex: EXCLUDED_EPC_REGEX } },
 						mo_no: { $ne: FALLBACK_VALUE },
 						size_numcode: { $ne: FALLBACK_VALUE },
-						shoes_style_code_factory: { $ne: FALLBACK_VALUE },
+						factory_shoes_style: { $ne: FALLBACK_VALUE },
 						color_sn: { $ne: FALLBACK_VALUE }
 					}
 				},
 				{
 					$group: {
 						_id: {
-							shoes_style_code_factory: '$shoes_style_code_factory',
+							factory_shoes_style: '$factory_shoes_style',
 							color_sn: '$color_sn',
 							mo_no: '$mo_no',
 							size_numcode: '$size_numcode'
@@ -280,7 +280,7 @@ export class RFIDSharedService {
 				{
 					$group: {
 						_id: {
-							shoes_style_code_factory: '$_id.shoes_style_code_factory',
+							factory_shoes_style: '$_id.factory_shoes_style',
 							color_sn: '$_id.color_sn',
 							mo_no: '$_id.mo_no'
 						},
@@ -292,7 +292,7 @@ export class RFIDSharedService {
 				{
 					$group: {
 						_id: {
-							shoes_style_code_factory: '$_id.shoes_style_code_factory',
+							factory_shoes_style: '$_id.factory_shoes_style',
 							color_sn: '$_id.color_sn'
 						},
 						batches: {
@@ -305,7 +305,7 @@ export class RFIDSharedService {
 				},
 				{
 					$group: {
-						_id: '$_id.shoes_style_code_factory',
+						_id: '$_id.factory_shoes_style',
 						colorways: {
 							$push: {
 								color_sn: '$_id.color_sn',
@@ -317,7 +317,7 @@ export class RFIDSharedService {
 				{
 					$project: {
 						_id: 0,
-						shoes_style_code_factory: '$_id',
+						factory_shoes_style: '$_id',
 						colorways: '$colorways'
 					}
 				}

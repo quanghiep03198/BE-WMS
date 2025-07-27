@@ -2,7 +2,7 @@ DECLARE @FallbackValue NVARCHAR(10) = 'Unknown';
 
 SELECT DISTINCT a.EPC_Code AS epc, 
    ISNULL(b.mo_no, @FallbackValue) AS mo_no,
-   COALESCE(b.shoestyle_codefactory, @FallbackValue) AS shoes_style_code_factory,
+   COALESCE(b.shoestyle_codefactory, @FallbackValue) AS factory_shoes_style,
    COALESCE(c.color_sn, @FallbackValue) AS color_sn,
    COALESCE(b.size_numcode, @FallbackValue) AS size_numcode,
    b.factory_code_produce

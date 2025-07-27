@@ -1,7 +1,7 @@
 import { RFIDMatchCustomerEntity } from '../entities/rfid-customer-match.entity'
 
 export type EpcInformation = Record<'color_sn', string> &
-	Pick<RFIDMatchCustomerEntity, 'epc' | 'mo_no' | 'size_numcode' | 'shoes_style_code_factory'>
+	Pick<RFIDMatchCustomerEntity, 'epc' | 'mo_no' | 'size_numcode' | 'factory_shoes_style'>
 
 export type StoredRFIDReaderItem = EpcInformation & Record<'station_no' | 'factory_code_produce', string>
 
@@ -34,7 +34,7 @@ export type UpsertRFIDCustomerData = {
 
 export type CustomerOrderSizeDetail = Pick<
 	RFIDMatchCustomerEntity,
-	'mo_no' | 'mat_code' | 'shoes_style_code_factory' | 'size_numcode'
+	'mo_no' | 'mat_code' | 'factory_shoes_style' | 'size_numcode'
 > & {
 	count: number
 }

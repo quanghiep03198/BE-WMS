@@ -9,7 +9,7 @@ export interface IReportQueryResult {
 	mo_no: string
 	mat_code: string
 	color_sn: string
-	shoes_style_code_factory: string
+	factory_shoes_style: string
 	shaping_dept_name: string
 	order_qty: number
 	factory_code: string
@@ -47,7 +47,7 @@ export interface IInventoryReportQueryResult {
 	order_qty: number
 	or_no: string
 	inv_type: InventoryType
-	shoes_style_code_factory: string | null
+	factory_shoes_style: string | null
 	init_inv_qty: number
 	total_instock_qty: number
 	total_outstock_qty: number
@@ -85,7 +85,7 @@ export type IDailyPackingReport = Array<{
 export interface IInboundHistory {
 	mo_no: string
 	brand_name: string
-	shoes_style_code_factory: string
+	factory_shoes_style: string
 	color_sn: string
 	mo_qty: number
 	inbound_qty: number
@@ -96,7 +96,7 @@ export interface IOutboundHistory {
 	po_qty: number
 	outbound_qty: number
 	brand_name: string
-	shoes_style_code_factory: string
+	factory_shoes_style: string
 	color_sn: string
 	outbound_date: Date
 }

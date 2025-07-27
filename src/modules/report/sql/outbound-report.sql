@@ -169,7 +169,7 @@ agg_size_data AS (
 -- * Main query * --
 SELECT
    dd.po,
-   COALESCE(dd.shoestyle_codefactory, @FallbackValue) AS shoes_style_code_factory,
+   COALESCE(dd.shoestyle_codefactory, @FallbackValue) AS factory_shoes_style,
    COALESCE(dd.color_sn, @FallbackValue) AS color_sn,
    pi.po_qty AS order_qty,
    COUNT(DISTINCT dd.EPC_Code) AS daily_outbound_qty,

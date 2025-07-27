@@ -43,7 +43,7 @@ export class RFIDMatchCustomerEntity extends BaseAbstractEntity {
 
 	@Column({ name: 'shoestyle_codefactory', length: 20 })
 	@Index()
-	shoes_style_code_factory: string
+	factory_shoes_style: string
 
 	@Column({ type: 'nvarchar', length: 10, default: 'A' })
 	ri_type: string

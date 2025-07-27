@@ -101,7 +101,7 @@ export class OrderService {
 			.addSelect('b.or_no', 'or_no')
 			.addSelect('c.or_custpo', 'or_cust_po')
 			.addSelect('d.color_sn', 'color_sn')
-			.addSelect('e.shoestyle_codefactory', 'shoes_style_code_factory')
+			.addSelect('e.shoestyle_codefactory', 'factory_shoes_style')
 			.addSelect(
 				`CAST(ISNULL(g.shoestyle_codecust, '') + '/' + ISNULL(g.shoestyle_namecust, '') AS NVARCHAR(255))`,
 				'cust_shoes_style'
