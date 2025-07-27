@@ -3,7 +3,7 @@
    a.FC_Server_Code AS factory_code,
    a.mo_no,
    g.brand_name,
-   f.shoestyle_codefactory AS shoes_style_code_factory,
+   f.shoestyle_codefactory AS factory_shoes_style,
    e.color_sn,
    CAST(COALESCE(b.mo_totalqty, 0) AS INT) AS mo_qty,
    COUNT(DISTINCT a.EPC_Code) AS inbound_qty,

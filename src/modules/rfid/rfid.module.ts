@@ -52,7 +52,7 @@ import { RFIDCustomerEntitySubscriber } from './subscribers/rfid-customer.entity
 				collection: EPC_INBOUND_COLLECTION,
 				useFactory: () => {
 					EpcInboundSchema.index({ record_time: 1 }, { expires: '365d' })
-					EpcInboundSchema.index({ mo_no: 1, size_numcode: 1, shoes_style_code_factory: 1, color_sn: 1 })
+					EpcInboundSchema.index({ mo_no: 1, size_numcode: 1, factory_shoes_style: 1, color_sn: 1 })
 					EpcInboundSchema.plugin(MongoosePaginatePlugin)
 					EpcInboundSchema.plugin(MongooseDeletePlugin, {
 						overrideMethods: true,
@@ -66,7 +66,7 @@ import { RFIDCustomerEntitySubscriber } from './subscribers/rfid-customer.entity
 				collection: EPC_OUTBOUND_COLLECTION,
 				useFactory: () => {
 					EpcOutboundSchema.index({ record_time: 1 }, { expires: '365d' })
-					EpcOutboundSchema.index({ mo_no: 1, size_numcode: 1, shoes_style_code_factory: 1, color_sn: 1 })
+					EpcOutboundSchema.index({ mo_no: 1, size_numcode: 1, factory_shoes_style: 1, color_sn: 1 })
 					EpcOutboundSchema.index({ po: 1 })
 					EpcOutboundSchema.plugin(MongoosePaginatePlugin)
 					EpcOutboundSchema.plugin(MongooseDeletePlugin, {

@@ -4,8 +4,8 @@ import { InventoryType } from '../constants'
 export const updateInventoryReportQuery = z.object({
 	po: z.string().optional(),
 	mo_no: z.string(),
-	shoes_style_code_factory: z.string(),
-	cust_shoestyle: z.string(),
+	factory_shoes_style: z.string(),
+	cust_shoes_style: z.string(),
 	inv_type: z.nativeEnum(InventoryType),
 	inv_year_month: z.string()
 })

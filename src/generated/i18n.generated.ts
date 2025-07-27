@@ -36,7 +36,7 @@ export type I18nTranslations = {
             "container_order_code": string;
             "conversion_rate": string;
             "customer_order": string;
-            "cust_shoestyle": string;
+            "cust_shoes_style": string;
             "daily_inbound_qty": string;
             "daily_outbound_qty": string;
             "daily_productivity": string;

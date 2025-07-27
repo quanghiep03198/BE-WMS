@@ -108,7 +108,7 @@ export class RFIDOutboundService {
 			this.logger.error(error)
 			if (session.inTransaction()) await session.abortTransaction()
 			if (queryRunner.isTransactionActive) await queryRunner.rollbackTransaction()
-			throw new InternalServerErrorException(error.message)
+			throw new InternalServerErrorException((error as Error).message)
 		} finally {
 			if (!session.hasEnded) await session.endSession()
 			await queryRunner.release()

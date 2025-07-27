@@ -34,7 +34,7 @@ export const updateStockValidator = z
 export const exchangeOrderValidator = z.object({
 	mo_no: z.string({ required_error: 'Required' }).min(1, { message: 'Required' }),
 	mo_no_actual: z.string({ required_error: 'Required' }).min(1, { message: 'Required' }).toUpperCase(),
-	shoes_style_code_factory: z.string({ required_error: 'Required' }).min(1, { message: 'Required' }).optional(),
+	factory_shoes_style: z.string({ required_error: 'Required' }).min(1, { message: 'Required' }).optional(),
 	color_sn: z.string({ required_error: 'Required' }).min(1, { message: 'Required' }).optional()
 })
 
@@ -55,10 +55,10 @@ export const upsertEpcInformationSchema = z.object({
 	quantity: z
 		.number({ required_error: 'ns_validation:required' })
 		.nonnegative({ message: 'ns_validation:nonnegative' }),
-	shoes_style_code_factory: z
+	factory_shoes_style: z
 		.string({ required_error: 'ns_validation:required' })
 		.nonempty({ message: 'ns_validation:required' }),
-	shoes_style_code_factory_actual: z
+	factory_shoes_style_actual: z
 		.string({ required_error: 'ns_validation:required' })
 		.nonempty({ message: 'ns_validation:required' }),
 	size_code: z.string({ required_error: 'ns_validation:required' }).nonempty({ message: 'ns_validation:required' }),
@@ -71,7 +71,7 @@ export const upsertEpcInformationSchema = z.object({
 
 export const searchCustomerValidator = z.object({
 	'mo_no.eq': z.string(),
-	'shoes_style_code_factory.eq': z.string(),
+	'factory_shoes_style.eq': z.string(),
 	'color_sn.eq': z.string(),
 	q: z.string()
 })
@@ -128,7 +128,7 @@ export const restoreArchivedEpcValidator = z
 	.array(
 		z.object({
 			epc: z.string().nonempty(),
-			shoes_style_code_factory: z.string().nonempty(),
+			factory_shoes_style: z.string().nonempty(),
 			color_sn: z.string().nonempty(),
 			mo_no: z.string().nonempty(),
 			size_numcode: z.string().nonempty(),

@@ -9,7 +9,7 @@ SELECT
    ) AS po_qty,
    COUNT(DISTINCT a.EPC_Code) AS outbound_qty,
    g.brand_name,
-   f.shoestyle_codefactory AS shoes_style_code_factory,
+   f.shoestyle_codefactory AS factory_shoes_style,
    e.color_sn,
    CAST(a.record_time AS DATE) AS outbound_date
 FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet_backup_Daily a

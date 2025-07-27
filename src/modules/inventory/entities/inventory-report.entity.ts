@@ -23,10 +23,10 @@ export class InventoryReportEntity extends BaseAbstractEntity {
 	cust_brand_id: string
 
 	@Column({ name: 'shoestyle_cofactory', type: 'nvarchar', length: 100 })
-	shoes_style_code_factory: string
+	factory_shoes_style: string
 
 	@Column({ name: 'cust_shoestyle', type: 'nvarchar', length: 50 })
-	cust_shoestyle: string
+	cust_shoes_style: string
 
 	@Column({ name: 'po', type: 'nvarchar', length: 50 })
 	po: string

@@ -50,7 +50,7 @@ accumulated AS
 SELECT
 	ds.factory_code,
 	ds.mo_no,
-	COALESCE(rmc.shoestyle_codefactory,@FallbackValue) AS shoes_style_code_factory,
+	COALESCE(rmc.shoestyle_codefactory,@FallbackValue) AS factory_shoes_style,
 	COALESCE(prod.color_sn, @FallbackValue) AS color_sn,
 	dg.dept_name AS shaping_dept_name,
 	sg.storage_name AS storage,

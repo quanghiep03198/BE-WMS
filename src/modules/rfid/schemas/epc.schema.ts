@@ -49,7 +49,7 @@ abstract class BaseAbstractEpcSchema {
 	color_sn: string
 
 	@Prop({ type: String, required: true })
-	shoes_style_code_factory: string
+	factory_shoes_style: string
 
 	@Prop({ type: String, required: true })
 	size_numcode: string

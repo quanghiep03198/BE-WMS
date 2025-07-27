@@ -103,7 +103,7 @@ export class RFIDInboundService {
 				scannable: true,
 				mo_no: { $in: payload.mo_no.split(',').map((m) => m.trim()) },
 				color_sn: payload.color_sn,
-				shoes_style_code_factory: payload.shoes_style_code_factory
+				factory_shoes_style: payload.factory_shoes_style
 			})
 			.select('epc')
 			.lean(true)
@@ -143,7 +143,7 @@ export class RFIDInboundService {
 	public async upsertEpcInformation(factoryCode: string, update: UpsertEpcInformationDTO) {
 		const epcToExchange = await this.epcInboundModel
 			.find({
-				...pick(update, ['mo_no', 'shoes_style_code_factory', 'color_sn', 'size_numcode']),
+				...pick(update, ['mo_no', 'factory_shoes_style', 'color_sn', 'size_numcode']),
 				scannable: true
 			})
 			.select('epc')
@@ -154,7 +154,7 @@ export class RFIDInboundService {
 			...update,
 			epc: item.epc,
 			mo_no: update.mo_no_actual,
-			shoes_style_code_factory: update.shoes_style_code_factory_actual,
+			factory_shoes_style: update.factory_shoes_style_actual,
 			color_sn: update.color_sn_actual,
 			size_numcode: update.size_numcode_actual,
 			factory_code_orders: factoryCode,
@@ -182,7 +182,7 @@ export class RFIDInboundService {
 					.map((item) => {
 						return `(
 							'${item.epc}', '${item.mo_no}', '${item.mat_code}', '${item.mo_noseq}', '${item.or_no}', '${item.or_cust_po}', 
-							'${item.shoes_style_code_factory}', '${item.cust_shoes_style.replace('/', '\/')}', '${item.size_code}', '${item.size_numcode}',
+							'${item.factory_shoes_style}', '${item.cust_shoes_style.replace('/', '\/')}', '${item.size_code}', '${item.size_numcode}',
 							'${item.factory_code_orders}', '${item.factory_name_orders}', '${item.factory_code_produce}', '${item.factory_name_produce}', ${item.size_qty || 1},
 							'${item.remark ?? ''}'
 						)`
@@ -195,13 +195,7 @@ export class RFIDInboundService {
 				updateOne: {
 					filter: { epc: item.epc, scannable: true },
 					update: {
-						$set: pick(item, [
-							'mo_no',
-							'shoes_style_code_factory',
-							'color_sn',
-							'size_numcode',
-							'factory_code_produce'
-						])
+						$set: pick(item, ['mo_no', 'factory_shoes_style', 'color_sn', 'size_numcode', 'factory_code_produce'])
 					}
 				}
 			}))
@@ -271,7 +265,7 @@ export class RFIDInboundService {
 			...(args.q && { epc: { $regex: args.q, $options: 'i' } }),
 			...(args['mo_no.eq'] && { mo_no: args['mo_no.eq'] }),
 			...(args['size_numcode.eq'] && { size_numcode: args['size_numcode.eq'] }),
-			...(args['shoes_style.eq'] && { shoes_style_code_factory: args['shoes_style.eq'] }),
+			...(args['shoes_style.eq'] && { factory_shoes_style: args['shoes_style.eq'] }),
 			...(args['color_sn.eq'] && { color_sn: args['color_sn.eq'] })
 		}
 

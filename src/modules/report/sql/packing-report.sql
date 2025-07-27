@@ -6,7 +6,7 @@ WITH
    (
       SELECT e.brand_name,
          IIF(ISNULL(a.or_custpoone,'') = '', a.or_custpo, a.or_custpoone)[PO],
-         COALESCE(c.shoestyle_codefactory, @FallbackValue)[shoes_style_code_factory],
+         COALESCE(c.shoestyle_codefactory, @FallbackValue)[factory_shoes_style],
          COALESCE(b.color_sn, @FallbackValue)[color_sn]
       FROM wuerp_vnrd.dbo.ta_ordermst a
          LEFT JOIN wuerp_vnrd.dbo.ta_productmst b ON a.mat_code = b.mat_code AND b.isactive='Y'
@@ -21,7 +21,7 @@ WITH
    )
 SELECT pl.brand_name[brand_name],
    pk.PO AS po,
-   pl.shoes_style_code_factory,
+   pl.factory_shoes_style,
    pl.color_sn,
    pk.Size AS size_data,
    bq.target_box_qty,
@@ -70,7 +70,7 @@ WHERE
    ELSE pk.Factory_code END
 GROUP BY pl.brand_name,
 	pk.PO, 
-	pl.shoes_style_code_factory, 
+	pl.factory_shoes_style, 
 	pk.Size,
 	pl.color_sn,
 	wq.target_item_qty,
@@ -78,7 +78,7 @@ GROUP BY pl.brand_name,
 	wb.weighed_box_qty
 ORDER BY 
    pk.PO, 
-   pl.shoes_style_code_factory, 
+   pl.factory_shoes_style, 
    pl.color_sn,
    CASE WHEN LEN(Size) >= 3 THEN 2 ELSE 0 END, LEFT(Size, 3)
 OPTION (OPTIMIZE FOR UNKNOWN);

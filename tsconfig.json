@@ -14,7 +14,7 @@
 		"incremental": true,
 		/* Strict mode */
 		/* Most of strict mode options are disabled because of slow startup */
-		"strict": false,
+		"strict": true,
 		"noUnusedParameters": false,
 		"noUnusedLocals": false,
 		"skipLibCheck": true,

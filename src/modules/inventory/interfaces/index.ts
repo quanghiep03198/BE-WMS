@@ -7,7 +7,7 @@ export interface IInventoryReportQueryResult {
 	order_qty: number
 	or_no: string
 	inv_type: InventoryType
-	shoes_style_code_factory: string | null
+	factory_shoes_style: string | null
 	init_inv_qty: number
 	total_instock_qty: number
 	total_outstock_qty: number

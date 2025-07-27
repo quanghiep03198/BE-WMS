@@ -56,7 +56,7 @@ export class InboundReportService {
 			},
 			{
 				header: this.i18nService.t('erp.fields.shoestyle_codefactory', { lang: currentLanguage }),
-				key: 'shoes_style_code_factory'
+				key: 'factory_shoes_style'
 			},
 			{
 				header: this.i18nService.t('erp.fields.color_sn', { lang: currentLanguage }),
