@@ -1,6 +1,7 @@
 import { WsExceptionsFilter } from '@/common/filters/ws-exception.filter'
 import { WsZodValidationPipe } from '@/common/pipes/ws-validation.pipe'
 import { SYNC_INVENTORY_AUDIT_QUEUE } from '@/modules/inventory/constants'
+import { SyncInventoryAuditDTO, syncInventoryAuditValidator } from '@/modules/inventory/dto/inventory-report.dto'
 import { FALLBACK_VALUE } from '@/modules/rfid/constants'
 import { EpcDocument, EpcInbound } from '@/modules/rfid/schemas/epc.schema'
 import { THIRD_PARTY_API_SYNC } from '@/modules/third-party-api/constants'
@@ -17,7 +18,7 @@ import {
 	WebSocketServer
 } from '@nestjs/websockets'
 import { Queue } from 'bullmq'
-import { uniqBy } from 'lodash'
+import { uniqBy, uniqueId } from 'lodash'
 import { PaginateModel } from 'mongoose'
 import { Socket } from 'socket.io'
 
@@ -65,9 +66,9 @@ export class EventGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
 	@SubscribeMessage('sync_inventory_audit_data')
 	@UseFilters(new WsExceptionsFilter())
-	@UsePipes(new WsZodValidationPipe(syncDataMessageValidator))
-	protected async onSyncInventoryAuditData(@MessageBody() payload: SyncDataMessageDTO) {
-		if (!this.syncInventoryAuditDataQueue || !this.epcModel) return
-		this.syncInventoryAuditDataQueue.add(payload.id, {}, { jobId: payload.factory })
+	@UsePipes(new WsZodValidationPipe(syncInventoryAuditValidator))
+	protected async onSyncInventoryAuditData(@MessageBody() payload: SyncInventoryAuditDTO) {
+		if (!this.syncInventoryAuditDataQueue) return
+		this.syncInventoryAuditDataQueue.add(uniqueId(), {}, { jobId: payload.tenantId })
 	}
 }
