@@ -125,7 +125,7 @@ export class RFIDOutboundService {
 			...(args.q && { epc: { $regex: args.q, $options: 'i' } }),
 			...(args['mo_no.eq'] && { mo_no: args['mo_no.eq'] }),
 			...(args['size_numcode.eq'] && { size_numcode: args['size_numcode.eq'] }),
-			...(args['shoes_style.eq'] && { shoes_style_code_factory: args['shoes_style.eq'] }),
+			...(args['shoes_style.eq'] && { factory_shoes_style: args['shoes_style.eq'] }),
 			...(args['color_sn.eq'] && { color_sn: args['color_sn.eq'] })
 		}
 
@@ -163,7 +163,7 @@ export class RFIDOutboundService {
 				/* SQL */ `DISTINCT a.EPC_Code AS epc`,
 				/* SQL */ `b.mo_no AS mo_no`,
 				/* SQL */ `b.size_numcode AS size_numcode`,
-				/* SQL */ `b.shoestyle_codefactory AS shoes_style_code_factory`,
+				/* SQL */ `b.shoestyle_codefactory AS factory_shoes_style`,
 				/* SQL */ `c.color_sn AS color_sn`,
 				/* SQL */ `CAST(COALESCE(d.scanned, 0) AS BIT) AS scanned`,
 				/* SQL */ `d.stored_at AS stored_at`
@@ -209,7 +209,7 @@ export class RFIDOutboundService {
 					}
 					// * Filter by shoes style code (factory)
 					if (args['shoes_style.eq']) {
-						qb.andWhere(/* SQL */ `b.shoes_style_code_factory = '${args['shoes_style.eq']}'`)
+						qb.andWhere(/* SQL */ `b.factory_shoes_style = '${args['shoes_style.eq']}'`)
 					}
 					// * Filter by color serial number
 					if (args['color_sn.eq']) {
@@ -233,7 +233,7 @@ export class RFIDOutboundService {
 			.orderBy(/* SQL */ `CAST(COALESCE(d.scanned, 0) AS BIT)`, 'DESC')
 			.addOrderBy('b.mo_no', 'DESC')
 			.addOrderBy('b.size_numcode', 'ASC')
-			.addOrderBy('b.shoes_style_code_factory', 'ASC')
+			.addOrderBy('b.factory_shoes_style', 'ASC')
 			.addOrderBy('c.color_sn', 'ASC')
 			.addOrderBy('a.EPC_Code', 'ASC')
 			.offset((args.page - 1) * args.limit)
