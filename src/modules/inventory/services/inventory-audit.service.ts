@@ -2,8 +2,10 @@ import { type AutoFitColumnOptions, autoFitColumns } from '@/common/helpers/exce
 import { SuperJson } from '@/common/utils'
 import { TENANCY_DATA_SOURCE } from '@/modules/tenancy/constants'
 import { UserEntity } from '@/modules/user/entities/user.entity'
-import { Inject, Injectable } from '@nestjs/common'
+import { InjectQueue } from '@nestjs/bullmq'
+import { Inject, Injectable, Scope } from '@nestjs/common'
 import { REQUEST } from '@nestjs/core'
+import { Queue } from 'bullmq'
 import { addMonths, format } from 'date-fns'
 import { Workbook } from 'exceljs'
 import { readFileSync } from 'fs'
@@ -12,21 +14,23 @@ import { I18nContext, I18nService } from 'nestjs-i18n'
 import { join } from 'path'
 import { Brackets, DataSource, IsNull, UpdateResult } from 'typeorm'
 import { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity'
+import { SYNC_INVENTORY_AUDIT_QUEUE } from '../constants'
 import { UpdateInventoryReportDTO, UpdateInventoryReportQueryDTO } from '../dto/inventory-report.dto'
-import { InventoryReportEntity } from '../entities/inventory-report.entity'
+import { InventoryAuditEntity } from '../entities/inventory-report.entity'
 import { IInventoryReportQueryResult, IInventoryReportResponse } from '../interfaces'
 
-@Injectable()
+@Injectable({ scope: Scope.REQUEST })
 export class InventoryAuditService {
 	private readonly inventoryReportQuery: string = readFileSync(join(__dirname, '../sql/inventory-audit.sql'), 'utf-8')
 
 	constructor(
 		@Inject(TENANCY_DATA_SOURCE) private readonly dataSource: DataSource,
+		@InjectQueue(SYNC_INVENTORY_AUDIT_QUEUE) private readonly syncInventoryAuditDataQueue: Queue<DataSource>,
 		@Inject(REQUEST) private readonly request: Request,
 		private readonly i18nService: I18nService
 	) {}
 
-	public async getMonthlyInventoryReport(month): Promise<IInventoryReportResponse> {
+	public async getMonthlyInventoryAudit(month): Promise<IInventoryReportResponse> {
 		const factory = this.request.headers['x-user-company']
 		const data = await this.dataSource.query<IInventoryReportQueryResult[]>(this.inventoryReportQuery, [
 			month,
@@ -40,7 +44,7 @@ export class InventoryAuditService {
 		})
 	}
 
-	async bulkUpdateInventoryReport(
+	public async bulkUpdateInventoryAudit(
 		queries: UpdateInventoryReportQueryDTO,
 		payload: Array<UpdateInventoryReportDTO[number] & Pick<UserEntity, 'user_code_updated' | 'user_name_updated'>>
 	) {
@@ -64,7 +68,7 @@ export class InventoryAuditService {
 		queries: UpdateInventoryReportQueryDTO & { size_numcode: string }
 	): Promise<number | null> {
 		const result: Awaited<Promise<{ final_qty: number }>> = await this.dataSource
-			.getRepository(InventoryReportEntity)
+			.getRepository(InventoryAuditEntity)
 			.createQueryBuilder()
 			.select(
 				/* SQL */ `COALESCE(inv_initialqty, 0) + COALESCE(inv_istotalqty, 0) - COALESCE(inv_ostotalqty, 0)`,
@@ -97,7 +101,7 @@ export class InventoryAuditService {
 			size_numcode: data.size_numcode
 		})
 		if (isNil(currFinalQty)) {
-			return Array.from(new Array(2), () => ({
+			return Array.from({ length: 2 }, () => ({
 				generatedMaps: [],
 				affected: 0,
 				raw: undefined
@@ -129,10 +133,10 @@ export class InventoryAuditService {
 
 	private async updateOneInventoryRecord(
 		queries: UpdateInventoryReportQueryDTO & { size_numcode: string },
-		update: QueryDeepPartialEntity<InventoryReportEntity>
+		update: QueryDeepPartialEntity<InventoryAuditEntity>
 	) {
 		return await this.dataSource
-			.getRepository(InventoryReportEntity)
+			.getRepository(InventoryAuditEntity)
 			.createQueryBuilder()
 			.update()
 			.set(update)
@@ -152,7 +156,7 @@ export class InventoryAuditService {
 	}
 
 	// #region Inventory report Excel
-	async exportMonthlyInventoryToExcel(month: string, commandNumbers: string[]) {
+	public async exportExcelInventoryAudit(month: string, commandNumbers: string[]) {
 		const currentLanguage = I18nContext.current()?.lang
 		const factoryCode = this.request.headers['x-user-company']
 		const workbook = new Workbook()
@@ -205,7 +209,7 @@ export class InventoryAuditService {
 			}
 		].map((item) => ({ ...item, alignment: { vertical: 'middle', horizontal: 'center' } }))
 
-		const data = await this.getMonthlyInventoryReport(format(new Date(month), 'yyyyMM'))
+		const data = await this.getMonthlyInventoryAudit(format(new Date(month), 'yyyyMM'))
 
 		// * Add data to worksheet
 		const filteredData = data.filter(

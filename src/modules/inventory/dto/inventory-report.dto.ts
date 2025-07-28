@@ -1,3 +1,4 @@
+import { Tenant } from '@/modules/tenancy/constants'
 import { z } from 'zod'
 import { InventoryType } from '../constants'
 
@@ -24,6 +25,11 @@ export const productInventoryReportQuery = z.object({
 	'color.eq': z.string().nonempty()
 })
 
+export const syncInventoryAuditValidator = z.object({
+	tenantId: z.nativeEnum(Tenant)
+})
+
+export type SyncInventoryAuditDTO = z.infer<typeof syncInventoryAuditValidator>
 export type UpdateInventoryReportQueryDTO = z.infer<typeof updateInventoryReportQuery>
 export type UpdateInventoryReportDTO = z.infer<typeof updateInventoryReportPayload>
 export type ProductInventoryReportQueryDTO = z.infer<typeof productInventoryReportQuery>

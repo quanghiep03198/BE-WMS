@@ -9,7 +9,7 @@ import { InventoryType } from '../constants'
 	name: 'dv_invprodmst',
 	synchronize: false
 })
-export class InventoryReportEntity extends BaseAbstractEntity {
+export class InventoryAuditEntity extends BaseAbstractEntity {
 	@Column({ name: 'inv_type', enum: InventoryType, type: 'nvarchar', length: 10 })
 	inv_type: InventoryType
 
@@ -64,7 +64,7 @@ export class InventoryReportEntity extends BaseAbstractEntity {
 	@Column({ name: 'inv_finalqty', type: 'numeric', precision: 16, scale: 4 })
 	final_stock_qty: number
 
-	constructor(warehouse: Partial<InventoryReportEntity>) {
+	constructor(warehouse: Partial<InventoryAuditEntity>) {
 		super()
 		Object.assign(this, warehouse)
 	}

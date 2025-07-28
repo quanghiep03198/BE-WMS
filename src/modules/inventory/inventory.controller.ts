@@ -2,6 +2,7 @@ import { CommonRequestHeader } from '@/common/constants'
 import { Api, AuthGuard, HttpMethod, User } from '@/common/decorators'
 import { AllExceptionsFilter } from '@/common/filters'
 import { ZodValidationPipe } from '@/common/pipes'
+import { InjectQueue } from '@nestjs/bullmq'
 import {
 	Body,
 	Controller,
@@ -14,8 +15,11 @@ import {
 	Res,
 	UseFilters
 } from '@nestjs/common'
+import { Queue } from 'bullmq'
 import { format } from 'date-fns'
 import { type Response } from 'express'
+import { uniqueId } from 'lodash'
+import { SYNC_INVENTORY_AUDIT_QUEUE } from './constants'
 import {
 	productInventoryReportQuery,
 	ProductInventoryReportQueryDTO,
@@ -30,6 +34,8 @@ import { ProductionInventoryService } from './services/product-inventory.service
 @Controller('inventory')
 export class InventoryController {
 	constructor(
+		@InjectQueue(SYNC_INVENTORY_AUDIT_QUEUE)
+		private readonly syncInventoryAuditDataQueue: Queue<object>,
 		private readonly inventoryReportService: InventoryAuditService,
 		private readonly productionInventoryService: ProductionInventoryService
 	) {}
@@ -41,7 +47,7 @@ export class InventoryController {
 	async getMonthlyInventoryReport(
 		@Query('month.eq', new DefaultValuePipe(format(new Date(), 'yyyy-MM'))) month: string
 	) {
-		return await this.inventoryReportService.getMonthlyInventoryReport(format(new Date(month), 'yyyyMM'))
+		return await this.inventoryReportService.getMonthlyInventoryAudit(format(new Date(month), 'yyyyMM'))
 	}
 
 	@Get('audit/export')
@@ -52,7 +58,7 @@ export class InventoryController {
 		@Query('mo_no.in', new DefaultValuePipe([]), ParseArrayPipe) commandNumbers: string[],
 		@Res() res: Response
 	) {
-		const buffer = await this.inventoryReportService.exportMonthlyInventoryToExcel(month, commandNumbers)
+		const buffer = await this.inventoryReportService.exportExcelInventoryAudit(month, commandNumbers)
 		return res.send(buffer)
 	}
 
@@ -63,10 +69,16 @@ export class InventoryController {
 		@Body(new ZodValidationPipe(updateInventoryReportPayload)) payload: UpdateInventoryReportDTO,
 		@User('username') username: string
 	) {
-		return await this.inventoryReportService.bulkUpdateInventoryReport(
+		return await this.inventoryReportService.bulkUpdateInventoryAudit(
 			queries,
 			payload.map((item) => ({ ...item, user_code_updated: username, user_name_updated: username }))
 		)
+	}
+
+	@Api({ endpoint: 'audit/sync', method: HttpMethod.POST, statusCode: HttpStatus.CREATED })
+	@AuthGuard()
+	async syncInventoryAuditData(@Headers(CommonRequestHeader.TENANT_ID) tenantId: string) {
+		return await this.syncInventoryAuditDataQueue.add(uniqueId(), {}, { jobId: tenantId })
 	}
 	// #endregion
 
