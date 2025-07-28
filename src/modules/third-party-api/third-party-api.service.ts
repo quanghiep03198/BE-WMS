@@ -34,7 +34,7 @@ export class ThirdPartyApiService {
 				headers
 			})
 		} catch (error) {
-			this.logger.error(error.message)
+			this.logger.error(error)
 		}
 	}
 
