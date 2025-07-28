@@ -1,27 +1,30 @@
-import { DATA_SOURCE_DATA_LAKE } from '@/databases/constants'
 import { EventGateway } from '@/events/event.gateway'
+import { TenancyService } from '@/modules/tenancy/tenancy.service'
 import { Processor, WorkerHost } from '@nestjs/bullmq'
-import { Inject, Logger as NestLogger } from '@nestjs/common'
-import { InjectDataSource } from '@nestjs/typeorm'
+import { Inject, Logger as NestLogger, Scope } from '@nestjs/common'
+import { Job } from 'bullmq'
+import { format } from 'date-fns'
 import { WINSTON_MODULE_NEST_PROVIDER } from 'nest-winston'
-import { DataSource } from 'typeorm'
 import { Logger } from 'winston'
-import { SYNC_INVENTORY_AUDIT_QUEUE } from '../constants'
+import { InventoryType, SYNC_INVENTORY_AUDIT_QUEUE } from '../constants'
+import { InventoryAuditEntity } from '../entities/inventory-report.entity'
 
-@Processor(SYNC_INVENTORY_AUDIT_QUEUE)
+@Processor({ name: SYNC_INVENTORY_AUDIT_QUEUE, scope: Scope.REQUEST })
 export class InventoryAuditDataSyncConsumer extends WorkerHost {
 	private readonly socketEvent = 'sync_inventory_audit_data'
 
 	constructor(
 		@Inject(WINSTON_MODULE_NEST_PROVIDER) private readonly logger: Logger,
-		@InjectDataSource(DATA_SOURCE_DATA_LAKE) private readonly dataSource: DataSource,
+		private readonly tenancyService: TenancyService, // Replace 'any' with the actual type of your data source
 		private readonly eventGateway: EventGateway
 	) {
 		super()
 	}
 
-	async process() {
-		NestLogger.debug('Inventory audit sync in progress')
+	async process({ id }: Job<object>) {
+		NestLogger.log('Inventory audit sync in progress', InventoryAuditDataSyncConsumer.name)
+		const currentTenant = this.tenancyService.findOneById(id)
+		const dataSource = await this.tenancyService.getTenancyDataSource(currentTenant?.host)
 		try {
 			this.broadcastProgress({
 				metadata: { status: 'progress' },
@@ -29,20 +32,25 @@ export class InventoryAuditDataSyncConsumer extends WorkerHost {
 				ok: true,
 				error: null
 			})
-			await this.dataSource.query(/* SQL */ `EXEC sp_import_invprod_VER2`)
+			await dataSource.getRepository(InventoryAuditEntity).delete({
+				inv_type: InventoryType.FINISHED_GOOD,
+				inv_year_month: format(new Date(), 'yyyyMM')
+			})
+			await dataSource.query(/* SQL */ `EXEC sp_import_invprod_VER2`)
 			this.broadcastProgress({
 				metadata: { status: 'completed' },
 				event: this.socketEvent,
 				ok: true,
 				error: null
 			})
+			NestLogger.log('Inventory audit sync completed', InventoryAuditDataSyncConsumer.name)
 		} catch (error) {
-			this.logger.log('error', error)
+			this.logger.error(error)
 			this.broadcastProgress({
 				metadata: { status: 'failed' },
 				event: this.socketEvent,
 				ok: false,
-				error
+				error: error as Error
 			})
 		}
 	}
