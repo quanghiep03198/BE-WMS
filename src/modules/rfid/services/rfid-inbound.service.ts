@@ -87,7 +87,7 @@ export class RFIDInboundService {
 			this.logger.error(error)
 			if (session.inTransaction()) await session.abortTransaction()
 			if (queryRunner.isTransactionActive) await queryRunner.rollbackTransaction()
-			throw new InternalServerErrorException(error.message)
+			throw new InternalServerErrorException(error)
 		} finally {
 			if (!session.hasEnded) await session.endSession()
 			await queryRunner.release()
@@ -132,9 +132,9 @@ export class RFIDInboundService {
 			)
 			await queryRunner.commitTransaction()
 			await session.commitTransaction()
-		} catch (e) {
+		} catch (error) {
 			await Promise.all([queryRunner.rollbackTransaction(), session.abortTransaction()])
-			throw new InternalServerErrorException(e.message)
+			throw new InternalServerErrorException(error)
 		} finally {
 			await queryRunner.release()
 		}
@@ -214,7 +214,7 @@ export class RFIDInboundService {
 			this.logger.error(error)
 			if (session.inTransaction()) await session.abortTransaction()
 			if (queryRunner.isTransactionActive) await queryRunner.rollbackTransaction()
-			throw new Error(error.message)
+			throw new InternalServerErrorException(error)
 		} finally {
 			if (!session.hasEnded) await session.endSession()
 			await queryRunner.release()

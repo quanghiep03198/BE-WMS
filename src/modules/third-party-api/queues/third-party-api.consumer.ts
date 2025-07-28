@@ -46,7 +46,7 @@ export class ThirdPartyApiConsumer extends WorkerHost {
 			this.cancelRemainingSteps()
 			await this.broadcastStateChange()
 			this.logger.error(error)
-			throw new Error(error.message)
+			throw error
 		}
 	}
 

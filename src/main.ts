@@ -41,7 +41,7 @@ async function bootstrap() {
 			Logger.log(URL, 'Server')
 		})
 	} catch (error) {
-		Logger.error(error.message)
+		Logger.error(error)
 	}
 }
 
