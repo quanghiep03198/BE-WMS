@@ -2,7 +2,7 @@ WITH CTE AS (
 	SELECT
 		CASE 
 			WHEN ISNUMERIC(b.size_numcode) = 1 THEN CAST(b.size_numcode AS FLOAT) 
-			WHEN LEFT(b.size_numcode, 1) = 'K' THEN CAST(SUBSTRING(b.size_numcode, 2, LEN(b.size_numcode)) AS FLOAT)
+			WHEN LEFT(b.size_numcode, 1) IN ('T', 'K') THEN CAST(SUBSTRING(b.size_numcode, 2, LEN(b.size_numcode)) AS FLOAT)
 		END AS [size_numcode], 
 		SUM(CAST(b.size_qty AS INT)) AS size_qty
 	FROM wuerp_vnrd.dbo.ta_ordersizerun a
@@ -54,7 +54,7 @@ WITH CTE AS (
 		([size_numcode40], [size_qty40])
 	) b ([size_numcode],[size_qty])
 	WHERE b.size_qty <> 0
-	AND a.isactive= 'Y'
+	AND a.isactive = 'Y'
 	AND a1.mo_no = @0
 	GROUP BY a.size_code, b.size_numcode
 )
