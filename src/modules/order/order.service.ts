@@ -124,8 +124,8 @@ export class OrderService {
 				'g.shoestyle_templink = d.shoestyle_templink AND g.isactive = :recordStatus'
 			)
 			.leftJoin('ta_ordersizerun', 'h', 'h.or_no = c.or_no AND h.isactive = :recordStatus')
-			.where('a.mo_no = :commandNumber', { commandNumber })
-			.andWhere('a.isactive = :recordStatus', { recordStatus: RecordStatus.ACTIVE })
+			.where('a.mo_no = :commandNumber')
+			.andWhere('a.isactive = :recordStatus')
 			.andWhere('a.created >= CAST(DATEADD(YEAR, -2, GETDATE()) AS DATE)')
 			.orderBy('a.mo_no', 'DESC')
 			.orderBy('b.mo_noseq', 'ASC')
