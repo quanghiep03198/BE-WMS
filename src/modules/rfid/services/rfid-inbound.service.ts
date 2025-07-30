@@ -2,7 +2,15 @@ import { EXCLUDED_EPC_REGEX } from '@/common/constants/regex'
 import { DATA_SOURCE_DATA_LAKE, DATA_SOURCE_ERP } from '@/databases/constants'
 import { TENANCY_DATA_SOURCE } from '@/modules/tenancy/constants'
 import { InjectQueue } from '@nestjs/bullmq'
-import { Inject, Injectable, InternalServerErrorException, Logger, NotFoundException, Scope } from '@nestjs/common'
+import {
+	Inject,
+	Injectable,
+	InternalServerErrorException,
+	Logger,
+	NotFoundException,
+	Scope,
+	UnprocessableEntityException
+} from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
 import { InjectDataSource } from '@nestjs/typeorm'
 import { Queue } from 'bullmq'
@@ -14,7 +22,7 @@ import { WINSTON_MODULE_NEST_PROVIDER } from 'nest-winston'
 import { I18nContext, I18nService } from 'nestjs-i18n'
 import { join, resolve } from 'path'
 import { DataSource, FindOptionsWhere, In } from 'typeorm'
-import { POST_DATA_INBOUND_QUEUE } from '../constants'
+import { InventoryActions, POST_DATA_INBOUND_QUEUE } from '../constants'
 import {
 	ExchangeOrderDTO,
 	PostReaderDataDTO,
@@ -23,6 +31,7 @@ import {
 	UpsertStockInDTO
 } from '../dto/rfid.dto'
 import { RFIDMatchCustomerEntity } from '../entities/rfid-customer-match.entity'
+import { RFIDInventoryBackupEntity } from '../entities/rifd-inventory.entity'
 import { EpcDocument, EpcInbound, EpcInboundSchema, EpcModel } from '../schemas/epc.schema'
 import { RFIDSearchParams } from '../types'
 
@@ -42,11 +51,17 @@ export class RFIDInboundService {
 		return await this.postDataQueue.add('RFID_INBOUND', data, { lifo: true })
 	}
 
-	public async upsertStockIn(orderCode: string, factoryCode: string, data: UpsertStockInDTO) {
-		const payload = await this.epcInboundModel.find({ scannable: true, mo_no: orderCode }).lean(true)
+	public async upsertStockIn(commandNumber: string, factoryCode: string, data: UpsertStockInDTO) {
+		const payload = await this.epcInboundModel.find({ scannable: true, mo_no: commandNumber }).lean(true)
 		const queryRunner = this.dataSourceTNC.createQueryRunner()
 		const session = await this.epcInboundModel.startSession()
 
+		const orderStatus = await this.getOrderStatus(commandNumber)
+
+		Logger.debug(data.rfid_status)
+		Logger.debug(orderStatus)
+		if (data.rfid_status === InventoryActions.INBOUND && orderStatus?.missing_qty === 0)
+			throw new UnprocessableEntityException('ns_inoutbound:notifcation.over_inbound_limit')
 		try {
 			const upsertInventoryQuery: string = readFileSync(
 				resolve(join(__dirname, '../sql/upsert-inbound.sql')),
@@ -77,7 +92,7 @@ export class RFIDInboundService {
 			}
 			await this.epcInboundModel
 				.updateMany(
-					{ mo_no: orderCode },
+					{ mo_no: commandNumber },
 					{ $set: { deleted: true, stored_at: new Date(), factory_code_produce: factoryCode } }
 				)
 				.exec()
@@ -282,5 +297,31 @@ export class RFIDInboundService {
 				_id: 0
 			}
 		})
+	}
+
+	private async getOrderStatus(commandNumber: string) {
+		const result = await this.dataSourceDL
+			.getRepository(RFIDInventoryBackupEntity)
+			.createQueryBuilder('a')
+			.select([/* SQL */ `a.mo_no`, /* SQL */ `b.mo_totalqty - COUNT(DISTINCT a.EPC_Code) AS missing_qty`])
+			.leftJoin(
+				(qb) => {
+					return qb
+						.subQuery()
+						.select(['mo_no', 'mo_totalqty'])
+						.from('wuerp_vnrd.dbo.ta_manufacturmst', 'b')
+						.where(`b.isactive = 'Y'`)
+				},
+				'b',
+				/* SQL */ `a.mo_no = b.mo_no`
+			)
+			.where(/* SQL */ `a.rfid_status = 'A'`)
+			.andWhere(/* SQL */ `RIGHT(a.stationNO, 3) = '101'`)
+			.andWhere(/* SQL */ 'a.mo_no = :commandNumber', { commandNumber })
+			.groupBy('a.mo_no')
+			.addGroupBy('b.mo_totalqty')
+			.getRawMany()
+
+		return result[0]
 	}
 }
