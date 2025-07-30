@@ -130,6 +130,9 @@ export type I18nTranslations = {
             "file_monthly_inventory_report": string;
             "production_inventory_summary": string;
         };
+        "notification": {
+            "over_inbound_limit": string;
+        };
     };
     "packing": {
         "titles": {

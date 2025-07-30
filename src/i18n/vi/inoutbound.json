@@ -4,5 +4,8 @@
 		"daily_outbound_report": "Báo biểu xuất kho hàng ngày {factory} - {date}",
 		"file_monthly_inventory_report": "Báo biểu tồn kho {factory} - {month}",
 		"production_inventory_summary": "Tổng Quan Tồn Kho Thành Phẩm - {factory}"
+	},
+	"notification": {
+		"over_inbound_limit": "Chỉ lệnh đã nhập kho đủ, bạn không thể nhập thêm nữa. Vui lòng kiểm tra lại lịch sử nhập hàng của chỉ lệnh này."
 	}
 }
