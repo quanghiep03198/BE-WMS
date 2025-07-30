@@ -3,13 +3,13 @@ import { DATA_SOURCE_DATA_LAKE, DATA_SOURCE_ERP } from '@/databases/constants'
 import { TENANCY_DATA_SOURCE } from '@/modules/tenancy/constants'
 import { InjectQueue } from '@nestjs/bullmq'
 import {
+	BadRequestException,
 	Inject,
 	Injectable,
 	InternalServerErrorException,
 	Logger,
 	NotFoundException,
-	Scope,
-	UnprocessableEntityException
+	Scope
 } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
 import { InjectDataSource } from '@nestjs/typeorm'
@@ -57,11 +57,9 @@ export class RFIDInboundService {
 		const session = await this.epcInboundModel.startSession()
 
 		const orderStatus = await this.getOrderStatus(commandNumber)
-
-		Logger.debug(data.rfid_status)
-		Logger.debug(orderStatus)
 		if (data.rfid_status === InventoryActions.INBOUND && orderStatus?.missing_qty === 0)
-			throw new UnprocessableEntityException('ns_inoutbound:notifcation.over_inbound_limit')
+			throw new BadRequestException(this.i18nService.t('inoutbound.notification.over_inbound_limit'))
+
 		try {
 			const upsertInventoryQuery: string = readFileSync(
 				resolve(join(__dirname, '../sql/upsert-inbound.sql')),
