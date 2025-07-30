@@ -25,18 +25,21 @@ export class InventoryAuditDataSyncConsumer extends WorkerHost {
 		NestLogger.log('Inventory audit sync in progress', InventoryAuditDataSyncConsumer.name)
 		const currentTenant = this.tenancyService.findOneById(id)
 		const dataSource = await this.tenancyService.getTenancyDataSource(currentTenant?.host)
+		const queryRunner = dataSource.createQueryRunner()
 		try {
+			await queryRunner.startTransaction()
 			this.broadcastProgress({
 				metadata: { status: 'progress' },
 				event: this.socketEvent,
 				ok: true,
 				error: null
 			})
-			await dataSource.getRepository(InventoryAuditEntity).delete({
+			await queryRunner.manager.getRepository(InventoryAuditEntity).delete({
 				inv_type: InventoryType.FINISHED_GOOD,
 				inv_year_month: format(new Date(), 'yyyyMM')
 			})
-			await dataSource.query(/* SQL */ `EXEC sp_import_invprod_VER2`)
+			await queryRunner.query(/* SQL */ `EXEC DV_DATA_LAKE.dbo.sp_import_invprod_VER2`)
+			await queryRunner.commitTransaction()
 			this.broadcastProgress({
 				metadata: { status: 'completed' },
 				event: this.socketEvent,
@@ -45,6 +48,7 @@ export class InventoryAuditDataSyncConsumer extends WorkerHost {
 			})
 			NestLogger.log('Inventory audit sync completed', InventoryAuditDataSyncConsumer.name)
 		} catch (error) {
+			queryRunner.rollbackTransaction()
 			this.logger.error(error)
 			this.broadcastProgress({
 				metadata: { status: 'failed' },
