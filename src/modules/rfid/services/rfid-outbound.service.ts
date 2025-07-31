@@ -2,7 +2,7 @@ import { EXCLUDED_EPC_REGEX } from '@/common/constants/regex'
 import { SuperJson } from '@/common/utils'
 import { DATA_SOURCE_DATA_LAKE } from '@/databases/constants'
 import { InjectQueue } from '@nestjs/bullmq'
-import { Inject, Injectable, InternalServerErrorException } from '@nestjs/common'
+import { BadRequestException, Inject, Injectable, InternalServerErrorException } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
 import { InjectDataSource } from '@nestjs/typeorm'
 import { Queue } from 'bullmq'
@@ -10,11 +10,13 @@ import { readFileSync } from 'fs'
 import { chunk, omit } from 'lodash'
 import { FilterQuery, PipelineStage } from 'mongoose'
 import { WINSTON_MODULE_NEST_PROVIDER } from 'nest-winston'
+import { I18nContext, I18nService } from 'nestjs-i18n'
 import { join, resolve } from 'path'
 import { Brackets, DataSource } from 'typeorm'
 import { Logger } from 'winston'
-import { POST_DATA_OUTBOUND_QUEUE } from '../constants'
+import { InventoryActions, POST_DATA_OUTBOUND_QUEUE } from '../constants'
 import { PostReaderDataDTO, UpsertStockOutDTO } from '../dto/rfid.dto'
+import { RFIDInventoryBackupEntity } from '../entities/rifd-inventory.entity'
 import { EpcDocument, EpcModel, EpcOutbound } from '../schemas/epc.schema'
 import { EpcInformation, RFIDSearchParams } from '../types'
 
@@ -25,7 +27,8 @@ export class RFIDOutboundService {
 		@InjectDataSource(DATA_SOURCE_DATA_LAKE) private readonly dataSourceDL: DataSource,
 		@InjectQueue(POST_DATA_OUTBOUND_QUEUE)
 		private readonly postDataQueue: Queue<PostReaderDataDTO>,
-		@InjectModel(EpcOutbound.name) private readonly epcOutboundModel: EpcModel
+		@InjectModel(EpcOutbound.name) private readonly epcOutboundModel: EpcModel,
+		private readonly i18nService: I18nService
 	) {}
 
 	public async postOutboundRFIDData(payload: PostReaderDataDTO) {
@@ -74,6 +77,13 @@ export class RFIDOutboundService {
 		const session = await this.epcOutboundModel.startSession()
 		const queryRunner = this.dataSourceDL.createQueryRunner()
 		const upsertStockoutQuery: string = readFileSync(resolve(join(__dirname, '../sql/upsert-outbound.sql')), 'utf-8')
+
+		const purchaseOrderStatus = await this.getOrderStatus(payload.po)
+		if (purchaseOrderStatus?.missing_qty === 0)
+			throw new BadRequestException(
+				this.i18nService.t('inoutbound.notification.over_outbound_limit', { lang: I18nContext.current()?.lang })
+			)
+
 		try {
 			await session.startTransaction()
 			await queryRunner.startTransaction()
@@ -155,18 +165,17 @@ export class RFIDOutboundService {
 			.disableEscaping()
 
 		const queryBuilder = await this.dataSourceDL
-
 			.createQueryBuilder()
 			.addCommonTableExpression(undeletedSubQuery.getQuery(), 'undeleted_epcs')
 			.addCommonTableExpression(scannedEpcQuery.getQuery(), 'scanned_epcs')
 			.select([
-				/* SQL */ `DISTINCT a.EPC_Code AS epc`,
-				/* SQL */ `b.mo_no AS mo_no`,
-				/* SQL */ `b.size_numcode AS size_numcode`,
-				/* SQL */ `b.shoestyle_codefactory AS factory_shoes_style`,
-				/* SQL */ `c.color_sn AS color_sn`,
-				/* SQL */ `CAST(COALESCE(d.scanned, 0) AS BIT) AS scanned`,
-				/* SQL */ `d.stored_at AS stored_at`
+				'DISTINCT a.EPC_Code AS epc',
+				'b.mo_no AS mo_no',
+				'b.size_numcode AS size_numcode',
+				'b.shoestyle_codefactory AS factory_shoes_style',
+				'c.color_sn AS color_sn',
+				'CAST(COALESCE(d.scanned, 0) AS BIT) AS scanned',
+				'd.stored_at AS stored_at'
 			])
 			.from('dv_InvRFIDrecorddet_backup_Daily', 'a')
 			.innerJoin('dv_rfidmatchmst_cust', 'b', /* SQL */ `a.EPC_Code = b.EPC_Code`)
@@ -254,5 +263,41 @@ export class RFIDOutboundService {
 			nextPage: args.page < totalPages ? args.page + 1 : null,
 			prevPage: args.page > 1 ? args.page - 1 : null
 		} as Pagination<EpcInformation>
+	}
+
+	public async getOrderStatus(
+		purchaseOrder: string
+	): Promise<{ po: string; po_qty: number; missing_qty: number } | undefined> {
+		const result = await this.dataSourceDL
+			.getRepository(RFIDInventoryBackupEntity)
+			.createQueryBuilder('a')
+			.select([
+				/* SQL */ `a.po`,
+				/* SQL */ `b.po_qty`,
+				/* SQL */ `b.po_qty - COUNT(DISTINCT a.EPC_Code) AS missing_qty`
+			])
+			.leftJoin(
+				(qb) => {
+					return qb
+						.subQuery()
+						.select([
+							/* SQL */ `IIF(ISNULL(b.or_custpoone, '') = '', b.or_custpo, b.or_custpoone) AS po`,
+							/* SQL */ `CAST(SUM(b.or_totalqty) - SUM(b.or_totalcqty) AS INT) AS po_qty`
+						])
+						.from('wuerp_vnrd.dbo.ta_ordermst', 'b')
+						.where(/* SQL */ `b.isactive = 'Y'`)
+						.groupBy(/* SQL */ `IIF(ISNULL(b.or_custpoone, '') = '', b.or_custpo, b.or_custpoone)`)
+				},
+				'b',
+				/* SQL */ `a.po = b.po`
+			)
+			.where(/* SQL */ `a.rfid_status = :inventoryAction`, { inventoryAction: InventoryActions.OUTBOUND })
+			.andWhere(/* SQL */ `RIGHT(a.stationNO, 3) = '103'`)
+			.andWhere(/* SQL */ `a.po = :purchaseOrder`, { purchaseOrder })
+			.groupBy('a.po')
+			.addGroupBy('b.po_qty')
+			.getRawMany<{ po: string; po_qty: number; missing_qty: number }>()
+
+		return result[0]
 	}
 }
