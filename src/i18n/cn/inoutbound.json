@@ -6,6 +6,7 @@
 		"production_inventory_summary": "{factory} - 成品库存总表"
 	},
 	"notification": {
-		"over_inbound_limit": "入库订单已全部接收, 无法添加更多. 请检查此制造订单的入库历史记录."
+		"over_inbound_limit": "此订单已入满, 无法继续入库! 请检查此订单的入库历史!",
+		"over_outbound_limit": "此订单已出满, 无法继续出货! 请检查此订单的出库历史!"
 	}
 }

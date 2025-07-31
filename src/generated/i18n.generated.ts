@@ -132,6 +132,7 @@ export type I18nTranslations = {
         };
         "notification": {
             "over_inbound_limit": string;
+            "over_outbound_limit": string;
         };
     };
     "packing": {
