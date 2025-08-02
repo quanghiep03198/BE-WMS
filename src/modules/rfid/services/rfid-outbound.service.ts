@@ -1,6 +1,6 @@
 import { EXCLUDED_EPC_REGEX } from '@/common/constants/regex'
 import { SuperJson } from '@/common/utils'
-import { DATA_SOURCE_DATA_LAKE } from '@/databases/constants'
+import { DATA_SOURCE_DATA_LAKE, DATA_SOURCE_ERP } from '@/databases/constants'
 import { InjectQueue } from '@nestjs/bullmq'
 import { BadRequestException, Inject, Injectable, InternalServerErrorException } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
@@ -25,6 +25,7 @@ export class RFIDOutboundService {
 	constructor(
 		@Inject(WINSTON_MODULE_NEST_PROVIDER) private readonly logger: Logger,
 		@InjectDataSource(DATA_SOURCE_DATA_LAKE) private readonly dataSourceDL: DataSource,
+		@InjectDataSource(DATA_SOURCE_ERP) private readonly dataSourceERP: DataSource,
 		@InjectQueue(POST_DATA_OUTBOUND_QUEUE)
 		private readonly postDataQueue: Queue<PostReaderDataDTO>,
 		@InjectModel(EpcOutbound.name) private readonly epcOutboundModel: EpcModel,
@@ -79,6 +80,7 @@ export class RFIDOutboundService {
 		const upsertStockoutQuery: string = readFileSync(resolve(join(__dirname, '../sql/upsert-outbound.sql')), 'utf-8')
 
 		const purchaseOrderStatus = await this.getOrderStatus(payload.po)
+
 		if (purchaseOrderStatus?.missing_qty === 0)
 			throw new BadRequestException(
 				this.i18nService.t('inoutbound.notification.over_outbound_limit', { lang: I18nContext.current()?.lang })
@@ -268,34 +270,37 @@ export class RFIDOutboundService {
 	public async getOrderStatus(
 		purchaseOrder: string
 	): Promise<{ po: string; po_qty: number; missing_qty: number } | undefined> {
-		const result = await this.dataSourceDL
+		const inboundQueryCTE = this.dataSourceDL
 			.getRepository(RFIDInventoryBackupEntity)
 			.createQueryBuilder('a')
-			.select([
-				/* SQL */ `a.po`,
-				/* SQL */ `b.po_qty`,
-				/* SQL */ `b.po_qty - COUNT(DISTINCT a.EPC_Code) AS missing_qty`
-			])
-			.leftJoin(
-				(qb) => {
-					return qb
-						.subQuery()
-						.select([
-							/* SQL */ `IIF(ISNULL(b.or_custpoone, '') = '', b.or_custpo, b.or_custpoone) AS po`,
-							/* SQL */ `CAST(SUM(b.or_totalqty) - SUM(b.or_totalcqty) AS INT) AS po_qty`
-						])
-						.from('wuerp_vnrd.dbo.ta_ordermst', 'b')
-						.where(/* SQL */ `b.isactive = 'Y'`)
-						.groupBy(/* SQL */ `IIF(ISNULL(b.or_custpoone, '') = '', b.or_custpo, b.or_custpoone)`)
-				},
-				'b',
-				/* SQL */ `a.po = b.po`
-			)
-			.where(/* SQL */ `a.rfid_status = :inventoryAction`, { inventoryAction: InventoryActions.OUTBOUND })
+			.select([/* SQL */ `a.po`, /* SQL */ `COUNT(DISTINCT a.EPC_Code) AS acc_outbound_qty`])
+			.where(/* SQL */ `a.rfid_status = '${InventoryActions.OUTBOUND}'`)
 			.andWhere(/* SQL */ `RIGHT(a.stationNO, 3) = '103'`)
-			.andWhere(/* SQL */ `a.po = :purchaseOrder`, { purchaseOrder })
+			.andWhere(/* SQL */ `a.po = '${purchaseOrder}'`)
 			.groupBy('a.po')
-			.addGroupBy('b.po_qty')
+
+		const purchaseOrderDetailQueryCTE = this.dataSourceERP
+			.createQueryBuilder()
+			.select([
+				/* SQL */ `IIF(ISNULL(b.or_custpoone, '') = '', b.or_custpo, b.or_custpoone) AS po`,
+				/* SQL */ `CAST(SUM(b.or_totalqty) - SUM(b.or_totalcqty) AS INT) AS po_qty`
+			])
+			.from('wuerp_vnrd.dbo.ta_ordermst', 'b')
+			.where(/* SQL */ `b.isactive = 'Y'`)
+			.andWhere(/* SQL */ `IIF(ISNULL(b.or_custpoone, '') = '', b.or_custpo, b.or_custpoone) = '${purchaseOrder}'`)
+			.groupBy(/* SQL */ `IIF(ISNULL(b.or_custpoone, '') = '', b.or_custpo, b.or_custpoone)`)
+
+		const result = await this.dataSourceDL
+			.createQueryBuilder()
+			.addCommonTableExpression(inboundQueryCTE.getQuery(), 'outbound_qty_cte')
+			.addCommonTableExpression(purchaseOrderDetailQueryCTE.getQuery(), 'po_qty_cte')
+			.select([
+				/* SQL */ `a.po AS po`,
+				/* SQL */ `b.po_qty AS po_qty`,
+				/* SQL */ `b.po_qty - a.acc_outbound_qty AS missing_qty`
+			])
+			.from((qb) => qb.subQuery().select().from('outbound_qty_cte', 'a'), 'a')
+			.leftJoin((qb) => qb.subQuery().select().from('po_qty_cte', 'b'), 'b', /* SQL */ `a.po = b.po`)
 			.getRawMany<{ po: string; po_qty: number; missing_qty: number }>()
 
 		return result[0]
