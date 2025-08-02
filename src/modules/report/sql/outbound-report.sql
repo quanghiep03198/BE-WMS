@@ -215,12 +215,8 @@ GROUP BY dd.po, dd.shoestyle_codefactory, dd.color_sn, pi.po_qty, paoq.po_acc_ou
 ORDER BY dd.po ASC
 OPTION (
 	OPTIMIZE FOR UNKNOWN,                        -- * Avoid "Paramenter Sniffing" issues
-   QUERYTRACEON 2371,									-- * Enable automatic statistics updates for large tables
-	QUERYTRACEON 4199,									-- * Enable all query optimizer fixes
-   QUERYTRACEON 8649,                           -- * Force parallel plan
 	USE HINT('ENABLE_PARALLEL_PLAN_PREFERENCE'), -- * Prioritize parallel plan
 	HASH GROUP,                                  -- * Use hash aggregation instead of stream aggregation 
-	FAST 100,                                    -- * Prioritize first 100 rows for faster response
 	MAXDOP 8,                                    -- * Limit parallelism to 8 cores         
 	RECOMPILE                                    -- * Recompile for each execution to ensure optimal plan
 );

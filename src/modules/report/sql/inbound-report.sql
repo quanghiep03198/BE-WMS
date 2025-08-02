@@ -85,19 +85,7 @@ GROUP BY
 	sg.storage_name, dg.dept_name
 ORDER BY ds.mo_no DESC
 OPTION (
-	OPTIMIZE FOR (@1 UNKNOWN),                        			-- * Avoid "Parameter Sniffing" issues
-	NO_PERFORMANCE_SPOOL,                             			-- * Disable performance spool operators                          			
-	USE HINT(
-		'ENABLE_PARALLEL_PLAN_PREFERENCE',       					-- * Prioritize parallel execution plans
-		'ASSUME_JOIN_PREDICATE_DEPENDS_ON_FILTERS', 				-- * Better cardinality estimation for joins
-		'ASSUME_MIN_SELECTIVITY_FOR_FILTER_ESTIMATES' 			-- * Conservative filter estimates
-	),     		
-	QUERYTRACEON 2371,                                			-- * Enable automatic statistics updates for large tables
-	QUERYTRACEON 4199,                                			-- * Enable all query optimizer fixes
-	QUERYTRACEON 4138,                                			-- * Enable batch mode for rowstore (SQL 2019+)
-	MAXRECURSION 0,                                   			-- * No recursion limit
-	FAST 100,                                         			-- * Optimize for first 100 rows
-	MAXDOP 0,                                         			-- * Use server's max degree of parallelism
-	ROBUST PLAN,                                      			-- * Generate robust plan for memory grant
-	RECOMPILE                                         			-- * Re-optimize for each execution
+	OPTIMIZE FOR UNKNOWN,	-- * Avoid "Parameter Sniffing" issues
+	MAXDOP 8,					-- * Use server's max degree of parallelism
+	RECOMPILE					-- * Re-optimize for each execution
 );
