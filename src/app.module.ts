@@ -13,6 +13,8 @@ import { PrometheusModule } from '@willsoto/nestjs-prometheus'
 import { WinstonModule } from 'nest-winston'
 import { AcceptLanguageResolver, HeaderResolver, I18nModule, QueryResolver } from 'nestjs-i18n'
 import * as winston from 'winston'
+import LokiTransport from 'winston-loki'
+
 import { AppController } from './app.controller'
 import { appConfigFactory, validateConfig } from './configs'
 import { RotateLogJob } from './jobs/rotate-log.job'
@@ -87,22 +89,22 @@ import { RedisModule } from './redis/redis.module'
 		WinstonModule.forRootAsync({
 			inject: [ConfigService],
 			useFactory: (configService: ConfigService) => {
-				return {
+				const options: winston.LoggerOptions & { transports: Required<winston.transport[]> } = {
 					transports: [
-						new winston.transports.File({
-							...configService.get('logger.default'),
-							...configService.get('logger.debug')
+						new LokiTransport({
+							host: configService.get<string>('GRAFANA_LOKI_URL'),
+							labels: { service_name: 'WMS-API' },
+							json: true
 						}),
-						new winston.transports.File({
-							...configService.get('logger.default'),
-							...configService.get('logger.error')
-						}),
-						new winston.transports.File({
-							...configService.get('logger.default'),
-							...configService.get('logger.info')
-						})
+						new winston.transports.File(configService.get('logger.error'))
 					]
 				}
+
+				if (configService.get<RuntimeEnvironment>('NODE_ENV') === 'development') {
+					options.transports.push(new winston.transports.File(configService.get('logger.debug')))
+				}
+
+				return options
 			}
 		}),
 		// * Feature modules

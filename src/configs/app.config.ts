@@ -7,8 +7,6 @@ import { type ConfigFactory } from '@nestjs/config'
 import { type MongooseModuleOptions } from '@nestjs/mongoose'
 import { type ThrottlerOptions } from '@nestjs/throttler'
 import { type TypeOrmModuleOptions } from '@nestjs/typeorm'
-import { format } from 'date-fns'
-import { capitalize } from 'lodash'
 import { AcceptLanguageResolver, HeaderResolver, I18nOptions } from 'nestjs-i18n'
 import path from 'path'
 import winston from 'winston'
@@ -133,7 +131,16 @@ export const appConfigFactory: ConfigFactory = () => ({
 	] satisfies ThrottlerOptions[],
 
 	['logger']: {
-		default: {
+		error: {
+			level: 'error',
+			dirname: 'logs',
+			filename: 'error.log',
+			format: winston.format.combine(
+				winston.format.prettyPrint(),
+				winston.format.timestamp(),
+				winston.format.errors({ stack: true }),
+				winston.format.json({ space: 3 })
+			),
 			eol: '\n\n',
 			tailable: true,
 			options: {
@@ -141,19 +148,6 @@ export const appConfigFactory: ConfigFactory = () => ({
 				flags: 'a', // Ghi tiếp vào file, không ghi đè
 				mode: 0o666
 			}
-		} satisfies Partial<winston.transports.FileTransportOptions>,
-		error: {
-			level: 'error',
-			dirname: 'logs',
-			filename: 'error.log',
-			format: winston.format.combine(
-				winston.format.errors({ stack: true }),
-				winston.format.printf((info) => {
-					const timestamp = format(new Date(), 'yyyy-MM-dd HH:mm:ss.SSS')
-					const errorStackTrace = info.stack || info.message
-					return `[${timestamp}] ${errorStackTrace}`
-				})
-			)
 		},
 		debug: {
 			level: 'debug',
@@ -161,27 +155,17 @@ export const appConfigFactory: ConfigFactory = () => ({
 			filename: 'debug.log',
 			format: winston.format.combine(
 				winston.format.prettyPrint(),
-				winston.format.printf((info) => {
-					const timestamp = format(new Date(), 'yyyy-MM-dd HH:mm:ss.SSS')
-					const logLevel = capitalize(info.level)
-					const message = info.message
-					return `[${timestamp}] ${logLevel}: ${message}`
-				})
-			)
-		},
-		info: {
-			level: 'info',
-			dirname: 'logs',
-			filename: 'info.log',
-			format: winston.format.combine(
-				winston.format.prettyPrint(),
-				winston.format.printf((info) => {
-					const timestamp = format(new Date(), 'yyyy-MM-dd HH:mm:ss.SSS')
-					const logLevel = capitalize(info.level)
-					const message = info.message
-					return `[${timestamp}] ${logLevel}: ${message}`
-				})
-			)
+				winston.format.timestamp(),
+				winston.format.errors({ stack: true }),
+				winston.format.json({ space: 3 })
+			),
+			eol: '\n\n',
+			tailable: true,
+			options: {
+				encoding: 'utf-8',
+				flags: 'a', // Ghi tiếp vào file, không ghi đè
+				mode: 0o666
+			}
 		}
-	} satisfies Record<'debug' | 'default' | 'error' | 'info', winston.transports.FileTransportOptions>
+	} satisfies Record<'debug' | 'error', winston.transports.FileTransportOptions>
 })
