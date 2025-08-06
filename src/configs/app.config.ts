@@ -96,16 +96,23 @@ export const appConfigFactory: ConfigFactory = () => ({
 			},
 			ignoreErrors: true
 		},
+		pool: {
+			max: 100,
+			min: 5,
+			acquireTimeoutMillis: 30000
+		},
 		options: {
 			trustServerCertificate: env('DB_TRUST_SERVER_CERTIFICATE', {
 				serialize: (value): boolean => value === 'true'
 			}),
 			encrypt: false,
 			enableArithAbort: true,
-			connectTimeout: env('DB_CONNECTION_TIMEOUT', { serialize: (value): number => parseInt(value) })
+			connectTimeout: env('DB_CONNECTION_TIMEOUT', { serialize: (value): number => parseInt(value) }),
+			abortTransactionOnError: true,
+			isolation: 'SNAPSHOT'
 		},
 		extra: {
-			connectionLimit: 10,
+			connectionLimit: 100,
 			connectTimeout: 30000,
 			acquireTimeout: 30000
 		}
