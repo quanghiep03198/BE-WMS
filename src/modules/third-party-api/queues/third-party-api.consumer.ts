@@ -3,6 +3,7 @@ import { Processor, WorkerHost } from '@nestjs/bullmq'
 // import { Logger } from '@nestjs/common'
 import { Inject } from '@nestjs/common'
 import { Job } from 'bullmq'
+import { format } from 'date-fns'
 import { groupBy } from 'lodash'
 import { WINSTON_MODULE_NEST_PROVIDER } from 'nest-winston'
 import { Logger } from 'winston'
@@ -150,6 +151,7 @@ export class ThirdPartyApiConsumer extends WorkerHost {
 
 	// * Step 3: Upsert data to database
 	private async upsertData(epcs: any[], orderInformation: any[], factoryCode: string) {
+		const currentTimestamp = format(new Date(), 'yyyy-MM-dd HH:mm:ss')
 		const payload: Partial<RFIDMatchCustomerEntity>[] = epcs.map((item) => ({
 			...orderInformation.find((data) => data.mo_no === item.commandNumber.slice(0, 9)),
 			epc: item.epc,
@@ -157,7 +159,8 @@ export class ThirdPartyApiConsumer extends WorkerHost {
 			factory_code_orders: factoryCode,
 			factory_name_orders: factoryCode,
 			factory_code_produce: factoryCode,
-			factory_name_produce: factoryCode
+			factory_name_produce: factoryCode,
+			remark: `Fetched from Decker API at ${currentTimestamp}`
 		}))
 		await this.rfidInboundService.bulkUpsertRFIDRecords(payload)
 	}
