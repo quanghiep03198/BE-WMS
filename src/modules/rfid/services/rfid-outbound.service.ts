@@ -172,32 +172,57 @@ export class RFIDOutboundService {
 			.addCommonTableExpression(scannedEpcQuery.getQuery(), 'scanned_epcs')
 			.select([
 				'DISTINCT a.EPC_Code AS epc',
-				'b.mo_no AS mo_no',
-				'b.size_numcode AS size_numcode',
-				'b.shoestyle_codefactory AS factory_shoes_style',
+				'a.mo_no AS mo_no',
+				'a.size_code AS size_numcode',
 				'c.color_sn AS color_sn',
-				'CAST(COALESCE(d.scanned, 0) AS BIT) AS scanned',
-				'd.stored_at AS stored_at'
+				'd.shoestyle_codefactory AS factory_shoes_style',
+				'CAST(COALESCE(e.scanned, 0) AS BIT) AS scanned',
+				'e.stored_at AS stored_at'
 			])
 			.from('dv_InvRFIDrecorddet_backup_Daily', 'a')
-			.innerJoin('dv_rfidmatchmst_cust', 'b', /* SQL */ `a.EPC_Code = b.EPC_Code`)
-			.innerJoin(
+			// .innerJoin('dv_rfidmatchmst_cust', 'b', /* SQL */ `a.EPC_Code = b.EPC_Code`)
+			.leftJoin(
 				(qb) => {
 					return qb
 						.subQuery()
-						.select('d.color_sn')
-						.addSelect('d.mat_code')
-						.from('wuerp_vnrd.dbo.ta_productmst', 'd')
-						.where(/* SQL */ `d.isactive = 'Y'`)
-						.andWhere(/* SQL */ `d.created >= CAST(DATEADD(YEAR, -2, GETDATE()) AS DATE)`)
+						.select('mo_no')
+						.addSelect('mat_code')
+						.from('wuerp_vnrd.dbo.ta_manufacturmst', 'b')
+						.where(/* SQL */ `isactive = 'Y'`)
+						.andWhere(/* SQL */ `created >= CAST(DATEADD(YEAR, -2, GETDATE()) AS DATE)`)
+				},
+				'b',
+				/* SQL */ `a.mo_no = b.mo_no`
+			)
+			.leftJoin(
+				(qb) => {
+					return qb
+						.subQuery()
+						.select('color_sn')
+						.addSelect('mat_code')
+						.addSelect('shoestyle_systemcodefty')
+						.from('wuerp_vnrd.dbo.ta_productmst', 'c')
+						.where(/* SQL */ `c.isactive = 'Y'`)
 				},
 				'c',
 				/* SQL */ `c.mat_code = b.mat_code`
 			)
 			.leftJoin(
-				(qb) => qb.select(['EPC_Code', 'stored_at', 'scanned']).from('scanned_epcs', 'd'),
+				(qb) => {
+					return qb
+						.subQuery()
+						.select('shoestyle_systemcodefty')
+						.addSelect('shoestyle_codefactory')
+						.from('wuerp_vnrd.dbo.ta_shoefactorymst', 'd')
+						.where(/* SQL */ `isactive = 'Y'`)
+				},
 				'd',
-				/* SQL */ `a.EPC_Code = d.EPC_Code`
+				/* SQL */ `d.shoestyle_systemcodefty = c.shoestyle_systemcodefty`
+			)
+			.leftJoin(
+				(qb) => qb.select(['EPC_Code', 'stored_at', 'scanned']).from('scanned_epcs', 'e'),
+				'e',
+				/* SQL */ `a.EPC_Code = e.EPC_Code`
 			)
 			.where(/* SQL */ `a.rfid_status = 'A'`)
 			.andWhere(/* SQL */ `RIGHT(a.station_no, 3) = '101'`)
@@ -212,15 +237,15 @@ export class RFIDOutboundService {
 					}
 					// * Filter by manufacturing order number
 					if (args['mo_no.eq']) {
-						qb.andWhere(/* SQL */ `b.mo_no = '${args['mo_no.eq']}'`)
+						qb.andWhere(/* SQL */ `a.mo_no = '${args['mo_no.eq']}'`)
 					}
 					// * Filter by size number code
 					if (args['size_numcode.eq']) {
-						qb.andWhere(/* SQL */ `b.size_numcode = '${args['size_numcode.eq']}'`)
+						qb.andWhere(/* SQL */ `a.size_numcode = '${args['size_numcode.eq']}'`)
 					}
 					// * Filter by shoes style code (factory)
 					if (args['shoes_style.eq']) {
-						qb.andWhere(/* SQL */ `b.factory_shoes_style = '${args['shoes_style.eq']}'`)
+						qb.andWhere(/* SQL */ `d.shoestyle_codefactory = '${args['shoes_style.eq']}'`)
 					}
 					// * Filter by color serial number
 					if (args['color_sn.eq']) {
@@ -228,7 +253,7 @@ export class RFIDOutboundService {
 					}
 					// * Filter by scanned status (boolean)
 					if (typeof args['scanned.eq'] === 'boolean') {
-						qb.andWhere(/* SQL */ `CAST(COALESCE(d.scanned, 0) AS BIT) = ${args['scanned.eq'] ? 1 : 0}`)
+						qb.andWhere(/* SQL */ `CAST(COALESCE(e.scanned, 0) AS BIT) = ${args['scanned.eq'] ? 1 : 0}`)
 					}
 					return qb
 				})
@@ -241,10 +266,10 @@ export class RFIDOutboundService {
 					AND RIGHT(stationNO, 3) = '103'
 				)`
 			)
-			.orderBy(/* SQL */ `CAST(COALESCE(d.scanned, 0) AS BIT)`, 'DESC')
-			.addOrderBy('b.mo_no', 'DESC')
-			.addOrderBy('b.size_numcode', 'ASC')
-			.addOrderBy('b.factory_shoes_style', 'ASC')
+			.orderBy(/* SQL */ `CAST(COALESCE(e.scanned, 0) AS BIT)`, 'DESC')
+			.addOrderBy('a.mo_no', 'DESC')
+			.addOrderBy('a.size_code', 'ASC')
+			.addOrderBy('d.shoestyle_codefactory', 'ASC')
 			.addOrderBy('c.color_sn', 'ASC')
 			.addOrderBy('a.EPC_Code', 'ASC')
 			.offset((args.page - 1) * args.limit)
