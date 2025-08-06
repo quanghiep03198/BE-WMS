@@ -34,7 +34,7 @@ export class OrderController {
 	}
 
 	@Api({
-		endpoint: '/detail/:commandNumber',
+		endpoint: '/command-number/:commandNumber',
 		method: HttpMethod.GET
 	})
 	@AuthGuard()
