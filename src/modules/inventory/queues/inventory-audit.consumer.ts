@@ -3,11 +3,9 @@ import { TenancyService } from '@/modules/tenancy/tenancy.service'
 import { Processor, WorkerHost } from '@nestjs/bullmq'
 import { Inject, Logger as NestLogger, Scope } from '@nestjs/common'
 import { Job } from 'bullmq'
-import { format } from 'date-fns'
 import { WINSTON_MODULE_NEST_PROVIDER } from 'nest-winston'
 import { Logger } from 'winston'
-import { InventoryType, SYNC_INVENTORY_AUDIT_QUEUE } from '../constants'
-import { InventoryAuditEntity } from '../entities/inventory-report.entity'
+import { SYNC_INVENTORY_AUDIT_QUEUE } from '../constants'
 
 @Processor({ name: SYNC_INVENTORY_AUDIT_QUEUE, scope: Scope.REQUEST })
 export class InventoryAuditDataSyncConsumer extends WorkerHost {
@@ -34,10 +32,10 @@ export class InventoryAuditDataSyncConsumer extends WorkerHost {
 				ok: true,
 				error: null
 			})
-			await queryRunner.manager.getRepository(InventoryAuditEntity).delete({
-				inv_type: InventoryType.FINISHED_GOOD,
-				inv_year_month: format(new Date(), 'yyyyMM')
-			})
+			// await queryRunner.manager.getRepository(InventoryAuditEntity).delete({
+			// 	inv_type: InventoryType.FINISHED_GOOD,
+			// 	inv_year_month: format(new Date(), 'yyyyMM')
+			// })
 			await queryRunner.query(/* SQL */ `EXEC DV_DATA_LAKE.dbo.sp_import_invprod_VER2`)
 			await queryRunner.commitTransaction()
 			this.broadcastProgress({
@@ -48,7 +46,7 @@ export class InventoryAuditDataSyncConsumer extends WorkerHost {
 			})
 			NestLogger.log('Inventory audit sync completed', InventoryAuditDataSyncConsumer.name)
 		} catch (error) {
-			queryRunner.rollbackTransaction()
+			if (queryRunner.isTransactionActive) queryRunner.rollbackTransaction()
 			this.logger.error(error)
 			this.broadcastProgress({
 				metadata: { status: 'failed' },
@@ -56,6 +54,8 @@ export class InventoryAuditDataSyncConsumer extends WorkerHost {
 				ok: false,
 				error: error as Error
 			})
+		} finally {
+			queryRunner.release()
 		}
 	}
 
