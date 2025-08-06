@@ -22,7 +22,7 @@ import { WINSTON_MODULE_NEST_PROVIDER } from 'nest-winston'
 import { I18nContext, I18nService } from 'nestjs-i18n'
 import { join, resolve } from 'path'
 import { DataSource, FindOptionsWhere, In } from 'typeorm'
-import { InventoryActions, POST_DATA_INBOUND_QUEUE } from '../constants'
+import { FALLBACK_VALUE, InventoryActions, POST_DATA_INBOUND_QUEUE } from '../constants'
 import {
 	ExchangeOrderDTO,
 	PostReaderDataDTO,
@@ -126,6 +126,7 @@ export class RFIDInboundService {
 				this.i18nService.t('rfid.errors.no_matching_epc', { lang: I18nContext.current().lang })
 			)
 		}
+		const currentTimestamp = format(new Date(), 'yyyy-MM-dd HH:mm:ss')
 		try {
 			await session.startTransaction()
 			await queryRunner.startTransaction()
@@ -137,7 +138,10 @@ export class RFIDInboundService {
 				const criteria: FindOptionsWhere<RFIDMatchCustomerEntity> = {
 					epc: In(epcBatch)
 				}
-				await queryRunner.manager.update(RFIDMatchCustomerEntity, criteria, { mo_no: payload.mo_no_actual })
+				await queryRunner.manager.update(RFIDMatchCustomerEntity, criteria, {
+					mo_no: payload.mo_no_actual,
+					remark: `[${currentTimestamp}] Info: Exchanged from M.O "${payload.mo_no}"`
+				})
 			}
 			await this.epcInboundModel.updateMany(
 				{ epc: { $in: epcToExchange.map((item) => item.epc) }, mo_no: { $ne: payload.mo_no_actual } },
@@ -163,6 +167,8 @@ export class RFIDInboundService {
 			.limit(update.quantity)
 			.lean(true)
 
+		const currentTimestamp = format(new Date(), 'yyyy-MM-dd HH:mm:ss')
+
 		const payload = epcToExchange.map((item) => ({
 			...update,
 			epc: item.epc,
@@ -174,7 +180,10 @@ export class RFIDInboundService {
 			factory_name_orders: factoryCode,
 			factory_code_produce: factoryCode,
 			factory_name_produce: factoryCode,
-			remark: 'Upserted from WMS'
+			remark:
+				update.mo_no === FALLBACK_VALUE
+					? `[${currentTimestamp}] Info: Combined from WMS`
+					: `[${currentTimestamp}] Info: Exchanged from M.O "${update.mo_no}" and Size "${update.size_numcode}"`
 		}))
 		return await this.bulkUpsertRFIDRecords(payload)
 	}
