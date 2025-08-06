@@ -3,59 +3,108 @@ import { Logger } from '@nestjs/common'
 import { z } from 'zod'
 
 export const configValidator = z.object({
+	// * Application
 	NODE_ENV: z.nativeEnum(Environment),
 	HOST: z.string().trim().ip({ version: 'v4' }),
 	PORT: z
 		.string()
 		.trim()
-		.min(1)
+		.nonempty()
 		.refine((value) => !isNaN(+value))
 		.transform((value) => +value),
 	FALLBACK_LANGUAGE: z.nativeEnum(Languages),
+	POSTMAN_DOCUMENTATION_URL: z.string().trim().nonempty().url().optional(),
+
+	// * Loki
+	GRAFANA_LOKI_URL: z.string().trim().nonempty().url(),
+
+	// * Throttler
 	THROTTLER_TTL: z
 		.string()
 		.trim()
-		.min(1)
+		.nonempty()
 		.refine((value) => !isNaN(+value))
 		.transform((value) => +value),
 	THROTTLER_LIMIT: z
 		.string()
 		.trim()
-		.min(1)
+		.nonempty()
 		.refine((value) => !isNaN(+value))
 		.transform((value) => Number(value)),
-	DB_TYPE: z.string().trim().min(1),
-	DB_HOST: z.string().trim().min(1),
-	DB_USERNAME: z.string().trim().min(1),
-	DB_PASSWORD: z.string().trim().min(1),
+
+	// * MongoDB
+	MONGO_URI: z.string().trim().nonempty(),
+	MONGO_DB_NAME: z.string().trim().nonempty(),
+
+	// * Redis
+	REDIS_HOST: z.string().trim().nonempty().ip({ version: 'v4' }),
+	REDIS_PORT: z
+		.string()
+		.trim()
+		.nonempty()
+		.refine((value) => !isNaN(+value))
+		.transform((value) => +value),
+	REDIS_PASSWORD: z
+		.string()
+		.trim()
+		.nonempty()
+		.refine((value) => value === '6379' || !isNaN(+value)),
+
+	// * SQL Server
+	DB_TYPE: z
+		.string()
+		.trim()
+		.nonempty()
+		.refine((value) => value === 'mssql'),
+	DB_HOST: z.string().trim().nonempty(),
+	DB_USERNAME: z.string().trim().nonempty(),
+	DB_PASSWORD: z.string().trim().nonempty(),
 	DB_PORT: z
 		.string()
 		.trim()
-		.min(1)
+		.nonempty()
 		.refine((value) => !isNaN(+value))
 		.transform((value) => Number(value)),
 	DB_CONNECTION_TIMEOUT: z
 		.string()
 		.trim()
-		.min(1)
+		.nonempty()
 		.refine((value) => !isNaN(+value))
 		.transform((value) => Number(value)),
 	DB_TRUST_SERVER_CERTIFICATE: z.string().transform((value) => Boolean(value) && JSON.parse(value)),
-	REDIS_HOST: z.string().trim().min(1),
-	REDIS_PORT: z
-		.string()
-		.trim()
-		.min(1)
-		.refine((value) => value === '6379' || !isNaN(+value))
-		.transform((value) => Number(value)),
+
+	// * Bcrypt
 	SALT_ROUND: z
 		.string()
 		.trim()
-		.min(1)
+		.nonempty()
 		.refine((value) => !isNaN(+value))
 		.transform((value) => Number(value)),
-	JWT_SECRET: z.string().trim().min(1),
-	JWT_EXPIRES: z.string().trim().min(1).or(z.number().positive())
+
+	// * JWT
+	JWT_SECRET: z.string().trim().nonempty(),
+	JWT_EXPIRES: z.string().trim().nonempty().or(z.number().positive()),
+
+	// * Decker Third-party APIs
+	THIRD_PARTY_OAUTH_API_URL: z.string().trim().nonempty().url(),
+	THIRD_PARTY_API_URL: z.string().trim().nonempty().url(),
+	GL1_CLIENT_ID: z.string().trim().nonempty(),
+	GL1_CLIENT_SECRET: z.string().trim().nonempty(),
+	GL3_CLIENT_ID: z.string().trim().nonempty(),
+	GL3_CLIENT_SECRET: z.string().trim().nonempty(),
+	GL4_CLIENT_ID: z.string().trim().nonempty(),
+	GL4_CLIENT_SECRET: z.string().trim().nonempty(),
+
+	// * Tenancy IPs
+	TENANT_DEV: z.string().trim().nonempty().ip({ version: 'v4' }),
+	TENANT_MAIN: z.string().trim().nonempty().ip({ version: 'v4' }),
+	TENANT_VN_LIANYING: z.string().trim().nonempty().ip({ version: 'v4' }),
+	TENANT_VN_LIANSHUN: z.string().trim().nonempty().ip({ version: 'v4' }),
+	TENANT_KHRU: z.string().trim().nonempty().ip({ version: 'v4' }),
+
+	// * Sentry
+	SENTRY_DSN: z.string().trim().nonempty().url(),
+	SENTRY_AUTH_TOKEN: z.string().trim().nonempty()
 })
 
 export const validateConfig = async (config: Record<string, any>) => {
