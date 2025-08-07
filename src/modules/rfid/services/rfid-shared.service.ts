@@ -13,7 +13,7 @@ import { EXCLUDED_EPC_PREFIX, EXCLUDED_ORDERS, FALLBACK_VALUE } from '../constan
 import { FindEpcBySizeDTO, PostReaderDataDTO, RestoreArchivedEpcsDTO } from '../dto/rfid.dto'
 import { RFIDReaderEntity } from '../entities/rfid-reader.entity'
 import { EpcDocument, EpcInbound, EpcModel, EpcOutbound, EpcSchema } from '../schemas/epc.schema'
-import { RFIDSearchParams, StoredRFIDReaderItem } from '../types'
+import { RFIDSearchParams, ScannedOrderDetail, StoredRFIDReaderItem } from '../types'
 
 @Injectable()
 export class RFIDSharedService {
@@ -88,7 +88,7 @@ export class RFIDSharedService {
 	}
 
 	public async getOrderDetail($model: EpcModel, factory: string) {
-		return await $model.aggregate(
+		return await $model.aggregate<ScannedOrderDetail>(
 			[
 				// * Stage 1: Match documents that are not deleted
 				{

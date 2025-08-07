@@ -9,7 +9,6 @@ import { type ThrottlerOptions } from '@nestjs/throttler'
 import { type TypeOrmModuleOptions } from '@nestjs/typeorm'
 import { AcceptLanguageResolver, HeaderResolver, I18nOptions } from 'nestjs-i18n'
 import path from 'path'
-import winston from 'winston'
 
 export const appConfigFactory: ConfigFactory = () => ({
 	// * Redis BullMQ configuration
@@ -135,44 +134,5 @@ export const appConfigFactory: ConfigFactory = () => ({
 			ttl: 60000,
 			limit: 100
 		}
-	] satisfies ThrottlerOptions[],
-
-	['logger']: {
-		error: {
-			level: 'error',
-			dirname: 'logs',
-			filename: 'error.log',
-			format: winston.format.combine(
-				winston.format.prettyPrint(),
-				winston.format.timestamp(),
-				winston.format.errors({ stack: true }),
-				winston.format.json({ space: 3 })
-			),
-			eol: '\n\n',
-			tailable: true,
-			options: {
-				encoding: 'utf-8',
-				flags: 'a', // Ghi tiếp vào file, không ghi đè
-				mode: 0o666
-			}
-		},
-		debug: {
-			level: 'debug',
-			dirname: 'logs',
-			filename: 'debug.log',
-			format: winston.format.combine(
-				winston.format.prettyPrint(),
-				winston.format.timestamp(),
-				winston.format.errors({ stack: true }),
-				winston.format.json({ space: 3 })
-			),
-			eol: '\n\n',
-			tailable: true,
-			options: {
-				encoding: 'utf-8',
-				flags: 'a', // Ghi tiếp vào file, không ghi đè
-				mode: 0o666
-			}
-		}
-	} satisfies Record<'debug' | 'error', winston.transports.FileTransportOptions>
+	] satisfies ThrottlerOptions[]
 })

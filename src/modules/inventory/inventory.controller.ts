@@ -17,7 +17,7 @@ import {
 } from '@nestjs/common'
 import { Queue } from 'bullmq'
 import { format } from 'date-fns'
-import { type Response } from 'express'
+import { FastifyReply } from 'fastify'
 import { uniqueId } from 'lodash'
 import { SYNC_INVENTORY_AUDIT_QUEUE } from './constants'
 import {
@@ -56,10 +56,10 @@ export class InventoryController {
 	async exportMonthlyInventoryReport(
 		@Query('month.eq', new DefaultValuePipe(format(new Date(), 'yyyy-MM'))) month: string,
 		@Query('mo_no.in', new DefaultValuePipe([]), ParseArrayPipe) commandNumbers: string[],
-		@Res() res: Response
+		@Res() reply: FastifyReply
 	) {
 		const buffer = await this.inventoryReportService.exportExcelInventoryAudit(month, commandNumbers)
-		return res.send(buffer)
+		return reply.send(buffer)
 	}
 
 	@Api({ endpoint: 'audit/update', method: HttpMethod.PATCH, statusCode: HttpStatus.CREATED })
@@ -94,9 +94,12 @@ export class InventoryController {
 	@Get('summary/export')
 	@UseFilters(AllExceptionsFilter)
 	@AuthGuard()
-	async exportInventorySummary(@Headers(CommonRequestHeader.FACTORY_CODE) factory: string, @Res() res: Response) {
+	async exportInventorySummary(
+		@Headers(CommonRequestHeader.FACTORY_CODE) factory: string,
+		@Res() reply: FastifyReply
+	) {
 		const buffer = await this.productionInventoryService.exportProductionInventorySummary(factory)
-		return res.send(buffer)
+		return reply.send(buffer)
 	}
 
 	@Api({ endpoint: 'production-features', method: HttpMethod.GET, statusCode: HttpStatus.OK })

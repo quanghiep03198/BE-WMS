@@ -8,19 +8,20 @@ import {
 	Controller,
 	DefaultValuePipe,
 	Get,
-	Headers,
 	HttpStatus,
 	Param,
 	ParseBoolPipe,
 	ParseIntPipe,
 	Query,
+	Headers as RequestHeaders,
 	Res,
 	UseFilters
 } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
 import { Queue } from 'bullmq'
-import { Response } from 'express'
+import { FastifyReply } from 'fastify'
 import { isEmpty, isNil, pickBy } from 'lodash'
+import { PaginateResult } from 'mongoose'
 import { POST_DATA_OUTBOUND_QUEUE } from '../constants'
 import {
 	deleteEpcValidator,
@@ -32,10 +33,10 @@ import {
 	UpsertStockOutDTO,
 	upsertStockOutValidator
 } from '../dto/rfid.dto'
-import { EpcModel, EpcOutbound } from '../schemas/epc.schema'
+import { EpcDocument, EpcModel, EpcOutbound } from '../schemas/epc.schema'
 import { RFIDOutboundService } from '../services/rfid-outbound.service'
 import { RFIDSharedService } from '../services/rfid-shared.service'
-import { RFIDSearchParams } from '../types'
+import { RFIDSearchParams, ScannedOrderDetail } from '../types'
 
 @Controller('rfid/outbound')
 export class RFIDOutboundController {
@@ -49,25 +50,30 @@ export class RFIDOutboundController {
 	@Get('sse')
 	@AuthGuard()
 	@UseFilters(AllExceptionsFilter)
-	async streamOutboundRFIDData(@Headers(CommonRequestHeader.FACTORY_CODE) factoryCode: string, @Res() res: Response) {
-		res.setHeader('Content-Type', 'text/event-stream')
-		res.setHeader('Cache-Control', 'no-cache')
+	async streamOutboundRFIDData(
+		@RequestHeaders(CommonRequestHeader.FACTORY_CODE) factoryCode: string,
+		@Res()
+		reply: FastifyReply & {
+			sse: (data: {
+				epcs: PaginateResult<EpcDocument>
+				orders: Array<ScannedOrderDetail>
+				has_invalid: boolean
+			}) => void
+		}
+	) {
 		const handleChange = async () => {
 			const data = await this.rfidSharedService.fetchLatestData(this.epcOutboundModel, factoryCode, {
 				page: 1,
 				limit: 50
 			})
-			if (data) {
-				res.write(`data: ${JSON.stringify(data)}\n\n`)
-				res.flush()
-			}
+			if (data) reply.sse(data)
 		}
 		await handleChange()
 		const changeStream = this.rfidSharedService.captureDataChange(this.epcOutboundModel, handleChange)
-		res.on('close', async () => {
+		reply.raw.on('close', async () => {
 			changeStream.removeListener('change', handleChange)
 			await changeStream.close()
-			res.end()
+			reply.raw.end()
 		})
 	}
 
@@ -77,7 +83,7 @@ export class RFIDOutboundController {
 	})
 	@AuthGuard()
 	async fetchNextOutboundEpc(
-		@Headers(CommonRequestHeader.FACTORY_CODE) factory: string,
+		@RequestHeaders(CommonRequestHeader.FACTORY_CODE) factory: string,
 		@Query('_page', new DefaultValuePipe(1), ParseIntPipe) page: number
 	) {
 		return await this.rfidSharedService.getIncomingEpc(this.epcOutboundModel, factory, { page: page, limit: 50 })
@@ -109,7 +115,7 @@ export class RFIDOutboundController {
 		message: 'common.created'
 	})
 	async upsertStockOut(
-		@Headers(CommonRequestHeader.FACTORY_CODE) factoryCode: string,
+		@RequestHeaders(CommonRequestHeader.FACTORY_CODE) factoryCode: string,
 		@Body(new ZodValidationPipe(upsertStockOutValidator)) payload: UpsertStockOutDTO
 	) {
 		return await this.rfidOutboundService.upsertStockOut(factoryCode, payload)
@@ -156,7 +162,7 @@ export class RFIDOutboundController {
 	})
 	@AuthGuard()
 	async getArchivedEpcs(
-		@Headers(CommonRequestHeader.FACTORY_CODE) factoryCode: string,
+		@RequestHeaders(CommonRequestHeader.FACTORY_CODE) factoryCode: string,
 		@Query('_page', new DefaultValuePipe(1), ParseIntPipe) page: number,
 		@Query('_limit', new DefaultValuePipe(10), ParseIntPipe) limit: number,
 		@Query('q', new DefaultValuePipe('')) search: string,

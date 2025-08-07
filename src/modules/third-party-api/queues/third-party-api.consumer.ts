@@ -1,12 +1,10 @@
 import { EventGateway } from '@/events/event.gateway'
 import { Processor, WorkerHost } from '@nestjs/bullmq'
 // import { Logger } from '@nestjs/common'
-import { Inject } from '@nestjs/common'
 import { Job } from 'bullmq'
 import { format } from 'date-fns'
 import { groupBy } from 'lodash'
-import { WINSTON_MODULE_NEST_PROVIDER } from 'nest-winston'
-import { Logger } from 'winston'
+import { PinoLogger } from 'nestjs-pino'
 import { OrderService } from '../../order/order.service'
 import { RFIDMatchCustomerEntity } from '../../rfid/entities/rfid-customer-match.entity'
 import { RFIDInboundService } from '../../rfid/services/rfid-inbound.service'
@@ -20,7 +18,7 @@ export class ThirdPartyApiConsumer extends WorkerHost {
 	private processState: SyncProcessState[]
 
 	constructor(
-		@Inject(WINSTON_MODULE_NEST_PROVIDER) private readonly logger: Logger,
+		private readonly logger: PinoLogger,
 		private readonly thirdPartyApiService: ThirdPartyApiService,
 		private readonly thirdPartyApiOAuth2Service: ThirdPartyApiOAuth2Service,
 		private readonly rfidInboundService: RFIDInboundService,

@@ -1,5 +1,5 @@
 import { CallHandler, ExecutionContext, Injectable, Logger, NestInterceptor, Scope } from '@nestjs/common'
-import { Request, Response } from 'express'
+import { FastifyReply, FastifyRequest } from 'fastify'
 import { Observable } from 'rxjs'
 import { DataSource } from 'typeorm'
 
@@ -9,8 +9,8 @@ export class TenancyInterceptor implements NestInterceptor {
 
 	intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
 		const ctx = context.switchToHttp()
-		const request: Request = ctx.getRequest()
-		const response: Response = ctx.getResponse()
+		const request: FastifyRequest['raw'] = ctx.getRequest()
+		const response: FastifyReply['raw'] = ctx.getResponse()
 
 		const dataSource: DataSource = request['dataSource'] // Assuming dataSource is attached to request
 

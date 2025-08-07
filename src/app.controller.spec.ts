@@ -20,6 +20,6 @@ describe('AppController', () => {
 
 		appController.index(res)
 
-		expect(res.redirect).toHaveBeenCalledWith('https://documenter.getpostman.com/view/24228770/2sAYBYfVys')
+		expect(reply.redirect).toHaveBeenCalledWith('https://documenter.getpostman.com/view/24228770/2sAYBYfVys')
 	})
 })

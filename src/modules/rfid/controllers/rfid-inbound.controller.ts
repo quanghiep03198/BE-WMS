@@ -10,8 +10,6 @@ import {
 	Get,
 	Headers,
 	HttpStatus,
-	Inject,
-	Logger,
 	Param,
 	ParseBoolPipe,
 	ParseIntPipe,
@@ -21,9 +19,9 @@ import {
 } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
 import { Queue } from 'bullmq'
-import { Response } from 'express'
+import { FastifyReply } from 'fastify'
 import { isEmpty, isNil, pickBy } from 'lodash'
-import { WINSTON_MODULE_NEST_PROVIDER } from 'nest-winston'
+import { PaginateResult } from 'mongoose'
 import { POST_DATA_INBOUND_QUEUE } from '../constants'
 import {
 	deleteEpcValidator,
@@ -41,15 +39,14 @@ import {
 	upsertEpcInformationSchema,
 	UpsertStockInDTO
 } from '../dto/rfid.dto'
-import { EpcInbound, EpcModel } from '../schemas/epc.schema'
+import { EpcDocument, EpcInbound, EpcModel } from '../schemas/epc.schema'
 import { RFIDInboundService } from '../services/rfid-inbound.service'
 import { RFIDSharedService } from '../services/rfid-shared.service'
-import { RFIDSearchParams } from '../types'
+import { RFIDSearchParams, ScannedOrderDetail } from '../types'
 
 @Controller('rfid/inbound')
 export class RFIDInboundController {
 	constructor(
-		@Inject(WINSTON_MODULE_NEST_PROVIDER) private readonly logger: Logger,
 		@InjectModel(EpcInbound.name) private readonly epcInboundModel: EpcModel,
 		@InjectQueue(POST_DATA_INBOUND_QUEUE) private readonly postInboundDataQueue: Queue<PostReaderDataDTO>,
 		private readonly rfidSharedService: RFIDSharedService,
@@ -59,28 +56,33 @@ export class RFIDInboundController {
 	@Get('sse')
 	@AuthGuard()
 	@UseFilters(AllExceptionsFilter)
-	async streamInboundRFIDData(@Headers(CommonRequestHeader.FACTORY_CODE) factory: string, @Res() res: Response) {
-		res.setHeader('Content-Type', 'text/event-stream')
-		res.setHeader('Cache-Control', 'no-cache')
+	async streamInboundRFIDData(
+		@Headers(CommonRequestHeader.FACTORY_CODE) factory: string,
+		@Res()
+		reply: FastifyReply & {
+			sse: (data: {
+				epcs: PaginateResult<EpcDocument>
+				orders: Array<ScannedOrderDetail>
+				has_invalid: boolean
+			}) => void
+		}
+	) {
 		const handleChange = async () => {
 			const data = await this.rfidSharedService.fetchLatestData(this.epcInboundModel, factory, {
 				page: 1,
 				limit: 50
 			})
-			if (data) {
-				res.write(`data: ${JSON.stringify(data)}\n\n`)
-				res.flush()
-			}
+			if (data) reply.sse(data)
 		}
 		await handleChange()
 		const changeStream = await this.rfidSharedService.captureDataChange(this.epcInboundModel, handleChange)
 
-		res.on('close', async () => {
-			this.logger.log('Stop receiving data from Android RFID device')
+		reply.raw.on('close', async () => {
+			console.log('Stop receiving data from Android RFID device')
 			await this.rfidSharedService.cleanupQueue(this.postInboundDataQueue)
 			changeStream.removeListener('change', handleChange)
 			changeStream.close()
-			res.end()
+			reply.raw.end()
 		})
 	}
 

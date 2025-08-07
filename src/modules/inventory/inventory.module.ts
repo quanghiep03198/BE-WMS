@@ -1,7 +1,7 @@
 import { DATA_SOURCE_DATA_LAKE } from '@/databases/constants'
 import { EventGateway } from '@/events/event.gateway'
 import { BullModule } from '@nestjs/bullmq'
-import { MiddlewareConsumer, Module, NestModule, RequestMethod } from '@nestjs/common'
+import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common'
 import { TypeOrmModule } from '@nestjs/typeorm'
 import { TenacyMiddleware } from '../tenancy/tenancy.middleware'
 import { TenancyModule } from '../tenancy/tenancy.module'
@@ -40,6 +40,6 @@ import { ProductionInventoryService } from './services/product-inventory.service
 })
 export class InventoryModule implements NestModule {
 	configure(consumer: MiddlewareConsumer) {
-		consumer.apply(TenacyMiddleware).forRoutes({ path: '/inventory/*', method: RequestMethod.ALL })
+		consumer.apply(TenacyMiddleware).forRoutes(InventoryController)
 	}
 }

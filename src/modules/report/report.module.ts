@@ -1,4 +1,4 @@
-import { MiddlewareConsumer, Module, RequestMethod } from '@nestjs/common'
+import { MiddlewareConsumer, Module } from '@nestjs/common'
 import { TenacyMiddleware } from '../tenancy/tenancy.middleware'
 import { TenancyModule } from './../tenancy/tenancy.module'
 import { ReportController } from './report.controller'
@@ -13,6 +13,6 @@ import { PackingWeightReportService } from './services/packing-weight-report.ser
 })
 export class ReportModule {
 	configure(consumer: MiddlewareConsumer) {
-		consumer.apply(TenacyMiddleware).forRoutes({ path: '/report*', method: RequestMethod.ALL })
+		consumer.apply(TenacyMiddleware).forRoutes(ReportController)
 	}
 }
