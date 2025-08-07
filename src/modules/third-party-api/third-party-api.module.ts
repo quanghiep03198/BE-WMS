@@ -2,14 +2,13 @@ import { DATA_SOURCE_DATA_LAKE } from '@/databases/constants'
 import { EventGateway } from '@/events/event.gateway'
 import { HttpModule, HttpService } from '@nestjs/axios'
 import { BullModule } from '@nestjs/bullmq'
-import { forwardRef, Inject, MiddlewareConsumer, Module, NestModule, OnModuleInit } from '@nestjs/common'
+import { forwardRef, MiddlewareConsumer, Module, NestModule, OnModuleInit } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { TypeOrmModule } from '@nestjs/typeorm'
 import { AxiosError, AxiosResponse } from 'axios'
 import { Agent } from 'https'
 import { upperCase } from 'lodash'
-import { WINSTON_MODULE_NEST_PROVIDER } from 'nest-winston'
-import { Logger } from 'winston'
+import { PinoLogger } from 'nestjs-pino'
 import { OrderModule } from '../order/order.module'
 import { BaseRFIDInventoryEntity } from '../rfid/entities/rifd-inventory.entity'
 import { RFIDModule } from '../rfid/rfid.module'
@@ -49,7 +48,7 @@ import { ThirdPartyApiService } from './third-party-api.service'
 })
 export class ThirdPartyApiModule implements NestModule, OnModuleInit {
 	constructor(
-		@Inject(WINSTON_MODULE_NEST_PROVIDER) private readonly logger: Logger,
+		private readonly logger: PinoLogger,
 		private readonly httpService: HttpService,
 		private readonly configService: ConfigService
 	) {}
@@ -66,7 +65,7 @@ export class ThirdPartyApiModule implements NestModule, OnModuleInit {
 				const requestMethod = upperCase(response.config.method)
 				const requestURL = response.config.baseURL + response.config.url
 				const errorStatus = response.status
-				this.logger.log('info', `${requestMethod} ${requestURL} ${errorStatus}`)
+				this.logger.info(`${requestMethod} ${requestURL} ${errorStatus}`)
 				return response.data
 			},
 			(error: AxiosError) => {
@@ -80,6 +79,6 @@ export class ThirdPartyApiModule implements NestModule, OnModuleInit {
 	}
 
 	configure(consumer: MiddlewareConsumer) {
-		consumer.apply(TenacyMiddleware, ThirdPartyApiMiddleware).forRoutes('/third-party-api/*')
+		consumer.apply(TenacyMiddleware, ThirdPartyApiMiddleware).forRoutes(ThirdPartyApiController)
 	}
 }

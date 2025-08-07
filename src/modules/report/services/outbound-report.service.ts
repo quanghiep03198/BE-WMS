@@ -7,6 +7,7 @@ import { REQUEST } from '@nestjs/core'
 import { InjectDataSource } from '@nestjs/typeorm'
 import { format } from 'date-fns'
 import { Workbook, Worksheet } from 'exceljs'
+import { FastifyRequest } from 'fastify'
 import { readFileSync } from 'fs'
 import { I18nContext, I18nService } from 'nestjs-i18n'
 import { join } from 'path'
@@ -21,7 +22,7 @@ export class OutboundReportService {
 	constructor(
 		@Inject(TENANCY_DATA_SOURCE) private readonly dataSource: DataSource,
 		@InjectDataSource(DATA_SOURCE_DATA_LAKE) private readonly dataSourcedl: DataSource,
-		@Inject(REQUEST) private readonly request: Request,
+		@Inject(REQUEST) private readonly request: FastifyRequest,
 		private readonly i18nService: I18nService
 	) {}
 

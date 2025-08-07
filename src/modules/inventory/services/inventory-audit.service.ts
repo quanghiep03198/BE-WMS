@@ -2,19 +2,17 @@ import { type AutoFitColumnOptions, autoFitColumns } from '@/common/helpers/exce
 import { SuperJson } from '@/common/utils'
 import { TENANCY_DATA_SOURCE } from '@/modules/tenancy/constants'
 import { UserEntity } from '@/modules/user/entities/user.entity'
-import { InjectQueue } from '@nestjs/bullmq'
 import { Inject, Injectable, Scope } from '@nestjs/common'
 import { REQUEST } from '@nestjs/core'
-import { Queue } from 'bullmq'
 import { addMonths, format } from 'date-fns'
 import { Workbook } from 'exceljs'
+import { FastifyRequest } from 'fastify'
 import { readFileSync } from 'fs'
 import { isEmpty, isNil } from 'lodash'
 import { I18nContext, I18nService } from 'nestjs-i18n'
 import { join } from 'path'
 import { Brackets, DataSource, IsNull, UpdateResult } from 'typeorm'
 import { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity'
-import { SYNC_INVENTORY_AUDIT_QUEUE } from '../constants'
 import { UpdateInventoryReportDTO, UpdateInventoryReportQueryDTO } from '../dto/inventory-report.dto'
 import { InventoryAuditEntity } from '../entities/inventory-report.entity'
 import { IInventoryReportQueryResult, IInventoryReportResponse } from '../interfaces'
@@ -25,8 +23,7 @@ export class InventoryAuditService {
 
 	constructor(
 		@Inject(TENANCY_DATA_SOURCE) private readonly dataSource: DataSource,
-		@InjectQueue(SYNC_INVENTORY_AUDIT_QUEUE) private readonly syncInventoryAuditDataQueue: Queue<DataSource>,
-		@Inject(REQUEST) private readonly request: Request,
+		@Inject(REQUEST) private readonly request: FastifyRequest['raw'],
 		private readonly i18nService: I18nService
 	) {}
 

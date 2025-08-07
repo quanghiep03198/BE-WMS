@@ -3,10 +3,9 @@ import { Inject, Injectable, InternalServerErrorException, NotFoundException } f
 import { AxiosRequestConfig } from 'axios'
 import { readFileSync } from 'fs-extra'
 import { chunk } from 'lodash'
-import { WINSTON_MODULE_NEST_PROVIDER } from 'nest-winston'
+import { PinoLogger } from 'nestjs-pino'
 import { join, resolve } from 'path'
 import { DataSource } from 'typeorm'
-import { Logger } from 'winston'
 import { OrderService } from '../order/order.service'
 import { TENANCY_DATA_SOURCE } from '../tenancy/constants'
 import { ThirdPartyApiResponseData } from './interfaces/third-party-api.interface'
@@ -16,7 +15,7 @@ export class ThirdPartyApiService {
 	private readonly upsertQuery = readFileSync(resolve(join(__dirname, '../rfid/sql/upsert-rfid-match.sql')), 'utf-8')
 
 	constructor(
-		@Inject(WINSTON_MODULE_NEST_PROVIDER) private readonly logger: Logger,
+		private readonly logger: PinoLogger,
 		@Inject(TENANCY_DATA_SOURCE) private readonly dataSource: DataSource,
 		private readonly httpService: HttpService,
 		private readonly orderService: OrderService

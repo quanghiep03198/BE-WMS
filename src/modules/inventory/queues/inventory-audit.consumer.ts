@@ -1,10 +1,9 @@
 import { EventGateway } from '@/events/event.gateway'
 import { TenancyService } from '@/modules/tenancy/tenancy.service'
 import { Processor, WorkerHost } from '@nestjs/bullmq'
-import { Inject, Logger as NestLogger, Scope } from '@nestjs/common'
+import { Logger as NestLogger, Scope } from '@nestjs/common'
 import { Job } from 'bullmq'
-import { WINSTON_MODULE_NEST_PROVIDER } from 'nest-winston'
-import { Logger } from 'winston'
+import { PinoLogger } from 'nestjs-pino'
 import { SYNC_INVENTORY_AUDIT_QUEUE } from '../constants'
 
 @Processor({ name: SYNC_INVENTORY_AUDIT_QUEUE, scope: Scope.REQUEST })
@@ -12,7 +11,7 @@ export class InventoryAuditDataSyncConsumer extends WorkerHost {
 	private readonly socketEvent = 'sync_inventory_audit_data'
 
 	constructor(
-		@Inject(WINSTON_MODULE_NEST_PROVIDER) private readonly logger: Logger,
+		private readonly logger: PinoLogger,
 		private readonly tenancyService: TenancyService, // Replace 'any' with the actual type of your data source
 		private readonly eventGateway: EventGateway
 	) {

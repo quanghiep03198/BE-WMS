@@ -1,12 +1,11 @@
 import { DATA_SOURCE_DATA_LAKE } from '@/databases/constants'
 import { BullModule } from '@nestjs/bullmq'
-import { Inject, MiddlewareConsumer, Module, NestModule, OnModuleInit, RequestMethod } from '@nestjs/common'
+import { MiddlewareConsumer, Module, NestModule, OnModuleInit, RequestMethod } from '@nestjs/common'
 import { InjectModel, MongooseModule } from '@nestjs/mongoose'
 import { TypeOrmModule } from '@nestjs/typeorm'
 import MongooseDeletePlugin from 'mongoose-delete'
 import MongoosePaginatePlugin from 'mongoose-paginate-v2'
-import { WINSTON_MODULE_NEST_PROVIDER } from 'nest-winston'
-import { Logger } from 'winston'
+import { PinoLogger } from 'nestjs-pino'
 import { TenacyMiddleware } from '../tenancy/tenancy.middleware'
 import { TenancyModule } from '../tenancy/tenancy.module'
 import { ThirdPartyApiModule } from '../third-party-api/third-party-api.module'
@@ -93,7 +92,7 @@ import { RFIDCustomerEntitySubscriber } from './subscribers/rfid-customer.entity
 })
 export class RFIDModule implements NestModule, OnModuleInit {
 	constructor(
-		@Inject(WINSTON_MODULE_NEST_PROVIDER) private readonly logger: Logger,
+		private readonly logger: PinoLogger,
 		@InjectModel(EpcInbound.name) private readonly epcInboundModel: EpcModel,
 		@InjectModel(EpcOutbound.name) private readonly epcOutboundModel: EpcModel
 	) {}

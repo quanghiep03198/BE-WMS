@@ -3,7 +3,7 @@ import { CanActivate, ExecutionContext, Inject, Injectable, UnauthorizedExceptio
 import { ConfigService } from '@nestjs/config'
 import { JwtService } from '@nestjs/jwt'
 import { Cache } from 'cache-manager'
-import { Request } from 'express'
+import { FastifyRequest } from 'fastify'
 
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
@@ -30,7 +30,7 @@ export class JwtAuthGuard implements CanActivate {
 		return true
 	}
 
-	private extractTokenFromHeader(request: Request): string | undefined {
+	private extractTokenFromHeader(request: FastifyRequest['raw']): string | undefined {
 		const [type, token] = request.headers.authorization?.split(' ') ?? []
 		return type === 'Bearer' ? token : undefined
 	}

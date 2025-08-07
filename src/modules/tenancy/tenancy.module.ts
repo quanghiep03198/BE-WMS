@@ -1,6 +1,7 @@
+import { CommonRequestHeader } from '@/common/constants'
 import { Module, Scope } from '@nestjs/common'
 import { REQUEST } from '@nestjs/core'
-import { Request } from 'express'
+import { FastifyRequest } from 'fastify'
 import { TENANCY_DATA_SOURCE } from './constants'
 import { TenancyController } from './tenancy.controller'
 import { TenancyService } from './tenancy.service'
@@ -13,8 +14,8 @@ import { TenancyService } from './tenancy.service'
 			provide: TENANCY_DATA_SOURCE,
 			scope: Scope.REQUEST,
 			inject: [REQUEST, TenancyService],
-			useFactory: async (request: Request, tenancyService: TenancyService) => {
-				const { tenancyHost } = request
+			useFactory: async (request: FastifyRequest, tenancyService: TenancyService) => {
+				const tenancyHost = request.headers[CommonRequestHeader.TENANT_HOST] as string | undefined
 				if (tenancyHost) return await tenancyService.getTenancyDataSource(tenancyHost)
 			}
 		}

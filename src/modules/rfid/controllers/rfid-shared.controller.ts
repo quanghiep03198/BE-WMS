@@ -13,10 +13,10 @@ import {
 	Param,
 	ParseIntPipe,
 	Query,
-	UploadedFiles,
 	UseInterceptors
 } from '@nestjs/common'
-import { FileFieldsInterceptor } from '@nestjs/platform-express'
+
+import { FileFieldsInterceptor, StorageFile, UploadedFiles } from '@blazity/nest-file-fastify'
 import { Queue } from 'bullmq'
 import { pickBy } from 'lodash'
 import { mongo } from 'mongoose'
@@ -126,6 +126,7 @@ export class RFIDSharedController {
 		@Body(new ZodValidationPipe(restoreArchivedEpcValidator)) payload: RestoreArchivedEpcsDTO,
 		@Param('type') type: 'inbound' | 'outbound'
 	): Promise<mongo.BulkWriteResult> {
+		if (type !== 'inbound' && type !== 'outbound') throw new BadRequestException('Invalid type')
 		const station = generateStation(factoryCode, type === 'inbound' ? 'WH101' : 'WH103')
 		const data = payload.map((item) => ({ ...item, station_no: station, factory_code_produce: factoryCode }))
 		return await this.rfidSharedService.restoreArchivedEpcs(type, data as RestoreArchivedEpcsDTO)
@@ -140,7 +141,7 @@ export class RFIDSharedController {
 	@AuthGuard()
 	@UseInterceptors(FileFieldsInterceptor([{ name: 'files', maxCount: 500 }]))
 	async uploadDataFile(
-		@UploadedFiles(new CsvFileValidationPipe()) files: Express.Multer.File[],
+		@UploadedFiles(new CsvFileValidationPipe()) files: Array<StorageFile & { buffer: Buffer }>,
 		@Body(new ZodValidationPipe(uploadDataValidator)) payload: UploadDataDTO
 	) {
 		return await this.importDataQueue.add('UPLOAD_DATA', files, { jobId: payload.station })

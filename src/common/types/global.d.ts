@@ -26,6 +26,7 @@ export declare global {
 			HOST: string
 			PORT: string
 			FALLBACK_LANGUAGE: string
+			GRAFANA_LOKI_URL: string
 			POSTMAN_DOCUMENTATION_URL: string | undefined
 
 			// * Throttler
@@ -75,6 +76,19 @@ export declare global {
 			// * Sentry
 			SENTRY_DSN: string
 			SENTRY_AUTH_TOKEN: string
+		}
+	}
+
+	namespace Storage {
+		interface MultipartFile {
+			toBuffer: () => Promise<Buffer>
+			file: NodeJS.ReadableStream
+			filepath: string
+			fieldname: string
+			filename: string
+			encoding: string
+			mimetype: string
+			fields: import('@fastify/multipart').MultipartFields
 		}
 	}
 

@@ -4,7 +4,7 @@ import { InjectQueue } from '@nestjs/bullmq'
 import { Controller, Headers, HttpStatus, Param, Req } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
 import { Queue } from 'bullmq'
-import { type Request } from 'express'
+import { FastifyRequest } from 'fastify'
 import { uniqBy } from 'lodash'
 import { PaginateModel } from 'mongoose'
 import { FALLBACK_VALUE } from '../rfid/constants'
@@ -44,8 +44,12 @@ export class ThirdPartyApiController {
 		method: HttpMethod.PUT,
 		statusCode: HttpStatus.CREATED
 	})
-	async upsertByCommandNumber(@Param('commandNumber') commandNumber: string, @Req() req: Request) {
-		return await this.thirdPartyApiService.upsertByCommandNumber(req.accessToken, req.factoryCode, commandNumber)
+	async upsertByCommandNumber(@Param('commandNumber') commandNumber: string, @Req() request: FastifyRequest) {
+		return await this.thirdPartyApiService.upsertByCommandNumber(
+			request.headers[CommonRequestHeader.ACCESS_TOKEN] as string,
+			request.headers[CommonRequestHeader.FACTORY_CODE] as string,
+			commandNumber
+		)
 	}
 
 	@Api({
@@ -53,7 +57,11 @@ export class ThirdPartyApiController {
 		method: HttpMethod.PUT,
 		statusCode: HttpStatus.CREATED
 	})
-	async upsertByEpc(@Param('epc') epc: string, @Req() req: Request) {
-		return await this.thirdPartyApiService.upsertByEpc(req.accessToken, req.factoryCode, epc)
+	async upsertByEpc(@Param('epc') epc: string, @Req() request: FastifyRequest) {
+		return await this.thirdPartyApiService.upsertByEpc(
+			request.headers[CommonRequestHeader.ACCESS_TOKEN] as string,
+			request.headers[CommonRequestHeader.FACTORY_CODE] as string,
+			epc
+		)
 	}
 }

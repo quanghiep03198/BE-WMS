@@ -1,24 +1,21 @@
-import { Controller, Get, Res, Version } from '@nestjs/common'
+import { Controller, Get, HttpStatus, Res } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
-import { Response } from 'express'
-import { I18nContext, I18nService } from 'nestjs-i18n'
+import { FastifyReply } from 'fastify'
+// import { FastifyRequest } from 'fastify/types/request'
 
 @Controller()
 export class AppController {
-	constructor(
-		private readonly configService: ConfigService,
-		private readonly i18nService: I18nService
-	) {}
+	constructor(private readonly configService: ConfigService) {}
 
 	@Get()
-	@Version('1.0')
-	index(@Res() res: Response) {
-		if (this.configService.get('NODE_ENV') === 'development')
-			return res.redirect(this.configService.get<string>('POSTMAN_DOCUMENTATION_URL'))
-		else
-			return res.json({
-				message: this.i18nService.t('common.ok', { lang: I18nContext.current()?.lang }),
-				statusCode: 200
+	index(@Res() reply: FastifyReply) {
+		if (this.configService.get('NODE_ENV') === 'development') {
+			return reply.status(HttpStatus.FOUND).redirect(this.configService.get<string>('POSTMAN_DOCUMENTATION_URL'))
+		} else {
+			return reply.status(HttpStatus.OK).send({
+				message: 'Ok',
+				statusCode: HttpStatus.OK
 			})
+		}
 	}
 }

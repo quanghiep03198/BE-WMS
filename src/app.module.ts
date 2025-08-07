@@ -10,15 +10,14 @@ import { ThrottlerModule } from '@nestjs/throttler'
 import * as Sentry from '@sentry/nestjs'
 import { SentryGlobalFilter, SentryModule } from '@sentry/nestjs/setup'
 import { PrometheusModule } from '@willsoto/nestjs-prometheus'
-import { WinstonModule } from 'nest-winston'
 import { AcceptLanguageResolver, HeaderResolver, I18nModule, QueryResolver } from 'nestjs-i18n'
-import * as winston from 'winston'
-import LokiTransport from 'winston-loki'
-
+import { LoggerModule } from 'nestjs-pino'
+import pino from 'pino'
 import { AppController } from './app.controller'
 import { appConfigFactory, validateConfig } from './configs'
 import { RotateLogJob } from './jobs/rotate-log.job'
 // Feature modules
+import { env } from './common/utils'
 import { EventGateway } from './events/event.gateway'
 import { AuthModule } from './modules/auth/auth.module'
 import { DepartmentModule } from './modules/department/department.module'
@@ -44,13 +43,43 @@ import { RedisModule } from './redis/redis.module'
 				config: {}
 			}
 		}),
+		LoggerModule.forRoot({
+			exclude: ['/', '/metrics'],
+			pinoHttp: {
+				stream: pino.destination({ dest: 'logs/error.log', minLength: 4096, sync: false }),
+				transport: {
+					targets: [
+						{
+							target: 'pino-pretty',
+							options: {
+								singleLine: true,
+								timestampKey: 'time'
+							}
+						},
+						{
+							target: 'pino-loki',
+							options: {
+								level: 'error',
+								host: env('GRAFANA_LOKI_URL'),
+								labels: { service_name: 'WMS-API' }
+							}
+						}
+					]
+				},
+				autoLogging: {
+					ignore: (req) => {
+						const excludedPaths = ['/', '/metrics']
+						return excludedPaths.some((path) => req.url.includes(path))
+					}
+				}
+			}
+		}),
 		ConfigModule.forRoot({
 			envFilePath: ['.env'],
 			isGlobal: true,
 			load: [appConfigFactory],
 			validate: validateConfig
 		}),
-
 		DatabaseModule.forRootAsync(),
 		RedisModule.forRoot(),
 		SentryModule.forRoot(),
@@ -86,27 +115,27 @@ import { RedisModule } from './redis/redis.module'
 			verboseMemoryLeak: true,
 			ignoreErrors: false
 		}),
-		WinstonModule.forRootAsync({
-			inject: [ConfigService],
-			useFactory: (configService: ConfigService) => {
-				const options: winston.LoggerOptions & { transports: Required<winston.transport[]> } = {
-					transports: [
-						new LokiTransport({
-							host: configService.get<string>('GRAFANA_LOKI_URL'),
-							labels: { service_name: 'WMS-API' },
-							json: true
-						}),
-						new winston.transports.File(configService.get('logger.error'))
-					]
-				}
+		// WinstonModule.forRootAsync({
+		// 	inject: [ConfigService],
+		// 	useFactory: (configService: ConfigService) => {
+		// 		const options: winston.LoggerOptions & { transports: Required<winston.transport[]> } = {
+		// 			transports: [
+		// 				new LokiTransport({
+		// 					host: configService.get<string>('GRAFANA_LOKI_URL'),
+		// 					labels: { service_name: 'WMS-API' },
+		// 					json: true
+		// 				}),
+		// 				new winston.transports.File(configService.get('logger.error'))
+		// 			]
+		// 		}
 
-				if (configService.get<RuntimeEnvironment>('NODE_ENV') === 'development') {
-					options.transports.push(new winston.transports.File(configService.get('logger.debug')))
-				}
+		// 		if (configService.get<RuntimeEnvironment>('NODE_ENV') === 'development') {
+		// 			options.transports.push(new winston.transports.File(configService.get('logger.debug')))
+		// 		}
 
-				return options
-			}
-		}),
+		// 		return options
+		// 	}
+		// }),
 		// * Feature modules
 		AuthModule,
 		DepartmentModule,

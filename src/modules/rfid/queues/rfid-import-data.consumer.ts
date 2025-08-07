@@ -1,5 +1,6 @@
 import { EXCLUDED_EPC_REGEX } from '@/common/constants/regex'
 import { DATA_SOURCE_DATA_LAKE } from '@/databases/constants'
+import { StorageFile } from '@blazity/nest-file-fastify'
 import { Processor, WorkerHost } from '@nestjs/bullmq'
 import { InjectModel } from '@nestjs/mongoose'
 import { InjectDataSource } from '@nestjs/typeorm'
@@ -29,7 +30,7 @@ export class RFIDImportDataConsumer extends WorkerHost {
 		super()
 	}
 
-	async process(job: Job<Express.Multer.File[]>) {
+	async process(job: Job<Array<StorageFile & { buffer: any }>>) {
 		/**
 		 * @description Dansko's EPC prefix to exclude from the import
 		 */
@@ -40,11 +41,12 @@ export class RFIDImportDataConsumer extends WorkerHost {
 
 		for (const file of files) {
 			await new Promise<void>((resolve, reject) => {
-				Readable.from(Buffer.from(file.buffer))
-					.pipe(csvParser())
-					.on('data', (data: { epc: string }) => {
-						if (typeof data.epc === 'string' && !EXCLUDED_EPC_REGEX.test(data.epc) && !results.has(data.epc))
+				Readable.from(Buffer.from(file?.buffer))
+					.pipe(csvParser({ headers: ['epc'] }))
+					.on('data', (data: { epc?: string }) => {
+						if (typeof data.epc === 'string' && !EXCLUDED_EPC_REGEX.test(data.epc) && !results.has(data.epc)) {
 							results.add(data.epc.trim())
+						}
 					})
 					.on('end', resolve)
 					.on('error', reject)

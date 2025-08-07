@@ -7,7 +7,6 @@ import {
 	Inject,
 	Injectable,
 	InternalServerErrorException,
-	Logger,
 	NotFoundException,
 	Scope
 } from '@nestjs/common'
@@ -18,8 +17,8 @@ import { format } from 'date-fns'
 import { readFileSync } from 'fs'
 import { chunk, pick } from 'lodash'
 import { AnyBulkWriteOperation, FilterQuery } from 'mongoose'
-import { WINSTON_MODULE_NEST_PROVIDER } from 'nest-winston'
 import { I18nContext, I18nService } from 'nestjs-i18n'
+import { PinoLogger } from 'nestjs-pino'
 import { join, resolve } from 'path'
 import { DataSource, FindOptionsWhere, In } from 'typeorm'
 import { FALLBACK_VALUE, InventoryActions, POST_DATA_INBOUND_QUEUE } from '../constants'
@@ -38,7 +37,7 @@ import { RFIDSearchParams } from '../types'
 @Injectable({ scope: Scope.REQUEST })
 export class RFIDInboundService {
 	constructor(
-		@Inject(WINSTON_MODULE_NEST_PROVIDER) private readonly logger: Logger,
+		private readonly logger: PinoLogger,
 		@Inject(TENANCY_DATA_SOURCE) private readonly dataSourceTNC: DataSource,
 		@InjectDataSource(DATA_SOURCE_DATA_LAKE) private readonly dataSourceDL: DataSource,
 		@InjectDataSource(DATA_SOURCE_ERP) private readonly dataSourceERP: DataSource,

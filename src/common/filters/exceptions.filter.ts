@@ -1,14 +1,13 @@
-import { ArgumentsHost, Catch, ExceptionFilter, HttpException, HttpStatus, Inject } from '@nestjs/common'
+import { ArgumentsHost, Catch, ExceptionFilter, HttpException, HttpStatus } from '@nestjs/common'
 import { HttpAdapterHost } from '@nestjs/core'
 import { SentryExceptionCaptured } from '@sentry/nestjs'
-import { WINSTON_MODULE_NEST_PROVIDER } from 'nest-winston'
-import { Logger } from 'winston'
+import { PinoLogger } from 'nestjs-pino'
 import { IResponseBody } from '../helpers/transform-response.helper'
 
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
 	constructor(
-		@Inject(WINSTON_MODULE_NEST_PROVIDER) private readonly logger: Logger,
+		private readonly logger: PinoLogger,
 		private readonly httpAdapterHost: HttpAdapterHost
 	) {}
 

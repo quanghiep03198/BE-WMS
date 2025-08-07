@@ -2,18 +2,17 @@ import { EXCLUDED_EPC_REGEX } from '@/common/constants/regex'
 import { SuperJson } from '@/common/utils'
 import { DATA_SOURCE_DATA_LAKE, DATA_SOURCE_ERP } from '@/databases/constants'
 import { InjectQueue } from '@nestjs/bullmq'
-import { BadRequestException, Inject, Injectable, InternalServerErrorException } from '@nestjs/common'
+import { BadRequestException, Injectable, InternalServerErrorException } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
 import { InjectDataSource } from '@nestjs/typeorm'
 import { Queue } from 'bullmq'
 import { readFileSync } from 'fs'
 import { chunk, omit } from 'lodash'
 import { FilterQuery, PipelineStage } from 'mongoose'
-import { WINSTON_MODULE_NEST_PROVIDER } from 'nest-winston'
 import { I18nContext, I18nService } from 'nestjs-i18n'
+import { PinoLogger } from 'nestjs-pino'
 import { join, resolve } from 'path'
 import { Brackets, DataSource } from 'typeorm'
-import { Logger } from 'winston'
 import { InventoryActions, POST_DATA_OUTBOUND_QUEUE } from '../constants'
 import { PostReaderDataDTO, UpsertStockOutDTO } from '../dto/rfid.dto'
 import { RFIDInventoryBackupEntity } from '../entities/rifd-inventory.entity'
@@ -23,7 +22,7 @@ import { EpcInformation, RFIDSearchParams } from '../types'
 @Injectable()
 export class RFIDOutboundService {
 	constructor(
-		@Inject(WINSTON_MODULE_NEST_PROVIDER) private readonly logger: Logger,
+		private readonly logger: PinoLogger,
 		@InjectDataSource(DATA_SOURCE_DATA_LAKE) private readonly dataSourceDL: DataSource,
 		@InjectDataSource(DATA_SOURCE_ERP) private readonly dataSourceERP: DataSource,
 		@InjectQueue(POST_DATA_OUTBOUND_QUEUE)
