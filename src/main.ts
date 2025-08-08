@@ -32,7 +32,7 @@ async function bootstrap() {
 		const logger = app.get(Logger)
 		app.enableVersioning({ type: VersioningType.HEADER, header: 'X-Api-Version' })
 		app.useLogger(process.env.NODE_ENV === 'production' ? false : logger)
-		app.enableCors()
+		app.enableCors({ origin: '*', methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'] })
 		await Promise.all([
 			app.register(import('@fastify/multipart'), { limits: { files: 500, fileSize: 10 * 1024 } }),
 			app.register(import('@fastify/helmet'), { global: true }),
