@@ -1,11 +1,14 @@
 {
 	"files.readonlyInclude": {
-		"**/i18n.generated.ts": true
+		"**/i18n.generated.ts": true,
+		"pnpm-lock.yaml": true
 	},
 	"files.watcherExclude": {
-		"**/i18n.generated.ts": true
+		"**/i18n.generated.ts": true,
+		"pnpm-lock.yaml": true
 	},
 	"search.exclude": {
-		"**/i18n.generated.ts": true
+		"**/i18n.generated.ts": true,
+		"pnpm-lock.yaml": true
 	}
 }
