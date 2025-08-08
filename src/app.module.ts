@@ -1,7 +1,7 @@
 import { DatabaseModule } from '@/databases'
 import { BullModule } from '@nestjs/bullmq'
 import { CacheModule } from '@nestjs/cache-manager'
-import { Module, type OnApplicationBootstrap, type OnApplicationShutdown } from '@nestjs/common'
+import { Module, RequestMethod, type OnApplicationBootstrap, type OnApplicationShutdown } from '@nestjs/common'
 import { ConfigModule, ConfigService } from '@nestjs/config'
 import { APP_FILTER } from '@nestjs/core'
 import { EventEmitterModule } from '@nestjs/event-emitter'
@@ -12,12 +12,10 @@ import { SentryGlobalFilter, SentryModule } from '@sentry/nestjs/setup'
 import { PrometheusModule } from '@willsoto/nestjs-prometheus'
 import { AcceptLanguageResolver, HeaderResolver, I18nModule, QueryResolver } from 'nestjs-i18n'
 import { LoggerModule } from 'nestjs-pino'
-import pino from 'pino'
 import { AppController } from './app.controller'
 import { appConfigFactory, validateConfig } from './configs'
 import { RotateLogJob } from './jobs/rotate-log.job'
 // Feature modules
-import { env } from './common/utils'
 import { EventGateway } from './events/event.gateway'
 import { AuthModule } from './modules/auth/auth.module'
 import { DepartmentModule } from './modules/department/department.module'
@@ -43,36 +41,48 @@ import { RedisModule } from './redis/redis.module'
 				config: {}
 			}
 		}),
-		LoggerModule.forRoot({
-			exclude: ['/', '/metrics'],
-			pinoHttp: {
-				stream: pino.destination({ dest: 'logs/error.log', minLength: 4096, sync: false }),
-				transport: {
-					targets: [
-						{
-							target: 'pino-pretty',
-							options: {
-								singleLine: true,
-								timestampKey: 'time'
-							}
-						},
-						{
-							target: 'pino-loki',
-							options: {
-								level: 'error',
-								host: env('GRAFANA_LOKI_URL'),
-								labels: { service_name: 'WMS-API' }
-							}
+		LoggerModule.forRootAsync({
+			inject: [ConfigService],
+			useFactory: (configService: ConfigService) => ({
+				exclude: [{ path: '/metrics', method: RequestMethod.ALL }],
+				pinoHttp: {
+					customLogLevel: (req, res) => {
+						switch (true) {
+							case req.url === '/metrics':
+								return 'silent'
+							case res.statusCode >= 500:
+								return 'error'
+							case res.statusCode >= 400 && res.statusCode < 500:
+								return 'warn'
+							default:
+								return 'info'
 						}
-					]
-				},
-				autoLogging: {
-					ignore: (req) => {
-						const excludedPaths = ['/', '/metrics']
-						return excludedPaths.some((path) => req.url.includes(path))
+					},
+					autoLogging: { ignore: (req) => req.url === '/metrics' },
+
+					transport: {
+						targets: [
+							{
+								target: 'pino-pretty',
+								options: {
+									singleLine: true,
+									hideObject: true,
+									translateTime: 'SYS:yyyy-mm-dd HH:MM:ss.l'
+								}
+							},
+							{
+								target: 'pino-loki',
+								options: {
+									batching: true,
+									host: configService.get<string>('GRAFANA_LOKI_URL'),
+									labels: { service_name: 'WMS-API' },
+									translateTime: 'SYS:yyyy-mm-dd HH:MM:ss.l'
+								}
+							}
+						]
 					}
 				}
-			}
+			})
 		}),
 		ConfigModule.forRoot({
 			envFilePath: ['.env'],
@@ -115,27 +125,6 @@ import { RedisModule } from './redis/redis.module'
 			verboseMemoryLeak: true,
 			ignoreErrors: false
 		}),
-		// WinstonModule.forRootAsync({
-		// 	inject: [ConfigService],
-		// 	useFactory: (configService: ConfigService) => {
-		// 		const options: winston.LoggerOptions & { transports: Required<winston.transport[]> } = {
-		// 			transports: [
-		// 				new LokiTransport({
-		// 					host: configService.get<string>('GRAFANA_LOKI_URL'),
-		// 					labels: { service_name: 'WMS-API' },
-		// 					json: true
-		// 				}),
-		// 				new winston.transports.File(configService.get('logger.error'))
-		// 			]
-		// 		}
-
-		// 		if (configService.get<RuntimeEnvironment>('NODE_ENV') === 'development') {
-		// 			options.transports.push(new winston.transports.File(configService.get('logger.debug')))
-		// 		}
-
-		// 		return options
-		// 	}
-		// }),
 		// * Feature modules
 		AuthModule,
 		DepartmentModule,
