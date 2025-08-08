@@ -22,6 +22,7 @@ import { Queue } from 'bullmq'
 import { FastifyReply } from 'fastify'
 import { isEmpty, isNil, pickBy } from 'lodash'
 import { PaginateResult } from 'mongoose'
+import { PinoLogger } from 'nestjs-pino'
 import { POST_DATA_INBOUND_QUEUE } from '../constants'
 import {
 	deleteEpcValidator,
@@ -47,6 +48,7 @@ import { RFIDSearchParams, ScannedOrderDetail } from '../types'
 @Controller('rfid/inbound')
 export class RFIDInboundController {
 	constructor(
+		private readonly logger: PinoLogger,
 		@InjectModel(EpcInbound.name) private readonly epcInboundModel: EpcModel,
 		@InjectQueue(POST_DATA_INBOUND_QUEUE) private readonly postInboundDataQueue: Queue<PostReaderDataDTO>,
 		private readonly rfidSharedService: RFIDSharedService,
@@ -78,7 +80,7 @@ export class RFIDInboundController {
 		const changeStream = await this.rfidSharedService.captureDataChange(this.epcInboundModel, handleChange)
 
 		reply.raw.on('close', async () => {
-			console.log('Stop receiving data from Android RFID device')
+			this.logger.info('Stop receiving data from Android RFID device')
 			await this.rfidSharedService.cleanupQueue(this.postInboundDataQueue)
 			changeStream.removeListener('change', handleChange)
 			changeStream.close()
