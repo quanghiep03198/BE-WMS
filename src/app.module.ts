@@ -59,7 +59,6 @@ import { RedisModule } from './redis/redis.module'
 						}
 					},
 					autoLogging: { ignore: (req) => req.url === '/metrics' },
-
 					transport: {
 						targets: [
 							{
