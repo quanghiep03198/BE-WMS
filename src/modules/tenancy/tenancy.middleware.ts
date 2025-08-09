@@ -7,13 +7,13 @@ import { TenancyService } from './tenancy.service'
 export class TenacyMiddleware implements NestMiddleware {
 	constructor(private readonly tenancyService: TenancyService) {}
 
-	async use(request: FastifyRequest, _: FastifyReply, next: (error?: Error | any) => void) {
+	async use(request: FastifyRequest['raw'], _: FastifyReply['raw'], next: (error?: Error | any) => void) {
 		const tenantId = request.headers['x-tenant-id']
 		if (!tenantId) {
 			throw new BadRequestException('Tenant ID is required')
 		}
 		const tenant = this.tenancyService.findOneById(tenantId.toString())
-		request.headers[CommonRequestHeader.TENANT_HOST] = tenant.host
+		request[CommonRequestHeader.TENANT_HOST] = tenant.host
 		next()
 	}
 }

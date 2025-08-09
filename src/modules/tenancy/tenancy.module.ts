@@ -15,7 +15,7 @@ import { TenancyService } from './tenancy.service'
 			scope: Scope.REQUEST,
 			inject: [REQUEST, TenancyService],
 			useFactory: async (request: FastifyRequest, tenancyService: TenancyService) => {
-				const tenancyHost = request.headers[CommonRequestHeader.TENANT_HOST] as string | undefined
+				const tenancyHost = request?.raw?.[CommonRequestHeader.TENANT_HOST] as string | undefined
 				if (tenancyHost) return await tenancyService.getTenancyDataSource(tenancyHost)
 			}
 		}
