@@ -46,11 +46,11 @@ import { RedisModule } from './redis/redis.module'
 			useFactory: (configService: ConfigService) => ({
 				exclude: [{ path: '/metrics', method: RequestMethod.ALL }],
 				pinoHttp: {
-					customLogLevel: (req, res) => {
+					customLogLevel: (req, res, error) => {
 						switch (true) {
 							case req.url === '/metrics':
 								return 'silent'
-							case res.statusCode >= 500:
+							case error || res.statusCode >= 500:
 								return 'error'
 							case res.statusCode >= 400 && res.statusCode < 500:
 								return 'warn'
@@ -62,20 +62,14 @@ import { RedisModule } from './redis/redis.module'
 					transport: {
 						targets: [
 							{
-								target: 'pino-pretty',
-								options: {
-									singleLine: true,
-									hideObject: true,
-									translateTime: 'SYS:yyyy-mm-dd HH:MM:ss.l'
-								}
-							},
-							{
 								target: 'pino-loki',
 								options: {
 									batching: true,
+									singleLine: true,
 									host: configService.get<string>('GRAFANA_LOKI_URL'),
 									labels: { service_name: 'WMS-API' },
-									translateTime: 'SYS:yyyy-mm-dd HH:MM:ss.l'
+									translateTime: 'SYS:yyyy-mm-dd HH:MM:ss.l',
+									destination: './logs/app.log'
 								}
 							}
 						]
