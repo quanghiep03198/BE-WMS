@@ -274,7 +274,20 @@ export class RFIDOutboundService {
 			.offset((args.page - 1) * args.limit)
 			.limit(args.limit)
 
-		const [data, totalDocs] = await Promise.all([queryBuilder.getRawMany<EpcInformation>(), queryBuilder.getCount()])
+		const query = queryBuilder.getQuery().concat(/* SQL */ `
+			OPTION(
+				OPTIMIZE FOR UNKNOWN,
+				USE HINT ('ENABLE_PARALLEL_PLAN_PREFERENCE'),
+				HASH JOIN,
+				FAST ${args.limit},
+				MAXDOP 4,
+				RECOMPILE
+			)`)
+
+		const [data, totalDocs] = await Promise.all([
+			this.dataSourceDL.query<EpcInformation[]>(query),
+			queryBuilder.getCount()
+		])
 
 		const totalPages = Math.ceil(totalDocs / args.limit)
 
