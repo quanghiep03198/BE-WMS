@@ -28,13 +28,19 @@ export class ThirdPartyApiController {
 	})
 	@AuthGuard()
 	async syncDeckerData(@Headers(CommonRequestHeader.FACTORY_CODE) factoryCode: string) {
-		const validUnknownEpcs = await this.epcModel.find({ mo_no: FALLBACK_VALUE }).lean(true)
+		const validUnknownEpcs = await this.epcModel
+			.distinct('epc', {
+				mo_no: FALLBACK_VALUE,
+				epc: { $regex: /^(?!E28|303429)/ }
+			})
+			.lean(true)
 		return await this.thirdPartyApiSyncQueue.add(
 			'SYNC_DECKER_DATA',
-			uniqBy(validUnknownEpcs, (item) => item.epc.substring(0, 22)).map((item) => item.epc),
+			uniqBy(validUnknownEpcs, (item) => item.substring(0, 22)),
 			{
 				jobId: factoryCode,
-				removeOnComplete: true
+				removeOnComplete: true,
+				removeOnFail: true
 			}
 		)
 	}
@@ -46,8 +52,8 @@ export class ThirdPartyApiController {
 	})
 	async upsertByCommandNumber(@Param('commandNumber') commandNumber: string, @Req() request: FastifyRequest) {
 		return await this.thirdPartyApiService.upsertByCommandNumber(
-			request.headers[CommonRequestHeader.ACCESS_TOKEN] as string,
-			request.headers[CommonRequestHeader.FACTORY_CODE] as string,
+			request.raw[CommonRequestHeader.ACCESS_TOKEN] as string,
+			request.raw[CommonRequestHeader.FACTORY_CODE] as string,
 			commandNumber
 		)
 	}
@@ -59,8 +65,8 @@ export class ThirdPartyApiController {
 	})
 	async upsertByEpc(@Param('epc') epc: string, @Req() request: FastifyRequest) {
 		return await this.thirdPartyApiService.upsertByEpc(
-			request.headers[CommonRequestHeader.ACCESS_TOKEN] as string,
-			request.headers[CommonRequestHeader.FACTORY_CODE] as string,
+			request.raw[CommonRequestHeader.ACCESS_TOKEN] as string,
+			request.raw[CommonRequestHeader.FACTORY_CODE] as string,
 			epc
 		)
 	}
