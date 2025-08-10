@@ -1,8 +1,7 @@
-SET STATISTICS TIME, IO ON;
+
 
 DECLARE @FallbackValue NVARCHAR(10) = 'Unknown';
 
--- * Base data CTE
 WITH base_data AS (
    SELECT 
       i.EPC_Code, 
@@ -17,20 +16,20 @@ WITH base_data AS (
       r.shoestyle_codefactory, 
       p.color_sn,
       i.FC_server_code
-   FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet_backup_Daily i 
-   INNER JOIN DV_DATA_LAKE.dbo.dv_rfidmatchmst_cust r 
+   FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet_backup_Daily i WITH (NOLOCK)
+   LEFT JOIN DV_DATA_LAKE.dbo.dv_rfidmatchmst_cust r WITH (FORCESEEK) 
       ON i.EPC_Code = r.EPC_Code
-   INNER JOIN wuerp_vnrd.dbo.ta_productmst p 
+   LEFT JOIN wuerp_vnrd.dbo.ta_productmst p WITH (FORCESEEK)
       ON p.mat_code = r.mat_code AND p.isactive = 'Y'
    WHERE
       i.rfid_status = 'B'
-      AND i.record_time >= CAST(DATEADD(YEAR, -2, GETDATE()) AS DATE)
+      AND RIGHT(i.stationNO, 5) = 'WH103'
+      AND i.FC_server_code = @0
+      AND i.po IS NOT NULL
+      AND i.mo_no NOT IN ('13D05B006', '13A08C003')
       AND i.EPC_Code NOT LIKE '303429%'
       AND i.EPC_Code NOT LIKE 'E28%'
-      AND i.mo_no NOT IN ('13D05B006', '13A08C003')
-      AND i.stationNO LIKE 'CUS%WH103'
-      AND i.po IS NOT NULL
-      AND i.FC_server_code = @0
+      AND i.record_time >= CAST(DATEADD(YEAR, -1, GETDATE()) AS DATE)
 ),
 
 -- * Daily data (Filtered by date)
@@ -50,7 +49,7 @@ po_size_qty AS (
       END AS [size_numcode], 
    SUM(CAST(b.size_qty AS INT)) AS qty
    FROM wuerp_vnrd.dbo.ta_ordersizerun a
-   LEFT JOIN wuerp_vnrd.dbo.ta_ordermst or1 
+   LEFT JOIN wuerp_vnrd.dbo.ta_ordermst or1
       ON or1.or_no = a.or_no
       AND a.isactive = 'Y'
       AND or1.isactive = 'Y'
@@ -214,9 +213,7 @@ LEFT JOIN po_info pi ON pi.po = dd.po
 GROUP BY dd.po, dd.shoestyle_codefactory, dd.color_sn, pi.po_qty, paoq.po_acc_outbound_qty
 ORDER BY dd.po ASC
 OPTION (
-	OPTIMIZE FOR UNKNOWN,                        -- * Avoid "Paramenter Sniffing" issues
-	USE HINT('ENABLE_PARALLEL_PLAN_PREFERENCE'), -- * Prioritize parallel plan
-	HASH GROUP,                                  -- * Use hash aggregation instead of stream aggregation 
-	MAXDOP 8,                                    -- * Limit parallelism to 8 cores         
-	RECOMPILE                                    -- * Recompile for each execution to ensure optimal plan
+	OPTIMIZE FOR UNKNOWN,                           -- * Avoid "Paramenter Sniffing" issues
+	USE HINT('ENABLE_PARALLEL_PLAN_PREFERENCE'),    -- * Prioritize parallel plan
+   RECOMPILE
 );

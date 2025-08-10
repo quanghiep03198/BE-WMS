@@ -74,9 +74,9 @@ LEFT JOIN wuerp_vnrd.dbo.ta_manufacturmst manf WITH(FORCESEEK)
 	ON manf.mo_no = ric.mo_no
 LEFT JOIN wuerp_vnrd.dbo.ta_productmst prod WITH (FORCESEEK)
 	ON rmc.mat_code = prod.mat_code
-LEFT JOIN storage_list_cte slc 
+LEFT JOIN storage_list_cte slc
 	ON slc.mo_no = ric.mo_no AND slc.factory_code = ric.factory_code
-LEFT JOIN department_list_cte dlc 
+LEFT JOIN department_list_cte dlc
 	ON dlc.mo_no = ric.mo_no AND dlc.factory_code = ric.factory_code
 LEFT JOIN accumulated_cte ac 
 	ON ac.mo_no = ric.mo_no
