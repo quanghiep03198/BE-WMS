@@ -135,8 +135,6 @@ export class RFIDOutboundService {
 	}
 
 	public async getArchivedEpcs(factoryCode: string, args: RFIDSearchParams & { 'scanned.eq'?: boolean }) {
-		console.log(args)
-
 		const filterQuery: FilterQuery<EpcDocument> = {
 			deleted: true,
 			scannable: true,
