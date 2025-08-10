@@ -1,7 +1,7 @@
 import { DatabaseModule } from '@/databases'
 import { BullModule } from '@nestjs/bullmq'
 import { CacheModule } from '@nestjs/cache-manager'
-import { Module, RequestMethod, type OnApplicationBootstrap, type OnApplicationShutdown } from '@nestjs/common'
+import { Module, type OnApplicationBootstrap, type OnApplicationShutdown } from '@nestjs/common'
 import { ConfigModule, ConfigService } from '@nestjs/config'
 import { APP_FILTER } from '@nestjs/core'
 import { EventEmitterModule } from '@nestjs/event-emitter'
@@ -33,46 +33,56 @@ import { RedisModule } from './redis/redis.module'
 @Module({
 	imports: [
 		// * Core modules
-		PrometheusModule.register({
-			global: true,
-			path: '/metrics',
-			defaultMetrics: {
-				enabled: true,
-				config: {}
-			}
+		PrometheusModule.registerAsync({
+			inject: [ConfigService],
+			useFactory: (configService: ConfigService) => ({
+				global: true,
+				path: '/metrics',
+				defaultMetrics: {
+					enabled: configService.get<RuntimeEnvironment>('NODE_ENV') === 'production'
+				}
+			})
 		}),
 		LoggerModule.forRootAsync({
 			inject: [ConfigService],
 			useFactory: (configService: ConfigService) => ({
-				exclude: [{ path: '/metrics', method: RequestMethod.ALL }],
 				pinoHttp: {
-					customLogLevel: (req, res, error) => {
-						switch (true) {
-							case req.url === '/metrics':
-								return 'silent'
-							case error || res.statusCode >= 500:
-								return 'error'
-							case res.statusCode >= 400 && res.statusCode < 500:
-								return 'warn'
-							default:
-								return 'info'
-						}
-					},
-					autoLogging: { ignore: (req) => req.url === '/metrics' },
 					transport: {
 						targets: [
 							{
+								target: 'pino-pretty',
+								options: {
+									translateTime: 'SYS:yyyy-mm-dd HH:MM:ss.l'
+								}
+							},
+							{
 								target: 'pino-loki',
 								options: {
-									batching: true,
-									singleLine: true,
 									host: configService.get<string>('GRAFANA_LOKI_URL'),
 									labels: { service_name: 'WMS-API' },
-									translateTime: 'SYS:yyyy-mm-dd HH:MM:ss.l',
-									destination: './logs/app.log'
+									batching: true,
+									singleLine: true,
+									translateTime: 'SYS:yyyy-mm-dd HH:MM:ss.l'
 								}
 							}
 						]
+					},
+					serializers: {
+						res(reply) {
+							return {
+								path: reply.raw.req.url,
+								statusCode: reply.statusCode
+							}
+						},
+						req(request) {
+							return {
+								method: request.method,
+								path: request.url,
+								parameters: request.params,
+								queries: request.query,
+								headers: request.headers
+							}
+						}
 					}
 				}
 			})

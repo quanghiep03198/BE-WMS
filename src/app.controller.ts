@@ -1,7 +1,6 @@
 import { Controller, Get, HttpStatus, Res } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { FastifyReply } from 'fastify'
-// import { FastifyRequest } from 'fastify/types/request'
 
 @Controller()
 export class AppController {

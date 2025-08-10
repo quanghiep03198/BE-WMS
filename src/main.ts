@@ -11,14 +11,47 @@ async function bootstrap() {
 		const app = await NestFactory.create<NestFastifyApplication>(
 			AppModule,
 			new FastifyAdapter({
-				logger: { transport: { target: 'pino-pretty' } }
+				addHook: (routeOptions) => {
+					if (routeOptions.url === '/metrics') {
+						routeOptions.logLevel = 'silent'
+					}
+
+					return routeOptions
+				},
+				logger: {
+					crlf: true,
+					msgPrefix: '[HTTP]' + ' ',
+
+					transport: {
+						target: 'pino-pretty',
+						options: {
+							translateTime: 'SYS:yyyy-mm-dd HH:MM:ss.l'
+						}
+					},
+					serializers: {
+						res(reply) {
+							return {
+								path: reply.raw.req.url,
+								statusCode: reply.statusCode
+							}
+						},
+						req(request) {
+							return {
+								method: request.method,
+								path: request.url,
+								parameters: request.params,
+								queries: request.query,
+								headers: request.headers
+							}
+						}
+					}
+				}
 			}),
 			{
 				abortOnError: false,
 				rawBody: true,
 				bufferLogs: true,
-				logger: false
-				// logger: process.env.NODE_ENV === 'production' ? false : undefined
+				logger: process.env.NODE_ENV === 'production' ? false : undefined
 			}
 		)
 
