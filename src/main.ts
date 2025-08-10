@@ -2,6 +2,7 @@ import { RequestMethod, VersioningType } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { NestFactory } from '@nestjs/core'
 import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify'
+import { Logger } from 'nestjs-pino'
 import { AppModule } from './app.module'
 import './instrument'
 
@@ -40,8 +41,7 @@ async function bootstrap() {
 			{
 				abortOnError: false,
 				rawBody: true,
-				bufferLogs: true,
-				logger: false
+				bufferLogs: true
 			}
 		)
 
@@ -54,7 +54,7 @@ async function bootstrap() {
 		})
 
 		app.enableVersioning({ type: VersioningType.HEADER, header: 'X-Api-Version' })
-		app.useLogger(false)
+		app.useLogger(app.get(Logger))
 		app.enableCors({ origin: '*', methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'] })
 		await Promise.all([
 			app.register(import('@fastify/multipart'), { limits: { files: 500, fileSize: 10 * 1024 } }),

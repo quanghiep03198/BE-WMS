@@ -45,7 +45,7 @@ import { RedisModule } from './redis/redis.module'
 		}),
 		LoggerModule.forRootAsync({
 			inject: [ConfigService],
-			useFactory: (configService: ConfigService) => configService.get<Params>('logger')
+			useFactory: (configService: ConfigService) => configService.getOrThrow<Params>('logger')
 		}),
 		ConfigModule.forRoot({
 			envFilePath: ['.env'],

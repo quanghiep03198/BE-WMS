@@ -139,16 +139,43 @@ export const appConfigFactory: ConfigFactory = () => ({
 
 	// * Logger configuration
 	['logger']: {
+		renameContext: 'WMS-API',
 		pinoHttp: {
-			level: env<RuntimeEnvironment>('NODE_ENV') === 'production' ? 'info' : 'debug',
+			customLevels: {
+				silient: 0,
+				info: 1,
+				debug: 2,
+				trace: 3,
+				warn: 4,
+				error: 5,
+				fatal: 6
+			},
+			useOnlyCustomLevels: true,
 			transport: {
 				targets: [
+					{
+						target: 'pino-pretty',
+						level: 'info',
+						options: {
+							translateTime: 'SYS:yyyy-mm-dd HH:MM:ss.l'
+						}
+					},
 					{
 						target: 'pino-pretty',
 						level: 'debug',
 						options: {
 							translateTime: 'SYS:yyyy-mm-dd HH:MM:ss.l',
-							destination: 'logs/app.log',
+							destination: 'logs/debug.log',
+							colorize: false,
+							append: true
+						}
+					},
+					{
+						target: 'pino-pretty',
+						level: 'warn',
+						options: {
+							translateTime: 'SYS:yyyy-mm-dd HH:MM:ss.l',
+							destination: 'logs/error.log',
 							colorize: false,
 							append: true
 						}
