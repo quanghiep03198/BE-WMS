@@ -1,5 +1,4 @@
-import { EXCLUDED_EPC_REGEX } from '@/common/constants/regex'
-import { SuperJson } from '@/common/utils'
+import { VALID_EPC_PATTERN } from '@/common/constants/regex'
 import { DATA_SOURCE_DATA_LAKE, DATA_SOURCE_ERP } from '@/databases/constants'
 import { InjectQueue } from '@nestjs/bullmq'
 import { BadRequestException, Injectable, InternalServerErrorException } from '@nestjs/common'
@@ -12,7 +11,7 @@ import { FilterQuery, PipelineStage } from 'mongoose'
 import { I18nContext, I18nService } from 'nestjs-i18n'
 import { PinoLogger } from 'nestjs-pino'
 import { join, resolve } from 'path'
-import { Brackets, DataSource } from 'typeorm'
+import { DataSource } from 'typeorm'
 import { InventoryActions, POST_DATA_OUTBOUND_QUEUE } from '../constants'
 import { PostReaderDataDTO, UpsertStockOutDTO } from '../dto/rfid.dto'
 import { RFIDInventoryBackupEntity } from '../entities/rifd-inventory.entity'
@@ -21,6 +20,15 @@ import { EpcInformation, RFIDSearchParams } from '../types'
 
 @Injectable()
 export class RFIDOutboundService {
+	private readonly archivedOutboundEpcQuery: string = readFileSync(
+		resolve(join(__dirname, '../sql/archived-outbound-epc.sql')),
+		'utf-8'
+	)
+	private readonly archivedOutboundEpcCountQuery: string = readFileSync(
+		resolve(join(__dirname, '../sql/archived-outbound-epc-count.sql')),
+		'utf-8'
+	)
+
 	constructor(
 		private readonly logger: PinoLogger,
 		@InjectDataSource(DATA_SOURCE_DATA_LAKE) private readonly dataSourceDL: DataSource,
@@ -127,13 +135,18 @@ export class RFIDOutboundService {
 	}
 
 	public async getArchivedEpcs(factoryCode: string, args: RFIDSearchParams & { 'scanned.eq'?: boolean }) {
+		console.log(args)
+
 		const filterQuery: FilterQuery<EpcDocument> = {
 			deleted: true,
 			scannable: true,
-			epc: { $not: { $regex: EXCLUDED_EPC_REGEX } },
+			$and: [
+				{ epc: { $regex: VALID_EPC_PATTERN, $options: 'i' } },
+				...(!!args.q ? [{ epc: { $regex: args.q, $options: 'i' } }] : [])
+			],
 			factory_code_produce: factoryCode,
 			po: null,
-			...(args.q && { epc: { $regex: args.q, $options: 'i' } }),
+
 			...(args['mo_no.eq'] && { mo_no: args['mo_no.eq'] }),
 			...(args['size_numcode.eq'] && { size_numcode: args['size_numcode.eq'] }),
 			...(args['shoes_style.eq'] && { factory_shoes_style: args['shoes_style.eq'] }),
@@ -150,143 +163,28 @@ export class RFIDOutboundService {
 				.lean(true),
 			this.epcOutboundModel.findWithDeleted(filterQuery, { _id: 0, epc: 1, stored_at: 1 }).lean(true)
 		])
-
-		const undeletedSubQuery = this.dataSourceDL
-			.createQueryBuilder()
-			.select([/* SQL */ `value AS EPC_Code`])
-			.from(/* SQL */ `OPENJSON(N'${SuperJson.stringify(undeletedEpcs)}')`, 'a')
-			.disableEscaping()
-
-		const scannedEpcQuery = this.dataSourceDL
-			.createQueryBuilder()
-			.select(/* SQL */ `JSON_VALUE(value, '$.epc')`, 'EPC_Code')
-			.addSelect(/* SQL */ `JSON_VALUE(value, '$.stored_at')`, 'stored_at')
-			.addSelect(/* SQL */ `CAST(1 AS BIT)`, 'scanned')
-			.from(/* SQL */ `OPENJSON(N'${SuperJson.stringify(deletedEpcs)}')`, 'e')
-			.disableEscaping()
-
-		const queryBuilder = await this.dataSourceDL
-			.createQueryBuilder()
-			.addCommonTableExpression(undeletedSubQuery.getQuery(), 'undeleted_epcs')
-			.addCommonTableExpression(scannedEpcQuery.getQuery(), 'scanned_epcs')
-			.select([
-				'DISTINCT a.EPC_Code AS epc',
-				'a.mo_no AS mo_no',
-				'a.size_code AS size_numcode',
-				'c.color_sn AS color_sn',
-				'd.shoestyle_codefactory AS factory_shoes_style',
-				'CAST(COALESCE(e.scanned, 0) AS BIT) AS scanned',
-				'e.stored_at AS stored_at'
-			])
-			.from('dv_InvRFIDrecorddet_backup_Daily', 'a')
-			// .innerJoin('dv_rfidmatchmst_cust', 'b', /* SQL */ `a.EPC_Code = b.EPC_Code`)
-			.leftJoin(
-				(qb) => {
-					return qb
-						.subQuery()
-						.select('mo_no')
-						.addSelect('mat_code')
-						.from('wuerp_vnrd.dbo.ta_manufacturmst', 'b')
-						.where(/* SQL */ `isactive = 'Y'`)
-						.andWhere(/* SQL */ `created >= CAST(DATEADD(YEAR, -2, GETDATE()) AS DATE)`)
-				},
-				'b',
-				/* SQL */ `a.mo_no = b.mo_no`
-			)
-			.leftJoin(
-				(qb) => {
-					return qb
-						.subQuery()
-						.select('color_sn')
-						.addSelect('mat_code')
-						.addSelect('shoestyle_systemcodefty')
-						.from('wuerp_vnrd.dbo.ta_productmst', 'c')
-						.where(/* SQL */ `c.isactive = 'Y'`)
-				},
-				'c',
-				/* SQL */ `c.mat_code = b.mat_code`
-			)
-			.leftJoin(
-				(qb) => {
-					return qb
-						.subQuery()
-						.select('shoestyle_systemcodefty')
-						.addSelect('shoestyle_codefactory')
-						.from('wuerp_vnrd.dbo.ta_shoefactorymst', 'd')
-						.where(/* SQL */ `isactive = 'Y'`)
-				},
-				'd',
-				/* SQL */ `d.shoestyle_systemcodefty = c.shoestyle_systemcodefty`
-			)
-			.leftJoin(
-				(qb) => qb.select(['EPC_Code', 'stored_at', 'scanned']).from('scanned_epcs', 'e'),
-				'e',
-				/* SQL */ `a.EPC_Code = e.EPC_Code`
-			)
-			.where(/* SQL */ `a.rfid_status = 'A'`)
-			.andWhere(/* SQL */ `RIGHT(a.station_no, 3) = '101'`)
-			.andWhere(/* SQL */ `LEFT(a.EPC_Code, 3) <> 'E28'`)
-			.andWhere(/* SQL */ `LEFT(a.EPC_Code, 6) <> '303429'`)
-			.andWhere(/* SQL */ `NOT EXISTS (SELECT 1 FROM undeleted_epcs WHERE EPC_Code = a.EPC_Code)`)
-			.andWhere(
-				new Brackets((qb) => {
-					// * Filter by EPC code (search query)
-					if (args.q) {
-						qb.andWhere(/* SQL */ `a.EPC_Code LIKE '%${args.q}%'`)
-					}
-					// * Filter by manufacturing order number
-					if (args['mo_no.eq']) {
-						qb.andWhere(/* SQL */ `a.mo_no = '${args['mo_no.eq']}'`)
-					}
-					// * Filter by size number code
-					if (args['size_numcode.eq']) {
-						qb.andWhere(/* SQL */ `a.size_numcode = '${args['size_numcode.eq']}'`)
-					}
-					// * Filter by shoes style code (factory)
-					if (args['shoes_style.eq']) {
-						qb.andWhere(/* SQL */ `d.shoestyle_codefactory = '${args['shoes_style.eq']}'`)
-					}
-					// * Filter by color serial number
-					if (args['color_sn.eq']) {
-						qb.andWhere(/* SQL */ `c.color_sn = '${args['color_sn.eq']}'`)
-					}
-					// * Filter by scanned status (boolean)
-					if (typeof args['scanned.eq'] === 'boolean') {
-						qb.andWhere(/* SQL */ `CAST(COALESCE(e.scanned, 0) AS BIT) = ${args['scanned.eq'] ? 1 : 0}`)
-					}
-					return qb
-				})
-			)
-			.andWhere(
-				/* SQL */ `NOT EXISTS (
-					SELECT 1 FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet_backup_Daily
-					WHERE EPC_Code = a.EPC_Code
-					AND rfid_status = 'B'
-					AND RIGHT(stationNO, 3) = '103'
-				)`
-			)
-			.orderBy(/* SQL */ `CAST(COALESCE(e.scanned, 0) AS BIT)`, 'DESC')
-			.addOrderBy('a.mo_no', 'DESC')
-			.addOrderBy('a.size_code', 'ASC')
-			.addOrderBy('d.shoestyle_codefactory', 'ASC')
-			.addOrderBy('c.color_sn', 'ASC')
-			.addOrderBy('a.EPC_Code', 'ASC')
-			.offset((args.page - 1) * args.limit)
-			.limit(args.limit)
-
-		const query = queryBuilder.getQuery().concat(/* SQL */ `
-			OPTION(
-				OPTIMIZE FOR UNKNOWN,
-				USE HINT ('ENABLE_PARALLEL_PLAN_PREFERENCE'),
-				HASH JOIN,
-				FAST ${args.limit},
-				MAXDOP 4,
-				RECOMPILE
-			)`)
+		const parameters = [
+			JSON.stringify(undeletedEpcs),
+			JSON.stringify(deletedEpcs),
+			(args['page'] - 1) * args['limit'],
+			args.limit,
+			args.q ?? null,
+			args['shoes_style.eq'] ?? null,
+			args['color_sn.eq'] ?? null,
+			args['size_numcode.eq'] ?? null,
+			args['mo_no.eq'] ?? null,
+			typeof args['scanned.eq'] === 'undefined'
+				? null
+				: typeof args['scanned.eq'] === 'boolean' && args['scanned.eq']
+					? 1
+					: 0
+		]
 
 		const [data, totalDocs] = await Promise.all([
-			this.dataSourceDL.query<EpcInformation[]>(query),
-			queryBuilder.getCount()
+			this.dataSourceDL.query<EpcInformation[]>(this.archivedOutboundEpcQuery, parameters),
+			this.dataSourceDL
+				.query<Array<{ count: number }>>(this.archivedOutboundEpcCountQuery, parameters)
+				.then((result) => result[0]?.count ?? 0)
 		])
 
 		const totalPages = Math.ceil(totalDocs / args.limit)
