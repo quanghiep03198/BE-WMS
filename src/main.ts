@@ -2,7 +2,6 @@ import { RequestMethod, VersioningType } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { NestFactory } from '@nestjs/core'
 import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify'
-import { Logger } from 'nestjs-pino'
 import { AppModule } from './app.module'
 import './instrument'
 
@@ -11,17 +10,8 @@ async function bootstrap() {
 		const app = await NestFactory.create<NestFastifyApplication>(
 			AppModule,
 			new FastifyAdapter({
-				addHook: (routeOptions) => {
-					if (routeOptions.url === '/metrics') {
-						routeOptions.logLevel = 'silent'
-					}
-
-					return routeOptions
-				},
 				logger: {
-					crlf: true,
-					msgPrefix: '[HTTP]' + ' ',
-
+					name: 'WMS-API',
 					transport: {
 						target: 'pino-pretty',
 						options: {
@@ -51,7 +41,7 @@ async function bootstrap() {
 				abortOnError: false,
 				rawBody: true,
 				bufferLogs: true,
-				logger: process.env.NODE_ENV === 'production' ? false : undefined
+				logger: false
 			}
 		)
 
@@ -62,9 +52,9 @@ async function bootstrap() {
 				{ path: '/metrics', method: RequestMethod.GET }
 			]
 		})
-		const logger = app.get(Logger)
+
 		app.enableVersioning({ type: VersioningType.HEADER, header: 'X-Api-Version' })
-		app.useLogger(process.env.NODE_ENV === 'production' ? false : logger)
+		app.useLogger(false)
 		app.enableCors({ origin: '*', methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'] })
 		await Promise.all([
 			app.register(import('@fastify/multipart'), { limits: { files: 500, fileSize: 10 * 1024 } }),

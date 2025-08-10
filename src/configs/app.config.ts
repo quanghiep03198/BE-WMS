@@ -8,6 +8,7 @@ import { type MongooseModuleOptions } from '@nestjs/mongoose'
 import { type ThrottlerOptions } from '@nestjs/throttler'
 import { type TypeOrmModuleOptions } from '@nestjs/typeorm'
 import { AcceptLanguageResolver, HeaderResolver, I18nOptions } from 'nestjs-i18n'
+import { Params } from 'nestjs-pino'
 import path from 'path'
 
 export const appConfigFactory: ConfigFactory = () => ({
@@ -134,5 +135,35 @@ export const appConfigFactory: ConfigFactory = () => ({
 			ttl: 60000,
 			limit: 100
 		}
-	] satisfies ThrottlerOptions[]
+	] satisfies ThrottlerOptions[],
+
+	// * Logger configuration
+	['logger']: {
+		pinoHttp: {
+			level: env<RuntimeEnvironment>('NODE_ENV') === 'production' ? 'info' : 'debug',
+			transport: {
+				targets: [
+					{
+						target: 'pino-pretty',
+						level: 'debug',
+						options: {
+							translateTime: 'SYS:yyyy-mm-dd HH:MM:ss.l',
+							destination: 'logs/app.log',
+							colorize: false,
+							append: true
+						}
+					},
+					{
+						target: 'pino-loki',
+						options: {
+							host: env<string>('GRAFANA_LOKI_URL'),
+							labels: { service_name: 'WMS-API' },
+							batching: true,
+							translateTime: 'SYS:yyyy-mm-dd HH:MM:ss.l'
+						}
+					}
+				]
+			}
+		}
+	} satisfies Params
 })

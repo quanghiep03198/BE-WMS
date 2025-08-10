@@ -11,7 +11,7 @@ import * as Sentry from '@sentry/nestjs'
 import { SentryGlobalFilter, SentryModule } from '@sentry/nestjs/setup'
 import { PrometheusModule } from '@willsoto/nestjs-prometheus'
 import { AcceptLanguageResolver, HeaderResolver, I18nModule, QueryResolver } from 'nestjs-i18n'
-import { LoggerModule } from 'nestjs-pino'
+import { LoggerModule, Params } from 'nestjs-pino'
 import { AppController } from './app.controller'
 import { appConfigFactory, validateConfig } from './configs'
 import { RotateLogJob } from './jobs/rotate-log.job'
@@ -45,47 +45,7 @@ import { RedisModule } from './redis/redis.module'
 		}),
 		LoggerModule.forRootAsync({
 			inject: [ConfigService],
-			useFactory: (configService: ConfigService) => ({
-				pinoHttp: {
-					transport: {
-						targets: [
-							{
-								target: 'pino-pretty',
-								options: {
-									translateTime: 'SYS:yyyy-mm-dd HH:MM:ss.l'
-								}
-							},
-							{
-								target: 'pino-loki',
-								options: {
-									host: configService.get<string>('GRAFANA_LOKI_URL'),
-									labels: { service_name: 'WMS-API' },
-									batching: true,
-									singleLine: true,
-									translateTime: 'SYS:yyyy-mm-dd HH:MM:ss.l'
-								}
-							}
-						]
-					},
-					serializers: {
-						res(reply) {
-							return {
-								path: reply.raw.req.url,
-								statusCode: reply.statusCode
-							}
-						},
-						req(request) {
-							return {
-								method: request.method,
-								path: request.url,
-								parameters: request.params,
-								queries: request.query,
-								headers: request.headers
-							}
-						}
-					}
-				}
-			})
+			useFactory: (configService: ConfigService) => configService.get<Params>('logger')
 		}),
 		ConfigModule.forRoot({
 			envFilePath: ['.env'],
