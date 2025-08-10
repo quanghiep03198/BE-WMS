@@ -1,4 +1,4 @@
-import { EXCLUDED_EPC_REGEX } from '@/common/constants/regex'
+import { VALID_EPC_PATTERN } from '@/common/constants/regex'
 import { DATA_SOURCE_DATA_LAKE } from '@/databases/constants'
 import { StorageFile } from '@blazity/nest-file-fastify'
 import { Processor, WorkerHost } from '@nestjs/bullmq'
@@ -44,7 +44,7 @@ export class RFIDImportDataConsumer extends WorkerHost {
 				Readable.from(Buffer.from(file?.buffer))
 					.pipe(csvParser({ headers: ['epc'] }))
 					.on('data', (data: { epc?: string }) => {
-						if (typeof data.epc === 'string' && !EXCLUDED_EPC_REGEX.test(data.epc) && !results.has(data.epc)) {
+						if (typeof data.epc === 'string' && VALID_EPC_PATTERN.test(data.epc) && !results.has(data.epc)) {
 							results.add(data.epc.trim())
 						}
 					})

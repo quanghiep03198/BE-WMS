@@ -1,4 +1,4 @@
-import { EXCLUDED_EPC_REGEX } from '@/common/constants/regex'
+import { VALID_EPC_PATTERN } from '@/common/constants/regex'
 import { DATA_SOURCE_DATA_LAKE, DATA_SOURCE_ERP } from '@/databases/constants'
 import { TENANCY_DATA_SOURCE } from '@/modules/tenancy/constants'
 import { InjectQueue } from '@nestjs/bullmq'
@@ -280,7 +280,7 @@ export class RFIDInboundService {
 		const filterQuery: FilterQuery<EpcDocument> = {
 			deleted: true,
 			stored_at: null,
-			epc: { $not: { $regex: EXCLUDED_EPC_REGEX } },
+			epc: { $regex: VALID_EPC_PATTERN },
 			factory_code_produce: factoryCode,
 			...(typeof args['scannable.eq'] === 'boolean' && { scannable: args['scannable.eq'] }),
 			...(args.q && { epc: { $regex: args.q, $options: 'i' } }),

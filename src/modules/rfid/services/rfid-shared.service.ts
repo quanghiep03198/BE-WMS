@@ -1,4 +1,4 @@
-import { EXCLUDED_EPC_REGEX } from '@/common/constants/regex'
+import { VALID_EPC_PATTERN } from '@/common/constants/regex'
 import { DATA_SOURCE_DATA_LAKE, MAIN_DATA_SOURCE } from '@/databases/constants'
 import { Inject, Injectable } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
@@ -260,7 +260,7 @@ export class RFIDSharedService {
 			.aggregateWithDeleted([
 				{
 					$match: {
-						epc: { $not: { $regex: EXCLUDED_EPC_REGEX } },
+						epc: { $regex: VALID_EPC_PATTERN },
 						mo_no: { $ne: FALLBACK_VALUE },
 						size_numcode: { $ne: FALLBACK_VALUE },
 						factory_shoes_style: { $ne: FALLBACK_VALUE },
