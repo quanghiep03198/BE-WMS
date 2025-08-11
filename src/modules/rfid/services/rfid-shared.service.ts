@@ -5,7 +5,7 @@ import { InjectModel } from '@nestjs/mongoose'
 import { InjectDataSource } from '@nestjs/typeorm'
 import { Queue } from 'bullmq'
 import { readFileSync } from 'fs'
-import { throttle } from 'lodash'
+import { throttle, upperCase } from 'lodash'
 import { AnyBulkWriteOperation, FilterQuery, mongo, UpdateWriteOpResult } from 'mongoose'
 import { join, resolve } from 'path'
 import { DataSource, Like } from 'typeorm'
@@ -203,13 +203,13 @@ export class RFIDSharedService {
 			where: { device_sn: sn, station_no: Like('%' + $stationCode) },
 			cache: {
 				id: sn,
-				milliseconds: 1000 * 60 * 60
+				milliseconds: 1000 * 60 * 60 * 8
 			}
 		})
 
 		const factory = deviceInformation?.factory_code
 		const STATION_PREFIX = 'CUS' as const
-		const station = !!factory ? `${STATION_PREFIX}_${factory}_${$stationCode}` : FALLBACK_VALUE
+		const station = !!factory ? upperCase(`${STATION_PREFIX}_${factory}_${$stationCode}`) : FALLBACK_VALUE
 		const epcList = data.tagList
 			.map((item) => item.epc.trim().toUpperCase())
 			.filter((item) => !item.startsWith(EXCLUDED_EPC_PREFIX))
@@ -230,7 +230,7 @@ export class RFIDSharedService {
 		const bulkWriteOptions: AnyBulkWriteOperation<EpcSchema>[] = scannedEpcs.map((item) => ({
 			updateOne: {
 				filter: { epc: item.epc, scannable: true },
-				update: { ...item, station_no: station.toUpperCase(), record_time: new Date(), deleted: false },
+				update: { ...item, station_no: station, record_time: new Date(), deleted: false },
 				upsert: true
 			}
 		}))

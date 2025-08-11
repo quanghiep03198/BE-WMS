@@ -18,6 +18,7 @@ import { RotateLogJob } from './jobs/rotate-log.job'
 // Feature modules
 import { EventGateway } from './events/event.gateway'
 import { AuthModule } from './modules/auth/auth.module'
+import { DefectiveGoodsModule } from './modules/defective-goods/defective-goods.module'
 import { DepartmentModule } from './modules/department/department.module'
 import { InventoryModule } from './modules/inventory/inventory.module'
 import { OrderModule } from './modules/order/order.module'
@@ -99,7 +100,8 @@ import { RedisModule } from './redis/redis.module'
 		ThirdPartyApiModule,
 		InventoryModule,
 		UserModule,
-		WarehouseModule
+		WarehouseModule,
+		DefectiveGoodsModule
 	],
 	controllers: [AppController],
 	providers: [
