@@ -54,7 +54,7 @@ async function bootstrap() {
 		})
 
 		app.enableVersioning({ type: VersioningType.HEADER, header: 'X-Api-Version' })
-		app.useLogger(app.get(Logger))
+		app.useLogger(configService.get<RuntimeEnvironment>('NODE_ENV') === 'production' ? false : app.get(Logger))
 		app.enableCors({ origin: '*', methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'] })
 		await Promise.all([
 			app.register(import('@fastify/multipart'), { limits: { files: 500, fileSize: 10 * 1024 } }),

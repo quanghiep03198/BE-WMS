@@ -5,8 +5,8 @@ import { resolve } from 'path'
 
 @Injectable()
 export class RotateLogJob {
-	@Cron(CronExpression.EVERY_1ST_DAY_OF_MONTH_AT_MIDNIGHT, {
-		name: 'MONTHLY_ROTATE_LOGS'
+	@Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT, {
+		name: 'ROTATE_LOGS_EVERY_DAY_AT_MIDNIGHT'
 	})
 	handleRotateLogs() {
 		writeFileSync(resolve('logs/app.log'), '')

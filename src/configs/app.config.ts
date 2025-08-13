@@ -141,14 +141,14 @@ export const appConfigFactory: ConfigFactory = () => ({
 	['logger']: {
 		renameContext: 'WMS-API',
 		pinoHttp: {
+			name: 'WMS API',
 			customLevels: {
-				silient: 0,
-				info: 1,
-				debug: 2,
-				trace: 3,
-				warn: 4,
-				error: 5,
-				fatal: 6
+				info: 0,
+				debug: 1,
+				trace: 2,
+				warn: 3,
+				error: 4,
+				fatal: 5
 			},
 			useOnlyCustomLevels: true,
 			transport: {
