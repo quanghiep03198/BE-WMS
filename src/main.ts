@@ -13,8 +13,10 @@ async function bootstrap() {
 			new FastifyAdapter({
 				logger: {
 					name: 'WMS-API',
+
 					transport: {
 						target: 'pino-pretty',
+						level: 'info',
 						options: {
 							translateTime: 'SYS:yyyy-mm-dd HH:MM:ss.l'
 						}
@@ -22,7 +24,7 @@ async function bootstrap() {
 					serializers: {
 						res(reply) {
 							return {
-								path: reply.raw.req.url,
+								path: reply.raw?.req?.url,
 								statusCode: reply.statusCode
 							}
 						},
