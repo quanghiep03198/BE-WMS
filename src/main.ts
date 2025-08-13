@@ -4,21 +4,27 @@ import { NestFactory } from '@nestjs/core'
 import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify'
 import { Logger } from 'nestjs-pino'
 import { AppModule } from './app.module'
+import { env } from './common/utils'
 import './instrument'
 
 async function bootstrap() {
 	try {
+		const isProduction = env<RuntimeEnvironment>('NODE_ENV') === 'production'
+
 		const app = await NestFactory.create<NestFastifyApplication>(
 			AppModule,
 			new FastifyAdapter({
 				logger: {
 					name: 'WMS-API',
-
 					transport: {
-						target: 'pino-pretty',
-						level: 'info',
+						target: isProduction ? 'pino-loki' : 'pino-pretty',
 						options: {
-							translateTime: 'SYS:yyyy-mm-dd HH:MM:ss.l'
+							translateTime: 'SYS:yyyy-mm-dd HH:MM:ss.l',
+							...(isProduction && {
+								host: env<string>('GRAFANA_LOKI_URL'),
+								labels: { service_name: 'WMS-API' },
+								batching: true
+							})
 						}
 					},
 					serializers: {
@@ -48,6 +54,7 @@ async function bootstrap() {
 		)
 
 		const configService = app.get(ConfigService)
+		const logger = app.get(Logger)
 		app.setGlobalPrefix('/api', {
 			exclude: [
 				{ path: '/', method: RequestMethod.GET },
@@ -56,7 +63,7 @@ async function bootstrap() {
 		})
 
 		app.enableVersioning({ type: VersioningType.HEADER, header: 'X-Api-Version' })
-		app.useLogger(configService.get<RuntimeEnvironment>('NODE_ENV') === 'production' ? false : app.get(Logger))
+		app.useLogger(isProduction ? false : logger)
 		app.enableCors({ origin: '*', methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'] })
 		await Promise.all([
 			app.register(import('@fastify/multipart'), { limits: { files: 500, fileSize: 10 * 1024 } }),
@@ -65,7 +72,10 @@ async function bootstrap() {
 			app.register(import('fastify-sse'))
 		])
 
-		await app.listen(+configService.get('PORT'), configService.get('HOST'))
+		await app.listen(+configService.get('PORT'), configService.get('HOST'), async () => {
+			const url = await app.getUrl()
+			logger.log(`Server listening at ${url}`)
+		})
 	} catch (error) {
 		console.error(error)
 	}
