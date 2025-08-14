@@ -1,37 +1,30 @@
-FROM node AS development
+FROM node:current-slim AS base
 
-WORKDIR /usr/src/app
+ENV PNPM_HOME="/pnpm"
+ENV PATH="$PNPM_HOME:$PATH"
 
-COPY package*.json ./
+RUN corepack enable
+RUN npm install pm2 -g
 
-# Install Node.js dependencies
-RUN npm install
+COPY . /app
+WORKDIR /app
 
-# Install PM2
-RUN npm i -g pm2
+FROM base AS prod-deps
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --prod --fix-lockfile
 
-# Install NestJS CLI
-RUN npm i -g @nestjs/cli 
+FROM base AS build
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --fix-lockfile
+RUN pnpm build
 
-COPY . .
+FROM base
 
-FROM node AS production
+# Copy built files and ecosystem config from development stage
+COPY --from=prod-deps /app/node_modules /app/node_modules
+COPY --from=build /app/dist /app/dist
+COPY --from=base /app/ecosystem.config.js ./ecosystem.config.js
 
-WORKDIR /usr/src/app
-
-ARG NODE_ENV=production
-
-ENV NODE_ENV=${NODE_ENV}
-
-COPY package*.json ./
-
-RUN npm install --only=production
-
-COPY . .
-
-# Expose the application port
 EXPOSE 3001
 
-COPY --from=development /usr/src/app/dist ./dist
+# CMD ["pm2-runtime", "ecosystem.config.js"]
+CMD ["pnpm", "start:prod"]
 
-CMD ["pm2", "start", "ecosystem.config.js"]
