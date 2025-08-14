@@ -1,3 +1,4 @@
+import { SuperJson } from '@/common/utils'
 import { DATA_SOURCE_ERP } from '@/databases/constants'
 import { CACHE_MANAGER } from '@nestjs/cache-manager'
 import { Inject, Injectable, OnModuleInit } from '@nestjs/common'
@@ -6,7 +7,9 @@ import { Cache } from 'cache-manager'
 import { PinoLogger } from 'nestjs-pino'
 import { readFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
+import { deflateSync, inflateSync } from 'node:zlib'
 import { DataSource } from 'typeorm'
+import { ProductSpecification } from './types'
 
 @Injectable()
 export class ProductSpecificationService implements OnModuleInit {
@@ -28,7 +31,11 @@ export class ProductSpecificationService implements OnModuleInit {
 			const cachedProductSpecification = await this.cacheManager.get(this.CACHE_KEY)
 			if (!cachedProductSpecification) {
 				const data = await this.getProductSpecification()
-				await this.cacheManager.set(this.CACHE_KEY, data, this.CACHE_TTL) // * Cache for 12 hour
+				await this.cacheManager.set(
+					this.CACHE_KEY,
+					deflateSync(JSON.stringify(data)).toString('base64'),
+					this.CACHE_TTL
+				) // * Cache for 12 hour
 			}
 		} catch (error) {
 			this.logger.error(error)
@@ -38,19 +45,39 @@ export class ProductSpecificationService implements OnModuleInit {
 	public async getProductSpecification() {
 		const cachedProductSpecification = await this.cacheManager.get<string>(this.CACHE_KEY)
 		if (cachedProductSpecification) {
-			return JSON.parse(cachedProductSpecification)
+			return JSON.parse(inflateSync(Buffer.from(cachedProductSpecification, 'base64')).toString())
 		} else {
+			const start = performance.now()
+			console.log('\n\nStart query at :>>>', start, '\n\n')
+			await this.dataSourceERP.query(/* SQL */ `SET NOCOUNT ON`)
+			await this.dataSourceERP.query(/* SQL */ `SET TEXTSIZE 2147483647`)
+			await this.dataSourceERP.query(/* SQL */ `SET STATISTICS XML OFF`)
 			const data = await this.dataSourceERP
 				.query<Array<{
 					brand_name: string
 					product_variants: string
 				}> | null>(this.productSpecificationQuery)
 				.then((data) => {
-					if (Array.isArray(data))
-						return data.map((item) => ({ ...item, product_variants: JSON.parse(item.product_variants) }))
-					else return []
+					return data.map((item) => ({
+						...item,
+						...(SuperJson.isValid(item.product_variants)
+							? {
+									product_variants: SuperJson.parse<ProductSpecification['product_variants']>(
+										item.product_variants
+									)
+								}
+							: { product_variants: [] })
+					}))
 				})
-			await this.cacheManager.set(this.CACHE_KEY, data, this.CACHE_TTL) // * Cache for 12 hour
+
+			const end = performance.now()
+			console.log('\n\nFinish query with :>>>', end - start, '\n\n')
+
+			await this.cacheManager.set(
+				this.CACHE_KEY,
+				deflateSync(JSON.stringify(data)).toString('base64'),
+				this.CACHE_TTL
+			) // * Cache for 12 hour
 			return data
 		}
 	}
