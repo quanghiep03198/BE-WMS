@@ -68,7 +68,11 @@ async function bootstrap() {
 		await Promise.all([
 			app.register(import('@fastify/multipart'), { limits: { files: 500, fileSize: 10 * 1024 } }),
 			app.register(import('@fastify/helmet'), { global: true }),
-			app.register(import('@fastify/compress'), { global: true, encodings: ['gzip', 'br'], threshold: 10 * 1024 }),
+			app.register(import('@fastify/compress'), {
+				global: true,
+				encodings: ['gzip', 'deflate'],
+				threshold: 10 * 1024
+			}),
 			app.register(import('fastify-sse'))
 		])
 
