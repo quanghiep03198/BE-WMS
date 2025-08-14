@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common'
 import { TypeOrmModule } from '@nestjs/typeorm'
+import { DefectiveGoodsController } from './defective-goods.controller'
 import { DefectiveGoodsService } from './defective-goods.service'
-import { DefectiveGoodsController } from './defective-product.controller'
 
 @Module({
 	imports: [TypeOrmModule],
