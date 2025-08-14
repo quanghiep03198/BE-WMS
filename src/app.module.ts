@@ -23,6 +23,7 @@ import { DepartmentModule } from './modules/department/department.module'
 import { InventoryModule } from './modules/inventory/inventory.module'
 import { OrderModule } from './modules/order/order.module'
 import { PackingModule } from './modules/packing/packing.module'
+import { ProductSpecificationModule } from './modules/product-specification/product-specification.module'
 import { ReportModule } from './modules/report/report.module'
 import { RFIDModule } from './modules/rfid/rfid.module'
 import { TenancyModule } from './modules/tenancy/tenancy.module'
@@ -101,7 +102,8 @@ import { RedisModule } from './redis/redis.module'
 		InventoryModule,
 		UserModule,
 		WarehouseModule,
-		DefectiveGoodsModule
+		DefectiveGoodsModule,
+		ProductSpecificationModule
 	],
 	controllers: [AppController],
 	providers: [
