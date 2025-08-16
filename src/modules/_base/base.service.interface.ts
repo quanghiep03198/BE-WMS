@@ -14,7 +14,7 @@ export interface IBaseService<Entity extends BaseAbstractEntity> {
 	findAll(): Promise<Entity[]>
 	findOneById(id: number): Promise<Entity>
 	updateOneById(id: number, partialEntity: QueryDeepPartialEntity<Entity>): Promise<UpdateResult>
-	deletOneById(id: number): Promise<DeleteResult>
+	deleteOneById(id: number): Promise<DeleteResult>
 	softDeleteOneById(id: number): Promise<DeleteResult>
 	restoreById(id: number): Promise<UpdateResult>
 	paginate(

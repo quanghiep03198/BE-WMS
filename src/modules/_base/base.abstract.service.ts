@@ -31,16 +31,16 @@ export abstract class BaseAbstractService<Entity extends BaseAbstractEntity> imp
 		return await this.repository.update(id, partialEntity)
 	}
 
-	async deletOneById(id: number): Promise<DeleteResult> {
+	async deleteOneById(id: number): Promise<DeleteResult> {
 		return await this.repository.delete(id)
 	}
 
 	async softDeleteOneById(id: number): Promise<DeleteResult> {
-		return await this.repository.createQueryBuilder().softDelete().where('id = :id', { id }).execute()
+		return await this.repository.createQueryBuilder().softDelete().where({ id }).execute()
 	}
 
 	async restoreById(id: number): Promise<UpdateResult> {
-		return await this.repository.createQueryBuilder().restore().where('id = :id', { id }).execute()
+		return await this.repository.createQueryBuilder().restore().where({ id }).execute()
 	}
 
 	async paginate(
