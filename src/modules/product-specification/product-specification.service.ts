@@ -7,18 +7,18 @@ import { Cache } from 'cache-manager'
 import { PinoLogger } from 'nestjs-pino'
 import { readFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
-import { deflateSync, inflateSync } from 'node:zlib'
+import { gunzipSync, gzipSync } from 'node:zlib'
 import { DataSource } from 'typeorm'
-import { ProductSpecification } from './types'
+import { ProductSpecification, ProductVariant } from './types'
 
 @Injectable()
 export class ProductSpecificationService implements OnModuleInit {
-	private readonly productSpecificationQuery: string = readFileSync(
-		resolve(join(__dirname, './sql/product-specification.sql')),
+	private readonly productVariantsQuery: string = readFileSync(
+		resolve(join(__dirname, './sql/product-variants.sql')),
 		'utf-8'
 	)
 	private readonly CACHE_TTL: number = 60 * 1000 * 60 * 12 // 12 hours
-	private readonly CACHE_KEY: string = '/api/product-specification'
+	private readonly CACHE_KEY: string = 'cached:product_specification'
 
 	constructor(
 		@Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
@@ -28,15 +28,10 @@ export class ProductSpecificationService implements OnModuleInit {
 
 	async onModuleInit() {
 		try {
-			const cachedProductSpecification = await this.cacheManager.get(this.CACHE_KEY)
-			if (!cachedProductSpecification) {
-				const data = await this.getProductSpecification()
-				await this.cacheManager.set(
-					this.CACHE_KEY,
-					deflateSync(JSON.stringify(data)).toString('base64'),
-					this.CACHE_TTL
-				) // * Cache for 12 hour
-			}
+			const cachedProductSpecification = await this.cacheManager.get<string>(this.CACHE_KEY)
+			if (!cachedProductSpecification) return await this.getProductSpecification()
+
+			return gunzipSync(Buffer.from(cachedProductSpecification, 'base64'))
 		} catch (error) {
 			this.logger.error(error)
 		}
@@ -45,40 +40,62 @@ export class ProductSpecificationService implements OnModuleInit {
 	public async getProductSpecification() {
 		const cachedProductSpecification = await this.cacheManager.get<string>(this.CACHE_KEY)
 		if (cachedProductSpecification) {
-			return JSON.parse(inflateSync(Buffer.from(cachedProductSpecification, 'base64')).toString())
+			return JSON.parse(gunzipSync(Buffer.from(cachedProductSpecification, 'base64')).toString('utf-8'))
 		} else {
-			const start = performance.now()
-			console.log('\n\nStart query at :>>>', start, '\n\n')
-			await this.dataSourceERP.query(/* SQL */ `SET NOCOUNT ON`)
-			await this.dataSourceERP.query(/* SQL */ `SET TEXTSIZE 2147483647`)
-			await this.dataSourceERP.query(/* SQL */ `SET STATISTICS XML OFF`)
 			const data = await this.dataSourceERP
-				.query<Array<{
-					brand_name: string
-					product_variants: string
-				}> | null>(this.productSpecificationQuery)
+				.query<Array<
+					Omit<ProductSpecification, 'product_variants'> & { product_variants: string }
+				> | null>(this.productVariantsQuery)
 				.then((data) => {
 					return data.map((item) => ({
 						...item,
 						...(SuperJson.isValid(item.product_variants)
 							? {
-									product_variants: SuperJson.parse<ProductSpecification['product_variants']>(
-										item.product_variants
-									)
+									product_variants: SuperJson.parse<
+										Omit<ProductSpecification, 'product_variants'> &
+											Exclude<Pick<ProductSpecification, 'product_variants'>, string>
+									>(item.product_variants)
 								}
 							: { product_variants: [] })
 					}))
 				})
 
-			const end = performance.now()
-			console.log('\n\nFinish query with :>>>', end - start, '\n\n')
+			const customerBrands = new Map<string, Map<string, ProductVariant[]>>()
+
+			for (const item of data) {
+				const { brand_name, shoes_style } = item
+				const pv = Array.isArray(item.product_variants) ? (item.product_variants as ProductVariant[]) : []
+
+				let shoeStyles = customerBrands.get(brand_name)
+				if (!shoeStyles) {
+					shoeStyles = new Map<string, ProductVariant[]>()
+					customerBrands.set(brand_name, shoeStyles)
+				}
+
+				let variants = shoeStyles.get(shoes_style)
+				if (!variants) {
+					variants = []
+					shoeStyles.set(shoes_style, variants)
+				}
+
+				if (pv.length) variants.push(...pv)
+			}
+
+			const aggregatedData = Array.from(customerBrands.entries()).map(([brand_name, shoeMap]) => ({
+				brand_name,
+				product_variants: Array.from(shoeMap.entries()).map(([factory_shoes_style, variants]) => ({
+					factory_shoes_style,
+					product_variants: variants
+				}))
+			}))
 
 			await this.cacheManager.set(
 				this.CACHE_KEY,
-				deflateSync(JSON.stringify(data)).toString('base64'),
+				gzipSync(JSON.stringify(aggregatedData)).toString('base64'),
 				this.CACHE_TTL
-			) // * Cache for 12 hour
-			return data
+			)
+
+			return aggregatedData
 		}
 	}
 }
