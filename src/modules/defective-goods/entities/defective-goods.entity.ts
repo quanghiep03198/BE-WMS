@@ -6,7 +6,7 @@ import { DefectiveCategory, DefectiveLocation } from '../constants'
 @Entity({
 	database: DATABASE_DATA_LAKE,
 	schema: DATABASE_SCHEMA,
-	name: 'dv_inv_shoes_grade',
+	name: 'dv_defective_goods',
 	synchronize: true
 })
 export class DefectiveGoodEntity extends BaseAbstractEntity {
@@ -21,6 +21,16 @@ export class DefectiveGoodEntity extends BaseAbstractEntity {
 	epc: string
 
 	@Column({
+		name: 'brand_name',
+		nullable: false,
+		type: 'nvarchar',
+		length: 24,
+		unique: true,
+		comment: 'Customer brand name of the defective goods'
+	})
+	brand_name: string
+
+	@Column({
 		name: 'mo_no',
 		nullable: true,
 		type: 'nvarchar',
@@ -30,7 +40,7 @@ export class DefectiveGoodEntity extends BaseAbstractEntity {
 	mo_no: string
 
 	@Column({
-		name: 'mo_no',
+		name: 'po',
 		nullable: true,
 		type: 'nvarchar',
 		length: 20,
@@ -44,8 +54,8 @@ export class DefectiveGoodEntity extends BaseAbstractEntity {
 	@Column({ name: 'color_sn', type: 'nvarchar', length: 10 })
 	color_sn: string
 
-	@Column({ name: 'size', type: 'nvarchar', length: 5, nullable: false, comment: 'Size' })
-	size: string
+	@Column({ name: 'size_code', type: 'nvarchar', length: 5, nullable: false, comment: 'Size' })
+	size_code: string
 
 	@Column({
 		name: 'defective_category',
@@ -55,7 +65,7 @@ export class DefectiveGoodEntity extends BaseAbstractEntity {
 		nullable: false,
 		comment: 'Defective category, including B (Grade B shoes), C (Grade C shoes), RD (Research and developement)'
 	})
-	defect_category: string
+	category: string
 
 	@Column({
 		name: 'defective_location',
