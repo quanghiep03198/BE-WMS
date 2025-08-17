@@ -1,4 +1,4 @@
-export type ProductVariant = ProductSpecification['product_variants'] extends Array<infer U> ? U : never
+export type ProductVariant = ProductSpecification['product_variants'] extends Array<infer U> ? U : string
 
 export type ProductSpecification = {
 	brand_name: string

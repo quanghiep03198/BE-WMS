@@ -43,18 +43,13 @@ export class ProductSpecificationService implements OnModuleInit {
 			return JSON.parse(gunzipSync(Buffer.from(cachedProductSpecification, 'base64')).toString('utf-8'))
 		} else {
 			const data = await this.dataSourceERP
-				.query<Array<
-					Omit<ProductSpecification, 'product_variants'> & { product_variants: string }
-				> | null>(this.productVariantsQuery)
+				.query<Array<ProductSpecification> | null>(this.productVariantsQuery)
 				.then((data) => {
 					return data.map((item) => ({
 						...item,
 						...(SuperJson.isValid(item.product_variants)
 							? {
-									product_variants: SuperJson.parse<
-										Omit<ProductSpecification, 'product_variants'> &
-											Exclude<Pick<ProductSpecification, 'product_variants'>, string>
-									>(item.product_variants)
+									product_variants: SuperJson.parse<ProductSpecification>(item.product_variants)
 								}
 							: { product_variants: [] })
 					}))
@@ -81,11 +76,11 @@ export class ProductSpecificationService implements OnModuleInit {
 				if (pv.length) variants.push(...pv)
 			}
 
-			const aggregatedData = Array.from(customerBrands.entries()).map(([brand_name, shoeMap]) => ({
+			const aggregatedData = Array.from(customerBrands.entries()).map(([brand_name, products_variants]) => ({
 				brand_name,
-				product_variants: Array.from(shoeMap.entries()).map(([factory_shoes_style, variants]) => ({
-					factory_shoes_style,
-					product_variants: variants
+				product_variants: Array.from(products_variants.entries()).map(([shoes_style, specs]) => ({
+					shoes_style,
+					specs
 				}))
 			}))
 
