@@ -21,7 +21,7 @@ export class DefectiveGoodsController {
 	@AuthGuard()
 	public async get(
 		@Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
-		@Query('limit', new DefaultValuePipe(1), ParseIntPipe) limit: number
+		@Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number
 	) {
 		return await this.defectiveGoodsService.paginate(
 			{},
