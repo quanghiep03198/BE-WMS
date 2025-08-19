@@ -12,7 +12,7 @@ export class InvDefectiveGoods1755418548522 implements MigrationInterface {
 			{
 				name: 'epc',
 				type: 'nvarchar',
-				length: '24',
+				length: '30',
 				isNullable: false,
 				isUnique: true,
 				comment: 'Electronic Product Code to indentify defective goods'
