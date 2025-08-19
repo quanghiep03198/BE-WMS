@@ -9,6 +9,7 @@ export class RotateLogJob {
 		name: 'ROTATE_LOGS_EVERY_DAY_AT_MIDNIGHT'
 	})
 	handleRotateLogs() {
-		writeFileSync(resolve('logs/app.log'), '')
+		writeFileSync(resolve('logs/debug.log'), '')
+		writeFileSync(resolve('logs/error.log'), '')
 	}
 }
