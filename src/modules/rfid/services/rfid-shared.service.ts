@@ -5,7 +5,7 @@ import { InjectModel } from '@nestjs/mongoose'
 import { InjectDataSource } from '@nestjs/typeorm'
 import { Queue } from 'bullmq'
 import { readFileSync } from 'fs'
-import { throttle, upperCase } from 'lodash'
+import { throttle } from 'lodash'
 import { AnyBulkWriteOperation, FilterQuery, mongo, UpdateWriteOpResult } from 'mongoose'
 import { join, resolve } from 'path'
 import { DataSource, Like } from 'typeorm'
@@ -208,8 +208,8 @@ export class RFIDSharedService {
 		})
 
 		const factory = deviceInformation?.factory_code
-		const STATION_PREFIX = 'CUS' as const
-		const station = !!factory ? upperCase(`${STATION_PREFIX}_${factory}_${$stationCode}`) : FALLBACK_VALUE
+		// const STATION_PREFIX = 'CUS' as const
+		const station = !!factory ? deviceInformation.station_no : FALLBACK_VALUE
 		const epcList = data.tagList
 			.map((item) => item.epc.trim().toUpperCase())
 			.filter((item) => !item.startsWith(EXCLUDED_EPC_PREFIX))
