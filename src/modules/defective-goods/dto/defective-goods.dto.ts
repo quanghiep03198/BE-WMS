@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { DefectiveCategory, DefectiveLocation } from '../constants'
 
 export const baseDefectiveGoodsDTO = z.object({
-	epc: z.string().trim().nonempty().length(24),
+	epc: z.string().trim().nonempty().max(24),
 	category: z.nativeEnum(DefectiveCategory),
 	po: z.any().nullable().optional(),
 	mo_no: z.any().nullable().optional(),
