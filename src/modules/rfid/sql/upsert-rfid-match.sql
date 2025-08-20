@@ -1,7 +1,7 @@
 MERGE INTO DV_DATA_LAKE.dbo.dv_rfidmatchmst_cust AS target
 USING (VALUES :values) AS source (
-   EPC_Code, mo_no, mat_code, mo_noseq, or_no,
-   or_custpo, shoestyle_codefactory, cust_shoestyle, size_code, size_numcode,
+   EPC_Code, mo_no, mat_code, mo_noseq, or_no, or_custpo, 
+   shoestyle_codefactory, cust_shoestyle, size_code, size_numcode,
    factory_code_orders, factory_name_orders, factory_code_produce, factory_name_produce, size_qty, remark
 )
 ON target.EPC_Code = source.EPC_Code
