@@ -30,6 +30,33 @@ WITH base_data AS (
       AND i.EPC_Code NOT LIKE '303429%'
       AND i.EPC_Code NOT LIKE 'E28%'
       AND i.record_time >= CAST(DATEADD(YEAR, -1, GETDATE()) AS DATE)
+   UNION ALL
+	SELECT 
+      i.EPC_Code, 
+      i.po, 
+      i.mo_no, 
+      CASE 
+         WHEN LEFT(CAST(i.size_code AS NVARCHAR(10)), 1) = '0' THEN i.size_code
+         WHEN CAST(i.size_code AS FLOAT) < 10 THEN CAST(CONCAT('0', i.size_code) AS NVARCHAR(10))
+         ELSE CAST(i.size_code AS NVARCHAR(10)) 
+      END AS size_code, 
+      i.record_time,
+      r.shoestyle_codefactory, 
+      p.color_sn,
+      i.FC_server_code
+   FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet i WITH (NOLOCK)
+   LEFT JOIN DV_DATA_LAKE.dbo.dv_rfidmatchmst_cust r WITH (FORCESEEK) 
+      ON i.EPC_Code = r.EPC_Code
+   LEFT JOIN wuerp_vnrd.dbo.ta_productmst p WITH (FORCESEEK)
+      ON p.mat_code = r.mat_code AND p.isactive = 'Y'
+   WHERE
+      i.rfid_status = 'B'
+      AND RIGHT(i.stationNO, 5) = 'WH103'
+      AND i.FC_server_code = @0
+      AND i.po IS NOT NULL
+      AND i.mo_no NOT IN ('13D05B006', '13A08C003')
+      AND i.EPC_Code NOT LIKE '303429%'
+      AND i.EPC_Code NOT LIKE 'E28%'
 ),
 
 -- * Daily data (Filtered by date)
