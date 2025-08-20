@@ -43,7 +43,7 @@ export class DefectiveGoodsController {
 		@User() user: UserEntity,
 		@Body(new ZodValidationPipe(createDefectiveGoodsDTO)) payload: CreateDefectiveGoodsDTO
 	) {
-		return await this.defectiveGoodsService.insertOne({ ...payload, user_code_created: user.user_name_created })
+		return await this.defectiveGoodsService.insertOne({ ...payload, user_code_created: user.username })
 		// Todo: create new resource for defective goods
 	}
 
