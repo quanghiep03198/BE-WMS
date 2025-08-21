@@ -14,6 +14,10 @@ import { IInboundHistory, IInboundReportQueryResult, IInboundReportResponse } fr
 @Injectable()
 export class InboundReportService {
 	private readonly inboundReportQuery: string = readFileSync(join(__dirname, '../sql/inbound-report.sql'), 'utf-8')
+	private readonly shapingDepartmentProductivityQuery: string = readFileSync(
+		join(__dirname, '../sql/shaping-department-productivity.sql'),
+		'utf-8'
+	)
 	private readonly inboundHistoryQuery: string = readFileSync(join(__dirname, '../sql/inbound-history.sql'), 'utf-8')
 
 	constructor(
@@ -22,8 +26,19 @@ export class InboundReportService {
 		private readonly i18nService: I18nService
 	) {}
 
-	public async getInboundReportByDate(date: string): Promise<IInboundReportResponse> {
+	public async getDailyProductivity(date: string): Promise<IInboundReportResponse> {
 		const data = await this.dataSource.query<IInboundReportQueryResult[]>(this.inboundReportQuery, [
+			this.request.headers['x-user-company'],
+			date
+		])
+		return data.map((item) => ({
+			...item,
+			size_data: JSON.parse(item.size_data)
+		}))
+	}
+
+	public async getDailyShapingDepartmentProductivity(date: string): Promise<IInboundReportResponse> {
+		const data = await this.dataSource.query<IInboundReportQueryResult[]>(this.shapingDepartmentProductivityQuery, [
 			this.request.headers['x-user-company'],
 			date
 		])
@@ -37,7 +52,7 @@ export class InboundReportService {
 		return await this.dataSource.query<IInboundHistory[]>(this.inboundHistoryQuery, [commandNumber])
 	}
 
-	async exportDailyInboundToExcel(date: string) {
+	async exportDailyInboundToExcel(reportType: 'daily-productivity' | 'shaping-department-productivity', date: string) {
 		const currentLanguage = I18nContext.current()?.lang
 		const factoryCode = this.request.headers['x-user-company']
 		const workbook = new Workbook()
@@ -88,7 +103,10 @@ export class InboundReportService {
 				key: 'missing_qty'
 			}
 		].map((item) => ({ ...item, alignment: { vertical: 'middle', horizontal: 'center' } }))
-		const data = await this.getInboundReportByDate(date)
+		const data =
+			reportType === 'daily-productivity'
+				? await this.getDailyProductivity(date)
+				: await this.getDailyShapingDepartmentProductivity(date)
 
 		for (const record of data) {
 			const row = worksheet.addRow({

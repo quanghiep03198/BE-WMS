@@ -1,7 +1,17 @@
 import { CommonRequestHeader } from '@/common/constants'
 import { Api, AuthGuard, HttpMethod } from '@/common/decorators'
 import { AllExceptionsFilter } from '@/common/filters'
-import { Controller, DefaultValuePipe, Get, Headers, Param, Query, Res, UseFilters } from '@nestjs/common'
+import {
+	BadRequestException,
+	Controller,
+	DefaultValuePipe,
+	Get,
+	Headers,
+	Param,
+	Query,
+	Res,
+	UseFilters
+} from '@nestjs/common'
 import { format } from 'date-fns'
 import { FastifyReply } from 'fastify'
 import { InboundReportService } from './services/inbound-report.service'
@@ -24,7 +34,7 @@ export class ReportController {
 		@Query('date.eq', new DefaultValuePipe(format(new Date(), 'yyyy-MM-dd')))
 		dateQuery: any
 	) {
-		return await this.inboundReportService.getInboundReportByDate(dateQuery)
+		return await this.inboundReportService.getDailyProductivity(dateQuery)
 	}
 
 	@Api({ endpoint: 'inbound-history/:commandNumber', method: HttpMethod.GET })
@@ -33,13 +43,21 @@ export class ReportController {
 		return await this.inboundReportService.getInboundHistory(commandNumber)
 	}
 
-	@Get('daily-inbound/export')
+	@Get('daily-inbound/export/:reportType')
 	@UseFilters(AllExceptionsFilter)
 	@AuthGuard()
-	async exportDailyInboundToExcel(@Query('date.eq') date: string, @Res() reply: FastifyReply) {
+	async exportDailyInboundToExcel(
+		@Param('reportType') reportType: 'daily-productivity' | 'shaping-department-productivity',
+		@Query('date.eq') date: string,
+		@Res() reply: FastifyReply
+	) {
 		// reply.setHeader('Content-Disposition', 'attachment; filename=report.xlsx')
 		// reply.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-		const buffer = await this.inboundReportService.exportDailyInboundToExcel(date)
+		if (reportType !== 'daily-productivity' && reportType !== 'shaping-department-productivity')
+			throw new BadRequestException(
+				'Invalid report type. Must be "daily-productivity" or "shaping-department-productivity".'
+			)
+		const buffer = await this.inboundReportService.exportDailyInboundToExcel(reportType, date)
 		return reply.send(buffer)
 	}
 
