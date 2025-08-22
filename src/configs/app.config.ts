@@ -90,9 +90,9 @@ export const appConfigFactory: ConfigFactory = () => ({
 			options: {
 				socket: {
 					host: env('REDIS_HOST'),
-					port: env('REDIS_PORT', { serialize: (value): number => parseInt(value) }),
-					password: env('REDIS_PASSWORD')
-				}
+					port: env('REDIS_PORT', { serialize: (value): number => parseInt(value) })
+				},
+				password: env('REDIS_PASSWORD')
 			},
 			ignoreErrors: true
 		},
