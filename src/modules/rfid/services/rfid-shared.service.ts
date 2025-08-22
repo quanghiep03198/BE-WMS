@@ -202,14 +202,12 @@ export class RFIDSharedService {
 		const deviceInformation = await this.dataSourceDL.getRepository(RFIDReaderEntity).findOne({
 			where: { device_sn: sn, station_no: Like('%' + $stationCode) },
 			cache: {
-				id: sn,
-				milliseconds: 1000 * 60 * 60 * 8
+				id: `cached:devices:${sn}`,
+				milliseconds: 1000 * 60 * 60 * 24 * 7
 			}
 		})
 
-		const factory = deviceInformation?.factory_code
-		// const STATION_PREFIX = 'CUS' as const
-		const station = !!factory ? deviceInformation.station_no : FALLBACK_VALUE
+		const station = deviceInformation.station_no ?? FALLBACK_VALUE
 		const epcList = data.tagList
 			.map((item) => item.epc.trim().toUpperCase())
 			.filter((item) => !item.startsWith(EXCLUDED_EPC_PREFIX))
