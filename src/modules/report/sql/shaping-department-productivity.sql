@@ -39,7 +39,7 @@ storage_list_cte AS (
 	FROM (SELECT DISTINCT storage, mo_no, factory_code, dept_name FROM inbound_detail_cte) a
 	LEFT JOIN DV_DATA_LAKE.dbo.dv_warehouseccodedet b
 		ON a.storage = b.storage_num
-	GROUP BY factory_code, mo_no, dept_name
+	GROUP BY factory_code, mo_no
 ),
 
 -- * Accumulated quantity of each command number
