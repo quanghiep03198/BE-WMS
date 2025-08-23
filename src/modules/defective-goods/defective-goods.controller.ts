@@ -1,7 +1,9 @@
 import { Api, AuthGuard, HttpMethod, User } from '@/common/decorators'
 import { TransformUppercasePipe, ZodValidationPipe } from '@/common/pipes'
+import { EventGateway } from '@/events/event.gateway'
 import { Body, Controller, DefaultValuePipe, HttpStatus, Param, ParseIntPipe, Query } from '@nestjs/common'
-import { isEmpty } from 'lodash'
+import { isEmpty, omit } from 'lodash'
+import { PostReaderDataDTO, readerPostDataValidator } from '../rfid/dto/rfid.dto'
 import { UserEntity } from '../user/entities/user.entity'
 import { DefectiveGoodsService } from './defective-goods.service'
 import {
@@ -13,7 +15,23 @@ import {
 
 @Controller('defective-goods')
 export class DefectiveGoodsController {
-	constructor(private readonly defectiveGoodsService: DefectiveGoodsService) {}
+	constructor(
+		private readonly eventGateway: EventGateway,
+		private readonly defectiveGoodsService: DefectiveGoodsService
+	) {}
+
+	@Api({
+		endpoint: 'post-rfid-data',
+		method: HttpMethod.POST,
+		statusCode: HttpStatus.CREATED,
+		message: 'common.ok'
+	})
+	public postData(@Body(new ZodValidationPipe(readerPostDataValidator)) payload: PostReaderDataDTO) {
+		this.eventGateway.server.emit(
+			'def_rfid_data',
+			payload.data.tagList.map((item) => item.epc)
+		)
+	}
 
 	@Api({
 		endpoint: '',
@@ -43,7 +61,17 @@ export class DefectiveGoodsController {
 		@User() user: UserEntity,
 		@Body(new ZodValidationPipe(createDefectiveGoodsDTO)) payload: CreateDefectiveGoodsDTO
 	) {
-		return await this.defectiveGoodsService.insertOne({ ...payload, user_code_created: user.username })
+		if (Array.isArray(payload.epc))
+			return await this.defectiveGoodsService.insertMany(
+				payload.epc.map((item) => ({ epc: item, user_code_created: user.username, ...omit(payload, ['epc']) }))
+			)
+		if (typeof payload.epc === 'string')
+			return await this.defectiveGoodsService.insertOne({
+				...payload,
+				epc: payload.epc,
+				user_code_created: user.username
+			})
+
 		// Todo: create new resource for defective goods
 	}
 
