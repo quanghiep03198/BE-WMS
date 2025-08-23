@@ -11,11 +11,6 @@ export class CsvFileValidationPipe implements PipeTransform {
 			throw new UnprocessableEntityException('File type is not valid')
 		}
 
-		const isSizeValid = files.every((file) => file.size <= 10 * 1024 * 1024)
-		if (!isSizeValid) {
-			throw new UnprocessableEntityException('File size is too large')
-		}
-
 		return files
 	}
 }
