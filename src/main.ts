@@ -66,7 +66,9 @@ async function bootstrap() {
 		app.useLogger(isProduction ? false : logger)
 		app.enableCors({ origin: '*', methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'] })
 		await Promise.all([
-			app.register(import('@fastify/multipart'), { limits: { files: 500, fileSize: 10 * Math.sqrt(1024) } }),
+			app.register(import('@fastify/multipart'), {
+				limits: { files: 500, fieldSize: 1024 * 1024, fileSize: 10 * 1024 * 1024 }
+			}),
 			app.register(import('@fastify/helmet'), { global: true }),
 			app.register(import('@fastify/compress'), {
 				global: true,
