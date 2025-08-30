@@ -8,12 +8,13 @@ export declare global {
 		limit: number
 		page: number
 	}
+
 	interface Pagination<T = unknown> extends PaginationParams {
 		data: Array<T>
 		hasNextPage: boolean
 		hasPrevPage: boolean
-		nextPage: number
-		prevPage: number
+		nextPage: number | null
+		prevPage: number | null
 		totalDocs: number
 		totalPages: number
 	}
