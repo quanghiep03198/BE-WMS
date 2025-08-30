@@ -1,6 +1,7 @@
-import { Controller, Get, HttpStatus, Res } from '@nestjs/common'
+import { Controller, Get, HttpStatus, Req, Res } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
-import { FastifyReply } from 'fastify'
+import { FastifyReply, FastifyRequest } from 'fastify'
+import { pick } from 'lodash'
 
 @Controller()
 export class AppController {
@@ -16,5 +17,11 @@ export class AppController {
 				statusCode: HttpStatus.OK
 			})
 		}
+	}
+
+	@Get('agent-ipv4')
+	getClient(@Req() request: FastifyRequest, @Res() reply: FastifyReply) {
+		console.log(request.ip)
+		return reply.status(HttpStatus.OK).send(pick(request, ['protocol', 'ip']))
 	}
 }
