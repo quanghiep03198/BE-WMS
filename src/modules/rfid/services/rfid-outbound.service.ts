@@ -197,7 +197,7 @@ export class RFIDOutboundService {
 			hasPrevPage: args.page > 1,
 			nextPage: args.page < totalPages ? args.page + 1 : null,
 			prevPage: args.page > 1 ? args.page - 1 : null
-		} as Pagination<EpcInformation>
+		} satisfies Pagination<EpcInformation>
 	}
 
 	private async getIsOrderCompleted(purchaseOrder: string): Promise<boolean> {
