@@ -1,14 +1,26 @@
-import { DefectiveCategory, DefectiveLocation } from '@/modules/defective-goods/constants'
+import {
+	DefectiveCategory,
+	DefectiveGoodsOutboundPurpose,
+	DefectiveLocation
+} from '@/modules/defective-goods/constants'
 import { MigrationInterface, QueryRunner, Table } from 'typeorm'
 import { DATABASE_DATA_LAKE, DATABASE_SCHEMA } from '../constants'
 
-export class InvDefectiveGoods1755418548522 implements MigrationInterface {
+export class InvDefectiveGoods1757390824605 implements MigrationInterface {
 	private tableSchema = new Table({
 		database: DATABASE_DATA_LAKE,
 		schema: DATABASE_SCHEMA,
 		name: 'dv_defective_goods',
+		comment: 'Defective goods table, including Grade B, Grade C and Research and development',
 		columns: [
-			{ name: 'keyid', type: 'int', isPrimary: true, isGenerated: true, generationStrategy: 'increment' },
+			{
+				name: 'keyid',
+				type: 'int',
+				isPrimary: true,
+				primaryKeyConstraintName: 'PK_dv_defective_goods',
+				isGenerated: true,
+				generationStrategy: 'increment'
+			},
 			{
 				name: 'epc',
 				type: 'nvarchar',
@@ -59,18 +71,37 @@ export class InvDefectiveGoods1755418548522 implements MigrationInterface {
 				comment: 'Defective location, including A (All), B (Upper), C (Bottom), D (Other)'
 			},
 			{
-				name: 'storage_location',
-				type: 'nvarchar',
-				length: '10',
-				isNullable: false,
-				comment: 'Storage location, this is the location where the defective goods are stored'
-			},
-			{
 				name: 'defective_description',
 				type: 'text',
 				isNullable: false,
 				comment:
 					'Raw text from editor, do not update this column manually, it will be updated by editor from Front-end'
+			},
+			{
+				name: 'inbound_date',
+				type: 'datetime',
+				isNullable: true,
+				comment: 'The date when the defective goods are inbounded to warehouse'
+			},
+			{
+				name: 'storage_location',
+				type: 'nvarchar',
+				length: '10',
+				isNullable: true,
+				comment: 'Storage location, this is the location where the defective goods are stored'
+			},
+			{
+				name: 'outbound_date',
+				type: 'datetime',
+				isNullable: true,
+				comment: 'The date when the defective goods are inbounded to warehouse'
+			},
+			{
+				name: 'outbound_purpose',
+				type: 'nvarchar',
+				length: '20',
+				isNullable: true,
+				enum: Object.values(DefectiveGoodsOutboundPurpose) // SELL, GIVEAWAY, RECYCLE
 			},
 			{ name: 'user_code_created', type: 'nvarchar', length: '50', isNullable: true },
 			{ name: 'user_name_created', type: 'nvarchar', length: '50', isNullable: true },
@@ -78,7 +109,7 @@ export class InvDefectiveGoods1755418548522 implements MigrationInterface {
 			{ name: 'user_name_updated', type: 'nvarchar', length: '50', isNullable: true },
 			{ name: 'created', type: 'datetime', default: 'GETDATE()', isNullable: true },
 			{ name: 'updated', type: 'datetime', isNullable: true, onUpdate: 'CURRENT_TIMESTAMP' },
-			{ name: 'isactive', type: 'varchar', length: '1', isNullable: false, default: "'A'" },
+			{ name: 'isactive', type: 'varchar', length: '1', isNullable: false, default: "'Y'" },
 			{ name: 'remark', type: 'nvarchar', length: '255', isNullable: true }
 		]
 	})

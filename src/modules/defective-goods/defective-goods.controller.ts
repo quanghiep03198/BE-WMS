@@ -12,6 +12,12 @@ import {
 	UpdateDefectiveGoodsDTO,
 	updateDefectiveGoodsDTO
 } from './dto/defective-goods.dto'
+import {
+	UpdateInboundStatusDTO,
+	updateInboundStatusDTO,
+	UpdateOutboundStatusDTO,
+	updateOutboundStatusDTO
+} from './dto/inoutbound.dto'
 
 @Controller('defective-goods')
 export class DefectiveGoodsController {
@@ -97,5 +103,35 @@ export class DefectiveGoodsController {
 	@AuthGuard()
 	public async deleteOne(@Param('id', ParseIntPipe) id: number) {
 		return await this.defectiveGoodsService.deleteOneById(id)
+	}
+
+	@Api({
+		method: HttpMethod.POST,
+		endpoint: '/retrieve-size-qty',
+		statusCode: HttpStatus.OK
+	})
+	@AuthGuard()
+	public async retrieveSizeQty(@Body() data: string[]) {
+		return await this.defectiveGoodsService.retrieveSizeQty(data)
+	}
+
+	@Api({
+		method: HttpMethod.PATCH,
+		endpoint: '/inbound',
+		statusCode: HttpStatus.CREATED
+	})
+	public async updateInboundStatus(@Body(new ZodValidationPipe(updateInboundStatusDTO)) data: UpdateInboundStatusDTO) {
+		return await this.defectiveGoodsService.updateInboundStatus(data)
+	}
+
+	@Api({
+		method: HttpMethod.PATCH,
+		endpoint: '/outbound',
+		statusCode: HttpStatus.CREATED
+	})
+	public async updateOutboundStatus(
+		@Body(new ZodValidationPipe(updateOutboundStatusDTO)) data: UpdateOutboundStatusDTO
+	) {
+		return await this.defectiveGoodsService.updateInboundStatus(data)
 	}
 }
