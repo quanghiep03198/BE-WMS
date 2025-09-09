@@ -10,3 +10,9 @@ export enum DefectiveLocation {
 	BOTTOM = 'C',
 	OTHER = 'D'
 }
+
+export enum DefectiveGoodsOutboundPurpose {
+	SELL = 'SELL',
+	GIVEAWAY = 'GIVEAWAY',
+	RECYCLE = 'RECYCLE'
+}

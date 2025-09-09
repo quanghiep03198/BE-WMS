@@ -1,13 +1,14 @@
 import { DATABASE_DATA_LAKE, DATABASE_SCHEMA } from '@/databases/constants'
 import { BaseAbstractEntity } from '@/modules/_base/base.abstract.entity'
 import { Column, Entity } from 'typeorm'
-import { DefectiveCategory, DefectiveLocation } from '../constants'
+import { DefectiveCategory, DefectiveGoodsOutboundPurpose, DefectiveLocation } from '../constants'
 
 @Entity({
 	database: DATABASE_DATA_LAKE,
 	schema: DATABASE_SCHEMA,
 	name: 'dv_defective_goods',
-	synchronize: true
+	synchronize: true,
+	comment: 'Defective goods table'
 })
 export class DefectiveGoodEntity extends BaseAbstractEntity {
 	@Column({
@@ -78,21 +79,46 @@ export class DefectiveGoodEntity extends BaseAbstractEntity {
 	defect_location: string
 
 	@Column({
-		name: 'storage_location',
-		type: 'nvarchar',
-		length: 10,
-		nullable: false,
-		comment: 'Storage location, this is the location where the defective goods are stored'
-	})
-	storage_location: string
-
-	@Column({
 		name: 'defective_description',
 		type: 'text',
 		nullable: false,
 		comment: 'Raw text from editor, do not update this column manually, it will be updated by editor from Front-end'
 	})
 	defect_description: string
+
+	@Column({
+		name: 'storage_location',
+		type: 'nvarchar',
+		length: 10,
+		nullable: true,
+		comment: 'Storage location, this is the location where the defective goods are stored'
+	})
+	storage_location: string
+
+	@Column({
+		name: 'inbound_date',
+		type: 'datetime',
+		nullable: true,
+		comment: 'The date when the defective goods are inbounded to warehouse'
+	})
+	inbound_date: Date
+
+	@Column({
+		name: 'outbound_date',
+		type: 'datetime',
+		nullable: true,
+		comment: 'The date when the defective goods are outbounded from warehouse'
+	})
+	outbound_date: Date
+
+	@Column({
+		name: 'outbound_purpose',
+		type: 'nvarchar',
+		length: 20,
+		nullable: true,
+		enum: Object.values(DefectiveGoodsOutboundPurpose) // SELL, GIVEAWAY, RECYCLE
+	})
+	outbound_purpose: string
 
 	constructor(defectiveGoods: Partial<DefectiveGoodEntity>) {
 		super()
