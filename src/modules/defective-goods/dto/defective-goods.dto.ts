@@ -7,11 +7,11 @@ export const baseDefectiveGoodsDTO = z.object({
 	po: z.any().nullable().optional(),
 	mo_no: z.any().nullable().optional(),
 	brand_name: z.string().trim().nonempty(),
+	cust_shoes_style: z.string().trim().nonempty(),
 	factory_shoes_style: z.string().trim().nonempty(),
 	color_sn: z.string().trim().nonempty(),
 	size_code: z.string().nonempty(),
 	defect_location: z.nativeEnum(DefectiveLocation),
-	// storage_location: z.string().trim().nonempty(),
 	defect_description: z.string().nonempty()
 })
 

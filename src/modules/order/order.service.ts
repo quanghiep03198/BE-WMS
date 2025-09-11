@@ -95,10 +95,11 @@ export class OrderService {
 		return await this.dataSourceERP
 			.createQueryBuilder()
 			.select('a.mo_no', 'mo_no')
+			.addSelect('i.brand_name', 'brand_name')
 			.addSelect('a.mat_code', 'mat_code')
 			.addSelect('b.mo_noseq', 'mo_noseq')
 			.addSelect('b.or_no', 'or_no')
-			.addSelect('c.or_custpo', 'or_cust_po')
+			.addSelect(`IIF(ISNULL(c.or_custpoone,'') = '',c.or_custpo,c.or_custpoone)`, 'or_cust_po')
 			.addSelect('d.color_sn', 'color_sn')
 			.addSelect('e.shoestyle_codefactory', 'factory_shoes_style')
 			.addSelect(
@@ -123,6 +124,7 @@ export class OrderService {
 				'g.shoestyle_templink = d.shoestyle_templink AND g.isactive = :recordStatus'
 			)
 			.leftJoin('ta_ordersizerun', 'h', 'h.or_no = c.or_no AND h.isactive = :recordStatus')
+			.leftJoin('ta_brand', 'i', 'i.custbrand_id = d.custbrand_id')
 			.where('a.mo_no = :commandNumber')
 			.andWhere('a.isactive = :recordStatus')
 			.andWhere('a.created >= CAST(DATEADD(YEAR, -2, GETDATE()) AS DATE)')

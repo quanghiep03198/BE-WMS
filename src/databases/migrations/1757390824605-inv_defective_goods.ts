@@ -50,6 +50,7 @@ export class InvDefectiveGoods1757390824605 implements MigrationInterface {
 				isNullable: true,
 				comment: 'This field in only required when defective category is B'
 			},
+			{ name: 'cust_shoes_style', type: 'nvarchar', length: '30', isNullable: false },
 			{ name: 'factory_shoes_style', type: 'nvarchar', length: '30', isNullable: false },
 			{ name: 'color_sn', type: 'nvarchar', length: '10', isNullable: false },
 			{ name: 'size_code', type: 'nvarchar', length: '5', isNullable: false, comment: 'Size' },
@@ -107,7 +108,7 @@ export class InvDefectiveGoods1757390824605 implements MigrationInterface {
 			{ name: 'user_name_created', type: 'nvarchar', length: '50', isNullable: true },
 			{ name: 'user_code_updated', type: 'nvarchar', length: '50', isNullable: true },
 			{ name: 'user_name_updated', type: 'nvarchar', length: '50', isNullable: true },
-			{ name: 'created', type: 'datetime', default: 'GETDATE()', isNullable: true },
+			{ name: 'created', type: 'datetime', default: 'CURRENT_TIMESTAMP', isNullable: true },
 			{ name: 'updated', type: 'datetime', isNullable: true, onUpdate: 'CURRENT_TIMESTAMP' },
 			{ name: 'isactive', type: 'varchar', length: '1', isNullable: false, default: "'Y'" },
 			{ name: 'remark', type: 'nvarchar', length: '255', isNullable: true }
@@ -119,6 +120,8 @@ export class InvDefectiveGoods1757390824605 implements MigrationInterface {
 	}
 
 	public async down(queryRunner: QueryRunner): Promise<void> {
+		await queryRunner.dropUniqueConstraint(this.tableSchema.name, 'UQ_dv_defective_goods_epc')
+		await queryRunner.dropPrimaryKey(this.tableSchema.name)
 		await queryRunner.dropTable(this.tableSchema, false)
 	}
 }

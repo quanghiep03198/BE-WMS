@@ -52,6 +52,9 @@ export class DefectiveGoodEntity extends BaseAbstractEntity {
 	@Column({ name: 'factory_shoes_style', nullable: false, type: 'nvarchar', length: 30 })
 	factory_shoes_style: string
 
+	@Column({ name: 'cust_shoes_style', nullable: false, type: 'nvarchar', length: 30 })
+	cust_shoes_style: string
+
 	@Column({ name: 'color_sn', type: 'nvarchar', length: 10 })
 	color_sn: string
 
