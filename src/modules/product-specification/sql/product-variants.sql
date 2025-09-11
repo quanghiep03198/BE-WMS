@@ -1,4 +1,8 @@
-SELECT DISTINCT brand_name, shoestyle_codefactory AS shoes_style, JSON_QUERY(cl.product_variants) AS product_variants
+SELECT DISTINCT 
+   brand_name, 
+   CAST(ISNULL(shoestyle_codecust, '') + '/' + ISNULL( shoestyle_namecust, '' ) AS NVARCHAR(255)) AS cust_shoes_style, 
+   shoestyle_codefactory AS factory_shoes_style, 
+   JSON_QUERY(cl.product_variants) AS product_variants
 FROM wuerp_vnrd.dbo.ta_shoefactorymst a
 INNER JOIN wuerp_vnrd.dbo.ta_productmst b      
    ON a.shoestyle_systemcodefty = b.shoestyle_systemcodefty
@@ -84,7 +88,7 @@ WHERE a.isactive = 'Y'
 AND cl.product_variants IS NOT NULL 
 AND a.created >= CAST(DATEADD(YEAR, -3, GETDATE()) AS DATE)
 AND c.brand_code IN ('UG', 'TV', 'KB') 
-ORDER BY brand_name ASC, shoes_style DESC
+ORDER BY brand_name ASC
 OPTION (
 	USE HINT('ENABLE_PARALLEL_PLAN_PREFERENCE')    -- * Prioritize parallel plan
    -- KEEPFIXED PLAN

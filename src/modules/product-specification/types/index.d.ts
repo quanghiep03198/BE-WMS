@@ -2,6 +2,7 @@ export type ProductVariant = ProductSpecification['product_variants'] extends Ar
 
 export type ProductSpecification = {
 	brand_name: string
-	shoes_style: string
+	factory_shoes_style: string
+	cust_shoes_style: string
 	product_variants: ProductVariant
 }

@@ -17,48 +17,39 @@ export class ProductSpecificationService {
 	constructor(@InjectDataSource(DATA_SOURCE_ERP) private readonly dataSourceERP: DataSource) {}
 
 	public async getProductSpecification() {
-		const data = await this.dataSourceERP
-			.query<Array<ProductSpecification> | null>(this.productVariantsQuery)
-			.then((data) => {
-				return data.map((item) => ({
-					...item,
-					...(SuperJson.isValid(item.product_variants)
-						? {
-								product_variants: SuperJson.parse<ProductSpecification>(item.product_variants)
-							}
-						: { product_variants: [] })
-				}))
-			})
+		const rawData = await this.dataSourceERP.query<ProductSpecification[]>(this.productVariantsQuery)
 
-		const customerBrands = new Map<string, Map<string, ProductVariant[]>>()
-
-		for (const item of data) {
-			const { brand_name, shoes_style } = item
-			const pv = Array.isArray(item.product_variants) ? (item.product_variants as ProductVariant[]) : []
-
-			let shoeStyles = customerBrands.get(brand_name)
-			if (!shoeStyles) {
-				shoeStyles = new Map<string, ProductVariant[]>()
-				customerBrands.set(brand_name, shoeStyles)
-			}
-
-			let variants = shoeStyles.get(shoes_style)
-			if (!variants) {
-				variants = []
-				shoeStyles.set(shoes_style, variants)
-			}
-
-			if (pv.length) variants.push(...pv)
-		}
-
-		const aggregatedData = Array.from(customerBrands.entries()).map(([brand_name, products_variants]) => ({
-			brand_name,
-			product_variants: Array.from(products_variants.entries()).map(([shoes_style, specs]) => ({
-				shoes_style,
-				specs
-			}))
+		const processedData = rawData.map((item) => ({
+			...item,
+			product_variants: SuperJson.isValid(item.product_variants)
+				? SuperJson.parse<ProductVariant[]>(item.product_variants)
+				: []
 		}))
 
-		return aggregatedData
+		const brandMap = new Map<string, Map<string, { cust_shoes_style: string; variants: ProductVariant[] }>>()
+
+		for (const { brand_name, factory_shoes_style, cust_shoes_style, product_variants } of processedData) {
+			if (!brandMap.has(brand_name)) {
+				brandMap.set(brand_name, new Map())
+			}
+
+			const productMap = brandMap.get(brand_name)!
+			if (!productMap.has(factory_shoes_style)) {
+				productMap.set(factory_shoes_style, { cust_shoes_style, variants: [] })
+			}
+
+			if (Array.isArray(product_variants) && product_variants.length > 0) {
+				productMap.get(factory_shoes_style)!.variants.push(...product_variants)
+			}
+		}
+
+		return Array.from(brandMap, ([brand_name, products]) => ({
+			brand_name,
+			product_variants: Array.from(products, ([factory_shoes_style, { cust_shoes_style, variants }]) => ({
+				factory_shoes_style,
+				cust_shoes_style,
+				specs: variants
+			}))
+		}))
 	}
 }
