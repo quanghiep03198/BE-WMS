@@ -46,7 +46,7 @@ export class DefectiveGoodsController {
 	@Api({
 		endpoint: '',
 		method: HttpMethod.GET,
-		statusCode: HttpStatus.CREATED
+		statusCode: HttpStatus.OK
 	})
 	@AuthGuard()
 	public async get(
@@ -77,7 +77,7 @@ export class DefectiveGoodsController {
 		this.logger.debug(filterQuery)
 
 		return await this.defectiveGoodsService.paginate(
-			{ ...filterQuery, epc: Like(`%${epc}%`) },
+			{ ...filterQuery, ...(epc && { epc: Like(`%${epc}%`) }) },
 			{
 				page,
 				limit
