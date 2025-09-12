@@ -56,4 +56,8 @@ export class DefectiveGoodsService extends BaseAbstractService<DefectiveGoodEnti
 	public async updateOutboundStatus(update: UpdateOutboundStatusDTO) {
 		return await this.defectiveGoodRepository.update({ epc: In(update.epcs) }, omit(update, ['epcs']))
 	}
+
+	public async deleteMany(ids: number[]) {
+		return await this.defectiveGoodRepository.delete({ id: In(ids) })
+	}
 }

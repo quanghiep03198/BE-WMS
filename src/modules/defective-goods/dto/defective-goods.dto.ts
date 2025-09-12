@@ -47,5 +47,8 @@ export const updateDefectiveGoodsDTO = baseDefectiveGoodsDTO
 		{ message: 'Purchase order and Manufacturing order. are required for B Grade category' }
 	)
 
+export const deleteManyDefectiveGoodsDTO = z.array(z.number().int().positive()).nonempty()
+
 export type CreateDefectiveGoodsDTO = z.infer<typeof createDefectiveGoodsDTO>
 export type UpdateDefectiveGoodsDTO = z.infer<typeof updateDefectiveGoodsDTO>
+export type DeleteManyDefectiveGoodsDTO = z.infer<typeof deleteManyDefectiveGoodsDTO>
