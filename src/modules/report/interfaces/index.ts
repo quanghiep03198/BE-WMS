@@ -85,7 +85,7 @@ export type IDailyPackingReport = Array<{
 export interface IInboundHistory {
 	mo_no: string
 	brand_name: string
-	factory_shoes_style: string
+	shoe_style: string
 	color_sn: string
 	mo_qty: number
 	inbound_qty: number
@@ -96,7 +96,7 @@ export interface IOutboundHistory {
 	po_qty: number
 	outbound_qty: number
 	brand_name: string
-	factory_shoes_style: string
+	shoe_style: string
 	color_sn: string
 	outbound_date: Date
 }

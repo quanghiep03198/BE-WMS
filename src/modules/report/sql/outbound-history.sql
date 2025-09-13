@@ -9,13 +9,13 @@ SELECT
    ) AS po_qty,
    COUNT(DISTINCT a.EPC_Code) AS outbound_qty,
    g.brand_name,
-   f.shoestyle_codefactory AS factory_shoes_style,
+   f.shoestyle_codecust + '/' + f.shoestyle_codefactory AS shoe_style,
    e.color_sn,
    CAST(a.record_time AS DATE) AS outbound_date
 FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet_backup_Daily a
    LEFT JOIN wuerp_vnrd.dbo.ta_manufacturmst b ON a.mo_no = b.mo_no AND b.isactive = 'Y'
    LEFT JOIN wuerp_vnrd.dbo.ta_manufacturdet c ON c.mo_no = b.mo_no AND c.isactive='Y'
-   LEFT JOIN wuerp_vnrd.dbo.ta_productmst e ON e.mat_code= b.mat_code AND e.isactive= 'Y'
+   LEFT JOIN wuerp_vnrd.dbo.ta_productmst e ON e.mat_code = b.mat_code AND e.isactive= 'Y'
    LEFT JOIN wuerp_vnrd.dbo.ta_shoefactorymst f ON f.shoestyle_systemcodefty = e.shoestyle_systemcodefty AND f.isactive = 'Y'
    LEFT JOIN wuerp_vnrd.dbo.ta_brand g ON g.custbrand_id = e.custbrand_id
 WHERE 
@@ -29,7 +29,7 @@ WHERE
    AND a.stationNO LIKE 'CUS%WH103'
 GROUP BY 
    a.po, 
-   f.shoestyle_codefactory, 
+   f.shoestyle_codecust + '/' + f.shoestyle_codefactory, 
    g.brand_name,
    e.color_sn,
    CAST(a.record_time AS DATE)
