@@ -47,7 +47,20 @@ export const updateDefectiveGoodsDTO = baseDefectiveGoodsDTO
 		{ message: 'Purchase order and Manufacturing order. are required for B Grade category' }
 	)
 
-export const deleteManyDefectiveGoodsDTO = z.array(z.number().int().positive()).nonempty()
+export const deleteManyDefectiveGoodsDTO = z.object({
+	ids: z.literal('all').or(z.array(z.number().int().positive()).nonempty()),
+	category: z.nativeEnum(DefectiveCategory).optional(),
+	po: z.string().optional(),
+	mo_no: z.string().optional(),
+	brand_name: z.string().optional(),
+	cust_shoes_style: z.string().optional(),
+	factory_shoes_style: z.string().optional(),
+	color_sn: z.string().optional(),
+	size_code: z.string().optional(),
+	defect_location: z.nativeEnum(DefectiveLocation).optional(),
+	defect_description: z.string().optional(),
+	created: z.string().optional()
+})
 
 export type CreateDefectiveGoodsDTO = z.infer<typeof createDefectiveGoodsDTO>
 export type UpdateDefectiveGoodsDTO = z.infer<typeof updateDefectiveGoodsDTO>
