@@ -2,9 +2,9 @@ import { Api, AuthGuard, HttpMethod, User } from '@/common/decorators'
 import { TransformUppercasePipe, ZodValidationPipe } from '@/common/pipes'
 import { EventGateway } from '@/events/event.gateway'
 import { Body, Controller, DefaultValuePipe, HttpStatus, Param, ParseIntPipe, Query } from '@nestjs/common'
-import { isEmpty, omit, pickBy } from 'lodash'
+import { isEmpty, isNil, omit, pickBy } from 'lodash'
 import { PinoLogger } from 'nestjs-pino'
-import { Like } from 'typeorm'
+import { Between, Like } from 'typeorm'
 import { PostReaderDataDTO, readerPostDataValidator } from '../rfid/dto/rfid.dto'
 import { UserEntity } from '../user/entities/user.entity'
 import { DefectiveGoodsService } from './defective-goods.service'
@@ -52,14 +52,15 @@ export class DefectiveGoodsController {
 	public async get(
 		@Query('epc', TransformUppercasePipe) epc: string,
 		@Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
-		@Query('limit', new DefaultValuePipe(50), ParseIntPipe) limit: number,
+		@Query('limit', new DefaultValuePipe(2), ParseIntPipe) limit: number,
 		@Query('brand_name', new DefaultValuePipe(''), TransformUppercasePipe) brand_name: string,
 		@Query('category', new DefaultValuePipe(''), TransformUppercasePipe) category: string,
 		@Query('factory_shoes_style', new DefaultValuePipe(''), TransformUppercasePipe) factory_shoes_style: string,
-		@Query('cust_shoes_style', new DefaultValuePipe(''), TransformUppercasePipe) cust_shoes_style: string,
-		@Query('po', new DefaultValuePipe(''), TransformUppercasePipe) po: string,
+		@Query('cust_shoes_style') cust_shoes_style: string,
+		@Query('po') po: string,
 		@Query('mo_no', new DefaultValuePipe(''), TransformUppercasePipe) mo_no: string,
-		@Query('size_code', new DefaultValuePipe(''), TransformUppercasePipe) size_code: string
+		@Query('size_code', TransformUppercasePipe) size_code: string,
+		@Query('created') created: string | undefined
 	) {
 		const filterQuery = pickBy(
 			{
@@ -71,13 +72,20 @@ export class DefectiveGoodsController {
 				mo_no,
 				size_code
 			},
-			(item) => !isEmpty(item)
+			(item) => !isEmpty(item) && !isNil(item)
 		)
 
-		this.logger.debug(filterQuery)
-
 		return await this.defectiveGoodsService.paginate(
-			{ ...filterQuery, ...(epc && { epc: Like(`%${epc}%`) }) },
+			{
+				...filterQuery,
+				...(epc && { epc: Like(`%${epc}%`) }),
+				...(created && {
+					created: Between(
+						new Date(new Date(created).setHours(0, 0, 0, 0)),
+						new Date(new Date(created).setHours(23, 59, 59, 999))
+					)
+				})
+			},
 			{
 				page,
 				limit
@@ -139,7 +147,7 @@ export class DefectiveGoodsController {
 		statusCode: HttpStatus.NO_CONTENT
 	})
 	@AuthGuard()
-	public async deleteMany(@Body(new ZodValidationPipe(deleteManyDefectiveGoodsDTO)) ids: number[]) {
+	public async deleteMany(@Body(new ZodValidationPipe(deleteManyDefectiveGoodsDTO)) ids: number[] | 'all') {
 		return await this.defectiveGoodsService.deleteMany(ids)
 	}
 
@@ -158,7 +166,9 @@ export class DefectiveGoodsController {
 		endpoint: '/inbound',
 		statusCode: HttpStatus.CREATED
 	})
-	public async updateInboundStatus(@Body(new ZodValidationPipe(updateInboundStatusDTO)) data: UpdateInboundStatusDTO) {
+	public async updateInboundStatus(
+		@Body(new ZodValidationPipe(updateInboundStatusDTO.partial())) data: UpdateInboundStatusDTO
+	) {
 		return await this.defectiveGoodsService.updateInboundStatus(data)
 	}
 
