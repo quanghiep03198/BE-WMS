@@ -2,8 +2,7 @@ import { DATA_SOURCE_DATA_LAKE } from '@/databases/constants'
 import { BadGatewayException, Injectable } from '@nestjs/common'
 import { InjectRepository } from '@nestjs/typeorm'
 import { omit } from 'lodash'
-import { PinoLogger } from 'nestjs-pino'
-import { FindOptionsWhere, In, Repository } from 'typeorm'
+import { And, Between, FindOptionsWhere, In, Not, Repository } from 'typeorm'
 import { BaseAbstractService } from '../_base/base.abstract.service'
 import { DeleteManyDefectiveGoodsDTO } from './dto/defective-goods.dto'
 import { UpdateInboundStatusDTO, UpdateOutboundStatusDTO } from './dto/inoutbound.dto'
@@ -12,7 +11,6 @@ import { DefectiveGoodEntity } from './entities/defective-goods.entity'
 @Injectable()
 export class DefectiveGoodsService extends BaseAbstractService<DefectiveGoodEntity> {
 	constructor(
-		private readonly logger: PinoLogger,
 		@InjectRepository(DefectiveGoodEntity, DATA_SOURCE_DATA_LAKE)
 		private readonly defectiveGoodRepository: Repository<DefectiveGoodEntity>
 	) {
@@ -61,14 +59,25 @@ export class DefectiveGoodsService extends BaseAbstractService<DefectiveGoodEnti
 	}
 
 	public async deleteMany(payload: Partial<DeleteManyDefectiveGoodsDTO>) {
-		this.logger.debug(payload)
-		return
+		const filterQuery: FindOptionsWhere<DefectiveGoodEntity> = {
+			...omit(payload, ['including_ids', 'excluding_ids', 'created']),
+			...(payload.created && {
+				created: Between(
+					new Date(new Date(payload.created).setHours(0, 0, 0, 0)),
+					new Date(new Date(payload.created).setHours(23, 59, 59, 999))
+				)
+			}),
+			...(Array.isArray(payload.excluding_ids) &&
+				payload.excluding_ids.length > 0 && { id: Not(In(payload.excluding_ids)) })
+		}
 
-		if (payload.ids === 'all') {
-			const filterQuery = omit(payload, ['ids']) as unknown as FindOptionsWhere<DefectiveGoodEntity>
-			return await this.defectiveGoodRepository.delete(filterQuery)
-		} else if (Array.isArray(payload.ids))
-			return await this.defectiveGoodRepository.delete({ id: In(payload.ids as Array<number>) })
+		if (payload.including_ids === 'all') {
+			return await this.defectiveGoodRepository.delete({ ...filterQuery })
+		} else if (Array.isArray(payload.including_ids) && Array.isArray(payload.excluding_ids))
+			return await this.defectiveGoodRepository.delete({
+				...filterQuery,
+				id: And(In(payload.including_ids), Not(In(payload.excluding_ids)))
+			})
 		else throw new BadGatewayException('Invalid request payload')
 	}
 }
