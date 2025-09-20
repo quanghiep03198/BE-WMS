@@ -11,6 +11,7 @@ import { DefectiveGoodsService } from './defective-goods.service'
 import {
 	CreateDefectiveGoodsDTO,
 	createDefectiveGoodsDTO,
+	DeleteManyDefectiveGoodsDTO,
 	deleteManyDefectiveGoodsDTO,
 	UpdateDefectiveGoodsDTO,
 	updateDefectiveGoodsDTO
@@ -52,7 +53,7 @@ export class DefectiveGoodsController {
 	public async get(
 		@Query('epc', TransformUppercasePipe) epc: string,
 		@Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
-		@Query('limit', new DefaultValuePipe(2), ParseIntPipe) limit: number,
+		@Query('limit', new DefaultValuePipe(50), ParseIntPipe) limit: number,
 		@Query('brand_name', new DefaultValuePipe(''), TransformUppercasePipe) brand_name: string,
 		@Query('category', new DefaultValuePipe(''), TransformUppercasePipe) category: string,
 		@Query('factory_shoes_style', new DefaultValuePipe(''), TransformUppercasePipe) factory_shoes_style: string,
@@ -147,7 +148,7 @@ export class DefectiveGoodsController {
 		statusCode: HttpStatus.NO_CONTENT
 	})
 	@AuthGuard()
-	public async deleteMany(@Body(new ZodValidationPipe(deleteManyDefectiveGoodsDTO)) ids: number[] | 'all') {
+	public async deleteMany(@Body(new ZodValidationPipe(deleteManyDefectiveGoodsDTO)) ids: DeleteManyDefectiveGoodsDTO) {
 		return await this.defectiveGoodsService.deleteMany(ids)
 	}
 

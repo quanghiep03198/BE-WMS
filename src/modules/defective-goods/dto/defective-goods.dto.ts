@@ -48,7 +48,8 @@ export const updateDefectiveGoodsDTO = baseDefectiveGoodsDTO
 	)
 
 export const deleteManyDefectiveGoodsDTO = z.object({
-	ids: z.literal('all').or(z.array(z.number().int().positive()).nonempty()),
+	including_ids: z.literal('all').or(z.array(z.number().int().positive()).nonempty()),
+	excluding_ids: z.array(z.number().int().positive()).optional(),
 	category: z.nativeEnum(DefectiveCategory).optional(),
 	po: z.string().optional(),
 	mo_no: z.string().optional(),
