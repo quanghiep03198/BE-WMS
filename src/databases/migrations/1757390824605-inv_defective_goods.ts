@@ -7,7 +7,7 @@ import { MigrationInterface, QueryRunner, Table } from 'typeorm'
 import { DATABASE_DATA_LAKE, DATABASE_SCHEMA } from '../constants'
 
 export class InvDefectiveGoods1757390824605 implements MigrationInterface {
-	private tableSchema = new Table({
+	private readonly tableSchema = new Table({
 		database: DATABASE_DATA_LAKE,
 		schema: DATABASE_SCHEMA,
 		name: 'dv_defective_goods',
