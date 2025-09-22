@@ -14,7 +14,7 @@ export class AuthService {
 	private readonly TOKEN_CACHE_TTL = 60 * 1000 * 60 + 30 * 1000
 
 	constructor(
-		@Inject(CACHE_MANAGER) private cacheManager: Cache,
+		@Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
 		private readonly jwtService: JwtService,
 		private readonly userService: UserService,
 		private readonly i18n: I18nService

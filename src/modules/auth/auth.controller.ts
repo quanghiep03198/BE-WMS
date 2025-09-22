@@ -5,7 +5,7 @@ import { LocalAuthGuard } from './guards/local-auth.guard'
 
 @Controller()
 export class AuthController {
-	constructor(private authService: AuthService) {}
+	constructor(private readonly authService: AuthService) {}
 
 	@Api({
 		endpoint: 'login',
