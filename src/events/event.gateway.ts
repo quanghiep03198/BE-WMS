@@ -6,8 +6,12 @@ import { FALLBACK_VALUE } from '@/modules/rfid/constants'
 import { EpcDocument, EpcInbound } from '@/modules/rfid/schemas/epc.schema'
 import { THIRD_PARTY_API_SYNC } from '@/modules/third-party-api/constants'
 import { SyncDataMessageDTO, syncDataMessageValidator } from '@/modules/third-party-api/dto/third-party-api.dto'
+import { UserEntity } from '@/modules/user/entities/user.entity'
 import { InjectQueue } from '@nestjs/bullmq'
-import { Optional, UseFilters, UsePipes } from '@nestjs/common'
+import { CACHE_MANAGER } from '@nestjs/cache-manager'
+import { Inject, Optional, UseFilters, UsePipes } from '@nestjs/common'
+import { ConfigService } from '@nestjs/config'
+import { JwtService } from '@nestjs/jwt'
 import { InjectModel } from '@nestjs/mongoose'
 import {
 	MessageBody,
@@ -18,10 +22,17 @@ import {
 	WebSocketServer
 } from '@nestjs/websockets'
 import { Queue } from 'bullmq'
+import { Cache } from 'cache-manager'
 import { uniqBy, uniqueId } from 'lodash'
 import { PaginateModel } from 'mongoose'
 import { PinoLogger } from 'nestjs-pino'
 import { Socket } from 'socket.io'
+
+class UnauthorizedSocketException extends Error {
+	constructor(message?: string) {
+		super((message ??= 'Unauthorized'))
+	}
+}
 
 @WebSocketGateway({ cors: { origin: '*' } })
 export class EventGateway implements OnGatewayConnection, OnGatewayDisconnect {
@@ -30,6 +41,10 @@ export class EventGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
 	constructor(
 		private readonly logger: PinoLogger,
+		private readonly jwtService: JwtService,
+		private readonly configService: ConfigService,
+
+		@Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
 
 		@Optional()
 		@InjectModel(EpcInbound.name)
@@ -45,7 +60,23 @@ export class EventGateway implements OnGatewayConnection, OnGatewayDisconnect {
 	) {}
 
 	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	public handleConnection(_: Socket) {}
+	public async handleConnection(client: Socket) {
+		try {
+			const token = client.handshake.headers.authorization?.replace('Bearer ', '')
+			if (!token) {
+				this.logger.warn(`Client tried to connect without token: ${client.id}`)
+				throw new UnauthorizedSocketException()
+			}
+			const payload = await this.jwtService.verifyAsync<Partial<UserEntity>>(token, {
+				secret: this.configService.get('JWT_SECRET')
+			})
+			const cachedToken = await this.cacheManager.get(`token:${payload.id}`)
+			if (!cachedToken) throw new UnauthorizedSocketException()
+		} catch {
+			this.logger.warn(`Client tried to connect with invalid token: ${client.id}`)
+			client.disconnect()
+		}
+	}
 
 	public handleDisconnect(client: Socket) {
 		this.logger.info(`Client disconnected: ${client.id}`)
