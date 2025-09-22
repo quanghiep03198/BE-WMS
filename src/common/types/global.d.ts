@@ -48,23 +48,20 @@ export declare global {
 			MONGO_DB_NAME: string
 
 			// * Third-party API
-			THIRD_PARTY_OAUTH_API_URL: string
-			THIRD_PARTY_API_URL: string
-			GL1_CLIENT_ID: string
-			GL1_CLIENT_SECRET: string
-			GL3_CLIENT_ID: string
-			GL3_CLIENT_SECRET: string
-			GL4_CLIENT_ID: string
-			GL4_CLIENT_SECRET: string
+			DECKERS_OAUTH_API_URL: string
+			DECKERS_API_URL: string
+			DECKERS_GL1_CLIENT_ID: string
+			DECKERS_GL1_CLIENT_SECRET: string
+			DECKERS_GL3_CLIENT_ID: string
+			DECKERS_GL3_CLIENT_SECRET: string
+			DECKERS_GL4_CLIENT_ID: string
+			DECKERS_GL4_CLIENT_SECRET: string
 			// * Tenancy
 			TENANT_DEV: string
-			TENANT_MAIN: string
-			TENANT_VN_LIANYING: string
-			TENANT_VN_LIANYING_SECONDARY: string
-			TENANT_VN_LIANSHUN: string
-			TENANT_VN_LIANSHUN_SECONDARY: string
-			TENANT_KHRU: string
-			TENANT_KM_SECONDARY: string
+			TENANT_CENTRAL: string
+			TENANT_GL1: string
+			TENANT_GL3: string
+			TENANT_GL4: string
 			// * Redis
 			REDIS_HOST: string
 			REDIS_PORT: string

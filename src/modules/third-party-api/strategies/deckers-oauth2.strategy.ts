@@ -5,42 +5,28 @@ import { Inject, Injectable, NotFoundException } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { Cache } from 'cache-manager'
 import { PinoLogger } from 'nestjs-pino'
+import { DECKERS_OAUTH2_STRATEGY } from '../constants'
 import { OAuth2TokenResponse } from '../interfaces/third-party-api.interface'
-import { GL1OAuth2Strategy, GL3OAuth2Strategy, GL4OAuth2Strategy } from './third-party-api-oauth2.strategy'
+import { IThirdPartyOAuth2Strategy } from '../interfaces/third-party-api.strategy.interface'
 
 @Injectable()
-export class ThirdPartyApiOAuth2Service {
+export class DeckersOAuth2Strategy implements IThirdPartyOAuth2Strategy {
 	constructor(
 		@Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
+		@Inject(DECKERS_OAUTH2_STRATEGY)
+		private readonly deckersOauth2Strategy: Map<FactoryCode, Record<'client_id' | 'client_secret', string>>,
 		private readonly logger: PinoLogger,
 		private readonly configService: ConfigService,
-		private readonly httpService: HttpService,
-		private readonly gl1Credentials: GL1OAuth2Strategy,
-		private readonly gl3Credentials: GL3OAuth2Strategy,
-		private readonly gl4Credentials: GL4OAuth2Strategy
+		private readonly httpService: HttpService
 	) {}
 
-	private getOAuth2CredentialFactory(factoryCode: string) {
-		switch (factoryCode) {
-			case FactoryCode.GL1:
-				return this.gl1Credentials.getCredentials()
-			case FactoryCode.GL2:
-				return this.gl1Credentials.getCredentials()
-			case FactoryCode.GL3:
-				return this.gl3Credentials.getCredentials()
-			case FactoryCode.GL4:
-				return this.gl4Credentials.getCredentials()
-			default:
-				throw new NotFoundException('Credential by factory could not be found')
-		}
-	}
-
-	public async fetchOauth2Token(factoryCode: string): Promise<OAuth2TokenResponse> {
+	public async fetchOauth2Token(factoryCode: FactoryCode): Promise<OAuth2TokenResponse> {
 		try {
-			const credentials = this.getOAuth2CredentialFactory(factoryCode)
+			const credentials = this.deckersOauth2Strategy.get(factoryCode)
+			if (!credentials) throw new NotFoundException('Credential by factory could not be found')
 
 			return await this.httpService.axiosRef.request<URLSearchParams, OAuth2TokenResponse>({
-				baseURL: this.configService.get('THIRD_PARTY_OAUTH_API_URL'),
+				baseURL: this.configService.get('DECKERS_OAUTH_API_URL'),
 				url: '',
 				method: 'POST',
 				headers: {
@@ -58,7 +44,7 @@ export class ThirdPartyApiOAuth2Service {
 		}
 	}
 
-	public async authenticate(factoryCode: string) {
+	public async authenticate(factoryCode: FactoryCode): Promise<string | null> {
 		try {
 			const accessToken = await this.getTokenByFactory(factoryCode)
 			if (!accessToken) {
@@ -72,11 +58,11 @@ export class ThirdPartyApiOAuth2Service {
 		}
 	}
 
-	private async setTokenByFactory(factoryCode: string, accessToken: string, expiresIn: number) {
+	public async setTokenByFactory(factoryCode: FactoryCode, accessToken: string, expiresIn: number) {
 		return await this.cacheManager.set(`third_party_token:${factoryCode}`, accessToken, expiresIn)
 	}
 
-	private async getTokenByFactory(factoryCode: string): Promise<string | null> {
+	private async getTokenByFactory(factoryCode: FactoryCode): Promise<string | null> {
 		return await this.cacheManager.get<string | null>(`third_party_token:${factoryCode}`)
 	}
 }

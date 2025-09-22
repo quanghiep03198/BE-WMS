@@ -1,6 +1,7 @@
 import { EventGateway } from '@/events/event.gateway'
 import { Processor, WorkerHost } from '@nestjs/bullmq'
 // import { Logger } from '@nestjs/common'
+import { FactoryCode } from '@/modules/department/constants'
 import { Job } from 'bullmq'
 import { format } from 'date-fns'
 import { groupBy } from 'lodash'
@@ -10,7 +11,7 @@ import { RFIDMatchCustomerEntity } from '../../rfid/entities/rfid-customer-match
 import { RFIDInboundService } from '../../rfid/services/rfid-inbound.service'
 import { THIRD_PARTY_API_SYNC } from '../constants'
 import { SyncProcessState } from '../interfaces/third-party-api.interface'
-import { ThirdPartyApiOAuth2Service } from '../strategies/third-party-api-oauth2.service'
+import { DeckersOAuth2Strategy } from '../strategies/deckers-oauth2.strategy'
 import { ThirdPartyApiService } from '../third-party-api.service'
 
 @Processor(THIRD_PARTY_API_SYNC)
@@ -20,7 +21,7 @@ export class ThirdPartyApiConsumer extends WorkerHost {
 	constructor(
 		private readonly logger: PinoLogger,
 		private readonly thirdPartyApiService: ThirdPartyApiService,
-		private readonly thirdPartyApiOAuth2Service: ThirdPartyApiOAuth2Service,
+		private readonly thirdPartyApiOAuth2Service: DeckersOAuth2Strategy,
 		private readonly rfidInboundService: RFIDInboundService,
 		private readonly orderService: OrderService,
 		private readonly eventGateway: EventGateway
@@ -34,7 +35,7 @@ export class ThirdPartyApiConsumer extends WorkerHost {
 	 * @param { Job<string[], void, string>} job
 	 */
 	public async process(job: Job<string[], void, string>): Promise<void> {
-		const factoryCode: string = job.id
+		const factoryCode = job.id as FactoryCode
 		const data = job.data
 
 		await this.broadcastStateChange()
@@ -79,7 +80,7 @@ export class ThirdPartyApiConsumer extends WorkerHost {
 	}
 
 	// * Step 1: Authenticate API via Decker OAuth2
-	private async authenticate(factoryCode: string): Promise<string> {
+	private async authenticate(factoryCode: FactoryCode): Promise<string> {
 		const accessToken = await this.thirdPartyApiOAuth2Service.authenticate(factoryCode)
 		if (!accessToken) {
 			this.updateProcessState(0, 'failed')

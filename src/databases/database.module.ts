@@ -6,13 +6,13 @@ import { join } from 'path'
 import { DataSource } from 'typeorm'
 import { SqlServerConnectionOptions } from 'typeorm/driver/sqlserver/SqlServerConnectionOptions'
 import {
+	CENTRAL_DATA_SOURCE,
 	DATA_SOURCE_DATA_LAKE,
 	DATA_SOURCE_ERP,
 	DATA_SOURCE_SYSCLOUD,
 	DATABASE_DATA_LAKE,
 	DATABASE_ERP,
-	DATABASE_SYSCLOUD,
-	MAIN_DATA_SOURCE
+	DATABASE_SYSCLOUD
 } from './constants'
 
 @Module({
@@ -63,13 +63,13 @@ export class DatabaseModule {
 			global: true,
 			providers: [
 				{
-					provide: MAIN_DATA_SOURCE,
+					provide: CENTRAL_DATA_SOURCE,
 					scope: Scope.DEFAULT,
 					inject: [ConfigService],
 					useFactory: async (configService: ConfigService) => {
 						const dataSource = new DataSource({
 							...configService.getOrThrow<SqlServerConnectionOptions>('mssql'),
-							host: configService.getOrThrow<string>('TENANT_MAIN'),
+							host: configService.getOrThrow<string>('TENANT_CENTRAL'),
 							entities: [join(__dirname, '../**/*.entity.{ts,js}')]
 						})
 						if (!dataSource.isInitialized) await dataSource.initialize()
@@ -77,7 +77,7 @@ export class DatabaseModule {
 					}
 				}
 			],
-			exports: [MAIN_DATA_SOURCE]
+			exports: [CENTRAL_DATA_SOURCE]
 		}
 	}
 }

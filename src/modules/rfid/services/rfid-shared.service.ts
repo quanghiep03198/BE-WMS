@@ -1,5 +1,5 @@
 import { VALID_EPC_PATTERN } from '@/common/constants/regex'
-import { DATA_SOURCE_DATA_LAKE, MAIN_DATA_SOURCE } from '@/databases/constants'
+import { CENTRAL_DATA_SOURCE, DATA_SOURCE_DATA_LAKE } from '@/databases/constants'
 import { Inject, Injectable } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
 import { InjectDataSource } from '@nestjs/typeorm'
@@ -23,7 +23,7 @@ export class RFIDSharedService {
 	)
 
 	constructor(
-		@Inject(MAIN_DATA_SOURCE) private readonly dataSource: DataSource,
+		@Inject(CENTRAL_DATA_SOURCE) private readonly dataSource: DataSource,
 		@InjectDataSource(DATA_SOURCE_DATA_LAKE) private readonly dataSourceDL: DataSource,
 		@InjectModel(EpcInbound.name) private readonly epcInboundModel: EpcModel,
 		@InjectModel(EpcOutbound.name) private readonly epcOutboundModel: EpcModel

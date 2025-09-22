@@ -8,7 +8,7 @@ export const DATA_SOURCE_ERP = 'ERP' as const
 
 export const DATABASE_SCHEMA = 'dbo' as const
 
-export const MAIN_DATA_SOURCE = 'MAIN_DATA_SOURCE' as const
+export const CENTRAL_DATA_SOURCE = 'CENTRAL_DATA_SOURCE' as const
 
 export enum RecordStatus {
 	ACTIVE = 'Y',

@@ -23,29 +23,29 @@ export class TenancyService implements OnModuleDestroy {
 			alias: this.getHostAlias(this.configService.get('TENANT_DEV'))
 		},
 		{
-			id: Tenant.MAIN,
+			id: Tenant.CENTRAL,
 			factory: [FactoryCode.GL1, FactoryCode.GL2, FactoryCode.GL3, FactoryCode.GL4],
-			host: this.configService.get('TENANT_MAIN'),
-			alias: this.getHostAlias(this.configService.get('TENANT_MAIN'))
+			host: this.configService.get('TENANT_CENTRAL'),
+			alias: this.getHostAlias(this.configService.get('TENANT_CENTRAL'))
 		},
 		{
-			id: Tenant.VN_LIANYING,
+			id: Tenant.GL1,
 			factory: [FactoryCode.GL1, FactoryCode.GL2],
-			host: this.configService.get('TENANT_VN_LIANYING'),
-			alias: this.getHostAlias(this.configService.get('TENANT_VN_LIANYING'))
+			host: this.configService.get('TENANT_GL1'),
+			alias: this.getHostAlias(this.configService.get('TENANT_GL1'))
 		},
 
 		{
-			id: Tenant.VN_LIANSHUN,
+			id: Tenant.GL3,
 			factory: FactoryCode.GL3,
-			host: this.configService.get('TENANT_VN_LIANSHUN'),
-			alias: this.getHostAlias(this.configService.get('TENANT_VN_LIANSHUN'))
+			host: this.configService.get('TENANT_GL3'),
+			alias: this.getHostAlias(this.configService.get('TENANT_GL3'))
 		},
 		{
-			id: Tenant.KM_KHRU,
+			id: Tenant.GL4,
 			factory: FactoryCode.GL4,
-			host: this.configService.get<string>('TENANT_KHRU'),
-			alias: this.getHostAlias(this.configService.get('TENANT_KHRU'))
+			host: this.configService.get<string>('TENANT_GL4'),
+			alias: this.getHostAlias(this.configService.get('TENANT_GL4'))
 		}
 	]
 
@@ -71,7 +71,7 @@ export class TenancyService implements OnModuleDestroy {
 	public getAll(): Array<Omit<ITenancy, 'host'>> {
 		return this.tenants
 			.filter((tenant) => {
-				return env('NODE_ENV') === 'production' ? tenant.id !== Tenant.DEV && tenant.id !== Tenant.MAIN : true
+				return env('NODE_ENV') === 'production' ? tenant.id !== Tenant.DEV && tenant.id !== Tenant.CENTRAL : true
 			})
 			.map((tenant) => omit(tenant, ['host']))
 	}
@@ -81,7 +81,7 @@ export class TenancyService implements OnModuleDestroy {
 		const matchedTenant = this.tenants.find((tenant) => {
 			return (
 				tenant.factory.includes(factoryCode) &&
-				(isProduction ? tenant.id !== Tenant.DEV && tenant.id !== Tenant.MAIN : true)
+				(isProduction ? tenant.id !== Tenant.DEV && tenant.id !== Tenant.CENTRAL : true)
 			)
 		})
 		if (!matchedTenant) throw new NotFoundException('No available tenant')

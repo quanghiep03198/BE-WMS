@@ -82,21 +82,21 @@ export const configValidator = z.object({
 	JWT_EXPIRES: z.string().trim().nonempty().or(z.number().positive()),
 
 	// * Decker Third-party APIs
-	THIRD_PARTY_OAUTH_API_URL: z.string().trim().nonempty().url(),
-	THIRD_PARTY_API_URL: z.string().trim().nonempty().url(),
-	GL1_CLIENT_ID: z.string().trim().nonempty(),
-	GL1_CLIENT_SECRET: z.string().trim().nonempty(),
-	GL3_CLIENT_ID: z.string().trim().nonempty(),
-	GL3_CLIENT_SECRET: z.string().trim().nonempty(),
-	GL4_CLIENT_ID: z.string().trim().nonempty(),
-	GL4_CLIENT_SECRET: z.string().trim().nonempty(),
+	DECKERS_OAUTH_API_URL: z.string().trim().nonempty().url(),
+	DECKERS_API_URL: z.string().trim().nonempty().url(),
+	DECKERS_GL1_CLIENT_ID: z.string().trim().nonempty(),
+	DECKERS_GL1_CLIENT_SECRET: z.string().trim().nonempty(),
+	DECKERS_GL3_CLIENT_ID: z.string().trim().nonempty(),
+	DECKERS_GL3_CLIENT_SECRET: z.string().trim().nonempty(),
+	DECKERS_GL4_CLIENT_ID: z.string().trim().nonempty(),
+	DECKERS_GL4_CLIENT_SECRET: z.string().trim().nonempty(),
 
 	// * Tenancy IPs
 	TENANT_DEV: z.string().trim().nonempty().ip({ version: 'v4' }),
-	TENANT_MAIN: z.string().trim().nonempty().ip({ version: 'v4' }),
-	TENANT_VN_LIANYING: z.string().trim().nonempty().ip({ version: 'v4' }),
-	TENANT_VN_LIANSHUN: z.string().trim().nonempty().ip({ version: 'v4' }),
-	TENANT_KHRU: z.string().trim().nonempty().ip({ version: 'v4' }),
+	TENANT_CENTRAL: z.string().trim().nonempty().ip({ version: 'v4' }),
+	TENANT_GL1: z.string().trim().nonempty().ip({ version: 'v4' }),
+	TENANT_GL3: z.string().trim().nonempty().ip({ version: 'v4' }),
+	TENANT_GL4: z.string().trim().nonempty().ip({ version: 'v4' }),
 
 	// * Sentry
 	SENTRY_DSN: z.string().trim().nonempty().url(),

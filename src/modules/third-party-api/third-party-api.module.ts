@@ -9,15 +9,15 @@ import { AxiosError, AxiosResponse } from 'axios'
 import { Agent } from 'https'
 import { upperCase } from 'lodash'
 import { PinoLogger } from 'nestjs-pino'
+import { FactoryCode } from '../department/constants'
 import { OrderModule } from '../order/order.module'
 import { BaseRFIDInventoryEntity } from '../rfid/entities/rifd-inventory.entity'
 import { RFIDModule } from '../rfid/rfid.module'
 import { TenacyMiddleware } from '../tenancy/tenancy.middleware'
 import { TenancyModule } from '../tenancy/tenancy.module'
-import { THIRD_PARTY_API_SYNC } from './constants'
+import { DECKERS_OAUTH2_STRATEGY, THIRD_PARTY_API_SYNC } from './constants'
 import { ThirdPartyApiConsumer } from './queues/third-party-api.consumer'
-import { ThirdPartyApiOAuth2Service } from './strategies/third-party-api-oauth2.service'
-import { GL1OAuth2Strategy, GL3OAuth2Strategy, GL4OAuth2Strategy } from './strategies/third-party-api-oauth2.strategy'
+import { DeckersOAuth2Strategy } from './strategies/deckers-oauth2.strategy'
 import { ThirdPartyApiController } from './third-party-api.controller'
 import { ThirdPartyApiMiddleware } from './third-party-api.middleware'
 import { ThirdPartyApiService } from './third-party-api.service'
@@ -39,10 +39,35 @@ import { ThirdPartyApiService } from './third-party-api.service'
 		EventGateway,
 		ThirdPartyApiService,
 		ThirdPartyApiConsumer,
-		ThirdPartyApiOAuth2Service,
-		GL1OAuth2Strategy,
-		GL3OAuth2Strategy,
-		GL4OAuth2Strategy
+		DeckersOAuth2Strategy,
+		{
+			provide: DECKERS_OAUTH2_STRATEGY,
+			inject: [ConfigService],
+			useFactory: (configService: ConfigService) =>
+				new Map<FactoryCode, Record<'client_id' | 'client_secret', string>>([
+					[
+						FactoryCode.GL1,
+						{
+							client_id: configService.get('DECKERS_GL1_CLIENT_ID'),
+							client_secret: configService.get('DECKERS_GL1_CLIENT_SECRET')
+						}
+					],
+					[
+						FactoryCode.GL3,
+						{
+							client_id: configService.get('DECKERS_GL3_CLIENT_ID'),
+							client_secret: configService.get('DECKERS_GL3_CLIENT_SECRET')
+						}
+					],
+					[
+						FactoryCode.GL4,
+						{
+							client_id: configService.get('DECKERS_GL4_CLIENT_ID'),
+							client_secret: configService.get('DECKERS_GL4_CLIENT_SECRET')
+						}
+					]
+				])
+		}
 	],
 	exports: [HttpModule, ThirdPartyApiService, BullModule]
 })
@@ -54,7 +79,7 @@ export class ThirdPartyApiModule implements NestModule, OnModuleInit {
 	) {}
 
 	onModuleInit() {
-		this.httpService.axiosRef.defaults.baseURL = this.configService.get('THIRD_PARTY_API_URL')
+		this.httpService.axiosRef.defaults.baseURL = this.configService.get('DECKERS_API_URL')
 		this.httpService.axiosRef.interceptors.request.use(
 			(config) => config,
 			(error) => Promise.reject(error)

@@ -1,4 +1,4 @@
-import { MAIN_DATA_SOURCE } from '@/databases/constants'
+import { CENTRAL_DATA_SOURCE } from '@/databases/constants'
 import { Inject, Injectable, NotFoundException } from '@nestjs/common'
 import { Brackets, DataSource } from 'typeorm'
 import { UpdatePackingWeightDTO } from './dto/update-packing.dto'
@@ -6,7 +6,7 @@ import { PackingEntity } from './entities/packing.entity'
 
 @Injectable()
 export class PackingService {
-	constructor(@Inject(MAIN_DATA_SOURCE) private readonly dataSource: DataSource) {}
+	constructor(@Inject(CENTRAL_DATA_SOURCE) private readonly dataSource: DataSource) {}
 
 	private extractSeriesNumber(seriesNumber: string) {
 		return seriesNumber.slice(11, -1)
