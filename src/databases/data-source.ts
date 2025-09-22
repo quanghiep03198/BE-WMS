@@ -1,7 +1,7 @@
 import { env } from '@/common/utils'
 import { Logger } from '@nestjs/common'
 import 'dotenv/config'
-import { isIP } from 'net'
+import { isIP } from 'node:net'
 import { join } from 'node:path'
 import { DataSource, DataSourceOptions } from 'typeorm'
 import { type SeederOptions } from 'typeorm-extension'
