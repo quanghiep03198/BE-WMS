@@ -29,8 +29,8 @@ import { PinoLogger } from 'nestjs-pino'
 import { Socket } from 'socket.io'
 
 class UnauthorizedSocketException extends Error {
-	constructor(message?: string) {
-		super((message ??= 'Unauthorized'))
+	constructor(message = 'Unauthorized') {
+		super(message)
 	}
 }
 
