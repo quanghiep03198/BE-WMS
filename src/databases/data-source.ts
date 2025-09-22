@@ -2,7 +2,7 @@ import { env } from '@/common/utils'
 import { Logger } from '@nestjs/common'
 import 'dotenv/config'
 import { isIP } from 'net'
-import { join } from 'path'
+import { join } from 'node:path'
 import { DataSource, DataSourceOptions } from 'typeorm'
 import { type SeederOptions } from 'typeorm-extension'
 import { DATABASE_SCHEMA } from './constants'
@@ -23,7 +23,7 @@ if (isIP(DB_HOST.trim()) === 0) {
 
 export default new DataSource({
 	host: DB_HOST,
-	port: env('DB_PORT', { serialize: (value) => parseInt(value) }),
+	port: env('DB_PORT', { serialize: (value) => Number.parseInt(value) }),
 	type: env('DB_TYPE'),
 	username: env('DB_USERNAME'),
 	password: env('DB_PASSWORD'),

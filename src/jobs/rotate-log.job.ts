@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common'
 import { Cron, CronExpression } from '@nestjs/schedule'
-import { writeFileSync } from 'fs'
-import { resolve } from 'path'
+import { writeFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 
 @Injectable()
 export class RotateLogJob {

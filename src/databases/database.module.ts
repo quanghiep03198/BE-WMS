@@ -2,7 +2,7 @@ import { DynamicModule, Module, Scope } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { MongooseModule, MongooseModuleOptions } from '@nestjs/mongoose'
 import { TypeOrmModule, TypeOrmModuleAsyncOptions } from '@nestjs/typeorm'
-import { join } from 'path'
+import { join } from 'node:path'
 import { DataSource } from 'typeorm'
 import { SqlServerConnectionOptions } from 'typeorm/driver/sqlserver/SqlServerConnectionOptions'
 import {

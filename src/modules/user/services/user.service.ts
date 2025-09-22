@@ -3,7 +3,7 @@ import { ConflictException, Injectable, NotFoundException } from '@nestjs/common
 import { ConfigService } from '@nestjs/config'
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm'
 import { genSaltSync, hashSync } from 'bcrypt'
-import { stringify } from 'querystring'
+import { stringify } from 'node:querystring'
 import { DataSource, Repository } from 'typeorm'
 import { BaseAbstractService } from '../../_base/base.abstract.service'
 import { ChangePasswordDTO, RegisterDTO, UpdateProfileDTO } from '../dto/user.dto'

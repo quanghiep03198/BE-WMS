@@ -10,7 +10,7 @@ export const configValidator = z.object({
 		.string()
 		.trim()
 		.nonempty()
-		.refine((value) => !isNaN(+value))
+		.refine((value) => !Number.isNaN(+value))
 		.transform((value) => +value),
 	FALLBACK_LANGUAGE: z.nativeEnum(Languages),
 	POSTMAN_DOCUMENTATION_URL: z.string().trim().nonempty().url().optional(),
@@ -23,13 +23,13 @@ export const configValidator = z.object({
 		.string()
 		.trim()
 		.nonempty()
-		.refine((value) => !isNaN(+value))
+		.refine((value) => !Number.isNaN(+value))
 		.transform((value) => +value),
 	THROTTLER_LIMIT: z
 		.string()
 		.trim()
 		.nonempty()
-		.refine((value) => !isNaN(+value))
+		.refine((value) => !Number.isNaN(+value))
 		.transform((value) => Number(value)),
 
 	// * MongoDB
@@ -42,7 +42,7 @@ export const configValidator = z.object({
 		.string()
 		.trim()
 		.nonempty()
-		.refine((value) => !isNaN(+value))
+		.refine((value) => !Number.isNaN(+value))
 		.transform((value) => +value),
 	REDIS_PASSWORD: z.string().trim().nonempty(),
 
@@ -59,13 +59,13 @@ export const configValidator = z.object({
 		.string()
 		.trim()
 		.nonempty()
-		.refine((value) => !isNaN(+value))
+		.refine((value) => !Number.isNaN(+value))
 		.transform((value) => Number(value)),
 	DB_CONNECTION_TIMEOUT: z
 		.string()
 		.trim()
 		.nonempty()
-		.refine((value) => !isNaN(+value))
+		.refine((value) => !Number.isNaN(+value))
 		.transform((value) => Number(value)),
 	DB_TRUST_SERVER_CERTIFICATE: z.string().transform((value) => Boolean(value) && JSON.parse(value)),
 
@@ -74,7 +74,7 @@ export const configValidator = z.object({
 		.string()
 		.trim()
 		.nonempty()
-		.refine((value) => !isNaN(+value))
+		.refine((value) => !Number.isNaN(+value))
 		.transform((value) => Number(value)),
 
 	// * JWT

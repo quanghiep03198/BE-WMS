@@ -9,14 +9,14 @@ import { type ThrottlerOptions } from '@nestjs/throttler'
 import { type TypeOrmModuleOptions } from '@nestjs/typeorm'
 import { AcceptLanguageResolver, HeaderResolver, I18nOptions } from 'nestjs-i18n'
 import { Params } from 'nestjs-pino'
-import path from 'path'
+import path from 'node:path'
 
 export const appConfigFactory: ConfigFactory = () => ({
 	// * Redis BullMQ configuration
 	['bullmq']: {
 		connection: {
 			host: env('REDIS_HOST'),
-			port: env('REDIS_PORT', { serialize: (value): number => parseInt(value) }),
+			port: env('REDIS_PORT', { serialize: (value): number => Number.parseInt(value) }),
 			password: env('REDIS_PASSWORD')
 		},
 		defaultJobOptions: {
@@ -38,7 +38,7 @@ export const appConfigFactory: ConfigFactory = () => ({
 				{
 					socket: {
 						host: env('REDIS_HOST'),
-						port: env('REDIS_PORT', { serialize: (value): number => parseInt(value) })
+						port: env('REDIS_PORT', { serialize: (value): number => Number.parseInt(value) })
 					},
 					password: env('REDIS_PASSWORD')
 				},
@@ -74,7 +74,7 @@ export const appConfigFactory: ConfigFactory = () => ({
 	['mssql']: {
 		type: 'mssql',
 		host: env('DB_HOST'),
-		port: env('DB_PORT', { serialize: (value): number => parseInt(value) }),
+		port: env('DB_PORT', { serialize: (value): number => Number.parseInt(value) }),
 		username: env('DB_USERNAME'),
 		password: env('DB_PASSWORD'),
 		schema: DATABASE_SCHEMA,
@@ -90,7 +90,7 @@ export const appConfigFactory: ConfigFactory = () => ({
 			options: {
 				socket: {
 					host: env('REDIS_HOST'),
-					port: env('REDIS_PORT', { serialize: (value): number => parseInt(value) })
+					port: env('REDIS_PORT', { serialize: (value): number => Number.parseInt(value) })
 				},
 				password: env('REDIS_PASSWORD')
 			},
@@ -107,7 +107,7 @@ export const appConfigFactory: ConfigFactory = () => ({
 			}),
 			encrypt: false,
 			enableArithAbort: true,
-			connectTimeout: env('DB_CONNECTION_TIMEOUT', { serialize: (value): number => parseInt(value) }),
+			connectTimeout: env('DB_CONNECTION_TIMEOUT', { serialize: (value): number => Number.parseInt(value) }),
 			abortTransactionOnError: true,
 			isolation: 'SNAPSHOT'
 		},
