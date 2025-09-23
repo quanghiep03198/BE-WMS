@@ -40,6 +40,7 @@ export const appConfigFactory: ConfigFactory = () => ({
 						host: env('REDIS_HOST'),
 						port: env('REDIS_PORT', { serialize: (value): number => Number.parseInt(value) })
 					},
+					// database: env('REDIS_DB', { fallbackValue: 0, serialize: (value): number => Number.parseInt(value) }),
 					password: env('REDIS_PASSWORD')
 				},
 				{ noNamespaceAffectsAll: false, useUnlink: true }
@@ -92,9 +93,10 @@ export const appConfigFactory: ConfigFactory = () => ({
 					host: env('REDIS_HOST'),
 					port: env('REDIS_PORT', { serialize: (value): number => Number.parseInt(value) })
 				},
+				db: env('REDIS_DB', { fallbackValue: 0, serialize: (value): number => Number.parseInt(value) }),
 				password: env('REDIS_PASSWORD')
 			},
-			ignoreErrors: true
+			ignoreErrors: false
 		},
 		pool: {
 			max: 100,

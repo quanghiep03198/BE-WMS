@@ -17,8 +17,10 @@ import {
 	Res,
 	UseFilters
 } from '@nestjs/common'
+import { EventEmitter2 } from '@nestjs/event-emitter'
 import { InjectModel } from '@nestjs/mongoose'
 import { Queue } from 'bullmq'
+import { format } from 'date-fns'
 import { FastifyReply } from 'fastify'
 import { isEmpty, isNil, pickBy } from 'lodash'
 import { PaginateResult } from 'mongoose'
@@ -32,7 +34,6 @@ import {
 	FindEpcBySizeDTO,
 	findEpcBySizeValidator,
 	PostReaderDataDTO,
-	readerPostDataValidator,
 	searchCustomerValidator,
 	SearchCustOrderParamsDTO,
 	updateStockValidator,
@@ -51,6 +52,7 @@ export class RFIDInboundController {
 		private readonly logger: PinoLogger,
 		@InjectModel(EpcInbound.name) private readonly epcInboundModel: EpcModel,
 		@InjectQueue(POST_DATA_INBOUND_QUEUE) private readonly postInboundDataQueue: Queue<PostReaderDataDTO>,
+		private readonly eventEmitter: EventEmitter2,
 		private readonly rfidSharedService: RFIDSharedService,
 		private readonly rfidInboundService: RFIDInboundService
 	) {}
@@ -205,7 +207,13 @@ export class RFIDInboundController {
 		statusCode: HttpStatus.CREATED,
 		message: 'common.created'
 	})
-	async postInboundData(@Body(new ZodValidationPipe(readerPostDataValidator)) payload: PostReaderDataDTO) {
+	// new ZodValidationPipe(readerPostDataValidator)
+	async postInboundData(@Body() payload: PostReaderDataDTO) {
+		await this.eventEmitter.emitAsync('rfid.reader.post_data', {
+			deviceSeriesNumber: payload.sn,
+			lastUsageTime: format(new Date(), 'yyyy-MM-dd HH:mm:ss.SSS')
+		})
+
 		return await this.rfidInboundService.postInboundRFIDData(payload)
 	}
 

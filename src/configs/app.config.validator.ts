@@ -45,6 +45,13 @@ export const configValidator = z.object({
 		.refine((value) => !Number.isNaN(+value))
 		.transform((value) => +value),
 	REDIS_PASSWORD: z.string().trim().nonempty(),
+	REDIS_DB: z
+		.string()
+		.trim()
+		.nonempty()
+		.default('0')
+		.refine((value) => !Number.isNaN(+value))
+		.transform((value) => +value),
 
 	// * SQL Server
 	DB_TYPE: z

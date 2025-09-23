@@ -5,7 +5,6 @@ import { isPrimitive } from './common.util'
  * JSON strictify handler
  * @class
  */
-
 export class SuperJson {
 	/**
 	 * @description Check if string is valid JSON
@@ -22,13 +21,44 @@ export class SuperJson {
 	}
 
 	/**
-	 * @description Safely parse value to JSON
+	 * @description Safely parse value to JSON with nested parsing support
 	 * @param value
 	 * @returns
 	 */
 	public static parse<T>(value: any): T {
+		// If value is not a valid JSON string, return as is
 		if (!this.isValid(value)) return value
-		return JSON.parse(value) as T
+
+		// Parse the JSON string
+		const parsedValue = JSON.parse(value) as T
+
+		// Recursively parse nested JSON values
+		const parseNested = (val: any): any => {
+			// Handle arrays
+			if (Array.isArray(val)) {
+				return val.map((item) => parseNested(item))
+			}
+
+			// Handle objects
+			if (val && typeof val === 'object' && val !== null) {
+				const result: any = {}
+				for (const [key, nestedVal] of Object.entries(val)) {
+					result[key] = parseNested(nestedVal)
+				}
+				return result
+			}
+
+			// Handle strings that might be JSON
+			if (typeof val === 'string' && this.isValid(val)) {
+				const parsed = JSON.parse(val)
+				return parseNested(parsed) // Recursively parse the parsed value
+			}
+
+			// Return primitive values as is
+			return val
+		}
+
+		return parseNested(parsedValue) as T
 	}
 	/**
 	 * @description Safely stringify value

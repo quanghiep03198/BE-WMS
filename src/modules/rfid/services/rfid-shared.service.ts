@@ -8,12 +8,12 @@ import { throttle } from 'lodash'
 import { AnyBulkWriteOperation, FilterQuery, mongo, UpdateWriteOpResult } from 'mongoose'
 import { readFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
-import { DataSource, Like } from 'typeorm'
+import { DataSource } from 'typeorm'
 import { EXCLUDED_EPC_PREFIX, EXCLUDED_ORDERS, FALLBACK_VALUE } from '../constants'
 import { FindEpcBySizeDTO, PostReaderDataDTO, RestoreArchivedEpcsDTO } from '../dto/rfid.dto'
-import { RFIDReaderEntity } from '../entities/rfid-reader.entity'
 import { EpcDocument, EpcInbound, EpcModel, EpcOutbound, EpcSchema } from '../schemas/epc.schema'
 import { RFIDSearchParams, ScannedOrderDetail, StoredRFIDReaderItem } from '../types'
+import { RFIDReaderService } from './rfid-reader.service'
 
 @Injectable()
 export class RFIDSharedService {
@@ -26,7 +26,8 @@ export class RFIDSharedService {
 		@Inject(CENTRAL_DATA_SOURCE) private readonly dataSource: DataSource,
 		@InjectDataSource(DATA_SOURCE_DATA_LAKE) private readonly dataSourceDL: DataSource,
 		@InjectModel(EpcInbound.name) private readonly epcInboundModel: EpcModel,
-		@InjectModel(EpcOutbound.name) private readonly epcOutboundModel: EpcModel
+		@InjectModel(EpcOutbound.name) private readonly epcOutboundModel: EpcModel,
+		private readonly rfidReaderService: RFIDReaderService
 	) {}
 
 	public async cleanupQueue($queue: Queue): Promise<unknown[]> {
@@ -184,30 +185,11 @@ export class RFIDSharedService {
 		return changeStream
 	}
 
-	public async getWarehouseRFIDDevices(factoryCode: string) {
-		return await this.dataSource
-			.getRepository(RFIDReaderEntity)
-			.createQueryBuilder()
-			.select(/* SQL */ `DISTINCT device_sn`)
-			.addSelect(/* SQL */ `device_name`)
-			.addSelect(/* SQL */ `ISNULL(STRING_AGG(device_ant, ','), '0') AS device_ant`)
-			.addSelect(/* SQL */ `isactive AS is_active`)
-			.where(/* SQL */ `device_name LIKE :station_no`, { station_no: `CUS_${factoryCode}_WH10%` })
-			.groupBy(/* SQL */ `device_name, device_sn, isactive, CONCAT(ip_address, ':', ip_port)`)
-			.getRawMany()
-	}
-
-	public async bulkWriteRFIDData($model: EpcModel, $stationCode: 'WH101' | 'WH103', { data, sn }: PostReaderDataDTO) {
+	public async bulkWriteRFIDData($model: EpcModel, station: 'WH101' | 'WH103', { data, sn }: PostReaderDataDTO) {
 		// * Get the RFID reader information from the database
-		const deviceInformation = await this.dataSourceDL.getRepository(RFIDReaderEntity).findOne({
-			where: { device_sn: sn, station_no: Like('%' + $stationCode) },
-			cache: {
-				id: `cached:devices:${sn}`,
-				milliseconds: 1000 * 60 * 60 * 24 * 7
-			}
-		})
+		const deviceInformation = await this.rfidReaderService.getSpecificRFIDDevice(sn, station)
 
-		const station = deviceInformation?.station_no ?? FALLBACK_VALUE
+		const stationNO = deviceInformation?.station_no ?? FALLBACK_VALUE
 		const epcList = data.tagList
 			.map((item) => item.epc.trim().toUpperCase())
 			.filter((item) => !item.startsWith(EXCLUDED_EPC_PREFIX))
@@ -228,7 +210,7 @@ export class RFIDSharedService {
 		const bulkWriteOptions: AnyBulkWriteOperation<EpcSchema>[] = scannedEpcs.map((item) => ({
 			updateOne: {
 				filter: { epc: item.epc, scannable: true },
-				update: { ...item, station_no: station, record_time: new Date(), deleted: false },
+				update: { ...item, station_no: stationNO, record_time: new Date(), deleted: false },
 				upsert: true
 			}
 		}))

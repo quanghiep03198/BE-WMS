@@ -30,6 +30,7 @@ import {
 import { CsvFileValidationPipe } from '../pipes/csv-validation.pipe'
 import { RFIDInboundService } from '../services/rfid-inbound.service'
 import { RFIDOutboundService } from '../services/rfid-outbound.service'
+import { RFIDReaderService } from '../services/rfid-reader.service'
 import { RFIDSharedService } from '../services/rfid-shared.service'
 import { RFIDSearchParams } from '../types'
 import { generateStation } from '../utils'
@@ -40,7 +41,8 @@ export class RFIDSharedController {
 		@InjectQueue(IMPORT_DATA_QUEUE) private readonly importDataQueue: Queue,
 		private readonly rfidInboundService: RFIDInboundService,
 		private readonly rfidOutboundService: RFIDOutboundService,
-		private readonly rfidSharedService: RFIDSharedService
+		private readonly rfidSharedService: RFIDSharedService,
+		private readonly rfidDeviceService: RFIDReaderService
 	) {}
 
 	// #region Others
@@ -50,7 +52,7 @@ export class RFIDSharedController {
 	})
 	@AuthGuard()
 	async getWarehouseRFIDDevices(@Headers(CommonRequestHeader.FACTORY_CODE) factoryCode: string) {
-		return await this.rfidSharedService.getWarehouseRFIDDevices(factoryCode)
+		return await this.rfidDeviceService.getWarehouseRFIDDevices(factoryCode)
 	}
 
 	@Api({

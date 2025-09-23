@@ -30,6 +30,7 @@ import {
 } from './schemas/epc.schema'
 import { RFIDInboundService } from './services/rfid-inbound.service'
 import { RFIDOutboundService } from './services/rfid-outbound.service'
+import { RFIDReaderService } from './services/rfid-reader.service'
 import { RFIDSharedService } from './services/rfid-shared.service'
 import { FPInventoryEntitySubscriber } from './subscribers/fp-inventory.entity.subscriber'
 import { RFIDCustomerEntitySubscriber } from './subscribers/rfid-customer.entity.subscriber'
@@ -80,6 +81,7 @@ import { RFIDCustomerEntitySubscriber } from './subscribers/rfid-customer.entity
 	controllers: [RFIDSharedController, RFIDInboundController, RFIDOutboundController],
 	providers: [
 		RFIDSharedService,
+		RFIDReaderService,
 		RFIDInboundService,
 		RFIDOutboundService,
 		RFIDInboundConsumer,

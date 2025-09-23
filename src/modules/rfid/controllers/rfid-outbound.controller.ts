@@ -17,8 +17,10 @@ import {
 	Res,
 	UseFilters
 } from '@nestjs/common'
+import { EventEmitter2 } from '@nestjs/event-emitter'
 import { InjectModel } from '@nestjs/mongoose'
 import { Queue } from 'bullmq'
+import { format } from 'date-fns'
 import { FastifyReply } from 'fastify'
 import { isEmpty, isNil, pickBy } from 'lodash'
 import { PaginateResult } from 'mongoose'
@@ -43,6 +45,7 @@ export class RFIDOutboundController {
 	constructor(
 		@InjectQueue(POST_DATA_OUTBOUND_QUEUE) private readonly postOutboundDataQueue: Queue<PostReaderDataDTO>,
 		@InjectModel(EpcOutbound.name) private readonly epcOutboundModel: EpcModel,
+		private readonly eventEmitter: EventEmitter2,
 		private readonly rfidSharedService: RFIDSharedService,
 		private readonly rfidOutboundService: RFIDOutboundService
 	) {}
@@ -105,6 +108,11 @@ export class RFIDOutboundController {
 		message: 'common.created'
 	})
 	async postOutboundData(@Body(new ZodValidationPipe(readerPostDataValidator)) payload: PostReaderDataDTO) {
+		await this.eventEmitter.emitAsync('rfid.reader.post_data', {
+			deviceSeriesNumber: payload.sn,
+			lastUsageTime: format(new Date(), 'yyyy-MM-dd HH:mm:ss.SSS')
+		})
+
 		return await this.rfidOutboundService.postOutboundRFIDData(payload)
 	}
 

@@ -56,21 +56,27 @@ export declare global {
 			DECKERS_GL3_CLIENT_SECRET: string
 			DECKERS_GL4_CLIENT_ID: string
 			DECKERS_GL4_CLIENT_SECRET: string
+
 			// * Tenancy
 			TENANT_DEV: string
 			TENANT_CENTRAL: string
 			TENANT_GL1: string
 			TENANT_GL3: string
 			TENANT_GL4: string
+
 			// * Redis
 			REDIS_HOST: string
 			REDIS_PORT: string
 			REDIS_PASSWORD: string
+			REDIS_DB: string
+
 			// * Bcrypt
 			SALT_ROUND: string
+
 			// * Jwt
 			JWT_SECRET: string
 			JWT_EXPIRES: string
+
 			// * Sentry
 			SENTRY_DSN: string
 			SENTRY_AUTH_TOKEN: string
