@@ -3,77 +3,97 @@ import { DATA_SOURCE_DATA_LAKE } from '@/databases/constants'
 import { REDIS_CLIENT } from '@/redis/constants'
 import { Inject, Injectable } from '@nestjs/common'
 import { OnEvent } from '@nestjs/event-emitter'
-import { InjectRepository } from '@nestjs/typeorm'
-import { format } from 'date-fns'
+import { InjectDataSource } from '@nestjs/typeorm'
 import Redis from 'ioredis'
 import { isNil } from 'lodash'
 import { PinoLogger } from 'nestjs-pino'
-import { CachedResult, In, Like, Repository } from 'typeorm'
+import { CachedResult, DataSource, In, Like } from 'typeorm'
 import { RFIDReaderEntity } from '../entities/rfid-reader.entity'
+import { ExtendedRFIDReaderEntity } from '../types'
 
 @Injectable()
 export class RFIDReaderService {
 	private readonly CACHE_KEY_PREFIX = 'cached:devices'
-	private readonly CACHE_TTL = 1000 * 60 * 60 * 24 * 7 // 7 days
+	private readonly CACHE_TTL_SECONDS = 60 * 60 * 24 * 7 // 7 days
+	private readonly CACHE_TTL_MILLISECONDS = this.CACHE_TTL_SECONDS * 1000 // 7 days
 
 	constructor(
-		@InjectRepository(RFIDReaderEntity, DATA_SOURCE_DATA_LAKE)
-		private readonly rfidReaderRepository: Repository<RFIDReaderEntity>,
 		@Inject(REDIS_CLIENT) private readonly redisClient: Redis,
+		@InjectDataSource(DATA_SOURCE_DATA_LAKE) private readonly dataSourceDL: DataSource,
 		private readonly logger: PinoLogger
 	) {}
 
-	public async getWarehouseRFIDDevices(factoryCode: string) {
+	public async getActiveRFIDReaders() {
 		const rfidReaderCacheKeys = await this.redisClient.keys(this.CACHE_KEY_PREFIX + ':*')
 
 		const pipeline = this.redisClient.pipeline()
 		rfidReaderCacheKeys.forEach((key) => pipeline.get(key))
-		const cachedDevices = (await pipeline.exec())
+		return (await pipeline.exec())
 			.flatMap(([error, result]) => {
 				if (error) return null
-				const parsedCache = SuperJson.parse<CachedResult<RFIDReaderEntity & { last_usage_time: string }>>(result)
+				const parsedCache = SuperJson.parse<CachedResult<ExtendedRFIDReaderEntity>>(result)
 				if (!parsedCache) return null
 				return parsedCache.result
 			})
 			.filter((item) => !isNil(item))
+	}
 
-		return await this.rfidReaderRepository
+	public async getWarehouseRFIDDevices(factoryCode: string) {
+		const activeReaders = await this.getActiveRFIDReaders()
+
+		const activeReadersQuery = this.dataSourceDL
 			.createQueryBuilder()
-			.select(/* SQL */ `DISTINCT device_sn`)
-			.addSelect(/* SQL */ `device_name`)
-			.addSelect(/* SQL */ `ISNULL(STRING_AGG(device_ant, ','), '0') AS device_ant`)
-			.addSelect(/* SQL */ `isactive`, 'is_active')
-			.addSelect(/* SQL */ `ip_address`)
-			.addSelect(/* SQL */ `ip_port`)
-			.addSelect(
-				rfidReaderCacheKeys.length === 0
-					? null
-					: /* SQL */ `(
-						SELECT MAX(JSON_VALUE(VALUE, '$.last_usage_time'))
-						FROM OPENJSON('${SuperJson.stringify(cachedDevices)}')
-						WHERE JSON_VALUE(VALUE, '$.device_sn') = device_sn
-					)`,
-				'last_usage_time'
+			.select(/* SQL */ `JSON_VALUE(VALUE, '$.device_sn')`, 'device_sn')
+			.addSelect(/* SQL */ `JSON_VALUE(VALUE, '$.last_used_time')`, 'last_used_time')
+			.from(/* SQL */ `OPENJSON(N'${SuperJson.stringify(activeReaders)}')`, 'json_data')
+			.disableEscaping()
+
+		return await this.dataSourceDL
+			.getRepository(RFIDReaderEntity)
+			.createQueryBuilder('a')
+			.addCommonTableExpression(activeReadersQuery.getQuery(), 'active_readers_cte')
+			.select('a.device_sn', 'device_sn')
+			.addSelect('a.device_name', 'device_name')
+			.addSelect(/* SQL */ `STRING_AGG(a.device_ant, ',')`, 'device_ant')
+			.addSelect('a.isactive', 'is_active')
+			.addSelect('a.ip_address', 'ip_address')
+			.addSelect('a.ip_port', 'ip_port')
+			.addSelect('b.last_used_time', 'last_used_time')
+			.where(/* SQL */ `a.device_name LIKE 'CUS_${factoryCode}_WH%'`)
+			.leftJoin(
+				(qb) => qb.select(['device_sn', 'last_used_time']).from('active_readers_cte', 'b'),
+				'b',
+				/* SQL */ `a.device_sn = b.device_sn`
 			)
-			.where(/* SQL */ `device_name LIKE :station_no`, { station_no: `CUS_${factoryCode}_WH%` })
-			.groupBy(/* SQL */ `device_name, device_sn, isactive, ip_address, ip_port`)
+			.groupBy('a.device_sn')
+			.addGroupBy('a.device_name')
+			.addGroupBy('a.isactive')
+			.addGroupBy('a.ip_address')
+			.addGroupBy('a.ip_port')
+			.addGroupBy('b.last_used_time')
+			.orderBy('a.device_name', 'ASC')
 			.disableEscaping()
 			.getRawMany<RFIDReaderEntity>()
 	}
 
 	public async getSpecificRFIDDevice(deviceSeriesNumber: string, station?: string) {
-		return await this.rfidReaderRepository
+		return await this.dataSourceDL
+			.getRepository(RFIDReaderEntity)
 			.createQueryBuilder()
-			.select('device_sn')
-			.addSelect('device_name')
-			.addSelect('cofactory_code', 'factory_code')
+			.distinct()
+			.select('device_sn', 'device_sn')
+			.addSelect('device_name', 'device_name')
+			.addSelect(/* SQL */ `STRING_AGG(device_ant, ',')`, 'device_ant')
 			.addSelect('isactive', 'is_active')
-			.addSelect('ip_address')
-			.addSelect('ip_port')
-			.addSelect(`'${format(new Date(), 'yyyy-MM-dd HH:mm:ss.SSS')}'`, 'last_usage_time')
+			.addSelect('ip_address', 'ip_address')
+			.addSelect('ip_port', 'ip_port')
 			.where({ device_sn: deviceSeriesNumber, ...(station && { station_no: Like('%' + station) }) })
-			.limit(1)
-			.cache(`${this.CACHE_KEY_PREFIX}:${deviceSeriesNumber}`, this.CACHE_TTL)
+			.groupBy('device_sn')
+			.addGroupBy('device_name')
+			.addGroupBy('isactive')
+			.addGroupBy('ip_address')
+			.addGroupBy('ip_port')
+			.cache(`${this.CACHE_KEY_PREFIX}:${deviceSeriesNumber}`, this.CACHE_TTL_MILLISECONDS)
 			.getRawOne<RFIDReaderEntity>()
 	}
 
@@ -88,22 +108,21 @@ export class RFIDReaderService {
 		const cacheKey = `${this.CACHE_KEY_PREFIX}:${deviceSeriesNumber}`
 		const cachedData = await this.redisClient.get(cacheKey)
 		if (isNil(cachedData) || !SuperJson.isValid(cachedData)) return
-		const cachedReaderInfo =
-			SuperJson.parse<CachedResult<RFIDReaderEntity & { last_usage_time?: string }>>(cachedData)
+		const cachedReaderInfo = SuperJson.parse<CachedResult<ExtendedRFIDReaderEntity>>(cachedData)
 		await this.redisClient.setex(
 			`${this.CACHE_KEY_PREFIX}:${deviceSeriesNumber}`,
-			this.CACHE_TTL / 1000,
+			this.CACHE_TTL_SECONDS,
 			SuperJson.stringify({
 				...cachedReaderInfo,
 				result: cachedReaderInfo?.result?.map((item) => ({
 					...item,
-					last_usage_time: lastUsageTime
+					last_used_time: lastUsageTime
 				}))
 			})
 		)
 	}
 
 	public async deleteMany(deviceSeriesNumbers: string[]) {
-		return await this.rfidReaderRepository.delete({ device_sn: In(deviceSeriesNumbers) })
+		return await this.dataSourceDL.getRepository(RFIDReaderEntity).delete({ device_sn: In(deviceSeriesNumbers) })
 	}
 }
