@@ -1,4 +1,5 @@
 import { RFIDMatchCustomerEntity } from '../entities/rfid-customer-match.entity'
+import { RFIDReaderEntity } from '../entities/rfid-reader.entity'
 
 export type EpcInformation = Pick<RFIDMatchCustomerEntity, 'epc' | 'mo_no' | 'size_numcode' | 'factory_shoes_style'> & {
 	color_sn: string
@@ -50,3 +51,5 @@ export type ScannedOrderDetail = {
 	factory_shoes_style
 	sizes: Array<{ size_numcode: string; count: number }>
 }
+
+export type ExtendedRFIDReaderEntity = RFIDReaderEntity & { last_used_time: string | null }
