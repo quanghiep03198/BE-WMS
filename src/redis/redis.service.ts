@@ -1,14 +1,14 @@
-import { Inject, Injectable, Logger, OnApplicationShutdown, OnModuleDestroy } from '@nestjs/common'
+import { Inject, Injectable, OnApplicationShutdown, OnModuleDestroy } from '@nestjs/common'
 import { Redis } from 'ioredis'
+import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
 import { REDIS_PUBLISHER, REDIS_SUBSCRIBER } from './constants'
 
 @Injectable()
 export class RedisService implements OnModuleDestroy, OnApplicationShutdown {
-	private readonly logger = new Logger(RedisService.name)
-
 	constructor(
 		@Inject(REDIS_PUBLISHER) private readonly publisher: Redis,
-		@Inject(REDIS_SUBSCRIBER) private readonly subscriber: Redis
+		@Inject(REDIS_SUBSCRIBER) private readonly subscriber: Redis,
+		@InjectPinoLogger(RedisService.name) private readonly logger: PinoLogger
 	) {}
 
 	onModuleDestroy() {
@@ -21,8 +21,14 @@ export class RedisService implements OnModuleDestroy, OnApplicationShutdown {
 		this.subscriber.quit()
 	}
 
-	async publish(channel: string, message: string): Promise<void> {
-		this.publisher.publish(channel, message)
+	async publish(channel: string, message: string): Promise<number> {
+		try {
+			const result = await this.publisher.publish(channel, message)
+			this.logger.info(`Published message to channel ${channel}`)
+			return result
+		} catch (error) {
+			this.logger.error(`Failed to publish message to channel ${channel}: ${(error as Error).message}`)
+		}
 	}
 
 	async subscribe(subcribedChannel: string, callback: (msg: string) => void): Promise<void> {
@@ -36,7 +42,13 @@ export class RedisService implements OnModuleDestroy, OnApplicationShutdown {
 		})
 	}
 
-	async unsubscribe(channel: string): Promise<void> {
-		this.subscriber.unsubscribe(channel)
+	async unsubscribe(channel: string): Promise<unknown> {
+		try {
+			const result = await this.subscriber.unsubscribe(channel)
+			this.logger.info(`Unsubscribed from channel ${channel}`)
+			return result
+		} catch (error) {
+			this.logger.error(`Failed to unsubscribe from channel ${channel}: ${(error as Error).message}`)
+		}
 	}
 }
