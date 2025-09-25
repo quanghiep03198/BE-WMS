@@ -13,8 +13,8 @@ export const createRFIDDeviceDTO = z.object({
 	is_active: z.nativeEnum(RecordStatus).optional()
 })
 export const updateRFIDDeviceDTO = createRFIDDeviceDTO.partial()
-
 export const deleteRFIDDeviceDTO = z.array(z.string().nonempty()).nonempty()
 
 export type CreateRFIDDeviceDTO = z.infer<typeof createRFIDDeviceDTO>
 export type UpdateRFIDDeviceDTO = z.infer<typeof updateRFIDDeviceDTO>
+export type DeleteRFIDDeviceDTO = z.infer<typeof deleteRFIDDeviceDTO>
