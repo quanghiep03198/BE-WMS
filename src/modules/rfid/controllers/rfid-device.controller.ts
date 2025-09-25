@@ -2,12 +2,18 @@ import { CommonRequestHeader } from '@/common/constants'
 import { Api, AuthGuard, HttpMethod, User } from '@/common/decorators'
 import { ZodValidationPipe } from '@/common/pipes'
 import { Body, Controller, Headers, HttpStatus, Param } from '@nestjs/common'
-import { CreateRFIDDeviceDTO, createRFIDDeviceDTO, updateRFIDDeviceDTO } from '../dto/rfid-reader.dto'
-import { RFIDReaderService } from '../services/rfid-reader.service'
+import {
+	CreateRFIDDeviceDTO,
+	createRFIDDeviceDTO,
+	DeleteRFIDDeviceDTO,
+	deleteRFIDDeviceDTO,
+	updateRFIDDeviceDTO
+} from '../dto/rfid-device.dto'
+import { RFIDDeviceService } from '../services/rfid-device.service'
 
 @Controller('rfid/devices')
 export class RFIDDeviceController {
-	constructor(private readonly rfidDeviceService: RFIDReaderService) {}
+	constructor(private readonly rfidDeviceService: RFIDDeviceService) {}
 
 	// #region Others
 	@Api({
@@ -55,7 +61,7 @@ export class RFIDDeviceController {
 		statusCode: HttpStatus.NO_CONTENT
 	})
 	@AuthGuard()
-	async deleteRFIDDevices(@Body() deviceSeriesNumbers: string[]) {
+	async deleteRFIDDevices(@Body(new ZodValidationPipe(deleteRFIDDeviceDTO)) deviceSeriesNumbers: DeleteRFIDDeviceDTO) {
 		return await this.rfidDeviceService.deleteDevicesBySeriesNumbers(deviceSeriesNumbers)
 	}
 }

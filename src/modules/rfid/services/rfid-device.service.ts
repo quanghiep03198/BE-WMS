@@ -7,12 +7,12 @@ import { InjectDataSource } from '@nestjs/typeorm'
 import Redis from 'ioredis'
 import { isNil } from 'lodash'
 import { CachedResult, DataSource, In, Like } from 'typeorm'
-import { CreateRFIDDeviceDTO, UpdateRFIDDeviceDTO } from '../dto/rfid-reader.dto'
+import { CreateRFIDDeviceDTO, DeleteRFIDDeviceDTO, UpdateRFIDDeviceDTO } from '../dto/rfid-device.dto'
 import { RFIDReaderEntity } from '../entities/rfid-reader.entity'
 import { ExtendedRFIDReaderEntity } from '../types'
 
 @Injectable()
-export class RFIDReaderService {
+export class RFIDDeviceService {
 	private readonly CACHE_KEY_PREFIX = 'cached:devices'
 	private readonly CACHE_TTL_SECONDS = 60 * 60 * 24 * 7 // 7 days
 	private readonly CACHE_TTL_MILLISECONDS = this.CACHE_TTL_SECONDS * 1000 // 7 days
@@ -132,7 +132,7 @@ export class RFIDReaderService {
 		)
 	}
 
-	public async deleteDevicesBySeriesNumbers(deviceSeriesNumbers: string[]) {
+	public async deleteDevicesBySeriesNumbers(deviceSeriesNumbers: DeleteRFIDDeviceDTO) {
 		return await this.dataSourceDL.getRepository(RFIDReaderEntity).delete({ device_sn: In(deviceSeriesNumbers) })
 	}
 }
