@@ -1,6 +1,6 @@
 import { VALID_EPC_PATTERN } from '@/common/constants/regex'
-import { CENTRAL_DATA_SOURCE, DATA_SOURCE_DATA_LAKE } from '@/databases/constants'
-import { Inject, Injectable } from '@nestjs/common'
+import { DATA_SOURCE_DATA_LAKE } from '@/databases/constants'
+import { Injectable } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
 import { InjectDataSource } from '@nestjs/typeorm'
 import { Queue } from 'bullmq'
@@ -14,7 +14,7 @@ import { EXCLUDED_EPC_PREFIX, EXCLUDED_ORDERS, FALLBACK_VALUE } from '../constan
 import { FindEpcBySizeDTO, PostReaderDataDTO, RestoreArchivedEpcsDTO } from '../dto/rfid-shared.dto'
 import { EpcDocument, EpcInbound, EpcModel, EpcOutbound, EpcSchema } from '../schemas/epc.schema'
 import { RFIDSearchParams, ScannedOrderDetail, StoredRFIDReaderItem } from '../types'
-import { RFIDReaderService } from './rfid-reader.service'
+import { RFIDDeviceService } from './rfid-device.service'
 
 @Injectable()
 export class RFIDSharedService {
@@ -24,11 +24,10 @@ export class RFIDSharedService {
 	)
 
 	constructor(
-		@Inject(CENTRAL_DATA_SOURCE) private readonly dataSource: DataSource,
 		@InjectDataSource(DATA_SOURCE_DATA_LAKE) private readonly dataSourceDL: DataSource,
 		@InjectModel(EpcInbound.name) private readonly epcInboundModel: EpcModel,
 		@InjectModel(EpcOutbound.name) private readonly epcOutboundModel: EpcModel,
-		private readonly rfidReaderService: RFIDReaderService
+		private readonly rfidDeviceService: RFIDDeviceService
 	) {}
 
 	public async cleanupQueue($queue: Queue): Promise<unknown[]> {
@@ -188,7 +187,7 @@ export class RFIDSharedService {
 
 	public async bulkWriteRFIDData($model: EpcModel, station: 'WH101' | 'WH103', { data, sn }: PostReaderDataDTO) {
 		// * Get the RFID reader information from the database
-		const deviceInformation = await this.rfidReaderService.findOneBySeriesNumber(sn, station)
+		const deviceInformation = await this.rfidDeviceService.findOneBySeriesNumber(sn, station)
 
 		const stationNO = deviceInformation?.station_no ?? FALLBACK_VALUE
 		const epcList = data.tagList
