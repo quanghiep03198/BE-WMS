@@ -10,6 +10,7 @@ import { TenacyMiddleware } from '../tenancy/tenancy.middleware'
 import { TenancyModule } from '../tenancy/tenancy.module'
 import { ThirdPartyApiModule } from '../third-party-api/third-party-api.module'
 import { IMPORT_DATA_QUEUE, POST_DATA_INBOUND_QUEUE, POST_DATA_OUTBOUND_QUEUE } from './constants'
+import { RFIDDeviceController } from './controllers/rfid-device.controller'
 import { RFIDInboundController } from './controllers/rfid-inbound.controller'
 import { RFIDOutboundController } from './controllers/rfid-outbound.controller'
 import { RFIDSharedController } from './controllers/rfid-shared.controller'
@@ -78,7 +79,7 @@ import { RFIDCustomerEntitySubscriber } from './subscribers/rfid-customer.entity
 			}
 		])
 	],
-	controllers: [RFIDSharedController, RFIDInboundController, RFIDOutboundController],
+	controllers: [RFIDSharedController, RFIDInboundController, RFIDOutboundController, RFIDDeviceController],
 	providers: [
 		RFIDSharedService,
 		RFIDReaderService,

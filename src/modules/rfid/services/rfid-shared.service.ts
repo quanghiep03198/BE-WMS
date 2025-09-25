@@ -10,7 +10,8 @@ import { readFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { DataSource } from 'typeorm'
 import { EXCLUDED_EPC_PREFIX, EXCLUDED_ORDERS, FALLBACK_VALUE } from '../constants'
-import { FindEpcBySizeDTO, PostReaderDataDTO, RestoreArchivedEpcsDTO } from '../dto/rfid.dto'
+
+import { FindEpcBySizeDTO, PostReaderDataDTO, RestoreArchivedEpcsDTO } from '../dto/rfid-shared.dto'
 import { EpcDocument, EpcInbound, EpcModel, EpcOutbound, EpcSchema } from '../schemas/epc.schema'
 import { RFIDSearchParams, ScannedOrderDetail, StoredRFIDReaderItem } from '../types'
 import { RFIDReaderService } from './rfid-reader.service'
@@ -187,7 +188,7 @@ export class RFIDSharedService {
 
 	public async bulkWriteRFIDData($model: EpcModel, station: 'WH101' | 'WH103', { data, sn }: PostReaderDataDTO) {
 		// * Get the RFID reader information from the database
-		const deviceInformation = await this.rfidReaderService.getSpecificRFIDDevice(sn, station)
+		const deviceInformation = await this.rfidReaderService.findOneBySeriesNumber(sn, station)
 
 		const stationNO = deviceInformation?.station_no ?? FALLBACK_VALUE
 		const epcList = data.tagList

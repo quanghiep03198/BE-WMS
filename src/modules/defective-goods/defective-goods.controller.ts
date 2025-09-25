@@ -5,7 +5,8 @@ import { Body, Controller, DefaultValuePipe, HttpStatus, Param, ParseIntPipe, Qu
 import { isEmpty, isNil, omit, pickBy } from 'lodash'
 import { PinoLogger } from 'nestjs-pino'
 import { Between, Like } from 'typeorm'
-import { PostReaderDataDTO, readerPostDataValidator } from '../rfid/dto/rfid.dto'
+
+import { PostReaderDataDTO, readerPostDataValidator } from '../rfid/dto/rfid-shared.dto'
 import { UserEntity } from '../user/entities/user.entity'
 import { DefectiveGoodsService } from './defective-goods.service'
 import {

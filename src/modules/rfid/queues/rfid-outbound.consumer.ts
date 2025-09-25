@@ -3,7 +3,8 @@ import { InjectModel } from '@nestjs/mongoose'
 import { Job } from 'bullmq'
 import { PinoLogger } from 'nestjs-pino'
 import { POST_DATA_OUTBOUND_QUEUE } from '../constants'
-import { PostReaderDataDTO } from '../dto/rfid.dto'
+
+import { PostReaderDataDTO } from '../dto/rfid-shared.dto'
 import { EpcModel, EpcOutbound } from '../schemas/epc.schema'
 import { RFIDSharedService } from '../services/rfid-shared.service'
 

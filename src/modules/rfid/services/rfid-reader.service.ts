@@ -6,8 +6,8 @@ import { OnEvent } from '@nestjs/event-emitter'
 import { InjectDataSource } from '@nestjs/typeorm'
 import Redis from 'ioredis'
 import { isNil } from 'lodash'
-import { PinoLogger } from 'nestjs-pino'
 import { CachedResult, DataSource, In, Like } from 'typeorm'
+import { CreateRFIDDeviceDTO, UpdateRFIDDeviceDTO } from '../dto/rfid-reader.dto'
 import { RFIDReaderEntity } from '../entities/rfid-reader.entity'
 import { ExtendedRFIDReaderEntity } from '../types'
 
@@ -19,11 +19,10 @@ export class RFIDReaderService {
 
 	constructor(
 		@Inject(REDIS_CLIENT) private readonly redisClient: Redis,
-		@InjectDataSource(DATA_SOURCE_DATA_LAKE) private readonly dataSourceDL: DataSource,
-		private readonly logger: PinoLogger
+		@InjectDataSource(DATA_SOURCE_DATA_LAKE) private readonly dataSourceDL: DataSource
 	) {}
 
-	public async getActiveRFIDReaders() {
+	private async findActiveDevices() {
 		const rfidReaderCacheKeys = await this.redisClient.keys(this.CACHE_KEY_PREFIX + ':*')
 
 		const pipeline = this.redisClient.pipeline()
@@ -38,8 +37,19 @@ export class RFIDReaderService {
 			.filter((item) => !isNil(item))
 	}
 
-	public async getWarehouseRFIDDevices(factoryCode: string) {
-		const activeReaders = await this.getActiveRFIDReaders()
+	public async createDevice(
+		payload: CreateRFIDDeviceDTO & Pick<RFIDReaderEntity, 'user_code_created' | 'factory_code'>
+	) {
+		// const newDevice = this.dataSourceDL.getRepository(RFIDReaderEntity).create(payload)
+		return await this.dataSourceDL.getRepository(RFIDReaderEntity).insert(payload)
+	}
+
+	public async updateDevice(deviceSeriesNumber: string, payload: UpdateRFIDDeviceDTO & { user_code_updated: string }) {
+		return await this.dataSourceDL.getRepository(RFIDReaderEntity).update({ device_sn: deviceSeriesNumber }, payload)
+	}
+
+	public async findAllWarehouseDevices(factoryCode: string) {
+		const activeReaders = await this.findActiveDevices()
 
 		const activeReadersQuery = this.dataSourceDL
 			.createQueryBuilder()
@@ -53,7 +63,7 @@ export class RFIDReaderService {
 			.createQueryBuilder('a')
 			.addCommonTableExpression(activeReadersQuery.getQuery(), 'active_readers_cte')
 			.select('a.device_sn', 'device_sn')
-			.addSelect('a.device_name', 'device_name')
+			.addSelect('a.device_name', 'station_no')
 			.addSelect(/* SQL */ `STRING_AGG(a.device_ant, ',')`, 'device_ant')
 			.addSelect('a.isactive', 'is_active')
 			.addSelect('a.ip_address', 'ip_address')
@@ -76,13 +86,13 @@ export class RFIDReaderService {
 			.getRawMany<RFIDReaderEntity>()
 	}
 
-	public async getSpecificRFIDDevice(deviceSeriesNumber: string, station?: string) {
+	public async findOneBySeriesNumber(deviceSeriesNumber: string, station?: string) {
 		return await this.dataSourceDL
 			.getRepository(RFIDReaderEntity)
 			.createQueryBuilder()
 			.distinct()
 			.select('device_sn', 'device_sn')
-			.addSelect('device_name', 'device_name')
+			.addSelect('device_name', 'station_no')
 			.addSelect(/* SQL */ `STRING_AGG(device_ant, ',')`, 'device_ant')
 			.addSelect('isactive', 'is_active')
 			.addSelect('ip_address', 'ip_address')
@@ -122,7 +132,7 @@ export class RFIDReaderService {
 		)
 	}
 
-	public async deleteMany(deviceSeriesNumbers: string[]) {
+	public async deleteDevicesBySeriesNumbers(deviceSeriesNumbers: string[]) {
 		return await this.dataSourceDL.getRepository(RFIDReaderEntity).delete({ device_sn: In(deviceSeriesNumbers) })
 	}
 }

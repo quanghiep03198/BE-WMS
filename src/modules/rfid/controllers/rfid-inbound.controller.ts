@@ -27,20 +27,22 @@ import { PaginateResult } from 'mongoose'
 import { PinoLogger } from 'nestjs-pino'
 import { POST_DATA_INBOUND_QUEUE } from '../constants'
 import {
-	deleteEpcValidator,
-	DeleteScannedEpcDTO,
 	ExchangeOrderDTO,
 	exchangeOrderValidator,
+	updateStockInValidator,
+	UpsertEpcInformationDTO,
+	upsertEpcInformationSchema,
+	UpsertStockInDTO
+} from '../dto/rfid-inbound.dto'
+import {
+	deleteEpcValidator,
+	DeleteScannedEpcDTO,
 	FindEpcBySizeDTO,
 	findEpcBySizeValidator,
 	PostReaderDataDTO,
 	searchCustomerValidator,
-	SearchCustOrderParamsDTO,
-	updateStockValidator,
-	UpsertEpcInformationDTO,
-	upsertEpcInformationSchema,
-	UpsertStockInDTO
-} from '../dto/rfid.dto'
+	SearchCustOrderParamsDTO
+} from '../dto/rfid-shared.dto'
 import { EpcDocument, EpcInbound, EpcModel } from '../schemas/epc.schema'
 import { RFIDInboundService } from '../services/rfid-inbound.service'
 import { RFIDSharedService } from '../services/rfid-shared.service'
@@ -136,7 +138,7 @@ export class RFIDInboundController {
 		@Param('commandNumber') commandNumber: string,
 		@User('username') username: string,
 		@Headers(CommonRequestHeader.FACTORY_CODE) factoryCode: string,
-		@Body(new ZodValidationPipe(updateStockValidator)) payload: UpsertStockInDTO
+		@Body(new ZodValidationPipe(updateStockInValidator)) payload: UpsertStockInDTO
 	) {
 		return await this.rfidInboundService.upsertStockIn(commandNumber, factoryCode, {
 			...payload,
