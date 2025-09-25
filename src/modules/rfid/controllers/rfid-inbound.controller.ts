@@ -40,6 +40,7 @@ import {
 	FindEpcBySizeDTO,
 	findEpcBySizeValidator,
 	PostReaderDataDTO,
+	readerPostDataValidator,
 	searchCustomerValidator,
 	SearchCustOrderParamsDTO
 } from '../dto/rfid-shared.dto'
@@ -209,8 +210,7 @@ export class RFIDInboundController {
 		statusCode: HttpStatus.CREATED,
 		message: 'common.created'
 	})
-	// new ZodValidationPipe(readerPostDataValidator)
-	async postInboundData(@Body() payload: PostReaderDataDTO) {
+	async postInboundData(@Body(new ZodValidationPipe(readerPostDataValidator)) payload: PostReaderDataDTO) {
 		await this.eventEmitter.emitAsync('rfid.reader.post_data', {
 			deviceSeriesNumber: payload.sn,
 			lastUsageTime: format(new Date(), 'yyyy-MM-dd HH:mm:ss.SSS')
