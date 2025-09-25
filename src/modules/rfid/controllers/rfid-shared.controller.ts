@@ -21,16 +21,16 @@ import { Queue } from 'bullmq'
 import { pickBy } from 'lodash'
 import { mongo } from 'mongoose'
 import { IMPORT_DATA_QUEUE } from '../constants'
+
 import {
 	RestoreArchivedEpcsDTO,
 	restoreArchivedEpcValidator,
 	UploadDataDTO,
 	uploadDataValidator
-} from '../dto/rfid.dto'
+} from '../dto/rfid-shared.dto'
 import { CsvFileValidationPipe } from '../pipes/csv-validation.pipe'
 import { RFIDInboundService } from '../services/rfid-inbound.service'
 import { RFIDOutboundService } from '../services/rfid-outbound.service'
-import { RFIDReaderService } from '../services/rfid-reader.service'
 import { RFIDSharedService } from '../services/rfid-shared.service'
 import { RFIDSearchParams } from '../types'
 import { generateStation } from '../utils'
@@ -41,19 +41,8 @@ export class RFIDSharedController {
 		@InjectQueue(IMPORT_DATA_QUEUE) private readonly importDataQueue: Queue,
 		private readonly rfidInboundService: RFIDInboundService,
 		private readonly rfidOutboundService: RFIDOutboundService,
-		private readonly rfidSharedService: RFIDSharedService,
-		private readonly rfidDeviceService: RFIDReaderService
+		private readonly rfidSharedService: RFIDSharedService
 	) {}
-
-	// #region Others
-	@Api({
-		endpoint: 'devices',
-		method: HttpMethod.GET
-	})
-	@AuthGuard()
-	async getWarehouseRFIDDevices(@Headers(CommonRequestHeader.FACTORY_CODE) factoryCode: string) {
-		return await this.rfidDeviceService.getWarehouseRFIDDevices(factoryCode)
-	}
 
 	@Api({
 		endpoint: 'archived-epcs/:type',

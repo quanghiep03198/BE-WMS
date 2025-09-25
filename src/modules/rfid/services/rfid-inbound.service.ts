@@ -22,13 +22,9 @@ import { readFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { DataSource, FindOptionsWhere, In } from 'typeorm'
 import { FALLBACK_VALUE, InventoryActions, POST_DATA_INBOUND_QUEUE } from '../constants'
-import {
-	ExchangeOrderDTO,
-	PostReaderDataDTO,
-	SearchCustOrderParamsDTO,
-	UpsertEpcInformationDTO,
-	UpsertStockInDTO
-} from '../dto/rfid.dto'
+
+import { ExchangeOrderDTO, UpsertEpcInformationDTO, UpsertStockInDTO } from '../dto/rfid-inbound.dto'
+import { PostReaderDataDTO, SearchCustOrderParamsDTO } from '../dto/rfid-shared.dto'
 import { RFIDMatchCustomerEntity } from '../entities/rfid-customer-match.entity'
 import { RFIDInventoryBackupEntity } from '../entities/rifd-inventory.entity'
 import { EpcDocument, EpcInbound, EpcInboundSchema, EpcModel } from '../schemas/epc.schema'

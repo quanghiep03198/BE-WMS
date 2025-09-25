@@ -25,16 +25,16 @@ import { FastifyReply } from 'fastify'
 import { isEmpty, isNil, pickBy } from 'lodash'
 import { PaginateResult } from 'mongoose'
 import { POST_DATA_OUTBOUND_QUEUE } from '../constants'
+
+import { UpsertStockOutDTO, upsertStockOutValidator } from '../dto/rfid-outbound.dto'
 import {
 	deleteEpcValidator,
 	DeleteScannedEpcDTO,
 	FindEpcBySizeDTO,
 	findEpcBySizeValidator,
 	PostReaderDataDTO,
-	readerPostDataValidator,
-	UpsertStockOutDTO,
-	upsertStockOutValidator
-} from '../dto/rfid.dto'
+	readerPostDataValidator
+} from '../dto/rfid-shared.dto'
 import { EpcDocument, EpcModel, EpcOutbound } from '../schemas/epc.schema'
 import { RFIDOutboundService } from '../services/rfid-outbound.service'
 import { RFIDSharedService } from '../services/rfid-shared.service'
