@@ -2,7 +2,6 @@ import { SuperJson } from '@/common/utils'
 import { DATA_SOURCE_DATA_LAKE } from '@/databases/constants'
 import { REDIS_CLIENT } from '@/redis/constants'
 import { Inject, Injectable } from '@nestjs/common'
-import { OnEvent } from '@nestjs/event-emitter'
 import { InjectDataSource } from '@nestjs/typeorm'
 import Redis from 'ioredis'
 import { isNil } from 'lodash'
@@ -109,34 +108,34 @@ export class RFIDDeviceService {
 			.getRawOne<RFIDReaderEntity>()
 	}
 
-	@OnEvent('rfid.reader.post_data', { async: true })
-	protected async updateLastUsageTime({
-		deviceSeriesNumber,
-		lastUsageTime
-	}: {
-		deviceSeriesNumber: string
-		lastUsageTime: string
-	}) {
-		try {
-			const cacheKey = `${this.CACHE_KEY_PREFIX}:${deviceSeriesNumber}`
-			const cachedData = await this.redisClient.get(cacheKey)
-			if (isNil(cachedData) || !SuperJson.isValid(cachedData)) return
-			const cachedReaderInfo = SuperJson.parse<CachedResult<ExtendedRFIDReaderEntity>>(cachedData)
-			await this.redisClient.setex(
-				`${this.CACHE_KEY_PREFIX}:${deviceSeriesNumber}`,
-				this.CACHE_TTL_SECONDS,
-				SuperJson.stringify({
-					...cachedReaderInfo,
-					result: cachedReaderInfo?.result?.map((item) => ({
-						...item,
-						last_used_time: lastUsageTime
-					}))
-				})
-			)
-		} catch (error) {
-			this.logger.error(error)
-		}
-	}
+	// @OnEvent('rfid.reader.post_data', { async: true })
+	// protected async updateLastUsageTime({
+	// 	deviceSeriesNumber,
+	// 	lastUsageTime
+	// }: {
+	// 	deviceSeriesNumber: string
+	// 	lastUsageTime: string
+	// }) {
+	// 	try {
+	// 		const cacheKey = `${this.CACHE_KEY_PREFIX}:${deviceSeriesNumber}`
+	// 		const cachedData = await this.redisClient.get(cacheKey)
+	// 		if (isNil(cachedData) || !SuperJson.isValid(cachedData)) return
+	// 		const cachedReaderInfo = SuperJson.parse<CachedResult<ExtendedRFIDReaderEntity>>(cachedData)
+	// 		await this.redisClient.setex(
+	// 			`${this.CACHE_KEY_PREFIX}:${deviceSeriesNumber}`,
+	// 			this.CACHE_TTL_SECONDS,
+	// 			SuperJson.stringify({
+	// 				...cachedReaderInfo,
+	// 				result: cachedReaderInfo?.result?.map((item) => ({
+	// 					...item,
+	// 					last_used_time: lastUsageTime
+	// 				}))
+	// 			})
+	// 		)
+	// 	} catch (error) {
+	// 		this.logger.error(error)
+	// 	}
+	// }
 
 	public async deleteDevicesBySeriesNumbers(deviceSeriesNumbers: DeleteRFIDDeviceDTO) {
 		return await this.dataSourceDL.getRepository(RFIDReaderEntity).delete({ device_sn: In(deviceSeriesNumbers) })
