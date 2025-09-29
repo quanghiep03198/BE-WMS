@@ -17,7 +17,8 @@ export const appConfigFactory: ConfigFactory = () => ({
 		connection: {
 			host: env('REDIS_HOST'),
 			port: env('REDIS_PORT', { serialize: (value): number => Number.parseInt(value) }),
-			password: env('REDIS_PASSWORD')
+			password: env('REDIS_PASSWORD'),
+			db: env('REDIS_DB', { fallbackValue: 0, serialize: (value): number => Number.parseInt(value) })
 		},
 		defaultJobOptions: {
 			removeOnComplete: true,

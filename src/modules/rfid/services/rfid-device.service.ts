@@ -6,6 +6,7 @@ import { OnEvent } from '@nestjs/event-emitter'
 import { InjectDataSource } from '@nestjs/typeorm'
 import Redis from 'ioredis'
 import { isNil } from 'lodash'
+import { PinoLogger } from 'nestjs-pino'
 import { CachedResult, DataSource, In, Like } from 'typeorm'
 import { CreateRFIDDeviceDTO, DeleteRFIDDeviceDTO, UpdateRFIDDeviceDTO } from '../dto/rfid-device.dto'
 import { RFIDReaderEntity } from '../entities/rfid-reader.entity'
@@ -19,7 +20,8 @@ export class RFIDDeviceService {
 
 	constructor(
 		@Inject(REDIS_CLIENT) private readonly redisClient: Redis,
-		@InjectDataSource(DATA_SOURCE_DATA_LAKE) private readonly dataSourceDL: DataSource
+		@InjectDataSource(DATA_SOURCE_DATA_LAKE) private readonly dataSourceDL: DataSource,
+		private readonly logger: PinoLogger
 	) {}
 
 	private async findActiveDevices() {
@@ -115,21 +117,25 @@ export class RFIDDeviceService {
 		deviceSeriesNumber: string
 		lastUsageTime: string
 	}) {
-		const cacheKey = `${this.CACHE_KEY_PREFIX}:${deviceSeriesNumber}`
-		const cachedData = await this.redisClient.get(cacheKey)
-		if (isNil(cachedData) || !SuperJson.isValid(cachedData)) return
-		const cachedReaderInfo = SuperJson.parse<CachedResult<ExtendedRFIDReaderEntity>>(cachedData)
-		await this.redisClient.setex(
-			`${this.CACHE_KEY_PREFIX}:${deviceSeriesNumber}`,
-			this.CACHE_TTL_SECONDS,
-			SuperJson.stringify({
-				...cachedReaderInfo,
-				result: cachedReaderInfo?.result?.map((item) => ({
-					...item,
-					last_used_time: lastUsageTime
-				}))
-			})
-		)
+		try {
+			const cacheKey = `${this.CACHE_KEY_PREFIX}:${deviceSeriesNumber}`
+			const cachedData = await this.redisClient.get(cacheKey)
+			if (isNil(cachedData) || !SuperJson.isValid(cachedData)) return
+			const cachedReaderInfo = SuperJson.parse<CachedResult<ExtendedRFIDReaderEntity>>(cachedData)
+			await this.redisClient.setex(
+				`${this.CACHE_KEY_PREFIX}:${deviceSeriesNumber}`,
+				this.CACHE_TTL_SECONDS,
+				SuperJson.stringify({
+					...cachedReaderInfo,
+					result: cachedReaderInfo?.result?.map((item) => ({
+						...item,
+						last_used_time: lastUsageTime
+					}))
+				})
+			)
+		} catch (error) {
+			this.logger.error(error)
+		}
 	}
 
 	public async deleteDevicesBySeriesNumbers(deviceSeriesNumbers: DeleteRFIDDeviceDTO) {
