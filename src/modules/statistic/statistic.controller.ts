@@ -37,4 +37,14 @@ export class StatisticController {
 	async getMonthlyInboundComparison() {
 		return await this.statisticService.getAssemblyLineProductivity()
 	}
+
+	@Api({
+		endpoint: 'net-flow',
+		method: HttpMethod.GET,
+		statusCode: HttpStatus.OK
+	})
+	@AuthGuard()
+	async getLastSixMonthsNetFlow() {
+		return await this.statisticService.getLastSixMonthsNetFlow()
+	}
 }

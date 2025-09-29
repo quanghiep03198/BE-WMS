@@ -57,7 +57,9 @@ WITH aggregated_data AS (
 inventory_data AS (
     SELECT 
         CAST(COALESCE(SUM(CASE WHEN inv_yearmonth = @CurrentYearMonth THEN inv_initialqty END), 0) AS INT) AS curr_month_initial_qty,
-        CAST(COALESCE(SUM(CASE WHEN inv_yearmonth = @PrevYearMonth THEN inv_initialqty END), 0) AS INT) AS prev_month_initial_qty
+        CAST(COALESCE(SUM(CASE WHEN inv_yearmonth = @CurrentYearMonth THEN inv_finalqty END), 0) AS INT) AS curr_month_final_qty,
+        CAST(COALESCE(SUM(CASE WHEN inv_yearmonth = @PrevYearMonth THEN inv_initialqty END), 0) AS INT) AS prev_month_initial_qty,
+        CAST(COALESCE(SUM(CASE WHEN inv_yearmonth = @PrevYearMonth THEN inv_finalqty END), 0) AS INT) AS prev_month_final_qty
     FROM DV_DATA_LAKE.dbo.dv_invprodmst WITH (NOLOCK)
     WHERE inv_type = 'FG' 
       AND inv_yearmonth IN (@CurrentYearMonth, @PrevYearMonth)
@@ -71,9 +73,11 @@ SELECT
     CAST(inv.curr_month_initial_qty + agg.curr_month_inbound - agg.curr_month_outbound AS INT) AS curr_period_inventory_qty,
     CAST(inv.prev_month_initial_qty + agg.prev_month_inbound - agg.prev_month_outbound AS INT) AS prev_period_inventory_qty,
     inv.curr_month_initial_qty,
+    inv.curr_month_final_qty,
     agg.curr_month_inbound,
     agg.curr_month_outbound,
     inv.prev_month_initial_qty,
+    inv.prev_month_final_qty,
     agg.prev_month_inbound,
     agg.prev_month_outbound
 FROM inventory_data inv
