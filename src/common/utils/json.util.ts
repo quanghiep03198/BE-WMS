@@ -2,7 +2,7 @@ import { isNil } from 'lodash'
 import { isPrimitive } from './common.util'
 
 /**
- * Simple and focused JSON handler - Only 4 core methods
+ * Simple and focused JSON handler - Only 4 core methods (isValid, hasNestedJson, parse and stringify)
  * @class SuperJson
  */
 export class SuperJson {
@@ -196,9 +196,3 @@ export class SuperJson {
 		return JSON.stringify(value)
 	}
 }
-
-console.log(
-	SuperJson.isValid(
-		'[{"device_sn":"d56f07f5","station_no":"CUS_VA1_WH101","device_ant":"4","is_active":"Y","ip_address":"10.30.82.120","ip_port":"8270"}]'
-	)
-)
