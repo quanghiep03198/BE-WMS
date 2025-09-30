@@ -1,3 +1,4 @@
 {
-	"active_epcs_recombination_conflict": "Cannot recombined active EPC exists in system"
+	"active_epcs_recombination_conflict": "Cannot recombined active EPC exists in system",
+	"defective_goods_inventory_report": "Defective Goods Inventory Report"
 }

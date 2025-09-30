@@ -68,7 +68,7 @@ export class DefectiveGoodEntity extends BaseAbstractEntity {
 		nullable: false,
 		comment: 'Defective category, including B (Grade B shoes), C (Grade C shoes), RD (Research and developement)'
 	})
-	category: string
+	defective_category: string
 
 	@Column({
 		name: 'defective_location',
@@ -78,7 +78,7 @@ export class DefectiveGoodEntity extends BaseAbstractEntity {
 		nullable: false,
 		comment: 'Defective location, including A (All), B (Upper), C (Bottom), D (Other)'
 	})
-	defect_location: string
+	defective_location: string
 
 	@Column({
 		name: 'defective_description',
@@ -86,7 +86,7 @@ export class DefectiveGoodEntity extends BaseAbstractEntity {
 		nullable: false,
 		comment: 'Raw text from editor, do not update this column manually, it will be updated by editor from Front-end'
 	})
-	defect_description: string
+	defective_description: string
 
 	@Column({
 		name: 'storage_location',

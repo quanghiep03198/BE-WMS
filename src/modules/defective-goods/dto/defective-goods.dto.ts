@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { DefectiveCategory, DefectiveLocation } from '../constants'
 
 export const baseDefectiveGoodsDTO = z.object({
-	category: z.nativeEnum(DefectiveCategory),
+	defective_category: z.nativeEnum(DefectiveCategory),
 	po: z.any().nullable().optional(),
 	mo_no: z.any().nullable().optional(),
 	brand_name: z.string().trim().nonempty(),
@@ -11,8 +11,8 @@ export const baseDefectiveGoodsDTO = z.object({
 	factory_shoes_style: z.string().trim().nonempty(),
 	color_sn: z.string().trim().nonempty(),
 	size_code: z.string().nonempty(),
-	defect_location: z.nativeEnum(DefectiveLocation),
-	defect_description: z.string().nonempty()
+	defective_location: z.nativeEnum(DefectiveLocation),
+	defective_description: z.string().nonempty()
 })
 
 export const createDefectiveGoodsDTO = baseDefectiveGoodsDTO
@@ -22,7 +22,7 @@ export const createDefectiveGoodsDTO = baseDefectiveGoodsDTO
 	.required()
 	.refine(
 		(values) => {
-			if (values.category === DefectiveCategory.B_GRADE) return !!values.po && !!values.mo_no
+			if (values.defective_category === DefectiveCategory.B_GRADE) return !!values.po && !!values.mo_no
 			return true
 		},
 		{ message: 'Purchase order and Manufacturing order. are required for B Grade category' }
@@ -35,7 +35,7 @@ export const updateDefectiveGoodsDTO = baseDefectiveGoodsDTO
 	.partial()
 	.refine(
 		(values) => {
-			if (values.category === DefectiveCategory.B_GRADE)
+			if (values.defective_category === DefectiveCategory.B_GRADE)
 				return (
 					typeof values.po === 'string' &&
 					typeof values.mo_no === 'string' &&
@@ -58,7 +58,7 @@ export const deleteManyDefectiveGoodsDTO = z.object({
 	factory_shoes_style: z.string().optional(),
 	color_sn: z.string().optional(),
 	size_code: z.string().optional(),
-	defect_location: z.nativeEnum(DefectiveLocation).optional(),
+	defective_location: z.nativeEnum(DefectiveLocation).optional(),
 	defect_description: z.string().optional(),
 	created: z.string().optional()
 })

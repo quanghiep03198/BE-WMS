@@ -27,6 +27,7 @@ export type I18nTranslations = {
     };
     "defective-goods": {
         "active_epcs_recombination_conflict": string;
+        "defective_goods_inventory_report": string;
     };
     "erp": {
         "fields": {
