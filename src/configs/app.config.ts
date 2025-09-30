@@ -41,7 +41,7 @@ export const appConfigFactory: ConfigFactory = () => ({
 						host: env('REDIS_HOST'),
 						port: env('REDIS_PORT', { serialize: (value): number => Number.parseInt(value) })
 					},
-					// database: env('REDIS_DB', { fallbackValue: 0, serialize: (value): number => Number.parseInt(value) }),
+					database: env('REDIS_DB', { fallbackValue: 0, serialize: (value): number => Number.parseInt(value) }),
 					password: env('REDIS_PASSWORD')
 				},
 				{ noNamespaceAffectsAll: false, useUnlink: true }
@@ -88,7 +88,7 @@ export const appConfigFactory: ConfigFactory = () => ({
 		logging: ['error'],
 		requestTimeout: 30000,
 		cache: {
-			type: 'redis',
+			type: 'ioredis',
 			options: {
 				socket: {
 					host: env('REDIS_HOST'),
