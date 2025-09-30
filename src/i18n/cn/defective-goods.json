@@ -1,3 +1,4 @@
 {
-	"active_epcs_recombination_conflict": "无法重新组合, 系统中存在激活的EPC"
+	"active_epcs_recombination_conflict": "无法重新组合, 系统中存在激活的EPC",
+	"defective_goods_inventory_report": "二级鞋存库报表"
 }
