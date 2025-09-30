@@ -16,7 +16,6 @@ export class DefectiveGoodEntity extends BaseAbstractEntity {
 		nullable: false,
 		type: 'nvarchar',
 		length: 30,
-		unique: true,
 		comment: 'Electronic Product Code to indentify defective goods'
 	})
 	epc: string
