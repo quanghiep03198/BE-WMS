@@ -26,7 +26,6 @@ export class InvDefectiveGoods1757390824605 implements MigrationInterface {
 				type: 'nvarchar',
 				length: '30',
 				isNullable: false,
-				isUnique: true,
 				comment: 'Electronic Product Code to indentify defective goods'
 			},
 			{
@@ -120,7 +119,6 @@ export class InvDefectiveGoods1757390824605 implements MigrationInterface {
 	}
 
 	public async down(queryRunner: QueryRunner): Promise<void> {
-		await queryRunner.dropUniqueConstraint(this.tableSchema.name, 'UQ_dv_defective_goods_epc')
 		await queryRunner.dropPrimaryKey(this.tableSchema.name)
 		await queryRunner.dropTable(this.tableSchema, false)
 	}

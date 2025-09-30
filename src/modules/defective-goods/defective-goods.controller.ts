@@ -1,11 +1,21 @@
 import { Api, AuthGuard, HttpMethod, User } from '@/common/decorators'
 import { TransformUppercasePipe, ZodValidationPipe } from '@/common/pipes'
 import { EventGateway } from '@/events/event.gateway'
-import { Body, Controller, DefaultValuePipe, HttpStatus, Param, ParseIntPipe, Query } from '@nestjs/common'
+import {
+	Body,
+	ConflictException,
+	Controller,
+	DefaultValuePipe,
+	HttpStatus,
+	Param,
+	ParseIntPipe,
+	Query
+} from '@nestjs/common'
 import { isEmpty, isNil, omit, pickBy } from 'lodash'
-import { PinoLogger } from 'nestjs-pino'
 import { Between, Like } from 'typeorm'
 
+import { RecordStatus } from '@/databases/constants'
+import { I18nContext, I18nService } from 'nestjs-i18n'
 import { PostReaderDataDTO, readerPostDataValidator } from '../rfid/dto/rfid-shared.dto'
 import { UserEntity } from '../user/entities/user.entity'
 import { DefectiveGoodsService } from './defective-goods.service'
@@ -27,7 +37,7 @@ import {
 @Controller('defective-goods')
 export class DefectiveGoodsController {
 	constructor(
-		private readonly logger: PinoLogger,
+		private readonly i18nService: I18nService,
 		private readonly eventGateway: EventGateway,
 		private readonly defectiveGoodsService: DefectiveGoodsService
 	) {}
@@ -79,6 +89,7 @@ export class DefectiveGoodsController {
 
 		return await this.defectiveGoodsService.paginate(
 			{
+				is_active: RecordStatus.ACTIVE,
 				...filterQuery,
 				...(epc && { epc: Like(`%${epc}%`) }),
 				...(created && {
@@ -101,21 +112,30 @@ export class DefectiveGoodsController {
 		statusCode: HttpStatus.CREATED
 	})
 	@AuthGuard()
-	public async insertOne(
+	public async create(
 		@User() user: UserEntity,
 		@Body(new ZodValidationPipe(createDefectiveGoodsDTO)) payload: CreateDefectiveGoodsDTO
 	) {
-		if (Array.isArray(payload.epc))
+		const isActiveEpcsExist: Awaited<boolean> = await this.defectiveGoodsService.checkActiveEpcsExist(payload.epc)
+		if (isActiveEpcsExist)
+			throw new ConflictException(
+				this.i18nService.t('defective-goods.active_epcs_recombination_conflict', {
+					lang: I18nContext.current()?.lang
+				})
+			)
+
+		if (Array.isArray(payload.epc)) {
 			return await this.defectiveGoodsService.insertMany(
 				payload.epc.map((item) => ({ epc: item, user_code_created: user.username, ...omit(payload, ['epc']) }))
 			)
-		if (typeof payload.epc === 'string')
+		}
+		if (typeof payload.epc === 'string') {
 			return await this.defectiveGoodsService.insertOne({
 				...payload,
 				epc: payload.epc,
 				user_code_created: user.username
 			})
-
+		}
 		// Todo: create new resource for defective goods
 	}
 
@@ -182,6 +202,15 @@ export class DefectiveGoodsController {
 	public async updateOutboundStatus(
 		@Body(new ZodValidationPipe(updateOutboundStatusDTO)) data: UpdateOutboundStatusDTO
 	) {
-		return await this.defectiveGoodsService.updateInboundStatus(data)
+		return await this.defectiveGoodsService.updateOutboundStatus(data)
+	}
+
+	@Api({
+		method: HttpMethod.GET,
+		endpoint: '/inventory',
+		statusCode: HttpStatus.OK
+	})
+	async getDefectiveGoodsInventory() {
+		return await this.defectiveGoodsService.getDefectiveGoodsInventory()
 	}
 }

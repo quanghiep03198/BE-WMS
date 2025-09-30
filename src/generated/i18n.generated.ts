@@ -25,6 +25,9 @@ export type I18nTranslations = {
             "remark": string;
         };
     };
+    "defective-goods": {
+        "active_epcs_recombination_conflict": string;
+    };
     "erp": {
         "fields": {
             "accumulated_qty": string;
