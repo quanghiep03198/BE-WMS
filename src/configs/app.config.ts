@@ -88,7 +88,7 @@ export const appConfigFactory: ConfigFactory = () => ({
 		logging: ['error'],
 		requestTimeout: 30000,
 		cache: {
-			type: 'ioredis',
+			type: 'redis',
 			options: {
 				socket: {
 					host: env('REDIS_HOST'),
