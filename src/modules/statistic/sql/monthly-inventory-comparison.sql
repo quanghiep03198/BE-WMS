@@ -14,6 +14,8 @@ DECLARE @PrevPeriodEnd DATE = DATEFROMPARTS(@PrevYear, @PrevMonth, @CurrentDay);
 DECLARE @CurrentYearMonth VARCHAR(10) = CAST(@CurrentYear AS VARCHAR(10)) + RIGHT('0' + CAST(@CurrentMonth AS VARCHAR(2)), 2);
 DECLARE @PrevYearMonth VARCHAR(10) = CAST(@PrevYear AS VARCHAR(10)) + RIGHT('0' + CAST(@PrevMonth AS VARCHAR(2)), 2);
 
+PRINT('PrevYearMonth: ' + @PrevYearMonth);
+
 -- * Temporary table approach cho large dataset
 IF OBJECT_ID('tempdb..#tmp_rfid_data') IS NOT NULL DROP TABLE #tmp_rfid_data;
 
@@ -70,19 +72,17 @@ SELECT
     @CurrentDate AS comparison_date,
     CONCAT(FORMAT(@CurrentMonthStart, 'dd/MM/yyyy'), ' - ', FORMAT(@CurrentPeriodEnd, 'dd/MM/yyyy')) AS current_period,
     CONCAT(FORMAT(@PrevMonthStart, 'dd/MM/yyyy'), ' - ', FORMAT(@PrevPeriodEnd, 'dd/MM/yyyy')) AS previous_period,
-    CAST(inv.curr_month_initial_qty + agg.curr_month_inbound - agg.curr_month_outbound AS INT) AS curr_period_inventory_qty,
-    CAST(inv.prev_month_initial_qty + agg.prev_month_inbound - agg.prev_month_outbound AS INT) AS prev_period_inventory_qty,
+    CAST(inv.curr_month_initial_qty + COALESCE(agg.curr_month_inbound, 0) - COALESCE(agg.curr_month_outbound, 0) AS INT) AS curr_period_inventory_qty,
+    CAST(inv.prev_month_initial_qty + COALESCE(agg.prev_month_inbound, 0) - COALESCE(agg.prev_month_outbound, 0) AS INT) AS prev_period_inventory_qty,
     inv.curr_month_initial_qty,
     inv.curr_month_final_qty,
-    agg.curr_month_inbound,
-    agg.curr_month_outbound,
+    COALESCE(agg.curr_month_inbound, 0) AS curr_month_inbound,
+    COALESCE(agg.curr_month_outbound, 0) AS curr_month_outbound,
     inv.prev_month_initial_qty,
     inv.prev_month_final_qty,
-    agg.prev_month_inbound,
-    agg.prev_month_outbound
+    COALESCE(agg.prev_month_inbound, 0) AS prev_month_inbound,
+    COALESCE(agg.prev_month_outbound, 0) AS prev_month_outbound
 FROM inventory_data inv
-CROSS JOIN aggregated_data agg
-
-;
+CROSS JOIN aggregated_data agg;
 -- * Cleanup
 DROP TABLE #tmp_rfid_data;
