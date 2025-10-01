@@ -5,6 +5,7 @@
 		"actual_instock_qty": "Actual instock quantity",
 		"actual_outstock_qty": "Actual outstock quantity",
 		"brand_name": "Customer branch name",
+		"category": "Category",
 		"container_order_code": "Container Order Code",
 		"conversion_rate": "Conversion rate",
 		"customer_branch_id": "Customer branch ID",

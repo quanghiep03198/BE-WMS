@@ -15,9 +15,11 @@ import { DefectiveGoodEntity } from './entities/defective-goods.entity'
 })
 export class DefectiveGoodsModule implements NestModule {
 	configure(consumer: MiddlewareConsumer) {
-		consumer.apply(TenacyMiddleware).forRoutes({
-			path: '/defective-goods/inventory',
-			method: RequestMethod.GET
-		})
+		consumer
+			.apply(TenacyMiddleware)
+			.forRoutes(
+				{ path: '/defective-goods/inventory', method: RequestMethod.GET },
+				{ path: '/defective-goods/export-inventory-report', method: RequestMethod.GET }
+			)
 	}
 }

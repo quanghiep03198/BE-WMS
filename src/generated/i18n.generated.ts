@@ -37,6 +37,7 @@ export type I18nTranslations = {
             "actual_instock_qty": string;
             "actual_outstock_qty": string;
             "brand_name": string;
+            "category": string;
             "container_order_code": string;
             "conversion_rate": string;
             "customer_order": string;

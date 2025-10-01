@@ -1,21 +1,24 @@
+import { CommonRequestHeader } from '@/common/constants'
 import { Api, AuthGuard, HttpMethod, User } from '@/common/decorators'
 import { TransformUppercasePipe, ZodValidationPipe } from '@/common/pipes'
+import { RecordStatus } from '@/databases/constants'
 import { EventGateway } from '@/events/event.gateway'
 import {
 	Body,
 	ConflictException,
 	Controller,
 	DefaultValuePipe,
+	Headers,
 	HttpStatus,
 	Param,
 	ParseIntPipe,
-	Query
+	Query,
+	Res
 } from '@nestjs/common'
+import { FastifyReply } from 'fastify'
 import { isEmpty, isNil, omit, pickBy } from 'lodash'
-import { Between, Like } from 'typeorm'
-
-import { RecordStatus } from '@/databases/constants'
 import { I18nContext, I18nService } from 'nestjs-i18n'
+import { Between, Like } from 'typeorm'
 import { PostReaderDataDTO, readerPostDataValidator } from '../rfid/dto/rfid-shared.dto'
 import { UserEntity } from '../user/entities/user.entity'
 import { DefectiveGoodsService } from './defective-goods.service'
@@ -175,7 +178,7 @@ export class DefectiveGoodsController {
 
 	@Api({
 		method: HttpMethod.POST,
-		endpoint: '/retrieve-size-qty',
+		endpoint: 'retrieve-size-qty',
 		statusCode: HttpStatus.OK
 	})
 	@AuthGuard()
@@ -185,7 +188,7 @@ export class DefectiveGoodsController {
 
 	@Api({
 		method: HttpMethod.PATCH,
-		endpoint: '/inbound',
+		endpoint: 'inbound',
 		statusCode: HttpStatus.CREATED
 	})
 	public async updateInboundStatus(
@@ -196,7 +199,7 @@ export class DefectiveGoodsController {
 
 	@Api({
 		method: HttpMethod.PATCH,
-		endpoint: '/outbound',
+		endpoint: 'outbound',
 		statusCode: HttpStatus.CREATED
 	})
 	public async updateOutboundStatus(
@@ -207,10 +210,23 @@ export class DefectiveGoodsController {
 
 	@Api({
 		method: HttpMethod.GET,
-		endpoint: '/inventory',
+		endpoint: 'inventory',
 		statusCode: HttpStatus.OK
 	})
 	async getDefectiveGoodsInventory() {
 		return await this.defectiveGoodsService.getDefectiveGoodsInventory()
+	}
+
+	@Api({
+		method: HttpMethod.GET,
+		endpoint: 'export-inventory-report',
+		statusCode: HttpStatus.OK
+	})
+	async exportDefectiveGoodsInventory(
+		@Headers(CommonRequestHeader.FACTORY_CODE) factoryCode: string,
+		@Res() reply: FastifyReply
+	) {
+		const buffer = await this.defectiveGoodsService.exportDefectiveGoodsInventory(factoryCode)
+		return reply.send(buffer)
 	}
 }

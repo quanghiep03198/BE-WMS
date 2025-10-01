@@ -6,6 +6,7 @@
 		"actual_instock_qty": "盘盈",
 		"actual_outstock_qty": "盘亏",
 		"brand_name": "品牌",
+		"category": "分类",
 		"container_order_code": "出櫃單號",
 		"conversion_rate": "換算率",
 		"customer_order": "客户订单",

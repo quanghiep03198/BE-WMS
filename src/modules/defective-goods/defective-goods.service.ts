@@ -6,6 +6,7 @@ import { InjectRepository } from '@nestjs/typeorm'
 import { Workbook } from 'exceljs'
 import { omit } from 'lodash'
 import { I18nContext, I18nService } from 'nestjs-i18n'
+import { PinoLogger } from 'nestjs-pino'
 import { And, Between, DataSource, FindOptionsWhere, In, Not, Repository } from 'typeorm'
 import { BaseAbstractService } from '../_base/base.abstract.service'
 import { TENANCY_DATA_SOURCE } from '../tenancy/constants'
@@ -20,7 +21,8 @@ export class DefectiveGoodsService extends BaseAbstractService<DefectiveGoodEnti
 		@InjectRepository(DefectiveGoodEntity, DATA_SOURCE_DATA_LAKE)
 		private readonly defectiveGoodRepository: Repository<DefectiveGoodEntity>,
 		@Inject(TENANCY_DATA_SOURCE) private readonly dataSourceTNC: DataSource,
-		private readonly i18nService: I18nService
+		private readonly i18nService: I18nService,
+		private readonly logger: PinoLogger
 	) {
 		super(defectiveGoodRepository)
 	}
@@ -100,32 +102,6 @@ export class DefectiveGoodsService extends BaseAbstractService<DefectiveGoodEnti
 	}
 
 	public async getDefectiveGoodsInventory(): Promise<DefectiveGoodsInventory[]> {
-		const sizeQtyCommonTableExpression = this.dataSourceTNC
-			.getRepository(DefectiveGoodEntity)
-			.createQueryBuilder('a')
-			.select('brand_name')
-			.addSelect('po')
-			.addSelect('mo_no')
-			.addSelect('factory_shoes_style')
-			.addSelect('color_sn')
-			.addSelect('defective_category')
-			.addSelect(
-				/* SQL */ `(
-					SELECT aa.size_code AS size_numcode, COUNT(DISTINCT aa.epc) AS qty
-					FROM DV_DATA_LAKE.dbo.dv_defective_goods aa
-					WHERE aa.isactive = :isActive 
-						AND aa.brand_name = a.brand_name
-						AND aa.factory_shoes_style = a.factory_shoes_style 
-						AND aa.size_code = a.size_code
-					GROUP BY aa.size_code
-					FOR JSON PATH
-				)`,
-				'size_data'
-			)
-			.where('isactive = :isActive', { isActive: RecordStatus.ACTIVE })
-			.andWhere(/* SQL */ `storage_location IS NOT NULL AND LTRIM(RTRIM(storage_location)) <> ''`)
-			.getQuery()
-
 		const storageListCommonTableExpression = this.dataSourceTNC
 			.createQueryBuilder()
 			.select([
@@ -164,10 +140,9 @@ export class DefectiveGoodsService extends BaseAbstractService<DefectiveGoodEnti
 			.addGroupBy('defective_category')
 			.getQuery()
 
-		return await this.dataSourceTNC
+		const queryBuilder = await this.dataSourceTNC
 			.getRepository(DefectiveGoodEntity)
 			.createQueryBuilder('a')
-			.addCommonTableExpression(sizeQtyCommonTableExpression, 'size_data_cte')
 			.addCommonTableExpression(storageListCommonTableExpression, 'storage_list_cte')
 			.select('a.brand_name', 'brand_name')
 			.addSelect('a.po', 'po')
@@ -176,10 +151,26 @@ export class DefectiveGoodsService extends BaseAbstractService<DefectiveGoodEnti
 			.addSelect('a.cust_shoes_style', 'cust_shoes_style')
 			.addSelect('a.color_sn', 'color_sn')
 			.addSelect('a.defective_category', 'defective_category')
-			.addSelect('c.storage_location', 'storage_location')
-			.addSelect('b.size_data', 'size_data')
-			.innerJoin(
-				(qb) => qb.subQuery().select('*').from('size_data_cte', 'b'),
+			.addSelect('b.storage_location', 'storage_location')
+			.addSelect(
+				/* SQL */ `(
+					SELECT aa.size_code AS size_numcode, COUNT(DISTINCT aa.epc) AS qty
+					FROM DV_DATA_LAKE.dbo.dv_defective_goods aa
+					WHERE aa.isactive = '${RecordStatus.ACTIVE}' 
+						AND aa.brand_name = a.brand_name
+						AND aa.factory_shoes_style = a.factory_shoes_style 
+						AND aa.cust_shoes_style = a.cust_shoes_style 
+						AND aa.po = a.po 
+						AND aa.mo_no = a.mo_no 
+						AND aa.color_sn = a.color_sn
+						AND aa.defective_category = a.defective_category
+					GROUP BY aa.size_code
+					FOR JSON PATH
+				)`,
+				'size_data'
+			)
+			.leftJoin(
+				(qb) => qb.subQuery().select('*').from('storage_list_cte', 'b'),
 				'b',
 				/* SQL */ `
 					a.brand_name = b.brand_name 
@@ -190,19 +181,8 @@ export class DefectiveGoodsService extends BaseAbstractService<DefectiveGoodEnti
 					AND a.defective_category = b.defective_category
 				`
 			)
-			.innerJoin(
-				(qb) => qb.subQuery().select('*').from('storage_list_cte', 'c'),
-				'c',
-				/* SQL */ `
-					a.brand_name = c.brand_name 
-					AND a.factory_shoes_style = c.factory_shoes_style 
-					AND a.color_sn = b.color_sn 
-					AND a.mo_no = c.mo_no 
-					AND a.po = c.po
-					AND a.defective_category = c.defective_category
-				`
-			)
 			.where('a.isactive = :isActive', { isActive: RecordStatus.ACTIVE })
+			.andWhere(/* SQL */ `a.storage_location IS NOT NULL AND LTRIM(RTRIM(a.storage_location)) <> ''`)
 			.groupBy('a.brand_name')
 			.addGroupBy('a.po')
 			.addGroupBy('a.mo_no')
@@ -210,9 +190,11 @@ export class DefectiveGoodsService extends BaseAbstractService<DefectiveGoodEnti
 			.addGroupBy('a.cust_shoes_style')
 			.addGroupBy('a.color_sn')
 			.addGroupBy('a.defective_category')
-			.addGroupBy('b.size_data')
-			.addGroupBy('c.storage_location')
+			.addGroupBy('b.storage_location')
 			.setParameters({ isActive: RecordStatus.ACTIVE })
+		this.logger.debug(queryBuilder.getSql())
+
+		return await queryBuilder
 			.getRawMany<{
 				brand_name: string
 				po: string
@@ -226,7 +208,6 @@ export class DefectiveGoodsService extends BaseAbstractService<DefectiveGoodEnti
 			.then((result) =>
 				result.map((item) => ({
 					...item,
-					storage_location: item.storage_location.split(','),
 					size_data: SuperJson.parse<Array<{ size_numcode: string; qty }>>(item.size_data, 1)
 				}))
 			)
@@ -239,7 +220,7 @@ export class DefectiveGoodsService extends BaseAbstractService<DefectiveGoodEnti
 		worksheet.columns = [
 			{
 				header: this.i18nService.t('erp.fields.brand_name', { lang: currentLanguage }),
-				key: 'po'
+				key: 'brand_name'
 			},
 			{
 				header: this.i18nService.t('erp.fields.po', { lang: currentLanguage }),
@@ -304,7 +285,7 @@ export class DefectiveGoodsService extends BaseAbstractService<DefectiveGoodEnti
 		worksheet.getRow(1).height = 30
 		worksheet.getRow(2).font = { bold: true }
 		worksheet.getRow(2).height = 30
-		worksheet.mergeCells('A1:J1')
+		worksheet.mergeCells('A1:H1')
 		worksheet.getCell('A1').alignment = { vertical: 'middle', horizontal: 'center' }
 		worksheet.getCell('A1').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'e5e5e5' } }
 		worksheet.getCell('A1').font = { bold: true, size: 16 }
