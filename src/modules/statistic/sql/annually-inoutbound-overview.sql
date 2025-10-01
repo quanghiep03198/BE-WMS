@@ -21,74 +21,64 @@ WITH months_cte AS (
    UNION ALL SELECT 11
    UNION ALL SELECT 12
 ),
-inbound_main AS (
+-- Union all inbound data first, then count distinct
+inbound_combined AS (
    SELECT 
       MONTH(record_time) AS month,
-      COUNT(DISTINCT EPC_Code) AS inbound_qty
-   FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet WITH (NOLOCK, INDEX(0))
+      EPC_Code
+   FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet WITH (NOLOCK)
    WHERE 
       record_time >= @StartDate 
       AND record_time <= @EndDate
       AND rfid_status = 'A'
       AND stationNO LIKE '%WH101'
-   GROUP BY MONTH(record_time)
-),
-inbound_backup AS (
+   UNION ALL
    SELECT 
       MONTH(record_time) AS month,
-      COUNT(DISTINCT EPC_Code) AS inbound_qty
-   FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet_backup_Daily WITH (NOLOCK, INDEX(0))
+      EPC_Code
+   FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet_backup_Daily WITH (NOLOCK)
    WHERE 
       record_time >= @StartDate 
       AND record_time <= @EndDate
       AND rfid_status = 'A'
       AND stationNO LIKE '%WH101'
-   GROUP BY MONTH(record_time)
 ),
-outbound_main AS (
+-- Union all outbound data first, then count distinct
+outbound_combined AS (
    SELECT 
       MONTH(record_time) AS month,
-      COUNT(DISTINCT EPC_Code) AS outbound_qty
-   FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet WITH (NOLOCK, INDEX(0))
+      EPC_Code
+   FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet WITH (NOLOCK)
    WHERE 
       record_time >= @StartDate 
       AND record_time <= @EndDate
       AND rfid_status = 'B'
       AND stationNO LIKE '%WH103'
-   GROUP BY MONTH(record_time)
-),
-outbound_backup AS (
+   
+   UNION 
+   
    SELECT 
       MONTH(record_time) AS month,
-      COUNT(DISTINCT EPC_Code) AS outbound_qty
-   FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet_backup_Daily WITH (NOLOCK, INDEX(0))
+      EPC_Code
+   FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet_backup_Daily WITH (NOLOCK)
    WHERE 
       record_time >= @StartDate 
       AND record_time <= @EndDate
       AND rfid_status = 'B'
       AND stationNO LIKE '%WH103'
-   GROUP BY MONTH(record_time)
 ),
 total_inbound AS (
    SELECT 
       month,
-      SUM(inbound_qty) AS inbound_qty
-   FROM (
-      SELECT month, inbound_qty FROM inbound_main
-      UNION ALL 
-      SELECT month, inbound_qty FROM inbound_backup
-   ) combined_inbound
+      COUNT(DISTINCT EPC_Code) AS inbound_qty
+   FROM inbound_combined
    GROUP BY month
 ),
 total_outbound AS (
    SELECT 
       month,
-      SUM(outbound_qty) AS outbound_qty
-   FROM (
-      SELECT month, outbound_qty FROM outbound_main
-      UNION ALL
-      SELECT month, outbound_qty FROM outbound_backup  
-   ) combined_outbound
+      COUNT(DISTINCT EPC_Code) AS outbound_qty
+   FROM outbound_combined
    GROUP BY month
 ),
 final_statistics AS (
@@ -120,11 +110,11 @@ SELECT
 FROM final_statistics f
 ORDER BY f.month
 OPTION (
-   OPTIMIZE FOR UNKNOWN,                           -- Prevent parameter sniffing  
-   USE HINT('ENABLE_PARALLEL_PLAN_PREFERENCE'),   -- Force parallel execution
-   USE HINT('FORCE_DEFAULT_CARDINALITY_ESTIMATION'), -- Better cardinality estimates
-   MAXDOP 4,                                      -- Limit parallelism for better resource usage
-   KEEPFIXED PLAN                                      -- Fresh execution plan each time
+   OPTIMIZE FOR UNKNOWN,                              -- Prevent parameter sniffing  
+   USE HINT('ENABLE_PARALLEL_PLAN_PREFERENCE'),       -- Force parallel execution
+   USE HINT('FORCE_DEFAULT_CARDINALITY_ESTIMATION'),  -- Better cardinality estimates
+   MAXDOP 4,                                          -- Limit parallelism for better resource usage
+   KEEPFIXED PLAN                                     -- Fresh execution plan each time
 );
 
 SET STATISTICS IO OFF;
