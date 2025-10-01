@@ -10,36 +10,33 @@ DECLARE @CurrentMonthStart DATE = DATEFROMPARTS(@CurrentYear, @CurrentMonth, 1);
 DECLARE @CurrentPeriodEnd DATE = @CurrentDate;
 DECLARE @PrevMonthStart DATE = DATEFROMPARTS(@PrevYear, @PrevMonth, 1);
 DECLARE @PrevPeriodEnd DATE = DATEFROMPARTS(@PrevYear, @PrevMonth, @CurrentDay);
-
 DECLARE @CurrentYearMonth VARCHAR(10) = CAST(@CurrentYear AS VARCHAR(10)) + RIGHT('0' + CAST(@CurrentMonth AS VARCHAR(2)), 2);
 DECLARE @PrevYearMonth VARCHAR(10) = CAST(@PrevYear AS VARCHAR(10)) + RIGHT('0' + CAST(@PrevMonth AS VARCHAR(2)), 2);
-
-PRINT('PrevYearMonth: ' + @PrevYearMonth);
 
 -- * Temporary table approach cho large dataset
 IF OBJECT_ID('tempdb..#tmp_rfid_data') IS NOT NULL DROP TABLE #tmp_rfid_data;
 
 SELECT 
     CASE 
-        WHEN record_time >= @CurrentMonthStart AND record_time <= @CurrentPeriodEnd THEN 'CURR'
-        WHEN record_time >= @PrevMonthStart AND record_time <= @PrevPeriodEnd THEN 'PREV'
+        WHEN CAST(record_time AS DATE) >= CAST(@CurrentMonthStart AS DATE) AND CAST(record_time AS DATE) <= CAST (@CurrentPeriodEnd AS DATE) THEN 'CURR'
+        WHEN CAST(record_time AS DATE) >= CAST(@PrevMonthStart AS DATE) AND CAST(record_time AS DATE) <= CAST (@PrevPeriodEnd AS DATE) THEN 'PREV'
     END AS period_type,
     rfid_status,
     RIGHT(stationNO, 3) AS station_suffix,
-    COUNT(*) as record_count
+    COUNT(DISTINCT EPC_Code) as record_count
 INTO #tmp_rfid_data
 FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet_backup_Daily WITH (NOLOCK)
 WHERE 
     rfid_status IN ('A', 'B')
     AND RIGHT(stationNO, 3) IN ('101', '103')
     AND (
-        (record_time >= @CurrentMonthStart AND record_time <= @CurrentPeriodEnd) OR
-        (record_time >= @PrevMonthStart AND record_time <= @PrevPeriodEnd)
+        (CAST(record_time AS DATE) >= CAST(@CurrentMonthStart AS DATE) AND CAST(record_time AS DATE) <= CAST(@CurrentPeriodEnd AS DATE)) OR
+        (CAST(record_time AS DATE) >= CAST(@PrevMonthStart AS DATE) AND CAST(record_time AS DATE) <= CAST(@PrevPeriodEnd AS DATE))
     )
 GROUP BY 
     CASE 
-        WHEN record_time >= @CurrentMonthStart AND record_time <= @CurrentPeriodEnd THEN 'CURR'
-        WHEN record_time >= @PrevMonthStart AND record_time <= @PrevPeriodEnd THEN 'PREV'
+        WHEN CAST(record_time AS DATE) >= CAST(@CurrentMonthStart AS DATE) AND CAST(record_time AS DATE) <= CAST (@CurrentPeriodEnd AS DATE) THEN 'CURR'
+        WHEN CAST(record_time AS DATE) >= CAST(@PrevMonthStart AS DATE) AND CAST(record_time AS DATE) <= CAST (@PrevPeriodEnd AS DATE) THEN 'PREV'
     END,
     rfid_status, RIGHT(stationNO, 3)
 OPTION (HASH GROUP, MAXDOP 4);
@@ -84,5 +81,8 @@ SELECT
     COALESCE(agg.prev_month_outbound, 0) AS prev_month_outbound
 FROM inventory_data inv
 CROSS JOIN aggregated_data agg;
+
 -- * Cleanup
 DROP TABLE #tmp_rfid_data;
+
+
