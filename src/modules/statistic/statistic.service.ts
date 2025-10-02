@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { DataSource, IsNull, Not } from 'typeorm'
 import { DefectiveCategory } from '../defective-goods/constants'
-import { DefectiveGoodEntity } from '../defective-goods/entities/defective-goods.entity'
+import { DefectiveGoodsEntity } from '../defective-goods/entities/defective-goods.entity'
 import { InventoryActions } from '../rfid/constants'
 import { RFIDInventoryBackupEntity } from '../rfid/entities/rifd-inventory.entity'
 import { TENANCY_DATA_SOURCE } from '../tenancy/constants'
@@ -70,7 +70,7 @@ export class StatisticService {
 
 	public async getDefectiveGoodsInventoryComposition() {
 		const data = await this.dataSource
-			.getRepository(DefectiveGoodEntity)
+			.getRepository(DefectiveGoodsEntity)
 			.createQueryBuilder()
 			.select('defective_category')
 			.addSelect(/* SQL */ `COUNT(DISTINCT epc)`, 'qty')

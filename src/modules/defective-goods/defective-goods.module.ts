@@ -6,10 +6,10 @@ import { TenacyMiddleware } from '../tenancy/tenancy.middleware'
 import { TenancyModule } from '../tenancy/tenancy.module'
 import { DefectiveGoodsController } from './defective-goods.controller'
 import { DefectiveGoodsService } from './defective-goods.service'
-import { DefectiveGoodEntity } from './entities/defective-goods.entity'
+import { DefectiveGoodsEntity } from './entities/defective-goods.entity'
 
 @Module({
-	imports: [TenancyModule, TypeOrmModule.forFeature([DefectiveGoodEntity], DATA_SOURCE_DATA_LAKE)],
+	imports: [TenancyModule, TypeOrmModule.forFeature([DefectiveGoodsEntity], DATA_SOURCE_DATA_LAKE)],
 	controllers: [DefectiveGoodsController],
 	providers: [DefectiveGoodsService, EventGateway]
 })

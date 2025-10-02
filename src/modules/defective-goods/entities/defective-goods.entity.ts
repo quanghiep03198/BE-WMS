@@ -10,7 +10,7 @@ import { DefectiveCategory, DefectiveGoodsOutboundPurpose, DefectiveLocation } f
 	synchronize: true,
 	comment: 'Defective goods table'
 })
-export class DefectiveGoodEntity extends BaseAbstractEntity {
+export class DefectiveGoodsEntity extends BaseAbstractEntity {
 	@Column({
 		name: 'epc',
 		nullable: false,
@@ -122,7 +122,7 @@ export class DefectiveGoodEntity extends BaseAbstractEntity {
 	})
 	outbound_purpose: string
 
-	constructor(defectiveGoods: Partial<DefectiveGoodEntity>) {
+	constructor(defectiveGoods: Partial<DefectiveGoodsEntity>) {
 		super()
 		Object.assign(this, defectiveGoods)
 	}

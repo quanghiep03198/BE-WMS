@@ -13,14 +13,14 @@ import { BaseAbstractService } from '../_base/base.abstract.service'
 import { TENANCY_DATA_SOURCE } from '../tenancy/constants'
 import { DeleteManyDefectiveGoodsDTO } from './dto/defective-goods.dto'
 import { UpdateInboundStatusDTO, UpdateOutboundStatusDTO } from './dto/inoutbound.dto'
-import { DefectiveGoodEntity } from './entities/defective-goods.entity'
+import { DefectiveGoodsEntity } from './entities/defective-goods.entity'
 import { DefectiveGoodsInventory } from './types'
 
 @Injectable()
-export class DefectiveGoodsService extends BaseAbstractService<DefectiveGoodEntity> {
+export class DefectiveGoodsService extends BaseAbstractService<DefectiveGoodsEntity> {
 	constructor(
-		@InjectRepository(DefectiveGoodEntity, DATA_SOURCE_DATA_LAKE)
-		private readonly defectiveGoodRepository: Repository<DefectiveGoodEntity>,
+		@InjectRepository(DefectiveGoodsEntity, DATA_SOURCE_DATA_LAKE)
+		private readonly defectiveGoodRepository: Repository<DefectiveGoodsEntity>,
 		@Inject(TENANCY_DATA_SOURCE) private readonly dataSourceTNC: DataSource,
 		private readonly i18nService: I18nService,
 		private readonly logger: PinoLogger
@@ -80,7 +80,7 @@ export class DefectiveGoodsService extends BaseAbstractService<DefectiveGoodEnti
 	}
 
 	public async deleteMany(payload: Partial<DeleteManyDefectiveGoodsDTO>) {
-		const filterQuery: FindOptionsWhere<DefectiveGoodEntity> = {
+		const filterQuery: FindOptionsWhere<DefectiveGoodsEntity> = {
 			...omit(payload, ['including_ids', 'excluding_ids', 'created']),
 			...(payload.created && {
 				created: Between(
@@ -128,9 +128,9 @@ export class DefectiveGoodsService extends BaseAbstractService<DefectiveGoodEnti
 							'color_sn',
 							'defective_category'
 						])
-						.from(DefectiveGoodEntity, 'c')
+						.from(DefectiveGoodsEntity, 'c')
 						.where('isactive = :isActive', { isActive: RecordStatus.ACTIVE })
-						.andWhere(/* SQL */ `storage_location IS NOT NULL AND LTRIM(RTRIM(storage_location)) <> ''`),
+						.andWhere(/* SQL */ `storage_location IS NOT NULL`),
 				'c'
 			)
 			.groupBy('brand_name')
@@ -142,7 +142,7 @@ export class DefectiveGoodsService extends BaseAbstractService<DefectiveGoodEnti
 			.getQuery()
 
 		const queryBuilder = await this.dataSourceTNC
-			.getRepository(DefectiveGoodEntity)
+			.getRepository(DefectiveGoodsEntity)
 			.createQueryBuilder('a')
 			.addCommonTableExpression(storageListCommonTableExpression, 'storage_list_cte')
 			.select('a.brand_name', 'brand_name')
@@ -161,8 +161,8 @@ export class DefectiveGoodsService extends BaseAbstractService<DefectiveGoodEnti
 						AND aa.brand_name = a.brand_name
 						AND aa.factory_shoes_style = a.factory_shoes_style 
 						AND aa.cust_shoes_style = a.cust_shoes_style 
-						AND aa.po = a.po 
-						AND aa.mo_no = a.mo_no 
+						AND COALESCE(aa.po, 'Unknown') = COALESCE(a.po, 'Unknown') 
+						AND COALESCE(aa.mo_no, 'Unknown') = COALESCE(a.mo_no, 'Unknown') 
 						AND aa.color_sn = a.color_sn
 						AND aa.defective_category = a.defective_category
 					GROUP BY aa.size_code
