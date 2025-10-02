@@ -124,11 +124,11 @@ LEFT JOIN wuerp_vnrd.dbo.ta_shoestylecolor d ON d.isactive = 'Y' AND c.shoestyle
 WHERE 
 	a.factory_code = @1
 	AND (
-		CAST(a.inv_initialqty AS INT) > 0
-		OR CAST(a.inv_istotalqty AS INT) > 0
-		OR CAST(a.inv_ostotalqty AS INT) > 0
-		OR CAST(a.inv_manualqty - a.inv_manualqtyout AS INT) > 0
-		OR CAST(a.inv_finalqty AS INT) > 0
+		CAST(a.inv_initialqty AS INT) <> 0
+		OR CAST(a.inv_istotalqty AS INT) <> 0
+		OR CAST(a.inv_ostotalqty AS INT) <> 0
+		OR CAST(a.inv_manualqty - a.inv_manualqtyout AS INT) <> 0
+		OR CAST(a.inv_finalqty AS INT) <> 0
 	)
 	
 ORDER BY a.mo_no DESC
