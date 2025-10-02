@@ -25,9 +25,8 @@
 		"migration:create": "npm run typeorm migration:create ./src/databases/migrations/%npm_config_name%",
 		"migration:run": "npm run typeorm migration:run -- -d src/databases/data-source.ts",
 		"migration:revert": "npm run typeorm migration:revert -- -d ./src/databases/data-source.ts",
-		"seed": "ts-node -r tsconfig-paths/register ./node_modules/typeorm-extension/bin/cli.cjs",
-		"seed:run": "SET SEEDING_DB_HOST=%npm_config_host% && ts-node -r tsconfig-paths/register src/databases/seed.ts ",
-		"seed:create": "npm run seed seed:create --name src/databases/seeds/%npm_config_name%.seeder.ts",
+		"seed:run": "SET SEEDING_DB_HOST=%npm_config_host% && ts-node -r tsconfig-paths/register src/databases/seed.ts",
+		"seed:create": "npx ts-node -r tsconfig-paths/register ./node_modules/typeorm-extension/bin/cli.cjs seed:create --name src/databases/seeds/%npm_config_name%.seeder.ts",
 		"sentry:sourcemaps": "sentry-cli sourcemaps inject --org scyllas --project wms-be-nest ./dist && sentry-cli sourcemaps upload --org scyllas --project wms-be-nest ./dist"
 	},
 	"dependencies": {
