@@ -39,6 +39,15 @@ export class StatisticController {
 	}
 
 	@Api({
+		method: HttpMethod.GET,
+		endpoint: 'defective-goods-inventory-composition',
+		statusCode: HttpStatus.OK
+	})
+	async getDefectiveGoodsInventoryComposition() {
+		return await this.statisticService.getDefectiveGoodsInventoryComposition()
+	}
+
+	@Api({
 		endpoint: 'net-flow',
 		method: HttpMethod.GET,
 		statusCode: HttpStatus.OK

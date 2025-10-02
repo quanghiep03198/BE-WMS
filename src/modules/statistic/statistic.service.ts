@@ -1,7 +1,10 @@
+import { RecordStatus } from '@/databases/constants'
 import { Inject, Injectable } from '@nestjs/common'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { DataSource } from 'typeorm'
+import { DataSource, IsNull, Not } from 'typeorm'
+import { DefectiveCategory } from '../defective-goods/constants'
+import { DefectiveGoodEntity } from '../defective-goods/entities/defective-goods.entity'
 import { InventoryActions } from '../rfid/constants'
 import { RFIDInventoryBackupEntity } from '../rfid/entities/rifd-inventory.entity'
 import { TENANCY_DATA_SOURCE } from '../tenancy/constants'
@@ -63,6 +66,28 @@ export class StatisticService {
 		return await this.dataSource.query<Array<IAnnuallyInOutboundStatistics>>(this.annuallyInboundAnalysisQuery, [
 			year
 		])
+	}
+
+	public async getDefectiveGoodsInventoryComposition() {
+		const data = await this.dataSource
+			.getRepository(DefectiveGoodEntity)
+			.createQueryBuilder()
+			.select('defective_category')
+			.addSelect(/* SQL */ `COUNT(DISTINCT epc)`, 'qty')
+			.where({ is_active: RecordStatus.ACTIVE })
+			.andWhere({ inbound_date: Not(IsNull()) })
+			.andWhere({ storage_location: Not(IsNull()) })
+			.groupBy('defective_category')
+			.getRawMany()
+
+		if (!data.some((item) => item.defective_category === DefectiveCategory.B_GRADE))
+			data.push({ defective_category: DefectiveCategory.B_GRADE, qty: 0 })
+		if (!data.some((item) => item.defective_category === DefectiveCategory.C_GRADE))
+			data.push({ defective_category: DefectiveCategory.C_GRADE, qty: 0 })
+		if (!data.some((item) => item.defective_category === DefectiveCategory.RESEARCH_DEVELOPMENT))
+			data.push({ defective_category: DefectiveCategory.RESEARCH_DEVELOPMENT, qty: 0 })
+
+		return data.sort((a, b) => a.defective_category.localeCompare(b.defective_category))
 	}
 
 	public async getAssemblyLineProductivity() {
