@@ -1,3 +1,4 @@
+import { ExcelColorPalette } from '@/common/constants/excel-color-palette'
 import { type AutoFitColumnOptions, autoFitColumns } from '@/common/helpers/excel.helper'
 import { SuperJson } from '@/common/utils'
 import { TENANCY_DATA_SOURCE } from '@/modules/tenancy/constants'
@@ -222,12 +223,20 @@ export class InventoryAuditService {
 			const row = worksheet.addRow(record)
 			row.height = 30
 			for (let i = 1; i <= worksheet.columns.length; i++) {
-				row.getCell(i).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'deecf7' } }
+				row.getCell(i).fill = {
+					type: 'pattern',
+					pattern: 'solid',
+					fgColor: { argb: ExcelColorPalette.BG_LIGHT_BLUE }
+				}
 			}
 			for (const subRecord of record.detail) {
 				const subRow = worksheet.addRow([])
 				subRow.getCell(3).value = subRecord.size + '#'
-				subRow.getCell(3).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'fff2cc' } }
+				subRow.getCell(3).fill = {
+					type: 'pattern',
+					pattern: 'solid',
+					fgColor: { argb: ExcelColorPalette.BG_LIGHT_YELLOW }
+				}
 				subRow.getCell(3).font = { bold: true }
 				subRow.getCell(4).value = subRecord.initial_stock_qty
 				subRow.getCell(4).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'f2dcdb' } }
@@ -253,7 +262,11 @@ export class InventoryAuditService {
 		worksheet.getRow(2).height = 30
 		worksheet.getRow(2).alignment = { vertical: 'middle', horizontal: 'center' }
 
-		worksheet.getCell('A1').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'e5e5e5' } }
+		worksheet.getCell('A1').fill = {
+			type: 'pattern',
+			pattern: 'solid',
+			fgColor: { argb: ExcelColorPalette.BG_LIGHT_NEUTRAL }
+		}
 		worksheet.getCell('A1').alignment = { vertical: 'middle', horizontal: 'center' }
 		worksheet.getCell('A1').value = this.i18nService.t('inoutbound.titles.file_monthly_inventory_report', {
 			args: {
@@ -272,10 +285,10 @@ export class InventoryAuditService {
 			row.eachCell({ includeEmpty: true }, (cell) => {
 				cell.font = { ...cell.font, name: 'Calibri', family: 1 }
 				cell.border = {
-					top: { style: 'thin', color: { argb: 'a1a1a1' } },
-					left: { style: 'thin', color: { argb: 'a1a1a1' } },
-					bottom: { style: 'thin', color: { argb: 'a1a1a1' } },
-					right: { style: 'thin', color: { argb: 'a1a1a1' } }
+					top: { style: 'thin', color: { argb: ExcelColorPalette.BORDER } },
+					left: { style: 'thin', color: { argb: ExcelColorPalette.BORDER } },
+					bottom: { style: 'thin', color: { argb: ExcelColorPalette.BORDER } },
+					right: { style: 'thin', color: { argb: ExcelColorPalette.BORDER } }
 				}
 			})
 		})

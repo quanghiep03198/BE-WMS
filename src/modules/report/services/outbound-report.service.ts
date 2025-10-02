@@ -1,3 +1,4 @@
+import { ExcelColorPalette } from '@/common/constants/excel-color-palette'
 import { type AutoFitColumnOptions, autoFitColumns } from '@/common/helpers/excel.helper'
 import { SuperJson } from '@/common/utils'
 import { DATA_SOURCE_DATA_LAKE } from '@/databases/constants'
@@ -96,17 +97,29 @@ export class OutboundReportService {
 			const row = worksheet.addRow(record)
 			row.height = 30
 			for (let i = 1; i <= worksheet.columns.length; i++) {
-				row.getCell(i).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'deecf7' } }
+				row.getCell(i).fill = {
+					type: 'pattern',
+					pattern: 'solid',
+					fgColor: { argb: ExcelColorPalette.BG_LIGHT_BLUE }
+				}
 			}
 			//
 			const subHeaderRow = worksheet.addRow([])
 			subHeaderRow.font = { bold: true }
 			subHeaderRow.getCell(2).value = this.i18nService.t('erp.fields.size', { lang: currentLanguage })
-			subHeaderRow.getCell(2).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'fff2cc' } }
+			subHeaderRow.getCell(2).fill = {
+				type: 'pattern',
+				pattern: 'solid',
+				fgColor: { argb: ExcelColorPalette.BG_LIGHT_YELLOW }
+			}
 			subHeaderRow.getCell(3).value = this.i18nService.t('erp.fields.daily_productivity', { lang: currentLanguage })
 			subHeaderRow.getCell(3).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'f2dcdb' } }
 			subHeaderRow.getCell(4).value = this.i18nService.t('erp.fields.order_qty', { lang: currentLanguage })
-			subHeaderRow.getCell(4).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'fff2cc' } }
+			subHeaderRow.getCell(4).fill = {
+				type: 'pattern',
+				pattern: 'solid',
+				fgColor: { argb: ExcelColorPalette.BG_LIGHT_YELLOW }
+			}
 			subHeaderRow.getCell(5).value = this.i18nService.t('erp.fields.missing_qty', { lang: currentLanguage })
 			subHeaderRow.getCell(5).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'f2dcdb' } }
 
@@ -114,11 +127,19 @@ export class OutboundReportService {
 				const subRow = worksheet.addRow([])
 				subRow.getCell(2).value = subRecord.size_numcode + '#'
 				subRow.getCell(2).font = { bold: true }
-				subRow.getCell(2).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'fff2cc' } }
+				subRow.getCell(2).fill = {
+					type: 'pattern',
+					pattern: 'solid',
+					fgColor: { argb: ExcelColorPalette.BG_LIGHT_YELLOW }
+				}
 				subRow.getCell(3).value = subRecord.daily_qty
 				subRow.getCell(3).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'f2dcdb' } }
 				subRow.getCell(4).value = subRecord.po_size_qty
-				subRow.getCell(4).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'fff2cc' } }
+				subRow.getCell(4).fill = {
+					type: 'pattern',
+					pattern: 'solid',
+					fgColor: { argb: ExcelColorPalette.BG_LIGHT_YELLOW }
+				}
 				subRow.getCell(5).value = subRecord.missing_qty
 				subRow.getCell(5).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'f2dcdb' } }
 			})
@@ -135,7 +156,11 @@ export class OutboundReportService {
 		worksheet.getRow(1).font = { size: 14, bold: true }
 		worksheet.getRow(2).font = { bold: true }
 		worksheet.getRow(2).height = 30
-		worksheet.getCell('A1').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'e5e5e5' } }
+		worksheet.getCell('A1').fill = {
+			type: 'pattern',
+			pattern: 'solid',
+			fgColor: { argb: ExcelColorPalette.BG_LIGHT_NEUTRAL }
+		}
 		worksheet.getCell('A1').value = this.i18nService.t('inoutbound.titles.daily_outbound_report', {
 			args: {
 				factory: this.i18nService.t(`factory.${factoryCode}`, { lang: currentLanguage }),
@@ -153,10 +178,10 @@ export class OutboundReportService {
 			row.eachCell({ includeEmpty: true }, (cell) => {
 				cell.font = { ...cell.font, name: 'Calibri', family: 1 }
 				cell.border = {
-					top: { style: 'thin', color: { argb: 'a1a1a1' } },
-					left: { style: 'thin', color: { argb: 'a1a1a1' } },
-					bottom: { style: 'thin', color: { argb: 'a1a1a1' } },
-					right: { style: 'thin', color: { argb: 'a1a1a1' } }
+					top: { style: 'thin', color: { argb: ExcelColorPalette.BORDER } },
+					left: { style: 'thin', color: { argb: ExcelColorPalette.BORDER } },
+					bottom: { style: 'thin', color: { argb: ExcelColorPalette.BORDER } },
+					right: { style: 'thin', color: { argb: ExcelColorPalette.BORDER } }
 				}
 			})
 		})

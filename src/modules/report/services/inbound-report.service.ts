@@ -1,3 +1,4 @@
+import { ExcelColorPalette } from '@/common/constants/excel-color-palette'
 import { type AutoFitColumnOptions, autoFitColumns } from '@/common/helpers/excel.helper'
 import { TENANCY_DATA_SOURCE } from '@/modules/tenancy/constants'
 import { Inject, Injectable } from '@nestjs/common'
@@ -116,13 +117,21 @@ export class InboundReportService {
 			row.height = 20
 			row.alignment = { vertical: 'middle', horizontal: 'center' }
 			for (let i = 1; i <= worksheet.columns.length; i++) {
-				row.getCell(i).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'deecf7' } }
+				row.getCell(i).fill = {
+					type: 'pattern',
+					pattern: 'solid',
+					fgColor: { argb: ExcelColorPalette.BG_LIGHT_BLUE }
+				}
 			}
 			for (const subRecord of record.size_data) {
 				const row = worksheet.addRow([])
 				row.alignment = { vertical: 'middle', horizontal: 'center' }
 				row.getCell(2).value = subRecord.size_numcode + '#'
-				row.getCell(2).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'fff2cc' } }
+				row.getCell(2).fill = {
+					type: 'pattern',
+					pattern: 'solid',
+					fgColor: { argb: ExcelColorPalette.BG_LIGHT_YELLOW }
+				}
 				row.getCell(3).value = subRecord.qty
 				row.getCell(3).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'f2dcdb' } }
 			}
@@ -142,7 +151,11 @@ export class InboundReportService {
 		worksheet.getRow(2).height = 30
 		worksheet.mergeCells('A1:J1')
 		worksheet.getCell('A1').alignment = { vertical: 'middle', horizontal: 'center' }
-		worksheet.getCell('A1').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'e5e5e5' } }
+		worksheet.getCell('A1').fill = {
+			type: 'pattern',
+			pattern: 'solid',
+			fgColor: { argb: ExcelColorPalette.BG_LIGHT_NEUTRAL }
+		}
 		worksheet.getCell('A1').font = { bold: true, size: 16 }
 		worksheet.getCell('A1').value = this.i18nService.t('inoutbound.titles.daily_inbound_report', {
 			args: {
@@ -161,10 +174,10 @@ export class InboundReportService {
 			row.eachCell({ includeEmpty: true }, (cell) => {
 				cell.font = { ...cell.font, name: 'Calibri', family: 1 }
 				cell.border = {
-					top: { style: 'thin', color: { argb: 'a1a1a1' } },
-					left: { style: 'thin', color: { argb: 'a1a1a1' } },
-					bottom: { style: 'thin', color: { argb: 'a1a1a1' } },
-					right: { style: 'thin', color: { argb: 'a1a1a1' } }
+					top: { style: 'thin', color: { argb: ExcelColorPalette.BORDER } },
+					left: { style: 'thin', color: { argb: ExcelColorPalette.BORDER } },
+					bottom: { style: 'thin', color: { argb: ExcelColorPalette.BORDER } },
+					right: { style: 'thin', color: { argb: ExcelColorPalette.BORDER } }
 				}
 			})
 		})

@@ -1,3 +1,4 @@
+import { ExcelColorPalette } from '@/common/constants/excel-color-palette'
 import { AutoFitColumnOptions, autoFitColumns } from '@/common/helpers/excel.helper'
 import { TENANCY_DATA_SOURCE } from '@/modules/tenancy/constants'
 import { Inject, Injectable } from '@nestjs/common'
@@ -91,7 +92,11 @@ export class PackingWeightReportService {
 		worksheet.getRow(2).font = { bold: true }
 
 		worksheet.mergeCells('A1:I1')
-		worksheet.getCell('A1').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'e5e5e5' } }
+		worksheet.getCell('A1').fill = {
+			type: 'pattern',
+			pattern: 'solid',
+			fgColor: { argb: ExcelColorPalette.BG_LIGHT_NEUTRAL }
+		}
 		worksheet.getCell('A1').alignment = { vertical: 'middle', horizontal: 'center' }
 		worksheet.getCell('A1').value = this.i18nService.t('packing.titles.daily_weighing_report', {
 			args: {
@@ -110,10 +115,10 @@ export class PackingWeightReportService {
 			row.eachCell({ includeEmpty: true }, (cell) => {
 				cell.font = { ...cell.font, name: 'Calibri', family: 1 }
 				cell.border = {
-					top: { style: 'thin', color: { argb: 'a1a1a1' } },
-					left: { style: 'thin', color: { argb: 'a1a1a1' } },
-					bottom: { style: 'thin', color: { argb: 'a1a1a1' } },
-					right: { style: 'thin', color: { argb: 'a1a1a1' } }
+					top: { style: 'thin', color: { argb: ExcelColorPalette.BORDER } },
+					left: { style: 'thin', color: { argb: ExcelColorPalette.BORDER } },
+					bottom: { style: 'thin', color: { argb: ExcelColorPalette.BORDER } },
+					right: { style: 'thin', color: { argb: ExcelColorPalette.BORDER } }
 				}
 			})
 		})
