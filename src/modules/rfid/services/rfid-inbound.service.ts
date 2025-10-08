@@ -29,17 +29,18 @@ import { RFIDMatchCustomerEntity } from '../entities/rfid-customer-match.entity'
 import { RFIDInventoryBackupEntity } from '../entities/rifd-inventory.entity'
 import { EpcDocument, EpcInbound, EpcInboundSchema, EpcModel } from '../schemas/epc.schema'
 import { RFIDSearchParams } from '../types'
+import { generateStation } from '../utils'
 
 @Injectable({ scope: Scope.REQUEST })
 export class RFIDInboundService {
 	constructor(
-		private readonly logger: PinoLogger,
 		@Inject(TENANCY_DATA_SOURCE) private readonly dataSourceTNC: DataSource,
 		@InjectDataSource(DATA_SOURCE_DATA_LAKE) private readonly dataSourceDL: DataSource,
 		@InjectDataSource(DATA_SOURCE_ERP) private readonly dataSourceERP: DataSource,
 		@InjectQueue(POST_DATA_INBOUND_QUEUE) private readonly postDataQueue: Queue<PostReaderDataDTO>,
 		@InjectModel(EpcInbound.name) private readonly epcInboundModel: EpcModel,
-		private readonly i18nService: I18nService
+		private readonly i18nService: I18nService,
+		private readonly logger: PinoLogger
 	) {}
 
 	public async postInboundRFIDData(data: PostReaderDataDTO) {
@@ -64,12 +65,16 @@ export class RFIDInboundService {
 			await queryRunner.startTransaction()
 
 			for (const item of chunk(
-				payload.map((value) => ({
-					...value,
-					...data,
-					factory_code: factoryCode,
-					record_time: format(new Date(), 'yyyy-MM-dd HH:mm:ss')
-				})),
+				payload.map((value) => {
+					const factory = value.factory_code_produce ?? factoryCode
+					return {
+						...value,
+						...data,
+						factory_code: factory,
+						station_no: generateStation(factory, 'WH101'),
+						record_time: format(new Date(), 'yyyy-MM-dd HH:mm:ss')
+					}
+				}),
 				100
 			)) {
 				const values = item
@@ -84,10 +89,7 @@ export class RFIDInboundService {
 				await this.dataSourceDL.query(upsertInventoryQuery.replace(':values', values))
 			}
 			await this.epcInboundModel
-				.updateMany(
-					{ mo_no: commandNumber },
-					{ $set: { deleted: true, stored_at: new Date(), factory_code_produce: factoryCode } }
-				)
+				.updateMany({ mo_no: commandNumber }, { $set: { deleted: true, stored_at: new Date() } })
 				.exec()
 			await queryRunner.commitTransaction()
 			await session.commitTransaction()
