@@ -106,6 +106,7 @@ export class RFIDSharedService {
 							mo_no: '$mo_no',
 							color_sn: '$color_sn',
 							factory_shoes_style: '$factory_shoes_style',
+							factory_code_produce: '$factory_code_produce',
 							size_numcode: '$size_numcode'
 						},
 						count: { $sum: 1 }
@@ -117,7 +118,8 @@ export class RFIDSharedService {
 						_id: {
 							mo_no: '$_id.mo_no',
 							color_sn: '$_id.color_sn',
-							factory_shoes_style: '$_id.factory_shoes_style'
+							factory_shoes_style: '$_id.factory_shoes_style',
+							factory_code_produce: '$_id.factory_code_produce'
 						},
 						sizes: {
 							$push: {
@@ -134,6 +136,7 @@ export class RFIDSharedService {
 						mo_no: '$_id.mo_no',
 						color_sn: '$_id.color_sn',
 						factory_shoes_style: '$_id.factory_shoes_style',
+						factory_code_produce: '$_id.factory_code_produce',
 						sizes: 1
 					}
 				},
