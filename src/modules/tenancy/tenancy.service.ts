@@ -98,11 +98,8 @@ export class TenancyService implements OnModuleDestroy {
 			})
 			this.dataSources.set(host, dataSource)
 		}
-
 		const dataSource = this.dataSources.get(host)
-
 		if (!dataSource.isInitialized) await dataSource.initialize()
-
 		return dataSource
 	}
 }
