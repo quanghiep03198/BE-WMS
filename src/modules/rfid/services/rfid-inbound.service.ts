@@ -1,5 +1,6 @@
 import { VALID_EPC_PATTERN } from '@/common/constants/regex'
 import { DATA_SOURCE_DATA_LAKE, DATA_SOURCE_ERP } from '@/databases/constants'
+import { EventGateway } from '@/events/event.gateway'
 import { TENANCY_DATA_SOURCE } from '@/modules/tenancy/constants'
 import { InjectQueue } from '@nestjs/bullmq'
 import {
@@ -10,6 +11,7 @@ import {
 	NotFoundException,
 	Scope
 } from '@nestjs/common'
+import { EventEmitter2, OnEvent } from '@nestjs/event-emitter'
 import { InjectModel } from '@nestjs/mongoose'
 import { InjectDataSource } from '@nestjs/typeorm'
 import { Queue } from 'bullmq'
@@ -22,7 +24,6 @@ import { readFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { DataSource, FindOptionsWhere, In } from 'typeorm'
 import { FALLBACK_VALUE, InventoryActions, POST_DATA_INBOUND_QUEUE } from '../constants'
-
 import { ExchangeOrderDTO, UpsertEpcInformationDTO, UpsertStockInDTO } from '../dto/rfid-inbound.dto'
 import { PostReaderDataDTO, SearchCustOrderParamsDTO } from '../dto/rfid-shared.dto'
 import { RFIDMatchCustomerEntity } from '../entities/rfid-customer-match.entity'
@@ -40,10 +41,16 @@ export class RFIDInboundService {
 		@InjectQueue(POST_DATA_INBOUND_QUEUE) private readonly postDataQueue: Queue<PostReaderDataDTO>,
 		@InjectModel(EpcInbound.name) private readonly epcInboundModel: EpcModel,
 		private readonly i18nService: I18nService,
+		private readonly eventEmitter: EventEmitter2,
+		private readonly eventGateway: EventGateway,
 		private readonly logger: PinoLogger
 	) {}
 
 	public async postInboundRFIDData(data: PostReaderDataDTO) {
+		await this.eventEmitter.emitAsync(
+			'rfid.inbound.check',
+			data.data.tagList.map((item) => item.epc)
+		)
 		return await this.postDataQueue.add('RFID_INBOUND', data, { lifo: true })
 	}
 
@@ -327,5 +334,48 @@ export class RFIDInboundService {
 			.getRawMany<{ mo_no: string; mo_totalqty: number; missing_qty: number }>()
 
 		return result[0]?.missing_qty === 0
+	}
+
+	@OnEvent('rfid.inbound.check', { async: true })
+	public async handleCheckRescannedEpcs(epcs: string[]) {
+		const alreadyScannedEpcs = await this.dataSourceDL
+			.getRepository(RFIDInventoryBackupEntity)
+			.createQueryBuilder('a')
+			.select([
+				'DISTINCT a.EPC_Code AS epc',
+				'a.mo_no AS mo_no',
+				'b.factory_shoes_style AS factory_shoes_style',
+				'c.color_sn AS color_sn',
+				'a.size_code AS size_numcode',
+				'a.record_time AS record_time'
+			])
+			.leftJoin(
+				(qb) =>
+					qb
+						.subQuery()
+						.select('EPC_Code', 'epc')
+						.addSelect('mat_code', 'mat_code')
+						.addSelect('shoestyle_codefactory', 'factory_shoes_style')
+						.from('DV_DATA_LAKE.dbo.dv_rfidmatchmst_cust', 'b'),
+				'b',
+				'a.EPC_Code = b.epc'
+			)
+			.leftJoin(
+				(qb) => qb.subQuery().select('mat_code').addSelect('color_sn').from('wuerp_vnrd.dbo.ta_productmst', 'c'),
+				'c',
+				'c.mat_code = b.mat_code'
+			)
+			.where(/* SQL */ `a.EPC_Code IN (:...epcs)`, { epcs })
+			.orderBy('a.record_time', 'DESC')
+			.getRawMany<{
+				epc: string
+				mo_no: string
+				factory_shoes_style: string
+				color_sn: string
+				size_numcode: string
+				record_time: Date
+			}>()
+
+		this.eventGateway.server.emit('rfid.inbound.check', alreadyScannedEpcs)
 	}
 }
