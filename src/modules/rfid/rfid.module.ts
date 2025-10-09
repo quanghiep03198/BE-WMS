@@ -1,4 +1,5 @@
 import { DATA_SOURCE_DATA_LAKE } from '@/databases/constants'
+import { EventGateway } from '@/events/event.gateway'
 import { BullModule } from '@nestjs/bullmq'
 import { MiddlewareConsumer, Module, NestModule, OnModuleInit, RequestMethod } from '@nestjs/common'
 import { InjectModel, MongooseModule } from '@nestjs/mongoose'
@@ -81,6 +82,7 @@ import { RFIDCustomerEntitySubscriber } from './subscribers/rfid-customer.entity
 	],
 	controllers: [RFIDSharedController, RFIDInboundController, RFIDOutboundController, RFIDDeviceController],
 	providers: [
+		EventGateway,
 		RFIDSharedService,
 		RFIDDeviceService,
 		RFIDInboundService,
@@ -103,7 +105,7 @@ export class RFIDModule implements NestModule, OnModuleInit {
 	configure(consumer: MiddlewareConsumer) {
 		consumer
 			.apply(TenacyMiddleware)
-			.forRoutes({ path: '/rfid/inbound/update-stock/:orderCode', method: RequestMethod.PUT })
+			.forRoutes({ path: '/rfid/inbound/update-stock/:commandNumber', method: RequestMethod.PUT })
 	}
 
 	async onModuleInit() {

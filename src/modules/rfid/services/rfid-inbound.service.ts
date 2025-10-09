@@ -86,7 +86,7 @@ export class RFIDInboundService {
 					})
 					.join(',')
 
-				await this.dataSourceDL.query(upsertInventoryQuery.replace(':values', values))
+				await this.dataSourceTNC.query(upsertInventoryQuery.replace(':values', values))
 			}
 			await this.epcInboundModel
 				.updateMany({ mo_no: commandNumber }, { $set: { deleted: true, stored_at: new Date() } })
