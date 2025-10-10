@@ -1,5 +1,5 @@
 import { ExcelColorPalette } from '@/common/constants/excel-color-palette'
-import { type AutoFitColumnOptions, autoFitColumns } from '@/common/helpers/excel.helper'
+import { type AutoFitColumnOptions, autoFitColumns } from '@/common/helpers'
 import { TENANCY_DATA_SOURCE } from '@/modules/tenancy/constants'
 import { Inject, Injectable } from '@nestjs/common'
 import { REQUEST } from '@nestjs/core'

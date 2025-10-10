@@ -1,5 +1,5 @@
 import { ExcelColorPalette } from '@/common/constants/excel-color-palette'
-import { AutoFitColumnOptions, autoFitColumns } from '@/common/helpers/excel.helper'
+import { AutoFitColumnOptions, autoFitColumns } from '@/common/helpers'
 import { SuperJson } from '@/common/utils'
 import { DATA_SOURCE_DATA_LAKE, RecordStatus } from '@/databases/constants'
 import { BadGatewayException, Inject, Injectable } from '@nestjs/common'

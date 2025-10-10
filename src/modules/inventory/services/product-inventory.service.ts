@@ -1,5 +1,5 @@
 import { ExcelColorPalette } from '@/common/constants/excel-color-palette'
-import { type AutoFitColumnOptions, autoFitColumns } from '@/common/helpers/excel.helper'
+import { type AutoFitColumnOptions, autoFitColumns } from '@/common/helpers'
 import { SuperJson } from '@/common/utils'
 import { FactoryAgencyCode } from '@/modules/department/constants'
 import { TENANCY_DATA_SOURCE } from '@/modules/tenancy/constants'
