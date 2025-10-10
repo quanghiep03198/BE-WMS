@@ -14,6 +14,19 @@ WITH po_list AS (
 	) t
 	GROUP BY mo_no
 ),
+-- * Storage list of each command number
+storage_list_cte AS (
+	SELECT mo_no, STRING_AGG(b.storage_name, ', ') WITHIN GROUP (ORDER BY storage ASC) AS storage_name
+	FROM (
+		SELECT DISTINCT storage, mo_no 
+		FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet_backup_Daily
+		WHERE storage IS NOT NULL AND dept_name IS NOT NULL
+	) a
+	LEFT JOIN DV_DATA_LAKE.dbo.dv_warehouseccodedet b
+		ON a.storage = b.storage_num
+	GROUP BY mo_no
+),
+
 -- * CTE for aggregated data master
 agg_data_mst AS (
 	SELECT
@@ -85,6 +98,7 @@ a.factory_code,
 	a.factory_shoes_style,
 	(ISNULL(d.shoestyle_codecust, '') + '/' +ISNULL(d.shoestyle_namecust, '')) cust_shoes_style,
 	c.color_sn,
+	s.storage_name AS storage,
 	CAST(a.mo_qty AS INT) AS order_qty,
 	CAST(a.inv_initialqty AS INT) AS init_inv_qty,
 	CAST(a.inv_istotalqty AS INT) AS total_instock_qty,
@@ -121,6 +135,7 @@ INNER JOIN po_list p ON p.mo_no = a.mo_no
 LEFT JOIN wuerp_vnrd.dbo.ta_manufacturmst b ON b.mo_no = a.mo_no AND b.isactive = 'Y'
 LEFT JOIN wuerp_vnrd.dbo.ta_productmst c ON c.isactive = 'Y' AND c.mat_code = b.mat_code
 LEFT JOIN wuerp_vnrd.dbo.ta_shoestylecolor d ON d.isactive = 'Y' AND c.shoestyle_templink = d.shoestyle_templink
+LEFT JOIN storage_list_cte s ON s.mo_no = a.mo_no
 WHERE 
 	a.factory_code = @1
 	AND (

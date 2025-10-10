@@ -182,6 +182,10 @@ export class InventoryAuditService {
 				key: 'color_sn'
 			},
 			{
+				header: this.i18nService.t('warehouse.fields.storage_name', { lang: currentLanguage }),
+				key: 'storage'
+			},
+			{
 				header: this.i18nService.t('erp.fields.order_qty', { lang: currentLanguage }),
 				key: 'order_qty'
 			},
@@ -250,11 +254,11 @@ export class InventoryAuditService {
 		}
 
 		// * Auto-fit columns
-		autoFitColumns.call(worksheet, { minWidth: 10, excludeColumns: ['po'] } satisfies AutoFitColumnOptions)
+		autoFitColumns.call(worksheet, { minWidth: 16, excludeColumns: ['po', 'storage'] } satisfies AutoFitColumnOptions)
 
 		// * Add header title
 		worksheet.insertRow(1, null)
-		worksheet.mergeCells('A1:J1')
+		worksheet.mergeCells('A1:K1')
 		worksheet.getRow(1).font = { size: 14, bold: true }
 		worksheet.getRow(1).height = 30
 		worksheet.getRow(1).alignment = { vertical: 'middle', horizontal: 'center' }
