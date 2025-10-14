@@ -7,6 +7,7 @@
 	},
 	"notification": {
 		"over_inbound_limit": "此订单已入满, 无法继续入库! 请检查此订单的入库历史!",
-		"over_outbound_limit": "此订单已出满, 无法继续出货! 请检查此订单的出库历史!"
+		"over_outbound_limit": "此订单已出满, 无法继续出货! 请检查此订单的出库历史!",
+		"not_inbound_yet": "无法出货, 发现有标签尚未入库!"
 	}
 }

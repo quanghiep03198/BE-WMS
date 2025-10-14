@@ -7,6 +7,7 @@
 	},
 	"notification": {
 		"over_inbound_limit": "The inbound order has been fully received, you cannot add more. Please check the inbound history of this manufacturing order.",
-		"over_outbound_limit": "The purchase order has been fully shipped, you cannot add more. Please check the outbound history of this purchase order."
+		"over_outbound_limit": "The purchase order has been fully shipped, you cannot add more. Please check the outbound history of this purchase order.",
+		"not_inbound_yet": "Cannot proceed with outbound, as there are tags that have not been inbounded yet."
 	}
 }

@@ -138,6 +138,7 @@ export type I18nTranslations = {
         "notification": {
             "over_inbound_limit": string;
             "over_outbound_limit": string;
+            "not_inbound_yet": string;
         };
     };
     "packing": {

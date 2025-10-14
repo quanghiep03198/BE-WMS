@@ -2,13 +2,13 @@ import { ExcelColorPalette } from '@/common/constants/excel-color-palette'
 import { AutoFitColumnOptions, autoFitColumns } from '@/common/helpers'
 import { SuperJson } from '@/common/utils'
 import { DATA_SOURCE_DATA_LAKE, RecordStatus } from '@/databases/constants'
-import { BadGatewayException, Inject, Injectable } from '@nestjs/common'
+import { BadGatewayException, ConflictException, Inject, Injectable } from '@nestjs/common'
 import { InjectRepository } from '@nestjs/typeorm'
 import { Workbook } from 'exceljs'
 import { omit } from 'lodash'
 import { I18nContext, I18nService } from 'nestjs-i18n'
 import { PinoLogger } from 'nestjs-pino'
-import { And, Between, DataSource, FindOptionsWhere, In, Not, Repository } from 'typeorm'
+import { And, Between, DataSource, FindOptionsWhere, In, IsNull, Not, Repository } from 'typeorm'
 import { BaseAbstractService } from '../_base/base.abstract.service'
 import { TENANCY_DATA_SOURCE } from '../tenancy/constants'
 import { DeleteManyDefectiveGoodsDTO } from './dto/defective-goods.dto'
@@ -69,10 +69,22 @@ export class DefectiveGoodsService extends BaseAbstractService<DefectiveGoodsEnt
 	}
 
 	public async updateInboundStatus(update: UpdateInboundStatusDTO) {
-		return await this.defectiveGoodRepository.update({ epc: In(update.epcs) }, omit(update, ['epcs']))
+		return await this.defectiveGoodRepository.update(
+			{ epc: In(update.epcs), is_active: RecordStatus.ACTIVE },
+			omit(update, ['epcs'])
+		)
 	}
 
 	public async updateOutboundStatus(update: UpdateOutboundStatusDTO) {
+		const existsNotInbounded = await this.defectiveGoodRepository.existsBy({
+			epc: In(update.epcs),
+			is_active: RecordStatus.ACTIVE,
+			storage_location: IsNull(),
+			inbound_date: IsNull()
+		})
+
+		if (existsNotInbounded) throw new ConflictException(this.i18nService.t('inoutbound.notification.not_inbound_yet'))
+
 		return await this.defectiveGoodRepository.update(
 			{ epc: In(update.epcs) },
 			{ ...omit(update, ['epcs']), is_active: RecordStatus.INACTIVE }
