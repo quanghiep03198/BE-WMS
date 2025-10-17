@@ -91,24 +91,37 @@ export class OrderService {
 		const data = await this.dataSourceERP.query<
 			Array<{
 				po: string
+				mo_no: string
 				brand_name: string
 				shoes_style: string
 				color_sn: string
+				ship_id: string
+				ship_dest_country: string
+				ship_type: string
 				size_numcode: string
 				qty: number
 			}>
 		>(this.purchaseOrderSizeRunQuery, [purchaseOrder])
 
 		return Object.entries(
-			Object.groupBy(data, (item) => `${item.po},${item.brand_name},${item.shoes_style},${item.color_sn}`)
+			Object.groupBy(
+				data,
+				(item) =>
+					`${item.po},${item.mo_no},${item.brand_name},${item.shoes_style},${item.color_sn},${item.ship_id},${item.ship_dest_country},${item.ship_type}`
+			)
 		)
 			.map(([info, sizes]) => {
-				const [po, brand_name, shoes_style, color_sn] = info.split(',')
+				const [po, mo_no, brand_name, shoes_style, color_sn, ship_id, ship_dest_country, ship_type] =
+					info.split(',')
 				return {
 					po,
+					mo_no,
 					brand_name,
 					shoes_style,
 					color_sn,
+					ship_id,
+					ship_dest_country,
+					ship_type,
 					sizes: sizes.map((size) => ({
 						size_numcode: Number.isNaN(Number.parseInt(size.size_numcode))
 							? size.size_numcode
