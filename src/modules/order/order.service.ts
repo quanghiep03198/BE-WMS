@@ -1,3 +1,4 @@
+import { leftPad } from '@/common/libs'
 import { DATA_SOURCE_ERP, RecordStatus } from '@/databases/constants'
 import { Inject, Injectable } from '@nestjs/common'
 import { InjectDataSource } from '@nestjs/typeorm'
@@ -11,7 +12,14 @@ import { SizeRun } from './types'
 
 @Injectable()
 export class OrderService {
-	private readonly sizeRunQuery: string = readFileSync(resolve(join(__dirname, './sql/order-size-run.sql')), 'utf-8')
+	private readonly manfOrderSizeRunQuery: string = readFileSync(
+		resolve(join(__dirname, './sql/mo-size-run.sql')),
+		'utf-8'
+	)
+	private readonly purchaseOrderSizeRunQuery: string = readFileSync(
+		resolve(join(__dirname, './sql/po-size-run.sql')),
+		'utf-8'
+	)
 
 	constructor(
 		@Inject(TENANCY_DATA_SOURCE) private readonly dataSourceTNC: DataSource,
@@ -79,6 +87,41 @@ export class OrderService {
 			.getRawMany<{ po: string; is_completed: boolean }>()
 	}
 
+	async getPurchaseOrderSizeRun(purchaseOrder: string): Promise<any> {
+		const data = await this.dataSourceERP.query<
+			Array<{
+				po: string
+				brand_name: string
+				shoes_style: string
+				color_sn: string
+				size_numcode: string
+				qty: number
+			}>
+		>(this.purchaseOrderSizeRunQuery, [purchaseOrder])
+
+		return Object.entries(
+			Object.groupBy(data, (item) => `${item.po},${item.brand_name},${item.shoes_style},${item.color_sn}`)
+		)
+			.map(([info, sizes]) => {
+				const [po, brand_name, shoes_style, color_sn] = info.split(',')
+				return {
+					po,
+					brand_name,
+					shoes_style,
+					color_sn,
+					sizes: sizes.map((size) => ({
+						size_numcode: Number.isNaN(Number.parseInt(size.size_numcode))
+							? size.size_numcode
+							: Number.parseInt(size.size_numcode) < 10
+								? leftPad(size.size_numcode, 2, '0')
+								: size.size_numcode,
+						qty: size.qty
+					}))
+				}
+			})
+			.at(0)
+	}
+
 	async getCustOrderDetails(commandNumbers: Array<string>): Promise<Partial<RFIDMatchCustomerEntity>[]> {
 		let orderInformation: Partial<RFIDMatchCustomerEntity>[] = []
 		for (const commandNumber of commandNumbers) {
@@ -137,6 +180,6 @@ export class OrderService {
 	}
 
 	async getSizeRunByCommandNumber(commandNumber: string) {
-		return await this.dataSourceERP.query<Array<SizeRun>>(this.sizeRunQuery, [commandNumber])
+		return await this.dataSourceERP.query<Array<SizeRun>>(this.manfOrderSizeRunQuery, [commandNumber])
 	}
 }

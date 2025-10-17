@@ -103,6 +103,7 @@ export type I18nTranslations = {
             "target_box_qty": string;
             "target_item_qty": string;
             "total_init_qty": string;
+            "total_daily_productivity": string;
             "trans_num": string;
             "transfer_order_code": string;
             "uninspected_qty": string;

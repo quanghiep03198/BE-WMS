@@ -34,6 +34,15 @@ export class OrderController {
 	}
 
 	@Api({
+		endpoint: '/purchase-order/size-run/:purchaseOrder',
+		method: HttpMethod.GET
+	})
+	@AuthGuard()
+	async getPurchaseOrderSizeRun(@Param('purchaseOrder') po: string) {
+		return await this.orderService.getPurchaseOrderSizeRun(po)
+	}
+
+	@Api({
 		endpoint: '/command-number/:commandNumber',
 		method: HttpMethod.GET
 	})
