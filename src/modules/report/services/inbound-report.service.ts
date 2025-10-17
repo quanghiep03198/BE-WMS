@@ -169,16 +169,19 @@ export class InboundReportService {
 		footerRow.height = 30
 		worksheet.mergeCells(`A${footerRow.number}:G${footerRow.number}`)
 		worksheet.mergeCells(`H${footerRow.number}:J${footerRow.number}`)
-		worksheet.getCell(`A${footerRow.number}`).value = this.i18nService.t('common.fields.total', {
+		worksheet.getCell(`A${footerRow.number}`).value = this.i18nService.t('erp.fields.total_daily_productivity', {
 			lang: currentLanguage
 		})
 		worksheet.getCell(`H${footerRow.number}`).value = data.reduce((acc, curr) => acc + curr.daily_inbound_qty, 0)
+		worksheet.getCell(`H${footerRow.number}`).style = {
+			font: { color: { argb: ExcelColorPalette.DESTRUCTIVE_FOREGROUND } }
+		}
 		footerRow.eachCell((cell) => {
 			cell.font = { bold: true, size: 14 }
 			cell.style.fill = {
 				type: 'pattern',
 				pattern: 'solid',
-				fgColor: { argb: ExcelColorPalette.BG_LIGHT_BLUE }
+				fgColor: { argb: ExcelColorPalette.BG_LIGHT_NEUTRAL }
 			}
 		})
 

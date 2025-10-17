@@ -70,6 +70,7 @@
 		"target_box_qty": "Target box quantity",
 		"target_item_qty": "Target item quantity",
 		"total_init_qty": "Initial stock quantity",
+		"total_daily_productivity": "Total daily productivity",
 		"trans_num": "Number of Boxes Issued",
 		"transfer_order_code": "Transfer order code",
 		"unweighed_box_qty": "Unweighed box quantity",
