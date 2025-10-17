@@ -23,6 +23,7 @@ export type I18nTranslations = {
         "unavailable_service": string;
         "fields": {
             "remark": string;
+            "total": string;
         };
     };
     "defective-goods": {

@@ -165,7 +165,24 @@ export class InboundReportService {
 			lang: currentLanguage
 		})
 
-		// * Freeze header row
+		const footerRow = worksheet.addRow(Array.from({ length: worksheet.columns.length }, () => null))
+		footerRow.height = 30
+		worksheet.mergeCells(`A${footerRow.number}:G${footerRow.number}`)
+		worksheet.mergeCells(`H${footerRow.number}:J${footerRow.number}`)
+		worksheet.getCell(`A${footerRow.number}`).value = this.i18nService.t('common.fields.total', {
+			lang: currentLanguage
+		})
+		worksheet.getCell(`H${footerRow.number}`).value = data.reduce((acc, curr) => acc + curr.daily_inbound_qty, 0)
+		footerRow.eachCell((cell) => {
+			cell.font = { bold: true, size: 14 }
+			cell.style.fill = {
+				type: 'pattern',
+				pattern: 'solid',
+				fgColor: { argb: ExcelColorPalette.BG_LIGHT_BLUE }
+			}
+		})
+
+		// * Freeze header row at top
 		worksheet.views = [{ state: 'frozen', xSplit: 0, ySplit: 2 }]
 
 		// * Cell styles
@@ -181,6 +198,7 @@ export class InboundReportService {
 				}
 			})
 		})
+
 		return await workbook.xlsx.writeBuffer()
 	}
 }

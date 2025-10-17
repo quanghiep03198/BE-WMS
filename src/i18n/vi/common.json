@@ -11,6 +11,7 @@
 	"internal_server_error": "Lỗi Server",
 	"unavailable_service": "Tính năng không khả dụng",
 	"fields": {
-		"remark": "Ghi chú"
+		"remark": "Ghi chú",
+		"total": "Tổng cộng"
 	}
 }

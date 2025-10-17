@@ -169,8 +169,31 @@ export class OutboundReportService {
 			lang: currentLanguage
 		})
 
-		// * Freeze header row
-		worksheet.views = [{ state: 'frozen', xSplit: 0, ySplit: 2 }]
+		const footerRow = worksheet.addRow(Array.from({ length: worksheet.columns.length }, () => null))
+		footerRow.height = 30
+		worksheet.mergeCells(`A${footerRow.number}:D${footerRow.number}`)
+		worksheet.mergeCells(`E${footerRow.number}:H${footerRow.number}`)
+		worksheet.getCell(`A${footerRow.number}`).value = this.i18nService.t('common.fields.total', {
+			lang: currentLanguage
+		})
+		worksheet.getCell(`H${footerRow.number}`).value = data.reduce((acc, curr) => acc + curr.daily_outbound_qty, 0)
+		footerRow.eachCell((cell) => {
+			cell.font = { bold: true, size: 14 }
+			cell.style.fill = {
+				type: 'pattern',
+				pattern: 'solid',
+				fgColor: { argb: ExcelColorPalette.BG_LIGHT_BLUE }
+			}
+		})
+
+		// * Split worksheet - panel dưới chỉ hiển thị footer row
+		worksheet.views = [
+			{
+				state: 'frozen',
+				xSplit: 0,
+				ySplit: 2
+			}
+		]
 
 		// * Cell styles
 		worksheet.eachRow({ includeEmpty: false }, (row) => {
