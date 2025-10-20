@@ -1,8 +1,8 @@
-import { leftPad } from '@/common/libs'
 import { DATA_SOURCE_ERP, RecordStatus } from '@/databases/constants'
 import { Inject, Injectable } from '@nestjs/common'
 import { InjectDataSource } from '@nestjs/typeorm'
 import { readFileSync } from 'fs-extra'
+import { padStart } from 'lodash'
 import { join, resolve } from 'node:path'
 import { DataSource } from 'typeorm'
 import { InventoryActions } from '../rfid/constants'
@@ -87,52 +87,29 @@ export class OrderService {
 			.getRawMany<{ po: string; is_completed: boolean }>()
 	}
 
-	async getPurchaseOrderSizeRun(purchaseOrder: string): Promise<any> {
-		const data = await this.dataSourceERP.query<
-			Array<{
-				po: string
-				mo_no: string
-				brand_name: string
-				shoes_style: string
-				color_sn: string
-				ship_id: string
-				ship_dest_country: string
-				ship_type: string
-				size_numcode: string
-				qty: number
-			}>
-		>(this.purchaseOrderSizeRunQuery, [purchaseOrder])
-
-		return Object.entries(
-			Object.groupBy(
-				data,
-				(item) =>
-					`${item.po},${item.mo_no},${item.brand_name},${item.shoes_style},${item.color_sn},${item.ship_id},${item.ship_dest_country},${item.ship_type}`
+	async getPurchaseOrderSizeRun(purchaseOrder: string) {
+		return await this.dataSourceERP
+			.query<
+				Array<{
+					po: string
+					mo_no: string
+					brand_name: string
+					shoes_style: string
+					color_sn: string
+					ship_id: string
+					ship_dest_country: string
+					ship_type: string
+					size_numcode: string
+					qty: number
+				}>
+			>(this.purchaseOrderSizeRunQuery, [purchaseOrder])
+			.then((result) =>
+				result.map((item) => ({
+					...item,
+					size_numcode:
+						Number.parseInt(item.size_numcode) < 10 ? padStart(item.size_numcode, 3, '0') : item.size_numcode
+				}))
 			)
-		)
-			.map(([info, sizes]) => {
-				const [po, mo_no, brand_name, shoes_style, color_sn, ship_id, ship_dest_country, ship_type] =
-					info.split(',')
-				return {
-					po,
-					mo_no,
-					brand_name,
-					shoes_style,
-					color_sn,
-					ship_id,
-					ship_dest_country,
-					ship_type,
-					sizes: sizes.map((size) => ({
-						size_numcode: Number.isNaN(Number.parseInt(size.size_numcode))
-							? size.size_numcode
-							: Number.parseInt(size.size_numcode) < 10
-								? leftPad(size.size_numcode, 2, '0')
-								: size.size_numcode,
-						qty: size.qty
-					}))
-				}
-			})
-			.at(0)
 	}
 
 	async getCustOrderDetails(commandNumbers: Array<string>): Promise<Partial<RFIDMatchCustomerEntity>[]> {

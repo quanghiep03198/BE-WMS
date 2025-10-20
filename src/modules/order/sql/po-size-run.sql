@@ -1,31 +1,31 @@
   SELECT 
       IIF(ISNULL(ord.or_custpoone, '') = '', ord.or_custpo, ord.or_custpoone) AS po,
-      d.brand_name,
-      CONCAT(e.shoestyle_codecust, '/', e.shoestyle_codefactory) AS shoes_style,
-      c.color_sn,
-      CONCAT(mand.mo_no, '-', mand.mo_noseq) AS mo_no,
+      br.brand_name,
+      CONCAT(sfm.shoestyle_codecust, '/', sfm.shoestyle_codefactory) AS shoes_style,
+      prod.color_sn,
+      CONCAT(mand.mo_no, ' - ', mand.mo_noseq) AS mo_no,
       ordp.shipID AS ship_id,
       ordp.destCountry AS ship_dest_country,
       ordp.ship_type AS ship_type,
       CASE 
-         WHEN ISNUMERIC(b.size_numcode) = 1 THEN CAST(b.size_numcode AS NVARCHAR) 
-         WHEN LEFT(b.size_numcode, 1) IN ('T', 'K') THEN SUBSTRING(b.size_numcode, 2, LEN(b.size_numcode))
+         WHEN ISNUMERIC(sr.size_numcode) = 1 THEN CAST(sr.size_numcode AS NVARCHAR) 
+         WHEN LEFT(sr.size_numcode, 1) IN ('T', 'K') THEN SUBSTRING(sr.size_numcode, 2, LEN(sr.size_numcode))
       END AS [size_numcode], 
-   SUM(CAST(b.size_qty AS INT)) AS qty
-   FROM wuerp_vnrd.dbo.ta_ordersizerun a
+   SUM(CAST(sr.size_qty AS INT)) AS qty
+   FROM wuerp_vnrd.dbo.ta_ordersizerun osr
    LEFT JOIN wuerp_vnrd.dbo.ta_ordermst ord
-      ON ord.or_no = a.or_no
-      AND a.isactive = 'Y'
+      ON ord.or_no = osr.or_no
+      AND osr.isactive = 'Y'
       AND ord.isactive = 'Y'
-   LEFT JOIN wuerp_vnrd.dbo.ta_productmst c
-      ON c.mat_code = ord.mat_code
-      AND c.isactive = 'Y'
-   LEFT JOIN wuerp_vnrd.dbo.ta_brand d 
-      ON d.custbrand_id = ord.custbrand_id
-      AND d.isactive = 'Y'
-   LEFT JOIN wuerp_vnrd.dbo.ta_shoefactorymst e
-      ON e.shoestyle_systemcodefty = c.shoestyle_systemcodefty
-      AND e.isactive = 'Y'
+   LEFT JOIN wuerp_vnrd.dbo.ta_productmst prod
+      ON prod.mat_code = ord.mat_code
+      AND prod.isactive = 'Y'
+   LEFT JOIN wuerp_vnrd.dbo.ta_brand br 
+      ON br.custbrand_id = ord.custbrand_id
+      AND br.isactive = 'Y'
+   LEFT JOIN wuerp_vnrd.dbo.ta_shoefactorymst sfm
+      ON sfm.shoestyle_systemcodefty = prod.shoestyle_systemcodefty
+      AND sfm.isactive = 'Y'
    LEFT JOIN wuerp_vnrd.dbo.ta_manufacturdet mand
       ON ord.or_no = mand.or_no
       AND mand.isactive = 'Y'
@@ -73,21 +73,21 @@
          ([size_numcode38], [size_qty38] - [size_qtycancel38]),
          ([size_numcode39], [size_qty39] - [size_qtycancel39]),
          ([size_numcode40], [size_qty40] - [size_qtycancel40])
-   ) b ([size_numcode],[size_qty])
-   WHERE b.size_qty <> 0
-      AND a.isactive = 'Y'
+   ) sr ([size_numcode],[size_qty])
+   WHERE sr.size_qty <> 0
+      AND osr.isactive = 'Y'
       AND ord.isactive = 'Y'
       AND IIF(ISNULL(ord.or_custpoone, '') = '', ord.or_custpo, ord.or_custpoone) = @0
    GROUP BY 
-      d.brand_name,
-      c.color_sn,
-      CONCAT(mand.mo_no, '-', mand.mo_noseq),
+      br.brand_name,
+      prod.color_sn,
       IIF(ISNULL(ord.or_custpoone, '') = '', ord.or_custpo, ord.or_custpoone), 
-      CONCAT(e.shoestyle_codecust, '/', e.shoestyle_codefactory),
+      CONCAT(mand.mo_no, ' - ', mand.mo_noseq),
+      CONCAT(sfm.shoestyle_codecust, '/', sfm.shoestyle_codefactory),
       CASE 
-         WHEN ISNUMERIC(b.size_numcode) = 1 THEN CAST(b.size_numcode AS NVARCHAR) 
-         WHEN LEFT(b.size_numcode, 1) IN ('T', 'K') THEN SUBSTRING(b.size_numcode, 2, LEN(b.size_numcode))
+         WHEN ISNUMERIC(sr.size_numcode) = 1 THEN CAST(sr.size_numcode AS NVARCHAR) 
+         WHEN LEFT(sr.size_numcode, 1) IN ('T', 'K') THEN SUBSTRING(sr.size_numcode, 2, LEN(sr.size_numcode))
       END,
       ordp.shipID,
       ordp.destCountry,
-      ordp.ship_type 
+      ordp.ship_type
