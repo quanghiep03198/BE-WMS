@@ -60,11 +60,9 @@ WITH CTE AS (
 )
 SELECT 
 	CASE 
-		WHEN LEN(CAST(size_numcode AS NVARCHAR)) = 1 THEN CONCAT('0', size_numcode)
+		WHEN LEN(CAST(size_numcode AS NVARCHAR)) < 10 THEN CONCAT('0', size_numcode)
 		ELSE CAST(size_numcode AS NVARCHAR) 
 	END AS size_numcode,
 	size_qty
 FROM CTE
 ORDER BY size_numcode ASC;
-
-
