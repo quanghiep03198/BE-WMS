@@ -2,7 +2,6 @@ import { DATA_SOURCE_ERP, RecordStatus } from '@/databases/constants'
 import { Inject, Injectable } from '@nestjs/common'
 import { InjectDataSource } from '@nestjs/typeorm'
 import { readFileSync } from 'fs-extra'
-import { padStart } from 'lodash'
 import { join, resolve } from 'node:path'
 import { DataSource } from 'typeorm'
 import { InventoryActions } from '../rfid/constants'
@@ -106,8 +105,7 @@ export class OrderService {
 			.then((result) =>
 				result.map((item) => ({
 					...item,
-					size_numcode:
-						Number.parseInt(item.size_numcode) < 10 ? padStart(item.size_numcode, 3, '0') : item.size_numcode
+					size_numcode: Number.parseFloat(item.size_numcode) < 10 ? '0' + item.size_numcode : item.size_numcode
 				}))
 			)
 	}

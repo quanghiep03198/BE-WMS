@@ -1,7 +1,9 @@
   SELECT 
       IIF(ISNULL(ord.or_custpoone, '') = '', ord.or_custpo, ord.or_custpoone) AS po,
       br.brand_name,
-      CONCAT(sfm.shoestyle_codecust, '/', sfm.shoestyle_codefactory) AS shoes_style,
+      CASE WHEN sfm.shoestyle_codecust IS NOT NULL 
+         THEN CONCAT(sfm.shoestyle_codecust, '/', sfm.shoestyle_codefactory)
+         ELSE sfm.shoestyle_codefactory END AS shoes_style,
       prod.color_sn,
       CONCAT(mand.mo_no, ' - ', mand.mo_noseq) AS mo_no,
       ordp.shipID AS ship_id,
@@ -83,7 +85,9 @@
       prod.color_sn,
       IIF(ISNULL(ord.or_custpoone, '') = '', ord.or_custpo, ord.or_custpoone), 
       CONCAT(mand.mo_no, ' - ', mand.mo_noseq),
-      CONCAT(sfm.shoestyle_codecust, '/', sfm.shoestyle_codefactory),
+      CASE WHEN sfm.shoestyle_codecust IS NOT NULL 
+         THEN CONCAT(sfm.shoestyle_codecust, '/', sfm.shoestyle_codefactory)
+         ELSE sfm.shoestyle_codefactory END,
       CASE 
          WHEN ISNUMERIC(sr.size_numcode) = 1 THEN CAST(sr.size_numcode AS NVARCHAR) 
          WHEN LEFT(sr.size_numcode, 1) IN ('T', 'K') THEN SUBSTRING(sr.size_numcode, 2, LEN(sr.size_numcode))
