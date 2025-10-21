@@ -1,5 +1,28 @@
 {
 	"titles": {
-		"daily_weighing_report": "Packing Weight Report {factory} - {date}"
+		"daily_weighing_report": "Packing Weight Report {factory} - {date}",
+		"manifest_report": "Packing Manifest Report {factory} - {date}"
+	},
+	"fields": {
+		"standard_weight": "Standard Weight (kg)",
+		"actual_weight": "Actual Weight (kg)",
+		"target_box_qty": "Target Boxes",
+		"target_item_qty": "Target Items",
+		"weighed_box_qty": "Weighed Boxes",
+		"unweighed_box_qty": "Unweighed Boxes",
+		"scan_id": "Scan ID",
+		"series_number": "Series Number",
+		"weighing_time": "Weighing Time"
+	},
+	"summary": {
+		"total_progress": "Progress: {weighed}/{total} boxes ({percentage}%)",
+		"completion_rate": "Completion Rate",
+		"remaining_boxes": "Remaining Boxes"
+	},
+	"status": {
+		"weighed": "Weighed",
+		"not_weighed": "Not Weighed",
+		"in_progress": "In Progress",
+		"completed": "Completed"
 	}
 }

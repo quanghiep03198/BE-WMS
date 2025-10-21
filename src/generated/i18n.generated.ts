@@ -14,6 +14,7 @@ export type I18nTranslations = {
         "created": string;
         "updated": string;
         "deleted": string;
+        "exported": string;
         "not_found": string;
         "unprocessable_entity": string;
         "unauthorized": string;
@@ -24,6 +25,7 @@ export type I18nTranslations = {
         "fields": {
             "remark": string;
             "total": string;
+            "summary": string;
         };
     };
     "defective-goods": {
@@ -146,6 +148,29 @@ export type I18nTranslations = {
     "packing": {
         "titles": {
             "daily_weighing_report": string;
+            "manifest_report": string;
+        };
+        "fields": {
+            "standard_weight": string;
+            "actual_weight": string;
+            "target_box_qty": string;
+            "target_item_qty": string;
+            "weighed_box_qty": string;
+            "unweighed_box_qty": string;
+            "scan_id": string;
+            "series_number": string;
+            "weighing_time": string;
+        };
+        "summary": {
+            "total_progress": string;
+            "completion_rate": string;
+            "remaining_boxes": string;
+        };
+        "status": {
+            "weighed": string;
+            "not_weighed": string;
+            "in_progress": string;
+            "completed": string;
         };
     };
     "rfid": {

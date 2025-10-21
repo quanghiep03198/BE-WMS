@@ -1,5 +1,28 @@
 {
 	"titles": {
-		"daily_weighing_report": "{factory}電子秤重報表 - {date}"
+		"daily_weighing_report": "{factory}電子秤重報表 - {date}",
+		"manifest_report": "{factory}包裝清單報表 - {date}"
+	},
+	"fields": {
+		"standard_weight": "標準重量 (kg)",
+		"actual_weight": "實際重量 (kg)",
+		"target_box_qty": "目標箱數",
+		"target_item_qty": "目標數量",
+		"weighed_box_qty": "已秤重箱數",
+		"unweighed_box_qty": "未秤重箱數",
+		"scan_id": "掃描碼",
+		"series_number": "序列號",
+		"weighing_time": "秤重時間"
+	},
+	"summary": {
+		"total_progress": "進度：{weighed}/{total} 箱 ({percentage}%)",
+		"completion_rate": "完成率",
+		"remaining_boxes": "剩餘箱數"
+	},
+	"status": {
+		"weighed": "已秤重",
+		"not_weighed": "未秤重",
+		"in_progress": "進行中",
+		"completed": "已完成"
 	}
 }
