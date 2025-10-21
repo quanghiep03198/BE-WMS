@@ -14,3 +14,7 @@ export function autoFitColumns(this: Worksheet, { minWidth = 10, excludeColumns 
 		}
 	})
 }
+
+export function getLastColumnLetter(columnCount: number): string {
+	return String.fromCharCode(65 + columnCount - 1)
+}
