@@ -3,6 +3,7 @@
 	"created": "Tạo mới thành công",
 	"updated": "Cập nhật thành công",
 	"deleted": "Đã xóa thành công",
+	"exported": "Xuất dữ liệu thành công",
 	"not_found": "Bản ghi không tồn tại",
 	"unprocessable_entity": "Dữ liệu không hợp lệ",
 	"unauthorized": "Xác thực tài khoản thất bại",
@@ -12,6 +13,7 @@
 	"unavailable_service": "Tính năng không khả dụng",
 	"fields": {
 		"remark": "Ghi chú",
-		"total": "Tổng cộng"
+		"total": "Tổng cộng",
+		"summary": "Tóm tắt"
 	}
 }

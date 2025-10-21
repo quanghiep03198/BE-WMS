@@ -3,6 +3,7 @@
 	"created": "已创建",
 	"updated": "已更新",
 	"deleted": "已删除",
+	"exported": "導出成功",
 	"not_found": "记录未找到",
 	"unprocessable_entity": "无法处理的实体",
 	"unauthorized": "未授权",
@@ -12,6 +13,7 @@
 	"unavailable_service": "服务不可用",
 	"fields": {
 		"remark": "备注",
-		"total": "总计"
+		"total": "总计",
+		"summary": "摘要"
 	}
 }

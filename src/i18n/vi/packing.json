@@ -1,5 +1,33 @@
 {
 	"titles": {
-		"daily_weighing_report": "Báo biểu cân hàng {factory} - {date}"
+		"daily_weighing_report": "Báo biểu cân hàng {factory} - {date}",
+		"manifest_report": "Báo cáo đóng gói {factory} - {date}"
+	},
+	"fields": {
+		"po": "PO",
+		"brand_name": "Thương hiệu",
+		"shoes_style": "Kiểu giày",
+		"color": "Màu sắc",
+		"size": "Size",
+		"standard_weight": "Trọng lượng chuẩn (kg)",
+		"actual_weight": "Trọng lượng thực tế (kg)",
+		"target_box_qty": "Số thùng cần đóng",
+		"target_item_qty": "Số đôi cần đóng",
+		"weighed_box_qty": "Số thùng đã cân",
+		"unweighed_box_qty": "Số thùng chưa cân",
+		"scan_id": "Mã quét",
+		"series_number": "Số series",
+		"weighing_time": "Thời gian cân"
+	},
+	"summary": {
+		"total_progress": "Tiến độ: {weighed}/{total} thùng ({percentage}%)",
+		"completion_rate": "Tỷ lệ hoàn thành",
+		"remaining_boxes": "Số thùng còn lại"
+	},
+	"status": {
+		"weighed": "Đã cân",
+		"not_weighed": "Chưa cân",
+		"in_progress": "Đang thực hiện",
+		"completed": "Hoàn thành"
 	}
 }

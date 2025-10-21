@@ -3,6 +3,7 @@
 	"created": "Created",
 	"updated": "Updated",
 	"deleted": "Deleted",
+	"exported": "Exported successfully",
 	"not_found": "Record could not be found",
 	"unprocessable_entity": "Unprocessable entity",
 	"unauthorized": "Unauthorized",
@@ -12,6 +13,7 @@
 	"unavailable_service": "Unavailable service",
 	"fields": {
 		"remark": "Remark",
-		"total": "Total"
+		"total": "Total",
+		"summary": "Summary"
 	}
 }

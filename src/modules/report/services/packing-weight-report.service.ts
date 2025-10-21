@@ -82,7 +82,7 @@ export class PackingWeightReportService {
 		}
 
 		// * Auto fit columns
-		autoFitColumns.call(worksheet, { minWidth: 16, excludeColumns: ['size_data'] } satisfies AutoFitColumnOptions)
+		autoFitColumns.call(worksheet, { minWidth: 12, excludeColumns: ['size_data'] } satisfies AutoFitColumnOptions)
 
 		// * Add title
 		worksheet.insertRow(1, null)
@@ -95,7 +95,7 @@ export class PackingWeightReportService {
 		worksheet.getCell('A1').fill = {
 			type: 'pattern',
 			pattern: 'solid',
-			fgColor: { argb: ExcelColorPalette.BG_LIGHT_NEUTRAL }
+			bgColor: { argb: ExcelColorPalette.BG_LIGHT_NEUTRAL }
 		}
 		worksheet.getCell('A1').alignment = { vertical: 'middle', horizontal: 'center' }
 		worksheet.getCell('A1').value = this.i18nService.t('packing.titles.daily_weighing_report', {
