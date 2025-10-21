@@ -4,11 +4,6 @@
 		"manifest_report": "Packing Manifest Report {factory} - {date}"
 	},
 	"fields": {
-		"po": "PO",
-		"brand_name": "Brand",
-		"shoes_style": "Shoes Style",
-		"color": "Color",
-		"size": "Size",
 		"standard_weight": "Standard Weight (kg)",
 		"actual_weight": "Actual Weight (kg)",
 		"target_box_qty": "Target Boxes",

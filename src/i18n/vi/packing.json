@@ -1,14 +1,9 @@
 {
 	"titles": {
 		"daily_weighing_report": "Báo biểu cân hàng {factory} - {date}",
-		"manifest_report": "Báo cáo đóng gói {factory} - {date}"
+		"manifest_report": "Báo cáo đóng hàng {factory} - {date}"
 	},
 	"fields": {
-		"po": "PO",
-		"brand_name": "Thương hiệu",
-		"shoes_style": "Kiểu giày",
-		"color": "Màu sắc",
-		"size": "Size",
 		"standard_weight": "Trọng lượng chuẩn (kg)",
 		"actual_weight": "Trọng lượng thực tế (kg)",
 		"target_box_qty": "Số thùng cần đóng",

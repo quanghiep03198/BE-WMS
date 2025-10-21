@@ -1,3 +1,4 @@
+DECLARE @0 NVARCHAR(10) = 'VB2';
 DECLARE @FallbackValue NVARCHAR(10) = 'Unknown';
 
 -- Tối ưu factory mapping
@@ -46,36 +47,75 @@ SELECT
    pl.brand_name,
    pl.shoes_style,
    pl.color,
-   pk.Size AS size_data,
+   -- Extract only # items and format numbers (remove commas only within parentheses)
+   CASE 
+      WHEN CHARINDEX('#', pk.Size) > 0 THEN 
+         (
+            SELECT STRING_AGG(
+               '#' + CASE 
+                  WHEN CHARINDEX('(', LTRIM(RTRIM(value))) > 0 AND CHARINDEX(')', LTRIM(RTRIM(value))) > 0 THEN
+                     REPLACE(LTRIM(RTRIM(value)), ',', '')
+                  ELSE LTRIM(RTRIM(value))
+               END,
+               ';'
+            )
+            FROM STRING_SPLIT(
+               SUBSTRING(pk.Size, CHARINDEX('#', pk.Size), LEN(pk.Size)), 
+               '#'
+            )
+            WHERE LTRIM(RTRIM(value)) != ''
+            AND LTRIM(RTRIM(value)) LIKE '%(%'
+         )
+      ELSE pk.Size
+   END AS size_data,
    @0 AS factory_code_produce,
    pk.Weight AS standard_weight,
    pk.Actual_weight_in AS actual_weight,
    ps.total_boxes AS target_box_qty,
-   -- Optimize calculate target_item_qty
-   CASE 
-      WHEN pk.Size LIKE '%(%' AND pk.Size LIKE '%)%'
-      THEN TRY_CAST(REPLACE(SUBSTRING(pk.Size, CHARINDEX('(', pk.Size) + 1, 
-           CHARINDEX(')', pk.Size) - CHARINDEX('(', pk.Size) - 1), ',', '') AS INT)
-      ELSE 0
-   END AS target_item_qty,
+   -- Calculate target_item_qty by parsing quantities from # sections
+   (
+      SELECT SUM(
+         TRY_CAST(
+            REPLACE(
+               SUBSTRING(
+                  value, 
+                  CHARINDEX('(', value) + 1, 
+                  CHARINDEX(')', value) - CHARINDEX('(', value) - 1
+               ),
+               ',', ''
+            ) AS INT
+         )
+      )
+      FROM (
+         SELECT LTRIM(RTRIM(value)) as value
+         FROM STRING_SPLIT(
+            CASE 
+               WHEN CHARINDEX('#', pk.Size) > 0 THEN 
+                  SUBSTRING(pk.Size, CHARINDEX('#', pk.Size), LEN(pk.Size))
+               ELSE pk.Size
+            END, 
+            '#'
+         )
+         WHERE LTRIM(RTRIM(value)) != ''
+         AND CHARINDEX('(', value) > 0
+         AND CHARINDEX(')', value) > 0
+      ) AS hash_items
+   ) AS target_item_qty,
    COUNT(DISTINCT pk.Series_number) AS weighed_box_qty,
    (ps.total_boxes - COUNT(DISTINCT pk.Series_number)) AS unweighed_box_qty
 FROM DV_DATA_LAKE.dbo.PackingPlan pk WITH(NOLOCK, INDEX(IX_PackingPlan_factory_po_size))
    INNER JOIN po_aggregated pl ON pk.po = pl.po
    INNER JOIN packing_stats ps ON pk.po = ps.po AND pk.Size = ps.Size
 WHERE pk.Factory_code = @TargetFactory
-AND CASE 
-      WHEN pk.Size LIKE '%(%' AND pk.Size LIKE '%)%'
-      THEN TRY_CAST(REPLACE(SUBSTRING(pk.Size, CHARINDEX('(', pk.Size) + 1, 
-           CHARINDEX(')', pk.Size) - CHARINDEX('(', pk.Size) - 1), ',', '') AS INT)
-      ELSE 0
-   END <> '0'
+AND pk.Size LIKE '%#%'
+AND pk.Size LIKE '%(%'
+AND pk.Size LIKE '%)%'
 GROUP BY 
    CAST(pk.created AS DATE),
    pk.Factory_code,
    pl.brand_name,
    pk.po, 
-   pl.shoes_style, 
+   pl.shoes_style,
    pk.Size,
    pl.color,
    pk.Weight,
@@ -84,9 +124,6 @@ GROUP BY
 ORDER BY 
    CAST(pk.created AS DATE), 
    pk.po,
-   pl.shoes_style, 
-   pl.color,
-   CASE WHEN LEN(pk.Size) >= 3 THEN 2 ELSE 0 END, 
    LEFT(pk.Size, 3)
 OPTION (
    OPTIMIZE FOR UNKNOWN,

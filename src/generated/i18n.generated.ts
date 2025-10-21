@@ -151,11 +151,6 @@ export type I18nTranslations = {
             "manifest_report": string;
         };
         "fields": {
-            "po": string;
-            "brand_name": string;
-            "shoes_style": string;
-            "color": string;
-            "size": string;
             "standard_weight": string;
             "actual_weight": string;
             "target_box_qty": string;

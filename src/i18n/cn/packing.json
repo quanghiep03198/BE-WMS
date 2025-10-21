@@ -4,11 +4,6 @@
 		"manifest_report": "{factory}包裝清單報表 - {date}"
 	},
 	"fields": {
-		"po": "訂單號",
-		"brand_name": "品牌",
-		"shoes_style": "鞋款",
-		"color": "顏色",
-		"size": "尺寸",
 		"standard_weight": "標準重量 (kg)",
 		"actual_weight": "實際重量 (kg)",
 		"target_box_qty": "目標箱數",
