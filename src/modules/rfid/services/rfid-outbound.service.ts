@@ -62,7 +62,7 @@ export class RFIDOutboundService {
 			const facetPipeline = payload.sizes.reduce<PipelineStage.Facet['$facet']>((acc, curr) => {
 				return {
 					...acc,
-					[curr.size_numcode]: [
+					[curr.size_numcode.replace('.', '')]: [
 						{ $match: { ...baseFilterQuery, mo_no: payload.mo_no, size_numcode: curr.size_numcode } },
 						{
 							$project: {
