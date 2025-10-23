@@ -14,18 +14,12 @@ export class StorageLocationSubscriber implements EntitySubscriberInterface<Stor
 	}
 
 	async beforeInsert(event: InsertEvent<StorageLocationEntity>) {
-		const count = await event.manager.getRepository(StorageLocationEntity).count({
-			where: {
-				type_storage: event.entity.type_storage,
-				cofactory_code: event.entity.cofactory_code,
-				warehouse_num: event.entity.warehouse_num
-			}
+		const count = await event.manager.getRepository(StorageLocationEntity).countBy({
+			cofactory_code: event.entity.cofactory_code,
+			warehouse_num: event.entity.warehouse_num,
+			type_storage: event.entity.type_storage
 		})
 
-		const nextIndex = String(count + 1)
-			.toString()
-			.padStart(3, '0')
-
-		event.entity.storage_num = `${event.entity.cofactory_code}${event.entity.type_storage}${nextIndex}`
+		event.entity.storage_num = `${event.entity.cofactory_code}${event.entity.type_storage}${count + 1}`
 	}
 }
