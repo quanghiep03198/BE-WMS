@@ -74,6 +74,7 @@ If you are confusing about NestJS (A progressive NodeJS Framework), we already w
 ### Folder Structure
 
 ```
+├── .compodoc/
 ├── .github/
 │   └── workflows
 │       └── cicd.yml
@@ -188,6 +189,14 @@ pnpm start:dev
 ```
 
 The API will now be available at http://localhost:3001.
+
+### Show documentation for the Application
+
+To view project code structure with Compodoc, open your terminal and run the below command
+
+```bash
+pnpm compodoc
+```
 
 ### Running Tests
 
