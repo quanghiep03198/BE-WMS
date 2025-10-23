@@ -21,7 +21,7 @@ export class ThirdPartyApiController {
 	) {}
 
 	@Api({
-		endpoint: 'sync-decker-data',
+		endpoint: 'sync-deckers-data',
 		method: HttpMethod.PUT,
 		statusCode: HttpStatus.CREATED,
 		message: 'common.created'
