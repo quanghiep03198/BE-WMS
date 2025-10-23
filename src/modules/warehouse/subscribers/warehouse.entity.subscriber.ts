@@ -14,7 +14,10 @@ export class WarehouseSubscriber implements EntitySubscriberInterface<WarehouseE
 	}
 
 	async beforeInsert(event: InsertEvent<WarehouseEntity>) {
-		const count = await event.manager.getRepository(WarehouseEntity).count()
+		const count = await event.manager.getRepository(WarehouseEntity).countBy({
+			cofactory_code: event.entity.cofactory_code,
+			type_warehouse: event.entity.type_warehouse
+		})
 		event.entity.warehouse_num = `${event.entity.cofactory_code}${event.entity.type_warehouse}${count + 1}`
 	}
 }
