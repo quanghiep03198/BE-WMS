@@ -1,5 +1,3 @@
-
-
 DECLARE @FallbackValue NVARCHAR(10) = 'Unknown';
 
 WITH base_data AS (
@@ -9,7 +7,10 @@ WITH base_data AS (
       i.mo_no, 
       CASE 
          WHEN LEFT(CAST(i.size_code AS NVARCHAR(10)), 1) = '0' THEN i.size_code
-         WHEN CAST(i.size_code AS FLOAT) < 10 THEN CAST(CONCAT('0', i.size_code) AS NVARCHAR(10))
+         WHEN ISNUMERIC(i.size_code) = 1 
+            AND i.size_code NOT IN ('', '.', '-', '+')  -- Exclude edge cases
+            AND CAST(i.size_code AS FLOAT) < 10 
+            THEN CAST(CONCAT('0', i.size_code) AS NVARCHAR(10))
          ELSE CAST(i.size_code AS NVARCHAR(10)) 
       END AS size_code, 
       i.record_time,
@@ -37,7 +38,10 @@ WITH base_data AS (
       i.mo_no, 
       CASE 
          WHEN LEFT(CAST(i.size_code AS NVARCHAR(10)), 1) = '0' THEN i.size_code
-         WHEN CAST(i.size_code AS FLOAT) < 10 THEN CAST(CONCAT('0', i.size_code) AS NVARCHAR(10))
+         WHEN ISNUMERIC(i.size_code) = 1 
+            AND i.size_code NOT IN ('', '.', '-', '+')  -- Exclude edge cases
+            AND CAST(i.size_code AS FLOAT) < 10 
+            THEN CAST(CONCAT('0', i.size_code) AS NVARCHAR(10))
          ELSE CAST(i.size_code AS NVARCHAR(10)) 
       END AS size_code, 
       i.record_time,
@@ -63,7 +67,7 @@ WITH base_data AS (
 daily_data AS (
    SELECT *
    FROM base_data
-   WHERE CAST(record_time AS DATE) = @1
+   WHERE CAST(record_time AS DATE) = CAST(@1 AS DATE)
 ),
 
 -- * Size quantity by purchase order 
@@ -178,14 +182,14 @@ agg_size_data AS (
          SELECT COUNT(DISTINCT EPC_Code) 
          FROM daily_data dd 
          WHERE dd.po = ps.po AND dd.size_code = CASE 
-            WHEN CAST(ps.size_numcode AS FLOAT) < 10 THEN CAST(CONCAT('0', ps.size_numcode) AS NVARCHAR(10))
+            WHEN ISNUMERIC(ps.size_numcode) = 1 AND CAST(ps.size_numcode AS FLOAT) < 10 THEN CAST(CONCAT('0', ps.size_numcode) AS NVARCHAR(10))
             ELSE CAST(ps.size_numcode AS NVARCHAR(10)) 
          END
       ) AS daily_qty,
       (
          SELECT COUNT(DISTINCT EPC_Code) FROM base_data bd 
          WHERE bd.po = ps.po AND bd.size_code = CASE 
-            WHEN CAST(ps.size_numcode AS FLOAT) < 10 THEN CAST(CONCAT('0', ps.size_numcode) AS NVARCHAR(10))
+            WHEN ISNUMERIC(ps.size_numcode) = 1 AND CAST(ps.size_numcode AS FLOAT) < 10 THEN CAST(CONCAT('0', ps.size_numcode) AS NVARCHAR(10))
             ELSE CAST(ps.size_numcode AS NVARCHAR(10)) 
          END
       ) AS acc_qty
