@@ -38,7 +38,7 @@ export class DefectiveGoodsService extends BaseAbstractService<DefectiveGoodsEnt
 	public async retrieveSizeQty(epcList: string[]) {
 		const data = await this.defectiveGoodRepository.find({
 			select: ['factory_shoes_style', 'color_sn', 'size_code', 'epc'],
-			where: { epc: In(epcList) }
+			where: { epc: In(epcList), is_active: RecordStatus.ACTIVE }
 		})
 
 		const groupedData = new Map<string, Map<string, number>>()
