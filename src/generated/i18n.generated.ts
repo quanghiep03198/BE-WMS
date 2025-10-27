@@ -153,6 +153,7 @@ export type I18nTranslations = {
         "fields": {
             "standard_weight": string;
             "actual_weight": string;
+            "actual_avg_weight": string;
             "target_box_qty": string;
             "target_item_qty": string;
             "weighed_box_qty": string;
@@ -160,6 +161,7 @@ export type I18nTranslations = {
             "scan_id": string;
             "series_number": string;
             "weighing_time": string;
+            "actual_outstock_qty": string;
         };
         "summary": {
             "total_progress": string;

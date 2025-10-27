@@ -119,8 +119,8 @@ export class PackingService {
 				alignment: { vertical: 'middle', horizontal: 'right' }
 			},
 			{
-				header: this.i18nService.t('packing.fields.actual_weight', { lang: currentLanguage }),
-				key: 'actual_weight',
+				header: this.i18nService.t('packing.fields.actual_avg_weight', { lang: currentLanguage }),
+				key: 'actual_avg_weight',
 				alignment: { vertical: 'middle', horizontal: 'right' }
 			},
 			{

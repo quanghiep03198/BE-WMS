@@ -6,6 +6,7 @@
 	"fields": {
 		"standard_weight": "標準重量 (kg)",
 		"actual_weight": "實際重量 (kg)",
+		"actual_avg_weight": "实测平均重量 (kg)",
 		"target_box_qty": "目標箱數",
 		"target_item_qty": "目標數量",
 		"weighed_box_qty": "已秤重箱數",

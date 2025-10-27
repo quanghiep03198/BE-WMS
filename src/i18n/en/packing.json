@@ -6,6 +6,8 @@
 	"fields": {
 		"standard_weight": "Standard Weight (kg)",
 		"actual_weight": "Actual Weight (kg)",
+		"actual_avg_weight": "Actual Average Weight (kg)",
+		"actual_outstock_qty": "Actual outstock quantity",
 		"target_box_qty": "Target Boxes",
 		"target_item_qty": "Target Items",
 		"weighed_box_qty": "Weighed Boxes",

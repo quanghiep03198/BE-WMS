@@ -68,8 +68,8 @@ SELECT
       ELSE pk.Size
    END AS size_data,
    @0 AS factory_code_produce,
-   pk.Weight AS standard_weight,
-   pk.Actual_weight_in AS actual_weight,
+   ROUND(pk.Weight, 2) AS standard_weight,
+   ROUND(AVG(pk.Actual_weight_in), 2) AS actual_avg_weight,
    ps.total_boxes AS target_box_qty,
    -- Calculate target_item_qty by parsing quantities from # sections
    (
@@ -118,7 +118,7 @@ GROUP BY
    pk.Size,
    pl.color,
    pk.Weight,
-   pk.Actual_weight_in,
+   -- pk.Actual_weight_in,
    ps.total_boxes
 ORDER BY 
    CAST(pk.created AS DATE), 

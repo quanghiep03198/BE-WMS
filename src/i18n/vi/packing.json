@@ -6,6 +6,7 @@
 	"fields": {
 		"standard_weight": "Trọng lượng chuẩn (kg)",
 		"actual_weight": "Trọng lượng thực tế (kg)",
+		"actual_avg_weight": "Trọng lượng TB thực tế (kg)",
 		"target_box_qty": "Số thùng cần đóng",
 		"target_item_qty": "Số đôi cần đóng",
 		"weighed_box_qty": "Số thùng đã cân",
