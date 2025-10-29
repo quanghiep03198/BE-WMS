@@ -1,6 +1,6 @@
 import { Api, AuthGuard, HttpMethod, User } from '@/common/decorators'
 import { ZodValidationPipe } from '@/common/pipes'
-import { Body, Controller, HttpStatus } from '@nestjs/common'
+import { Body, Controller, HttpStatus, Param } from '@nestjs/common'
 import { ChangePasswordDTO, changePasswordValidator, UpdateProfileDTO, updateProfileValidator } from '../dto/user.dto'
 import { UserService } from '../services/user.service'
 
@@ -46,5 +46,22 @@ export class UserController {
 	@AuthGuard()
 	async getUserFactory(@User('id') id: number) {
 		return await this.userService.getUserCompany(+id)
+	}
+
+	@Api({
+		endpoint: 'admin/user-management',
+		method: HttpMethod.GET
+	})
+	@AuthGuard()
+	async getUserAdmin() {
+		return await this.userService.getUserAdmin()
+	}
+
+	@Api({
+		endpoint: 'admin/user-management/delete/:id',
+		method: HttpMethod.DELETE
+	})
+	async softDeleteUserAdmin(@Param('id') id: string) {
+		return await this.userService.softDeleteUserAdmin(+id)
 	}
 }

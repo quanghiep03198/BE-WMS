@@ -19,6 +19,8 @@ export const changePasswordValidator = z.object({
 	password: z.string().min(1, { message: 'This field is required' })
 })
 
+export const updateUserAdmin = z.object({})
+
 export type RegisterDTO = z.infer<typeof registerValidator>
 export type UpdateProfileDTO = z.infer<typeof updateProfileValidator>
 export type ChangePasswordDTO = z.infer<typeof changePasswordValidator>

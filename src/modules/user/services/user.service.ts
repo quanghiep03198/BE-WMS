@@ -123,4 +123,36 @@ export class UserService extends BaseAbstractService<UserEntity> {
 			})
 		)
 	}
+
+	async getUserAdmin(): Promise<any> {
+		const users = await this.syscloudDataSource
+			.createQueryBuilder()
+			.select([
+				'u.keyid AS keyid',
+				'u.isactive AS isactive',
+				'u.user_code AS user_code',
+				'u.user_password AS user_password',
+				'u.user_password_updated AS user_password_updated',
+				'u.current_dept_code AS current_dept_code',
+				'u.remark AS remark',
+				'u.employee_code AS employee_code',
+				'u.role AS role',
+				'e.employee_name AS employee_name',
+				'e.sex AS sex',
+				'e.birthday AS birthday',
+				'e.email AS email',
+				'e.dept_code AS dept_code'
+			])
+			.from('ts_user', 'u')
+			.leftJoin('ts_employee', 'e', 'u.employee_code = e.employee_code')
+			.getRawMany()
+
+		return users
+	}
+
+	async softDeleteUserAdmin(id: number): Promise<any> {
+		return await this.syscloudDataSource.query('UPDATE ts_user SET isactive = @0 WHERE keyid = @1', ['N', id])
+	}
+
+	// async updateUserAdmin()
 }
