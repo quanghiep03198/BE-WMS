@@ -6,7 +6,7 @@ import { genSaltSync, hashSync } from 'bcrypt'
 import { stringify } from 'node:querystring'
 import { DataSource, Repository } from 'typeorm'
 import { BaseAbstractService } from '../../_base/base.abstract.service'
-import { ChangePasswordDTO, RegisterDTO, UpdateProfileDTO } from '../dto/user.dto'
+import { ChangePasswordDTO, RegisterDTO, UpdateProfileDTO, UpdateUserAdminDTO } from '../dto/user.dto'
 import { EmployeeEntity } from '../entities/employee.entity'
 import { UserEntity } from '../entities/user.entity'
 
@@ -154,5 +154,55 @@ export class UserService extends BaseAbstractService<UserEntity> {
 		return await this.syscloudDataSource.query('UPDATE ts_user SET isactive = @0 WHERE keyid = @1', ['N', id])
 	}
 
-	// async updateUserAdmin()
+	async updateUserAdmin(data: UpdateUserAdminDTO) {
+		try {
+			await this.syscloudDataSource.query(
+				`
+			UPDATE ts_user
+			SET 
+				isactive = @0,
+				user_code = @1,
+				employee_code = @2,
+				user_password = @3,
+				role = @4,
+				updated = GETDATE()
+			WHERE keyid = @5
+			`,
+				[
+					data.isactive,
+					data.user_code,
+					data.employee_code,
+					data.user_password,
+					data.role === '' ? null : data.role,
+					data.keyid
+				]
+			)
+
+			await this.syscloudDataSource.query(
+				`
+			UPDATE ts_employee
+			SET 
+				isactive = @0,
+				employee_name = @1,
+				email = @2,
+				sex = @3,
+				birthday = @4,
+				updated = GETDATE()
+			WHERE employee_code = @5
+			`,
+				[
+					data.isactive,
+					data.employee_name,
+					data.email === '' ? null : data.email,
+					data.sex,
+					data.birthday ?? null,
+					data.employee_code
+				]
+			)
+
+			return { message: 'User updated successfully' }
+		} catch (error) {
+			throw new Error('Failed to update user')
+		}
+	}
 }

@@ -1,7 +1,14 @@
 import { Api, AuthGuard, HttpMethod, User } from '@/common/decorators'
 import { ZodValidationPipe } from '@/common/pipes'
 import { Body, Controller, HttpStatus, Param } from '@nestjs/common'
-import { ChangePasswordDTO, changePasswordValidator, UpdateProfileDTO, updateProfileValidator } from '../dto/user.dto'
+import {
+	ChangePasswordDTO,
+	changePasswordValidator,
+	UpdateProfileDTO,
+	updateProfileValidator,
+	updateUserAdmin,
+	UpdateUserAdminDTO
+} from '../dto/user.dto'
 import { UserService } from '../services/user.service'
 
 @Controller()
@@ -61,7 +68,20 @@ export class UserController {
 		endpoint: 'admin/user-management/delete/:id',
 		method: HttpMethod.DELETE
 	})
+	@AuthGuard()
 	async softDeleteUserAdmin(@Param('id') id: string) {
 		return await this.userService.softDeleteUserAdmin(+id)
+	}
+
+	@Api({
+		endpoint: 'admin/user-management/update/:id',
+		method: HttpMethod.PATCH
+	})
+	async updateUserAdmin(
+		@Param('id') id: string,
+		@Body(new ZodValidationPipe(updateUserAdmin)) payload: UpdateUserAdminDTO
+	) {
+		console.log(payload)
+		await this.userService.updateUserAdmin(payload)
 	}
 }
