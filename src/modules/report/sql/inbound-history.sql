@@ -8,7 +8,7 @@
    CAST(COALESCE(b.mo_totalqty, 0) AS INT) AS mo_qty,
    COUNT(DISTINCT a.EPC_Code) AS inbound_qty,
    CAST(a.record_time AS DATE) AS inbound_date
-   FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet_backup_Daily a
+   FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet_backup_Daily a WITH (NOLOCK)
    LEFT JOIN wuerp_vnrd.dbo.ta_manufacturmst b ON a.mo_no = b.mo_no AND b.isactive = 'Y'
    LEFT JOIN wuerp_vnrd.dbo.ta_manufacturdet c ON c.mo_no = b.mo_no AND c.isactive = 'Y'
    LEFT JOIN wuerp_vnrd.dbo.ta_ordermst d ON   c.or_no = c.or_no AND d.isactive = 'Y'
@@ -34,9 +34,5 @@
 ORDER BY CAST(a.record_time AS DATE) DESC
 OPTION (
    OPTIMIZE FOR UNKNOWN,
-   MAXDOP 4,
-   FAST 100,
-   RECOMPILE
+   KEEPFIXED PLAN
 )
-
-
