@@ -50,9 +50,10 @@ export class PermissionController {
 
 	@Api({
 		endpoint: '/soft-delete/:id',
-		method: HttpMethod.POST
+		method: HttpMethod.DELETE
 	})
 	async softDeletePermission(@Param('id') id: string) {
+		console.log(id)
 		return await this.permissionService.softDeleteOneById(+id)
 	}
 
