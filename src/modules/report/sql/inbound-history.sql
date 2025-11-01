@@ -25,7 +25,7 @@ SELECT
    e.color_sn + '/' + UPPER(e.mat_ecolor) AS color,
    CAST(COALESCE(b.mo_totalqty, 0) AS INT) AS mo_qty,
    COUNT(DISTINCT a.EPC_Code) AS accumulated_inbound_qty,
-   (SELECT * FROM CTE FOR JSON PATH ) AS inbound_history 
+   (SELECT * FROM CTE FOR JSON PATH) AS inbound_history 
 FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet_backup_Daily a WITH (NOLOCK)
 LEFT JOIN wuerp_vnrd.dbo.ta_manufacturmst b ON a.mo_no = b.mo_no AND b.isactive = 'Y'
 LEFT JOIN wuerp_vnrd.dbo.ta_manufacturdet c ON c.mo_no = b.mo_no AND c.isactive = 'Y'
@@ -47,3 +47,6 @@ GROUP BY
    g.brand_name,
    f.shoestyle_codecust + '/' + f.shoestyle_codefactory,
    e.color_sn + '/' + UPPER(e.mat_ecolor)
+OPTION (
+   OPTIMIZE FOR (@0 UNKNOWN)
+)
