@@ -34,6 +34,7 @@ export class PermissionController {
 		method: HttpMethod.POST
 	})
 	async storePermission(@Body(new ZodValidationPipe(storePermissionValidator)) payload: StorePermissionDTO) {
+		console.log(payload)
 		return await this.permissionService.insertOne(payload)
 	}
 
@@ -45,6 +46,9 @@ export class PermissionController {
 		@Param('id') id: string,
 		@Body(new ZodValidationPipe(updatePermissionValidator)) payload: UpdatePermissionDTO
 	) {
+		if (payload.parent_id) {
+			payload.parent_id = Number(payload.parent_id)
+		}
 		return await this.permissionService.updateOneById(+id, payload)
 	}
 

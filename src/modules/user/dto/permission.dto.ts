@@ -1,7 +1,14 @@
+import { RecordStatus } from '@/databases/constants'
 import { UserRoles } from '@/modules/user/constants'
 import { z } from 'zod'
 
 export const storePermissionValidator = z.object({
+	is_active: z
+		.nativeEnum(RecordStatus, {
+			required_error: 'Record status is required',
+			invalid_type_error: 'Invalid record status'
+		})
+		.default(RecordStatus.ACTIVE),
 	permission_name: z
 		.string({
 			required_error: 'Permission name is required',
@@ -19,9 +26,17 @@ export const storePermissionValidator = z.object({
 		.default(UserRoles.USER),
 
 	parent_id: z
-		.union([z.number().int({ message: 'Parent ID must be an integer' }), z.null(), z.literal('')])
-		.transform((val) => (val === '' ? null : val))
-		.default(null)
+		.union([z.string(), z.number(), z.null()])
+		.transform((val) => {
+			if (val === null || val === '') return null
+
+			if (typeof val === 'number') return val
+
+			const parsed = Number(val)
+			return isNaN(parsed) ? null : parsed
+		})
+		.default(null),
+	remark: z.string().nullable().optional()
 })
 
 export const updatePermissionValidator = storePermissionValidator.partial()
