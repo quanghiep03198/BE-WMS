@@ -1,5 +1,6 @@
 import { ExcelColorPalette } from '@/common/constants/excel-color-palette'
 import { type AutoFitColumnOptions, autoFitColumns } from '@/common/helpers'
+import { SuperJson } from '@/common/utils'
 import { TENANCY_DATA_SOURCE } from '@/modules/tenancy/constants'
 import { Inject, Injectable } from '@nestjs/common'
 import { REQUEST } from '@nestjs/core'
@@ -50,7 +51,21 @@ export class InboundReportService {
 	}
 
 	public async getInboundHistory(commandNumber: string) {
-		return await this.dataSource.query<IInboundHistory[]>(this.inboundHistoryQuery, [commandNumber])
+		return await this.dataSource
+			.query<IInboundHistory[]>(this.inboundHistoryQuery, [commandNumber])
+			.then((result) => result.at(0))
+			.then((result) => {
+				if (!result) return null
+				return {
+					...result,
+					missing_qty: result.mo_qty - result.accumulated_inbound_qty,
+					progress: ((result.accumulated_inbound_qty / result.mo_qty) * 100).toFixed(2) + '%',
+					inbound_history: SuperJson.parse<Exclude<IInboundHistory['inbound_history'], string>>(
+						result.inbound_history,
+						1
+					)
+				}
+			})
 	}
 
 	async exportDailyInboundToExcel(reportType: 'daily-productivity' | 'shaping-department-productivity', date: string) {

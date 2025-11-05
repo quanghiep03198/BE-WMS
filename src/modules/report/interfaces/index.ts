@@ -83,14 +83,23 @@ export type IDailyPackingReport = Array<{
 }>
 
 export interface IInboundHistory {
+	factory_code_produce: string
 	mo_no: string
 	brand_name: string
 	shoe_style: string
-	color_sn: string
+	color: string
 	mo_qty: number
-	inbound_qty: number
-	inbound_date: Date
+	accumulated_inbound_qty: number
+	progress: number
+	inbound_history:
+		| string
+		| Array<{
+				size_numcode: string
+				qty: number
+				inbound_date: Date
+		  }>
 }
+
 export interface IOutboundHistory {
 	po: string
 	po_qty: number
