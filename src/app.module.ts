@@ -29,6 +29,7 @@ import { RFIDModule } from './modules/rfid/rfid.module'
 import { StatisticModule } from './modules/statistic/statistic.module'
 import { TenancyModule } from './modules/tenancy/tenancy.module'
 import { ThirdPartyApiModule } from './modules/third-party-api/third-party-api.module'
+import { TruckloadDeliveryModule } from './modules/truckload-delivery/truckload-delivery.module'
 import { UserModule } from './modules/user/user.module'
 import { WarehouseModule } from './modules/warehouse/warehouse.module'
 import { RedisModule } from './redis/redis.module'
@@ -105,7 +106,8 @@ import { RedisModule } from './redis/redis.module'
 		WarehouseModule,
 		DefectiveGoodsModule,
 		ProductSpecificationModule,
-		StatisticModule
+		StatisticModule,
+		TruckloadDeliveryModule
 	],
 	controllers: [AppController],
 	providers: [
