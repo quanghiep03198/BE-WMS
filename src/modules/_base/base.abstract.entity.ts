@@ -1,5 +1,5 @@
 import { format } from 'date-fns'
-import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm'
+import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, TableColumnOptions, UpdateDateColumn } from 'typeorm'
 import { RecordStatus } from '../../databases/constants'
 
 @Entity()
@@ -30,4 +30,16 @@ export abstract class BaseAbstractEntity {
 
 	@Column({ type: 'nvarchar', length: 255, nullable: true })
 	remark: string | null
+
+	public static readonly BASE_COLUMNS: TableColumnOptions[] = [
+		{ name: 'keyid', type: 'int', isPrimary: true, isGenerated: true, generationStrategy: 'increment' },
+		{ name: 'user_code_created', type: 'nvarchar', length: '50', isNullable: true },
+		{ name: 'user_name_created', type: 'nvarchar', length: '50', isNullable: true },
+		{ name: 'user_code_updated', type: 'nvarchar', length: '50', isNullable: true },
+		{ name: 'user_name_updated', type: 'nvarchar', length: '50', isNullable: true },
+		{ name: 'created', type: 'datetime', default: 'CURRENT_TIMESTAMP', isNullable: true },
+		{ name: 'updated', type: 'datetime', isNullable: true, onUpdate: 'CURRENT_TIMESTAMP' },
+		{ name: 'isactive', type: 'varchar', length: '1', isNullable: false, default: "'Y'" },
+		{ name: 'remark', type: 'nvarchar', length: '255', isNullable: true }
+	]
 }
