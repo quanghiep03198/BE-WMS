@@ -11,6 +11,8 @@ export const createDeliveryDTO = z.object({
 })
 
 export const updateDeliveryDTO = createDeliveryDTO.partial()
+export const deleteManyTruckloadDeliveryRecordDTO = z.array(z.number().int().nonnegative())
 
 export type CreateDeliveryDTO = z.infer<typeof createDeliveryDTO>
 export type UpdateDeliveryDTO = z.infer<typeof updateDeliveryDTO>
+export type DeleteManyTruckloadDeliveryRecordDTO = z.infer<typeof deleteManyTruckloadDeliveryRecordDTO>
