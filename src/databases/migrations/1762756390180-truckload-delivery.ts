@@ -23,20 +23,20 @@ export class TruckloadDelivery1762756390180 implements MigrationInterface {
 				name: 'license_plate',
 				type: 'nvarchar',
 				length: '50',
-				isNullable: false,
+				isNullable: true,
 				comment: 'Vehicle license plate number'
 			},
 			{
 				name: 'container_number',
 				type: 'nvarchar',
 				length: '50',
-				isNullable: false,
+				isNullable: true,
 				comment: 'Container number for the truckload delivery'
 			},
 			{
 				name: 'factory_departure_time',
 				type: 'datetime',
-				isNullable: false,
+				isNullable: true,
 				default: 'CURRENT_TIMESTAMP',
 				comment: 'The departure time from the factory'
 			},
@@ -46,6 +46,14 @@ export class TruckloadDelivery1762756390180 implements MigrationInterface {
 				isNullable: false,
 				default: 0,
 				comment: 'Quantity of goods outbound in this truckload delivery'
+			},
+			{
+				name: 'status',
+				type: 'nvarchar',
+				isNullable: false,
+				default: 'pending',
+				enum: ['pending', 'confirmed'],
+				comment: 'Status of truckload delivery record'
 			}
 		]
 	})

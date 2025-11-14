@@ -22,7 +22,7 @@ export class TruckloadDeliveryEntity extends BaseAbstractEntity {
 		name: 'license_plate',
 		type: 'nvarchar',
 		length: 50,
-		nullable: false,
+		nullable: true,
 		comment: 'Vehicle license plate number'
 	})
 	license_plate: string
@@ -31,7 +31,7 @@ export class TruckloadDeliveryEntity extends BaseAbstractEntity {
 		name: 'container_number',
 		type: 'nvarchar',
 		length: 50,
-		nullable: false,
+		nullable: true,
 		comment: 'Container number for the truckload delivery'
 	})
 	container_number: string
@@ -39,7 +39,7 @@ export class TruckloadDeliveryEntity extends BaseAbstractEntity {
 	@Column({
 		name: 'factory_departure_time',
 		type: 'datetime',
-		nullable: false,
+		nullable: true,
 		default: 'CURRENT_TIMESTAMP',
 		comment: 'The departure time from the factory'
 	})
@@ -53,6 +53,16 @@ export class TruckloadDeliveryEntity extends BaseAbstractEntity {
 		comment: 'Quantity of goods outbound in this truckload delivery'
 	})
 	outbound_qty: number
+
+	@Column({
+		name: 'status',
+		type: 'int',
+		nullable: false,
+		enum: ['pending', 'confirmed'],
+		default: 'pending',
+		comment: 'Quantity of goods outbound in this truckload delivery'
+	})
+	status: 'pending' | 'confirmed'
 
 	@BeforeInsert()
 	toUpperCase() {
