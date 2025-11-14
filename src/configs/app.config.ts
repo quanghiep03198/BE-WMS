@@ -1,4 +1,4 @@
-import { env } from '@/common/utils'
+import { env, stringToBoolean } from '@/common/utils'
 import { DATABASE_SCHEMA } from '@/databases/constants'
 import { createKeyv, type RedisClientOptions } from '@keyv/redis'
 import { type BullRootModuleOptions } from '@nestjs/bullmq'
@@ -183,15 +183,19 @@ export const appConfigFactory: ConfigFactory = () => ({
 							append: true
 						}
 					},
-					{
-						target: 'pino-loki',
-						options: {
-							host: env<string>('GRAFANA_LOKI_URL'),
-							labels: { service_name: 'WMS-API' },
-							batching: true,
-							translateTime: 'SYS:yyyy-mm-dd HH:MM:ss.l'
-						}
-					}
+					...(env<boolean>('ENABLE_LOKI_LOGGER', { fallbackValue: false, serialize: stringToBoolean })
+						? [
+								{
+									target: 'pino-loki',
+									options: {
+										host: env<string>('GRAFANA_LOKI_URL'),
+										labels: { service_name: 'WMS-API' },
+										batching: true,
+										translateTime: 'SYS:yyyy-mm-dd HH:MM:ss.l'
+									}
+								}
+							]
+						: [])
 				]
 			}
 		}

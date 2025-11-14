@@ -4,12 +4,13 @@ import { NestFactory } from '@nestjs/core'
 import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify'
 import { Logger } from 'nestjs-pino'
 import { AppModule } from './app.module'
-import { env } from './common/utils'
+import { env, stringToBoolean } from './common/utils'
 import './instrument'
 
 async function bootstrap() {
 	try {
 		const isProduction = env<RuntimeEnvironment>('NODE_ENV') === 'production'
+		const isLokiEnabled = env<boolean>('ENABLE_LOKI_LOGGER', { fallbackValue: false, serialize: stringToBoolean })
 
 		const app = await NestFactory.create<NestFastifyApplication>(
 			AppModule,
@@ -17,10 +18,10 @@ async function bootstrap() {
 				logger: {
 					name: 'WMS-API',
 					transport: {
-						target: isProduction ? 'pino-loki' : 'pino-pretty',
+						target: isLokiEnabled ? 'pino-loki' : 'pino-pretty',
 						options: {
 							translateTime: 'SYS:yyyy-mm-dd HH:MM:ss.l',
-							...(isProduction && {
+							...(isLokiEnabled && {
 								host: env<string>('GRAFANA_LOKI_URL'),
 								labels: { service_name: 'WMS-API' },
 								batching: true
