@@ -48,12 +48,25 @@ export class OrderService {
 	}
 
 	async searchPurchaseOrder(searchTerm: string): Promise<Array<{ po: string; is_completed: boolean }>> {
-		return await this.dataSourceTNC
+		const outboundQtyCte = this.dataSourceTNC
 			.createQueryBuilder()
-			.select(/* SQL */ `DISTINCT TOP 5 IIF(ISNULL(a.or_custpoone, '') = '', a.or_custpo, a.or_custpoone)`, 'po')
+			.select('po')
+			.addSelect(/* SQL */ `COUNT(DISTINCT EPC_Code)`, 'accumulated_outbound_qty')
+			.from('DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet_backup_Daily', 'b')
+			.where(/* SQL */ `rfid_status = '${InventoryActions.OUTBOUND}'`)
+			.andWhere(/* SQL */ `RIGHT(stationNO, 3) = '103'`)
+			.andWhere(/* SQL */ `po LIKE '%${searchTerm}%'`)
+			.groupBy('po')
+
+		const queryBuilder = this.dataSourceTNC
+			.createQueryBuilder()
+			.addCommonTableExpression(outboundQtyCte.getQuery(), 'outbound_cte')
+			.select(/* SQL */ `TOP 5 IIF(ISNULL(a.or_custpoone, '') = '', a.or_custpo, a.or_custpoone)`, 'po')
+			.addSelect(/* SQL */ `SUM(a.or_totalqty) - SUM(a.or_totalcqty)`, 'po_qty')
+			.addSelect(/* SQL */ `ISNULL(MAX(b.accumulated_outbound_qty), 0)`, 'accumulated_outbound_qty')
 			.addSelect(
 				/* SQL */ `
-					CASE WHEN CAST(SUM(a.or_totalqty) - SUM(a.or_totalcqty) - COUNT(DISTINCT b.EPC_Code) AS INT) = 0
+					CASE WHEN CAST(SUM(a.or_totalqty) - SUM(a.or_totalcqty) - ISNULL(MAX(b.accumulated_outbound_qty), 0) AS INT) = 0
 						THEN CAST(1 AS BIT)
 						ELSE CAST(0 AS BIT)
 					END`,
@@ -61,14 +74,7 @@ export class OrderService {
 			)
 			.from('wuerp_vnrd.dbo.ta_ordermst', 'a')
 			.leftJoin(
-				(qb) =>
-					qb
-						.subQuery()
-						.select(['EPC_Code', 'po'])
-						.from('DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet_backup_Daily', 'b')
-						.where(/* SQL */ `rfid_status = '${InventoryActions.OUTBOUND}'`)
-						.andWhere(/* SQL */ `RIGHT(stationNO, 3) = '103'`)
-						.andWhere(/* SQL */ `po LIKE '%${searchTerm}%'`),
+				'outbound_cte',
 				'b',
 				/* SQL */ `IIF(ISNULL(a.or_custpoone, '') = '', a.or_custpo, a.or_custpoone) = b.po`
 			)
@@ -82,8 +88,11 @@ export class OrderService {
 			)
 			.andWhere(/* SQL */ `IIF(ISNULL(a.or_custpoone, '') = '', a.or_custpo, a.or_custpoone) LIKE '%${searchTerm}%'`)
 			.groupBy(/* SQL */ `IIF(ISNULL(a.or_custpoone, '') = '', a.or_custpo, a.or_custpoone)`)
-			.orderBy(/* SQL */ `IIF(ISNULL(a.or_custpoone, '') = '', a.or_custpo, a.or_custpoone)`, 'ASC')
-			.getRawMany<{ po: string; is_completed: boolean }>()
+			.orderBy(/* SQL */ `po`, 'ASC')
+			.addOrderBy(/* SQL */ `po_qty`, 'ASC')
+			.addOrderBy(/* SQL */ `accumulated_outbound_qty`, 'ASC')
+
+		return await queryBuilder.getRawMany<{ po: string; is_completed: boolean }>()
 	}
 
 	async getPurchaseOrderSizeRun(purchaseOrder: string) {
