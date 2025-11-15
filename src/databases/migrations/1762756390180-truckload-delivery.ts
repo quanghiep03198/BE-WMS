@@ -36,8 +36,7 @@ export class TruckloadDelivery1762756390180 implements MigrationInterface {
 			{
 				name: 'factory_departure_time',
 				type: 'datetime',
-				isNullable: false,
-				default: 'CURRENT_TIMESTAMP',
+				isNullable: true,
 				comment: 'The departure time from the factory'
 			},
 			{
