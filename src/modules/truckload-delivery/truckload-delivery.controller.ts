@@ -1,7 +1,9 @@
-import { Api, HttpMethod } from '@/common/decorators'
+import { Api, AuthGuard, HttpMethod, User } from '@/common/decorators'
 import { ZodValidationPipe } from '@/common/pipes'
 import { Body, Controller, HttpStatus, Param, ParseBoolPipe, ParseIntPipe, Query } from '@nestjs/common'
+import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
 import { DeleteManyByIdsDTO, deleteManyByIdsDTO } from '../_base/dto/base.dto'
+import { UserEntity } from '../user/entities/user.entity'
 import {
 	CreateDeliveryDTO,
 	createDeliveryDTO,
@@ -12,12 +14,16 @@ import { DeliveryService } from './truckload-delivery.service'
 
 @Controller('truckload-delivery')
 export class TruckloadDeliveryController {
-	constructor(private readonly deliveryService: DeliveryService) {}
+	constructor(
+		@InjectPinoLogger(TruckloadDeliveryController.name) private readonly logger: PinoLogger,
+		private readonly deliveryService: DeliveryService
+	) {}
 
 	@Api({
 		method: HttpMethod.GET,
 		message: 'common.ok'
 	})
+	@AuthGuard()
 	async getAll() {
 		return await this.deliveryService.findAll()
 	}
@@ -28,8 +34,15 @@ export class TruckloadDeliveryController {
 		statusCode: HttpStatus.CREATED,
 		message: 'common.created'
 	})
-	async insertOne(@Body(new ZodValidationPipe(createDeliveryDTO)) payload: CreateDeliveryDTO) {
-		return await this.deliveryService.insertOne(payload)
+	@AuthGuard()
+	async insertMany(
+		@User() user: UserEntity,
+		@Body(new ZodValidationPipe(createDeliveryDTO)) payload: CreateDeliveryDTO
+	) {
+		this.logger.debug(user)
+		return await this.deliveryService.insertMany(
+			payload.map((item) => ({ ...item, user_code_created: user?.username }))
+		)
 	}
 
 	@Api({
@@ -38,6 +51,7 @@ export class TruckloadDeliveryController {
 		statusCode: HttpStatus.OK,
 		message: 'common.created'
 	})
+	@AuthGuard()
 	async updateOne(
 		@Param('id', new ParseIntPipe()) id: number,
 		@Body(new ZodValidationPipe(updateDeliveryDTO)) payload: UpdateDeliveryDTO
@@ -49,9 +63,13 @@ export class TruckloadDeliveryController {
 		endpoint: 'delete/:id',
 		method: HttpMethod.DELETE
 	})
-	async deleteOne(@Param('id', ParseIntPipe) id: number, @Query('permanantly', ParseBoolPipe) permanently?: true) {
-		if (permanently) return await this.deliveryService.deleteOneById(id)
-		else return await this.deliveryService.softDeleteOneById(id)
+	@AuthGuard()
+	async deleteOne(
+		@Param('id', ParseIntPipe) id: number
+		// @Query('permanantly', ParseBoolPipe) permanently?: true
+	) {
+		return await this.deliveryService.deleteOneById(id)
+		// else return await this.deliveryService.softDeleteOneById(id)
 	}
 
 	@Api({
@@ -60,6 +78,7 @@ export class TruckloadDeliveryController {
 		statusCode: HttpStatus.NO_CONTENT,
 		message: 'common.deleted'
 	})
+	@AuthGuard()
 	async deleteMany(
 		@Body('ids', new ZodValidationPipe(deleteManyByIdsDTO)) ids: DeleteManyByIdsDTO,
 		@Query('permanantly', ParseBoolPipe) permanently?: true
@@ -83,6 +102,7 @@ export class TruckloadDeliveryController {
 		statusCode: HttpStatus.OK,
 		message: 'common.ok'
 	})
+	@AuthGuard()
 	async restoreMany(@Body('ids') ids: number[]) {
 		return await this.deliveryService.restoreManyByIds(ids)
 	}

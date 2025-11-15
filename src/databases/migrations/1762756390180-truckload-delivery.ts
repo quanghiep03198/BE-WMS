@@ -1,12 +1,13 @@
 import { BaseAbstractEntity } from '@/modules/_base/base.abstract.entity'
+import { TruckloadDeliveryStatus } from '@/modules/truckload-delivery/constants'
 import { MigrationInterface, QueryRunner, Table, TableIndex } from 'typeorm'
-import { DATABASE_DATA_LAKE } from '../constants'
+import { DATABASE_DATA_LAKE, DATABASE_SCHEMA } from '../constants'
 
 export class TruckloadDelivery1762756390180 implements MigrationInterface {
 	private readonly tableSchema = new Table({
-		name: 'dv_truckload_delivery',
 		database: DATABASE_DATA_LAKE,
-		schema: 'dbo',
+		schema: DATABASE_SCHEMA,
+		name: 'dv_truckload_delivery',
 		columns: [
 			...BaseAbstractEntity.BASE_COLUMNS.map((col) => {
 				if (col.name === 'keyid') return { ...col, primaryKeyConstraintName: 'PK_dv_truckload_delivery' }
@@ -23,21 +24,20 @@ export class TruckloadDelivery1762756390180 implements MigrationInterface {
 				name: 'license_plate',
 				type: 'nvarchar',
 				length: '50',
-				isNullable: false,
+				isNullable: true,
 				comment: 'Vehicle license plate number'
 			},
 			{
 				name: 'container_number',
 				type: 'nvarchar',
 				length: '50',
-				isNullable: false,
+				isNullable: true,
 				comment: 'Container number for the truckload delivery'
 			},
 			{
 				name: 'factory_departure_time',
 				type: 'datetime',
-				isNullable: false,
-				default: 'CURRENT_TIMESTAMP',
+				isNullable: true,
 				comment: 'The departure time from the factory'
 			},
 			{
@@ -46,6 +46,14 @@ export class TruckloadDelivery1762756390180 implements MigrationInterface {
 				isNullable: false,
 				default: 0,
 				comment: 'Quantity of goods outbound in this truckload delivery'
+			},
+			{
+				name: 'status',
+				type: 'nvarchar',
+				length: '20',
+				isNullable: false,
+				enum: Object.values(TruckloadDeliveryStatus),
+				comment: 'Status of the truckload delivery'
 			}
 		]
 	})
@@ -63,6 +71,6 @@ export class TruckloadDelivery1762756390180 implements MigrationInterface {
 
 	public async down(queryRunner: QueryRunner): Promise<void> {
 		await queryRunner.dropPrimaryKey(this.tableSchema, 'PK_dv_truckload_delivery')
-		await queryRunner.dropTable(this.tableSchema, true)
+		await queryRunner.dropTable(this.tableSchema, true, true, true)
 	}
 }

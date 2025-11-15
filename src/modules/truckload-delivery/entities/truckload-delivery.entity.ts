@@ -1,6 +1,7 @@
 import { DATABASE_DATA_LAKE, DATABASE_SCHEMA } from '@/databases/constants'
 import { BaseAbstractEntity } from '@/modules/_base/base.abstract.entity'
-import { BeforeInsert, Column, Entity, Index } from 'typeorm'
+import { BeforeInsert, BeforeUpdate, Column, Entity, Index } from 'typeorm'
+import { TruckloadDeliveryStatus } from '../constants'
 
 @Entity({
 	name: 'dv_truckload_delivery',
@@ -22,7 +23,7 @@ export class TruckloadDeliveryEntity extends BaseAbstractEntity {
 		name: 'license_plate',
 		type: 'nvarchar',
 		length: 50,
-		nullable: false,
+		nullable: true,
 		comment: 'Vehicle license plate number'
 	})
 	license_plate: string
@@ -31,7 +32,7 @@ export class TruckloadDeliveryEntity extends BaseAbstractEntity {
 		name: 'container_number',
 		type: 'nvarchar',
 		length: 50,
-		nullable: false,
+		nullable: true,
 		comment: 'Container number for the truckload delivery'
 	})
 	container_number: string
@@ -39,8 +40,7 @@ export class TruckloadDeliveryEntity extends BaseAbstractEntity {
 	@Column({
 		name: 'factory_departure_time',
 		type: 'datetime',
-		nullable: false,
-		default: 'CURRENT_TIMESTAMP',
+		nullable: true,
 		comment: 'The departure time from the factory'
 	})
 	factory_departure_time: Date
@@ -54,8 +54,24 @@ export class TruckloadDeliveryEntity extends BaseAbstractEntity {
 	})
 	outbound_qty: number
 
+	@Column({
+		name: 'status',
+		type: 'nvarchar',
+		length: 20,
+		nullable: false,
+		enum: TruckloadDeliveryStatus,
+		default: TruckloadDeliveryStatus.PENDING,
+		comment: 'Status of the truckload delivery'
+	})
+	status: TruckloadDeliveryStatus
+
 	@BeforeInsert()
+	setDefaultStatus() {
+		if (!this.status) this.status = TruckloadDeliveryStatus.PENDING
+	}
+
+	@BeforeUpdate()
 	toUpperCase() {
-		this.license_plate = this.license_plate.toUpperCase()
+		if (this.license_plate) this.license_plate = this.license_plate.toUpperCase()
 	}
 }
