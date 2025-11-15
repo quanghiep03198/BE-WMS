@@ -41,6 +41,10 @@ export class TruckloadDeliveryEntity extends BaseAbstractEntity {
 		name: 'factory_departure_time',
 		type: 'datetime',
 		nullable: true,
+<<<<<<< HEAD
+=======
+		default: 'CURRENT_TIMESTAMP',
+>>>>>>> 935a5d29fa1aa39bb887da5e3df305048882eba6
 		comment: 'The departure time from the factory'
 	})
 	factory_departure_time: Date

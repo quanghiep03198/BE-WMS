@@ -1,5 +1,4 @@
 import { BaseAbstractEntity } from '@/modules/_base/base.abstract.entity'
-import { TruckloadDeliveryStatus } from '@/modules/truckload-delivery/constants'
 import { MigrationInterface, QueryRunner, Table, TableIndex } from 'typeorm'
 import { DATABASE_DATA_LAKE, DATABASE_SCHEMA } from '../constants'
 
@@ -37,7 +36,8 @@ export class TruckloadDelivery1762756390180 implements MigrationInterface {
 			{
 				name: 'factory_departure_time',
 				type: 'datetime',
-				isNullable: true,
+				isNullable: false,
+				default: 'CURRENT_TIMESTAMP',
 				comment: 'The departure time from the factory'
 			},
 			{
@@ -46,14 +46,6 @@ export class TruckloadDelivery1762756390180 implements MigrationInterface {
 				isNullable: false,
 				default: 0,
 				comment: 'Quantity of goods outbound in this truckload delivery'
-			},
-			{
-				name: 'status',
-				type: 'nvarchar',
-				length: '20',
-				isNullable: false,
-				enum: Object.values(TruckloadDeliveryStatus),
-				comment: 'Status of the truckload delivery'
 			}
 		]
 	})
