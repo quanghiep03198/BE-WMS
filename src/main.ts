@@ -2,6 +2,8 @@ import { RequestMethod, VersioningType } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { NestFactory } from '@nestjs/core'
 import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify'
+import { FastifyReply } from 'fastify/types/reply'
+import { FastifyRequest } from 'fastify/types/request'
 import { Logger } from 'nestjs-pino'
 import { AppModule } from './app.module'
 import { env, stringToBoolean } from './common/utils'
@@ -17,6 +19,32 @@ async function bootstrap() {
 			new FastifyAdapter({
 				logger: {
 					name: 'WMS-API',
+					customLevels: {
+						info: 0,
+						debug: 1,
+						trace: 2,
+						warn: 3,
+						error: 4,
+						fatal: 5
+					},
+					useOnlyCustomLevels: true,
+					hooks: {
+						logMethod(args: Array<any>, method) {
+							// * Skip logging for Prometheus metrics endpoint if disabled
+							const requestLogConfig = args.at(0) as {
+								req: FastifyRequest
+								res: FastifyReply
+							}
+							const isPrometheusLogEnabled = env<boolean>('ENABLE_PROMETHEUS_METRICS_LOGGER', {
+								fallbackValue: false,
+								serialize: stringToBoolean
+							})
+							const endpoint = requestLogConfig?.res?.request.raw?.url ?? requestLogConfig?.req?.url
+							const isMetricsEndpoint = endpoint === '/metrics'
+							if (!isPrometheusLogEnabled && isMetricsEndpoint) return
+							return method.apply(this, args)
+						}
+					},
 					transport: {
 						target: isLokiEnabled ? 'pino-loki' : 'pino-pretty',
 						options: {
