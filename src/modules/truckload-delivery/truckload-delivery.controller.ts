@@ -1,12 +1,15 @@
 import { Api, AuthGuard, HttpMethod, User } from '@/common/decorators'
 import { ZodValidationPipe } from '@/common/pipes'
-import { Body, Controller, HttpStatus, Param, ParseBoolPipe, ParseIntPipe, Query } from '@nestjs/common'
+import { Body, Controller, HttpStatus, Param, ParseIntPipe } from '@nestjs/common'
+import { pick } from 'lodash'
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
-import { DeleteManyByIdsDTO, deleteManyByIdsDTO } from '../_base/dto/base.dto'
 import { UserEntity } from '../user/entities/user.entity'
+import { TruckloadDeliveryStatus } from './constants'
 import {
 	CreateDeliveryDTO,
 	createDeliveryDTO,
+	SetDeliveryStatusDTO,
+	setDeliveryStatusDTO,
 	updateDeliveryDTO,
 	UpdateDeliveryDTO
 } from './dto/truckload-delivery.dto'
@@ -41,7 +44,11 @@ export class TruckloadDeliveryController {
 	) {
 		this.logger.debug(user)
 		return await this.deliveryService.insertMany(
-			payload.map((item) => ({ ...item, user_code_created: user?.username }))
+			payload.outbound_purchase_orders.map((item) => ({
+				...pick(payload, ['license_plate', 'container_number']),
+				...item,
+				user_code_created: user?.username
+			}))
 		)
 	}
 
@@ -56,6 +63,7 @@ export class TruckloadDeliveryController {
 		@Param('id', new ParseIntPipe()) id: number,
 		@Body(new ZodValidationPipe(updateDeliveryDTO)) payload: UpdateDeliveryDTO
 	) {
+		this.logger.debug(payload)
 		return await this.deliveryService.updateOneById(id, payload)
 	}
 
@@ -73,37 +81,17 @@ export class TruckloadDeliveryController {
 	}
 
 	@Api({
-		endpoint: 'delete-multiple',
-		method: HttpMethod.POST,
-		statusCode: HttpStatus.NO_CONTENT,
-		message: 'common.deleted'
+		endpoint: 'set-status/:id',
+		method: HttpMethod.PATCH,
+		message: 'common.ok'
 	})
-	@AuthGuard()
-	async deleteMany(
-		@Body('ids', new ZodValidationPipe(deleteManyByIdsDTO)) ids: DeleteManyByIdsDTO,
-		@Query('permanantly', ParseBoolPipe) permanently?: true
+	async restoreOne(
+		@Param('id', ParseIntPipe) id: number,
+		@Body(new ZodValidationPipe(setDeliveryStatusDTO)) payload: SetDeliveryStatusDTO
 	) {
-		if (permanently) return await this.deliveryService.deleteManyByIds(ids)
-		else return await this.deliveryService.softDeleteManyByIds(ids)
-	}
-
-	@Api({
-		endpoint: 'restore/:id',
-		method: HttpMethod.POST,
-		message: 'common.ok'
-	})
-	async restoreOne(@Param('id', ParseIntPipe) id: number) {
-		return await this.deliveryService.restoreOneById(id)
-	}
-
-	@Api({
-		endpoint: 'restore-multiple',
-		method: HttpMethod.POST,
-		statusCode: HttpStatus.OK,
-		message: 'common.ok'
-	})
-	@AuthGuard()
-	async restoreMany(@Body('ids') ids: number[]) {
-		return await this.deliveryService.restoreManyByIds(ids)
+		return await this.deliveryService.updateOneById(id, {
+			status: payload.status,
+			...(payload.status === TruckloadDeliveryStatus.CONFIRMED && { factory_departure_time: new Date() })
+		})
 	}
 }
