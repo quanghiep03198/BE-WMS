@@ -11,6 +11,14 @@ import { TruckloadDeliveryStatus } from '../constants'
 })
 export class TruckloadDeliveryEntity extends BaseAbstractEntity {
 	@Column({
+		name: 'bucket_id',
+		type: 'int',
+		nullable: false,
+		comment: 'Bucket ID for grouping deliveries'
+	})
+	bucket_id: number
+
+	@Column({
 		name: 'po',
 		type: 'nvarchar',
 		length: 20,
