@@ -1,8 +1,10 @@
+import { CommonRequestHeader } from '@/common/constants'
 import { Api, AuthGuard, HttpMethod, User } from '@/common/decorators'
 import { ZodValidationPipe } from '@/common/pipes'
-import { Body, Controller, HttpStatus, Param, ParseIntPipe } from '@nestjs/common'
+import { Body, Controller, Headers, HttpStatus, Param, ParseIntPipe } from '@nestjs/common'
 import { pick } from 'lodash'
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
+import { FactoryAgencyCode } from '../department/constants'
 import { UserEntity } from '../user/entities/user.entity'
 import { TruckloadDeliveryStatus } from './constants'
 import {
@@ -40,13 +42,16 @@ export class TruckloadDeliveryController {
 	@AuthGuard()
 	async insertMany(
 		@User() user: UserEntity,
+		@Headers(CommonRequestHeader.FACTORY_CODE) factory_code: string,
 		@Body(new ZodValidationPipe(createDeliveryDTO)) payload: CreateDeliveryDTO
 	) {
-		this.logger.debug(user)
+		const nextDispatchCode = await this.deliveryService.generateDispatchCode(FactoryAgencyCode[factory_code])
 		return await this.deliveryService.insertMany(
 			payload.outbound_purchase_orders.map((item) => ({
 				...pick(payload, ['license_plate', 'container_number']),
 				...item,
+				dispatch_order: nextDispatchCode,
+				factory_code,
 				user_code_created: user?.username
 			}))
 		)

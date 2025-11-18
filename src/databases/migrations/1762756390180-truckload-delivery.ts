@@ -1,6 +1,6 @@
 import { BaseAbstractEntity } from '@/modules/_base/base.abstract.entity'
 import { TruckloadDeliveryStatus } from '@/modules/truckload-delivery/constants'
-import { MigrationInterface, QueryRunner, Table } from 'typeorm'
+import { MigrationInterface, QueryRunner, Table, TableIndex } from 'typeorm'
 import { DATABASE_DATA_LAKE, DATABASE_SCHEMA } from '../constants'
 
 export class TruckloadDelivery1762756390180 implements MigrationInterface {
@@ -14,10 +14,19 @@ export class TruckloadDelivery1762756390180 implements MigrationInterface {
 				else return col
 			}),
 			{
-				name: 'bucket_id',
-				type: 'int',
+				name: 'dispatch_order',
+				type: 'nvarchar',
+				length: '50',
 				isNullable: false,
-				comment: 'Bucket ID for grouping deliveries'
+				comment:
+					'Dispatch order code for the truckload delivery. Format: DO-YYYYMMDD-XXX, where DO (Dispatch Order), YYYYMMDD is the create date, and XXX is a daily sequential number.'
+			},
+			{
+				name: 'factory_code',
+				type: 'nvarchar',
+				length: '10',
+				isNullable: false,
+				comment: 'Code of the factory from which the delivery is dispatched'
 			},
 			{
 				name: 'license_plate',
@@ -66,6 +75,18 @@ export class TruckloadDelivery1762756390180 implements MigrationInterface {
 
 	public async up(queryRunner: QueryRunner): Promise<void> {
 		await queryRunner.createTable(this.tableSchema, true)
+		await queryRunner.createIndices(this.tableSchema, [
+			new TableIndex({
+				name: 'IDX_dispatch_order',
+				columnNames: ['dispatch_order'],
+				isUnique: false
+			}),
+			new TableIndex({
+				name: 'IDX_truckload_delivery_po',
+				columnNames: ['po'],
+				isUnique: false
+			})
+		])
 	}
 
 	public async down(queryRunner: QueryRunner): Promise<void> {

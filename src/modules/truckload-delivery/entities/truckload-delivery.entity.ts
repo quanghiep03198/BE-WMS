@@ -10,13 +10,25 @@ import { TruckloadDeliveryStatus } from '../constants'
 	synchronize: true
 })
 export class TruckloadDeliveryEntity extends BaseAbstractEntity {
+	@Index('IDX_delivery_dispatch_code', { unique: false })
 	@Column({
-		name: 'bucket_id',
-		type: 'int',
+		name: 'dispatch_order',
+		type: 'nvarchar',
+		length: 50,
 		nullable: false,
-		comment: 'Bucket ID for grouping deliveries'
+		comment:
+			'Dispatch order code for the truckload delivery. Format: DO-FTR-YYYYMMDD-XXX, where DO (Dispatch Order), YYYYMMDD is the create date, and XXX is a daily sequential number.'
 	})
-	bucket_id: number
+	dispatch_order: string
+
+	@Column({
+		name: 'factory_code',
+		type: 'nvarchar',
+		length: 10,
+		nullable: false,
+		comment: 'Code of the factory from which the delivery is dispatched'
+	})
+	factory_code: string
 
 	@Column({
 		name: 'po',
@@ -24,7 +36,7 @@ export class TruckloadDeliveryEntity extends BaseAbstractEntity {
 		length: 20,
 		nullable: false
 	})
-	@Index('IDX_delivery_po')
+	@Index('IDX_truckload_delivery_po')
 	po: string
 
 	@Column({
