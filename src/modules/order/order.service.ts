@@ -63,6 +63,9 @@ export class OrderService {
 			.addCommonTableExpression(outboundQtyCte.getQuery(), 'outbound_cte')
 			.select(/* SQL */ `TOP 5 IIF(ISNULL(a.or_custpoone, '') = '', a.or_custpo, a.or_custpoone)`, 'po')
 			.addSelect(/* SQL */ `SUM(a.or_totalqty) - SUM(a.or_totalcqty)`, 'po_qty')
+			.addSelect('c.color_sn', 'color_sn')
+			.addSelect('d.shoestyle_codefactory', 'factory_shoes_style')
+			.addSelect('e.brand_name', 'brand_name')
 			.addSelect(/* SQL */ `ISNULL(MAX(b.accumulated_outbound_qty), 0)`, 'accumulated_outbound_qty')
 			.addSelect(
 				/* SQL */ `
@@ -78,6 +81,30 @@ export class OrderService {
 				'b',
 				/* SQL */ `IIF(ISNULL(a.or_custpoone, '') = '', a.or_custpo, a.or_custpoone) = b.po`
 			)
+			.leftJoin(
+				(qb) =>
+					qb
+						.select('mat_code', 'mat_code')
+						.addSelect('color_sn', 'color_sn')
+						.addSelect('shoestyle_systemcodefty', 'shoestyle_systemcodefty')
+						.from('wuerp_vnrd.dbo.ta_productmst', 'c'),
+				'c',
+				'c.mat_code = a.mat_code'
+			)
+			.leftJoin(
+				(qb) =>
+					qb
+						.select('shoestyle_codefactory', 'shoestyle_codefactory')
+						.addSelect('shoestyle_systemcodefty', 'shoestyle_systemcodefty')
+						.from('wuerp_vnrd.dbo.ta_shoefactorymst', 'd'),
+				'd',
+				'd.shoestyle_systemcodefty = c.shoestyle_systemcodefty'
+			)
+			.leftJoin(
+				(qb) => qb.select('custbrand_id').addSelect('brand_name').from('wuerp_vnrd.dbo.ta_brand', 'e'),
+				'e',
+				'e.custbrand_id = a.custbrand_id'
+			)
 			.where(/* SQL */ `a.isactive = 'Y'`)
 			.andWhere(
 				/* SQL */ `a.custbrand_id IN (
@@ -88,6 +115,9 @@ export class OrderService {
 			)
 			.andWhere(/* SQL */ `IIF(ISNULL(a.or_custpoone, '') = '', a.or_custpo, a.or_custpoone) LIKE '%${searchTerm}%'`)
 			.groupBy(/* SQL */ `IIF(ISNULL(a.or_custpoone, '') = '', a.or_custpo, a.or_custpoone)`)
+			.addGroupBy('e.brand_name')
+			.addGroupBy('d.shoestyle_codefactory')
+			.addGroupBy('c.color_sn')
 			.orderBy(/* SQL */ `po`, 'ASC')
 			.addOrderBy(/* SQL */ `po_qty`, 'ASC')
 			.addOrderBy(/* SQL */ `accumulated_outbound_qty`, 'ASC')

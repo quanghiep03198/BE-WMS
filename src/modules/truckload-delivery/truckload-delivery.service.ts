@@ -4,14 +4,22 @@ import { Injectable } from '@nestjs/common'
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm'
 import { format } from 'date-fns'
 import { padStart } from 'lodash'
+import { readFileSync } from 'node:fs'
+import { join, resolve } from 'node:path'
 import { Between, DataSource, Repository } from 'typeorm'
 import { BaseAbstractService } from '../_base/base.abstract.service'
 import { FactoryAgencyCode } from '../department/constants'
+import { UpdateDeliveryDTO, UpsertPurchaseOrdersDTO } from './dto/truckload-delivery.dto'
 import { TruckloadDeliveryEntity } from './entities/truckload-delivery.entity'
 import type { TruckloadDeliveryDispatchOrder } from './types'
 
 @Injectable()
-export class DeliveryService extends BaseAbstractService<TruckloadDeliveryEntity> {
+export class TruckloadDeliveryService extends BaseAbstractService<TruckloadDeliveryEntity> {
+	private readonly upsertPurchaseOrderDeliveryQuery: string = readFileSync(
+		resolve(join(__dirname, './sql/upsert-purchase-orders.sql')),
+		'utf-8'
+	)
+
 	constructor(
 		@InjectRepository(TruckloadDeliveryEntity, DATA_SOURCE_DATA_LAKE)
 		private readonly deliveryRepository: Repository<TruckloadDeliveryEntity>,
@@ -24,8 +32,10 @@ export class DeliveryService extends BaseAbstractService<TruckloadDeliveryEntity
 		// Optimized CTE with callback joins for cross-database queries
 		const deliveryDetailsCte = this.dataSource
 			.createQueryBuilder()
-			.select('a.dispatch_order', 'dispatch_order')
+			.select('a.id', 'id')
+			.addSelect('a.dispatch_order', 'dispatch_order')
 			.addSelect('a.po', 'po')
+			.addSelect('e.brand_name', 'brand_name')
 			.addSelect('d.shoestyle_codefactory', 'factory_shoes_style')
 			.addSelect('c.color_sn', 'color_sn')
 			.addSelect('a.outbound_qty', 'outbound_qty')
@@ -35,6 +45,7 @@ export class DeliveryService extends BaseAbstractService<TruckloadDeliveryEntity
 					qb
 						.select(/* SQL */ `IIF(ISNULL(or_custpoone, '') = '', or_custpo, or_custpoone)`, 'po')
 						.addSelect('mat_code', 'mat_code')
+						.addSelect('custbrand_id', 'custbrand_id')
 						.from('wuerp_vnrd.dbo.ta_ordermst', 'b'),
 				'b',
 				/* SQL */ `a.po = b.po`
@@ -58,6 +69,11 @@ export class DeliveryService extends BaseAbstractService<TruckloadDeliveryEntity
 				'd',
 				'd.shoestyle_systemcodefty = c.shoestyle_systemcodefty'
 			)
+			.leftJoin(
+				(qb) => qb.select('custbrand_id').addSelect('brand_name').from('wuerp_vnrd.dbo.ta_brand', 'e'),
+				'e',
+				'e.custbrand_id = b.custbrand_id'
+			)
 
 		return await this.deliveryRepository
 			.createQueryBuilder('a')
@@ -71,7 +87,7 @@ export class DeliveryService extends BaseAbstractService<TruckloadDeliveryEntity
 			.addSelect('a.status', 'status')
 			.addSelect(
 				/* SQL */ `(
-					SELECT dd.po, dd.factory_shoes_style, dd.color_sn, dd.outbound_qty
+					SELECT dd.id, dd.po, dd.brand_name, dd.factory_shoes_style, dd.color_sn, dd.outbound_qty
 					FROM delivery_details dd
 					WHERE dd.dispatch_order = a.dispatch_order
 					FOR JSON PATH
@@ -101,6 +117,7 @@ export class DeliveryService extends BaseAbstractService<TruckloadDeliveryEntity
 					delivery_details: SuperJson.parse<
 						Array<{
 							po: string
+							brand_name: string
 							factory_shoes_style: string
 							color_sn: string
 							outbound_qty: number
@@ -113,6 +130,16 @@ export class DeliveryService extends BaseAbstractService<TruckloadDeliveryEntity
 	public override async insertMany(payload: Partial<TruckloadDeliveryEntity>[]) {
 		const entities = payload.map((item) => this.deliveryRepository.create(item))
 		return await this.deliveryRepository.insert(entities)
+	}
+
+	public async bulkUpdateByDispatchOrder(dispatchOrder: string, payload: UpdateDeliveryDTO) {
+		return await this.deliveryRepository.update({ dispatch_order: dispatchOrder }, payload)
+	}
+
+	public async upsertPurchaseOrderDeliveries(dispatchOrder: string, payload: UpsertPurchaseOrdersDTO) {
+		return await this.dataSource.query(this.upsertPurchaseOrderDeliveryQuery, [
+			JSON.stringify(payload.map((item) => ({ ...item, dispatch_order: dispatchOrder })))
+		])
 	}
 
 	/**

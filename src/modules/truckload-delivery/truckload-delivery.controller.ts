@@ -13,15 +13,17 @@ import {
 	SetDeliveryStatusDTO,
 	setDeliveryStatusDTO,
 	updateDeliveryDTO,
-	UpdateDeliveryDTO
+	UpdateDeliveryDTO,
+	UpsertPurchaseOrdersDTO,
+	upsertPurchaseOrdersDTO
 } from './dto/truckload-delivery.dto'
-import { DeliveryService } from './truckload-delivery.service'
+import { TruckloadDeliveryService } from './truckload-delivery.service'
 
 @Controller('truckload-delivery')
 export class TruckloadDeliveryController {
 	constructor(
 		@InjectPinoLogger(TruckloadDeliveryController.name) private readonly logger: PinoLogger,
-		private readonly deliveryService: DeliveryService
+		private readonly deliveryService: TruckloadDeliveryService
 	) {}
 
 	@Api({
@@ -58,18 +60,42 @@ export class TruckloadDeliveryController {
 	}
 
 	@Api({
-		endpoint: 'update/:id',
-		method: HttpMethod.PATCH,
+		endpoint: 'bulk-update/:dispatchOrder',
+		method: HttpMethod.PUT,
 		statusCode: HttpStatus.OK,
 		message: 'common.created'
 	})
 	@AuthGuard()
-	async updateOne(
-		@Param('id', new ParseIntPipe()) id: number,
+	async bulkUpdateByDispatchOrder(
+		@Param('dispatchOrder') dispatchOrder: string,
 		@Body(new ZodValidationPipe(updateDeliveryDTO)) payload: UpdateDeliveryDTO
 	) {
 		this.logger.debug(payload)
-		return await this.deliveryService.updateOneById(id, payload)
+		return await this.deliveryService.bulkUpdateByDispatchOrder(dispatchOrder, payload)
+	}
+	@Api({
+		endpoint: 'upsert-purchase-orders/:dispatchOrder',
+		method: HttpMethod.PUT,
+		statusCode: HttpStatus.OK,
+		message: 'common.created'
+	})
+	@AuthGuard()
+	async upsertPurchaseOrders(
+		@Param('dispatchOrder') dispatchOrder: string,
+		@Headers(CommonRequestHeader.FACTORY_CODE) factory_code: string,
+		@User() user: UserEntity,
+		@Body(new ZodValidationPipe(upsertPurchaseOrdersDTO)) payload: UpsertPurchaseOrdersDTO
+	) {
+		this.logger.debug(payload)
+		return await this.deliveryService.upsertPurchaseOrderDeliveries(
+			dispatchOrder,
+			payload.map((item) => ({
+				...item,
+				factory_code,
+				user_code_updated: user?.username,
+				user_name_updated: user?.username
+			}))
+		)
 	}
 
 	@Api({

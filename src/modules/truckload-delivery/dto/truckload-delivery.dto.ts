@@ -18,20 +18,32 @@ export const createDeliveryDTO = z.object({
 })
 
 export const updateDeliveryDTO = z.object({
-	po: z.string().trim().nonempty().optional(),
 	license_plate: z.string().nonempty().optional(),
 	container_number: z
 		.string()
 		.nonempty()
 		.transform((value) => value.toLocaleUpperCase())
-		.optional(),
-	outbound_qty: z.number().int().nonnegative().optional()
+		.optional()
 })
 
 export const setDeliveryStatusDTO = z.object({
 	status: z.enum([TruckloadDeliveryStatus.CONFIRMED, TruckloadDeliveryStatus.REQUEST_CHANGE])
 })
 
+export const upsertPurchaseOrdersDTO = z
+	.object({
+		outbound_purchase_orders: z.array(
+			z.object({
+				id: z.number().nullable().default(null),
+				po: z.string().trim().nonempty(),
+				outbound_qty: z.number().int().positive(),
+				max_outbound_qty: z.number().nonnegative().default(Infinity)
+			})
+		)
+	})
+	.transform((data) => data.outbound_purchase_orders)
+
 export type CreateDeliveryDTO = z.infer<typeof createDeliveryDTO>
 export type UpdateDeliveryDTO = z.infer<typeof updateDeliveryDTO>
 export type SetDeliveryStatusDTO = z.infer<typeof setDeliveryStatusDTO>
+export type UpsertPurchaseOrdersDTO = z.infer<typeof upsertPurchaseOrdersDTO>
