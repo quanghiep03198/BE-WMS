@@ -3,10 +3,8 @@ import { Api, AuthGuard, HttpMethod, User } from '@/common/decorators'
 import { ZodValidationPipe } from '@/common/pipes'
 import { Body, Controller, Headers, HttpStatus, Param, ParseIntPipe } from '@nestjs/common'
 import { pick } from 'lodash'
-import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
 import { FactoryAgencyCode } from '../department/constants'
 import { UserEntity } from '../user/entities/user.entity'
-import { TruckloadDeliveryStatus } from './constants'
 import {
 	CreateDeliveryDTO,
 	createDeliveryDTO,
@@ -21,10 +19,7 @@ import { TruckloadDeliveryService } from './truckload-delivery.service'
 
 @Controller('truckload-delivery')
 export class TruckloadDeliveryController {
-	constructor(
-		@InjectPinoLogger(TruckloadDeliveryController.name) private readonly logger: PinoLogger,
-		private readonly deliveryService: TruckloadDeliveryService
-	) {}
+	constructor(private readonly deliveryService: TruckloadDeliveryService) {}
 
 	@Api({
 		method: HttpMethod.GET,
@@ -47,82 +42,89 @@ export class TruckloadDeliveryController {
 		@Headers(CommonRequestHeader.FACTORY_CODE) factory_code: string,
 		@Body(new ZodValidationPipe(createDeliveryDTO)) payload: CreateDeliveryDTO
 	) {
-		const nextDispatchCode = await this.deliveryService.generateDispatchCode(FactoryAgencyCode[factory_code])
+		const nextDispatchCode = await this.deliveryService.private(FactoryAgencyCode[factory_code])
 		return await this.deliveryService.insertMany(
 			payload.outbound_purchase_orders.map((item) => ({
 				...pick(payload, ['license_plate', 'container_number']),
 				...item,
 				dispatch_order: nextDispatchCode,
 				factory_code,
-				user_code_created: user?.username
+				user_code_created: user?.username,
+				user_name_created: user?.username
 			}))
 		)
 	}
 
 	@Api({
 		endpoint: 'bulk-update/:dispatchOrder',
-		method: HttpMethod.PUT,
-		statusCode: HttpStatus.OK,
-		message: 'common.created'
+		method: HttpMethod.PATCH,
+		statusCode: HttpStatus.CREATED,
+		message: 'common.updated'
 	})
 	@AuthGuard()
 	async bulkUpdateByDispatchOrder(
 		@Param('dispatchOrder') dispatchOrder: string,
 		@Body(new ZodValidationPipe(updateDeliveryDTO)) payload: UpdateDeliveryDTO
 	) {
-		this.logger.debug(payload)
 		return await this.deliveryService.bulkUpdateByDispatchOrder(dispatchOrder, payload)
 	}
 	@Api({
 		endpoint: 'upsert-purchase-orders/:dispatchOrder',
 		method: HttpMethod.PUT,
-		statusCode: HttpStatus.OK,
-		message: 'common.created'
+		statusCode: HttpStatus.CREATED,
+		message: 'common.updated'
 	})
 	@AuthGuard()
 	async upsertPurchaseOrders(
 		@Param('dispatchOrder') dispatchOrder: string,
 		@Headers(CommonRequestHeader.FACTORY_CODE) factory_code: string,
-		@User() user: UserEntity,
+		@User() user: Partial<UserEntity>,
 		@Body(new ZodValidationPipe(upsertPurchaseOrdersDTO)) payload: UpsertPurchaseOrdersDTO
 	) {
-		this.logger.debug(payload)
 		return await this.deliveryService.upsertPurchaseOrderDeliveries(
 			dispatchOrder,
 			payload.map((item) => ({
 				...item,
 				factory_code,
-				user_code_updated: user?.username,
-				user_name_updated: user?.username
+				user_code_created: user?.username,
+				user_code_updated: user?.username
 			}))
 		)
 	}
 
 	@Api({
 		endpoint: 'delete/:id',
-		method: HttpMethod.DELETE
+		method: HttpMethod.DELETE,
+		statusCode: HttpStatus.NO_CONTENT,
+		message: 'common.deleted'
 	})
 	@AuthGuard()
-	async deleteOne(
-		@Param('id', ParseIntPipe) id: number
-		// @Query('permanantly', ParseBoolPipe) permanently?: true
-	) {
+	async deleteOne(@Param('id', ParseIntPipe) id: number) {
 		return await this.deliveryService.deleteOneById(id)
-		// else return await this.deliveryService.softDeleteOneById(id)
 	}
 
 	@Api({
-		endpoint: 'set-status/:id',
+		endpoint: 'bulk-delete/:dispatchOrder',
+		method: HttpMethod.DELETE,
+		statusCode: HttpStatus.NO_CONTENT,
+		message: 'common.deleted'
+	})
+	@AuthGuard()
+	async bulkDelete(@Param('dispatchOrder') dispatchOrder: string) {
+		return await this.deliveryService.bulkDeleteByDispatchOrder(dispatchOrder)
+	}
+
+	@Api({
+		endpoint: 'set-status/:dispatchOrder',
 		method: HttpMethod.PATCH,
 		message: 'common.ok'
 	})
-	async restoreOne(
-		@Param('id', ParseIntPipe) id: number,
+	async updateDispatchOrderStatus(
+		@Param('dispatchOrder') dispatchOrder: string,
 		@Body(new ZodValidationPipe(setDeliveryStatusDTO)) payload: SetDeliveryStatusDTO
 	) {
-		return await this.deliveryService.updateOneById(id, {
-			status: payload.status,
-			...(payload.status === TruckloadDeliveryStatus.CONFIRMED && { factory_departure_time: new Date() })
+		return await this.deliveryService.updateDispatchOrderStatus(dispatchOrder, {
+			status: payload.status
 		})
 	}
 }

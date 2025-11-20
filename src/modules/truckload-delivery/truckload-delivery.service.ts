@@ -1,6 +1,6 @@
 import { SuperJson } from '@/common/utils'
 import { DATA_SOURCE_DATA_LAKE } from '@/databases/constants'
-import { Injectable } from '@nestjs/common'
+import { Injectable, NotFoundException } from '@nestjs/common'
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm'
 import { format } from 'date-fns'
 import { padStart } from 'lodash'
@@ -9,7 +9,8 @@ import { join, resolve } from 'node:path'
 import { Between, DataSource, Repository } from 'typeorm'
 import { BaseAbstractService } from '../_base/base.abstract.service'
 import { FactoryAgencyCode } from '../department/constants'
-import { UpdateDeliveryDTO, UpsertPurchaseOrdersDTO } from './dto/truckload-delivery.dto'
+import { TruckloadDeliveryStatus } from './constants'
+import { SetDeliveryStatusDTO, UpdateDeliveryDTO, UpsertPurchaseOrdersDTO } from './dto/truckload-delivery.dto'
 import { TruckloadDeliveryEntity } from './entities/truckload-delivery.entity'
 import type { TruckloadDeliveryDispatchOrder } from './types'
 
@@ -29,7 +30,6 @@ export class TruckloadDeliveryService extends BaseAbstractService<TruckloadDeliv
 	}
 
 	public override async findAll(): Promise<any> {
-		// Optimized CTE with callback joins for cross-database queries
 		const deliveryDetailsCte = this.dataSource
 			.createQueryBuilder()
 			.select('a.id', 'id')
@@ -82,7 +82,7 @@ export class TruckloadDeliveryService extends BaseAbstractService<TruckloadDeliv
 			.addSelect('a.license_plate', 'license_plate')
 			.addSelect('a.container_number', 'container_number')
 			.addSelect('a.user_code_created', 'user_code_created')
-			.addSelect('a.created', 'created')
+			.addSelect(/* SQL */ `CAST(a.created AS DATE)`, 'created')
 			.addSelect('a.factory_departure_time', 'factory_departure_time')
 			.addSelect('a.status', 'status')
 			.addSelect(
@@ -98,7 +98,7 @@ export class TruckloadDeliveryService extends BaseAbstractService<TruckloadDeliv
 			.addGroupBy('a.license_plate')
 			.addGroupBy('a.container_number')
 			.addGroupBy('a.user_code_created')
-			.addGroupBy('a.created')
+			.addGroupBy(/* SQL */ `CAST(a.created AS DATE)`)
 			.addGroupBy('a.factory_departure_time')
 			.addGroupBy('a.status')
 			.getRawMany<{
@@ -116,13 +116,14 @@ export class TruckloadDeliveryService extends BaseAbstractService<TruckloadDeliv
 					...row,
 					delivery_details: SuperJson.parse<
 						Array<{
+							id: number
 							po: string
 							brand_name: string
 							factory_shoes_style: string
 							color_sn: string
 							outbound_qty: number
 						}>
-					>(row.delivery_details, 1)
+					>(row.delivery_details, 1).sort((a, b) => a.id - b.id)
 				}))
 			)
 	}
@@ -136,13 +137,34 @@ export class TruckloadDeliveryService extends BaseAbstractService<TruckloadDeliv
 		return await this.deliveryRepository.update({ dispatch_order: dispatchOrder }, payload)
 	}
 
+	public async bulkDeleteByDispatchOrder(dispatchOrder: string) {
+		return await this.deliveryRepository.delete({ dispatch_order: dispatchOrder })
+	}
+
 	public async upsertPurchaseOrderDeliveries(dispatchOrder: string, payload: UpsertPurchaseOrdersDTO) {
+		const existedDispatchOrder = await this.deliveryRepository.findOne({
+			select: ['dispatch_order', 'license_plate', 'container_number', 'status'],
+			where: { dispatch_order: dispatchOrder }
+		})
+		if (!existedDispatchOrder) throw new NotFoundException(`Delivery with dispatch order ${dispatchOrder} not found`)
+
 		return await this.dataSource.query(this.upsertPurchaseOrderDeliveryQuery, [
-			JSON.stringify(payload.map((item) => ({ ...item, dispatch_order: dispatchOrder })))
+			JSON.stringify(payload.map((item) => ({ ...item, ...existedDispatchOrder })))
 		])
 	}
 
+	public async updateDispatchOrderStatus(dispatchOrder: string, payload: SetDeliveryStatusDTO) {
+		return await this.deliveryRepository.update(
+			{ dispatch_order: dispatchOrder },
+			{
+				...payload,
+				factory_departure_time: payload.status === TruckloadDeliveryStatus.CONFIRMED ? new Date() : null
+			}
+		)
+	}
+
 	/**
+	 * @private
 	 * @description Generates a new dispatch code in the format `DO-YYYYMMDD-XXX` where:
 	 * - `DO` is a fixed prefix
 	 * - `YYYYMMDD` is the create date
@@ -150,7 +172,7 @@ export class TruckloadDeliveryService extends BaseAbstractService<TruckloadDeliv
 	 *
 	 * @returns A promise that resolves to the generated dispatch code
 	 */
-	public async generateDispatchCode(factoryCode: FactoryAgencyCode): Promise<TruckloadDeliveryDispatchOrder> {
+	public async private(factoryCode: FactoryAgencyCode): Promise<TruckloadDeliveryDispatchOrder> {
 		const createDate = format(new Date(), 'yyyyMMdd')
 
 		const count: Awaited<number> = await this.deliveryRepository
