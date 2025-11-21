@@ -205,7 +205,6 @@ export class DefectiveGoodsService extends BaseAbstractService<DefectiveGoodsEnt
 			.addGroupBy('a.defective_category')
 			.addGroupBy('b.storage_location')
 			.setParameters({ isActive: RecordStatus.ACTIVE })
-		this.logger.debug(queryBuilder.getSql())
 
 		return await queryBuilder
 			.getRawMany<{
