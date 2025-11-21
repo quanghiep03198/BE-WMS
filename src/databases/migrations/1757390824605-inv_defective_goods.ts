@@ -1,3 +1,4 @@
+import { BaseAbstractEntity } from '@/modules/_base/base.abstract.entity'
 import {
 	DefectiveCategory,
 	DefectiveGoodsOutboundPurpose,
@@ -13,14 +14,10 @@ export class InvDefectiveGoods1757390824605 implements MigrationInterface {
 		name: 'dv_defective_goods',
 		comment: 'Defective goods table, including Grade B, Grade C and Research and development',
 		columns: [
-			{
-				name: 'keyid',
-				type: 'int',
-				isPrimary: true,
-				primaryKeyConstraintName: 'PK_dv_defective_goods',
-				isGenerated: true,
-				generationStrategy: 'increment'
-			},
+			...BaseAbstractEntity.BASE_COLUMNS.map((col) => {
+				if (col.name === 'keyid') return { ...col, primaryKeyConstraintName: 'PK_dv_defective_goods' }
+				else return col
+			}),
 			{
 				name: 'epc',
 				type: 'nvarchar',
@@ -102,24 +99,16 @@ export class InvDefectiveGoods1757390824605 implements MigrationInterface {
 				length: '20',
 				isNullable: true,
 				enum: Object.values(DefectiveGoodsOutboundPurpose) // SELL, GIVEAWAY, RECYCLE
-			},
-			{ name: 'user_code_created', type: 'nvarchar', length: '50', isNullable: true },
-			{ name: 'user_name_created', type: 'nvarchar', length: '50', isNullable: true },
-			{ name: 'user_code_updated', type: 'nvarchar', length: '50', isNullable: true },
-			{ name: 'user_name_updated', type: 'nvarchar', length: '50', isNullable: true },
-			{ name: 'created', type: 'datetime', default: 'CURRENT_TIMESTAMP', isNullable: true },
-			{ name: 'updated', type: 'datetime', isNullable: true, onUpdate: 'CURRENT_TIMESTAMP' },
-			{ name: 'isactive', type: 'varchar', length: '1', isNullable: false, default: "'Y'" },
-			{ name: 'remark', type: 'nvarchar', length: '255', isNullable: true }
+			}
 		]
 	})
 
 	public async up(queryRunner: QueryRunner): Promise<void> {
-		await queryRunner.createTable(this.tableSchema, true)
+		await queryRunner.createTable(this.tableSchema, true, false, true)
 	}
 
 	public async down(queryRunner: QueryRunner): Promise<void> {
 		await queryRunner.dropPrimaryKey(this.tableSchema.name)
-		await queryRunner.dropTable(this.tableSchema, false)
+		await queryRunner.dropTable(this.tableSchema, true, true, true)
 	}
 }
