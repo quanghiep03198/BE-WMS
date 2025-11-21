@@ -39,6 +39,8 @@ export class TruckloadDeliveryService extends BaseAbstractService<TruckloadDeliv
 			.addSelect('d.shoestyle_codefactory', 'factory_shoes_style')
 			.addSelect('c.color_sn', 'color_sn')
 			.addSelect('a.outbound_qty', 'outbound_qty')
+			.addSelect('a.user_code_created', 'user_code_created')
+			.addSelect('a.created', 'created')
 			.from('DV_DATA_LAKE.dbo.dv_truckload_delivery', 'a')
 			.leftJoin(
 				(qb) =>
@@ -81,13 +83,11 @@ export class TruckloadDeliveryService extends BaseAbstractService<TruckloadDeliv
 			.select('a.dispatch_order', 'dispatch_order')
 			.addSelect('a.license_plate', 'license_plate')
 			.addSelect('a.container_number', 'container_number')
-			.addSelect('a.user_code_created', 'user_code_created')
-			.addSelect(/* SQL */ `CAST(a.created AS DATE)`, 'created')
 			.addSelect('a.factory_departure_time', 'factory_departure_time')
 			.addSelect('a.status', 'status')
 			.addSelect(
 				/* SQL */ `(
-					SELECT dd.id, dd.po, dd.brand_name, dd.factory_shoes_style, dd.color_sn, dd.outbound_qty
+					SELECT dd.id, dd.po, dd.brand_name, dd.factory_shoes_style, dd.color_sn, dd.outbound_qty, dd.user_code_created, dd.created
 					FROM delivery_details dd
 					WHERE dd.dispatch_order = a.dispatch_order
 					FOR JSON PATH
@@ -97,16 +97,12 @@ export class TruckloadDeliveryService extends BaseAbstractService<TruckloadDeliv
 			.groupBy('a.dispatch_order')
 			.addGroupBy('a.license_plate')
 			.addGroupBy('a.container_number')
-			.addGroupBy('a.user_code_created')
-			.addGroupBy(/* SQL */ `CAST(a.created AS DATE)`)
 			.addGroupBy('a.factory_departure_time')
 			.addGroupBy('a.status')
 			.getRawMany<{
 				dispatch_order: string
 				license_plate: string
 				container_number: string
-				user_code_created: string
-				created: Date
 				factory_departure_time: Date
 				status: string
 				delivery_details: string
@@ -122,6 +118,8 @@ export class TruckloadDeliveryService extends BaseAbstractService<TruckloadDeliv
 							factory_shoes_style: string
 							color_sn: string
 							outbound_qty: number
+							user_code_created: string
+							created: Date
 						}>
 					>(row.delivery_details, 1).sort((a, b) => a.id - b.id)
 				}))

@@ -1,10 +1,10 @@
 MERGE INTO DV_DATA_LAKE.dbo.dv_truckload_delivery AS target
 USING (
    SELECT 
+      JSON_VALUE(value, '$.id') AS keyid,
       JSON_VALUE(value, '$.dispatch_order') AS dispatch_order,
       JSON_VALUE(value, '$.license_plate') AS license_plate,
       JSON_VALUE(value, '$.container_number') AS container_number,
-      JSON_VALUE(value, '$.id') AS keyid,
       JSON_VALUE(value, '$.po') AS po,
       JSON_VALUE(value, '$.factory_code') AS factory_code,
       JSON_VALUE(value, '$.status') AS status,
