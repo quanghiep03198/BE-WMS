@@ -68,6 +68,7 @@ export class TruckloadDelivery1762756390180 implements MigrationInterface {
 				length: '20',
 				isNullable: false,
 				enum: Object.values(TruckloadDeliveryStatus),
+				enumName: 'CHK_dv_truckload_delivery_status',
 				comment: 'Status of the truckload delivery'
 			}
 		]
