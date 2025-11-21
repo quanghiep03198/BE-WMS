@@ -19,7 +19,7 @@ export class TruckloadDelivery1762756390180 implements MigrationInterface {
 				length: '50',
 				isNullable: false,
 				comment:
-					'Dispatch order code for the truckload delivery. Format: DO-YYYYMMDD-XXX, where DO (Dispatch Order), YYYYMMDD is the create date, and XXX is a daily sequential number.'
+					'Dispatch order code for the truckload delivery. Format: FACTORY_CODE-EXP-YYYYMMDD-XXX, where FACTORY_CODE (GL1, GL3, GL4, ...), YYYYMMDD is the create date, and XXX is a daily sequential number.'
 			},
 			{
 				name: 'factory_code',
