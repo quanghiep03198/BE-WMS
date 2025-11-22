@@ -25,7 +25,6 @@ export class DefectiveGoodsEntity extends BaseAbstractEntity {
 		nullable: false,
 		type: 'nvarchar',
 		length: 24,
-		unique: true,
 		comment: 'Customer brand name of the defective goods'
 	})
 	brand_name: string
