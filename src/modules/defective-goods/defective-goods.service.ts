@@ -41,6 +41,8 @@ export class DefectiveGoodsService extends BaseAbstractService<DefectiveGoodsEnt
 			where: { epc: In(epcList), is_active: RecordStatus.ACTIVE }
 		})
 
+		const unknownEpcs = epcList.filter((item) => !data.some((d) => d.epc === item))
+
 		const groupedData = new Map<string, Map<string, number>>()
 
 		data.forEach((item) => {
@@ -55,7 +57,7 @@ export class DefectiveGoodsService extends BaseAbstractService<DefectiveGoodsEnt
 			sizeMap.set(sizeKey, (sizeMap.get(sizeKey) || 0) + 1)
 		})
 
-		return Array.from(groupedData.entries()).map(([group, sizes]) => {
+		const result = Array.from(groupedData.entries()).map(([group, sizes]) => {
 			const [factory_shoes_style, color_sn] = group.split('/')
 			return {
 				factory_shoes_style,
@@ -66,18 +68,30 @@ export class DefectiveGoodsService extends BaseAbstractService<DefectiveGoodsEnt
 				}))
 			}
 		})
+
+		if (unknownEpcs.length > 0)
+			result.push({
+				factory_shoes_style: null,
+				color_sn: null,
+				sizes: [{ size_code: null, qty: unknownEpcs.length }]
+			})
+
+		return result
 	}
 
 	public async updateInboundStatus(update: UpdateInboundStatusDTO) {
 		return await this.defectiveGoodRepository.update(
 			{ epc: In(update.epcs), is_active: RecordStatus.ACTIVE },
-			omit(update, ['epcs'])
+			{
+				storage_location: update.storage_location,
+				inbound_date: new Date()
+			}
 		)
 	}
 
-	public async updateOutboundStatus(update: UpdateOutboundStatusDTO) {
+	public async updateOutboundStatus({ epcs, ...update }: UpdateOutboundStatusDTO) {
 		const existsNotInbounded = await this.defectiveGoodRepository.existsBy({
-			epc: In(update.epcs),
+			epc: In(epcs),
 			is_active: RecordStatus.ACTIVE,
 			storage_location: IsNull(),
 			inbound_date: IsNull()
@@ -86,8 +100,8 @@ export class DefectiveGoodsService extends BaseAbstractService<DefectiveGoodsEnt
 		if (existsNotInbounded) throw new ConflictException(this.i18nService.t('inoutbound.notification.not_inbound_yet'))
 
 		return await this.defectiveGoodRepository.update(
-			{ epc: In(update.epcs) },
-			{ ...omit(update, ['epcs']), is_active: RecordStatus.INACTIVE }
+			{ epc: In(epcs) },
+			{ ...omit(update, ['epcs']), is_active: RecordStatus.INACTIVE, outbound_date: new Date() }
 		)
 	}
 
