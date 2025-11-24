@@ -10,6 +10,7 @@ import { I18nContext, I18nService } from 'nestjs-i18n'
 import { PinoLogger } from 'nestjs-pino'
 import { And, Between, DataSource, FindOptionsWhere, In, IsNull, Not, Repository } from 'typeorm'
 import { BaseAbstractService } from '../_base/base.abstract.service'
+import { FALLBACK_VALUE } from '../rfid/constants'
 import { TENANCY_DATA_SOURCE } from '../tenancy/constants'
 import { DeleteManyDefectiveGoodsDTO } from './dto/defective-goods.dto'
 import { UpdateInboundStatusDTO, UpdateOutboundStatusDTO } from './dto/inoutbound.dto'
@@ -71,9 +72,9 @@ export class DefectiveGoodsService extends BaseAbstractService<DefectiveGoodsEnt
 
 		if (unknownEpcs.length > 0)
 			result.push({
-				factory_shoes_style: null,
-				color_sn: null,
-				sizes: [{ size_code: null, qty: unknownEpcs.length }]
+				factory_shoes_style: FALLBACK_VALUE,
+				color_sn: FALLBACK_VALUE,
+				sizes: [{ size_code: FALLBACK_VALUE, qty: unknownEpcs.length }]
 			})
 
 		return result
