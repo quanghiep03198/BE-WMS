@@ -1,16 +1,17 @@
 import { SuperJson } from '@/common/utils'
-import { DATA_SOURCE_DATA_LAKE } from '@/databases/constants'
+import { DATA_SOURCE_DATA_LAKE, DATA_SOURCE_SYSCLOUD } from '@/databases/constants'
 import { Injectable, NotFoundException } from '@nestjs/common'
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm'
 import { format } from 'date-fns'
 import { padStart } from 'lodash'
+import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
 import { readFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
-import { Between, DataSource, Repository } from 'typeorm'
+import { DataSource, Repository } from 'typeorm'
 import { BaseAbstractService } from '../_base/base.abstract.service'
 import { FactoryAgencyCode } from '../department/constants'
 import { TruckloadDeliveryStatus } from './constants'
-import { SetDeliveryStatusDTO, UpdateDeliveryDTO, UpsertPurchaseOrdersDTO } from './dto/truckload-delivery.dto'
+import { UpdateDeliveryDTO, UpdateDispatchOrderStatusDTO, UpsertPurchaseOrdersDTO } from './dto/truckload-delivery.dto'
 import { TruckloadDeliveryEntity } from './entities/truckload-delivery.entity'
 import type { TruckloadDeliveryDispatchOrder } from './types'
 
@@ -24,13 +25,15 @@ export class TruckloadDeliveryService extends BaseAbstractService<TruckloadDeliv
 	constructor(
 		@InjectRepository(TruckloadDeliveryEntity, DATA_SOURCE_DATA_LAKE)
 		private readonly deliveryRepository: Repository<TruckloadDeliveryEntity>,
-		@InjectDataSource(DATA_SOURCE_DATA_LAKE) private readonly dataSource: DataSource
+		@InjectDataSource(DATA_SOURCE_DATA_LAKE) private readonly dataSourceDL: DataSource,
+		@InjectDataSource(DATA_SOURCE_SYSCLOUD) private readonly dataSourceSC: DataSource,
+		@InjectPinoLogger(TruckloadDeliveryService.name) private readonly logger: PinoLogger
 	) {
 		super(deliveryRepository)
 	}
 
 	public override async findAll(): Promise<any> {
-		const deliveryDetailsCte = this.dataSource
+		const deliveryDetailsCte = this.dataSourceDL
 			.createQueryBuilder()
 			.select('a.id', 'id')
 			.addSelect('a.dispatch_order', 'dispatch_order')
@@ -85,6 +88,7 @@ export class TruckloadDeliveryService extends BaseAbstractService<TruckloadDeliv
 			.addSelect('a.container_number', 'container_number')
 			.addSelect('a.factory_departure_time', 'factory_departure_time')
 			.addSelect('a.approval_status', 'approval_status')
+			.addSelect('a.security_name_reviewed', 'security_name_reviewed')
 			.addSelect(
 				/* SQL */ `(
 					SELECT dd.id, dd.po, dd.brand_name, dd.factory_shoes_style, dd.color_sn, dd.outbound_qty, dd.user_code_created, dd.created
@@ -99,6 +103,7 @@ export class TruckloadDeliveryService extends BaseAbstractService<TruckloadDeliv
 			.addGroupBy('a.container_number')
 			.addGroupBy('a.factory_departure_time')
 			.addGroupBy('a.approval_status')
+			.addGroupBy('a.security_name_reviewed')
 			.getRawMany<{
 				dispatch_order: string
 				license_plate: string
@@ -146,22 +151,38 @@ export class TruckloadDeliveryService extends BaseAbstractService<TruckloadDeliv
 		})
 		if (!existedDispatchOrder) throw new NotFoundException(`Delivery with dispatch order ${dispatchOrder} not found`)
 
-		return await this.dataSource.query(this.upsertPurchaseOrderDeliveryQuery, [
+		return await this.dataSourceDL.query(this.upsertPurchaseOrderDeliveryQuery, [
 			JSON.stringify(payload.map((item) => ({ ...item, ...existedDispatchOrder })))
 		])
 	}
 
-	public async updateDispatchOrderStatus(
-		dispatchOrder: string,
-		payload: SetDeliveryStatusDTO & { updatedBy: string }
-	) {
+	public async updateDispatchOrderStatus(dispatchOrder: string, payload: UpdateDispatchOrderStatusDTO) {
+		const existedSecurityEmployee = await this.dataSourceSC
+			.createQueryBuilder()
+			.select('a.employee_name', 'employee_name')
+			.addSelect('a.employee_code', 'employee_code')
+			.from('ts_employee', 'a')
+			.leftJoin('ts_employeedept', 'b', 'a.employee_code = b.employee_code')
+			.leftJoin('ts_dept', 'c', 'b.dept_code = c.dept_code')
+			.where('a.employee_code = :employeeCode', { employeeCode: payload.security_code_reviewed })
+			// .where('b.dept_name like :deptName', { deptName: '%保衛%' })
+			.getRawOne<{
+				employee_code: string
+				employee_name: string
+			}>()
+
+		if (!existedSecurityEmployee) throw new NotFoundException('Employee not found')
+
+		this.logger.debug(existedSecurityEmployee)
+
 		return await this.deliveryRepository.update(
 			{ dispatch_order: dispatchOrder },
 			{
-				...payload,
+				security_name_reviewed: existedSecurityEmployee.employee_name,
+				security_code_reviewed: existedSecurityEmployee.employee_code,
+				approval_status: payload.approval_status,
 				factory_departure_time: payload.approval_status === TruckloadDeliveryStatus.CONFIRMED ? new Date() : null,
-				last_approval_status_updated_by: payload.updatedBy,
-				last_approval_status_updated_at: new Date()
+				last_reviewed_at: new Date()
 			}
 		)
 	}
@@ -175,20 +196,15 @@ export class TruckloadDeliveryService extends BaseAbstractService<TruckloadDeliv
 	 *
 	 * @returns A promise that resolves to the generated dispatch code
 	 */
-	public async private(factoryCode: FactoryAgencyCode): Promise<TruckloadDeliveryDispatchOrder> {
+	public async getNextDispatchOrder(factoryCode: FactoryAgencyCode): Promise<TruckloadDeliveryDispatchOrder> {
 		const createDate = format(new Date(), 'yyyyMMdd')
 
 		const count: Awaited<number> = await this.deliveryRepository
-			.count({
-				where: {
-					created: Between(
-						new Date(new Date().setHours(0, 0, 0, 0)),
-						new Date(new Date().setHours(23, 59, 59, 999))
-					)
-				},
-				order: { dispatch_order: 'DESC', created: 'DESC' }
-			})
-			.catch(() => 0)
+			.createQueryBuilder()
+			.select(/* SQL */ `COUNT(DISTINCT dispatch_order)`, 'count')
+			.where(/* SQL */ `CAST(created AS DATE) = CAST(GETDATE() AS DATE)`)
+			.getRawOne<{ count: number }>()
+			.then((results) => results.count)
 
 		const sequenceNumber = padStart((count + 1).toString(), 3, '0')
 		return `${factoryCode}-EXP-${createDate}-${sequenceNumber}` satisfies TruckloadDeliveryDispatchOrder
