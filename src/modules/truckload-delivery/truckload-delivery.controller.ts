@@ -1,19 +1,17 @@
 import { CommonRequestHeader } from '@/common/constants'
 import { Api, AuthGuard, HttpMethod, User } from '@/common/decorators'
 import { ZodValidationPipe } from '@/common/pipes'
-import { Body, Controller, Headers, HttpStatus, Param, ParseIntPipe, UseGuards } from '@nestjs/common'
+import { Body, Controller, Headers, HttpStatus, Param, ParseIntPipe } from '@nestjs/common'
 import { pick } from 'lodash'
 import { FactoryAgencyCode } from '../department/constants'
-import { OtpSignatory } from '../otp/decorators/otp-signatory.decorator'
-import { OtpGuard } from '../otp/guards/otp.guard'
 import { UserEntity } from '../user/entities/user.entity'
 import {
 	CreateDeliveryDTO,
 	createDeliveryDTO,
-	SetDeliveryStatusDTO,
-	setDeliveryStatusDTO,
 	updateDeliveryDTO,
 	UpdateDeliveryDTO,
+	UpdateDispatchOrderStatusDTO,
+	updateDispatchOrderStatusDTO,
 	UpsertPurchaseOrdersDTO,
 	upsertPurchaseOrdersDTO
 } from './dto/truckload-delivery.dto'
@@ -44,7 +42,7 @@ export class TruckloadDeliveryController {
 		@Headers(CommonRequestHeader.FACTORY_CODE) factory_code: string,
 		@Body(new ZodValidationPipe(createDeliveryDTO)) payload: CreateDeliveryDTO
 	) {
-		const nextDispatchCode = await this.deliveryService.private(FactoryAgencyCode[factory_code])
+		const nextDispatchCode = await this.deliveryService.getNextDispatchOrder(FactoryAgencyCode[factory_code])
 		return await this.deliveryService.insertMany(
 			payload.outbound_purchase_orders.map((item) => ({
 				...pick(payload, ['license_plate', 'container_number']),
@@ -119,18 +117,14 @@ export class TruckloadDeliveryController {
 	@Api({
 		endpoint: 'set-status/:dispatchOrder',
 		method: HttpMethod.PATCH,
+		statusCode: HttpStatus.CREATED,
 		message: 'common.ok'
 	})
 	@AuthGuard()
-	@UseGuards(OtpGuard)
 	async updateDispatchOrderStatus(
 		@Param('dispatchOrder') dispatchOrder: string,
-		@OtpSignatory() signatory: string,
-		@Body(new ZodValidationPipe(setDeliveryStatusDTO)) payload: SetDeliveryStatusDTO
+		@Body(new ZodValidationPipe(updateDispatchOrderStatusDTO)) payload: UpdateDispatchOrderStatusDTO
 	) {
-		return await this.deliveryService.updateDispatchOrderStatus(dispatchOrder, {
-			approval_status: payload.approval_status,
-			updatedBy: signatory
-		})
+		return await this.deliveryService.updateDispatchOrderStatus(dispatchOrder, payload)
 	}
 }

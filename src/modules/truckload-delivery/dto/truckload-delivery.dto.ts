@@ -26,8 +26,12 @@ export const updateDeliveryDTO = z.object({
 		.optional()
 })
 
-export const setDeliveryStatusDTO = z.object({
-	approval_status: z.enum([TruckloadDeliveryStatus.CONFIRMED, TruckloadDeliveryStatus.REQUEST_CHANGE])
+export const updateDispatchOrderStatusDTO = z.object({
+	approval_status: z.enum([TruckloadDeliveryStatus.CONFIRMED, TruckloadDeliveryStatus.REQUEST_CHANGE]),
+	security_code_reviewed: z
+		.string()
+		.nonempty()
+		.transform((value) => value.toUpperCase())
 })
 
 export const upsertPurchaseOrdersDTO = z
@@ -45,5 +49,5 @@ export const upsertPurchaseOrdersDTO = z
 
 export type CreateDeliveryDTO = z.infer<typeof createDeliveryDTO>
 export type UpdateDeliveryDTO = z.infer<typeof updateDeliveryDTO>
-export type SetDeliveryStatusDTO = z.infer<typeof setDeliveryStatusDTO>
+export type UpdateDispatchOrderStatusDTO = z.infer<typeof updateDispatchOrderStatusDTO>
 export type UpsertPurchaseOrdersDTO = z.infer<typeof upsertPurchaseOrdersDTO>

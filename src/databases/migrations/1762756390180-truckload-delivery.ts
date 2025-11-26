@@ -72,17 +72,24 @@ export class TruckloadDelivery1762756390180 implements MigrationInterface {
 				comment: 'Status of the truckload delivery'
 			},
 			{
-				name: 'last_approval_status_updated_by',
+				name: 'security_name_reviewed',
 				type: 'nvarchar',
 				length: '255',
 				isNullable: true,
-				comment: 'The user who last updated the approval status'
+				comment: 'The name of the security personnel who last updated the approval status'
 			},
 			{
-				name: 'last_approval_status_updated_at',
+				name: 'security_code_reviewed',
+				type: 'nvarchar',
+				length: '255',
+				isNullable: true,
+				comment: 'The employee code of the security personnel who last updated the approval status'
+			},
+			{
+				name: 'last_reviewed_at',
 				type: 'datetime',
 				isNullable: true,
-				comment: 'The last time the approval status was updated'
+				comment: 'The last time security reviewed dispatch order information'
 			}
 		]
 	})

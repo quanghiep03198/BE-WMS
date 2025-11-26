@@ -86,21 +86,30 @@ export class TruckloadDeliveryEntity extends BaseAbstractEntity {
 	approval_status: TruckloadDeliveryStatus
 
 	@Column({
-		name: 'last_approval_status_updated_by',
+		name: 'security_name_reviewed',
 		type: 'nvarchar',
-		length: 255,
+		length: 50,
 		nullable: true,
 		comment: 'The user who last updated the approval status'
 	})
-	last_approval_status_updated_by: string
+	security_name_reviewed: string
 
 	@Column({
-		name: 'last_approval_status_updated_at',
+		name: 'security_code_reviewed',
+		type: 'nvarchar',
+		length: 50,
+		nullable: true,
+		comment: 'The user who last updated the approval status'
+	})
+	security_code_reviewed: string
+
+	@Column({
+		name: 'last_reviewed_at',
 		type: 'datetime',
 		nullable: true,
 		comment: 'The last time the approval status was updated'
 	})
-	last_approval_status_updated_at: Date
+	last_reviewed_at: Date
 
 	@BeforeInsert()
 	setDefaultStatus() {
