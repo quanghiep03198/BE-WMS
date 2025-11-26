@@ -27,7 +27,7 @@ export const updateDeliveryDTO = z.object({
 })
 
 export const setDeliveryStatusDTO = z.object({
-	status: z.enum([TruckloadDeliveryStatus.CONFIRMED, TruckloadDeliveryStatus.REQUEST_CHANGE])
+	approval_status: z.enum([TruckloadDeliveryStatus.CONFIRMED, TruckloadDeliveryStatus.REQUEST_CHANGE])
 })
 
 export const upsertPurchaseOrdersDTO = z
