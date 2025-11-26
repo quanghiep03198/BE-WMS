@@ -23,7 +23,7 @@ type AvatarGenerateOptions = {
 export class UserService extends BaseAbstractService<UserEntity> {
 	constructor(
 		@InjectDataSource(DATA_SOURCE_SYSCLOUD)
-		private readonly syscloudDataSource: DataSource,
+		private readonly dataSourceSC: DataSource,
 		@InjectRepository(UserEntity, DATA_SOURCE_SYSCLOUD)
 		private readonly userRepository: Repository<UserEntity>,
 		@InjectRepository(EmployeeEntity, DATA_SOURCE_SYSCLOUD)
@@ -73,7 +73,7 @@ export class UserService extends BaseAbstractService<UserEntity> {
 	}
 
 	async getUserCompany(userId: number) {
-		return await this.syscloudDataSource.manager
+		return await this.dataSourceSC.manager
 			.createQueryBuilder()
 			.select(['DISTINCT f.factory_code AS company_code', 'f.factory_extcode as factory_code'])
 			.from('ts_user', 'u')
