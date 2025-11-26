@@ -75,7 +75,7 @@ export class TruckloadDeliveryEntity extends BaseAbstractEntity {
 	outbound_qty: number
 
 	@Column({
-		name: 'status',
+		name: 'approval_status',
 		type: 'nvarchar',
 		length: 20,
 		nullable: false,
@@ -83,11 +83,28 @@ export class TruckloadDeliveryEntity extends BaseAbstractEntity {
 		default: TruckloadDeliveryStatus.PENDING,
 		comment: 'Status of the truckload delivery'
 	})
-	status: TruckloadDeliveryStatus
+	approval_status: TruckloadDeliveryStatus
+
+	@Column({
+		name: 'last_approval_status_updated_by',
+		type: 'nvarchar',
+		length: 255,
+		nullable: true,
+		comment: 'The user who last updated the approval status'
+	})
+	last_approval_status_updated_by: string
+
+	@Column({
+		name: 'last_approval_status_updated_at',
+		type: 'datetime',
+		nullable: true,
+		comment: 'The last time the approval status was updated'
+	})
+	last_approval_status_updated_at: Date
 
 	@BeforeInsert()
 	setDefaultStatus() {
-		if (!this.status) this.status = TruckloadDeliveryStatus.PENDING
+		if (!this.approval_status) this.approval_status = TruckloadDeliveryStatus.PENDING
 	}
 
 	@BeforeUpdate()

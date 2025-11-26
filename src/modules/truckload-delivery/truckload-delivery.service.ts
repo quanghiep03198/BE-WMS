@@ -84,7 +84,7 @@ export class TruckloadDeliveryService extends BaseAbstractService<TruckloadDeliv
 			.addSelect('a.license_plate', 'license_plate')
 			.addSelect('a.container_number', 'container_number')
 			.addSelect('a.factory_departure_time', 'factory_departure_time')
-			.addSelect('a.status', 'status')
+			.addSelect('a.approval_status', 'approval_status')
 			.addSelect(
 				/* SQL */ `(
 					SELECT dd.id, dd.po, dd.brand_name, dd.factory_shoes_style, dd.color_sn, dd.outbound_qty, dd.user_code_created, dd.created
@@ -98,13 +98,13 @@ export class TruckloadDeliveryService extends BaseAbstractService<TruckloadDeliv
 			.addGroupBy('a.license_plate')
 			.addGroupBy('a.container_number')
 			.addGroupBy('a.factory_departure_time')
-			.addGroupBy('a.status')
+			.addGroupBy('a.approval_status')
 			.getRawMany<{
 				dispatch_order: string
 				license_plate: string
 				container_number: string
 				factory_departure_time: Date
-				status: string
+				approval_status: string
 				delivery_details: string
 			}>()
 			.then((results) =>
@@ -141,7 +141,7 @@ export class TruckloadDeliveryService extends BaseAbstractService<TruckloadDeliv
 
 	public async upsertPurchaseOrderDeliveries(dispatchOrder: string, payload: UpsertPurchaseOrdersDTO) {
 		const existedDispatchOrder = await this.deliveryRepository.findOne({
-			select: ['dispatch_order', 'license_plate', 'container_number', 'status'],
+			select: ['dispatch_order', 'license_plate', 'container_number', 'approval_status'],
 			where: { dispatch_order: dispatchOrder }
 		})
 		if (!existedDispatchOrder) throw new NotFoundException(`Delivery with dispatch order ${dispatchOrder} not found`)
@@ -151,12 +151,17 @@ export class TruckloadDeliveryService extends BaseAbstractService<TruckloadDeliv
 		])
 	}
 
-	public async updateDispatchOrderStatus(dispatchOrder: string, payload: SetDeliveryStatusDTO) {
+	public async updateDispatchOrderStatus(
+		dispatchOrder: string,
+		payload: SetDeliveryStatusDTO & { updatedBy: string }
+	) {
 		return await this.deliveryRepository.update(
 			{ dispatch_order: dispatchOrder },
 			{
 				...payload,
-				factory_departure_time: payload.status === TruckloadDeliveryStatus.CONFIRMED ? new Date() : null
+				factory_departure_time: payload.approval_status === TruckloadDeliveryStatus.CONFIRMED ? new Date() : null,
+				last_approval_status_updated_by: payload.updatedBy,
+				last_approval_status_updated_at: new Date()
 			}
 		)
 	}

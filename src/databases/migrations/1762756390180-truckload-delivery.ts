@@ -63,13 +63,26 @@ export class TruckloadDelivery1762756390180 implements MigrationInterface {
 				comment: 'Quantity of goods outbound in this truckload delivery'
 			},
 			{
-				name: 'status',
+				name: 'approval_status',
 				type: 'nvarchar',
 				length: '20',
 				isNullable: false,
 				enum: Object.values(TruckloadDeliveryStatus),
-				enumName: 'CHK_dv_truckload_delivery_status',
+				enumName: 'CHK_dv_truckload_delivery_approval_status',
 				comment: 'Status of the truckload delivery'
+			},
+			{
+				name: 'last_approval_status_updated_by',
+				type: 'nvarchar',
+				length: '255',
+				isNullable: true,
+				comment: 'The user who last updated the approval status'
+			},
+			{
+				name: 'last_approval_status_updated_at',
+				type: 'datetime',
+				isNullable: true,
+				comment: 'The last time the approval status was updated'
 			}
 		]
 	})

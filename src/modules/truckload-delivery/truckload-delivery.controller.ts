@@ -1,9 +1,11 @@
 import { CommonRequestHeader } from '@/common/constants'
 import { Api, AuthGuard, HttpMethod, User } from '@/common/decorators'
 import { ZodValidationPipe } from '@/common/pipes'
-import { Body, Controller, Headers, HttpStatus, Param, ParseIntPipe } from '@nestjs/common'
+import { Body, Controller, Headers, HttpStatus, Param, ParseIntPipe, UseGuards } from '@nestjs/common'
 import { pick } from 'lodash'
 import { FactoryAgencyCode } from '../department/constants'
+import { OtpSignatory } from '../otp/decorators/otp-signatory.decorator'
+import { OtpGuard } from '../otp/guards/otp.guard'
 import { UserEntity } from '../user/entities/user.entity'
 import {
 	CreateDeliveryDTO,
@@ -119,12 +121,16 @@ export class TruckloadDeliveryController {
 		method: HttpMethod.PATCH,
 		message: 'common.ok'
 	})
+	@AuthGuard()
+	@UseGuards(OtpGuard)
 	async updateDispatchOrderStatus(
 		@Param('dispatchOrder') dispatchOrder: string,
+		@OtpSignatory() signatory: string,
 		@Body(new ZodValidationPipe(setDeliveryStatusDTO)) payload: SetDeliveryStatusDTO
 	) {
 		return await this.deliveryService.updateDispatchOrderStatus(dispatchOrder, {
-			status: payload.status
+			approval_status: payload.approval_status,
+			updatedBy: signatory
 		})
 	}
 }
