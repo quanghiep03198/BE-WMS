@@ -14,5 +14,6 @@ export enum CommonRequestHeader {
 	TENANT_HOST = 'X-Tenant-Host',
 	FACTORY_CODE = 'X-User-Company',
 	API_VERSION = 'X-Api-Version',
-	ACCESS_TOKEN = 'X-Access-Token'
+	ACCESS_TOKEN = 'X-Access-Token',
+	OTP = 'X-Otp'
 }

@@ -22,6 +22,7 @@ import { DefectiveGoodsModule } from './modules/defective-goods/defective-goods.
 import { DepartmentModule } from './modules/department/department.module'
 import { InventoryModule } from './modules/inventory/inventory.module'
 import { OrderModule } from './modules/order/order.module'
+import { OtpModule } from './modules/otp/otp.module'
 import { PackingModule } from './modules/packing/packing.module'
 import { ProductSpecificationModule } from './modules/product-specification/product-specification.module'
 import { ReportModule } from './modules/report/report.module'
@@ -94,6 +95,7 @@ import { RedisModule } from './redis/redis.module'
 		}),
 		// * Feature modules
 		AuthModule,
+		OtpModule,
 		DepartmentModule,
 		OrderModule,
 		PackingModule,
