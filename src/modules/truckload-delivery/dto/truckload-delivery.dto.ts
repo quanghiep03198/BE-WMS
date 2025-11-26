@@ -1,3 +1,4 @@
+import { isNil } from 'lodash'
 import z from 'zod'
 import { TruckloadDeliveryStatus } from '../constants'
 
@@ -18,12 +19,16 @@ export const createDeliveryDTO = z.object({
 })
 
 export const updateDeliveryDTO = z.object({
-	license_plate: z.string().nonempty().optional(),
+	license_plate: z
+		.string()
+		.trim()
+		.nullish()
+		.transform((value) => (isNil(value) ? null : value.toUpperCase())),
 	container_number: z
 		.string()
-		.nonempty()
-		.transform((value) => value.toLocaleUpperCase())
-		.optional()
+		.trim()
+		.nullish()
+		.transform((value) => (isNil(value) ? null : value.toUpperCase()))
 })
 
 export const updateDispatchOrderStatusDTO = z.object({
