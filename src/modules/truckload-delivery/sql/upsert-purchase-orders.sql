@@ -7,7 +7,7 @@ USING (
       JSON_VALUE(value, '$.container_number') AS container_number,
       JSON_VALUE(value, '$.po') AS po,
       JSON_VALUE(value, '$.factory_code') AS factory_code,
-      JSON_VALUE(value, '$.status') AS status,
+      JSON_VALUE(value, '$.approval_status') AS approval_status,
       JSON_VALUE(value, '$.user_code_created') AS user_code_created,
       JSON_VALUE(value, '$.user_code_updated') AS user_code_updated,
       CAST(JSON_VALUE(value, '$.outbound_qty') AS INT) AS outbound_qty
@@ -28,7 +28,7 @@ WHEN NOT MATCHED BY TARGET THEN
       po, 
       outbound_qty, 
       factory_code, 
-      status, 
+      approval_status, 
       user_code_created, 
       user_name_created
    )
@@ -39,7 +39,7 @@ WHEN NOT MATCHED BY TARGET THEN
       source.po, 
       source.outbound_qty, 
       source.factory_code, 
-      source.status, 
+      source.approval_status, 
       source.user_code_created, 
       source.user_code_created
    );

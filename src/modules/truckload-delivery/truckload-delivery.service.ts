@@ -4,7 +4,6 @@ import { Injectable, NotFoundException } from '@nestjs/common'
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm'
 import { format } from 'date-fns'
 import { padStart } from 'lodash'
-import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
 import { readFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { DataSource, Repository } from 'typeorm'
@@ -26,8 +25,7 @@ export class TruckloadDeliveryService extends BaseAbstractService<TruckloadDeliv
 		@InjectRepository(TruckloadDeliveryEntity, DATA_SOURCE_DATA_LAKE)
 		private readonly deliveryRepository: Repository<TruckloadDeliveryEntity>,
 		@InjectDataSource(DATA_SOURCE_DATA_LAKE) private readonly dataSourceDL: DataSource,
-		@InjectDataSource(DATA_SOURCE_SYSCLOUD) private readonly dataSourceSC: DataSource,
-		@InjectPinoLogger(TruckloadDeliveryService.name) private readonly logger: PinoLogger
+		@InjectDataSource(DATA_SOURCE_SYSCLOUD) private readonly dataSourceSC: DataSource
 	) {
 		super(deliveryRepository)
 	}
@@ -172,8 +170,6 @@ export class TruckloadDeliveryService extends BaseAbstractService<TruckloadDeliv
 			}>()
 
 		if (!existedSecurityEmployee) throw new NotFoundException('Employee not found')
-
-		this.logger.debug(existedSecurityEmployee)
 
 		return await this.deliveryRepository.update(
 			{ dispatch_order: dispatchOrder },
