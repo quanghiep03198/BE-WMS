@@ -31,13 +31,41 @@ export const updateDeliveryDTO = z.object({
 		.transform((value) => (isNil(value) ? null : value.toUpperCase()))
 })
 
-export const updateDispatchOrderStatusDTO = z.object({
-	approval_status: z.enum([TruckloadDeliveryStatus.CONFIRMED, TruckloadDeliveryStatus.REQUEST_CHANGE]),
-	security_code_reviewed: z
-		.string()
-		.nonempty()
-		.transform((value) => value.toUpperCase())
-})
+export const updateSignatureDTO = z
+	.object({
+		approval_status: z.enum([TruckloadDeliveryStatus.CONFIRMED, TruckloadDeliveryStatus.REQUEST_CHANGE]).nullish(),
+		role: z.enum(['QC', 'WAREHOUSE_OFFICER', 'SECURITY_GUARD']),
+		signature: z.string()
+	})
+	.superRefine((data, ctx) => {
+		if (data.approval_status && data.role !== 'SECURITY_GUARD') {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				message: 'Only security guard can update approval status'
+			})
+		}
+		if (!data.approval_status && data.role === 'SECURITY_GUARD') {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				message: 'Approval status is required when role is security guard'
+			})
+		}
+	})
+	.transform((data) => {
+		switch (data.role) {
+			case 'QC':
+				return { qc_signature: data.signature }
+			case 'WAREHOUSE_OFFICER':
+				return { warehouse_officer_signature: data.signature }
+			case 'SECURITY_GUARD':
+				return { security_guard_signature: data.signature, approval_status: data.approval_status }
+		}
+	})
+
+// export const updateDispatchOrderStatusDTO = z.object({
+// 	approval_status: z.enum([TruckloadDeliveryStatus.CONFIRMED, TruckloadDeliveryStatus.REQUEST_CHANGE]),
+// 	security_guard_signature: z.string().base64url()
+// })
 
 export const upsertPurchaseOrdersDTO = z
 	.object({
@@ -54,5 +82,5 @@ export const upsertPurchaseOrdersDTO = z
 
 export type CreateDeliveryDTO = z.infer<typeof createDeliveryDTO>
 export type UpdateDeliveryDTO = z.infer<typeof updateDeliveryDTO>
-export type UpdateDispatchOrderStatusDTO = z.infer<typeof updateDispatchOrderStatusDTO>
+export type UpdateSignatureDTO = z.infer<typeof updateSignatureDTO>
 export type UpsertPurchaseOrdersDTO = z.infer<typeof upsertPurchaseOrdersDTO>

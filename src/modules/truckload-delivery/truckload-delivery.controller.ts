@@ -10,8 +10,8 @@ import {
 	createDeliveryDTO,
 	updateDeliveryDTO,
 	UpdateDeliveryDTO,
-	UpdateDispatchOrderStatusDTO,
-	updateDispatchOrderStatusDTO,
+	UpdateSignatureDTO,
+	updateSignatureDTO,
 	UpsertPurchaseOrdersDTO,
 	upsertPurchaseOrdersDTO
 } from './dto/truckload-delivery.dto'
@@ -115,7 +115,7 @@ export class TruckloadDeliveryController {
 	}
 
 	@Api({
-		endpoint: 'set-status/:dispatchOrder',
+		endpoint: 'update-signature/:dispatchOrder',
 		method: HttpMethod.PATCH,
 		statusCode: HttpStatus.CREATED,
 		message: 'common.ok'
@@ -123,8 +123,8 @@ export class TruckloadDeliveryController {
 	@AuthGuard()
 	async updateDispatchOrderStatus(
 		@Param('dispatchOrder') dispatchOrder: string,
-		@Body(new ZodValidationPipe(updateDispatchOrderStatusDTO)) payload: UpdateDispatchOrderStatusDTO
+		@Body(new ZodValidationPipe(updateSignatureDTO)) payload: UpdateSignatureDTO
 	) {
-		return await this.deliveryService.updateDispatchOrderStatus(dispatchOrder, payload)
+		return await this.deliveryService.updateDispatchOrderSignature(dispatchOrder, payload)
 	}
 }

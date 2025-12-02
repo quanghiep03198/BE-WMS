@@ -86,22 +86,31 @@ export class TruckloadDeliveryEntity extends BaseAbstractEntity {
 	approval_status: TruckloadDeliveryStatus
 
 	@Column({
-		name: 'security_name_reviewed',
+		name: 'qc_signature',
 		type: 'nvarchar',
-		length: 50,
+		length: 'MAX',
 		nullable: true,
-		comment: 'The user who last updated the approval status'
+		comment: "Base64 image QC's signature"
 	})
-	security_name_reviewed: string
+	qc_signature: string
 
 	@Column({
-		name: 'security_code_reviewed',
+		name: 'warehouse_officer_signature',
 		type: 'nvarchar',
-		length: 50,
+		length: 'MAX',
 		nullable: true,
-		comment: 'The user who last updated the approval status'
+		comment: 'Base64 image of the warehouse officer signature'
 	})
-	security_code_reviewed: string
+	warehouse_officer_signature: string
+
+	@Column({
+		name: 'security_guard_signature',
+		type: 'nvarchar',
+		length: 'MAX',
+		nullable: true,
+		comment: 'Base64 image of the security guard signature'
+	})
+	security_guard_signature: string
 
 	@Column({
 		name: 'last_reviewed_at',
