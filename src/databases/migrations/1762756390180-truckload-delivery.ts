@@ -72,18 +72,25 @@ export class TruckloadDelivery1762756390180 implements MigrationInterface {
 				comment: 'Status of the truckload delivery'
 			},
 			{
-				name: 'security_name_reviewed',
+				name: 'qc_signature',
 				type: 'nvarchar',
-				length: '255',
+				length: 'MAX',
 				isNullable: true,
-				comment: 'The name of the security personnel who last updated the approval status'
+				comment: 'Base64 image QC signature'
 			},
 			{
-				name: 'security_code_reviewed',
+				name: 'warehouse_officer_signature',
 				type: 'nvarchar',
-				length: '255',
+				length: 'MAX',
 				isNullable: true,
-				comment: 'The employee code of the security personnel who last updated the approval status'
+				comment: 'Base64 image of the warehouse officer signature'
+			},
+			{
+				name: 'security_guard_signature',
+				type: 'nvarchar',
+				length: 'MAX',
+				isNullable: true,
+				comment: 'Base64 image of the security guard signature'
 			},
 			{
 				name: 'last_reviewed_at',

@@ -10,7 +10,7 @@ import { DataSource, Repository } from 'typeorm'
 import { BaseAbstractService } from '../_base/base.abstract.service'
 import { FactoryAgencyCode } from '../department/constants'
 import { TruckloadDeliveryStatus } from './constants'
-import { UpdateDeliveryDTO, UpdateDispatchOrderStatusDTO, UpsertPurchaseOrdersDTO } from './dto/truckload-delivery.dto'
+import { UpdateDeliveryDTO, UpdateSignatureDTO, UpsertPurchaseOrdersDTO } from './dto/truckload-delivery.dto'
 import { TruckloadDeliveryEntity } from './entities/truckload-delivery.entity'
 import type { TruckloadDeliveryDispatchOrder } from './types'
 
@@ -86,7 +86,9 @@ export class TruckloadDeliveryService extends BaseAbstractService<TruckloadDeliv
 			.addSelect('a.container_number', 'container_number')
 			.addSelect('a.factory_departure_time', 'factory_departure_time')
 			.addSelect('a.approval_status', 'approval_status')
-			.addSelect('a.security_name_reviewed', 'security_name_reviewed')
+			.addSelect('a.qc_signature', 'qc_signature')
+			.addSelect('a.warehouse_officer_signature', 'warehouse_officer_signature')
+			.addSelect('a.security_guard_signature', 'security_guard_signature')
 			.addSelect(
 				/* SQL */ `(
 					SELECT dd.id, dd.po, dd.brand_name, dd.factory_shoes_style, dd.color_sn, dd.outbound_qty, dd.user_code_created, dd.created
@@ -101,7 +103,9 @@ export class TruckloadDeliveryService extends BaseAbstractService<TruckloadDeliv
 			.addGroupBy('a.container_number')
 			.addGroupBy('a.factory_departure_time')
 			.addGroupBy('a.approval_status')
-			.addGroupBy('a.security_name_reviewed')
+			.addGroupBy('a.qc_signature')
+			.addGroupBy('a.warehouse_officer_signature')
+			.addGroupBy('a.security_guard_signature')
 			.getRawMany<{
 				dispatch_order: string
 				license_plate: string
@@ -154,29 +158,11 @@ export class TruckloadDeliveryService extends BaseAbstractService<TruckloadDeliv
 		])
 	}
 
-	public async updateDispatchOrderStatus(dispatchOrder: string, payload: UpdateDispatchOrderStatusDTO) {
-		const existedSecurityEmployee = await this.dataSourceSC
-			.createQueryBuilder()
-			.select('a.employee_name', 'employee_name')
-			.addSelect('a.employee_code', 'employee_code')
-			.from('ts_employee', 'a')
-			.leftJoin('ts_employeedept', 'b', 'a.employee_code = b.employee_code')
-			.leftJoin('ts_dept', 'c', 'b.dept_code = c.dept_code')
-			.where('a.employee_code = :employeeCode', { employeeCode: payload.security_code_reviewed })
-			// .where('b.dept_name like :deptName', { deptName: '%保衛%' })
-			.getRawOne<{
-				employee_code: string
-				employee_name: string
-			}>()
-
-		if (!existedSecurityEmployee) throw new NotFoundException('Employee not found')
-
+	public async updateDispatchOrderSignature(dispatchOrder: string, payload: UpdateSignatureDTO) {
 		return await this.deliveryRepository.update(
 			{ dispatch_order: dispatchOrder },
 			{
-				security_name_reviewed: existedSecurityEmployee.employee_name,
-				security_code_reviewed: existedSecurityEmployee.employee_code,
-				approval_status: payload.approval_status,
+				...payload,
 				factory_departure_time: payload.approval_status === TruckloadDeliveryStatus.CONFIRMED ? new Date() : null,
 				last_reviewed_at: new Date()
 			}
