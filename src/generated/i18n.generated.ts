@@ -80,6 +80,9 @@ export type I18nTranslations = {
             "packaging_code": string;
             "po": string;
             "prod_color": string;
+            "qc_signature": string;
+            "warehouse_officer_signature": string;
+            "security_guard_signature": string;
             "required_date": string;
             "returned_qty": string;
             "shaping_dept_code": string;

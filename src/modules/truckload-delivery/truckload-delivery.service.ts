@@ -3,6 +3,7 @@ import { DATA_SOURCE_DATA_LAKE, DATA_SOURCE_SYSCLOUD } from '@/databases/constan
 import { Injectable, NotFoundException } from '@nestjs/common'
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm'
 import { format } from 'date-fns'
+import { Workbook } from 'exceljs'
 import { padStart } from 'lodash'
 import { readFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
@@ -84,6 +85,9 @@ export class TruckloadDeliveryService extends BaseAbstractService<TruckloadDeliv
 			.select('a.dispatch_order', 'dispatch_order')
 			.addSelect('a.license_plate', 'license_plate')
 			.addSelect('a.container_number', 'container_number')
+			.addSelect('a.punctured_container', 'punctured_container')
+			.addSelect('a.smelling_container', 'smelling_container')
+			.addSelect('a.moist_container', 'moist_container')
 			.addSelect('a.factory_departure_time', 'factory_departure_time')
 			.addSelect('a.approval_status', 'approval_status')
 			.addSelect('a.qc_signature', 'qc_signature')
@@ -102,6 +106,9 @@ export class TruckloadDeliveryService extends BaseAbstractService<TruckloadDeliv
 			.addGroupBy('a.license_plate')
 			.addGroupBy('a.container_number')
 			.addGroupBy('a.factory_departure_time')
+			.addGroupBy('a.punctured_container')
+			.addGroupBy('a.smelling_container')
+			.addGroupBy('a.moist_container')
 			.addGroupBy('a.approval_status')
 			.addGroupBy('a.qc_signature')
 			.addGroupBy('a.warehouse_officer_signature')
@@ -190,5 +197,15 @@ export class TruckloadDeliveryService extends BaseAbstractService<TruckloadDeliv
 
 		const sequenceNumber = padStart((count + 1).toString(), 3, '0')
 		return `${factoryCode}-EXP-${createDate}-${sequenceNumber}` satisfies TruckloadDeliveryDispatchOrder
+	}
+
+	public async updateContainerCondition(dispatchOrder: string, payload) {
+		return await this.deliveryRepository.update({ dispatch_order: dispatchOrder }, payload)
+	}
+
+	public async exportToExcel() {
+		const workbook = new Workbook()
+		const worksheet = workbook.addWorksheet('Truckload Deliveries')
+		const data = await this.findAll()
 	}
 }

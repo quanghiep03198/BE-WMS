@@ -1,4 +1,5 @@
 import { DATABASE_DATA_LAKE, DATABASE_SCHEMA } from '@/databases/constants'
+import { BoolBitTransformer } from '@/databases/transformers/bool.transformer'
 import { BaseAbstractEntity } from '@/modules/_base/base.abstract.entity'
 import { BeforeInsert, BeforeUpdate, Column, Entity, Index } from 'typeorm'
 import { TruckloadDeliveryStatus } from '../constants'
@@ -73,6 +74,34 @@ export class TruckloadDeliveryEntity extends BaseAbstractEntity {
 		comment: 'Quantity of goods outbound in this truckload delivery'
 	})
 	outbound_qty: number
+
+	@Column({
+		name: 'punctured_container',
+		type: 'bit',
+		nullable: false,
+		default: 0,
+		comment: 'Indicates if the container is punctured'
+	})
+	punctured_container: boolean
+
+	@Column({
+		name: 'smelling_container',
+		type: 'bit',
+		nullable: false,
+		default: 0,
+		comment: 'Indicates if the container has any smell'
+	})
+	smelling_container: boolean
+
+	@Column({
+		name: 'moist_container',
+		type: 'bit',
+		nullable: false,
+		default: 0,
+		comment: 'Indicates if the container has moisture',
+		transformer: new BoolBitTransformer()
+	})
+	moist_container: boolean
 
 	@Column({
 		name: 'approval_status',
