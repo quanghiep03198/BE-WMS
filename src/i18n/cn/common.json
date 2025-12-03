@@ -12,6 +12,7 @@
 	"internal_server_error": "内部服务器错误",
 	"unavailable_service": "服务不可用",
 	"fields": {
+		"date": "日期",
 		"remark": "备注",
 		"total": "总计",
 		"summary": "摘要"

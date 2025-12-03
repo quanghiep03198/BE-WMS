@@ -3,7 +3,8 @@
 		"daily_inbound_report": "Daily Inbound Report {factory} - {date}",
 		"daily_outbound_report": "Daily Outbound Report {factory} - {date}",
 		"file_monthly_inventory_report": "Monthly Inventory Report {factory} - {month}",
-		"production_inventory_summary": "Production Inventory Summary - {factory}"
+		"production_inventory_summary": "Production Inventory Summary - {factory}",
+		"truckload_delivery_report": "Warehouse Truckload Delivery Report - {factory}"
 	},
 	"notification": {
 		"over_inbound_limit": "The inbound order has been fully received, you cannot add more. Please check the inbound history of this manufacturing order.",

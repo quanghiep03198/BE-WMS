@@ -31,7 +31,8 @@ export const updateDeliveryDTO = z.object({
 		.transform((value) => (isNil(value) ? null : value.toUpperCase())),
 	punctured_container: z.boolean().optional(),
 	smelling_container: z.boolean().optional(),
-	moist_container: z.boolean().optional()
+	moist_container: z.boolean().optional(),
+	remark: z.string().trim().max(255).nullish()
 })
 
 export const updateSignatureDTO = z
@@ -62,8 +63,7 @@ export const updateSignatureDTO = z
 				return { warehouse_officer_signature: data.signature }
 			case 'security_guard_signature':
 				return {
-					security_guard_signature:
-						data.approval_status === TruckloadDeliveryStatus.CONFIRMED ? data.signature : null,
+					security_guard_signature: data.signature,
 					approval_status: data.approval_status
 				}
 		}

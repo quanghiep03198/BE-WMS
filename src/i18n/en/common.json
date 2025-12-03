@@ -12,6 +12,7 @@
 	"internal_server_error": "Internal server error",
 	"unavailable_service": "Unavailable service",
 	"fields": {
+		"date": "Date",
 		"remark": "Remark",
 		"total": "Total",
 		"summary": "Summary"

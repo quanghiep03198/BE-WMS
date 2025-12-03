@@ -1,7 +1,23 @@
 import { CommonRequestHeader } from '@/common/constants'
 import { Api, AuthGuard, HttpMethod, User } from '@/common/decorators'
+import { AllExceptionsFilter } from '@/common/filters'
 import { ZodValidationPipe } from '@/common/pipes'
-import { Body, Controller, Headers, HttpStatus, Param, ParseIntPipe } from '@nestjs/common'
+import {
+	Body,
+	Controller,
+	DefaultValuePipe,
+	Get,
+	Headers,
+	HttpStatus,
+	Param,
+	ParseBoolPipe,
+	ParseIntPipe,
+	Query,
+	Res,
+	UseFilters
+} from '@nestjs/common'
+
+import { type FastifyReply } from 'fastify'
 import { pick } from 'lodash'
 import { FactoryAgencyCode } from '../department/constants'
 import { UserEntity } from '../user/entities/user.entity'
@@ -29,7 +45,7 @@ export class TruckloadDeliveryController {
 	})
 	@AuthGuard()
 	async getAll() {
-		return await this.deliveryService.findAll()
+		return await this.deliveryService.getDispatchOrders()
 	}
 
 	@Api({
@@ -147,5 +163,17 @@ export class TruckloadDeliveryController {
 			user_name_updated: user.username,
 			user_code_updated: user.username
 		})
+	}
+
+	@Get('export')
+	@UseFilters(AllExceptionsFilter)
+	@AuthGuard()
+	async exportPackingWeightReport(
+		@Query('current_date_only.eq', new DefaultValuePipe('false'), ParseBoolPipe) isCurrentDateOnly: boolean,
+		@Headers(CommonRequestHeader.FACTORY_CODE) factoryCode: string,
+		@Res() reply: FastifyReply
+	) {
+		const buffer = await this.deliveryService.exportToExcel(factoryCode, isCurrentDateOnly)
+		return reply.send(buffer)
 	}
 }

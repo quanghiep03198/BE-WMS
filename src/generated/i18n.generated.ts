@@ -23,6 +23,7 @@ export type I18nTranslations = {
         "internal_server_error": string;
         "unavailable_service": string;
         "fields": {
+            "date": string;
             "remark": string;
             "total": string;
             "summary": string;
@@ -52,7 +53,11 @@ export type I18nTranslations = {
             "dept_name": string;
             "employee_name": string;
             "export_num": string;
+            "factory_departure_time": string;
             "final_inventory_qty": string;
+            "punctured_container": string;
+            "smelling_container": string;
+            "moist_container": string;
             "inbound_date": string;
             "inbound_qty": string;
             "inspected_qty": string;
@@ -116,6 +121,8 @@ export type I18nTranslations = {
             "weighed_box_qty": string;
             "customer_branch_id": string;
             "size": string;
+            "license_plate": string;
+            "container_number": string;
         };
         "inventory_list_type": {
             "finished_goods_dispatch": string;
@@ -141,6 +148,7 @@ export type I18nTranslations = {
             "daily_outbound_report": string;
             "file_monthly_inventory_report": string;
             "production_inventory_summary": string;
+            "truckload_delivery_report": string;
         };
         "notification": {
             "over_inbound_limit": string;
