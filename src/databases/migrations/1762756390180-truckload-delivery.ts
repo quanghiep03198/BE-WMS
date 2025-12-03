@@ -72,6 +72,27 @@ export class TruckloadDelivery1762756390180 implements MigrationInterface {
 				comment: 'Status of the truckload delivery'
 			},
 			{
+				name: 'punctured_container',
+				type: 'bit',
+				isNullable: false,
+				default: 0,
+				comment: 'Indicates if the container is punctured'
+			},
+			{
+				name: 'smelling_container',
+				type: 'bit',
+				isNullable: false,
+				default: 0,
+				comment: 'Indicates if the container has any smell'
+			},
+			{
+				name: 'moist_container',
+				type: 'bit',
+				isNullable: false,
+				default: 0,
+				comment: 'Indicates if the container has moisture'
+			},
+			{
 				name: 'qc_signature',
 				type: 'nvarchar',
 				length: 'MAX',

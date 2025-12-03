@@ -28,23 +28,26 @@ export const updateDeliveryDTO = z.object({
 		.string()
 		.trim()
 		.nullish()
-		.transform((value) => (isNil(value) ? null : value.toUpperCase()))
+		.transform((value) => (isNil(value) ? null : value.toUpperCase())),
+	punctured_container: z.boolean().optional(),
+	smelling_container: z.boolean().optional(),
+	moist_container: z.boolean().optional()
 })
 
 export const updateSignatureDTO = z
 	.object({
 		approval_status: z.enum([TruckloadDeliveryStatus.CONFIRMED, TruckloadDeliveryStatus.REQUEST_CHANGE]).nullish(),
-		role: z.enum(['QC', 'WAREHOUSE_OFFICER', 'SECURITY_GUARD']),
+		signature_type: z.enum(['qc_signature', 'warehouse_officer_signature', 'security_guard_signature']),
 		signature: z.string()
 	})
 	.superRefine((data, ctx) => {
-		if (data.approval_status && data.role !== 'SECURITY_GUARD') {
+		if (data.approval_status && data.signature_type !== 'security_guard_signature') {
 			ctx.addIssue({
 				code: z.ZodIssueCode.custom,
 				message: 'Only security guard can update approval status'
 			})
 		}
-		if (!data.approval_status && data.role === 'SECURITY_GUARD') {
+		if (!data.approval_status && data.signature_type === 'security_guard_signature') {
 			ctx.addIssue({
 				code: z.ZodIssueCode.custom,
 				message: 'Approval status is required when role is security guard'
@@ -52,20 +55,25 @@ export const updateSignatureDTO = z
 		}
 	})
 	.transform((data) => {
-		switch (data.role) {
-			case 'QC':
+		switch (data.signature_type) {
+			case 'qc_signature':
 				return { qc_signature: data.signature }
-			case 'WAREHOUSE_OFFICER':
+			case 'warehouse_officer_signature':
 				return { warehouse_officer_signature: data.signature }
-			case 'SECURITY_GUARD':
-				return { security_guard_signature: data.signature, approval_status: data.approval_status }
+			case 'security_guard_signature':
+				return {
+					security_guard_signature:
+						data.approval_status === TruckloadDeliveryStatus.CONFIRMED ? data.signature : null,
+					approval_status: data.approval_status
+				}
 		}
 	})
 
-// export const updateDispatchOrderStatusDTO = z.object({
-// 	approval_status: z.enum([TruckloadDeliveryStatus.CONFIRMED, TruckloadDeliveryStatus.REQUEST_CHANGE]),
-// 	security_guard_signature: z.string().base64url()
-// })
+export const updateContainerConditionDTO = z.object({
+	punctured_container: z.boolean().optional(),
+	smelling_container: z.boolean().optional(),
+	moist_container: z.boolean().optional()
+})
 
 export const upsertPurchaseOrdersDTO = z
 	.object({
@@ -84,3 +92,4 @@ export type CreateDeliveryDTO = z.infer<typeof createDeliveryDTO>
 export type UpdateDeliveryDTO = z.infer<typeof updateDeliveryDTO>
 export type UpdateSignatureDTO = z.infer<typeof updateSignatureDTO>
 export type UpsertPurchaseOrdersDTO = z.infer<typeof upsertPurchaseOrdersDTO>
+export type UpdateContainerConditionDTO = z.infer<typeof updateContainerConditionDTO>

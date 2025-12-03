@@ -8,6 +8,8 @@ import { UserEntity } from '../user/entities/user.entity'
 import {
 	CreateDeliveryDTO,
 	createDeliveryDTO,
+	UpdateContainerConditionDTO,
+	updateContainerConditionDTO,
 	updateDeliveryDTO,
 	UpdateDeliveryDTO,
 	UpdateSignatureDTO,
@@ -126,5 +128,24 @@ export class TruckloadDeliveryController {
 		@Body(new ZodValidationPipe(updateSignatureDTO)) payload: UpdateSignatureDTO
 	) {
 		return await this.deliveryService.updateDispatchOrderSignature(dispatchOrder, payload)
+	}
+
+	@Api({
+		endpoint: 'update-container-condition/:dispatchOrder',
+		method: HttpMethod.PATCH,
+		statusCode: HttpStatus.CREATED,
+		message: 'common.ok'
+	})
+	@AuthGuard()
+	async updateContainerCondition(
+		@User() user: Partial<UserEntity>,
+		@Param('dispatchOrder') dispatchOrder: string,
+		@Body(new ZodValidationPipe(updateContainerConditionDTO)) payload: UpdateContainerConditionDTO
+	) {
+		return await this.deliveryService.updateContainerCondition(dispatchOrder, {
+			...payload,
+			user_name_updated: user.username,
+			user_code_updated: user.username
+		})
 	}
 }
