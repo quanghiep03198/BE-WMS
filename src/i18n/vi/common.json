@@ -12,6 +12,7 @@
 	"internal_server_error": "Lỗi Server",
 	"unavailable_service": "Tính năng không khả dụng",
 	"fields": {
+		"date": "Ngày",
 		"remark": "Ghi chú",
 		"total": "Tổng cộng",
 		"summary": "Tóm tắt"
