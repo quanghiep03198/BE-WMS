@@ -31,12 +31,12 @@ export const filterQueryDTO = z
 	}))
 
 export const createDeliveryDTO = z.object({
-	license_plate: z.string().nonempty().optional(),
+	license_plate: z.string().nonempty().nullish(),
 	container_number: z
 		.string()
 		.nonempty()
 		.transform((value) => value.toLocaleUpperCase())
-		.optional(),
+		.nullish(),
 	outbound_purchase_orders: z.array(
 		z.object({
 			po: z.string({ message: 'ns_validation:required' }).trim().nonempty({ message: 'ns_validation:required' }),
