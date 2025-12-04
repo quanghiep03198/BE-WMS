@@ -4,7 +4,7 @@ import { SuperJson } from '@/common/utils'
 import { DATA_SOURCE_DATA_LAKE } from '@/databases/constants'
 import { Injectable, NotFoundException } from '@nestjs/common'
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm'
-import { format } from 'date-fns'
+import { format, isValid } from 'date-fns'
 import { Workbook } from 'exceljs'
 import { padStart } from 'lodash'
 import { I18nContext, I18nService } from 'nestjs-i18n'
@@ -14,7 +14,12 @@ import { DataSource, Repository } from 'typeorm'
 import { BaseAbstractService } from '../_base/base.abstract.service'
 import { FactoryAgencyCode } from '../department/constants'
 import { TruckloadDeliveryStatus } from './constants'
-import { UpdateDeliveryDTO, UpdateSignatureDTO, UpsertPurchaseOrdersDTO } from './dto/truckload-delivery.dto'
+import {
+	FilterQueryDTO,
+	UpdateDeliveryDTO,
+	UpdateSignatureDTO,
+	UpsertPurchaseOrdersDTO
+} from './dto/truckload-delivery.dto'
 import { TruckloadDeliveryEntity } from './entities/truckload-delivery.entity'
 import { DispatchOrder, ITruckloadDeliveryService } from './truckload-delivery.interface'
 import type { TruckloadDeliveryDispatchOrder } from './types'
@@ -38,7 +43,22 @@ export class TruckloadDeliveryService
 		super(deliveryRepository)
 	}
 
-	public async getDispatchOrders(currentDateOnly?: boolean) {
+	public async getDispatchOrders(filters?: FilterQueryDTO): Promise<DispatchOrder[]> {
+		const dateRangeFilterQuery = () => {
+			const hasValidFrom = filters?.from && isValid(new Date(filters.from))
+			const hasValidTo = filters?.to && isValid(new Date(filters.to))
+
+			if (hasValidFrom && hasValidTo) {
+				return /* SQL */ `a.created BETWEEN CAST('${filters.from}' AS DATETIME) AND CAST('${filters.to}' AS DATETIME)`
+			}
+			if (hasValidFrom) return /* SQL */ `a.created >= CAST('${filters.from}' AS DATETIME)`
+			if (hasValidTo) return /* SQL */ `a.created <= CAST('${filters.to}' AS DATETIME)`
+			return '1 = 1'
+		}
+
+		const approvalStatusFilterQuery = () =>
+			filters?.status ? /* SQL */ `a.approval_status = '${filters.status}'` : '1 = 1'
+
 		const deliveryDetailsCte = this.dataSourceDL
 			.createQueryBuilder()
 			.select('a.id', 'id')
@@ -85,6 +105,8 @@ export class TruckloadDeliveryService
 				'e',
 				'e.custbrand_id = b.custbrand_id'
 			)
+			.where(dateRangeFilterQuery)
+			.andWhere(approvalStatusFilterQuery)
 
 		return await this.deliveryRepository
 			.createQueryBuilder('a')
@@ -103,7 +125,15 @@ export class TruckloadDeliveryService
 			.addSelect('CAST(a.created AS DATE)', 'created_at')
 			.addSelect(
 				/* SQL */ `(
-					SELECT dd.id, dd.po, dd.brand_name, dd.factory_shoes_style, dd.color_sn, dd.outbound_qty, dd.user_code_created, dd.created
+					SELECT
+						dd.id,
+						dd.po,
+						dd.brand_name,
+						dd.factory_shoes_style,
+						dd.color_sn,
+						dd.outbound_qty,
+						dd.user_code_created,
+						dd.created
 					FROM delivery_details dd
 					WHERE dd.dispatch_order = a.dispatch_order
 					FOR JSON PATH
@@ -111,7 +141,8 @@ export class TruckloadDeliveryService
 				'delivery_details'
 			)
 			.addSelect('CAST(a.remark AS NVARCHAR(255))', 'remark')
-			.where(currentDateOnly ? /* SQL */ `CAST(a.created AS DATE) = CAST(GETDATE() AS DATE)` : '1=1')
+			.where(dateRangeFilterQuery)
+			.andWhere(approvalStatusFilterQuery)
 			.groupBy('a.dispatch_order')
 			.addGroupBy('CAST(a.created AS DATE)')
 			.addGroupBy('a.license_plate')
@@ -210,13 +241,13 @@ export class TruckloadDeliveryService
 		return await this.deliveryRepository.update({ dispatch_order: dispatchOrder }, payload)
 	}
 
-	public async exportToExcel(factoryCode: string, onlyToday?: boolean) {
+	public async exportToExcel(factoryCode: string, filters?: FilterQueryDTO) {
 		const workbook = new Workbook()
 		const worksheet = workbook.addWorksheet('Truckload Deliveries')
 		const currentLanguage = I18nContext.current()?.lang
 
 		// * Fetch data
-		const data = await this.getDispatchOrders(onlyToday)
+		const data = await this.getDispatchOrders(filters)
 		const worksheetData = data.map((item) => ({
 			...item,
 			punctured_container: item.punctured_container ? '✕' : '',

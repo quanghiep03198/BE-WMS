@@ -42,6 +42,7 @@ export type I18nTranslations = {
             "actual_outstock_qty": string;
             "brand_name": string;
             "category": string;
+            "container_number": string;
             "container_order_code": string;
             "conversion_rate": string;
             "customer_order": string;
@@ -64,6 +65,7 @@ export type I18nTranslations = {
             "inventory_qty_by_order": string;
             "kg_noend": string;
             "kg_nostart": string;
+            "license_plate": string;
             "mat_code": string;
             "color_sn": string;
             "missing_qty": string;
@@ -121,8 +123,6 @@ export type I18nTranslations = {
             "weighed_box_qty": string;
             "customer_branch_id": string;
             "size": string;
-            "license_plate": string;
-            "container_number": string;
         };
         "inventory_list_type": {
             "finished_goods_dispatch": string;

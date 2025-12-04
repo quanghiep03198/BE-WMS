@@ -2,20 +2,7 @@ import { CommonRequestHeader } from '@/common/constants'
 import { Api, AuthGuard, HttpMethod, User } from '@/common/decorators'
 import { AllExceptionsFilter } from '@/common/filters'
 import { ZodValidationPipe } from '@/common/pipes'
-import {
-	Body,
-	Controller,
-	DefaultValuePipe,
-	Get,
-	Headers,
-	HttpStatus,
-	Param,
-	ParseBoolPipe,
-	ParseIntPipe,
-	Query,
-	Res,
-	UseFilters
-} from '@nestjs/common'
+import { Body, Controller, Get, Headers, HttpStatus, Param, ParseIntPipe, Query, Res, UseFilters } from '@nestjs/common'
 
 import { type FastifyReply } from 'fastify'
 import { pick } from 'lodash'
@@ -24,6 +11,8 @@ import { UserEntity } from '../user/entities/user.entity'
 import {
 	CreateDeliveryDTO,
 	createDeliveryDTO,
+	filterQueryDTO,
+	FilterQueryDTO,
 	UpdateContainerConditionDTO,
 	updateContainerConditionDTO,
 	updateDeliveryDTO,
@@ -44,8 +33,8 @@ export class TruckloadDeliveryController {
 		message: 'common.ok'
 	})
 	@AuthGuard()
-	async getAll() {
-		return await this.deliveryService.getDispatchOrders()
+	async getAll(@Query(new ZodValidationPipe(filterQueryDTO)) filterQueryDTO: FilterQueryDTO) {
+		return await this.deliveryService.getDispatchOrders(filterQueryDTO)
 	}
 
 	@Api({
@@ -169,11 +158,11 @@ export class TruckloadDeliveryController {
 	@UseFilters(AllExceptionsFilter)
 	@AuthGuard()
 	async exportPackingWeightReport(
-		@Query('current_date_only.eq', new DefaultValuePipe('false'), ParseBoolPipe) isCurrentDateOnly: boolean,
+		@Query(new ZodValidationPipe(filterQueryDTO)) filterQueryDTO: FilterQueryDTO,
 		@Headers(CommonRequestHeader.FACTORY_CODE) factoryCode: string,
 		@Res() reply: FastifyReply
 	) {
-		const buffer = await this.deliveryService.exportToExcel(factoryCode, isCurrentDateOnly)
+		const buffer = await this.deliveryService.exportToExcel(factoryCode, filterQueryDTO)
 		return reply.send(buffer)
 	}
 }

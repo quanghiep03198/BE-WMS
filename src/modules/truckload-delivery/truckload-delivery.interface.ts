@@ -1,7 +1,12 @@
 import { DeleteResult, UpdateResult } from 'typeorm'
 import { IBaseService } from '../_base/base.service.interface'
 import { FactoryAgencyCode } from '../department/constants'
-import { UpdateDeliveryDTO, UpdateSignatureDTO, UpsertPurchaseOrdersDTO } from './dto/truckload-delivery.dto'
+import {
+	FilterQueryDTO,
+	UpdateDeliveryDTO,
+	UpdateSignatureDTO,
+	UpsertPurchaseOrdersDTO
+} from './dto/truckload-delivery.dto'
 import { type TruckloadDeliveryEntity } from './entities/truckload-delivery.entity'
 import { TruckloadDeliveryDispatchOrder } from './types'
 
@@ -33,7 +38,7 @@ export type DispatchOrder = {
 }
 
 export interface ITruckloadDeliveryService extends IBaseService<TruckloadDeliveryEntity> {
-	getDispatchOrders(onlyToday?: boolean): Promise<DispatchOrder[]>
+	getDispatchOrders(filters?: FilterQueryDTO): Promise<DispatchOrder[]>
 	getNextDispatchOrder(factoryCode: FactoryAgencyCode): Promise<TruckloadDeliveryDispatchOrder>
 	updateDispatchOrderSignature(dispatchOrder: string, payload: UpdateSignatureDTO): Promise<UpdateResult>
 	upsertPurchaseOrderDeliveries(dispatchOrder: string, payload: UpsertPurchaseOrdersDTO): Promise<any>

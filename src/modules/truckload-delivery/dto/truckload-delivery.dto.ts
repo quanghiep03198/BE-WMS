@@ -1,6 +1,34 @@
+import { format, isAfter, isValid } from 'date-fns'
 import { isNil } from 'lodash'
 import z from 'zod'
 import { TruckloadDeliveryStatus } from '../constants'
+
+export const filterQueryDTO = z
+	.object({
+		from: z.coerce.date().optional(),
+		to: z.coerce.date().optional(),
+		status: z.nativeEnum(TruckloadDeliveryStatus).optional()
+	})
+	.optional()
+	.superRefine((data, ctx) => {
+		if (isValid(new Date(data.from)) && isValid(new Date(data.to))) {
+			if (isAfter(new Date(data.from), new Date(data.to))) {
+				ctx.addIssue({
+					code: z.ZodIssueCode.custom,
+					message: 'From date must be earlier than to date'
+				})
+			}
+		}
+	})
+	.transform((values) => ({
+		...values,
+		...(isValid(new Date(values.from)) && {
+			from: format(new Date(new Date(values.from).setHours(0, 0, 0, 0)), 'yyyy-MM-dd HH:mm:ss.SSS')
+		}),
+		...(isValid(new Date(values.to)) && {
+			to: format(new Date(new Date(values.to).setHours(23, 59, 59, 999)), 'yyyy-MM-dd HH:mm:ss.SSS')
+		})
+	}))
 
 export const createDeliveryDTO = z.object({
 	license_plate: z.string().nonempty().optional(),
@@ -88,6 +116,7 @@ export const upsertPurchaseOrdersDTO = z
 	})
 	.transform((data) => data.outbound_purchase_orders)
 
+export type FilterQueryDTO = z.infer<typeof filterQueryDTO>
 export type CreateDeliveryDTO = z.infer<typeof createDeliveryDTO>
 export type UpdateDeliveryDTO = z.infer<typeof updateDeliveryDTO>
 export type UpdateSignatureDTO = z.infer<typeof updateSignatureDTO>
