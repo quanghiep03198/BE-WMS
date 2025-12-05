@@ -1,7 +1,6 @@
 import { CommonRequestHeader } from '@/common/constants'
 import { Api, AuthGuard, HttpMethod, User } from '@/common/decorators'
 import { ZodValidationPipe } from '@/common/pipes'
-import { RecordStatus } from '@/databases/constants'
 import { EventGateway } from '@/events/event.gateway'
 import {
 	Body,
@@ -102,7 +101,7 @@ export class DefectiveGoodsController {
 
 		return await this.defectiveGoodsService.paginate(
 			{
-				is_active: RecordStatus.ACTIVE,
+				ri_cancel: false,
 				...filterQuery,
 				...(epc && { epc: Like(`%${epc.toUpperCase()}%`) }),
 				...(created && {
