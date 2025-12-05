@@ -1,13 +1,12 @@
 import { ExcelColorPalette } from '@/common/constants/excel-color-palette'
 import { AutoFitColumnOptions, autoFitColumns } from '@/common/helpers'
 import { SuperJson } from '@/common/utils'
-import { DATA_SOURCE_DATA_LAKE, RecordStatus } from '@/databases/constants'
+import { DATA_SOURCE_DATA_LAKE } from '@/databases/constants'
 import { BadGatewayException, ConflictException, Inject, Injectable } from '@nestjs/common'
 import { InjectRepository } from '@nestjs/typeorm'
 import { Workbook } from 'exceljs'
 import { omit } from 'lodash'
 import { I18nContext, I18nService } from 'nestjs-i18n'
-import { PinoLogger } from 'nestjs-pino'
 import { And, Between, DataSource, FindOptionsWhere, In, IsNull, Not, Repository } from 'typeorm'
 import { BaseAbstractService } from '../_base/base.abstract.service'
 import { FALLBACK_VALUE } from '../rfid/constants'
@@ -23,8 +22,7 @@ export class DefectiveGoodsService extends BaseAbstractService<DefectiveGoodsEnt
 		@InjectRepository(DefectiveGoodsEntity, DATA_SOURCE_DATA_LAKE)
 		private readonly defectiveGoodRepository: Repository<DefectiveGoodsEntity>,
 		@Inject(TENANCY_DATA_SOURCE) private readonly dataSourceTNC: DataSource,
-		private readonly i18nService: I18nService,
-		private readonly logger: PinoLogger
+		private readonly i18nService: I18nService
 	) {
 		super(defectiveGoodRepository)
 	}
@@ -32,14 +30,17 @@ export class DefectiveGoodsService extends BaseAbstractService<DefectiveGoodsEnt
 	public async checkActiveEpcsExist(epcs: string | string[]): Promise<boolean> {
 		return await this.defectiveGoodRepository.existsBy({
 			epc: In(Array.isArray(epcs) ? epcs : [epcs]),
-			is_active: RecordStatus.ACTIVE
+			ri_cancel: false
 		})
 	}
 
 	public async retrieveSizeQty(epcList: string[]) {
 		const data = await this.defectiveGoodRepository.find({
 			select: ['factory_shoes_style', 'color_sn', 'size_code', 'epc'],
-			where: { epc: In(epcList), is_active: RecordStatus.ACTIVE }
+			where: {
+				epc: In(epcList),
+				ri_cancel: false
+			}
 		})
 
 		const unknownEpcs = epcList.filter((item) => !data.some((d) => d.epc === item))
@@ -82,7 +83,7 @@ export class DefectiveGoodsService extends BaseAbstractService<DefectiveGoodsEnt
 
 	public async updateInboundStatus(update: UpdateInboundStatusDTO) {
 		return await this.defectiveGoodRepository.update(
-			{ epc: In(update.epcs), is_active: RecordStatus.ACTIVE },
+			{ epc: In(update.epcs), ri_cancel: false },
 			{
 				storage_location: update.storage_location,
 				inbound_date: new Date()
@@ -93,7 +94,8 @@ export class DefectiveGoodsService extends BaseAbstractService<DefectiveGoodsEnt
 	public async updateOutboundStatus({ epcs, ...update }: UpdateOutboundStatusDTO) {
 		const existsNotInbounded = await this.defectiveGoodRepository.existsBy({
 			epc: In(epcs),
-			is_active: RecordStatus.ACTIVE,
+			ri_cancel: false,
+			// ri_cancel: false,
 			storage_location: IsNull(),
 			inbound_date: IsNull()
 		})
@@ -102,7 +104,12 @@ export class DefectiveGoodsService extends BaseAbstractService<DefectiveGoodsEnt
 
 		return await this.defectiveGoodRepository.update(
 			{ epc: In(epcs) },
-			{ ...omit(update, ['epcs']), is_active: RecordStatus.INACTIVE, outbound_date: new Date() }
+			{
+				...omit(update, ['epcs']),
+				ri_cancel: true,
+				// ri_cancel: true,
+				outbound_date: new Date()
+			}
 		)
 	}
 
@@ -156,7 +163,7 @@ export class DefectiveGoodsService extends BaseAbstractService<DefectiveGoodsEnt
 							'defective_category'
 						])
 						.from(DefectiveGoodsEntity, 'c')
-						.where('isactive = :isActive', { isActive: RecordStatus.ACTIVE })
+						.where('ri_cancel = 0')
 						.andWhere(/* SQL */ `storage_location IS NOT NULL`),
 				'c'
 			)
@@ -184,7 +191,7 @@ export class DefectiveGoodsService extends BaseAbstractService<DefectiveGoodsEnt
 				/* SQL */ `(
 					SELECT aa.size_code AS size_numcode, COUNT(DISTINCT aa.epc) AS qty
 					FROM DV_DATA_LAKE.dbo.dv_defective_goods aa
-					WHERE aa.isactive = '${RecordStatus.ACTIVE}' 
+					WHERE aa.ri_cancel = 0
 						AND aa.brand_name = a.brand_name
 						AND aa.factory_shoes_style = a.factory_shoes_style 
 						AND aa.cust_shoes_style = a.cust_shoes_style 
@@ -209,7 +216,7 @@ export class DefectiveGoodsService extends BaseAbstractService<DefectiveGoodsEnt
 					AND a.defective_category = b.defective_category
 				`
 			)
-			.where('a.isactive = :isActive', { isActive: RecordStatus.ACTIVE })
+			.where('a.ri_cancel = 0')
 			.andWhere(/* SQL */ `a.storage_location IS NOT NULL AND LTRIM(RTRIM(a.storage_location)) <> ''`)
 			.groupBy('a.brand_name')
 			.addGroupBy('a.po')
@@ -219,7 +226,6 @@ export class DefectiveGoodsService extends BaseAbstractService<DefectiveGoodsEnt
 			.addGroupBy('a.color_sn')
 			.addGroupBy('a.defective_category')
 			.addGroupBy('b.storage_location')
-			.setParameters({ isActive: RecordStatus.ACTIVE })
 
 		return await queryBuilder
 			.getRawMany<{

@@ -1,6 +1,6 @@
 import { CommonRequestHeader } from '@/common/constants'
 import { Api, AuthGuard, HttpMethod, User } from '@/common/decorators'
-import { TransformUppercasePipe, ZodValidationPipe } from '@/common/pipes'
+import { ZodValidationPipe } from '@/common/pipes'
 import { RecordStatus } from '@/databases/constants'
 import { EventGateway } from '@/events/event.gateway'
 import {
@@ -30,6 +30,7 @@ import {
 	UpdateDefectiveGoodsDTO,
 	updateDefectiveGoodsDTO
 } from './dto/defective-goods.dto'
+import { FilterQueryDTO, filterQueryDTO } from './dto/filter-query.dto'
 import {
 	UpdateInboundStatusDTO,
 	updateInboundStatusDTO,
@@ -65,27 +66,36 @@ export class DefectiveGoodsController {
 	})
 	@AuthGuard()
 	public async get(
-		@Query('epc', TransformUppercasePipe) epc: string,
-		@Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
-		@Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number,
-		@Query('brand_name', new DefaultValuePipe(''), TransformUppercasePipe) brand_name: string,
-		@Query('category', new DefaultValuePipe(''), TransformUppercasePipe) category: string,
-		@Query('factory_shoes_style', new DefaultValuePipe(''), TransformUppercasePipe) factory_shoes_style: string,
-		@Query('cust_shoes_style') cust_shoes_style: string,
-		@Query('po') po: string,
-		@Query('mo_no', new DefaultValuePipe(''), TransformUppercasePipe) mo_no: string,
-		@Query('size_code', TransformUppercasePipe) size_code: string,
-		@Query('created') created: string | undefined
+		@Query(new ZodValidationPipe(filterQueryDTO), new DefaultValuePipe({ page: 1, limit: 10 }))
+		filterQueries: FilterQueryDTO
 	) {
+		const {
+			epc,
+			page,
+			limit,
+			created,
+			brand_name,
+			category,
+			factory_shoes_style,
+			cust_shoes_style,
+			po,
+			mo_no,
+			size_code,
+			assembly_line,
+			sewing_line
+		} = filterQueries
+
 		const filterQuery = pickBy(
 			{
-				brand_name,
-				category,
-				factory_shoes_style,
+				brand_name: brand_name?.toUpperCase(),
+				category: category?.toUpperCase(),
+				factory_shoes_style: factory_shoes_style?.toUpperCase(),
 				cust_shoes_style,
 				po,
-				mo_no,
-				size_code
+				mo_no: mo_no?.toUpperCase(),
+				size_code: size_code?.toUpperCase(),
+				assembly_line,
+				sewing_line
 			},
 			(item) => !isEmpty(item) && !isNil(item)
 		)
@@ -94,7 +104,7 @@ export class DefectiveGoodsController {
 			{
 				is_active: RecordStatus.ACTIVE,
 				...filterQuery,
-				...(epc && { epc: Like(`%${epc}%`) }),
+				...(epc && { epc: Like(`%${epc.toUpperCase()}%`) }),
 				...(created && {
 					created: Between(
 						new Date(new Date(created).setHours(0, 0, 0, 0)),

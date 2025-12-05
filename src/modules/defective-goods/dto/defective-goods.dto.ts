@@ -12,7 +12,9 @@ export const baseDefectiveGoodsDTO = z.object({
 	color_sn: z.string().trim().nonempty(),
 	size_code: z.string().nonempty(),
 	defective_location: z.nativeEnum(DefectiveLocation),
-	defective_description: z.string().nonempty()
+	defective_description: z.string().nonempty(),
+	sewing_line: z.string().trim().nonempty().nullish(),
+	assembly_line: z.string().trim().nonempty().nullish()
 })
 
 export const createDefectiveGoodsDTO = baseDefectiveGoodsDTO

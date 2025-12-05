@@ -1,4 +1,5 @@
 import { DATABASE_DATA_LAKE, DATABASE_SCHEMA } from '@/databases/constants'
+import { BoolBitTransformer } from '@/databases/transformers/bool.transformer'
 import { BaseAbstractEntity } from '@/modules/_base/base.abstract.entity'
 import { Column, Entity } from 'typeorm'
 import { DefectiveCategory, DefectiveGoodsOutboundPurpose, DefectiveLocation } from '../constants'
@@ -95,6 +96,34 @@ export class DefectiveGoodsEntity extends BaseAbstractEntity {
 		comment: 'Storage location, this is the location where the defective goods are stored'
 	})
 	storage_location: string
+
+	@Column({
+		name: 'sewing_line',
+		type: 'nvarchar',
+		length: 50,
+		nullable: true,
+		comment: 'Sewing line of the defective goods'
+	})
+	sewing_line: string
+
+	@Column({
+		name: 'assembly_line',
+		type: 'nvarchar',
+		length: 50,
+		nullable: true,
+		comment: 'Assembly line of the defective goods'
+	})
+	assembly_line: string
+
+	@Column({
+		name: 'ri_cancel',
+		type: 'bit',
+		nullable: false,
+		default: 0,
+		comment: 'Return instruction cancel status, true means the return instruction is cancelled',
+		transformer: new BoolBitTransformer()
+	})
+	ri_cancel: boolean
 
 	@Column({
 		name: 'inbound_date',

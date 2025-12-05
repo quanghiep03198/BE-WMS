@@ -26,6 +26,27 @@ export class InvDefectiveGoods1757390824605 implements MigrationInterface {
 				comment: 'Electronic Product Code to indentify defective goods'
 			},
 			{
+				name: 'ri_cancel',
+				type: 'bit',
+				isNullable: false,
+				default: 0,
+				comment: 'Return Instruction Cancel flag'
+			},
+			{
+				name: 'sewing_line',
+				type: 'nvarchar',
+				length: '50',
+				isNullable: true,
+				comment: 'Sewing line of the defective goods'
+			},
+			{
+				name: 'assembly_line',
+				type: 'nvarchar',
+				length: '50',
+				isNullable: true,
+				comment: 'Assembly line of the defective goods'
+			},
+			{
 				name: 'brand_name',
 				type: 'nvarchar',
 				length: '30',
