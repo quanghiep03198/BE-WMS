@@ -1,7 +1,7 @@
 import { DATA_SOURCE_SYSCLOUD } from '@/databases/constants'
 import { Injectable } from '@nestjs/common'
 import { InjectRepository } from '@nestjs/typeorm'
-import { Like, Repository } from 'typeorm'
+import { Like, Or, Repository } from 'typeorm'
 import { DepartmentEntity } from './entities/department.entity'
 
 @Injectable()
@@ -14,7 +14,9 @@ export class DepartmentService {
 	async getWarehouseDepartments(factoryCode: string) {
 		return await this.departmentRepository
 			.createQueryBuilder()
-			.select(['DISTINCT ERP_dept_code AS dept_code', 'MES_dept_name AS dept_name'])
+			.select([/* SQL */ `DISTINCT dept_name AS dept_name`, /* SQL */ `MIN(dept_code) AS dept_code`])
+			.groupBy('dept_name')
+			.orderBy('dept_code', 'ASC')
 			.where({ dept_code: Like(`${factoryCode}C3%`) })
 			.getRawMany()
 	}
@@ -22,18 +24,22 @@ export class DepartmentService {
 	async getShapingDepartment(factoryCode: string) {
 		return await this.departmentRepository
 			.createQueryBuilder()
-			.select([/* SQL */ `DISTINCT ERP_dept_code AS dept_code`, /* SQL */ `MES_dept_name AS dept_name`])
-			.where('company_code = :factoryCode')
-			.andWhere(
-				/* SQL */ `MES_dept_codeupper = CASE 
-						WHEN :factoryCode = 'VA1' THEN 'YS06'
-						WHEN :factoryCode = 'VB1' THEN 'SS06'
-						WHEN :factoryCode = 'VB2' THEN 'SS07'
-						WHEN :factoryCode = 'CA1' THEN 'CS07'
-						ELSE MES_dept_codeupper
-				END`
-			)
-			.setParameters({ factoryCode })
-			.getRawMany()
+			.select([/* SQL */ `DISTINCT dept_name AS dept_name`, /* SQL */ `MIN(dept_code) AS dept_code`])
+			.where({ factory_code: factoryCode })
+			.andWhere({ dept_name: Or(Like('成型[A-Z]'), Like('%成型[A-Z]線')) })
+			.groupBy('dept_name')
+			.orderBy('dept_code', 'ASC')
+			.getRawMany<{ dept_code: string; dept_name: string }>()
+	}
+
+	async getSewingDepartment(factoryCode: string) {
+		return await this.departmentRepository
+			.createQueryBuilder()
+			.select([/* SQL */ `DISTINCT dept_name AS dept_name`, /* SQL */ `MIN(dept_code) AS dept_code`])
+			.where({ factory_code: factoryCode })
+			.andWhere({ dept_name: Or(Like('%針車[0-9]%')) })
+			.groupBy('dept_name')
+			.orderBy('dept_code', 'ASC')
+			.getRawMany<{ dept_code: string; dept_name: string }>()
 	}
 }

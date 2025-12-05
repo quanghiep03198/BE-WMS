@@ -27,4 +27,13 @@ export class DepartmentController {
 	async getShapingDepartment(@Headers(CommonRequestHeader.FACTORY_CODE) factoryCode: string) {
 		return await this.departmentService.getShapingDepartment(factoryCode)
 	}
+
+	@Api({
+		endpoint: 'sewing-product-line',
+		method: HttpMethod.GET
+	})
+	@AuthGuard()
+	async getSewingDepartment(@Headers(CommonRequestHeader.FACTORY_CODE) factoryCode: string) {
+		return await this.departmentService.getSewingDepartment(factoryCode)
+	}
 }
