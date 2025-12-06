@@ -13,8 +13,16 @@ export const baseDefectiveGoodsDTO = z.object({
 	size_code: z.string().nonempty(),
 	defective_location: z.nativeEnum(DefectiveLocation),
 	defective_description: z.string().nonempty(),
-	sewing_line: z.string().trim().nonempty().nullish(),
-	assembly_line: z.string().trim().nonempty().nullish()
+	sewing_line: z
+		.string()
+		.trim()
+		.nullish()
+		.transform((value) => (isEmpty(value) ? null : value)),
+	assembly_line: z
+		.string()
+		.trim()
+		.nullish()
+		.transform((value) => (isEmpty(value) ? null : value))
 })
 
 export const createDefectiveGoodsDTO = baseDefectiveGoodsDTO
