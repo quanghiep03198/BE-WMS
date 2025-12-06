@@ -10,6 +10,8 @@ module.exports = {
 			cwd: __dirname,
 			exec_mode: 'cluster',
 			max_memory_restart: '1G',
+			instances: 2,
+			increment_var: 'PORT',
 			exp_backoff_restart_delay: 5000,
 			env: {
 				NODE_ENV: process.env.NODE_ENV,
