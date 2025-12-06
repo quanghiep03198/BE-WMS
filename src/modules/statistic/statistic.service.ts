@@ -1,4 +1,3 @@
-import { RecordStatus } from '@/databases/constants'
 import { Inject, Injectable } from '@nestjs/common'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
@@ -74,7 +73,7 @@ export class StatisticService {
 			.createQueryBuilder()
 			.select('defective_category')
 			.addSelect(/* SQL */ `COUNT(DISTINCT epc)`, 'qty')
-			.where({ is_active: RecordStatus.ACTIVE })
+			.where({ ri_cancel: false })
 			.andWhere({ inbound_date: Not(IsNull()) })
 			.andWhere({ storage_location: Not(IsNull()) })
 			.groupBy('defective_category')
