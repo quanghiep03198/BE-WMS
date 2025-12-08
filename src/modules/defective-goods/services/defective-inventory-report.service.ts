@@ -38,7 +38,9 @@ export class DefectiveGoodsInventoryService {
 				/* SQL */ `(
                SELECT aa.size_code AS size_numcode, COUNT(DISTINCT aa.epc) AS qty
                FROM DV_DATA_LAKE.dbo.dv_defective_goods aa
-               WHERE aa.ri_cancel = 0
+               WHERE 
+						aa.epc LIKE 'E28%'
+						AND aa.ri_cancel = 0
                   AND aa.brand_name = a.brand_name
                   AND aa.factory_shoes_style = a.factory_shoes_style 
                   AND aa.cust_shoes_style = a.cust_shoes_style 
@@ -63,7 +65,8 @@ export class DefectiveGoodsInventoryService {
                AND a.defective_category = b.defective_category
             `
 			)
-			.where('a.ri_cancel = 0')
+			.where(/* SQL */ `a.epc LIKE 'E28%'`)
+			.andWhere(/* SQL */ `a.ri_cancel = 0`)
 			.andWhere(/* SQL */ `a.storage_location IS NOT NULL AND LTRIM(RTRIM(a.storage_location)) <> ''`)
 			.groupBy('a.brand_name')
 			.addGroupBy('a.po')

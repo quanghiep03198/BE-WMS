@@ -10,6 +10,7 @@ import { Workbook } from 'exceljs'
 import { omit } from 'lodash'
 import { I18nContext, I18nService } from 'nestjs-i18n'
 import { DataSource, In, IsNull, Repository } from 'typeorm'
+import { DefectiveGoodsOutboundPurpose } from '../constants'
 import { UpdateOutboundStatusDTO } from '../dto/inoutbound.dto'
 import { DefectiveGoodsEntity } from '../entities/defective-goods.entity'
 
@@ -62,7 +63,9 @@ export class DefectiveGoodsOutboundService {
 				/* SQL */ `(
 						SELECT aa.size_code AS size_numcode, COUNT(DISTINCT aa.epc) AS qty
 						FROM DV_DATA_LAKE.dbo.dv_defective_goods aa
-						WHERE aa.brand_name = a.brand_name
+						WHERE 
+							aa.epc LIKE 'E28%' 
+							AND aa.brand_name = a.brand_name
 							AND aa.factory_shoes_style = a.factory_shoes_style 
 							AND aa.cust_shoes_style = a.cust_shoes_style 
 							AND COALESCE(aa.po, 'Unknown') = COALESCE(a.po, 'Unknown') 
@@ -76,7 +79,8 @@ export class DefectiveGoodsOutboundService {
 					)`,
 				'size_data'
 			)
-			.where(/* SQL */ `a.storage_location IS NOT NULL`)
+			.where(/* SQL */ `a.epc LIKE 'E28%'`)
+			.andWhere(/* SQL */ `a.storage_location IS NOT NULL`)
 			.andWhere(/* SQL */ `LTRIM(RTRIM(a.storage_location)) <> ''`)
 			.andWhere(/* SQL */ `a.inbound_date IS NOT NULL`)
 			.andWhere(/* SQL */ `CAST(a.outbound_date AS DATE) = CAST(:outboundDate AS DATE)`)
@@ -102,6 +106,7 @@ export class DefectiveGoodsOutboundService {
 				sewing_line: string
 				assembly_line: string
 				defective_category: string
+				outbound_purpose: DefectiveGoodsOutboundPurpose
 				daily_outbound_qty: number
 			}>()
 			.then((result) =>
@@ -172,6 +177,9 @@ export class DefectiveGoodsOutboundService {
 			const row = worksheet.addRow({
 				...record,
 				defective_category: this.i18nService.t(`defective-goods.categories.${record.defective_category}`, {
+					lang: currentLanguage
+				}),
+				outbound_purpose: this.i18nService.t(`inoutbound.outbound_purpose.${record.outbound_purpose}`, {
 					lang: currentLanguage
 				})
 			})

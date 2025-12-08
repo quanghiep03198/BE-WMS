@@ -165,6 +165,11 @@ export type I18nTranslations = {
             "over_outbound_limit": string;
             "not_inbound_yet": string;
         };
+        "outbound_purpose": {
+            "SELL": string;
+            "RECYCLE": string;
+            "GIVEAWAY": string;
+        };
     };
     "packing": {
         "titles": {
