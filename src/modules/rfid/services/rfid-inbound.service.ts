@@ -107,7 +107,7 @@ export class RFIDInboundService {
 			throw new InternalServerErrorException(error)
 		} finally {
 			if (!session.hasEnded) await session.endSession()
-			await queryRunner.release()
+			if (!queryRunner.isReleased) await queryRunner.release()
 		}
 	}
 
@@ -157,7 +157,7 @@ export class RFIDInboundService {
 			await Promise.all([queryRunner.rollbackTransaction(), session.abortTransaction()])
 			throw new InternalServerErrorException(error)
 		} finally {
-			await queryRunner.release()
+			if (!queryRunner.isReleased) await queryRunner.release()
 		}
 	}
 
@@ -243,7 +243,7 @@ export class RFIDInboundService {
 			throw new InternalServerErrorException(error)
 		} finally {
 			if (!session.hasEnded) await session.endSession()
-			await queryRunner.release()
+			if (!queryRunner.isReleased) await queryRunner.release()
 		}
 	}
 

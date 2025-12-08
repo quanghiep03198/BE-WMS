@@ -131,7 +131,7 @@ export class RFIDOutboundService {
 			throw new InternalServerErrorException((error as Error).message)
 		} finally {
 			if (!session.hasEnded) await session.endSession()
-			await queryRunner.release()
+			if (!queryRunner.isReleased) await queryRunner.release()
 		}
 	}
 

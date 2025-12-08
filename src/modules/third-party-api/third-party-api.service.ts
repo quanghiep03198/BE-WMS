@@ -102,7 +102,7 @@ export class ThirdPartyApiService {
 			await queryRunner.rollbackTransaction()
 			throw new InternalServerErrorException(error)
 		} finally {
-			await queryRunner.release()
+			if (!queryRunner.isReleased) await queryRunner.release()
 		}
 	}
 
