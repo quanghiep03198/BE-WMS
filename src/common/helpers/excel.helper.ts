@@ -1,4 +1,5 @@
 import { Worksheet } from 'exceljs'
+import { ExcelColorPalette } from '../constants/excel-color-palette'
 
 export type AutoFitColumnOptions = { minWidth: number; excludeColumns?: string[] }
 
@@ -17,4 +18,20 @@ export function autoFitColumns(this: Worksheet, { minWidth = 10, excludeColumns 
 
 export function getLastColumnLetter(columnCount: number): string {
 	return String.fromCharCode(65 + columnCount - 1)
+}
+
+export function applyCommonStyles(this: Worksheet) {
+	// * Cell styles
+	this.eachRow({ includeEmpty: false }, (row) => {
+		row.alignment = { vertical: 'middle', horizontal: 'center' }
+		row.eachCell({ includeEmpty: true }, (cell) => {
+			cell.font = { ...cell.font, name: 'Calibri', family: 1 }
+			cell.border = {
+				top: { style: 'thin', color: { argb: ExcelColorPalette.BORDER } },
+				left: { style: 'thin', color: { argb: ExcelColorPalette.BORDER } },
+				bottom: { style: 'thin', color: { argb: ExcelColorPalette.BORDER } },
+				right: { style: 'thin', color: { argb: ExcelColorPalette.BORDER } }
+			}
+		})
+	})
 }
