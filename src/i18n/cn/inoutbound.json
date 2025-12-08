@@ -1,7 +1,9 @@
 {
 	"titles": {
-		"daily_inbound_report": "{factory}每日入库报告 - {date}",
-		"daily_outbound_report": "{factory}每日出库报告 - {date}",
+		"daily_inbound_report": "{factory}成品倉入庫報表 - {date}",
+		"daily_outbound_report": "{factory}成品倉出庫報表 - {date}",
+		"daily_defective_gooods_inbound_report": "{factory}二級品每日入庫報表 - {date}",
+		"daily_defective_gooods_outbound_report": "{factory}二級品每日出庫報表 - {date}",
 		"file_monthly_inventory_report": "{factory}库存报表 - {month}",
 		"production_inventory_summary": "{factory} - 成品库存总表",
 		"truckload_delivery_report": "{factory}成品仓按车辆出货报告"

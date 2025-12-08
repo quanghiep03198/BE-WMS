@@ -1,4 +1,9 @@
 {
 	"active_epcs_recombination_conflict": "Không thể phối lại EPC đang sử dụng trong hệ thống",
-	"defective_goods_inventory_report": "Báo biểu tồn kho hàng loại 2"
+	"defective_goods_inventory_report": "Báo biểu tồn kho hàng loại 2",
+	"categories": {
+		"B": "Loại B",
+		"C": "Loại C",
+		"RD": "Hàng mẫu"
+	}
 }

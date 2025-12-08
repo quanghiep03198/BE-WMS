@@ -1,4 +1,9 @@
 {
 	"active_epcs_recombination_conflict": "Cannot recombined active EPC exists in system",
-	"defective_goods_inventory_report": "Defective Goods Inventory Report"
+	"defective_goods_inventory_report": "Defective Goods Inventory Report",
+	"categories": {
+		"B": "B Grade",
+		"C": "C Grade",
+		"RD": "Research & Development Samples"
+	}
 }

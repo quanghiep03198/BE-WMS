@@ -14,13 +14,14 @@ import {
 	Query,
 	Res
 } from '@nestjs/common'
+import { format } from 'date-fns'
 import { FastifyReply } from 'fastify'
 import { isEmpty, isNil, omit, pickBy } from 'lodash'
 import { I18nContext, I18nService } from 'nestjs-i18n'
+import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
 import { Between, Like } from 'typeorm'
-import { PostReaderDataDTO, readerPostDataValidator } from '../rfid/dto/rfid-shared.dto'
+import z from 'zod'
 import { UserEntity } from '../user/entities/user.entity'
-import { DefectiveGoodsService } from './defective-goods.service'
 import {
 	CreateDefectiveGoodsDTO,
 	createDefectiveGoodsDTO,
@@ -36,28 +37,24 @@ import {
 	UpdateOutboundStatusDTO,
 	updateOutboundStatusDTO
 } from './dto/inoutbound.dto'
+import { DefectiveGoodsService } from './services/defective-goods.service'
+import { DefectiveGoodsInboundService } from './services/defective-inbound-report.service'
+import { DefectiveGoodsInventoryService } from './services/defective-inventory-report.service'
+import { DefectiveGoodsOutboundService } from './services/defective-outbound-report.service'
 
 @Controller('defective-goods')
 export class DefectiveGoodsController {
 	constructor(
+		@InjectPinoLogger(DefectiveGoodsController.name) private readonly logger: PinoLogger,
 		private readonly i18nService: I18nService,
 		private readonly eventGateway: EventGateway,
-		private readonly defectiveGoodsService: DefectiveGoodsService
+		private readonly defectiveGoodsService: DefectiveGoodsService,
+		private readonly defectiveGoodsInboundService: DefectiveGoodsInboundService,
+		private readonly defectiveGoodsOutboundService: DefectiveGoodsOutboundService,
+		private readonly defectiveGoodsInventoryService: DefectiveGoodsInventoryService
 	) {}
 
-	@Api({
-		endpoint: 'post-rfid-data',
-		method: HttpMethod.POST,
-		statusCode: HttpStatus.CREATED,
-		message: 'common.ok'
-	})
-	public postData(@Body(new ZodValidationPipe(readerPostDataValidator)) payload: PostReaderDataDTO) {
-		this.eventGateway.server.emit(
-			'def_rfid_data',
-			payload.data.tagList.map((item) => item.epc)
-		)
-	}
-
+	// #region CRUD EPC Combination
 	@Api({
 		endpoint: '',
 		method: HttpMethod.GET,
@@ -184,6 +181,7 @@ export class DefectiveGoodsController {
 	public async deleteMany(@Body(new ZodValidationPipe(deleteManyDefectiveGoodsDTO)) ids: DeleteManyDefectiveGoodsDTO) {
 		return await this.defectiveGoodsService.deleteMany(ids)
 	}
+	// #endregion
 
 	@Api({
 		method: HttpMethod.POST,
@@ -195,6 +193,7 @@ export class DefectiveGoodsController {
 		return await this.defectiveGoodsService.retrieveSizeQty(data)
 	}
 
+	// #region Inbound
 	@Api({
 		method: HttpMethod.PATCH,
 		endpoint: 'inbound',
@@ -203,9 +202,38 @@ export class DefectiveGoodsController {
 	public async updateInboundStatus(
 		@Body(new ZodValidationPipe(updateInboundStatusDTO.partial())) data: UpdateInboundStatusDTO
 	) {
-		return await this.defectiveGoodsService.updateInboundStatus(data)
+		return await this.defectiveGoodsInboundService.updateInboundStatus(data)
 	}
 
+	@Api({
+		method: HttpMethod.GET,
+		endpoint: 'daily-inbound',
+		statusCode: HttpStatus.OK
+	})
+	public async getDailyInboundReport(
+		@Query('date.eq', new ZodValidationPipe(z.coerce.date().transform((value) => format(value, 'yyyy-MM-dd'))))
+		date: string
+	) {
+		return await this.defectiveGoodsInboundService.getDailyInboundReport(date)
+	}
+
+	@Api({
+		method: HttpMethod.GET,
+		endpoint: 'export-daily-inbound',
+		statusCode: HttpStatus.OK
+	})
+	async exportDailyOutboundReport(
+		@Query('date.eq', new ZodValidationPipe(z.coerce.date().transform((value) => format(value, 'yyyy-MM-dd'))))
+		date: string,
+		@Headers(CommonRequestHeader.FACTORY_CODE) factoryCode: string,
+		@Res() reply: FastifyReply
+	) {
+		const buffer = await this.defectiveGoodsInboundService.exportDailyInboundToExcel(date, factoryCode)
+		return reply.send(buffer)
+	}
+	// #endregion
+
+	// #region Outbound
 	@Api({
 		method: HttpMethod.PATCH,
 		endpoint: 'outbound',
@@ -214,16 +242,46 @@ export class DefectiveGoodsController {
 	public async updateOutboundStatus(
 		@Body(new ZodValidationPipe(updateOutboundStatusDTO)) data: UpdateOutboundStatusDTO
 	) {
-		return await this.defectiveGoodsService.updateOutboundStatus(data)
+		return await this.defectiveGoodsOutboundService.updateOutboundStatus(data)
 	}
 
+	@Api({
+		method: HttpMethod.GET,
+		endpoint: 'daily-outbound',
+		statusCode: HttpStatus.OK
+	})
+	public async getDailyOutboundReport(
+		@Query('date.eq', new ZodValidationPipe(z.coerce.date().transform((value) => format(value, 'yyyy-MM-dd'))))
+		date: string
+	) {
+		return await this.defectiveGoodsOutboundService.getDailyOutboundReport(date)
+	}
+
+	@Api({
+		method: HttpMethod.GET,
+		endpoint: 'export-daily-outbound',
+		statusCode: HttpStatus.OK
+	})
+	async exportDailyInboundReport(
+		@Query('date.eq', new ZodValidationPipe(z.coerce.date().transform((value) => format(value, 'yyyy-MM-dd'))))
+		date: string,
+		@Headers(CommonRequestHeader.FACTORY_CODE) factoryCode: string,
+		@Res() reply: FastifyReply
+	) {
+		const buffer = await this.defectiveGoodsOutboundService.exportDailyOutboundToExcel(date, factoryCode)
+		return reply.send(buffer)
+	}
+
+	// #endregion
+
+	// #region Inventory
 	@Api({
 		method: HttpMethod.GET,
 		endpoint: 'inventory',
 		statusCode: HttpStatus.OK
 	})
 	async getDefectiveGoodsInventory() {
-		return await this.defectiveGoodsService.getDefectiveGoodsInventory()
+		return await this.defectiveGoodsInventoryService.getDefectiveGoodsInventory()
 	}
 
 	@Api({
@@ -235,7 +293,7 @@ export class DefectiveGoodsController {
 		@Headers(CommonRequestHeader.FACTORY_CODE) factoryCode: string,
 		@Res() reply: FastifyReply
 	) {
-		const buffer = await this.defectiveGoodsService.exportDefectiveGoodsInventory(factoryCode)
+		const buffer = await this.defectiveGoodsInventoryService.exportDefectiveGoodsInventory(factoryCode)
 		return reply.send(buffer)
 	}
 }

@@ -32,6 +32,11 @@ export type I18nTranslations = {
     "defective-goods": {
         "active_epcs_recombination_conflict": string;
         "defective_goods_inventory_report": string;
+        "categories": {
+            "B": string;
+            "C": string;
+            "RD": string;
+        };
     };
     "erp": {
         "fields": {
@@ -40,6 +45,8 @@ export type I18nTranslations = {
             "actual_inventory_qty": string;
             "actual_instock_qty": string;
             "actual_outstock_qty": string;
+            "sewing_line": string;
+            "assembly_line": string;
             "brand_name": string;
             "category": string;
             "container_number": string;
@@ -82,6 +89,7 @@ export type I18nTranslations = {
             "or_qtyperpacking": string;
             "or_totalqty": string;
             "order_qty": string;
+            "outbound_purpose": string;
             "outbound_date": string;
             "outbound_qty": string;
             "packaging_code": string;
@@ -146,6 +154,8 @@ export type I18nTranslations = {
         "titles": {
             "daily_inbound_report": string;
             "daily_outbound_report": string;
+            "daily_defective_gooods_inbound_report": string;
+            "daily_defective_gooods_outbound_report": string;
             "file_monthly_inventory_report": string;
             "production_inventory_summary": string;
             "truckload_delivery_report": string;

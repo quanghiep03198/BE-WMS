@@ -1,7 +1,9 @@
 {
 	"titles": {
-		"daily_inbound_report": "Daily Inbound Report {factory} - {date}",
-		"daily_outbound_report": "Daily Outbound Report {factory} - {date}",
+		"daily_inbound_report": "Daily Finished Goods Inbound Report {factory} - {date}",
+		"daily_outbound_report": "Daily Finished Goods Outbound Report {factory} - {date}",
+		"daily_defective_gooods_inbound_report": "Daily Defective Goods Inbound Report {factory} - {date}",
+		"daily_defective_gooods_outbound_report": "Daily Defective Goods Outbound Report {factory} - {date}",
 		"file_monthly_inventory_report": "Monthly Inventory Report {factory} - {month}",
 		"production_inventory_summary": "Production Inventory Summary - {factory}",
 		"truckload_delivery_report": "Warehouse Truckload Delivery Report - {factory}"
