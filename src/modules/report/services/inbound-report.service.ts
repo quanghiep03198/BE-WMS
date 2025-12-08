@@ -1,5 +1,5 @@
 import { ExcelColorPalette } from '@/common/constants/excel-color-palette'
-import { type AutoFitColumnOptions, autoFitColumns } from '@/common/helpers'
+import { applyCommonStyles, type AutoFitColumnOptions, autoFitColumns } from '@/common/helpers'
 import { SuperJson } from '@/common/utils'
 import { TENANCY_DATA_SOURCE } from '@/modules/tenancy/constants'
 import { Inject, Injectable } from '@nestjs/common'
@@ -204,18 +204,7 @@ export class InboundReportService {
 		worksheet.views = [{ state: 'frozen', xSplit: 0, ySplit: 2 }]
 
 		// * Cell styles
-		worksheet.eachRow({ includeEmpty: false }, (row) => {
-			row.alignment = { vertical: 'middle', horizontal: 'center' }
-			row.eachCell({ includeEmpty: true }, (cell) => {
-				cell.font = { ...cell.font, name: 'Calibri', family: 1 }
-				cell.border = {
-					top: { style: 'thin', color: { argb: ExcelColorPalette.BORDER } },
-					left: { style: 'thin', color: { argb: ExcelColorPalette.BORDER } },
-					bottom: { style: 'thin', color: { argb: ExcelColorPalette.BORDER } },
-					right: { style: 'thin', color: { argb: ExcelColorPalette.BORDER } }
-				}
-			})
-		})
+		applyCommonStyles.call(worksheet)
 
 		return await workbook.xlsx.writeBuffer()
 	}

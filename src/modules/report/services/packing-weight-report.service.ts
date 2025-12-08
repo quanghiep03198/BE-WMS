@@ -1,5 +1,5 @@
 import { ExcelColorPalette } from '@/common/constants/excel-color-palette'
-import { AutoFitColumnOptions, autoFitColumns } from '@/common/helpers'
+import { applyCommonStyles, AutoFitColumnOptions, autoFitColumns } from '@/common/helpers'
 import { TENANCY_DATA_SOURCE } from '@/modules/tenancy/constants'
 import { Inject, Injectable } from '@nestjs/common'
 import { format } from 'date-fns'
@@ -110,18 +110,8 @@ export class PackingWeightReportService {
 		worksheet.views = [{ state: 'frozen', xSplit: 0, ySplit: 2 }]
 
 		// * Cell styles
-		worksheet.eachRow({ includeEmpty: false }, (row) => {
-			row.alignment = { vertical: 'middle', horizontal: 'center' }
-			row.eachCell({ includeEmpty: true }, (cell) => {
-				cell.font = { ...cell.font, name: 'Calibri', family: 1 }
-				cell.border = {
-					top: { style: 'thin', color: { argb: ExcelColorPalette.BORDER } },
-					left: { style: 'thin', color: { argb: ExcelColorPalette.BORDER } },
-					bottom: { style: 'thin', color: { argb: ExcelColorPalette.BORDER } },
-					right: { style: 'thin', color: { argb: ExcelColorPalette.BORDER } }
-				}
-			})
-		})
+		applyCommonStyles.call(worksheet)
+
 		return await workbook.xlsx.writeBuffer()
 	}
 }
