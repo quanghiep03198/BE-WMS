@@ -66,7 +66,7 @@ export const updateDeliveryDTO = z.object({
 export const updateSignatureDTO = z
 	.object({
 		approval_status: z.enum([TruckloadDeliveryStatus.CONFIRMED, TruckloadDeliveryStatus.REQUEST_CHANGE]).nullish(),
-		signature_type: z.enum(['qc_signature', 'warehouse_officer_signature', 'security_guard_signature']),
+		signature_type: z.enum(['ie_signature', 'warehouse_officer_signature', 'security_guard_signature']),
 		signature: z.string()
 	})
 	.superRefine((data, ctx) => {
@@ -85,8 +85,8 @@ export const updateSignatureDTO = z
 	})
 	.transform((data) => {
 		switch (data.signature_type) {
-			case 'qc_signature':
-				return { qc_signature: data.signature }
+			case 'ie_signature':
+				return { ie_signature: data.signature }
 			case 'warehouse_officer_signature':
 				return { warehouse_officer_signature: data.signature }
 			case 'security_guard_signature':

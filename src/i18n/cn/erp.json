@@ -55,7 +55,7 @@
 		"packaging_code": "裝箱單號",
 		"po": "订单编号",
 		"prod_color": "产品颜色",
-		"qc_signature": "QC签名",
+		"ie_signature": "進出口簽名",
 		"warehouse_officer_signature": "成品仓干部签名",
 		"security_guard_signature": "保卫科签名",
 		"required_date": "需求日期",

@@ -115,13 +115,13 @@ export class TruckloadDeliveryEntity extends BaseAbstractEntity {
 	approval_status: TruckloadDeliveryStatus
 
 	@Column({
-		name: 'qc_signature',
+		name: 'ie_signature',
 		type: 'nvarchar',
 		length: 'MAX',
 		nullable: true,
-		comment: "Base64 image QC's signature"
+		comment: 'Base64 image Import-Export signature'
 	})
-	qc_signature: string
+	ie_signature: string
 
 	@Column({
 		name: 'warehouse_officer_signature',

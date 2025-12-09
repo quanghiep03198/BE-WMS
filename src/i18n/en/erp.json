@@ -56,7 +56,7 @@
 		"prod_color": "Product color",
 		"required_date": "Required date",
 		"returned_qty": "Returned quantity",
-		"qc_signature": "QC signature",
+		"ie_signature": "Import-Export department signature",
 		"warehouse_officer_signature": "Warehouse officer signature",
 		"security_guard_signature": "Security guard signature",
 		"ship_order": "Shipping order number",

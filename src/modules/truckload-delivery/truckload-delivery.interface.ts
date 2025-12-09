@@ -19,7 +19,7 @@ export type DispatchOrder = {
 	smelling_container: boolean
 	moist_container: boolean
 	factory_departure_time: Date | null
-	qc_signature: string | null
+	ie_signature: string | null
 	warehouse_officer_signature: string | null
 	security_guard_signature: string | null
 	approval_status: string

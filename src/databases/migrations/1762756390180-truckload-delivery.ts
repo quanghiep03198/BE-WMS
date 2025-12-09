@@ -93,11 +93,11 @@ export class TruckloadDelivery1762756390180 implements MigrationInterface {
 				comment: 'Indicates if the container has moisture'
 			},
 			{
-				name: 'qc_signature',
+				name: 'ie_signature',
 				type: 'nvarchar',
 				length: 'MAX',
 				isNullable: true,
-				comment: 'Base64 image QC signature'
+				comment: 'Base64 image Import-Export signature'
 			},
 			{
 				name: 'warehouse_officer_signature',

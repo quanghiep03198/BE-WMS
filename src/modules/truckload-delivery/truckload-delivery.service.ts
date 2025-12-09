@@ -119,7 +119,7 @@ export class TruckloadDeliveryService
 			.addSelect('a.moist_container', 'moist_container')
 			.addSelect('a.factory_departure_time', 'factory_departure_time')
 			.addSelect('a.approval_status', 'approval_status')
-			.addSelect('a.qc_signature', 'qc_signature')
+			.addSelect('a.ie_signature', 'ie_signature')
 			.addSelect('a.warehouse_officer_signature', 'warehouse_officer_signature')
 			.addSelect('a.security_guard_signature', 'security_guard_signature')
 			.addSelect('CAST(a.created AS DATE)', 'created_at')
@@ -152,7 +152,7 @@ export class TruckloadDeliveryService
 			.addGroupBy('a.smelling_container')
 			.addGroupBy('a.moist_container')
 			.addGroupBy('a.approval_status')
-			.addGroupBy('a.qc_signature')
+			.addGroupBy('a.ie_signature')
 			.addGroupBy('a.warehouse_officer_signature')
 			.addGroupBy('a.security_guard_signature')
 			.addGroupBy('CAST(a.remark AS NVARCHAR(255))')
@@ -283,8 +283,8 @@ export class TruckloadDeliveryService
 				key: 'moist_container'
 			},
 			{
-				header: this.i18nService.t('erp.fields.qc_signature', { lang: currentLanguage }),
-				key: 'qc_signature'
+				header: this.i18nService.t('erp.fields.ie_signature', { lang: currentLanguage }),
+				key: 'ie_signature'
 			},
 			{
 				header: this.i18nService.t('erp.fields.warehouse_officer_signature', {
@@ -316,7 +316,7 @@ export class TruckloadDeliveryService
 
 			// * Store signature images for later rendering
 			const signatureColumns = [
-				{ key: 'qc_signature', colIndex: 8 },
+				{ key: 'ie_signature', colIndex: 8 },
 				{ key: 'warehouse_officer_signature', colIndex: 9 },
 				{ key: 'security_guard_signature', colIndex: 10 }
 			]
@@ -397,7 +397,7 @@ export class TruckloadDeliveryService
 		// * Auto fit columns
 		autoFitColumns.call(worksheet, {
 			minWidth: 14,
-			excludeColumns: ['created_at', 'qc_signature', 'warehouse_officer_signature', 'security_guard_signature']
+			excludeColumns: ['created_at', 'ie_signature', 'warehouse_officer_signature', 'security_guard_signature']
 		} satisfies AutoFitColumnOptions)
 
 		// * Remove empty rows and update image positions
