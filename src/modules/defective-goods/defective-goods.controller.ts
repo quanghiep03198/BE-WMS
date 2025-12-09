@@ -1,7 +1,6 @@
 import { CommonRequestHeader } from '@/common/constants'
 import { Api, AuthGuard, HttpMethod, User } from '@/common/decorators'
 import { ZodValidationPipe } from '@/common/pipes'
-import { EventGateway } from '@/events/event.gateway'
 import {
 	Body,
 	ConflictException,
@@ -18,7 +17,6 @@ import { format } from 'date-fns'
 import { FastifyReply } from 'fastify'
 import { isEmpty, isNil, omit, pickBy } from 'lodash'
 import { I18nContext, I18nService } from 'nestjs-i18n'
-import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
 import { Between, Like } from 'typeorm'
 import z from 'zod'
 import { UserEntity } from '../user/entities/user.entity'
@@ -45,9 +43,7 @@ import { DefectiveGoodsOutboundService } from './services/defective-outbound-rep
 @Controller('defective-goods')
 export class DefectiveGoodsController {
 	constructor(
-		@InjectPinoLogger(DefectiveGoodsController.name) private readonly logger: PinoLogger,
 		private readonly i18nService: I18nService,
-		private readonly eventGateway: EventGateway,
 		private readonly defectiveGoodsService: DefectiveGoodsService,
 		private readonly defectiveGoodsInboundService: DefectiveGoodsInboundService,
 		private readonly defectiveGoodsOutboundService: DefectiveGoodsOutboundService,
