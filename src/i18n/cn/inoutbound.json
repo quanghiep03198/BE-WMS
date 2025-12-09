@@ -14,8 +14,8 @@
 		"not_inbound_yet": "无法出货, 发现有标签尚未入库!"
 	},
 	"outbound_purpose": {
-		"SELL": "銷售",
+		"SELL": "出貨",
 		"RECYCLE": "翻箱",
-		"GIVEAWAY": "送干部"
+		"GIVEAWAY": "給客人"
 	}
 }
