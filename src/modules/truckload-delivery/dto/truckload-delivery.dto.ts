@@ -66,17 +66,29 @@ export const updateDeliveryDTO = z.object({
 export const updateSignatureDTO = z
 	.object({
 		approval_status: z.enum([TruckloadDeliveryStatus.CONFIRMED, TruckloadDeliveryStatus.REQUEST_CHANGE]).nullish(),
-		signature_type: z.enum(['ie_signature', 'warehouse_officer_signature', 'security_guard_signature']),
+		signature_type: z.enum([
+			'ie_signature',
+			'warehouse_officer_signature',
+			'security_1_signature',
+			'security_2_signature'
+		]),
 		signature: z.string()
 	})
 	.superRefine((data, ctx) => {
-		if (data.approval_status && data.signature_type !== 'security_guard_signature') {
+		if (
+			data.approval_status &&
+			data.signature_type !== 'security_1_signature' &&
+			data.signature_type !== 'security_2_signature'
+		) {
 			ctx.addIssue({
 				code: z.ZodIssueCode.custom,
 				message: 'Only security guard can update approval status'
 			})
 		}
-		if (!data.approval_status && data.signature_type === 'security_guard_signature') {
+		if (
+			!data.approval_status &&
+			(data.signature_type === 'security_1_signature' || data.signature_type === 'security_2_signature')
+		) {
 			ctx.addIssue({
 				code: z.ZodIssueCode.custom,
 				message: 'Approval status is required when role is security guard'
@@ -89,9 +101,14 @@ export const updateSignatureDTO = z
 				return { ie_signature: data.signature }
 			case 'warehouse_officer_signature':
 				return { warehouse_officer_signature: data.signature }
-			case 'security_guard_signature':
+			case 'security_1_signature':
 				return {
-					security_guard_signature: data.signature,
+					security_1_signature: data.signature,
+					approval_status: data.approval_status
+				}
+			case 'security_2_signature':
+				return {
+					security_2_signature: data.signature,
 					approval_status: data.approval_status
 				}
 		}

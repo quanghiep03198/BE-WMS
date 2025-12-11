@@ -6,7 +6,7 @@ import { Injectable, NotFoundException } from '@nestjs/common'
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm'
 import { format, isValid } from 'date-fns'
 import { Workbook } from 'exceljs'
-import { padStart } from 'lodash'
+import { omit, padStart } from 'lodash'
 import { I18nContext, I18nService } from 'nestjs-i18n'
 import { readFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
@@ -117,11 +117,13 @@ export class TruckloadDeliveryService
 			.addSelect('a.punctured_container', 'punctured_container')
 			.addSelect('a.smelling_container', 'smelling_container')
 			.addSelect('a.moist_container', 'moist_container')
-			.addSelect('a.factory_departure_time', 'factory_departure_time')
+			.addSelect('MAX(a.container_sealing_time)', 'container_sealing_time')
+			.addSelect('MAX(a.factory_departure_time)', 'factory_departure_time')
 			.addSelect('a.approval_status', 'approval_status')
 			.addSelect('a.ie_signature', 'ie_signature')
 			.addSelect('a.warehouse_officer_signature', 'warehouse_officer_signature')
-			.addSelect('a.security_guard_signature', 'security_guard_signature')
+			.addSelect('a.security_1_signature', 'security_1_signature')
+			.addSelect('a.security_2_signature', 'security_2_signature')
 			.addSelect('CAST(a.created AS DATE)', 'created_at')
 			.addSelect(
 				/* SQL */ `(
@@ -147,17 +149,19 @@ export class TruckloadDeliveryService
 			.addGroupBy('CAST(a.created AS DATE)')
 			.addGroupBy('a.license_plate')
 			.addGroupBy('a.container_number')
-			.addGroupBy('a.factory_departure_time')
+			// .addGroupBy('a.container_sealing_time')
+			// .addGroupBy('a.factory_departure_time')
 			.addGroupBy('a.punctured_container')
 			.addGroupBy('a.smelling_container')
 			.addGroupBy('a.moist_container')
 			.addGroupBy('a.approval_status')
 			.addGroupBy('a.ie_signature')
 			.addGroupBy('a.warehouse_officer_signature')
-			.addGroupBy('a.security_guard_signature')
+			.addGroupBy('a.security_1_signature')
+			.addGroupBy('a.security_2_signature')
 			.addGroupBy('CAST(a.remark AS NVARCHAR(255))')
-			.orderBy('CAST(a.created AS DATE)', 'DESC')
-			.addOrderBy('a.factory_departure_time', 'DESC')
+			.orderBy('a.dispatch_order', 'DESC')
+			.addOrderBy('CAST(a.created AS DATE)', 'DESC')
 			.getRawMany<DispatchOrder>()
 			.then((results) =>
 				results.map((row) => ({
@@ -207,9 +211,14 @@ export class TruckloadDeliveryService
 		return await this.deliveryRepository.update(
 			{ dispatch_order: dispatchOrder },
 			{
-				...payload,
-				factory_departure_time: payload.approval_status === TruckloadDeliveryStatus.CONFIRMED ? new Date() : null,
-				last_reviewed_at: new Date()
+				...omit(payload, ['approval_status']),
+				...(payload.security_2_signature && { approval_status: payload.approval_status }),
+				...(!!payload.security_1_signature && {
+					container_sealing_time: payload.approval_status === TruckloadDeliveryStatus.CONFIRMED ? new Date() : null
+				}),
+				...(!!payload.security_2_signature && {
+					factory_departure_time: payload.approval_status === TruckloadDeliveryStatus.CONFIRMED ? new Date() : null
+				})
 			}
 		)
 	}
@@ -293,8 +302,18 @@ export class TruckloadDeliveryService
 				key: 'warehouse_officer_signature'
 			},
 			{
-				header: this.i18nService.t('erp.fields.security_guard_signature', { lang: currentLanguage }),
-				key: 'security_guard_signature'
+				header: this.i18nService.t('erp.fields.security_guard_signature', {
+					args: { number: 1 },
+					lang: currentLanguage
+				}),
+				key: 'security_1_signature'
+			},
+			{
+				header: this.i18nService.t('erp.fields.security_guard_signature', {
+					args: { number: 2 },
+					lang: currentLanguage
+				}),
+				key: 'security_2_signature'
 			},
 			{ header: this.i18nService.t('common.fields.remark', { lang: currentLanguage }), key: 'remark' }
 		]
@@ -306,19 +325,13 @@ export class TruckloadDeliveryService
 		for (const record of worksheetData) {
 			const row = worksheet.addRow(record)
 			// row.height = 30
-			for (let i = 1; i <= worksheet.columns.length; i++) {
-				row.getCell(i).fill = {
-					type: 'pattern',
-					pattern: 'solid',
-					fgColor: { argb: ExcelColorPalette.BG_LIGHT_BLUE }
-				}
-			}
 
 			// * Store signature images for later rendering
 			const signatureColumns = [
 				{ key: 'ie_signature', colIndex: 8 },
 				{ key: 'warehouse_officer_signature', colIndex: 9 },
-				{ key: 'security_guard_signature', colIndex: 10 }
+				{ key: 'security_1_signature', colIndex: 10 },
+				{ key: 'security_2_signature', colIndex: 11 }
 			]
 
 			const rowImages: Array<{ colIndex: number; imageId: number }> = []
@@ -397,7 +410,13 @@ export class TruckloadDeliveryService
 		// * Auto fit columns
 		autoFitColumns.call(worksheet, {
 			minWidth: 14,
-			excludeColumns: ['created_at', 'ie_signature', 'warehouse_officer_signature', 'security_guard_signature']
+			excludeColumns: [
+				'created_at',
+				'ie_signature',
+				'warehouse_officer_signature',
+				'security_1_signature',
+				'security_2_signature'
+			]
 		} satisfies AutoFitColumnOptions)
 
 		// * Remove empty rows and update image positions
@@ -446,12 +465,19 @@ export class TruckloadDeliveryService
 
 		// * Add  header title
 		worksheet.insertRow(1, null)
-		worksheet.mergeCells('A1:K1')
+		worksheet.mergeCells('A1:L1')
 		worksheet.getRow(1).height = 30
 		worksheet.getRow(1).alignment = { vertical: 'middle', horizontal: 'center' }
 		worksheet.getRow(1).font = { size: 14, bold: true }
 		worksheet.getRow(2).font = { bold: true }
 		worksheet.getRow(2).height = 30
+		for (let i = 1; i <= worksheet.columns.length; i++) {
+			worksheet.getRow(2).getCell(i).fill = {
+				type: 'pattern',
+				pattern: 'solid',
+				fgColor: { argb: ExcelColorPalette.BG_LIGHT_BLUE }
+			}
+		}
 		worksheet.getCell('A1').fill = {
 			type: 'pattern',
 			pattern: 'solid',

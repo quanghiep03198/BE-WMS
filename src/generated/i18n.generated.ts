@@ -98,6 +98,7 @@ export type I18nTranslations = {
             "ie_signature": string;
             "warehouse_officer_signature": string;
             "security_guard_signature": string;
+            "container_sealing_time": string;
             "required_date": string;
             "returned_qty": string;
             "shaping_dept_code": string;

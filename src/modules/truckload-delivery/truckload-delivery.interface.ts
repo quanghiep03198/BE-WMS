@@ -21,7 +21,7 @@ export type DispatchOrder = {
 	factory_departure_time: Date | null
 	ie_signature: string | null
 	warehouse_officer_signature: string | null
-	security_guard_signature: string | null
+	security_1_signature: string | null
 	approval_status: string
 	delivery_details:
 		| string

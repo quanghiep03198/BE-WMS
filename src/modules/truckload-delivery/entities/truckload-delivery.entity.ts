@@ -59,14 +59,6 @@ export class TruckloadDeliveryEntity extends BaseAbstractEntity {
 	container_number: string
 
 	@Column({
-		name: 'factory_departure_time',
-		type: 'datetime',
-		nullable: true,
-		comment: 'The departure time from the factory'
-	})
-	factory_departure_time: Date
-
-	@Column({
 		name: 'outbound_qty',
 		type: 'int',
 		nullable: false,
@@ -133,21 +125,38 @@ export class TruckloadDeliveryEntity extends BaseAbstractEntity {
 	warehouse_officer_signature: string
 
 	@Column({
-		name: 'security_guard_signature',
+		name: 'security_1_signature',
 		type: 'nvarchar',
 		length: 'MAX',
 		nullable: true,
-		comment: 'Base64 image of the security guard signature'
+		comment: 'Base64 image of the security guard 1 signature'
 	})
-	security_guard_signature: string
+	security_1_signature: string
 
 	@Column({
-		name: 'last_reviewed_at',
+		name: 'security_2_signature',
+		type: 'nvarchar',
+		length: 'MAX',
+		nullable: true,
+		comment: 'Base64 image of the security guard 2 signature'
+	})
+	security_2_signature: string
+
+	@Column({
+		name: 'container_sealing_time',
 		type: 'datetime',
 		nullable: true,
-		comment: 'The last time the approval status was updated'
+		comment: 'The time when the container was sealed'
 	})
-	last_reviewed_at: Date
+	container_sealing_time: Date
+
+	@Column({
+		name: 'factory_departure_time',
+		type: 'datetime',
+		nullable: true,
+		comment: 'The departure time from the factory'
+	})
+	factory_departure_time: Date
 
 	@BeforeInsert()
 	setDefaultStatus() {

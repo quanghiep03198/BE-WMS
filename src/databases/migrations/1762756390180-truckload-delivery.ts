@@ -43,12 +43,6 @@ export class TruckloadDelivery1762756390180 implements MigrationInterface {
 				comment: 'Container number for the truckload delivery'
 			},
 			{
-				name: 'factory_departure_time',
-				type: 'datetime',
-				isNullable: true,
-				comment: 'The departure time from the factory'
-			},
-			{
 				name: 'po',
 				type: 'nvarchar',
 				length: '20',
@@ -107,17 +101,30 @@ export class TruckloadDelivery1762756390180 implements MigrationInterface {
 				comment: 'Base64 image of the warehouse officer signature'
 			},
 			{
-				name: 'security_guard_signature',
+				name: 'security_1_signature',
 				type: 'nvarchar',
 				length: 'MAX',
 				isNullable: true,
-				comment: 'Base64 image of the security guard signature'
+				comment: 'Base64 image of the security 1 signature'
 			},
 			{
-				name: 'last_reviewed_at',
+				name: 'security_2_signature',
+				type: 'nvarchar',
+				length: 'MAX',
+				isNullable: true,
+				comment: 'Base64 image of the security 2 signature'
+			},
+			{
+				name: 'container_sealing_time',
 				type: 'datetime',
 				isNullable: true,
-				comment: 'The last time security reviewed dispatch order information'
+				comment: 'The time when the container was sealed'
+			},
+			{
+				name: 'factory_departure_time',
+				type: 'datetime',
+				isNullable: true,
+				comment: 'The departure time from the factory'
 			}
 		]
 	})
