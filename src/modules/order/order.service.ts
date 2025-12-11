@@ -50,8 +50,7 @@ export class OrderService {
 	async searchPurchaseOrder(searchTerm: string): Promise<Array<{ po: string; is_completed: boolean }>> {
 		const outboundQtyCte = this.dataSourceTNC
 			.createQueryBuilder()
-			.select('po')
-			.addSelect(/* SQL */ `COUNT(DISTINCT EPC_Code)`, 'accumulated_outbound_qty')
+			.select([/* SQL */ `DISTINCT po AS po`, /* SQL */ `COUNT(DISTINCT EPC_Code) AS accumulated_outbound_qty`])
 			.from('DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet_backup_Daily', 'b')
 			.where(/* SQL */ `rfid_status = '${InventoryActions.OUTBOUND}'`)
 			.andWhere(/* SQL */ `RIGHT(stationNO, 3) = '103'`)
@@ -63,9 +62,9 @@ export class OrderService {
 			.addCommonTableExpression(outboundQtyCte.getQuery(), 'outbound_cte')
 			.select(/* SQL */ `TOP 5 IIF(ISNULL(a.or_custpoone, '') = '', a.or_custpo, a.or_custpoone)`, 'po')
 			.addSelect(/* SQL */ `SUM(a.or_totalqty) - SUM(a.or_totalcqty)`, 'po_qty')
-			.addSelect('c.color_sn', 'color_sn')
-			.addSelect('d.shoestyle_codefactory', 'factory_shoes_style')
-			.addSelect('e.brand_name', 'brand_name')
+			.addSelect(/* SQL */ `MAX(c.color_sn)`, 'color_sn')
+			.addSelect(/* SQL */ `MAX(d.shoestyle_codefactory)`, 'factory_shoes_style')
+			.addSelect(/* SQL */ `MAX(e.brand_name)`, 'brand_name')
 			.addSelect(/* SQL */ `ISNULL(MAX(b.accumulated_outbound_qty), 0)`, 'accumulated_outbound_qty')
 			.addSelect(
 				/* SQL */ `
@@ -115,9 +114,6 @@ export class OrderService {
 			)
 			.andWhere(/* SQL */ `IIF(ISNULL(a.or_custpoone, '') = '', a.or_custpo, a.or_custpoone) LIKE '%${searchTerm}%'`)
 			.groupBy(/* SQL */ `IIF(ISNULL(a.or_custpoone, '') = '', a.or_custpo, a.or_custpoone)`)
-			.addGroupBy('e.brand_name')
-			.addGroupBy('d.shoestyle_codefactory')
-			.addGroupBy('c.color_sn')
 			.orderBy(/* SQL */ `po`, 'ASC')
 			.addOrderBy(/* SQL */ `po_qty`, 'ASC')
 			.addOrderBy(/* SQL */ `accumulated_outbound_qty`, 'ASC')
