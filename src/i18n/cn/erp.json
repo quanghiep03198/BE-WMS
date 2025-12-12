@@ -58,7 +58,7 @@
 		"ie_signature": "進出口簽名",
 		"warehouse_officer_signature": "成品仓干部签名",
 		"security_guard_signature": "保卫科签名{number}",
-		"container_sealing_time": "貨櫃封櫃時間",
+		"container_sealing_time": "封柜时间",
 		"required_date": "需求日期",
 		"returned_qty": "已退貨量",
 		"shaping_dept_code": "成型線福號",
