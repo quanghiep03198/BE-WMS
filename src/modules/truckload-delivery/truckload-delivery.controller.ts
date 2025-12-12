@@ -70,10 +70,15 @@ export class TruckloadDeliveryController {
 	})
 	@AuthGuard()
 	async bulkUpdateByDispatchOrder(
+		@User() user: UserEntity,
 		@Param('dispatchOrder') dispatchOrder: string,
 		@Body(new ZodValidationPipe(updateDeliveryDTO)) payload: UpdateDeliveryDTO
 	) {
-		return await this.deliveryService.bulkUpdateByDispatchOrder(dispatchOrder, payload)
+		return await this.deliveryService.bulkUpdateByDispatchOrder(dispatchOrder, {
+			...payload,
+			user_code_updated: user?.username,
+			user_name_updated: user?.username
+		})
 	}
 	@Api({
 		endpoint: 'upsert-purchase-orders/:dispatchOrder',
@@ -83,9 +88,9 @@ export class TruckloadDeliveryController {
 	})
 	@AuthGuard()
 	async upsertPurchaseOrders(
+		@User() user: Partial<UserEntity>,
 		@Param('dispatchOrder') dispatchOrder: string,
 		@Headers(CommonRequestHeader.FACTORY_CODE) factory_code: string,
-		@User() user: Partial<UserEntity>,
 		@Body(new ZodValidationPipe(upsertPurchaseOrdersDTO)) payload: UpsertPurchaseOrdersDTO
 	) {
 		return await this.deliveryService.upsertPurchaseOrderDeliveries(
@@ -129,10 +134,15 @@ export class TruckloadDeliveryController {
 	})
 	@AuthGuard()
 	async updateDispatchOrderStatus(
+		@User() user: Partial<UserEntity>,
 		@Param('dispatchOrder') dispatchOrder: string,
 		@Body(new ZodValidationPipe(updateSignatureDTO)) payload: UpdateSignatureDTO
 	) {
-		return await this.deliveryService.updateDispatchOrderSignature(dispatchOrder, payload)
+		return await this.deliveryService.updateDispatchOrderSignature(dispatchOrder, {
+			...payload,
+			user_code_updated: user?.username,
+			user_name_updated: user?.username
+		})
 	}
 
 	@Api({

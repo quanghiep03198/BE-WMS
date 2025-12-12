@@ -11,6 +11,7 @@ import { I18nContext, I18nService } from 'nestjs-i18n'
 import { readFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { DataSource, Repository } from 'typeorm'
+import { BaseAbstractEntity } from '../_base/base.abstract.entity'
 import { BaseAbstractService } from '../_base/base.abstract.service'
 import { FactoryAgencyCode } from '../department/constants'
 import { TruckloadDeliveryStatus } from './constants'
@@ -187,7 +188,10 @@ export class TruckloadDeliveryService
 		return await this.deliveryRepository.insert(entities)
 	}
 
-	public async bulkUpdateByDispatchOrder(dispatchOrder: string, payload: UpdateDeliveryDTO) {
+	public async bulkUpdateByDispatchOrder(
+		dispatchOrder: string,
+		payload: UpdateDeliveryDTO & Partial<BaseAbstractEntity>
+	) {
 		return await this.deliveryRepository.update({ dispatch_order: dispatchOrder }, payload)
 	}
 
@@ -207,7 +211,10 @@ export class TruckloadDeliveryService
 		])
 	}
 
-	public async updateDispatchOrderSignature(dispatchOrder: string, payload: UpdateSignatureDTO) {
+	public async updateDispatchOrderSignature(
+		dispatchOrder: string,
+		payload: UpdateSignatureDTO & Partial<BaseAbstractEntity>
+	) {
 		return await this.deliveryRepository.update(
 			{ dispatch_order: dispatchOrder },
 			{
