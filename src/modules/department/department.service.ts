@@ -24,10 +24,13 @@ export class DepartmentService {
 	async getShapingDepartment(factoryCode: string) {
 		return await this.departmentRepository
 			.createQueryBuilder()
-			.select([/* SQL */ `DISTINCT RIGHT(dept_name, 3) AS dept_name`, /* SQL */ `MIN(dept_code) AS dept_code`])
+			.select([/* SQL */ `DISTINCT LEFT(dept_name, 3) AS dept_name`, /* SQL */ `MIN(dept_code) AS dept_code`])
 			.where({ factory_code: factoryCode })
-			.andWhere({ dept_name: Like('成型[A-Z]') })
-			.groupBy(/* SQL */ `RIGHT(dept_name, 3)`)
+			.andWhere({ dept_code: Like(`${factoryCode}BA%`) })
+			.andWhere({
+				dept_name: Or(Like('成型[A-Z]'), Like('成型[A-Z]線'))
+			})
+			.groupBy(/* SQL */ `LEFT(dept_name, 3)`)
 			.orderBy('dept_name', 'ASC')
 			.getRawMany<{ dept_code: string; dept_name: string }>()
 	}
