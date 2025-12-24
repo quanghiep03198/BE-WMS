@@ -108,10 +108,10 @@ export class DefectiveGoodsInboundService {
 			.addSelect(
 				/* SQL */ `(
                SELECT aa.size_code AS size_numcode, COUNT(DISTINCT aa.epc) AS qty
-               FROM DV_DATA_LAKE.dbo.dv_defective_goods aa
+               FROM DV_DATA_LAKE.dbo.dv_defective_goods 
+					
                WHERE 
-						aa.epc LIKE 'E28%'
-						AND aa.brand_name = a.brand_name
+						aa.brand_name = a.brand_name
                   AND aa.factory_shoes_style = a.factory_shoes_style 
                   AND aa.cust_shoes_style = a.cust_shoes_style 
                   AND COALESCE(aa.po, 'Unknown') = COALESCE(a.po, 'Unknown') 
@@ -136,8 +136,7 @@ export class DefectiveGoodsInboundService {
                AND a.defective_category = b.defective_category
             `
 			)
-			.where(/* SQL */ `a.epc LIKE 'E28%'`)
-			.andWhere(/* SQL */ `a.storage_location IS NOT NULL`)
+			.where(/* SQL */ `a.storage_location IS NOT NULL`)
 			.andWhere(/* SQL */ `LTRIM(RTRIM(a.storage_location)) <> ''`)
 			.andWhere(/* SQL */ `CAST(a.inbound_date AS DATE) = CAST(:inboundDate AS DATE)`)
 			.groupBy('a.brand_name')
