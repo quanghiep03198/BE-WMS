@@ -8,6 +8,8 @@ export interface IInventoryReportQueryResult {
 	or_no: string
 	inv_type: InventoryType
 	factory_shoes_style: string | null
+	total_storage_capacity: number
+	total_number_of_storage: number
 	init_inv_qty: number
 	total_instock_qty: number
 	total_outstock_qty: number
