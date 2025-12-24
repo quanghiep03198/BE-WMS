@@ -29,10 +29,14 @@ export declare global {
 			FALLBACK_LANGUAGE: string
 			GRAFANA_LOKI_URL: string
 			POSTMAN_DOCUMENTATION_URL: string | undefined
+			ENABLE_PROMETHEUS_METRICS_LOGGER: 'true' | 'false'
+			ENABLE_LOKI_LOGGER: 'true' | 'false'
+			// * Application
 
 			// * Throttler
 			THROTTLER_TTL: string
 			THROTTLER_LIMIT: string
+
 			// * Database
 			DB_TYPE: DataSourceOptions['type']
 			DB_HOST: string
