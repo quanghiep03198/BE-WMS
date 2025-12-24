@@ -104,6 +104,7 @@ a.factory_code,
 	c.color_sn,
 	s.storage_name AS storage,
    ISNULL(s.storage_capacity, 0) AS storage_capacity,
+   ISNULL(st.total_number_of_storage, 0) AS total_number_of_storage,
 	CAST(a.mo_qty AS INT) AS order_qty,
 	CAST(a.inv_initialqty AS INT) AS init_inv_qty,
 	CAST(a.inv_istotalqty AS INT) AS total_instock_qty,
@@ -136,6 +137,11 @@ a.factory_code,
 	a.inv_type,
 	a.inv_yearmonth AS inv_year_month
 FROM agg_data a
+OUTER APPLY (
+   SELECT COUNT(DISTINCT storage_num) AS total_number_of_storage
+   FROM DV_DATA_LAKE.dbo.dv_warehouseccodedet
+	WHERE cofactory_code = @1
+) st (total_number_of_storage)
 INNER JOIN po_list p ON p.mo_no = a.mo_no
 LEFT JOIN wuerp_vnrd.dbo.ta_manufacturmst b ON b.mo_no = a.mo_no AND b.isactive = 'Y'
 LEFT JOIN wuerp_vnrd.dbo.ta_productmst c ON c.isactive = 'Y' AND c.mat_code = b.mat_code
@@ -150,6 +156,5 @@ WHERE
 		OR CAST(a.inv_manualqty - a.inv_manualqtyout AS INT) <> 0
 		OR CAST(a.inv_finalqty AS INT) <> 0
 	)
-	
 ORDER BY a.mo_no DESC
 OPTION (OPTIMIZE FOR UNKNOWN, MAXDOP 8, FAST 100);
