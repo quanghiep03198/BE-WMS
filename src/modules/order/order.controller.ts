@@ -1,8 +1,8 @@
 import { CommonRequestHeader } from '@/common/constants'
 import { Api, AuthGuard, HttpMethod } from '@/common/decorators'
-import { Controller, DefaultValuePipe, Headers, NotFoundException, Param, Query } from '@nestjs/common'
+import { Controller, DefaultValuePipe, Headers, Param, Query } from '@nestjs/common'
 import { groupBy } from 'lodash'
-import { I18nContext, I18nService } from 'nestjs-i18n'
+import { I18nService } from 'nestjs-i18n'
 import { OrderService } from './order.service'
 
 @Controller('order')
@@ -56,7 +56,7 @@ export class OrderController {
 			this.orderService.getSizeRunByCommandNumber(commandNumber)
 		])
 		if (orders.length === 0) {
-			throw new NotFoundException(this.i18nService.t('common.not_found', { lang: I18nContext.current()?.lang }))
+			return { orders: [], sizes: [] }
 		}
 		const groupedOrders = groupBy(orders, 'mo_no')
 		return {
