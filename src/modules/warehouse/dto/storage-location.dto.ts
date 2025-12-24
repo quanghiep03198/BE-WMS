@@ -6,6 +6,7 @@ export const createStorageLocationValidator = z.object({
 		.string({ required_error: 'This field is required' })
 		.trim()
 		.min(1, { message: 'This field is required' }),
+	storage_capacity: z.number().int().positive({ message: 'Storage capacity must be a positive integer' }),
 	type_storage: z.nativeEnum(WarehouseStorageTypes, {
 		required_error: 'This field is required',
 		message: 'Invalid storage type'

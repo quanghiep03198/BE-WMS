@@ -26,6 +26,9 @@ export class StorageLocationEntity extends BaseAbstractEntity {
 	@Column({ type: 'varchar', length: 10 })
 	cofactory_code: string
 
+	@Column({ type: 'int', nullable: true, default: 100 })
+	storage_capacity: number
+
 	@Column({ type: 'bit', default: 0, transformer: new BoolBitTransformer() })
 	is_default: boolean
 
