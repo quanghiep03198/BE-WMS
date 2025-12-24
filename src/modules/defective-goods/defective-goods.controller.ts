@@ -17,6 +17,7 @@ import { format } from 'date-fns'
 import { FastifyReply } from 'fastify'
 import { isEmpty, isNil, omit, pickBy } from 'lodash'
 import { I18nContext, I18nService } from 'nestjs-i18n'
+import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
 import { Between, Like } from 'typeorm'
 import z from 'zod'
 import { UserEntity } from '../user/entities/user.entity'
@@ -35,6 +36,7 @@ import {
 	UpdateOutboundStatusDTO,
 	updateOutboundStatusDTO
 } from './dto/inoutbound.dto'
+import { EPCGenerator } from './helpers/epc-generator'
 import { DefectiveGoodsService } from './services/defective-goods.service'
 import { DefectiveGoodsInboundService } from './services/defective-inbound-report.service'
 import { DefectiveGoodsInventoryService } from './services/defective-inventory-report.service'
@@ -43,6 +45,7 @@ import { DefectiveGoodsOutboundService } from './services/defective-outbound-rep
 @Controller('defective-goods')
 export class DefectiveGoodsController {
 	constructor(
+		@InjectPinoLogger(DefectiveGoodsController.name) private readonly logger: PinoLogger,
 		private readonly i18nService: I18nService,
 		private readonly defectiveGoodsService: DefectiveGoodsService,
 		private readonly defectiveGoodsInboundService: DefectiveGoodsInboundService,
@@ -128,18 +131,35 @@ export class DefectiveGoodsController {
 					lang: I18nContext.current()?.lang
 				})
 			)
+		this.logger.debug(payload)
 
-		if (Array.isArray(payload.epc)) {
+		if (payload.combination_strategy === 'uhf' && Array.isArray(payload.epc)) {
 			return await this.defectiveGoodsService.insertMany(
 				payload.epc.map((item) => ({ epc: item, user_code_created: user.username, ...omit(payload, ['epc']) }))
 			)
 		}
-		if (typeof payload.epc === 'string') {
+		if (payload.combination_strategy === 'usb' && typeof payload.epc === 'string') {
 			return await this.defectiveGoodsService.insertOne({
 				...payload,
 				epc: payload.epc,
 				user_code_created: user.username
 			})
+		}
+		if (payload.combination_strategy === 'manually' && Array.isArray(payload.sizes)) {
+			const epcs = payload.sizes.flatMap((size) =>
+				Array.from({ length: size.qty })
+					.map(() => {
+						const generator = new EPCGenerator()
+						return generator.generateBatch(size.qty).map((epc) => ({
+							...omit(payload, ['epc', 'sizes', 'combination_strategy']),
+							epc,
+							size_code: size.size_code
+						}))
+					})
+					.flat()
+			)
+
+			return await this.defectiveGoodsService.batchInsert(epcs)
 		}
 		// Todo: create new resource for defective goods
 	}

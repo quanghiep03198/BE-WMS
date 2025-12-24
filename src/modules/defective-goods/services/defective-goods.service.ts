@@ -1,7 +1,7 @@
 import { DATA_SOURCE_DATA_LAKE } from '@/databases/constants'
 import { BadGatewayException, Injectable } from '@nestjs/common'
 import { InjectRepository } from '@nestjs/typeorm'
-import { omit } from 'lodash'
+import { chunk, omit } from 'lodash'
 import { And, Between, FindOptionsWhere, In, Not, Repository } from 'typeorm'
 import { BaseAbstractService } from '../../_base/base.abstract.service'
 import { FALLBACK_VALUE } from '../../rfid/constants'
@@ -22,6 +22,26 @@ export class DefectiveGoodsService extends BaseAbstractService<DefectiveGoodsEnt
 			epc: In(Array.isArray(epcs) ? epcs : [epcs]),
 			ri_cancel: false
 		})
+	}
+
+	public async batchInsert(epcs: Partial<DefectiveGoodsEntity>[]) {
+		const queryRunner = this.defectiveGoodRepository.manager.connection.createQueryRunner()
+
+		try {
+			await queryRunner.connect()
+			await queryRunner.startTransaction()
+			const chunkData = chunk(epcs, 10)
+			await Promise.all(
+				chunkData.map(async (batch) => {
+					await queryRunner.manager.insert(DefectiveGoodsEntity, batch)
+				})
+			)
+			await queryRunner.commitTransaction()
+		} catch {
+			await queryRunner.rollbackTransaction()
+		} finally {
+			await queryRunner.release()
+		}
 	}
 
 	public async retrieveSizeQty(epcList: string[]) {
