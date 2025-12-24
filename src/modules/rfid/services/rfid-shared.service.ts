@@ -237,9 +237,8 @@ export class RFIDSharedService {
 		return await $model.updateMany({ epc: { $in: epcs } }, { deleted: true, scannable: rescannable }).exec()
 	}
 
-	public async getArchivedEpcFeatures(type: 'inbound' | 'outbound') {
-		const $model = type === 'inbound' ? this.epcInboundModel : this.epcOutboundModel
-		return await $model
+	public async getArchivedEpcFeatures() {
+		return await this.epcInboundModel
 			.aggregateWithDeleted([
 				{
 					$match: {

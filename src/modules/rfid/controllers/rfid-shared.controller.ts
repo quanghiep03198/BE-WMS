@@ -98,12 +98,12 @@ export class RFIDSharedController {
 	}
 
 	@Api({
-		endpoint: 'archived-epc-features/:type',
+		endpoint: 'archived-epc-features',
 		method: HttpMethod.GET
 	})
 	@AuthGuard()
-	async getArchivedEpcFeatures(@Param('type') type: 'inbound' | 'outbound') {
-		return await this.rfidSharedService.getArchivedEpcFeatures(type)
+	async getArchivedEpcFeatures() {
+		return await this.rfidSharedService.getArchivedEpcFeatures()
 	}
 
 	@Api({
