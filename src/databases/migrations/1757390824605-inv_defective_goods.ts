@@ -33,6 +33,14 @@ export class InvDefectiveGoods1757390824605 implements MigrationInterface {
 				comment: 'Return Instruction Cancel flag'
 			},
 			{
+				name: 'ri_type',
+				type: 'nvarchar',
+				length: '10',
+				isNullable: false,
+				enum: ['uhf', 'usb', 'manually'],
+				comment: 'Combination strategy, including "uhf", "usb", "manually"'
+			},
+			{
 				name: 'sewing_line',
 				type: 'nvarchar',
 				length: '50',

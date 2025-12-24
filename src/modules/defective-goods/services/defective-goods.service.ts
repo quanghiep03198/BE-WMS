@@ -17,6 +17,26 @@ export class DefectiveGoodsService extends BaseAbstractService<DefectiveGoodsEnt
 		super(defectiveGoodRepository)
 	}
 
+	public async getCanInoundEpcs() {
+		return await this.defectiveGoodRepository.find({
+			select: [
+				'epc',
+				'brand_name',
+				'po',
+				'mo_no',
+				'factory_shoes_style',
+				'cust_shoes_style',
+				'color_sn',
+				'size_code'
+			],
+			where: {
+				inbound_date: null,
+				storage_location: null,
+				ri_cancel: false
+			}
+		})
+	}
+
 	public async checkActiveEpcsExist(epcs: string | string[]): Promise<boolean> {
 		return await this.defectiveGoodRepository.existsBy({
 			epc: In(Array.isArray(epcs) ? epcs : [epcs]),
