@@ -16,7 +16,9 @@ WITH po_list AS (
 ),
 -- * Storage list of each command number
 storage_list_cte AS (
-	SELECT mo_no, STRING_AGG(b.storage_name, ', ') WITHIN GROUP (ORDER BY storage ASC) AS storage_name
+	SELECT mo_no, 
+      SUM(c.storage_capacity) AS storage_capacity, 
+      STRING_AGG(b.storage_name, ', ') WITHIN GROUP (ORDER BY storage ASC) AS storage_name
 	FROM (
 		SELECT DISTINCT storage, mo_no 
 		FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet_backup_Daily
@@ -24,6 +26,8 @@ storage_list_cte AS (
 	) a
 	LEFT JOIN DV_DATA_LAKE.dbo.dv_warehouseccodedet b
 		ON a.storage = b.storage_num
+   LEFT JOIN DV_DATA_LAKE.dbo.dv_warehouseccodedet c 
+      ON a.storage = c.storage_num
 	GROUP BY mo_no
 ),
 
@@ -99,6 +103,7 @@ a.factory_code,
 	(ISNULL(d.shoestyle_codecust, '') + '/' +ISNULL(d.shoestyle_namecust, '')) cust_shoes_style,
 	c.color_sn,
 	s.storage_name AS storage,
+   ISNULL(s.storage_capacity, 0) AS storage_capacity,
 	CAST(a.mo_qty AS INT) AS order_qty,
 	CAST(a.inv_initialqty AS INT) AS init_inv_qty,
 	CAST(a.inv_istotalqty AS INT) AS total_instock_qty,
