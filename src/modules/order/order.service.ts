@@ -47,7 +47,10 @@ export class OrderService {
 			.getRawMany()
 	}
 
-	async searchPurchaseOrder(searchTerm: string): Promise<Array<{ po: string; is_completed: boolean }>> {
+	async searchPurchaseOrder(
+		searchTerm: string,
+		shouldFilterAllBrands?: boolean
+	): Promise<Array<{ po: string; is_completed: boolean }>> {
 		const outboundQtyCte = this.dataSourceTNC
 			.createQueryBuilder()
 			.select([/* SQL */ `DISTINCT po AS po`, /* SQL */ `COUNT(DISTINCT EPC_Code) AS accumulated_outbound_qty`])
@@ -106,7 +109,9 @@ export class OrderService {
 			)
 			.where(/* SQL */ `a.isactive = 'Y'`)
 			.andWhere(
-				/* SQL */ `a.custbrand_id IN (
+				shouldFilterAllBrands
+					? '1=1'
+					: /* SQL */ `a.custbrand_id IN (
 					SELECT DISTINCT custbrand_id
 					FROM wuerp_vnrd.dbo.ta_brand
 					WHERE brand_code IN ('TV','KB','UG')

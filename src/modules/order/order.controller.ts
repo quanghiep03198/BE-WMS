@@ -29,8 +29,11 @@ export class OrderController {
 		method: HttpMethod.GET
 	})
 	@AuthGuard()
-	async searchPurchaseOrder(@Query('q') searchTerm: string) {
-		return await this.orderService.searchPurchaseOrder(searchTerm)
+	async searchPurchaseOrder(
+		@Query('q') searchTerm: string,
+		@Query('filter_all_brands', new DefaultValuePipe(false)) shouldFilterAllBrands?: boolean
+	) {
+		return await this.orderService.searchPurchaseOrder(searchTerm, shouldFilterAllBrands)
 	}
 
 	@Api({
