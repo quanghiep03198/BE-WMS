@@ -131,35 +131,33 @@ export class DefectiveGoodsController {
 					lang: I18nContext.current()?.lang
 				})
 			)
-		this.logger.debug(payload)
 
-		if (payload.combination_strategy === 'uhf' && Array.isArray(payload.epc)) {
+		if (payload.ri_type === 'uhf' && Array.isArray(payload.epc)) {
 			return await this.defectiveGoodsService.insertMany(
 				payload.epc.map((item) => ({ epc: item, user_code_created: user.username, ...omit(payload, ['epc']) }))
 			)
 		}
-		if (payload.combination_strategy === 'usb' && typeof payload.epc === 'string') {
+		if (payload.ri_type === 'usb' && typeof payload.epc === 'string') {
 			return await this.defectiveGoodsService.insertOne({
 				...payload,
 				epc: payload.epc,
 				user_code_created: user.username
 			})
 		}
-		if (payload.combination_strategy === 'manually' && Array.isArray(payload.sizes)) {
-			const epcs = payload.sizes.flatMap((size) =>
-				Array.from({ length: size.qty })
-					.map(() => {
-						const generator = new EPCGenerator()
-						return generator.generateBatch(size.qty).map((epc) => ({
-							...omit(payload, ['epc', 'sizes', 'combination_strategy']),
-							epc,
-							size_code: size.size_code
-						}))
-					})
-					.flat()
-			)
+		if (payload.ri_type === 'manually' && Array.isArray(payload.sizes)) {
+			const data = payload.sizes.flatMap((size) => {
+				const generator = new EPCGenerator()
+				const epcs = generator.generateBatch(size.qty)
+				return epcs.map((epc) => ({
+					epc,
+					size_code: size.size_code,
+					user_name_created: user.username,
+					user_code_created: user.username,
+					...omit(payload, ['epc', 'sizes'])
+				}))
+			})
 
-			return await this.defectiveGoodsService.batchInsert(epcs)
+			return await this.defectiveGoodsService.batchInsert(data)
 		}
 		// Todo: create new resource for defective goods
 	}

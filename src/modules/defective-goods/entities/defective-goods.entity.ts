@@ -4,6 +4,8 @@ import { BaseAbstractEntity } from '@/modules/_base/base.abstract.entity'
 import { Column, Entity } from 'typeorm'
 import { DefectiveCategory, DefectiveGoodsOutboundPurpose, DefectiveLocation } from '../constants'
 
+export type CombinationCombinationStrategy = 'uhf' | 'usb' | 'manually'
+
 @Entity({
 	database: DATABASE_DATA_LAKE,
 	schema: DATABASE_SCHEMA,
@@ -124,6 +126,16 @@ export class DefectiveGoodsEntity extends BaseAbstractEntity {
 		transformer: new BoolBitTransformer()
 	})
 	ri_cancel: boolean
+
+	@Column({
+		name: 'ri_type',
+		type: 'nvarchar',
+		nullable: false,
+		length: 10,
+		enum: ['uhf', 'usb', 'manually'],
+		comment: 'Return Instruction type, including uhf, usb, manually'
+	})
+	ri_type: CombinationCombinationStrategy
 
 	@Column({
 		name: 'inbound_date',

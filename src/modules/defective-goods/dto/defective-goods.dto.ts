@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { DefectiveCategory, DefectiveLocation } from '../constants'
 
 export const baseDefectiveGoodsDTO = z.object({
-	combination_strategy: z.enum(['uhf', 'usb', 'manually']),
+	ri_type: z.enum(['uhf', 'usb', 'manually']),
 	defective_category: z.nativeEnum(DefectiveCategory),
 	po: z.any().nullable().optional(),
 	mo_no: z.any().nullable().optional(),
@@ -45,7 +45,7 @@ export const createDefectiveGoodsDTO = baseDefectiveGoodsDTO
 		color_sn: true,
 		defective_location: true,
 		defective_description: true,
-		combination_strategy: true,
+		ri_type: true,
 		defective_category: true
 	})
 	.refine(
@@ -56,7 +56,7 @@ export const createDefectiveGoodsDTO = baseDefectiveGoodsDTO
 		{ message: 'Purchase order and Manufacturing order. are required for B Grade category' }
 	)
 	.superRefine((values, context) => {
-		switch (values.combination_strategy) {
+		switch (values.ri_type) {
 			case 'uhf': {
 				if (!Array.isArray(values.epc) || values.epc.length === 0)
 					context.addIssue({
