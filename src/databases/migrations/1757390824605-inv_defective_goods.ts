@@ -2,6 +2,7 @@ import { BaseAbstractEntity } from '@/modules/_base/base.abstract.entity'
 import {
 	DefectiveCategory,
 	DefectiveGoodsOutboundPurpose,
+	DefectiveGoodsSource,
 	DefectiveLocation
 } from '@/modules/defective-goods/constants'
 import { MigrationInterface, QueryRunner, Table } from 'typeorm'
@@ -36,7 +37,6 @@ export class InvDefectiveGoods1757390824605 implements MigrationInterface {
 				name: 'ri_type',
 				type: 'nvarchar',
 				length: '10',
-				isNullable: false,
 				enum: ['uhf', 'usb', 'manually'],
 				comment: 'Combination strategy, including "uhf", "usb", "manually"'
 			},
@@ -75,8 +75,8 @@ export class InvDefectiveGoods1757390824605 implements MigrationInterface {
 				isNullable: true,
 				comment: 'This field in only required when defective category is B'
 			},
-			{ name: 'cust_shoes_style', type: 'nvarchar', length: '30', isNullable: false },
-			{ name: 'factory_shoes_style', type: 'nvarchar', length: '30', isNullable: false },
+			{ name: 'cust_shoes_style', type: 'nvarchar', length: '100', isNullable: false },
+			{ name: 'factory_shoes_style', type: 'nvarchar', length: '50', isNullable: false },
 			{ name: 'color_sn', type: 'nvarchar', length: '10', isNullable: false },
 			{ name: 'size_code', type: 'nvarchar', length: '5', isNullable: false, comment: 'Size' },
 			{
@@ -87,6 +87,16 @@ export class InvDefectiveGoods1757390824605 implements MigrationInterface {
 				enum: Object.values(DefectiveCategory),
 				comment:
 					'Defective category, including B (Grade B shoes), C (Grade C shoes), RD (Research and developement)'
+			},
+			{
+				name: 'shoe_source',
+				type: 'nvarchar',
+				length: '1',
+				isNullable: true,
+				enum: Object.values(DefectiveGoodsSource),
+				default: `'${DefectiveGoodsSource.FINAL_INSPECTION}'`,
+				comment:
+					'Source of the defective goods, including A (Final inspection), B (Assembly), C (Repacking inspection), D (Other)'
 			},
 			{
 				name: 'defective_location',

@@ -36,11 +36,12 @@ import {
 	UpdateOutboundStatusDTO,
 	updateOutboundStatusDTO
 } from './dto/inoutbound.dto'
+import { DefectiveGoodsEntity } from './entities/defective-goods.entity'
 import { EPCGenerator } from './helpers/epc-generator'
 import { DefectiveGoodsService } from './services/defective-goods.service'
-import { DefectiveGoodsInboundService } from './services/defective-inbound-report.service'
-import { DefectiveGoodsInventoryService } from './services/defective-inventory-report.service'
-import { DefectiveGoodsOutboundService } from './services/defective-outbound-report.service'
+import { DefectiveGoodsInboundService } from './services/defective-inbound.service'
+import { DefectiveGoodsInventoryService } from './services/defective-inventory.service'
+import { DefectiveGoodsOutboundService } from './services/defective-outbound.service'
 
 @Controller('defective-goods')
 export class DefectiveGoodsController {
@@ -124,20 +125,26 @@ export class DefectiveGoodsController {
 		@User() user: UserEntity,
 		@Body(new ZodValidationPipe(createDefectiveGoodsDTO)) payload: CreateDefectiveGoodsDTO
 	) {
-		const isActiveEpcsExist: Awaited<boolean> = await this.defectiveGoodsService.checkActiveEpcsExist(payload.epc)
-		if (isActiveEpcsExist)
-			throw new ConflictException(
-				this.i18nService.t('defective-goods.active_epcs_recombination_conflict', {
-					lang: I18nContext.current()?.lang
-				})
-			)
-
 		if (payload.ri_type === 'uhf' && Array.isArray(payload.epc)) {
+			const isActiveEpcsExist: Awaited<boolean> = await this.defectiveGoodsService.checkActiveEpcsExist(payload.epc)
+			if (isActiveEpcsExist)
+				throw new ConflictException(
+					this.i18nService.t('defective-goods.active_epcs_recombination_conflict', {
+						lang: I18nContext.current()?.lang
+					})
+				)
 			return await this.defectiveGoodsService.insertMany(
 				payload.epc.map((item) => ({ epc: item, user_code_created: user.username, ...omit(payload, ['epc']) }))
 			)
 		}
 		if (payload.ri_type === 'usb' && typeof payload.epc === 'string') {
+			const isActiveEpcsExist: Awaited<boolean> = await this.defectiveGoodsService.checkActiveEpcsExist(payload.epc)
+			if (isActiveEpcsExist)
+				throw new ConflictException(
+					this.i18nService.t('defective-goods.active_epcs_recombination_conflict', {
+						lang: I18nContext.current()?.lang
+					})
+				)
 			return await this.defectiveGoodsService.insertOne({
 				...payload,
 				epc: payload.epc,
@@ -145,8 +152,8 @@ export class DefectiveGoodsController {
 			})
 		}
 		if (payload.ri_type === 'manually' && Array.isArray(payload.sizes)) {
+			const generator = new EPCGenerator()
 			const data = payload.sizes.flatMap((size) => {
-				const generator = new EPCGenerator()
 				const epcs = generator.generateBatch(size.qty)
 				return epcs.map((epc) => ({
 					epc,
@@ -160,6 +167,19 @@ export class DefectiveGoodsController {
 			return await this.defectiveGoodsService.batchInsert(data)
 		}
 		// Todo: create new resource for defective goods
+	}
+
+	@Api({
+		endpoint: 'inoutbound-epcs/:type',
+		method: HttpMethod.GET,
+		statusCode: HttpStatus.OK
+	})
+	@AuthGuard()
+	public async getCanInboundEpcs(
+		@Param('type') type: 'inbound' | 'outbound',
+		@Query() queries: Partial<DefectiveGoodsEntity> & { take?: number }
+	) {
+		return await this.defectiveGoodsService.getCanInoutboundEpcs(type, queries)
 	}
 
 	@Api({

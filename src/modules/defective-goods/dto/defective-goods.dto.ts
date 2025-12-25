@@ -1,6 +1,6 @@
 import { isEmpty, isNil } from 'lodash'
 import { z } from 'zod'
-import { DefectiveCategory, DefectiveLocation } from '../constants'
+import { DefectiveCategory, DefectiveGoodsSource, DefectiveLocation } from '../constants'
 
 export const baseDefectiveGoodsDTO = z.object({
 	ri_type: z.enum(['uhf', 'usb', 'manually']),
@@ -14,6 +14,7 @@ export const baseDefectiveGoodsDTO = z.object({
 	size_code: z.string().nonempty().optional(),
 	defective_location: z.nativeEnum(DefectiveLocation),
 	defective_description: z.string().nonempty(),
+	shoe_source: z.nativeEnum(DefectiveGoodsSource).optional(),
 	sewing_line: z
 		.string()
 		.trim()
