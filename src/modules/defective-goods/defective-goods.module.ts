@@ -7,9 +7,9 @@ import { TenancyModule } from '../tenancy/tenancy.module'
 import { DefectiveGoodsController } from './defective-goods.controller'
 import { DefectiveGoodsEntity } from './entities/defective-goods.entity'
 import { DefectiveGoodsService } from './services/defective-goods.service'
-import { DefectiveGoodsInboundService } from './services/defective-inbound-report.service'
-import { DefectiveGoodsInventoryService } from './services/defective-inventory-report.service'
-import { DefectiveGoodsOutboundService } from './services/defective-outbound-report.service'
+import { DefectiveGoodsInboundService } from './services/defective-inbound.service'
+import { DefectiveGoodsInventoryService } from './services/defective-inventory.service'
+import { DefectiveGoodsOutboundService } from './services/defective-outbound.service'
 
 @Module({
 	imports: [TenancyModule, TypeOrmModule.forFeature([DefectiveGoodsEntity], DATA_SOURCE_DATA_LAKE)],

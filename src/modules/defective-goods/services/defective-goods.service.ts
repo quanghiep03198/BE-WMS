@@ -1,8 +1,9 @@
 import { DATA_SOURCE_DATA_LAKE } from '@/databases/constants'
 import { BadGatewayException, Injectable } from '@nestjs/common'
-import { InjectRepository } from '@nestjs/typeorm'
+import { InjectDataSource, InjectRepository } from '@nestjs/typeorm'
 import { chunk, omit } from 'lodash'
-import { And, Between, FindOptionsWhere, In, Not, Repository } from 'typeorm'
+import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
+import { And, Between, DataSource, FindOptionsWhere, In, IsNull, Like, Not, Repository } from 'typeorm'
 import { BaseAbstractService } from '../../_base/base.abstract.service'
 import { FALLBACK_VALUE } from '../../rfid/constants'
 import { DeleteManyDefectiveGoodsDTO } from '../dto/defective-goods.dto'
@@ -11,17 +12,30 @@ import { DefectiveGoodsEntity } from '../entities/defective-goods.entity'
 @Injectable()
 export class DefectiveGoodsService extends BaseAbstractService<DefectiveGoodsEntity> {
 	constructor(
+		@InjectPinoLogger(DefectiveGoodsService.name) private readonly logger: PinoLogger,
 		@InjectRepository(DefectiveGoodsEntity, DATA_SOURCE_DATA_LAKE)
-		private readonly defectiveGoodRepository: Repository<DefectiveGoodsEntity>
+		private readonly defectiveGoodRepository: Repository<DefectiveGoodsEntity>,
+		@InjectDataSource(DATA_SOURCE_DATA_LAKE) private readonly dataSource: DataSource
 	) {
 		super(defectiveGoodRepository)
 	}
 
-	public async getCanInoundEpcs() {
+	public async getCanInoutboundEpcs(
+		type: 'inbound' | 'outbound',
+		filters: Partial<DefectiveGoodsEntity> & { take?: number }
+	) {
+		const filterQueries: FindOptionsWhere<DefectiveGoodsEntity> = {}
+		for (const [key, value] of Object.entries(omit(filters, ['take', 'action']))) {
+			if (value !== undefined && value !== null) {
+				filterQueries[key] = Like(`%${value}%`)
+			}
+		}
+
 		return await this.defectiveGoodRepository.find({
 			select: [
 				'epc',
 				'brand_name',
+				'defective_category',
 				'po',
 				'mo_no',
 				'factory_shoes_style',
@@ -30,10 +44,23 @@ export class DefectiveGoodsService extends BaseAbstractService<DefectiveGoodsEnt
 				'size_code'
 			],
 			where: {
-				inbound_date: null,
-				storage_location: null,
-				ri_cancel: false
-			}
+				...(type === 'inbound' && {
+					inbound_date: IsNull(),
+					storage_location: IsNull()
+				}),
+				...(type === 'outbound' && {
+					inbound_date: Not(IsNull()),
+					storage_location: Not(IsNull())
+				}),
+				outbound_date: IsNull(),
+				outbound_purpose: IsNull(),
+				ri_cancel: false,
+				...omit(filterQueries, ['take'])
+			},
+			order: {
+				epc: 'ASC'
+			},
+			...(!isNaN(+filters.take) && { take: +filters.take })
 		})
 	}
 
@@ -45,22 +72,22 @@ export class DefectiveGoodsService extends BaseAbstractService<DefectiveGoodsEnt
 	}
 
 	public async batchInsert(epcs: Partial<DefectiveGoodsEntity>[]) {
-		const queryRunner = this.defectiveGoodRepository.manager.connection.createQueryRunner()
-
+		console.log(epcs.find((e) => e.epc.length > 24))
+		const queryRunner = this.dataSource.createQueryRunner()
+		// const queryRunner = this.defectiveGoodRepository.manager.connection.createQueryRunner()
+		await queryRunner.connect()
 		try {
-			await queryRunner.connect()
 			await queryRunner.startTransaction()
-			const chunkData = chunk(epcs, 10)
-			await Promise.all(
-				chunkData.map(async (batch) => {
-					await queryRunner.manager.insert(DefectiveGoodsEntity, batch)
-				})
-			)
+			for (const batch of chunk(epcs, 20)) {
+				await this.dataSource.getRepository(DefectiveGoodsEntity).insert(batch)
+			}
 			await queryRunner.commitTransaction()
-		} catch {
-			await queryRunner.rollbackTransaction()
+		} catch (error) {
+			this.logger.error('Failed to batch insert defective goods', error)
+			if (queryRunner.isTransactionActive) await queryRunner.rollbackTransaction()
+			throw error
 		} finally {
-			await queryRunner.release()
+			if (!queryRunner.isReleased) await queryRunner.release()
 		}
 	}
 

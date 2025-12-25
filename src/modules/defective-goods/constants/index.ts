@@ -16,3 +16,10 @@ export enum DefectiveGoodsOutboundPurpose {
 	GIVEAWAY = 'GIVEAWAY',
 	RECYCLE = 'RECYCLE'
 }
+
+export enum DefectiveGoodsSource {
+	FINAL_INSPECTION = 'A',
+	ASSEMBLY = 'B',
+	REPACKING_INSPECTION = 'C',
+	OTHER = 'D'
+}

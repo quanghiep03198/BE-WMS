@@ -3,97 +3,51 @@ import { applyCommonStyles, AutoFitColumnOptions, autoFitColumns } from '@/commo
 import { SuperJson } from '@/common/utils'
 import { DATA_SOURCE_DATA_LAKE } from '@/databases/constants'
 import { TENANCY_DATA_SOURCE } from '@/modules/tenancy/constants'
-import { Inject, Injectable } from '@nestjs/common'
+import { ConflictException, Inject, Injectable } from '@nestjs/common'
 import { InjectRepository } from '@nestjs/typeorm'
 import { format } from 'date-fns'
 import { Workbook } from 'exceljs'
+import { omit } from 'lodash'
 import { I18nContext, I18nService } from 'nestjs-i18n'
-import { DataSource, In, Repository } from 'typeorm'
-import { UpdateInboundStatusDTO } from '../dto/inoutbound.dto'
+import { DataSource, In, IsNull, Repository } from 'typeorm'
+import { DefectiveGoodsOutboundPurpose } from '../constants'
+import { UpdateOutboundStatusDTO } from '../dto/inoutbound.dto'
 import { DefectiveGoodsEntity } from '../entities/defective-goods.entity'
 
 @Injectable()
-export class DefectiveGoodsInboundService {
+export class DefectiveGoodsOutboundService {
 	constructor(
-		@Inject(TENANCY_DATA_SOURCE) private readonly dataSourceTNC: DataSource,
 		@InjectRepository(DefectiveGoodsEntity, DATA_SOURCE_DATA_LAKE)
 		private readonly defectiveGoodsRepository: Repository<DefectiveGoodsEntity>,
+		@Inject(TENANCY_DATA_SOURCE) private readonly dataSourceTNC: DataSource,
 		private readonly i18nService: I18nService
 	) {}
 
-	public async updateInboundStatus(update: UpdateInboundStatusDTO) {
+	public async updateOutboundStatus({ epcs, ...update }: UpdateOutboundStatusDTO) {
+		const existsNotInbounded = await this.defectiveGoodsRepository.existsBy({
+			epc: In(epcs),
+			ri_cancel: false,
+			storage_location: IsNull(),
+			inbound_date: IsNull()
+		})
+
+		if (existsNotInbounded) throw new ConflictException(this.i18nService.t('inoutbound.notification.not_inbound_yet'))
+
 		return await this.defectiveGoodsRepository.update(
-			{ epc: In(update.epcs), ri_cancel: false },
+			{ epc: In(epcs) },
 			{
-				storage_location: update.storage_location,
-				inbound_date: new Date()
+				...omit(update, ['epcs']),
+				ri_cancel: true,
+				// ri_cancel: true,
+				outbound_date: new Date()
 			}
 		)
 	}
 
-	public getStorageLocationsQuery({
-		date,
-		shouldCheckReturnInstructionStatus
-	}: {
-		date?: string
-		shouldCheckReturnInstructionStatus: boolean
-	}) {
-		return this.dataSourceTNC
-			.createQueryBuilder()
-			.select([
-				/* SQL */ `STRING_AGG(storage_location, ',') WITHIN GROUP (ORDER BY storage_location ASC) AS storage_location`,
-				'brand_name',
-				'po',
-				'mo_no',
-				'factory_shoes_style',
-				'color_sn',
-				'defective_category'
-			])
-			.from(
-				(qb) =>
-					qb
-						.subQuery()
-						.distinct()
-						.select([
-							'storage_location',
-							'brand_name',
-							'po',
-							'mo_no',
-							'factory_shoes_style',
-							'color_sn',
-							'defective_category'
-						])
-						.from(DefectiveGoodsEntity, 'a')
-						.where(/* SQL */ `storage_location IS NOT NULL`)
-						.andWhere(() => {
-							if (!shouldCheckReturnInstructionStatus) return '1 = 1'
-							return 'ri_cancel = 0'
-						})
-						.andWhere(
-							() => (!date ? '1 = 1' : /* SQL */ `CAST(inbound_date AS DATE) = CAST(:inboundDate AS DATE)`),
-							{ inboundDate: date }
-						),
-				'a'
-			)
-			.groupBy('brand_name')
-			.addGroupBy('po')
-			.addGroupBy('mo_no')
-			.addGroupBy('factory_shoes_style')
-			.addGroupBy('color_sn')
-			.addGroupBy('defective_category')
-			.getQuery()
-	}
-
-	public async getDailyInboundReport(date: string) {
-		const storageListCommonTableExpression = this.getStorageLocationsQuery({
-			shouldCheckReturnInstructionStatus: false,
-			date: date
-		})
-
+	public async getDailyOutboundReport(date: string) {
 		return await this.dataSourceTNC
 			.getRepository(DefectiveGoodsEntity)
 			.createQueryBuilder('a')
-			.addCommonTableExpression(storageListCommonTableExpression, 'storage_list_cte')
 			.select('a.brand_name', 'brand_name')
 			.addSelect('a.po', 'po')
 			.addSelect('a.mo_no', 'mo_no')
@@ -103,42 +57,34 @@ export class DefectiveGoodsInboundService {
 			.addSelect('a.sewing_line', 'sewing_line')
 			.addSelect('a.assembly_line', 'assembly_line')
 			.addSelect('a.defective_category', 'defective_category')
-			.addSelect('b.storage_location', 'storage_location')
-			.addSelect('COUNT(DISTINCT a.epc)', 'daily_inbound_qty')
+			.addSelect('a.outbound_purpose', 'outbound_purpose')
+			.addSelect('COUNT(DISTINCT a.epc)', 'daily_outbound_qty')
+			.addSelect('a.shoe_source', 'shoe_source')
 			.addSelect(
 				/* SQL */ `(
-               SELECT aa.size_code AS size_numcode, COUNT(DISTINCT aa.epc) AS qty
-               FROM DV_DATA_LAKE.dbo.dv_defective_goods 
-					
-               WHERE 
-						aa.brand_name = a.brand_name
-                  AND aa.factory_shoes_style = a.factory_shoes_style 
-                  AND aa.cust_shoes_style = a.cust_shoes_style 
-                  AND COALESCE(aa.po, 'Unknown') = COALESCE(a.po, 'Unknown') 
-                  AND COALESCE(aa.mo_no, 'Unknown') = COALESCE(a.mo_no, 'Unknown') 
-                  AND aa.color_sn = a.color_sn
-                  AND aa.defective_category = a.defective_category
-						AND CAST(aa.inbound_date AS DATE) = CAST('${date}' AS DATE)
-               GROUP BY aa.size_code
-               FOR JSON PATH
-            )`,
+						SELECT aa.size_code AS size_numcode, COUNT(DISTINCT aa.epc) AS qty
+						FROM DV_DATA_LAKE.dbo.dv_defective_goods aa
+						WHERE 
+							aa.epc LIKE 'E28%' 
+							AND aa.brand_name = a.brand_name
+							AND aa.factory_shoes_style = a.factory_shoes_style 
+							AND aa.cust_shoes_style = a.cust_shoes_style 
+							AND COALESCE(aa.po, 'Unknown') = COALESCE(a.po, 'Unknown') 
+							AND COALESCE(aa.mo_no, 'Unknown') = COALESCE(a.mo_no, 'Unknown') 
+							AND aa.color_sn = a.color_sn
+							AND aa.defective_category = a.defective_category
+							AND aa.outbound_purpose = a.outbound_purpose
+							AND CAST(aa.outbound_date AS DATE) = CAST('${date}' AS DATE)
+						GROUP BY aa.size_code
+						FOR JSON PATH
+					)`,
 				'size_data'
 			)
-			.leftJoin(
-				(qb) => qb.subQuery().select('*').from('storage_list_cte', 'b'),
-				'b',
-				/* SQL */ `
-               a.brand_name = b.brand_name 
-               AND a.factory_shoes_style = b.factory_shoes_style 
-               AND a.color_sn = b.color_sn 
-               AND a.mo_no = b.mo_no 
-               AND a.po = b.po
-               AND a.defective_category = b.defective_category
-            `
-			)
-			.where(/* SQL */ `a.storage_location IS NOT NULL`)
+			.where(/* SQL */ `a.epc LIKE 'E28%'`)
+			.andWhere(/* SQL */ `a.storage_location IS NOT NULL`)
 			.andWhere(/* SQL */ `LTRIM(RTRIM(a.storage_location)) <> ''`)
-			.andWhere(/* SQL */ `CAST(a.inbound_date AS DATE) = CAST(:inboundDate AS DATE)`)
+			.andWhere(/* SQL */ `a.inbound_date IS NOT NULL`)
+			.andWhere(/* SQL */ `CAST(a.outbound_date AS DATE) = CAST(:outboundDate AS DATE)`)
 			.groupBy('a.brand_name')
 			.addGroupBy('a.po')
 			.addGroupBy('a.mo_no')
@@ -148,8 +94,9 @@ export class DefectiveGoodsInboundService {
 			.addGroupBy('a.sewing_line')
 			.addGroupBy('a.assembly_line')
 			.addGroupBy('a.defective_category')
-			.addGroupBy('b.storage_location')
-			.setParameter('inboundDate', date)
+			.addGroupBy('a.outbound_purpose')
+			.addGroupBy('a.shoe_source')
+			.setParameter('outboundDate', date)
 			.getRawMany<{
 				brand_name: string
 				po: string
@@ -161,8 +108,8 @@ export class DefectiveGoodsInboundService {
 				sewing_line: string
 				assembly_line: string
 				defective_category: string
-				storage_location: string
-				daily_inbound_qty: number
+				outbound_purpose: DefectiveGoodsOutboundPurpose
+				daily_outbound_qty: number
 			}>()
 			.then((result) =>
 				result.map((item) => ({
@@ -172,7 +119,7 @@ export class DefectiveGoodsInboundService {
 			)
 	}
 
-	async exportDailyInboundToExcel(date: string, factoryCode: string) {
+	async exportDailyOutboundToExcel(date: string, factoryCode: string) {
 		const currentLanguage = I18nContext.current()?.lang
 		const workbook = new Workbook()
 		const worksheet = workbook.addWorksheet(
@@ -218,20 +165,23 @@ export class DefectiveGoodsInboundService {
 				key: 'defective_category'
 			},
 			{
-				header: this.i18nService.t('warehouse.fields.storage_name', { lang: currentLanguage }),
-				key: 'storage_location'
+				header: this.i18nService.t('erp.fields.outbound_purpose', { lang: currentLanguage }),
+				key: 'outbound_purpose'
 			},
 			{
-				header: this.i18nService.t('erp.fields.daily_inbound_qty', { lang: currentLanguage }),
-				key: 'daily_inbound_qty'
+				header: this.i18nService.t('erp.fields.daily_outbound_qty', { lang: currentLanguage }),
+				key: 'daily_outbound_qty'
 			}
 		].map((item) => ({ ...item, alignment: { vertical: 'middle', horizontal: 'center' } }))
-		const data = await this.getDailyInboundReport(date)
+		const data = await this.getDailyOutboundReport(date)
 
 		for (const record of data) {
 			const row = worksheet.addRow({
 				...record,
 				defective_category: this.i18nService.t(`defective-goods.categories.${record.defective_category}`, {
+					lang: currentLanguage
+				}),
+				outbound_purpose: this.i18nService.t(`inoutbound.outbound_purpose.${record.outbound_purpose}`, {
 					lang: currentLanguage
 				})
 			})
@@ -278,7 +228,7 @@ export class DefectiveGoodsInboundService {
 			fgColor: { argb: ExcelColorPalette.BG_LIGHT_NEUTRAL }
 		}
 		worksheet.getCell('A1').font = { bold: true, size: 16 }
-		worksheet.getCell('A1').value = this.i18nService.t('inoutbound.titles.daily_defective_gooods_inbound_report', {
+		worksheet.getCell('A1').value = this.i18nService.t('inoutbound.titles.daily_defective_gooods_outbound_report', {
 			args: {
 				factory: this.i18nService.t(`factory.${factoryCode}`, { lang: currentLanguage }),
 				date: format(new Date(date), 'yyyy-MM-dd')
@@ -292,7 +242,7 @@ export class DefectiveGoodsInboundService {
 		worksheet.getCell(`A${footerRow.number}`).value = this.i18nService.t('erp.fields.total_daily_productivity', {
 			lang: currentLanguage
 		})
-		worksheet.getCell(`K${footerRow.number}`).value = data.reduce((acc, curr) => acc + curr.daily_inbound_qty, 0)
+		worksheet.getCell(`K${footerRow.number}`).value = data.reduce((acc, curr) => acc + curr.daily_outbound_qty, 0)
 		worksheet.getCell(`K${footerRow.number}`).style = {
 			font: { color: { argb: ExcelColorPalette.DESTRUCTIVE_FOREGROUND } }
 		}

@@ -2,7 +2,7 @@ import { DATABASE_DATA_LAKE, DATABASE_SCHEMA } from '@/databases/constants'
 import { BoolBitTransformer } from '@/databases/transformers/bool.transformer'
 import { BaseAbstractEntity } from '@/modules/_base/base.abstract.entity'
 import { Column, Entity } from 'typeorm'
-import { DefectiveCategory, DefectiveGoodsOutboundPurpose, DefectiveLocation } from '../constants'
+import { DefectiveCategory, DefectiveGoodsOutboundPurpose, DefectiveGoodsSource, DefectiveLocation } from '../constants'
 
 export type CombinationCombinationStrategy = 'uhf' | 'usb' | 'manually'
 
@@ -50,10 +50,10 @@ export class DefectiveGoodsEntity extends BaseAbstractEntity {
 	})
 	po: string
 
-	@Column({ name: 'factory_shoes_style', nullable: false, type: 'nvarchar', length: 30 })
+	@Column({ name: 'factory_shoes_style', nullable: false, type: 'nvarchar', length: 50 })
 	factory_shoes_style: string
 
-	@Column({ name: 'cust_shoes_style', nullable: false, type: 'nvarchar', length: 30 })
+	@Column({ name: 'cust_shoes_style', nullable: false, type: 'nvarchar', length: 100 })
 	cust_shoes_style: string
 
 	@Column({ name: 'color_sn', type: 'nvarchar', length: 10 })
@@ -89,6 +89,16 @@ export class DefectiveGoodsEntity extends BaseAbstractEntity {
 		comment: 'Raw text from editor, do not update this column manually, it will be updated by editor from Front-end'
 	})
 	defective_description: string
+
+	@Column({
+		name: 'shoe_source',
+		type: 'nvarchar',
+		length: 1,
+		enum: DefectiveGoodsSource,
+		nullable: true,
+		default: DefectiveGoodsSource.FINAL_INSPECTION
+	})
+	shoe_source: string
 
 	@Column({
 		name: 'storage_location',
