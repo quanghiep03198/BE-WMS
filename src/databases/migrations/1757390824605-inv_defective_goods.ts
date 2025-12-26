@@ -37,6 +37,7 @@ export class InvDefectiveGoods1757390824605 implements MigrationInterface {
 				name: 'ri_type',
 				type: 'nvarchar',
 				length: '10',
+				isNullable: false,
 				enum: ['uhf', 'usb', 'manually'],
 				comment: 'Combination strategy, including "uhf", "usb", "manually"'
 			},
@@ -92,7 +93,7 @@ export class InvDefectiveGoods1757390824605 implements MigrationInterface {
 				name: 'shoe_source',
 				type: 'nvarchar',
 				length: '1',
-				isNullable: true,
+				isNullable: false,
 				enum: Object.values(DefectiveGoodsSource),
 				default: `'${DefectiveGoodsSource.FINAL_INSPECTION}'`,
 				comment:

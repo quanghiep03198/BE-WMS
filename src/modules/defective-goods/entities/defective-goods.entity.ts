@@ -95,7 +95,7 @@ export class DefectiveGoodsEntity extends BaseAbstractEntity {
 		type: 'nvarchar',
 		length: 1,
 		enum: DefectiveGoodsSource,
-		nullable: true,
+		nullable: false,
 		default: DefectiveGoodsSource.FINAL_INSPECTION
 	})
 	shoe_source: string
