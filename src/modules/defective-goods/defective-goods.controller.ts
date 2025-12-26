@@ -110,7 +110,8 @@ export class DefectiveGoodsController {
 			},
 			{
 				page,
-				limit
+				limit,
+				order: { created: 'DESC' }
 			}
 		)
 		// Todo: create new resource for defective goods
