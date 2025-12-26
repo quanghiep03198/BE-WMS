@@ -3,7 +3,7 @@ import { BadGatewayException, Injectable } from '@nestjs/common'
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm'
 import { chunk, omit } from 'lodash'
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
-import { And, Between, DataSource, FindOptionsWhere, In, IsNull, Like, Not, Repository } from 'typeorm'
+import { And, Between, DataSource, Equal, FindOptionsWhere, In, IsNull, Like, Not, Repository } from 'typeorm'
 import { BaseAbstractService } from '../../_base/base.abstract.service'
 import { FALLBACK_VALUE } from '../../rfid/constants'
 import { DeleteManyDefectiveGoodsDTO } from '../dto/defective-goods.dto'
@@ -41,7 +41,8 @@ export class DefectiveGoodsService extends BaseAbstractService<DefectiveGoodsEnt
 				'factory_shoes_style',
 				'cust_shoes_style',
 				'color_sn',
-				'size_code'
+				'size_code',
+				'inbound_date'
 			],
 			where: {
 				...(type === 'inbound' && {
@@ -72,15 +73,13 @@ export class DefectiveGoodsService extends BaseAbstractService<DefectiveGoodsEnt
 	}
 
 	public async batchInsert(epcs: Partial<DefectiveGoodsEntity>[]) {
-		console.log(epcs.find((e) => e.epc.length > 24))
 		const queryRunner = this.dataSource.createQueryRunner()
-		// const queryRunner = this.defectiveGoodRepository.manager.connection.createQueryRunner()
 		await queryRunner.connect()
 		try {
 			await queryRunner.startTransaction()
-			for (const batch of chunk(epcs, 20)) {
-				await this.dataSource.getRepository(DefectiveGoodsEntity).insert(batch)
-			}
+			await Promise.all(
+				chunk(epcs, 100).map((batch) => this.dataSource.getRepository(DefectiveGoodsEntity).insert(batch))
+			)
 			await queryRunner.commitTransaction()
 		} catch (error) {
 			this.logger.error('Failed to batch insert defective goods', error)
@@ -96,7 +95,8 @@ export class DefectiveGoodsService extends BaseAbstractService<DefectiveGoodsEnt
 			select: ['factory_shoes_style', 'color_sn', 'size_code', 'epc'],
 			where: {
 				epc: In(epcList),
-				ri_cancel: false
+				ri_cancel: false,
+				ri_type: Not(Equal('manually'))
 			}
 		})
 
