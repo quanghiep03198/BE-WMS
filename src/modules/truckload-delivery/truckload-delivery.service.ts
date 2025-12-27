@@ -125,7 +125,7 @@ export class TruckloadDeliveryService
 			.addSelect('a.warehouse_officer_signature', 'warehouse_officer_signature')
 			.addSelect('a.security_1_signature', 'security_1_signature')
 			.addSelect('a.security_2_signature', 'security_2_signature')
-			.addSelect('CAST(a.created AS DATE)', 'created_at')
+			.addSelect('MAX(a.created)', 'created_at')
 			.addSelect(
 				/* SQL */ `(
 					SELECT
@@ -147,11 +147,8 @@ export class TruckloadDeliveryService
 			.where(dateRangeFilterQuery)
 			.andWhere(approvalStatusFilterQuery)
 			.groupBy('a.dispatch_order')
-			.addGroupBy('CAST(a.created AS DATE)')
 			.addGroupBy('a.license_plate')
 			.addGroupBy('a.container_number')
-			// .addGroupBy('a.container_sealing_time')
-			// .addGroupBy('a.factory_departure_time')
 			.addGroupBy('a.punctured_container')
 			.addGroupBy('a.smelling_container')
 			.addGroupBy('a.moist_container')
@@ -162,7 +159,7 @@ export class TruckloadDeliveryService
 			.addGroupBy('a.security_2_signature')
 			.addGroupBy('CAST(a.remark AS NVARCHAR(255))')
 			.orderBy('a.dispatch_order', 'DESC')
-			.addOrderBy('CAST(a.created AS DATE)', 'DESC')
+			.addOrderBy('MAX(a.created)', 'DESC')
 			.getRawMany<DispatchOrder>()
 			.then((results) =>
 				results.map((row) => ({
