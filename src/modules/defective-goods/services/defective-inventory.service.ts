@@ -33,6 +33,7 @@ export class DefectiveGoodsInventoryService {
 			.addSelect('a.cust_shoes_style', 'cust_shoes_style')
 			.addSelect('a.color_sn', 'color_sn')
 			.addSelect('a.defective_category', 'defective_category')
+			.addSelect('a.shoe_source', 'shoe_source')
 			.addSelect('b.storage_location', 'storage_location')
 			.addSelect(
 				/* SQL */ `(
@@ -40,6 +41,7 @@ export class DefectiveGoodsInventoryService {
                FROM DV_DATA_LAKE.dbo.dv_defective_goods aa
                WHERE 
 						aa.ri_cancel = 0
+						AND aa.storage_location IS NOT NULL AND LTRIM(RTRIM(aa.storage_location)) <> ''
                   AND aa.brand_name = a.brand_name
                   AND aa.factory_shoes_style = a.factory_shoes_style 
                   AND aa.cust_shoes_style = a.cust_shoes_style 
@@ -47,6 +49,7 @@ export class DefectiveGoodsInventoryService {
                   AND COALESCE(aa.mo_no, 'Unknown') = COALESCE(a.mo_no, 'Unknown') 
                   AND aa.color_sn = a.color_sn
                   AND aa.defective_category = a.defective_category
+						AND aa.shoe_source = a.shoe_source
                GROUP BY aa.size_code
                FOR JSON PATH
             )`,
@@ -62,9 +65,9 @@ export class DefectiveGoodsInventoryService {
                AND a.mo_no = b.mo_no 
                AND a.po = b.po
                AND a.defective_category = b.defective_category
+               AND a.shoe_source = b.shoe_source
             `
 			)
-
 			.where(/* SQL */ `a.ri_cancel = 0`)
 			.andWhere(/* SQL */ `a.storage_location IS NOT NULL AND LTRIM(RTRIM(a.storage_location)) <> ''`)
 			.groupBy('a.brand_name')
@@ -74,6 +77,7 @@ export class DefectiveGoodsInventoryService {
 			.addGroupBy('a.cust_shoes_style')
 			.addGroupBy('a.color_sn')
 			.addGroupBy('a.defective_category')
+			.addGroupBy('a.shoe_source')
 			.addGroupBy('b.storage_location')
 			.getRawMany<{
 				brand_name: string

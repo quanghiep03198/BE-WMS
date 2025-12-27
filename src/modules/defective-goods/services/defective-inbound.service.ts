@@ -48,7 +48,8 @@ export class DefectiveGoodsInboundService {
 				'mo_no',
 				'factory_shoes_style',
 				'color_sn',
-				'defective_category'
+				'defective_category',
+				'shoe_source'
 			])
 			.from(
 				(qb) =>
@@ -62,7 +63,8 @@ export class DefectiveGoodsInboundService {
 							'mo_no',
 							'factory_shoes_style',
 							'color_sn',
-							'defective_category'
+							'defective_category',
+							'shoe_source'
 						])
 						.from(DefectiveGoodsEntity, 'a')
 						.where(/* SQL */ `storage_location IS NOT NULL`)
@@ -82,6 +84,7 @@ export class DefectiveGoodsInboundService {
 			.addGroupBy('factory_shoes_style')
 			.addGroupBy('color_sn')
 			.addGroupBy('defective_category')
+			.addGroupBy('shoe_source')
 			.getQuery()
 	}
 
