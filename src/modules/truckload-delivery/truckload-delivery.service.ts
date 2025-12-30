@@ -21,6 +21,7 @@ import {
 	UpdateSignatureDTO,
 	UpsertPurchaseOrdersDTO
 } from './dto/truckload-delivery.dto'
+import { CarLicenseSnapshotEntity } from './entities/car-license.entity'
 import { TruckloadDeliveryEntity } from './entities/truckload-delivery.entity'
 import { DispatchOrder, ITruckloadDeliveryService } from './truckload-delivery.interface'
 import type { TruckloadDeliveryDispatchOrder } from './types'
@@ -61,7 +62,8 @@ export class TruckloadDeliveryService
 			filters?.status ? /* SQL */ `a.approval_status = '${filters.status}'` : '1 = 1'
 
 		const deliveryDetailsCte = this.dataSourceDL
-			.createQueryBuilder()
+			.getRepository(TruckloadDeliveryEntity)
+			.createQueryBuilder('a')
 			.select('a.id', 'id')
 			.addSelect('a.dispatch_order', 'dispatch_order')
 			.addSelect('a.po', 'po')
@@ -71,7 +73,6 @@ export class TruckloadDeliveryService
 			.addSelect('a.outbound_qty', 'outbound_qty')
 			.addSelect('a.user_code_created', 'user_code_created')
 			.addSelect('a.created', 'created')
-			.from('DV_DATA_LAKE.dbo.dv_truckload_delivery', 'a')
 			.leftJoin(
 				(qb) =>
 					qb
@@ -126,6 +127,8 @@ export class TruckloadDeliveryService
 			.addSelect('a.security_1_signature', 'security_1_signature')
 			.addSelect('a.security_2_signature', 'security_2_signature')
 			.addSelect('MAX(a.created)', 'created_at')
+			.addSelect('MAX(b.snap_time)', 'actual_factory_departure_time')
+			.addSelect('MAX(b.images)', 'license_plate_image')
 			.addSelect(
 				/* SQL */ `(
 					SELECT
@@ -144,6 +147,11 @@ export class TruckloadDeliveryService
 				'delivery_details'
 			)
 			.addSelect('CAST(a.remark AS NVARCHAR(255))', 'remark')
+			.leftJoin(
+				CarLicenseSnapshotEntity,
+				'b',
+				'a.license_plate = b.plate_name AND CAST(a.factory_departure_time AS DATE) = CAST(b.snap_time AS DATE)'
+			)
 			.where(dateRangeFilterQuery)
 			.andWhere(approvalStatusFilterQuery)
 			.groupBy('a.dispatch_order')
@@ -284,6 +292,10 @@ export class TruckloadDeliveryService
 				key: 'factory_departure_time'
 			},
 			{
+				header: this.i18nService.t('erp.fields.actual_factory_departure_time', { lang: currentLanguage }),
+				key: 'actual_factory_departure_time'
+			},
+			{
 				header: this.i18nService.t('erp.fields.punctured_container', { lang: currentLanguage }),
 				key: 'punctured_container'
 			},
@@ -332,10 +344,10 @@ export class TruckloadDeliveryService
 
 			// * Store signature images for later rendering
 			const signatureColumns = [
-				{ key: 'ie_signature', colIndex: 8 },
-				{ key: 'warehouse_officer_signature', colIndex: 9 },
-				{ key: 'security_1_signature', colIndex: 10 },
-				{ key: 'security_2_signature', colIndex: 11 }
+				{ key: 'ie_signature', colIndex: 9 },
+				{ key: 'warehouse_officer_signature', colIndex: 10 },
+				{ key: 'security_1_signature', colIndex: 11 },
+				{ key: 'security_2_signature', colIndex: 12 }
 			]
 
 			const rowImages: Array<{ colIndex: number; imageId: number }> = []
@@ -416,6 +428,7 @@ export class TruckloadDeliveryService
 			minWidth: 14,
 			excludeColumns: [
 				'created_at',
+				'actual_factory_departure_time',
 				'ie_signature',
 				'warehouse_officer_signature',
 				'security_1_signature',
@@ -469,7 +482,7 @@ export class TruckloadDeliveryService
 
 		// * Add  header title
 		worksheet.insertRow(1, null)
-		worksheet.mergeCells('A1:L1')
+		worksheet.mergeCells('A1:M1')
 		worksheet.getRow(1).height = 30
 		worksheet.getRow(1).alignment = { vertical: 'middle', horizontal: 'center' }
 		worksheet.getRow(1).font = { size: 14, bold: true }

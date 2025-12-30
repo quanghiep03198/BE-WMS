@@ -62,6 +62,7 @@ export type I18nTranslations = {
             "employee_name": string;
             "export_num": string;
             "factory_departure_time": string;
+            "actual_factory_departure_time": string;
             "final_inventory_qty": string;
             "punctured_container": string;
             "smelling_container": string;

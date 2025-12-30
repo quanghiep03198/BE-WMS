@@ -20,6 +20,7 @@
 		"employee_name": "Nhân viên tạo đơn",
 		"export_num": "Số đã xuất kho",
 		"factory_departure_time": "Thời gian xuất xưởng",
+		"actual_factory_departure_time": "Thời gian xuất xưởng thực tế",
 		"license_plate": "Biển số xe",
 		"container_number": "Số container",
 		"punctured_container": "Container bị thủng",

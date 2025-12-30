@@ -22,6 +22,7 @@
 		"employee_name": "建檔人姓名",
 		"export_num": "已出库量",
 		"factory_departure_time": "工厂出货时间",
+		"actual_factory_departure_time": "实际工厂出货时间",
 		"final_inventory_qty": "期末库存",
 		"punctured_container": "櫃子漏洞",
 		"smelling_container": "櫃子有異味",
