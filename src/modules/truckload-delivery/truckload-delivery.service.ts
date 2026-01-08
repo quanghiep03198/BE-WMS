@@ -64,15 +64,17 @@ export class TruckloadDeliveryService
 		const deliveryDetailsCte = this.dataSourceDL
 			.getRepository(TruckloadDeliveryEntity)
 			.createQueryBuilder('a')
-			.select('a.id', 'id')
-			.addSelect('a.dispatch_order', 'dispatch_order')
-			.addSelect('a.po', 'po')
-			.addSelect('e.brand_name', 'brand_name')
-			.addSelect('d.shoestyle_codefactory', 'factory_shoes_style')
-			.addSelect('c.color_sn', 'color_sn')
-			.addSelect('a.outbound_qty', 'outbound_qty')
-			.addSelect('a.user_code_created', 'user_code_created')
-			.addSelect('a.created', 'created')
+			.select([
+				'DISTINCT a.po AS po',
+				'a.id AS id',
+				'a.dispatch_order AS dispatch_order',
+				'e.brand_name AS brand_name',
+				'd.shoestyle_codefactory AS factory_shoes_style',
+				'c.color_sn AS color_sn',
+				'a.outbound_qty AS outbound_qty',
+				'a.user_code_created AS user_code_created',
+				'a.created AS created '
+			])
 			.leftJoin(
 				(qb) =>
 					qb
