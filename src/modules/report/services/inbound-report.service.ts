@@ -60,8 +60,16 @@ export class InboundReportService {
 					...result,
 					missing_qty: result.mo_qty - result.accumulated_inbound_qty,
 					progress: ((result.accumulated_inbound_qty / result.mo_qty) * 100).toFixed(2) + '%',
-					inbound_history: SuperJson.parse<Exclude<IInboundHistory['inbound_history'], string>>(
-						result.inbound_history,
+					order_size_run: SuperJson.parse<Exclude<IInboundHistory['order_size_run'], string>>(
+						result.order_size_run,
+						1
+					),
+					daily_inbound_history: SuperJson.parse<Exclude<IInboundHistory['daily_inbound_history'], string>>(
+						result.daily_inbound_history,
+						1
+					),
+					inbound_history_by_size: SuperJson.parse<Exclude<IInboundHistory['inbound_history_by_size'], string>>(
+						result.inbound_history_by_size,
 						1
 					)
 				}

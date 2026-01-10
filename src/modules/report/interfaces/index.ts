@@ -91,7 +91,19 @@ export interface IInboundHistory {
 	mo_qty: number
 	accumulated_inbound_qty: number
 	progress: number
-	inbound_history:
+	order_size_run:
+		| string
+		| Array<{
+				size_numcode: string
+				qty: number
+		  }>
+	inbound_history_by_size:
+		| string
+		| Array<{
+				size_numcode: string
+				qty: number
+		  }>
+	daily_inbound_history:
 		| string
 		| Array<{
 				size_numcode: string
