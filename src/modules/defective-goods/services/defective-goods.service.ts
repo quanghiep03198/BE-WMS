@@ -56,6 +56,7 @@ export class DefectiveGoodsService extends BaseAbstractService<DefectiveGoodsEnt
 				outbound_date: IsNull(),
 				outbound_purpose: IsNull(),
 				ri_cancel: false,
+				ri_type: Equal('manually'),
 				...omit(filterQueries, ['take'])
 			},
 			order: {
