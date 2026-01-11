@@ -39,7 +39,7 @@ async function bootstrap() {
 								fallbackValue: false,
 								serialize: stringToBoolean
 							})
-							const endpoint = requestLogConfig?.res?.request.raw?.url ?? requestLogConfig?.req?.url
+							const endpoint = requestLogConfig?.res?.request?.raw?.url ?? requestLogConfig?.req?.url
 							const isMetricsEndpoint = endpoint === '/metrics'
 							if (!isPrometheusLogEnabled && isMetricsEndpoint) return
 							return method.apply(this, args)
@@ -59,7 +59,7 @@ async function bootstrap() {
 					serializers: {
 						res(reply) {
 							return {
-								path: reply.raw?.req?.url,
+								path: reply?.raw?.req?.url,
 								statusCode: reply.statusCode
 							}
 						},
