@@ -24,7 +24,7 @@ import { format } from 'date-fns'
 import { FastifyReply } from 'fastify'
 import { isEmpty, isNil, pickBy } from 'lodash'
 import { PaginateResult } from 'mongoose'
-import { PinoLogger } from 'nestjs-pino'
+import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
 import { POST_DATA_INBOUND_QUEUE } from '../constants'
 import {
 	ExchangeOrderDTO,
@@ -52,7 +52,7 @@ import { RFIDSearchParams, ScannedOrderDetail } from '../types'
 @Controller('rfid/inbound')
 export class RFIDInboundController {
 	constructor(
-		private readonly logger: PinoLogger,
+		@InjectPinoLogger(RFIDInboundController.name) private readonly logger: PinoLogger,
 		@InjectModel(EpcInbound.name) private readonly epcInboundModel: EpcModel,
 		@InjectQueue(POST_DATA_INBOUND_QUEUE) private readonly postInboundDataQueue: Queue<PostReaderDataDTO>,
 		private readonly eventEmitter: EventEmitter2,
