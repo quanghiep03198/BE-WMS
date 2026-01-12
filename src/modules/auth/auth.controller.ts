@@ -17,11 +17,11 @@ export class AuthController {
 	}
 
 	@Api({
-		endpoint: 'refresh-token/:id',
+		endpoint: 'refresh-token/:username',
 		method: HttpMethod.GET
 	})
-	async refreshToken(@Param('id') id: number) {
-		return await this.authService.refreshToken(id)
+	async refreshToken(@Param('username') username: string) {
+		return await this.authService.refreshToken(username)
 	}
 
 	@Api({
@@ -29,7 +29,7 @@ export class AuthController {
 		method: HttpMethod.POST
 	})
 	@AuthGuard()
-	async logout(@User('id') userId) {
-		return await this.authService.logout(userId)
+	async logout(@User('username') username: string) {
+		return await this.authService.logout(username)
 	}
 }

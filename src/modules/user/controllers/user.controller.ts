@@ -10,8 +10,8 @@ export class UserController {
 
 	@Api({ endpoint: 'profile', method: HttpMethod.GET })
 	@AuthGuard()
-	async getProfile(@User('id') userId) {
-		return await this.userService.getProfile(userId)
+	async getProfile(@User('username') username) {
+		return await this.userService.getProfile(username)
 	}
 
 	@Api({
@@ -36,15 +36,15 @@ export class UserController {
 	})
 	@AuthGuard()
 	async changePassword(
-		@User('id') userId: number,
+		@User('username') username: string,
 		@Body(new ZodValidationPipe(changePasswordValidator)) payload: ChangePasswordDTO
 	) {
-		return await this.userService.changePassword(userId, payload)
+		return await this.userService.changePassword(username, payload)
 	}
 
 	@Api({ endpoint: 'companies', method: HttpMethod.GET })
 	@AuthGuard()
-	async getUserFactory(@User('id') id: number) {
-		return await this.userService.getUserCompany(+id)
+	async getUserFactory(@User('username') username: string) {
+		return await this.userService.getUserCompany(username)
 	}
 }

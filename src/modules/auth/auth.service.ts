@@ -30,24 +30,24 @@ export class AuthService {
 	}
 
 	async login(payload: UserEntity) {
-		const userId = payload.id
-		const user = await this.userService.getProfile(userId)
+		const username = payload.username
+		const user = await this.userService.getProfile(username)
 		const token = await this.jwtService.signAsync(pick(user, ['id', 'username', 'employee_code', 'role']))
-		await this.cacheManager.set(`token:${userId}`, token, this.TOKEN_CACHE_TTL)
+		await this.cacheManager.set(`token:${username}`, token, this.TOKEN_CACHE_TTL)
 		return { user, token }
 	}
 
-	async refreshToken(userId: number) {
-		const user = await this.userService.findOneById(userId)
+	async refreshToken(username: string) {
+		const user = await this.userService.findUserByUsername(username)
 		if (!user) throw new NotFoundException('User could not be found')
 		const refreshToken = await this.jwtService.signAsync(pick(user, ['id', 'username', 'employee_code', 'role']))
-		await this.cacheManager.set(`token:${userId}`, refreshToken, this.TOKEN_CACHE_TTL)
+		await this.cacheManager.set(`token:${username}`, refreshToken, this.TOKEN_CACHE_TTL)
 		return refreshToken
 	}
 
-	async logout(userId: number) {
+	async logout(username: string) {
 		// * Revoke cached token
-		await this.cacheManager.del(`token:${userId}`)
+		await this.cacheManager.del(`token:${username}`)
 		return null
 	}
 }

@@ -44,7 +44,7 @@ export class UserService extends BaseAbstractService<UserEntity> {
 		return await this.userRepository.save(newUser)
 	}
 
-	async getProfile(id: number): Promise<UserEntity> {
+	async getProfile(username: string): Promise<UserEntity> {
 		const user = await this.userRepository
 			.createQueryBuilder('u')
 			.select('u.id', 'id')
@@ -56,7 +56,7 @@ export class UserService extends BaseAbstractService<UserEntity> {
 			.addSelect('e.email', 'email')
 			.addSelect('e.phone', 'phone')
 			.innerJoin(EmployeeEntity, 'e', 'u.employee_code = e.employee_code')
-			.where('u.id = :id', { id })
+			.where('u.user_code = :username', { username })
 			.getRawOne()
 
 		if (!user) throw new NotFoundException('User could not be found')
@@ -72,7 +72,7 @@ export class UserService extends BaseAbstractService<UserEntity> {
 		return await this.userRepository.findOneBy({ username })
 	}
 
-	async getUserCompany(userId: number) {
+	async getUserCompany(username: string) {
 		return await this.dataSourceSC.manager
 			.createQueryBuilder()
 			.select(['DISTINCT f.factory_code AS company_code', 'f.factory_extcode as factory_code'])
@@ -81,14 +81,10 @@ export class UserService extends BaseAbstractService<UserEntity> {
 			.innerJoin('ts_employeedept', 'ed', 'ed.employee_code = e.employee_code')
 			.innerJoin('ts_dept', 'd', 'd.dept_code = ed.dept_code')
 			.innerJoin('ts_factory', 'f', 'f.factory_code = d.company_code')
-			.where('u.id = :id', { id: userId })
+			.where('u.user_code = :username', { username })
 			.andWhere('f.factory_extcode <> :factoryCode', { factoryCode: 'GL5' })
 			.orderBy('factory_extcode', 'ASC')
 			.getRawMany()
-	}
-
-	async storeUserToken(userId, token) {
-		return await this.userRepository.update(userId, { remember_token: token })
 	}
 
 	async updateProfile(employeeCode: string, payload: UpdateProfileDTO) {
@@ -97,8 +93,8 @@ export class UserService extends BaseAbstractService<UserEntity> {
 		return await this.employeeRepository.save({ ...userProfile, ...payload })
 	}
 
-	async changePassword(userId: number, payload: ChangePasswordDTO) {
-		return await this.userRepository.update(userId, payload)
+	async changePassword(username: string, payload: ChangePasswordDTO) {
+		return await this.userRepository.update({ username }, payload)
 	}
 
 	private generateAvatar({
