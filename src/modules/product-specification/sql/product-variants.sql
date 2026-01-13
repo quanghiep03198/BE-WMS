@@ -74,7 +74,7 @@ CROSS APPLY (
             AND sz.size_numcode IS NOT NULL
             AND sz.size_qty > 0
             AND p.shoestyle_systemcodefty = a.shoestyle_systemcodefty
-            AND m.created >= CAST(DATEADD(YEAR, -3, GETDATE()) AS DATE)
+            AND m.created >= CAST(DATEADD(YEAR, -5, GETDATE()) AS DATE)
          FOR JSON PATH
       ) AS sizes
    ) s (sizes)
@@ -86,7 +86,7 @@ CROSS APPLY (
 ) cl (product_variants)
 WHERE a.isactive = 'Y' 
 AND cl.product_variants IS NOT NULL 
-AND a.created >= CAST(DATEADD(YEAR, -3, GETDATE()) AS DATE)
+AND a.created >= CAST(DATEADD(YEAR, -5, GETDATE()) AS DATE)
 AND c.brand_code IN ('UG', 'TV', 'KB') 
 ORDER BY brand_name ASC
 OPTION (
