@@ -21,7 +21,7 @@ export class AppController {
 
 	@Get('agent-ipv4')
 	getClient(@Req() request: FastifyRequest, @Res() reply: FastifyReply) {
-		console.log(request.ip)
-		return reply.status(HttpStatus.OK).send(pick(request, ['protocol', 'ip']))
+		const userAgent = request.headers['user-agent']
+		return reply.status(HttpStatus.OK).send({ ...pick(request, ['protocol', 'ip']), agent: userAgent })
 	}
 }
