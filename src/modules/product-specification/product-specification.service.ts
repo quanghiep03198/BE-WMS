@@ -22,7 +22,7 @@ export class ProductSpecificationService {
 		const processedData = rawData.map((item) => ({
 			...item,
 			product_variants: SuperJson.isValid(item.product_variants)
-				? SuperJson.parse<ProductVariant[]>(item.product_variants)
+				? SuperJson.parse<ProductVariant[]>(item.product_variants, 1)
 				: []
 		}))
 
