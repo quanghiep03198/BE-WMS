@@ -5,8 +5,8 @@ import { DefectiveCategory, DefectiveGoodsSource, DefectiveLocation } from '../c
 export const baseDefectiveGoodsDTO = z.object({
 	ri_type: z.enum(['uhf', 'usb', 'manually']),
 	defective_category: z.nativeEnum(DefectiveCategory),
-	po: z.any().nullable().optional(),
-	mo_no: z.any().nullable().optional(),
+	po: z.any().nullish().default('PRELOAD'),
+	mo_no: z.any().nullish(),
 	brand_name: z.string().trim().nonempty(),
 	cust_shoes_style: z.string().trim().nonempty(),
 	factory_shoes_style: z.string().trim().nonempty(),
@@ -51,7 +51,7 @@ export const createDefectiveGoodsDTO = baseDefectiveGoodsDTO
 	})
 	.refine(
 		(values) => {
-			if (values.defective_category === DefectiveCategory.B_GRADE) return !!values.po && !!values.mo_no
+			if (values.defective_category === DefectiveCategory.B_GRADE) return !!values.mo_no
 			return true
 		},
 		{ message: 'Purchase order and Manufacturing order. are required for B Grade category' }
@@ -123,12 +123,7 @@ export const updateDefectiveGoodsDTO = baseDefectiveGoodsDTO
 	.refine(
 		(values) => {
 			if (values.defective_category === DefectiveCategory.B_GRADE)
-				return (
-					typeof values.po === 'string' &&
-					typeof values.mo_no === 'string' &&
-					!isEmpty(values.po) &&
-					!isEmpty(values.mo_no)
-				)
+				return typeof values.mo_no === 'string' && !isEmpty(values.mo_no)
 			return true
 		},
 		{ message: 'Purchase order and Manufacturing order. are required for B Grade category' }
