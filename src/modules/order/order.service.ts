@@ -118,6 +118,7 @@ export class OrderService {
 				)`
 			)
 			.andWhere(/* SQL */ `IIF(ISNULL(a.or_custpoone, '') = '', a.or_custpo, a.or_custpoone) LIKE '%${searchTerm}%'`)
+			.andWhere(/* SQL */ `a.type_order = 'A'`)
 			.groupBy(/* SQL */ `IIF(ISNULL(a.or_custpoone, '') = '', a.or_custpo, a.or_custpoone)`)
 			.orderBy(/* SQL */ `po`, 'ASC')
 			.addOrderBy(/* SQL */ `po_qty`, 'ASC')

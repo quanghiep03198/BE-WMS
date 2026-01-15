@@ -1,6 +1,6 @@
 import { CommonRequestHeader } from '@/common/constants'
 import { Api, AuthGuard, HttpMethod } from '@/common/decorators'
-import { Controller, DefaultValuePipe, Headers, Param, Query } from '@nestjs/common'
+import { Controller, DefaultValuePipe, Headers, Param, ParseBoolPipe, Query } from '@nestjs/common'
 import { groupBy } from 'lodash'
 import { I18nService } from 'nestjs-i18n'
 import { OrderService } from './order.service'
@@ -31,7 +31,7 @@ export class OrderController {
 	@AuthGuard()
 	async searchPurchaseOrder(
 		@Query('q') searchTerm: string,
-		@Query('filter_all_brands', new DefaultValuePipe(false)) shouldFilterAllBrands?: boolean
+		@Query('filter_all_brands', new DefaultValuePipe(false), ParseBoolPipe) shouldFilterAllBrands?: boolean
 	) {
 		return await this.orderService.searchPurchaseOrder(searchTerm, shouldFilterAllBrands)
 	}
