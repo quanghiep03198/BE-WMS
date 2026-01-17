@@ -72,7 +72,7 @@ export class DefectiveGoodsController {
 			limit,
 			created,
 			brand_name,
-			category,
+			defective_category,
 			factory_shoes_style,
 			cust_shoes_style,
 			po,
@@ -85,7 +85,7 @@ export class DefectiveGoodsController {
 		const filterQuery = pickBy(
 			{
 				brand_name: brand_name?.toUpperCase(),
-				category: category?.toUpperCase(),
+				defective_category: defective_category?.toUpperCase(),
 				factory_shoes_style: factory_shoes_style?.toUpperCase(),
 				cust_shoes_style,
 				po,
