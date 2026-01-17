@@ -2,7 +2,13 @@ import { DATABASE_DATA_LAKE, DATABASE_SCHEMA } from '@/databases/constants'
 import { BoolBitTransformer } from '@/databases/transformers/bool.transformer'
 import { BaseAbstractEntity } from '@/modules/_base/base.abstract.entity'
 import { Column, Entity } from 'typeorm'
-import { DefectiveCategory, DefectiveGoodsOutboundPurpose, DefectiveGoodsSource, DefectiveLocation } from '../constants'
+import {
+	DefectiveCategory,
+	DefectiveGoodsOutboundPurpose,
+	DefectiveGoodsSource,
+	DefectiveGoodsUnit,
+	DefectiveLocation
+} from '../constants'
 
 export type CombinationCombinationStrategy = 'uhf' | 'usb' | 'manually'
 
@@ -178,9 +184,9 @@ export class DefectiveGoodsEntity extends BaseAbstractEntity {
 		length: 5,
 		nullable: false,
 		enumName: 'CHK_defective_goods_unit',
-		enum: ['prs', 'pcs']
+		enum: Object.values(DefectiveGoodsUnit)
 	})
-	unit: string
+	unit: DefectiveGoodsUnit
 
 	constructor(defectiveGoods: Partial<DefectiveGoodsEntity>) {
 		super()

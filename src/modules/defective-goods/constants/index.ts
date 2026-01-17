@@ -23,3 +23,8 @@ export enum DefectiveGoodsSource {
 	REPACKING_INSPECTION = 'C',
 	OTHER = 'D'
 }
+
+export enum DefectiveGoodsUnit {
+	PRS = 'prs',
+	PCS = 'pcs'
+}

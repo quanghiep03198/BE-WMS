@@ -3,6 +3,7 @@ import {
 	DefectiveCategory,
 	DefectiveGoodsOutboundPurpose,
 	DefectiveGoodsSource,
+	DefectiveGoodsUnit,
 	DefectiveLocation
 } from '@/modules/defective-goods/constants'
 import { MigrationInterface, QueryRunner, Table } from 'typeorm'
@@ -151,7 +152,7 @@ export class InvDefectiveGoods1757390824605 implements MigrationInterface {
 				length: '5',
 				isNullable: false,
 				enumName: 'CHK_defective_goods_unit',
-				enum: ['prs', 'pcs']
+				enum: Object.values(DefectiveGoodsUnit)
 			}
 		]
 	})

@@ -21,6 +21,7 @@ import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
 import { Between, Like } from 'typeorm'
 import z from 'zod'
 import { UserEntity } from '../user/entities/user.entity'
+import { DefectiveCategory, DefectiveGoodsUnit } from './constants'
 import {
 	CreateDefectiveGoodsDTO,
 	createDefectiveGoodsDTO,
@@ -135,7 +136,15 @@ export class DefectiveGoodsController {
 					})
 				)
 			return await this.defectiveGoodsService.insertMany(
-				payload.epc.map((item) => ({ epc: item, user_code_created: user.username, ...omit(payload, ['epc']) }))
+				payload.epc.map((item) => ({
+					epc: item,
+					user_code_created: user.username,
+					unit:
+						payload.defective_category === DefectiveCategory.C_GRADE
+							? DefectiveGoodsUnit.PCS
+							: DefectiveGoodsUnit.PRS,
+					...omit(payload, ['epc'])
+				}))
 			)
 		}
 		if (payload.ri_type === 'usb' && typeof payload.epc === 'string') {
@@ -148,6 +157,10 @@ export class DefectiveGoodsController {
 				)
 			return await this.defectiveGoodsService.insertOne({
 				...payload,
+				unit:
+					payload.defective_category === DefectiveCategory.C_GRADE
+						? DefectiveGoodsUnit.PCS
+						: DefectiveGoodsUnit.PRS,
 				epc: payload.epc,
 				user_code_created: user.username
 			})
@@ -161,6 +174,10 @@ export class DefectiveGoodsController {
 					size_code: size.size_code,
 					user_name_created: user.username,
 					user_code_created: user.username,
+					unit:
+						payload.defective_category === DefectiveCategory.C_GRADE
+							? DefectiveGoodsUnit.PCS
+							: (DefectiveGoodsUnit.PRS as const),
 					...omit(payload, ['epc', 'sizes'])
 				}))
 			})
