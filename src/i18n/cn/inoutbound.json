@@ -15,7 +15,7 @@
 	},
 	"outbound_purpose": {
 		"SELL": "出貨",
-		"RECYCLE": "翻箱",
+		"ELIMINATE": "破坏",
 		"GIVEAWAY": "給客人"
 	}
 }

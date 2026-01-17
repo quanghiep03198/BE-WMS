@@ -169,7 +169,7 @@ export type I18nTranslations = {
         };
         "outbound_purpose": {
             "SELL": string;
-            "RECYCLE": string;
+            "ELIMINATE": string;
             "GIVEAWAY": string;
         };
     };

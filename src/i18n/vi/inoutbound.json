@@ -15,7 +15,7 @@
 	},
 	"outbound_purpose": {
 		"SELL": "Bán",
-		"RECYCLE": "Tái Chế",
+		"ELIMINATE": "Chặt bỏ",
 		"GIVEAWAY": "Tặng"
 	}
 }

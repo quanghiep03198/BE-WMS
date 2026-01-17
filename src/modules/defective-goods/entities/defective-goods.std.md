@@ -29,16 +29,17 @@
 
 ### 📦 产品信息字段 (Thông tin sản phẩm)
 
-| 字段名<br/>Tên cột    | 数据类型<br/>Kiểu dữ liệu | 长度<br/>Độ dài | 允许空值<br/>Cho phép NULL | 说明 (中文)<br/>Mô tả (Tiếng Việt)                                             |
-| --------------------- | ------------------------- | --------------- | -------------------------- | ------------------------------------------------------------------------------ |
-| `epc`                 | `nvarchar`                | 30              | ❌ No                      | 电子产品代码，用于识别次品<br/>Mã điện tử sản phẩm (EPC) để nhận diện hàng lỗi |
-| `brand_name`          | `nvarchar`                | 30              | ❌ No                      | 客户品牌名称<br/>Tên thương hiệu khách hàng                                    |
-| `mo_no`               | `nvarchar`                | 20              | ✅ Yes                     | 制造订单号（仅B级品需要）<br/>Số lệnh sản xuất (chỉ bắt buộc với Grade B)      |
-| `po`                  | `nvarchar`                | 20              | ✅ Yes                     | 采购订单号（仅B级品需要）<br/>Số đơn hàng (chỉ bắt buộc với Grade B)           |
-| `cust_shoes_style`    | `nvarchar`                | 30              | ❌ No                      | 客户鞋款编号<br/>Mã kiểu dáng giày của khách hàng                              |
-| `factory_shoes_style` | `nvarchar`                | 30              | ❌ No                      | 工厂鞋款编号<br/>Mã kiểu dáng giày của nhà máy                                 |
-| `color_sn`            | `nvarchar`                | 10              | ❌ No                      | 颜色编号<br/>Mã màu sắc                                                        |
-| `size_code`           | `nvarchar`                | 5               | ❌ No                      | 尺码<br/>Size giày                                                             |
+| 字段名<br/>Tên cột    | 数据类型<br/>Kiểu dữ liệu | 长度<br/>Độ dài | 允许空值<br/>Cho phép NULL | 枚举值<br/>Giá trị Enum | 说明 (中文)<br/>Mô tả (Tiếng Việt)                                                                    |
+| --------------------- | ------------------------- | --------------- | -------------------------- | ----------------------- | ----------------------------------------------------------------------------------------------------- |
+| `epc`                 | `nvarchar`                | 30              | ❌ No                      | -                       | 电子产品代码，用于识别次品<br/>Mã điện tử sản phẩm (EPC) để nhận diện hàng lỗi                        |
+| `brand_name`          | `nvarchar`                | 24              | ❌ No                      | -                       | 客户品牌名称<br/>Tên thương hiệu khách hàng                                                           |
+| `mo_no`               | `nvarchar`                | 20              | ✅ Yes                     | -                       | 制造订单号（仅B级品需要）<br/>Số lệnh sản xuất (chỉ bắt buộc với Grade B)                             |
+| `po`                  | `nvarchar`                | 20              | ✅ Yes                     | -                       | 采购订单号（仅B级品需要）<br/>Số đơn hàng (chỉ bắt buộc với Grade B)                                  |
+| `factory_shoes_style` | `nvarchar`                | 50              | ❌ No                      | -                       | 工厂鞋款编号<br/>Mã kiểu dáng giày của nhà máy                                                        |
+| `cust_shoes_style`    | `nvarchar`                | 100             | ❌ No                      | -                       | 客户鞋款编号<br/>Mã kiểu dáng giày của khách hàng                                                     |
+| `color_sn`            | `nvarchar`                | 10              | ✅ Yes                     | -                       | 颜色编号<br/>Mã màu sắc                                                                               |
+| `size_code`           | `nvarchar`                | 5               | ❌ No                      | -                       | 尺码<br/>Size giày                                                                                    |
+| `unit`                | `nvarchar`                | 5               | ❌ No                      | `prs`, `pcs`            | **单元：**<br/>• `prs` = 双<br/>• `pcs` = 件<br/><br/>**Đơn vị:**<br/>• `prs` = Đôi<br/>• `pcs` = Cái |
 
 ---
 
@@ -46,20 +47,25 @@
 
 | 字段名<br/>Tên cột      | 数据类型<br/>Kiểu dữ liệu | 长度<br/>Độ dài | 允许空值<br/>Cho phép NULL | 枚举值<br/>Giá trị Enum | 说明 (中文)<br/>Mô tả (Tiếng Việt)                                                                                                                                                                 |
 | ----------------------- | ------------------------- | --------------- | -------------------------- | ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `defective_category`    | `nvarchar`                | 2               | ❌ No                      | `B`, `C`, `RD`          | **次品类别：**<br/>• `B` = B级品<br/>• `C` = C级品<br/>• `RD` = 研发样品<br/><br/>**Phân loại hàng lỗi:**<br/>• `B` = Hàng Grade B<br/>• `C` = Hàng Grade C<br/>• `RD` = Mẫu nghiên cứu phát triển |
-| `defective_location`    | `nvarchar`                | 1               | ❌ No                      | `A`, `B`, `C`, `D`      | **缺陷位置：**<br/>• `A` = 全部<br/>• `B` = 鞋面<br/>• `C` = 鞋底<br/>• `D` = 其他<br/><br/>**Vị trí lỗi:**<br/>• `A` = Toàn bộ<br/>• `B` = Mặt trên giày<br/>• `C` = Đế giày<br/>• `D` = Khác     |
+| `defective_category`    | `nvarchar`                | 5               | ❌ No                      | `B`, `C`, `RD`          | **次品类别：**<br/>• `B` = B级品<br/>• `C` = C级品<br/>• `RD` = 研发样品<br/><br/>**Phân loại hàng lỗi:**<br/>• `B` = Hàng Grade B<br/>• `C` = Hàng Grade C<br/>• `RD` = Mẫu nghiên cứu phát triển |
+| `defective_location`    | `nvarchar`                | 5               | ❌ No                      | `A`, `B`, `C`, `D`      | **缺陷位置：**<br/>• `A` = 全部<br/>• `B` = 鞋面<br/>• `C` = 鞋底<br/>• `D` = 其他<br/><br/>**Vị trí lỗi:**<br/>• `A` = Toàn bộ<br/>• `B` = Mặt trên giày<br/>• `C` = Đế giày<br/>• `D` = Khác     |
 | `defective_description` | `text`                    | -               | ❌ No                      | -                       | 缺陷描述（编辑器原始文本，不要手动更新）<br/>Mô tả chi tiết lỗi (văn bản từ editor, không cập nhật thủ công)                                                                                       |
+| `shoe_source`           | `nvarchar`                | 1               | ❌ No                      | `F`, `W`, `O`           | **鞋源：**<br/>• `F` = 终检 (默认)<br/>• `W` = 仓库<br/>• `O` = 其他<br/><br/>**Nguồn gốc giày:**<br/>• `F` = Kiểm tra cuối cùng (mặc định)<br/>• `W` = Kho<br/>• `O` = Khác                       |
 
 ---
 
 ### 📍 仓储信息 (Thông tin kho bãi)
 
-| 字段名<br/>Tên cột | 数据类型<br/>Kiểu dữ liệu | 长度<br/>Độ dài | 允许空值<br/>Cho phép NULL | 说明 (中文)<br/>Mô tả (Tiếng Việt)                                                                                                                                                     |
-| ------------------ | ------------------------- | --------------- | -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `storage_location` | `nvarchar`                | 10              | ✅ Yes                     | 存储位置，次品存放的仓库位置<br/>Vị trí lưu kho nơi hàng lỗi được cất giữ                                                                                                              |
-| `inbound_date`     | `datetime`                | -               | ✅ Yes                     | 入库日期，次品入库到仓库的日期<br/>Ngày nhập kho hàng lỗi vào kho                                                                                                                      |
-| `outbound_date`    | `datetime`                | -               | ✅ Yes                     | 出库日期，次品从仓库出库的日期<br/>Ngày xuất kho hàng lỗi ra khỏi kho                                                                                                                  |
-| `outbound_purpose` | `nvarchar`                | 20              | ✅ Yes                     | **出库目的：**<br/>• `SELL` = 销售<br/>• `GIVEAWAY` = 赠送<br/>• `RECYCLE` = 回收<br/><br/>**Mục đích xuất kho:**<br/>• `SELL` = Bán<br/>• `GIVEAWAY` = Tặng<br/>• `RECYCLE` = Tái chế |
+| 字段名<br/>Tên cột | 数据类型<br/>Kiểu dữ liệu | 长度<br/>Độ dài | 允许空值<br/>Cho phép NULL | 默认值<br/>Mặc định | 枚举值<br/>Giá trị Enum         | 说明 (中文)<br/>Mô tả (Tiếng Việt)                                                                                                                                                                             |
+| ------------------ | ------------------------- | --------------- | -------------------------- | ------------------- | ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `storage_location` | `nvarchar`                | 10              | ✅ Yes                     | -                   | -                               | 存储位置，次品存放的仓库位置<br/>Vị trí lưu kho nơi hàng lỗi được cất giữ                                                                                                                                      |
+| `sewing_line`      | `nvarchar`                | 50              | ✅ Yes                     | -                   | -                               | 缝纫生产线<br/>Chuyền may của hàng lỗi                                                                                                                                                                         |
+| `assembly_line`    | `nvarchar`                | 50              | ✅ Yes                     | -                   | -                               | 组装生产线<br/>Chuyền lắp ráp của hàng lỗi                                                                                                                                                                     |
+| `ri_cancel`        | `bit`                     | -               | ❌ No                      | `0`                 | -                               | 退货指令取消状态，true表示退货指令被取消<br/>Trạng thái hủy chỉ thị trả hàng, true nghĩa là chỉ thị trả hàng bị hủy                                                                                            |
+| `ri_type`          | `nvarchar`                | 10              | ❌ No                      | -                   | `uhf`, `usb`, `manually`        | **退货指令类型：**<br/>• `uhf` = UHF RFID<br/>• `usb` = USB扫描<br/>• `manually` = 手动录入<br/><br/>**Loại chỉ thị trả hàng:**<br/>• `uhf` = UHF RFID<br/>• `usb` = USB quét<br/>• `manually` = Nhập thủ công |
+| `inbound_date`     | `datetime`                | -               | ✅ Yes                     | -                   | -                               | 入库日期，次品入库到仓库的日期<br/>Ngày nhập kho hàng lỗi vào kho                                                                                                                                              |
+| `outbound_date`    | `datetime`                | -               | ✅ Yes                     | -                   | -                               | 出库日期，次品从仓库出库的日期<br/>Ngày xuất kho hàng lỗi ra khỏi kho                                                                                                                                          |
+| `outbound_purpose` | `nvarchar`                | 20              | ✅ Yes                     | -                   | `SELL`, `GIVEAWAY`, `ELIMINATE` | **出库目的：**<br/>• `SELL` = 销售<br/>• `GIVEAWAY` = 赠送<br/>• `ELIMINATE` = 淘汰/回收<br/><br/>**Mục đích xuất kho:**<br/>• `SELL` = Bán<br/>• `GIVEAWAY` = Tặng<br/>• `ELIMINATE` = Loại bỏ/tái chế        |
 
 ---
 
@@ -96,10 +102,12 @@ CONSTRAINT PK_dv_defective_goods PRIMARY KEY (keyid)
 ```sql
 INSERT INTO DV_DATA_LAKE.dbo.dv_defective_goods (
     epc, brand_name, mo_no, po,
-    cust_shoes_style, factory_shoes_style,
-    color_sn, size_code,
+    factory_shoes_style, cust_shoes_style,
+    color_sn, size_code, unit,
     defective_category, defective_location,
-    defective_description,
+    defective_description, shoe_source,
+    sewing_line, assembly_line,
+    ri_cancel, ri_type,
     inbound_date, storage_location,
     user_code_created, isactive
 ) VALUES (
@@ -107,13 +115,19 @@ INSERT INTO DV_DATA_LAKE.dbo.dv_defective_goods (
     'NIKE',                      -- 品牌 / Thương hiệu
     'TVA2411001',                -- 制造订单 / Lệnh sản xuất
     'PO-2024-001',               -- 采购订单 / Đơn hàng
-    'AIR-MAX-90',                -- 客户鞋款 / Mã giày khách hàng
     'TV-AM90-001',               -- 工厂鞋款 / Mã giày nhà máy
+    'AIR-MAX-90',                -- 客户鞋款 / Mã giày khách hàng
     'BLACK',                     -- 颜色 / Màu
     '42',                        -- 尺码 / Size
+    'prs',                       -- 单元 / Đơn vị (双/đôi)
     'B',                         -- B级品 / Grade B
     'B',                         -- 鞋面缺陷 / Lỗi mặt giày
     '鞋面有轻微划痕',             -- 缺陷描述 / Mô tả lỗi
+    'F',                         -- 终检来源 / Nguồn từ kiểm tra cuối
+    'SEWING-LINE-01',            -- 缝纫线 / Chuyền may
+    'ASSEMBLY-LINE-02',          -- 组装线 / Chuyền lắp ráp
+    0,                           -- 未取消 / Không hủy
+    'uhf',                       -- UHF RFID类型 / Loại UHF RFID
     GETDATE(),                   -- 入库日期 / Ngày nhập
     'A-01-05',                   -- 存储位置 / Vị trí kho
     'USER001',                   -- 创建用户 / Người tạo
@@ -131,6 +145,10 @@ SELECT
     factory_shoes_style,
     color_sn,
     size_code,
+    unit,
+    shoe_source,
+    sewing_line,
+    assembly_line,
     storage_location,
     inbound_date,
     DATEDIFF(DAY, inbound_date, GETDATE()) AS days_in_storage
@@ -216,12 +234,13 @@ ORDER BY COUNT(*) DESC
 
 ## 🔄 版本历史 (Lịch sử phiên bản)
 
-| 版本<br/>Version | 日期<br/>Ngày | 说明<br/>Mô tả                                                             |
-| ---------------- | ------------- | -------------------------------------------------------------------------- |
-| 1.0              | 2025-01-14    | 初始版本，创建次品管理表<br/>Phiên bản đầu tiên, tạo bảng quản lý hàng lỗi |
+| 版本<br/>Version | 日期<br/>Ngày | 说明<br/>Mô tả                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| ---------------- | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1.0              | 2025-01-14    | 初始版本，创建次品管理表<br/>Phiên bản đầu tiên, tạo bảng quản lý hàng lỗi                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| 1.1              | 2026-01-17    | 更新字段：<br/>• 更新 `brand_name` 长度：30 → 24<br/>• 更新 `factory_shoes_style` 长度：30 → 50<br/>• 更新 `cust_shoes_style` 长度：30 → 100<br/>• 更新 `color_sn` 可空：No → Yes<br/>• 更新 `defective_category` 长度：2 → 5<br/>• 更新 `defective_location` 长度：1 → 5<br/>• 新增 `shoe_source` 字段<br/>• 新增 `sewing_line` 字段<br/>• 新增 `assembly_line` 字段<br/>• 新增 `ri_cancel` 字段<br/>• 新增 `ri_type` 字段<br/>• 新增 `unit` 枚举值<br/><br/>Cập nhật các trường:<br/>• Cập nhật độ dài `brand_name`: 30 → 24<br/>• Cập nhật độ dài `factory_shoes_style`: 30 → 50<br/>• Cập nhật độ dài `cust_shoes_style`: 30 → 100<br/>• Cập nhật `color_sn` cho phép NULL: No → Yes<br/>• Cập nhật độ dài `defective_category`: 2 → 5<br/>• Cập nhật độ dài `defective_location`: 1 → 5<br/>• Thêm trường `shoe_source`<br/>• Thêm trường `sewing_line`<br/>• Thêm trường `assembly_line`<br/>• Thêm trường `ri_cancel`<br/>• Thêm trường `ri_type`<br/>• Thêm giá trị enum cho `unit` |
 
 ---
 
 **文档创建日期 (Ngày tạo tài liệu):** 2025-11-22  
-**最后更新 (Cập nhật cuối):** 2025-11-22
+**最后更新 (Cập nhật cuối):** 2026-01-17  
 **维护者 (Người bảo trì):** quanghiep03198 (阿侠)

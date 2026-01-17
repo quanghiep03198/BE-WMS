@@ -168,9 +168,19 @@ export class DefectiveGoodsEntity extends BaseAbstractEntity {
 		type: 'nvarchar',
 		length: 20,
 		nullable: true,
-		enum: Object.values(DefectiveGoodsOutboundPurpose) // SELL, GIVEAWAY, RECYCLE
+		enum: Object.values(DefectiveGoodsOutboundPurpose) // SELL, GIVEAWAY, ELIMINATE
 	})
 	outbound_purpose: string
+
+	@Column({
+		name: 'unit',
+		type: 'nvarchar',
+		length: 5,
+		nullable: false,
+		enumName: 'CHK_defective_goods_unit',
+		enum: ['prs', 'pcs']
+	})
+	unit: string
 
 	constructor(defectiveGoods: Partial<DefectiveGoodsEntity>) {
 		super()

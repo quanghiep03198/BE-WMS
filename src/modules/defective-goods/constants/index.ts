@@ -14,7 +14,7 @@ export enum DefectiveLocation {
 export enum DefectiveGoodsOutboundPurpose {
 	SELL = 'SELL',
 	GIVEAWAY = 'GIVEAWAY',
-	RECYCLE = 'RECYCLE'
+	ELIMINATE = 'ELIMINATE'
 }
 
 export enum DefectiveGoodsSource {

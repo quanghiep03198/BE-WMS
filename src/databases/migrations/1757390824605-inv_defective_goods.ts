@@ -38,6 +38,7 @@ export class InvDefectiveGoods1757390824605 implements MigrationInterface {
 				type: 'nvarchar',
 				length: '10',
 				isNullable: false,
+				enumName: 'CHK_defective_goods_ri_type',
 				enum: ['uhf', 'usb', 'manually'],
 				comment: 'Combination strategy, including "uhf", "usb", "manually"'
 			},
@@ -85,6 +86,7 @@ export class InvDefectiveGoods1757390824605 implements MigrationInterface {
 				type: 'nvarchar',
 				length: '2',
 				isNullable: false,
+				enumName: 'CHK_defective_goods_defective_category',
 				enum: Object.values(DefectiveCategory),
 				comment:
 					'Defective category, including B (Grade B shoes), C (Grade C shoes), RD (Research and developement)'
@@ -94,6 +96,7 @@ export class InvDefectiveGoods1757390824605 implements MigrationInterface {
 				type: 'nvarchar',
 				length: '1',
 				isNullable: false,
+				enumName: 'CHK_defective_goods_shoe_source',
 				enum: Object.values(DefectiveGoodsSource),
 				default: `'${DefectiveGoodsSource.FINAL_INSPECTION}'`,
 				comment:
@@ -104,6 +107,7 @@ export class InvDefectiveGoods1757390824605 implements MigrationInterface {
 				type: 'nvarchar',
 				length: '1',
 				isNullable: false,
+				enumName: 'CHK_defective_goods_defective_location',
 				enum: Object.values(DefectiveLocation),
 				comment: 'Defective location, including A (All), B (Upper), C (Bottom), D (Other)'
 			},
@@ -138,7 +142,16 @@ export class InvDefectiveGoods1757390824605 implements MigrationInterface {
 				type: 'nvarchar',
 				length: '20',
 				isNullable: true,
-				enum: Object.values(DefectiveGoodsOutboundPurpose) // SELL, GIVEAWAY, RECYCLE
+				enumName: 'CHK_defective_goods_outbound_purpose',
+				enum: Object.values(DefectiveGoodsOutboundPurpose) // SELL, GIVEAWAY, ELIMINATE
+			},
+			{
+				name: 'unit',
+				type: 'nvarchar',
+				length: '5',
+				isNullable: false,
+				enumName: 'CHK_defective_goods_unit',
+				enum: ['prs', 'pcs']
 			}
 		]
 	})
