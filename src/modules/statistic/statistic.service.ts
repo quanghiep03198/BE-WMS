@@ -72,7 +72,16 @@ export class StatisticService {
 			.getRepository(DefectiveGoodsEntity)
 			.createQueryBuilder()
 			.select('defective_category')
-			.addSelect(/* SQL */ `COUNT(DISTINCT epc)`, 'qty')
+			.addSelect(
+				/* SQL */ `
+				SUM(
+					CASE 
+						WHEN unit = 'prs' AND defective_category = 'C' THEN 2
+						ELSE 1
+					END
+				)`,
+				'qty'
+			)
 			.where({ ri_cancel: false })
 			.andWhere({ inbound_date: Not(IsNull()) })
 			.andWhere({ storage_location: Not(IsNull()) })

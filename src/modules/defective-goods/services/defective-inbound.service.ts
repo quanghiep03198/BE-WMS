@@ -108,11 +108,27 @@ export class DefectiveGoodsInboundService {
 			.addSelect('a.assembly_line', 'assembly_line')
 			.addSelect('a.defective_category', 'defective_category')
 			.addSelect('b.storage_location', 'storage_location')
-			.addSelect('COUNT(DISTINCT a.epc)', 'daily_inbound_qty')
+			.addSelect(
+				/* SQL */ `
+				SUM(
+					CASE 
+						WHEN a.unit = 'prs' AND a.defective_category = 'C' THEN 2
+						ELSE 1
+					END
+				)`,
+				'daily_inbound_qty'
+			)
 			.addSelect('a.shoe_source', 'shoe_source')
 			.addSelect(
 				/* SQL */ `(
-               SELECT aa.size_code AS size_numcode, COUNT(DISTINCT aa.epc) AS qty
+               SELECT 
+						aa.size_code AS size_numcode,  
+						SUM(
+                     CASE 
+                        WHEN aa.unit = 'prs' AND aa.defective_category = 'C' THEN 2
+                        ELSE 1
+                     END
+                  ) AS qty
                FROM DV_DATA_LAKE.dbo.dv_defective_goods aa
                WHERE 
 						aa.brand_name = a.brand_name

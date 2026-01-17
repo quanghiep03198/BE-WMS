@@ -1,4 +1,4 @@
-import { DATA_SOURCE_DATA_LAKE } from '@/databases/constants'
+import { DATA_SOURCE_DATA_LAKE, RecordStatus } from '@/databases/constants'
 import { BadGatewayException, Injectable } from '@nestjs/common'
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm'
 import { chunk, omit } from 'lodash'
@@ -42,6 +42,7 @@ export class DefectiveGoodsService extends BaseAbstractService<DefectiveGoodsEnt
 				'cust_shoes_style',
 				'color_sn',
 				'size_code',
+				'unit',
 				'inbound_date'
 			],
 			where: {
@@ -56,6 +57,7 @@ export class DefectiveGoodsService extends BaseAbstractService<DefectiveGoodsEnt
 				outbound_date: IsNull(),
 				outbound_purpose: IsNull(),
 				ri_cancel: false,
+				is_active: RecordStatus.ACTIVE,
 				ri_type: Equal('manually'),
 				...omit(filterQueries, ['take'])
 			},
@@ -69,7 +71,8 @@ export class DefectiveGoodsService extends BaseAbstractService<DefectiveGoodsEnt
 	public async checkActiveEpcsExist(epcs: string | string[]): Promise<boolean> {
 		return await this.defectiveGoodRepository.existsBy({
 			epc: In(Array.isArray(epcs) ? epcs : [epcs]),
-			ri_cancel: false
+			ri_cancel: false,
+			is_active: RecordStatus.ACTIVE
 		})
 	}
 
@@ -97,6 +100,7 @@ export class DefectiveGoodsService extends BaseAbstractService<DefectiveGoodsEnt
 			where: {
 				epc: In(epcList),
 				ri_cancel: false,
+				is_active: RecordStatus.ACTIVE,
 				ri_type: Not(Equal('manually'))
 			}
 		})
@@ -153,12 +157,18 @@ export class DefectiveGoodsService extends BaseAbstractService<DefectiveGoodsEnt
 		}
 
 		if (payload.including_ids === 'all') {
-			return await this.defectiveGoodRepository.delete({ ...filterQuery })
+			return await this.defectiveGoodRepository.update(
+				{ ...filterQuery },
+				{ ri_cancel: true, is_active: RecordStatus.INACTIVE }
+			)
 		} else if (Array.isArray(payload.including_ids) && Array.isArray(payload.excluding_ids))
-			return await this.defectiveGoodRepository.delete({
-				...filterQuery,
-				id: And(In(payload.including_ids), Not(In(payload.excluding_ids)))
-			})
+			return await this.defectiveGoodRepository.update(
+				{
+					...filterQuery,
+					id: And(In(payload.including_ids), Not(In(payload.excluding_ids)))
+				},
+				{ ri_cancel: true, is_active: RecordStatus.INACTIVE }
+			)
 		else throw new BadGatewayException('Invalid request payload')
 	}
 }
