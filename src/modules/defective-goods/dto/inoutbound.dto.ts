@@ -10,12 +10,23 @@ export const updateInboundStatusDTO = z.object({
 		.transform((value) => value.toUpperCase())
 })
 
-export const updateOutboundStatusDTO = z.object({
-	epcs: z.array(z.string().trim().nonempty()),
-	outbound_purpose: z.nativeEnum(DefectiveGoodsOutboundPurpose, {
-		message: `Outbound purpose must be one of: ${Object.values(DefectiveGoodsOutboundPurpose).join(', ')}`
+export const updateOutboundStatusDTO = z
+	.object({
+		epcs: z.array(z.string().trim().nonempty()),
+		outbound_purpose: z.nativeEnum(DefectiveGoodsOutboundPurpose, {
+			message: `Outbound purpose must be one of: ${Object.values(DefectiveGoodsOutboundPurpose).join(', ')}`
+		}),
+		po: z.string().trim().optional()
 	})
-})
+	.superRefine((values, ctx) => {
+		if (values.outbound_purpose === DefectiveGoodsOutboundPurpose.SELL && !values.po) {
+			ctx.addIssue({
+				path: ['po'],
+				code: 'custom',
+				message: 'ns_validation:required'
+			})
+		}
+	})
 
 export type UpdateInboundStatusDTO = z.infer<typeof updateInboundStatusDTO>
 export type UpdateOutboundStatusDTO = z.infer<typeof updateOutboundStatusDTO>
