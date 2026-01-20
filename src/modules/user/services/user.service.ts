@@ -1,14 +1,12 @@
 import { DATA_SOURCE_SYSCLOUD } from '@/databases/constants'
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common'
-import { ConfigService } from '@nestjs/config'
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm'
-import { genSaltSync, hashSync } from 'bcrypt'
 import { stringify } from 'node:querystring'
 import { DataSource, Repository } from 'typeorm'
 import { BaseAbstractService } from '../../_base/base.abstract.service'
-import { ChangePasswordDTO, RegisterDTO, UpdateProfileDTO } from '../dto/user.dto'
+import { ChangePasswordDTO, CreateUserDTO, UpdateProfileDTO } from '../dto/user.dto'
 import { EmployeeEntity } from '../entities/employee.entity'
-import { UserEntity } from '../entities/user.entity'
+import { UserEntity } from '../entities/user-v2.entity'
 
 type AvatarGenerateOptions = {
 	name: string
@@ -27,43 +25,27 @@ export class UserService extends BaseAbstractService<UserEntity> {
 		@InjectRepository(UserEntity, DATA_SOURCE_SYSCLOUD)
 		private readonly userRepository: Repository<UserEntity>,
 		@InjectRepository(EmployeeEntity, DATA_SOURCE_SYSCLOUD)
-		private readonly employeeRepository: Repository<EmployeeEntity>,
-		private readonly configService: ConfigService
+		private readonly employeeRepository: Repository<EmployeeEntity>
 	) {
 		super(userRepository)
 	}
-	/**
-	 * @deprecated
-	 * @param payload
-	 * @returns
-	 */
-	async createUser(payload: RegisterDTO) {
+
+	async createUser(payload: CreateUserDTO) {
 		const user = await this.userRepository.findOne({ where: { username: payload.username } })
 		if (user) throw new ConflictException('User already exists')
 		const newUser = this.userRepository.create(payload)
 		return await this.userRepository.save(newUser)
 	}
 
-	async getProfile(username: string): Promise<UserEntity> {
-		const user = await this.userRepository
-			.createQueryBuilder('u')
-			.select('u.id', 'id')
-			.addSelect('u.username', 'username')
-			.addSelect('u.password', 'password')
-			.addSelect('u.role', 'role')
-			.addSelect('e.employee_name', 'display_name')
-			.addSelect('e.employee_code', 'employee_code')
-			.addSelect('e.email', 'email')
-			.addSelect('e.phone', 'phone')
-			.innerJoin(EmployeeEntity, 'e', 'u.employee_code = e.employee_code')
-			.where('u.user_code = :username', { username })
-			.getRawOne()
+	async getProfile(
+		username: string
+	): Promise<Omit<UserEntity, 'authenticate' | 'encryptPassword'> & { picture: string }> {
+		const user = await this.userRepository.findOneBy({ username })
 
 		if (!user) throw new NotFoundException('User could not be found')
 
 		return {
 			...user,
-			password: hashSync(user?.password, genSaltSync(+this.configService.get('SALT_ROUND'))),
 			picture: this.generateAvatar({ name: user?.display_name })
 		}
 	}

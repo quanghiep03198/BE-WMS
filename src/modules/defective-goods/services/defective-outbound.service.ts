@@ -1,7 +1,7 @@
 import { ExcelColorPalette } from '@/common/constants/excel-color-palette'
 import { applyCommonStyles, AutoFitColumnOptions, autoFitColumns } from '@/common/helpers'
 import { SuperJson } from '@/common/utils'
-import { DATA_SOURCE_DATA_LAKE, RecordStatus } from '@/databases/constants'
+import { DATA_SOURCE_DATA_LAKE } from '@/databases/constants'
 import { TENANCY_DATA_SOURCE } from '@/modules/tenancy/constants'
 import { ConflictException, Inject, Injectable } from '@nestjs/common'
 import { InjectRepository } from '@nestjs/typeorm'
@@ -38,7 +38,7 @@ export class DefectiveGoodsOutboundService {
 			{
 				...omit(update, ['epcs']),
 				ri_cancel: true,
-				is_active: RecordStatus.INACTIVE,
+				is_active: false,
 				outbound_date: new Date()
 			}
 		)
