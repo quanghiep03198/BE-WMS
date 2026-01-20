@@ -1,7 +1,6 @@
 import { CommonRequestHeader } from '@/common/constants'
 import { Api, AuthGuard, HttpMethod, User } from '@/common/decorators'
 import { ZodValidationPipe } from '@/common/pipes'
-import { RecordStatus } from '@/databases/constants'
 import {
 	Body,
 	ConflictException,
@@ -222,7 +221,7 @@ export class DefectiveGoodsController {
 	})
 	@AuthGuard()
 	public async deleteOne(@Param('id', ParseIntPipe) id: number) {
-		return await this.defectiveGoodsService.updateOneById(id, { ri_cancel: true, is_active: RecordStatus.INACTIVE })
+		return await this.defectiveGoodsService.updateOneById(id, { ri_cancel: true, is_active: false })
 	}
 
 	@Api({

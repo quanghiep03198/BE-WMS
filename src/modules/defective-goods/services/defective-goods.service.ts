@@ -1,4 +1,4 @@
-import { DATA_SOURCE_DATA_LAKE, RecordStatus } from '@/databases/constants'
+import { DATA_SOURCE_DATA_LAKE } from '@/databases/constants'
 import { BadGatewayException, Injectable } from '@nestjs/common'
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm'
 import { chunk, omit } from 'lodash'
@@ -57,7 +57,7 @@ export class DefectiveGoodsService extends BaseAbstractService<DefectiveGoodsEnt
 				outbound_date: IsNull(),
 				outbound_purpose: IsNull(),
 				ri_cancel: false,
-				is_active: RecordStatus.ACTIVE,
+				is_active: true,
 				ri_type: Equal('manually'),
 				...omit(filterQueries, ['take'])
 			},
@@ -72,7 +72,7 @@ export class DefectiveGoodsService extends BaseAbstractService<DefectiveGoodsEnt
 		return await this.defectiveGoodRepository.existsBy({
 			epc: In(Array.isArray(epcs) ? epcs : [epcs]),
 			ri_cancel: false,
-			is_active: RecordStatus.ACTIVE
+			is_active: true
 		})
 	}
 
@@ -100,7 +100,7 @@ export class DefectiveGoodsService extends BaseAbstractService<DefectiveGoodsEnt
 			where: {
 				epc: In(epcList),
 				ri_cancel: false,
-				is_active: RecordStatus.ACTIVE,
+				is_active: true,
 				ri_type: Not(Equal('manually'))
 			}
 		})
@@ -157,17 +157,14 @@ export class DefectiveGoodsService extends BaseAbstractService<DefectiveGoodsEnt
 		}
 
 		if (payload.including_ids === 'all') {
-			return await this.defectiveGoodRepository.update(
-				{ ...filterQuery },
-				{ ri_cancel: true, is_active: RecordStatus.INACTIVE }
-			)
+			return await this.defectiveGoodRepository.update({ ...filterQuery }, { ri_cancel: true, is_active: false })
 		} else if (Array.isArray(payload.including_ids) && Array.isArray(payload.excluding_ids))
 			return await this.defectiveGoodRepository.update(
 				{
 					...filterQuery,
 					id: And(In(payload.including_ids), Not(In(payload.excluding_ids)))
 				},
-				{ ri_cancel: true, is_active: RecordStatus.INACTIVE }
+				{ ri_cancel: true, is_active: false }
 			)
 		else throw new BadGatewayException('Invalid request payload')
 	}

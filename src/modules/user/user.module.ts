@@ -4,13 +4,14 @@ import { TypeOrmModule } from '@nestjs/typeorm'
 import { EmployeeController } from './controllers/employee.controller'
 import { UserController } from './controllers/user.controller'
 import { EmployeeEntity } from './entities/employee.entity'
-import { UserEntity } from './entities/user.entity'
+import { UserEntity } from './entities/user-v2.entity'
 import { EmployeeService } from './services/employee.service'
 import { UserService } from './services/user.service'
+import { UserEntitySubscriber } from './subscribers/user.entity.subscriber'
 
 @Module({
 	imports: [TypeOrmModule.forFeature([UserEntity, EmployeeEntity], DATA_SOURCE_SYSCLOUD)],
-	providers: [UserService, EmployeeService],
+	providers: [UserService, EmployeeService, UserEntitySubscriber],
 	controllers: [UserController, EmployeeController],
 	exports: [UserService]
 })

@@ -1,13 +1,19 @@
+import { FactoryCode } from '@/modules/department/constants'
 import { z } from 'zod'
+import { UserRoles } from '../constants'
 
 export const registerValidator = z.object({
-	username: z.string({ required_error: 'Username is required' }).min(1, { message: 'Username is required' }),
+	username: z.string({ message: 'Username is required' }).trim().nonempty({ message: 'Username is required' }).min(3),
 	password: z
-		.string({ required_error: 'Password is required' })
-		.min(1, { message: 'Password is required' })
-		.refine((value) => value.length >= 6, { message: 'Password must be at least 6 characters' }),
-	display_name: z.string().min(1, { message: 'Display name is required' }),
-	employee_code: z.string().min(1, { message: 'Employee code is required' })
+		.string({ message: 'Password is required' })
+		.trim()
+		.nonempty({ message: 'Password is required' })
+		.min(6, { message: 'Password must be at least 6 characters long' }),
+	email: z.string().trim().email({ message: 'Invalid email' }).optional(),
+	display_name: z.string().trim().nonempty(),
+	employee_code: z.string().trim().nonempty().optional(),
+	role: z.nativeEnum(UserRoles),
+	authorized_factory_codes: z.array(z.nativeEnum(FactoryCode))
 })
 
 export const updateProfileValidator = z.object({
@@ -19,6 +25,6 @@ export const changePasswordValidator = z.object({
 	password: z.string().min(1, { message: 'This field is required' })
 })
 
-export type RegisterDTO = z.infer<typeof registerValidator>
+export type CreateUserDTO = z.infer<typeof registerValidator>
 export type UpdateProfileDTO = z.infer<typeof updateProfileValidator>
 export type ChangePasswordDTO = z.infer<typeof changePasswordValidator>

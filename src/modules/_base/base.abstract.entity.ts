@@ -1,3 +1,4 @@
+import { StringToBoolTransformer } from '@/databases/transformers/bool.transformer'
 import { format } from 'date-fns'
 import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, TableColumnOptions, UpdateDateColumn } from 'typeorm'
 import { RecordStatus } from '../../databases/constants'
@@ -25,8 +26,15 @@ export abstract class BaseAbstractEntity {
 	@UpdateDateColumn({ type: 'datetime', nullable: true, onUpdate: 'CURRENT_TIMESTAMP' })
 	updated: Date
 
-	@Column({ name: 'isactive', type: 'varchar', length: 1, enum: RecordStatus, default: RecordStatus.ACTIVE })
-	is_active: RecordStatus
+	@Column({
+		name: 'isactive',
+		type: 'varchar',
+		length: 1,
+		enum: RecordStatus,
+		default: RecordStatus.ACTIVE,
+		transformer: new StringToBoolTransformer()
+	})
+	is_active: boolean
 
 	@Column({ type: 'nvarchar', length: 255, nullable: true })
 	remark: string | null

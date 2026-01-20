@@ -23,7 +23,7 @@ export class UserEntity extends BaseAbstractEntity {
 	@Column({ name: 'isadmin', type: 'bit', default: 0 })
 	is_admin: boolean
 
-	@Column({ type: 'nvarchar', length: 20, enum: UserRoles, default: UserRoles.USER })
+	@Column({ type: 'nvarchar', length: 20, enum: UserRoles })
 	role: UserRoles
 
 	authenticate(password: string) {

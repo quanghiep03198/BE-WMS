@@ -3,10 +3,21 @@ import { ZodValidationPipe } from '@/common/pipes'
 import { Body, Controller, HttpStatus } from '@nestjs/common'
 import { ChangePasswordDTO, changePasswordValidator, UpdateProfileDTO, updateProfileValidator } from '../dto/user.dto'
 import { UserService } from '../services/user.service'
+import { CreateUserDTO, registerValidator } from './../dto/user.dto'
 
 @Controller()
 export class UserController {
 	constructor(private readonly userService: UserService) {}
+
+	@Api({
+		endpoint: 'user/create',
+		method: HttpMethod.POST,
+		statusCode: HttpStatus.CREATED,
+		message: 'common.created'
+	})
+	async createUser(@Body(new ZodValidationPipe(registerValidator)) createUserDTO: CreateUserDTO) {
+		return await this.userService.createUser(createUserDTO)
+	}
 
 	@Api({ endpoint: 'profile', method: HttpMethod.GET })
 	@AuthGuard()
