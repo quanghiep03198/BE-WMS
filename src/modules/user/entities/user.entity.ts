@@ -1,6 +1,6 @@
 import { DATABASE_SYSCLOUD } from '@/databases/constants'
 import { BaseAbstractEntity } from '@/modules/_base/base.abstract.entity'
-import { UserRoles } from '@/modules/user/constants'
+import { UserRole } from '@/modules/user/constants'
 import 'dotenv/config'
 import { Column, Entity, Index } from 'typeorm'
 
@@ -23,8 +23,8 @@ export class UserEntity extends BaseAbstractEntity {
 	@Column({ name: 'isadmin', type: 'bit', default: 0 })
 	is_admin: boolean
 
-	@Column({ type: 'nvarchar', length: 20, enum: UserRoles })
-	role: UserRoles
+	@Column({ type: 'nvarchar', length: 20, enum: UserRole })
+	role: UserRole
 
 	authenticate(password: string) {
 		return this.password === password

@@ -1,5 +1,5 @@
 import { BaseAbstractEntity } from '@/modules/_base/base.abstract.entity'
-import { UserRoles } from '@/modules/user/constants'
+import { UserRole } from '@/modules/user/constants'
 import { MigrationInterface, QueryRunner, Table } from 'typeorm'
 import { DATABASE_SCHEMA, DATABASE_SYSCLOUD } from '../constants'
 
@@ -49,7 +49,7 @@ export class Users1768439528524 implements MigrationInterface {
 				name: 'role',
 				type: 'nvarchar',
 				length: '50',
-				enum: Object.values(UserRoles),
+				enum: Object.values(UserRole),
 				isNullable: false
 			},
 			{

@@ -5,12 +5,12 @@ import { ChangePasswordDTO, changePasswordValidator, UpdateProfileDTO, updatePro
 import { UserService } from '../services/user.service'
 import { CreateUserDTO, registerValidator } from './../dto/user.dto'
 
-@Controller()
+@Controller('user')
 export class UserController {
 	constructor(private readonly userService: UserService) {}
 
 	@Api({
-		endpoint: 'user/create',
+		endpoint: 'create',
 		method: HttpMethod.POST,
 		statusCode: HttpStatus.CREATED,
 		message: 'common.created'
@@ -53,6 +53,11 @@ export class UserController {
 		return await this.userService.changePassword(username, payload)
 	}
 
+	/**
+	 * @deprecated
+	 * @param username
+	 * @returns
+	 */
 	@Api({ endpoint: 'companies', method: HttpMethod.GET })
 	@AuthGuard()
 	async getUserFactory(@User('username') username: string) {
