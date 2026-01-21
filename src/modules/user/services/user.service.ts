@@ -37,10 +37,8 @@ export class UserService extends BaseAbstractService<UserEntity> {
 		return await this.userRepository.save(newUser)
 	}
 
-	async getProfile(
-		username: string
-	): Promise<Omit<UserEntity, 'authenticate' | 'encryptPassword'> & { picture: string }> {
-		const user = await this.userRepository.findOneBy({ username })
+	async getProfile(username: string): Promise<Partial<UserEntity> & { picture: string }> {
+		const user = await this.findUserByUsername(username)
 
 		if (!user) throw new NotFoundException('User could not be found')
 
@@ -51,9 +49,26 @@ export class UserService extends BaseAbstractService<UserEntity> {
 	}
 
 	async findUserByUsername(username: string) {
-		return await this.userRepository.findOneBy({ username })
+		return await this.userRepository.findOne({
+			select: {
+				id: true,
+				username: true,
+				display_name: true,
+				password: true,
+				email: true,
+				employee_code: true,
+				role: true,
+				authorized_factory_codes: true
+			},
+			where: { username }
+		})
 	}
 
+	/**
+	 * @deprecated
+	 * @param username
+	 * @returns
+	 */
 	async getUserCompany(username: string) {
 		return await this.dataSourceSC.manager
 			.createQueryBuilder()

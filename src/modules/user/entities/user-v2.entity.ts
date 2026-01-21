@@ -5,7 +5,7 @@ import { BaseAbstractEntity } from '@/modules/_base/base.abstract.entity'
 import { FactoryCode } from '@/modules/department/constants'
 import { compareSync, hashSync } from 'bcrypt'
 import { Column, Entity } from 'typeorm'
-import { UserRoles } from '../constants'
+import { UserRole } from '../constants'
 
 @Entity({ database: DATABASE_SYSCLOUD, schema: DATABASE_SCHEMA, name: 'ts_users' })
 export class UserEntity extends BaseAbstractEntity {
@@ -30,10 +30,10 @@ export class UserEntity extends BaseAbstractEntity {
 		type: 'nvarchar',
 		length: 50,
 		nullable: false,
-		enum: UserRoles,
+		enum: UserRole,
 		enumName: 'CHK_ts_users_role'
 	})
-	role: UserRoles
+	role: UserRole
 
 	@Column({
 		name: 'authorized_factory_codes',

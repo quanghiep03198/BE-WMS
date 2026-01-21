@@ -1,6 +1,6 @@
 import { FactoryCode } from '@/modules/department/constants'
 import { z } from 'zod'
-import { UserRoles } from '../constants'
+import { UserRole } from '../constants'
 
 export const registerValidator = z.object({
 	username: z.string({ message: 'Username is required' }).trim().nonempty({ message: 'Username is required' }).min(3),
@@ -12,7 +12,7 @@ export const registerValidator = z.object({
 	email: z.string().trim().email({ message: 'Invalid email' }).optional(),
 	display_name: z.string().trim().nonempty(),
 	employee_code: z.string().trim().nonempty().optional(),
-	role: z.nativeEnum(UserRoles),
+	role: z.nativeEnum(UserRole),
 	authorized_factory_codes: z.array(z.nativeEnum(FactoryCode))
 })
 
