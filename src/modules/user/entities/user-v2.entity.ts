@@ -24,6 +24,12 @@ export class UserEntity extends BaseAbstractEntity {
 	@Column({ name: 'employee_code', type: 'nvarchar', length: 100, unique: true, nullable: true })
 	employee_code: string | null
 
+	@Column({ name: 'password_changed_at', type: 'datetime', nullable: true })
+	password_changed_at: Date | null
+
+	@Column({ name: 'last_login_at', type: 'datetime', nullable: true })
+	last_login_at: Date | null
+
 	// * Access control
 	@Column({
 		name: 'role',

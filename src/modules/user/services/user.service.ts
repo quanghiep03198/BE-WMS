@@ -90,8 +90,12 @@ export class UserService extends BaseAbstractService<UserEntity> {
 		return await this.employeeRepository.save({ ...userProfile, ...payload })
 	}
 
+	async updateLastLogin(username: string) {
+		return await this.userRepository.update({ username }, { last_login_at: new Date() })
+	}
+
 	async changePassword(username: string, payload: ChangePasswordDTO) {
-		return await this.userRepository.update({ username }, payload)
+		return await this.userRepository.update({ username }, { ...payload, password_changed_at: new Date() })
 	}
 
 	private generateAvatar({
