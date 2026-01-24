@@ -50,21 +50,24 @@ export class Users1768439528524 implements MigrationInterface {
 				type: 'nvarchar',
 				length: '50',
 				enum: Object.values(UserRole),
+				enumName: 'CHK_ts_users_role',
 				isNullable: false
+			},
+			{
+				name: 'password_changed_at',
+				type: 'datetime',
+				isNullable: true
+			},
+			{
+				name: 'last_login_at',
+				type: 'datetime',
+				isNullable: true
 			},
 			{
 				name: 'authorized_factory_codes',
 				type: 'nvarchar',
 				length: '255',
 				isNullable: true
-			}
-		],
-		checks: [
-			{
-				name: 'CHK_ts_users_role',
-				columnNames: ['role'],
-				expression:
-					"role IN ('admin', 'manager', 'warehouse_officer', 'ops_support_specialist', 'qc_inspector', 'security_guard')"
 			}
 		],
 		indices: [

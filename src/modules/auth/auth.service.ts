@@ -33,6 +33,7 @@ export class AuthService {
 		const username = payload.username
 		const user = await this.userService.getProfile(username)
 		const token = await this.jwtService.signAsync(pick(user, ['id', 'username', 'employee_code', 'role']))
+		await this.userService.updateLastLogin(username)
 		await this.cacheManager.set(`token:${username}`, token, this.TOKEN_CACHE_TTL)
 		return { user, token }
 	}
