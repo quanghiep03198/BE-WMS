@@ -39,6 +39,12 @@ export class Users1768439528524 implements MigrationInterface {
 				isNullable: false
 			},
 			{
+				name: 'picture',
+				type: 'nvarchar',
+				length: 'max',
+				isNullable: true
+			},
+			{
 				name: 'employee_code',
 				type: 'nvarchar',
 				length: '100',
@@ -52,26 +58,11 @@ export class Users1768439528524 implements MigrationInterface {
 				comment: 'JSON array of roles'
 			},
 			{
-				name: 'password_changed_at',
-				type: 'datetime',
-				isNullable: true
-			},
-			{
-				name: 'last_login_at',
-				type: 'datetime',
-				isNullable: true
-			},
-			{
-				name: 'password_reset_required',
-				type: 'bit',
-				isNullable: true
-			},
-			{
 				name: 'authorized_factory_codes',
 				type: 'nvarchar',
 				length: '255',
 				isNullable: true,
-				comment: 'JSON array of authorized factory codes'
+				comment: 'List of factory codes the user is authorized to access'
 			}
 		],
 		indices: [
