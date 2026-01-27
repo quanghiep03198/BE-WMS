@@ -1,4 +1,11 @@
-import { HttpMethod, RequestUser, RequireAuthorized, RouteHandler, User } from '@/common/decorators'
+import {
+	HttpMethod,
+	RequestUser,
+	RequireAuthenticated,
+	RequireAuthorized,
+	RouteHandler,
+	User
+} from '@/common/decorators'
 import { ZodValidationPipe } from '@/common/pipes'
 import { Body, Controller, ForbiddenException, HttpStatus, Param } from '@nestjs/common'
 import { UserRole } from '../constants'
@@ -24,7 +31,7 @@ export class UserController {
 		statusCode: HttpStatus.CREATED,
 		message: 'common.created'
 	})
-	@RequireAuthorized(UserRole.ADMIN)
+	// @RequireAuthorized(UserRole.ADMIN)
 	async insertOne(
 		@User() user: RequestUser,
 		@Body(new ZodValidationPipe(createUserValidator)) createUserDTO: CreateUserDTO
@@ -72,6 +79,7 @@ export class UserController {
 
 	// #region Self-Service Profile Management
 	@RouteHandler({ endpoint: 'profile', method: HttpMethod.GET })
+	@RequireAuthenticated()
 	async getProfile(@User('username') username) {
 		return await this.userService.getProfile(username)
 	}
@@ -82,6 +90,7 @@ export class UserController {
 		statusCode: HttpStatus.CREATED,
 		message: { i18nKey: 'common.updated' }
 	})
+	@RequireAuthenticated()
 	async updateProfile(
 		@User('employee_code') employeeCode: string,
 		@Body(new ZodValidationPipe(updateProfileValidator)) payload: UpdateProfileDTO
@@ -95,6 +104,7 @@ export class UserController {
 		statusCode: HttpStatus.CREATED,
 		message: { i18nKey: 'common.updated' }
 	})
+	@RequireAuthenticated()
 	async changePassword(
 		@User('username') username: string,
 		@Body(new ZodValidationPipe(changePasswordValidator)) payload: ChangePasswordDTO
@@ -108,6 +118,7 @@ export class UserController {
 	 * @returns
 	 */
 	@RouteHandler({ endpoint: 'companies', method: HttpMethod.GET })
+	@RequireAuthenticated()
 	async getUserFactory(@User('username') username: string) {
 		return await this.userService.getUserCompany(username)
 	}
