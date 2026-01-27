@@ -104,7 +104,8 @@ async function bootstrap() {
 				encodings: ['gzip', 'deflate'],
 				threshold: 10 * 1024
 			}),
-			app.register(import('fastify-sse'))
+			app.register(import('fastify-sse')),
+			app.register(import('@fastify/cookie'), { secret: configService.get<string>('COOKIE_SECRET') })
 		])
 
 		await app.listen(+configService.get('PORT'), configService.get('HOST'), async () => {
