@@ -1,6 +1,5 @@
 import { env } from '@/common/utils'
 import { DATABASE_SCHEMA, DATABASE_SYSCLOUD } from '@/databases/constants'
-import { BoolBitTransformer } from '@/databases/transformers/bool.transformer'
 import { JsonParserTransformer } from '@/databases/transformers/json-parser.transformer'
 import { BaseAbstractEntity } from '@/modules/_base/base.abstract.entity'
 import { FactoryCode } from '@/modules/department/constants'
@@ -25,14 +24,8 @@ export class UserEntity extends BaseAbstractEntity {
 	@Column({ name: 'employee_code', type: 'nvarchar', length: 100, unique: true, nullable: true })
 	employee_code: string | null
 
-	@Column({ name: 'password_changed_at', type: 'datetime', nullable: true })
-	password_changed_at: Date | null
-
-	@Column({ name: 'last_login_at', type: 'datetime', nullable: true })
-	last_login_at: Date | null
-
-	@Column({ name: 'password_reset_required', type: 'bit', default: false, transformer: new BoolBitTransformer() })
-	password_reset_required: boolean
+	@Column({ name: 'picture', type: 'nvarchar', length: 'max', nullable: true })
+	picture: string | null
 
 	// * Access control
 	@Column({
@@ -51,7 +44,7 @@ export class UserEntity extends BaseAbstractEntity {
 		length: 255,
 		nullable: true,
 		transformer: new JsonParserTransformer(1),
-		comment: 'Comma-separated factory codes that the user is authorized to access'
+		comment: 'List of factory codes the user is authorized to access'
 	})
 	authorized_factory_codes: Array<FactoryCode> | null
 
