@@ -81,6 +81,9 @@ export declare global {
 			JWT_SECRET: string
 			JWT_EXPIRES: string
 
+			// * Cookie
+			COOKIE_SECRET: string
+
 			// * Sentry
 			SENTRY_DSN: string
 			SENTRY_AUTH_TOKEN: string
