@@ -1,5 +1,5 @@
 import { CommonRequestHeader } from '@/common/constants'
-import { Api, AuthGuard, HttpMethod } from '@/common/decorators'
+import { HttpMethod, Public, RequireAuthorized, RouteHandler } from '@/common/decorators'
 import { InjectQueue } from '@nestjs/bullmq'
 import { Controller, Headers, HttpStatus, Param, Req } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
@@ -9,6 +9,7 @@ import { uniqBy } from 'lodash'
 import { PaginateModel } from 'mongoose'
 import { FALLBACK_VALUE } from '../rfid/constants'
 import { EpcDocument, EpcInbound } from '../rfid/schemas/epc.schema'
+import { UserRole } from '../user/constants'
 import { THIRD_PARTY_API_SYNC } from './constants'
 import { ThirdPartyApiService } from './third-party-api.service'
 
@@ -20,13 +21,13 @@ export class ThirdPartyApiController {
 		private readonly thirdPartyApiService: ThirdPartyApiService
 	) {}
 
-	@Api({
+	@RouteHandler({
 		endpoint: 'sync-deckers-data',
 		method: HttpMethod.PUT,
 		statusCode: HttpStatus.CREATED,
 		message: 'common.created'
 	})
-	@AuthGuard()
+	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
 	async syncDeckerData(@Headers(CommonRequestHeader.FACTORY_CODE) factoryCode: string) {
 		const validUnknownEpcs = await this.epcModel
 			.distinct('epc', {
@@ -45,11 +46,12 @@ export class ThirdPartyApiController {
 		)
 	}
 
-	@Api({
+	@RouteHandler({
 		endpoint: 'upsert-by-command-number/:commandNumber',
 		method: HttpMethod.PUT,
 		statusCode: HttpStatus.CREATED
 	})
+	@Public()
 	async upsertByCommandNumber(@Param('commandNumber') commandNumber: string, @Req() request: FastifyRequest) {
 		return await this.thirdPartyApiService.upsertByCommandNumber(
 			request.raw[CommonRequestHeader.ACCESS_TOKEN] as string,
@@ -58,11 +60,12 @@ export class ThirdPartyApiController {
 		)
 	}
 
-	@Api({
+	@RouteHandler({
 		endpoint: 'upsert-by-epc/:epc',
 		method: HttpMethod.PUT,
 		statusCode: HttpStatus.CREATED
 	})
+	@Public()
 	async upsertByEpc(@Param('epc') epc: string, @Req() request: FastifyRequest) {
 		return await this.thirdPartyApiService.upsertByEpc(
 			request.raw[CommonRequestHeader.ACCESS_TOKEN] as string,

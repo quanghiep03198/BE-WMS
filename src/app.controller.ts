@@ -2,6 +2,7 @@ import { Controller, Get, HttpStatus, Req, Res } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { FastifyReply, FastifyRequest } from 'fastify'
 import { pick } from 'lodash'
+import { RequireAuthenticated } from './common/decorators'
 
 @Controller()
 export class AppController {
@@ -20,6 +21,7 @@ export class AppController {
 	}
 
 	@Get('agent-ipv4')
+	@RequireAuthenticated()
 	getClient(@Req() request: FastifyRequest, @Res() reply: FastifyReply) {
 		const userAgent = request.headers['user-agent']
 		return reply.status(HttpStatus.OK).send({ ...pick(request, ['protocol', 'ip']), agent: userAgent })

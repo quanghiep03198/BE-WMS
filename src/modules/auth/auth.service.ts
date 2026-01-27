@@ -5,6 +5,8 @@ import { JwtService } from '@nestjs/jwt'
 import { Cache } from 'cache-manager'
 import { pick } from 'lodash'
 import { I18nContext, I18nService } from 'nestjs-i18n'
+
+import { UserRole } from '../user/constants'
 import { UserEntity } from '../user/entities/user.entity'
 import { UserService } from '../user/services/user.service'
 import { LoginDTO, loginValidator } from './dto/auth.dto'
@@ -17,22 +19,27 @@ export class AuthService {
 		@Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
 		private readonly jwtService: JwtService,
 		private readonly userService: UserService,
-		private readonly i18n: I18nService
+		private readonly i18nService: I18nService
 	) {}
 
 	@UsePipes(new ZodValidationPipe(loginValidator))
 	async validateUser(payload: LoginDTO) {
 		const user = await this.userService.findUserByUsername(payload.username)
-		if (!user) throw new NotFoundException(this.i18n.t('auth.user_not_found', { lang: I18nContext.current()?.lang }))
+		if (!user)
+			throw new NotFoundException(this.i18nService.t('auth.user_not_found', { lang: I18nContext.current()?.lang }))
 		if (!user.authenticate(payload.password))
-			throw new BadRequestException(this.i18n.t('auth.incorrect_password', { lang: I18nContext.current()?.lang }))
-		return user
+			throw new BadRequestException(
+				this.i18nService.t('auth.incorrect_password', { lang: I18nContext.current()?.lang })
+			)
+		return { ...user, is_admin: user.roles.includes(UserRole.ADMIN) }
 	}
 
 	async login(payload: UserEntity) {
 		const username = payload.username
 		const user = await this.userService.getProfile(username)
-		const token = await this.jwtService.signAsync(pick(user, ['id', 'username', 'employee_code', 'role']))
+		const token = await this.jwtService.signAsync(
+			pick(user, ['id', 'username', 'employee_code', 'display_name', 'roles'])
+		)
 		await this.userService.updateLastLogin(username)
 		await this.cacheManager.set(`token:${username}`, token, this.TOKEN_CACHE_TTL)
 		return { user, token }
@@ -41,7 +48,9 @@ export class AuthService {
 	async refreshToken(username: string) {
 		const user = await this.userService.findUserByUsername(username)
 		if (!user) throw new NotFoundException('User could not be found')
-		const refreshToken = await this.jwtService.signAsync(pick(user, ['id', 'username', 'employee_code', 'role']))
+		const refreshToken = await this.jwtService.signAsync(
+			pick(user, ['id', 'username', 'employee_code', 'display_name', 'roles'])
+		)
 		await this.cacheManager.set(`token:${username}`, refreshToken, this.TOKEN_CACHE_TTL)
 		return refreshToken
 	}

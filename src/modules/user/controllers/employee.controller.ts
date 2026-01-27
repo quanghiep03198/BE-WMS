@@ -1,4 +1,4 @@
-import { Api, AuthGuard, HttpMethod } from '@/common/decorators'
+import { HttpMethod, RouteHandler } from '@/common/decorators'
 import { Controller, Query } from '@nestjs/common'
 import { EmployeeService } from '../services/employee.service'
 
@@ -6,8 +6,7 @@ import { EmployeeService } from '../services/employee.service'
 export class EmployeeController {
 	constructor(private readonly employeeService: EmployeeService) {}
 
-	@Api({ method: HttpMethod.GET })
-	@AuthGuard()
+	@RouteHandler({ method: HttpMethod.GET })
 	async searchEmployee(@Query('search') searchTerm: string) {
 		return await this.employeeService.searchEmployee(searchTerm)
 	}

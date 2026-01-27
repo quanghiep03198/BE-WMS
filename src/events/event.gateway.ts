@@ -1,3 +1,4 @@
+import { RequestUser } from '@/common/decorators'
 import { WsExceptionsFilter } from '@/common/filters/ws-exception.filter'
 import { WsZodValidationPipe } from '@/common/pipes/ws-validation.pipe'
 import { SYNC_INVENTORY_AUDIT_QUEUE } from '@/modules/inventory/constants'
@@ -6,7 +7,6 @@ import { FALLBACK_VALUE } from '@/modules/rfid/constants'
 import { EpcDocument, EpcInbound } from '@/modules/rfid/schemas/epc.schema'
 import { THIRD_PARTY_API_SYNC } from '@/modules/third-party-api/constants'
 import { SyncDataMessageDTO, syncDataMessageValidator } from '@/modules/third-party-api/dto/third-party-api.dto'
-import { UserEntity } from '@/modules/user/entities/user.entity'
 import { InjectQueue } from '@nestjs/bullmq'
 import { CACHE_MANAGER } from '@nestjs/cache-manager'
 import { Inject, Optional, UseFilters, UsePipes } from '@nestjs/common'
@@ -67,7 +67,7 @@ export class EventGateway implements OnGatewayConnection, OnGatewayDisconnect {
 				this.logger.warn(`Client tried to connect without token: ${client.id}`)
 				throw new UnauthorizedSocketException()
 			}
-			const payload = await this.jwtService.verifyAsync<Partial<UserEntity>>(token, {
+			const payload = await this.jwtService.verifyAsync<RequestUser>(token, {
 				secret: this.configService.get('JWT_SECRET')
 			})
 			const cachedToken = await this.cacheManager.get(`token:${payload.id}`)

@@ -1,5 +1,5 @@
 import { CommonRequestHeader } from '@/common/constants'
-import { Api, AuthGuard, HttpMethod, User } from '@/common/decorators'
+import { HttpMethod, RequestUser, RequireAuthorized, RouteHandler, User } from '@/common/decorators'
 import { ZodValidationPipe } from '@/common/pipes'
 import {
 	Body,
@@ -20,7 +20,7 @@ import { I18nContext, I18nService } from 'nestjs-i18n'
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
 import { Between, Like } from 'typeorm'
 import z from 'zod'
-import { UserEntity } from '../user/entities/user.entity'
+import { UserRole } from '../user/constants'
 import { DefectiveCategory, DefectiveGoodsUnit } from './constants'
 import {
 	CreateDefectiveGoodsDTO,
@@ -56,12 +56,12 @@ export class DefectiveGoodsController {
 	) {}
 
 	// #region CRUD EPC Combination
-	@Api({
+	@RouteHandler({
 		endpoint: '',
 		method: HttpMethod.GET,
 		statusCode: HttpStatus.OK
 	})
-	@AuthGuard()
+	@RequireAuthorized(UserRole.MANAGER, UserRole.DG_WAREHOUSE_STAFF)
 	public async get(
 		@Query(new ZodValidationPipe(filterQueryDTO), new DefaultValuePipe({ page: 1, limit: 10 }))
 		filterQueries: FilterQueryDTO
@@ -117,14 +117,14 @@ export class DefectiveGoodsController {
 		)
 		// Todo: create new resource for defective goods
 	}
-	@Api({
+	@RouteHandler({
 		endpoint: 'create',
 		method: HttpMethod.POST,
 		statusCode: HttpStatus.CREATED
 	})
-	@AuthGuard()
+	@RequireAuthorized(UserRole.DG_WAREHOUSE_STAFF)
 	public async create(
-		@User() user: UserEntity,
+		@User() user: RequestUser,
 		@Body(new ZodValidationPipe(createDefectiveGoodsDTO)) payload: CreateDefectiveGoodsDTO
 	) {
 		if (payload.ri_type === 'uhf' && Array.isArray(payload.epc)) {
@@ -187,12 +187,12 @@ export class DefectiveGoodsController {
 		// Todo: create new resource for defective goods
 	}
 
-	@Api({
+	@RouteHandler({
 		endpoint: 'inoutbound-epcs/:type',
 		method: HttpMethod.GET,
 		statusCode: HttpStatus.OK
 	})
-	@AuthGuard()
+	@RequireAuthorized(UserRole.DG_WAREHOUSE_STAFF)
 	public async getCanInboundEpcs(
 		@Param('type') type: 'inbound' | 'outbound',
 		@Query() queries: Partial<DefectiveGoodsEntity> & { take?: number }
@@ -200,68 +200,70 @@ export class DefectiveGoodsController {
 		return await this.defectiveGoodsService.getCanInoutboundEpcs(type, queries)
 	}
 
-	@Api({
+	@RouteHandler({
 		endpoint: 'update/:id',
 		method: HttpMethod.PATCH,
 		statusCode: HttpStatus.CREATED
 	})
-	@AuthGuard()
+	@RequireAuthorized(UserRole.DG_WAREHOUSE_STAFF)
 	public async updateOne(
-		@User() user: UserEntity,
+		@User() user: RequestUser,
 		@Param('id', ParseIntPipe) id: number,
 		@Body(new ZodValidationPipe(updateDefectiveGoodsDTO)) payload: UpdateDefectiveGoodsDTO
 	) {
 		return await this.defectiveGoodsService.updateOneById(id, { ...payload, user_code_updated: user.username })
 	}
 
-	@Api({
+	@RouteHandler({
 		endpoint: 'delete/:id',
 		method: HttpMethod.DELETE,
 		statusCode: HttpStatus.NO_CONTENT
 	})
-	@AuthGuard()
+	@RequireAuthorized(UserRole.DG_WAREHOUSE_STAFF)
 	public async deleteOne(@Param('id', ParseIntPipe) id: number) {
 		return await this.defectiveGoodsService.updateOneById(id, { ri_cancel: true, is_active: false })
 	}
 
-	@Api({
+	@RouteHandler({
 		endpoint: 'delete',
 		method: HttpMethod.POST,
 		statusCode: HttpStatus.NO_CONTENT
 	})
-	@AuthGuard()
+	@RequireAuthorized(UserRole.DG_WAREHOUSE_STAFF)
 	public async deleteMany(@Body(new ZodValidationPipe(deleteManyDefectiveGoodsDTO)) ids: DeleteManyDefectiveGoodsDTO) {
 		return await this.defectiveGoodsService.deleteMany(ids)
 	}
 	// #endregion
 
-	@Api({
+	@RouteHandler({
 		method: HttpMethod.POST,
 		endpoint: 'retrieve-size-qty',
 		statusCode: HttpStatus.OK
 	})
-	@AuthGuard()
+	@RequireAuthorized(UserRole.DG_WAREHOUSE_STAFF)
 	public async retrieveSizeQty(@Body() data: string[]) {
 		return await this.defectiveGoodsService.retrieveSizeQty(data)
 	}
 
 	// #region Inbound
-	@Api({
+	@RouteHandler({
 		method: HttpMethod.PATCH,
 		endpoint: 'inbound',
 		statusCode: HttpStatus.CREATED
 	})
+	@RequireAuthorized(UserRole.DG_WAREHOUSE_STAFF)
 	public async updateInboundStatus(
 		@Body(new ZodValidationPipe(updateInboundStatusDTO.partial())) data: UpdateInboundStatusDTO
 	) {
 		return await this.defectiveGoodsInboundService.updateInboundStatus(data)
 	}
 
-	@Api({
+	@RouteHandler({
 		method: HttpMethod.GET,
 		endpoint: 'daily-inbound',
 		statusCode: HttpStatus.OK
 	})
+	@RequireAuthorized(UserRole.DG_WAREHOUSE_STAFF)
 	public async getDailyInboundReport(
 		@Query('date.eq', new ZodValidationPipe(z.coerce.date().transform((value) => format(value, 'yyyy-MM-dd'))))
 		date: string
@@ -269,11 +271,12 @@ export class DefectiveGoodsController {
 		return await this.defectiveGoodsInboundService.getDailyInboundReport(date)
 	}
 
-	@Api({
+	@RouteHandler({
 		method: HttpMethod.GET,
 		endpoint: 'export-daily-inbound',
 		statusCode: HttpStatus.OK
 	})
+	@RequireAuthorized(UserRole.DG_WAREHOUSE_STAFF)
 	async exportDailyOutboundReport(
 		@Query('date.eq', new ZodValidationPipe(z.coerce.date().transform((value) => format(value, 'yyyy-MM-dd'))))
 		date: string,
@@ -286,22 +289,24 @@ export class DefectiveGoodsController {
 	// #endregion
 
 	// #region Outbound
-	@Api({
+	@RouteHandler({
 		method: HttpMethod.PATCH,
 		endpoint: 'outbound',
 		statusCode: HttpStatus.CREATED
 	})
+	@RequireAuthorized(UserRole.DG_WAREHOUSE_STAFF)
 	public async updateOutboundStatus(
 		@Body(new ZodValidationPipe(updateOutboundStatusDTO)) data: UpdateOutboundStatusDTO
 	) {
 		return await this.defectiveGoodsOutboundService.updateOutboundStatus(data)
 	}
 
-	@Api({
+	@RouteHandler({
 		method: HttpMethod.GET,
 		endpoint: 'daily-outbound',
 		statusCode: HttpStatus.OK
 	})
+	@RequireAuthorized(UserRole.DG_WAREHOUSE_STAFF)
 	public async getDailyOutboundReport(
 		@Query('date.eq', new ZodValidationPipe(z.coerce.date().transform((value) => format(value, 'yyyy-MM-dd'))))
 		date: string
@@ -309,11 +314,12 @@ export class DefectiveGoodsController {
 		return await this.defectiveGoodsOutboundService.getDailyOutboundReport(date)
 	}
 
-	@Api({
+	@RouteHandler({
 		method: HttpMethod.GET,
 		endpoint: 'export-daily-outbound',
 		statusCode: HttpStatus.OK
 	})
+	@RequireAuthorized(UserRole.DG_WAREHOUSE_STAFF)
 	async exportDailyInboundReport(
 		@Query('date.eq', new ZodValidationPipe(z.coerce.date().transform((value) => format(value, 'yyyy-MM-dd'))))
 		date: string,
@@ -327,20 +333,22 @@ export class DefectiveGoodsController {
 	// #endregion
 
 	// #region Inventory
-	@Api({
+	@RouteHandler({
 		method: HttpMethod.GET,
 		endpoint: 'inventory',
 		statusCode: HttpStatus.OK
 	})
+	@RequireAuthorized(UserRole.DG_WAREHOUSE_STAFF)
 	async getDefectiveGoodsInventory() {
 		return await this.defectiveGoodsInventoryService.getDefectiveGoodsInventory()
 	}
 
-	@Api({
+	@RouteHandler({
 		method: HttpMethod.GET,
 		endpoint: 'export-inventory-report',
 		statusCode: HttpStatus.OK
 	})
+	@RequireAuthorized(UserRole.MANAGER, UserRole.DG_WAREHOUSE_STAFF)
 	async exportDefectiveGoodsInventory(
 		@Headers(CommonRequestHeader.FACTORY_CODE) factoryCode: string,
 		@Res() reply: FastifyReply

@@ -1,7 +1,7 @@
 import { DATA_SOURCE_SYSCLOUD } from '@/databases/constants'
 import { InjectDataSource } from '@nestjs/typeorm'
 import { EventSubscriber, InsertEvent, UpdateEvent, type DataSource, type EntitySubscriberInterface } from 'typeorm'
-import { UserEntity } from '../entities/user-v2.entity'
+import { UserEntity } from '../entities/user.entity'
 
 @EventSubscriber()
 export class UserEntitySubscriber implements EntitySubscriberInterface<UserEntity> {

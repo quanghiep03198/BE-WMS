@@ -1,7 +1,8 @@
 import { CommonRequestHeader } from '@/common/constants'
-import { Api, AuthGuard, HttpMethod, User } from '@/common/decorators'
+import { HttpMethod, Public, RequireAuthorized, RouteHandler, User } from '@/common/decorators'
 import { AllExceptionsFilter } from '@/common/filters'
 import { ZodValidationPipe } from '@/common/pipes'
+import { UserRole } from '@/modules/user/constants'
 import { InjectQueue } from '@nestjs/bullmq'
 import {
 	Body,
@@ -61,7 +62,7 @@ export class RFIDInboundController {
 	) {}
 
 	@Get('sse')
-	@AuthGuard()
+	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
 	@UseFilters(AllExceptionsFilter)
 	async streamInboundRFIDData(
 		@Headers(CommonRequestHeader.FACTORY_CODE) factory: string,
@@ -93,11 +94,11 @@ export class RFIDInboundController {
 		})
 	}
 
-	@Api({
+	@RouteHandler({
 		endpoint: 'fetch-epc',
 		method: HttpMethod.GET
 	})
-	@AuthGuard()
+	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
 	async fetchNextInboundEpc(
 		@Headers(CommonRequestHeader.FACTORY_CODE) factory: string,
 		@Query('_page', new DefaultValuePipe(1), ParseIntPipe) page: number,
@@ -110,31 +111,31 @@ export class RFIDInboundController {
 		})
 	}
 
-	@Api({
+	@RouteHandler({
 		endpoint: 'manufacturing-order-detail',
 		method: HttpMethod.GET
 	})
-	@AuthGuard()
+	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
 	async getOrderDetails(@Headers(CommonRequestHeader.FACTORY_CODE) factory: string) {
 		return this.rfidSharedService.getOrderDetail(this.epcInboundModel, factory)
 	}
 
-	@Api({
+	@RouteHandler({
 		endpoint: 'get-epc-by-size',
 		method: HttpMethod.GET
 	})
-	@AuthGuard()
+	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
 	async getOutboundEpcBySize(@Query(new ZodValidationPipe(findEpcBySizeValidator)) queries: FindEpcBySizeDTO) {
 		return await this.rfidSharedService.findDeletableEpcs(this.epcInboundModel, queries)
 	}
 
-	@Api({
+	@RouteHandler({
 		endpoint: 'update-stock/:commandNumber',
 		method: HttpMethod.PUT,
 		statusCode: HttpStatus.CREATED,
 		message: 'common.updated'
 	})
-	@AuthGuard()
+	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
 	async upsertStockIn(
 		@Param('commandNumber') commandNumber: string,
 		@User('username') username: string,
@@ -147,22 +148,22 @@ export class RFIDInboundController {
 		})
 	}
 
-	@Api({
+	@RouteHandler({
 		endpoint: 'exchange-epc',
 		method: HttpMethod.PATCH,
 		statusCode: HttpStatus.CREATED,
 		message: 'common.updated'
 	})
-	@AuthGuard()
+	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
 	async exchangeEpc(@Body(new ZodValidationPipe(exchangeOrderValidator)) payload: ExchangeOrderDTO) {
 		return await this.rfidInboundService.exchangeEpcByCommandNumber(payload)
 	}
 
-	@Api({
+	@RouteHandler({
 		method: HttpMethod.PUT,
 		endpoint: 'upsert-epc-information'
 	})
-	@AuthGuard()
+	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
 	async upsertEpcInformation(
 		@Headers(CommonRequestHeader.FACTORY_CODE) factoryCode: string,
 		@Body(new ZodValidationPipe(upsertEpcInformationSchema)) payload: UpsertEpcInformationDTO
@@ -170,13 +171,13 @@ export class RFIDInboundController {
 		return await this.rfidInboundService.upsertEpcInformation(factoryCode, payload)
 	}
 
-	@Api({
+	@RouteHandler({
 		endpoint: 'delete-scanned-order/:commandNumber',
 		method: HttpMethod.DELETE,
 		statusCode: HttpStatus.OK,
 		message: 'common.deleted'
 	})
-	@AuthGuard()
+	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
 	async deleteScannedOutboundEpc(
 		@Query('rescannable', new DefaultValuePipe(false), ParseBoolPipe) rescannable: boolean,
 		@Param('commandNumber') commandNumber: string
@@ -187,13 +188,13 @@ export class RFIDInboundController {
 		])
 	}
 
-	@Api({
+	@RouteHandler({
 		endpoint: 'delete-scanned-epcs',
 		method: HttpMethod.POST,
 		statusCode: HttpStatus.OK,
 		message: 'common.deleted'
 	})
-	@AuthGuard()
+	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
 	async deleteBulkEpcs(
 		@Query('rescannable', new DefaultValuePipe(false), ParseBoolPipe) rescannable: boolean,
 		@Body(new ZodValidationPipe(deleteEpcValidator)) epcs: DeleteScannedEpcDTO
@@ -204,7 +205,8 @@ export class RFIDInboundController {
 		])
 	}
 
-	@Api({
+	@Public()
+	@RouteHandler({
 		endpoint: 'post-data',
 		method: HttpMethod.POST,
 		statusCode: HttpStatus.CREATED,
@@ -219,11 +221,11 @@ export class RFIDInboundController {
 		return await this.rfidInboundService.postInboundRFIDData(payload)
 	}
 
-	@Api({
+	@RouteHandler({
 		endpoint: 'search-exchangable-order',
 		method: HttpMethod.GET
 	})
-	@AuthGuard()
+	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
 	async searchExchangableOrder(
 		@Headers(CommonRequestHeader.FACTORY_CODE) factory_code: string,
 		@Query(new ZodValidationPipe(searchCustomerValidator))
@@ -235,10 +237,11 @@ export class RFIDInboundController {
 		} satisfies SearchCustOrderParamsDTO)
 	}
 
-	@Api({
+	@RouteHandler({
 		endpoint: '/retrive-deleted-epcs',
 		method: HttpMethod.GET
 	})
+	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
 	async retrieveDeletedEpcs(
 		@Headers(CommonRequestHeader.FACTORY_CODE) factoryCode: string,
 		@Query('_page', new DefaultValuePipe(1), ParseIntPipe) page: number,

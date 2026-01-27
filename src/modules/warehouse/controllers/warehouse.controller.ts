@@ -1,6 +1,7 @@
 import { CommonRequestHeader } from '@/common/constants'
-import { Api, AuthGuard, HttpMethod } from '@/common/decorators'
+import { HttpMethod, RequireAuthorized, RouteHandler } from '@/common/decorators'
 import { ZodValidationPipe } from '@/common/pipes'
+import { UserRole } from '@/modules/user/constants'
 import { Body, Controller, Headers, HttpStatus, Param } from '@nestjs/common'
 import {
 	CreateWarehouseDTO,
@@ -16,27 +17,25 @@ import { WarehouseService } from '../services/warehouse.service'
 export class WarehouseController {
 	constructor(private readonly warehouseService: WarehouseService) {}
 
-	@Api({ method: HttpMethod.GET })
-	@AuthGuard()
+	@RouteHandler({ method: HttpMethod.GET })
+	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
 	async getWarehouses(@Headers(CommonRequestHeader.FACTORY_CODE) cofactorCode: string) {
 		return await this.warehouseService.findAllByFactory(cofactorCode)
 	}
 
-	@Api({
+	@RouteHandler({
 		endpoint: ':warehouseCode',
 		method: HttpMethod.GET
 	})
-	@AuthGuard()
 	async getOneByWarehouseCode(@Param('warehouseCode') cofactorCode: string) {
 		return await this.warehouseService.findOneByWarehouseCode(cofactorCode)
 	}
 
-	@Api({
+	@RouteHandler({
 		method: HttpMethod.POST,
 		statusCode: HttpStatus.CREATED,
 		message: { i18nKey: 'common.created' }
 	})
-	@AuthGuard()
 	async createWarehouse(
 		@Headers(CommonRequestHeader.FACTORY_CODE) factoryCode: string,
 		@Body(new ZodValidationPipe(createWarehouseValidator)) payload: CreateWarehouseDTO
@@ -44,13 +43,12 @@ export class WarehouseController {
 		return await this.warehouseService.insertOne({ ...payload, cofactory_code: factoryCode } as any)
 	}
 
-	@Api({
+	@RouteHandler({
 		endpoint: ':id',
 		method: HttpMethod.PATCH,
 		statusCode: HttpStatus.CREATED,
 		message: { i18nKey: 'common.updated' }
 	})
-	@AuthGuard()
 	async updateWarehouse(
 		@Param('id') id: string,
 		@Body(new ZodValidationPipe(updateWarehouseValidator)) payload: UpdateWarehouseDTO
@@ -58,12 +56,11 @@ export class WarehouseController {
 		return await this.warehouseService.updateOneById(+id, payload)
 	}
 
-	@Api({
+	@RouteHandler({
 		method: HttpMethod.DELETE,
 		statusCode: HttpStatus.NO_CONTENT,
 		message: { i18nKey: 'common.deleted' }
 	})
-	@AuthGuard()
 	async deleteWarehouses(@Body(new ZodValidationPipe(deleteWarehouseValidator)) payload: DeleteWarehouseDTO) {
 		return await this.warehouseService.deleteMany(payload.id)
 	}
