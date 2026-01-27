@@ -1,8 +1,8 @@
 import { CommonRequestHeader } from '@/common/constants'
-import { Api, AuthGuard } from '@/common/decorators'
+import { RouteHandler } from '@/common/decorators'
 import { ZodValidationPipe } from '@/common/pipes'
 import { BadRequestException, Body, Controller, Headers, HttpStatus, Param } from '@nestjs/common'
-import { HttpMethod } from '../../../common/decorators/api.decorator'
+import { HttpMethod } from '../../../common/decorators/route-handler.decorator'
 import {
 	CreateStorageLocationDTO,
 	createStorageLocationValidator,
@@ -17,12 +17,11 @@ import { StorageLocationService } from './../services/storage-location.service'
 export class StorageLocationController {
 	constructor(private readonly storageLocationService: StorageLocationService) {}
 
-	@Api({
+	@RouteHandler({
 		method: HttpMethod.POST,
 		statusCode: HttpStatus.CREATED,
 		message: { i18nKey: 'common.created' }
 	})
-	@AuthGuard()
 	async createStorageLocation(
 		@Headers(CommonRequestHeader.FACTORY_CODE) factoryCode: string,
 		@Body(new ZodValidationPipe(createStorageLocationValidator)) payload: CreateStorageLocationDTO
@@ -35,11 +34,10 @@ export class StorageLocationController {
 		return await this.storageLocationService.insertOne(data)
 	}
 
-	@Api({
+	@RouteHandler({
 		endpoint: ':warehouseCode',
 		method: HttpMethod.GET
 	})
-	@AuthGuard()
 	async getStorageLocationByWarhouse(
 		@Headers(CommonRequestHeader.FACTORY_CODE) factoryCode: string,
 		@Param('warehouseCode') warehouseCode: string
@@ -47,13 +45,12 @@ export class StorageLocationController {
 		return await this.storageLocationService.findByWarehouse(warehouseCode, factoryCode)
 	}
 
-	@Api({
+	@RouteHandler({
 		endpoint: ':id',
 		method: HttpMethod.PATCH,
 		statusCode: HttpStatus.CREATED,
 		message: { i18nKey: 'common.updated' }
 	})
-	@AuthGuard()
 	async updateStorageLocation(
 		@Param('id') id: string,
 		@Body(new ZodValidationPipe(updateStorageLocationValidator)) payload: CreateStorageLocationDTO
@@ -61,12 +58,11 @@ export class StorageLocationController {
 		return await this.storageLocationService.updateOneById(+id, payload)
 	}
 
-	@Api({
+	@RouteHandler({
 		method: HttpMethod.DELETE,
 		statusCode: HttpStatus.NO_CONTENT,
 		message: { i18nKey: 'common.deleted' }
 	})
-	@AuthGuard()
 	async deleteStorageLocation(
 		@Body(new ZodValidationPipe(deleteStorageLocationValidator)) payload: DeleteStorageLocationDTO
 	) {

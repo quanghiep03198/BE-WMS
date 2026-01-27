@@ -1,5 +1,5 @@
 import { CommonRequestHeader } from '@/common/constants'
-import { Api, AuthGuard, HttpMethod } from '@/common/decorators'
+import { HttpMethod, RouteHandler } from '@/common/decorators'
 import { BadRequestException, Controller, Headers } from '@nestjs/common'
 import { FactoryCode } from '../department/constants'
 import { TenancyService } from './tenancy.service'
@@ -8,15 +8,14 @@ import { TenancyService } from './tenancy.service'
 export class TenancyController {
 	constructor(private readonly tenancyService: TenancyService) {}
 
-	@Api({ method: HttpMethod.GET })
-	@AuthGuard()
+	@RouteHandler({ method: HttpMethod.GET })
 	getAll() {
 		return this.tenancyService.getAll()
 	}
-	@Api({ endpoint: 'by-factory', method: HttpMethod.GET })
-	@AuthGuard()
-	getByFactory(@Headers(CommonRequestHeader.FACTORY_CODE) cofactorCode: string) {
+
+	@RouteHandler({ endpoint: 'by-factory', method: HttpMethod.GET })
+	getByFactory(@Headers(CommonRequestHeader.FACTORY_CODE) cofactorCode: FactoryCode) {
 		if (!cofactorCode) throw new BadRequestException('Please provide factory code')
-		return this.tenancyService.getByFactory(cofactorCode as FactoryCode)
+		return this.tenancyService.getByFactory(cofactorCode)
 	}
 }

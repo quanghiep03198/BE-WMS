@@ -1,8 +1,9 @@
 import { CommonRequestHeader } from '@/common/constants'
-import { Api, HttpMethod } from '@/common/decorators'
+import { HttpMethod, Public, RequireAuthorized, RouteHandler } from '@/common/decorators'
 import { ZodValidationPipe } from '@/common/pipes'
 import { Body, Controller, Headers, HttpStatus, Param, Query, Res } from '@nestjs/common'
 import { FastifyReply } from 'fastify'
+import { UserRole } from '../user/constants'
 import { UpdatePackingWeightDTO, updatePackingWeightValidator } from './dto/update-packing.dto'
 import { PackingService } from './packing.service'
 
@@ -10,15 +11,17 @@ import { PackingService } from './packing.service'
 export class PackingController {
 	constructor(private readonly packingService: PackingService) {}
 
-	@Api({ endpoint: 'manifest', method: HttpMethod.GET })
+	@RouteHandler({ endpoint: 'manifest', method: HttpMethod.GET })
+	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
 	async getPackingManifest(@Headers(CommonRequestHeader.FACTORY_CODE) factoryCode: string) {
 		return await this.packingService.getPackingManifest(factoryCode)
 	}
 
-	@Api({
+	@RouteHandler({
 		endpoint: 'manifest/export',
 		method: HttpMethod.GET
 	})
+	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
 	async exportPackingManifest(
 		@Headers(CommonRequestHeader.FACTORY_CODE) factoryCode: string,
 		@Res() res: FastifyReply
@@ -27,7 +30,8 @@ export class PackingController {
 		return res.send(buffer)
 	}
 
-	@Api({
+	@Public()
+	@RouteHandler({
 		endpoint: 'weight-list',
 		method: HttpMethod.GET
 	})
@@ -35,7 +39,8 @@ export class PackingController {
 		return await this.packingService.getPackingWeightList(scanId)
 	}
 
-	@Api({
+	@Public()
+	@RouteHandler({
 		endpoint: 'weight-list/:scanId',
 		method: HttpMethod.GET
 	})
@@ -43,7 +48,8 @@ export class PackingController {
 		return await this.packingService.getOneByScanId(scanId)
 	}
 
-	@Api({
+	@Public()
+	@RouteHandler({
 		endpoint: 'update-weight/:scanId',
 		method: HttpMethod.PATCH,
 		statusCode: HttpStatus.CREATED,

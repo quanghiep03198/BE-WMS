@@ -1,5 +1,4 @@
 import { BaseAbstractEntity } from '@/modules/_base/base.abstract.entity'
-import { UserRole } from '@/modules/user/constants'
 import { MigrationInterface, QueryRunner, Table } from 'typeorm'
 import { DATABASE_SCHEMA, DATABASE_SYSCLOUD } from '../constants'
 
@@ -46,12 +45,11 @@ export class Users1768439528524 implements MigrationInterface {
 				isNullable: true
 			},
 			{
-				name: 'role',
+				name: 'roles',
 				type: 'nvarchar',
-				length: '50',
-				enum: Object.values(UserRole),
-				enumName: 'CHK_ts_users_role',
-				isNullable: false
+				length: '255',
+				isNullable: false,
+				comment: 'JSON array of roles'
 			},
 			{
 				name: 'password_changed_at',
@@ -64,10 +62,16 @@ export class Users1768439528524 implements MigrationInterface {
 				isNullable: true
 			},
 			{
+				name: 'password_reset_required',
+				type: 'bit',
+				isNullable: true
+			},
+			{
 				name: 'authorized_factory_codes',
 				type: 'nvarchar',
 				length: '255',
-				isNullable: true
+				isNullable: true,
+				comment: 'JSON array of authorized factory codes'
 			}
 		],
 		indices: [

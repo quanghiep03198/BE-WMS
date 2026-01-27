@@ -1,4 +1,4 @@
-import { Api, AuthGuard, HttpMethod, User } from '@/common/decorators'
+import { HttpMethod, RouteHandler, User } from '@/common/decorators'
 import { Controller, Param, UseGuards } from '@nestjs/common'
 import { AuthService } from './auth.service'
 import { LocalAuthGuard } from './guards/local-auth.guard'
@@ -7,7 +7,7 @@ import { LocalAuthGuard } from './guards/local-auth.guard'
 export class AuthController {
 	constructor(private readonly authService: AuthService) {}
 
-	@Api({
+	@RouteHandler({
 		endpoint: 'login',
 		method: HttpMethod.POST
 	})
@@ -16,7 +16,7 @@ export class AuthController {
 		return await this.authService.login(user)
 	}
 
-	@Api({
+	@RouteHandler({
 		endpoint: 'refresh-token/:username',
 		method: HttpMethod.GET
 	})
@@ -24,11 +24,10 @@ export class AuthController {
 		return await this.authService.refreshToken(username)
 	}
 
-	@Api({
+	@RouteHandler({
 		endpoint: 'logout',
 		method: HttpMethod.POST
 	})
-	@AuthGuard()
 	async logout(@User('username') username: string) {
 		return await this.authService.logout(username)
 	}

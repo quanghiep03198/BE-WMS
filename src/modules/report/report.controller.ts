@@ -1,5 +1,5 @@
 import { CommonRequestHeader } from '@/common/constants'
-import { Api, AuthGuard, HttpMethod } from '@/common/decorators'
+import { HttpMethod, RequireAuthorized, RouteHandler } from '@/common/decorators'
 import { AllExceptionsFilter } from '@/common/filters'
 import {
 	BadRequestException,
@@ -14,6 +14,7 @@ import {
 } from '@nestjs/common'
 import { format } from 'date-fns'
 import { FastifyReply } from 'fastify'
+import { UserRole } from '../user/constants'
 import { InboundReportService } from './services/inbound-report.service'
 import { OutboundReportService } from './services/outbound-report.service'
 import { PackingWeightReportService } from './services/packing-weight-report.service'
@@ -28,8 +29,8 @@ export class ReportController {
 
 	// #region Inbound report
 
-	@Api({ endpoint: 'daily-inbound', method: HttpMethod.GET })
-	@AuthGuard()
+	@RouteHandler({ endpoint: 'daily-inbound', method: HttpMethod.GET })
+	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
 	async getInboundReportByDate(
 		@Query('date.eq', new DefaultValuePipe(format(new Date(), 'yyyy-MM-dd')))
 		dateQuery: any
@@ -37,15 +38,15 @@ export class ReportController {
 		return await this.inboundReportService.getDailyProductivity(dateQuery)
 	}
 
-	@Api({ endpoint: 'inbound-history/:commandNumber', method: HttpMethod.GET })
-	@AuthGuard()
+	@RouteHandler({ endpoint: 'inbound-history/:commandNumber', method: HttpMethod.GET })
+	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
 	async getInboundHistory(@Param('commandNumber') commandNumber: string) {
 		return await this.inboundReportService.getInboundHistory(commandNumber)
 	}
 
 	@Get('daily-inbound/export/:reportType')
 	@UseFilters(AllExceptionsFilter)
-	@AuthGuard()
+	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
 	async exportDailyInboundToExcel(
 		@Param('reportType') reportType: 'daily-productivity' | 'shaping-department-productivity',
 		@Query('date.eq') date: string,
@@ -65,8 +66,8 @@ export class ReportController {
 
 	// #region Outbound report
 
-	@Api({ endpoint: 'daily-outbound', method: HttpMethod.GET })
-	@AuthGuard()
+	@RouteHandler({ endpoint: 'daily-outbound', method: HttpMethod.GET })
+	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
 	async getOutboundReportByDate(
 		@Query('date.eq', new DefaultValuePipe(format(new Date(), 'yyyy-MM-dd')))
 		dateQuery: any
@@ -74,15 +75,15 @@ export class ReportController {
 		return await this.outboundReportService.getOutboundReportByDate(dateQuery)
 	}
 
-	@Api({ endpoint: 'outbound-history/:po', method: HttpMethod.GET })
-	@AuthGuard()
+	@RouteHandler({ endpoint: 'outbound-history/:po', method: HttpMethod.GET })
+	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
 	async getOutboundHistory(@Param('po') po: string) {
 		return await this.outboundReportService.getOutboundHistory(po)
 	}
 
 	@Get('daily-outbound/export')
 	@UseFilters(AllExceptionsFilter)
-	@AuthGuard()
+	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
 	async exportDailyOutboundToExcel(
 		@Headers(CommonRequestHeader.FACTORY_CODE) factoryCode: string,
 		@Query('date.eq') date: string,
@@ -96,8 +97,8 @@ export class ReportController {
 
 	// #region Packing weight report
 
-	@Api({ endpoint: 'daily-weighing', method: HttpMethod.GET })
-	@AuthGuard()
+	@RouteHandler({ endpoint: 'daily-weighing', method: HttpMethod.GET })
+	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
 	async getDailyPackingReport(
 		@Query('date.eq', new DefaultValuePipe(format(new Date(), 'yyyy-MM-dd'))) date: string,
 		@Headers(CommonRequestHeader.FACTORY_CODE) factoryCode: string
@@ -107,7 +108,7 @@ export class ReportController {
 
 	@Get('daily-weighing/export')
 	@UseFilters(AllExceptionsFilter)
-	@AuthGuard()
+	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
 	async exportPackingWeightReport(
 		@Query('date.eq', new DefaultValuePipe(format(new Date(), 'yyyy-MM-dd'))) date: string,
 		@Headers(CommonRequestHeader.FACTORY_CODE) factoryCode: string,

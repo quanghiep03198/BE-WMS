@@ -1,5 +1,5 @@
 import { CommonRequestHeader } from '@/common/constants'
-import { Api, AuthGuard, HttpMethod, User } from '@/common/decorators'
+import { HttpMethod, RequireAuthorized, RouteHandler, User } from '@/common/decorators'
 import { AllExceptionsFilter } from '@/common/filters'
 import { ZodValidationPipe } from '@/common/pipes'
 import { InjectQueue } from '@nestjs/bullmq'
@@ -19,6 +19,7 @@ import { Queue } from 'bullmq'
 import { format } from 'date-fns'
 import { FastifyReply } from 'fastify'
 import { uniqueId } from 'lodash'
+import { UserRole } from '../user/constants'
 import { SYNC_INVENTORY_AUDIT_QUEUE } from './constants'
 import {
 	productInventoryReportQuery,
@@ -42,8 +43,8 @@ export class InventoryController {
 
 	// #region Inventory Audit
 
-	@Api({ endpoint: 'audit', method: HttpMethod.GET })
-	@AuthGuard()
+	@RouteHandler({ endpoint: 'audit', method: HttpMethod.GET })
+	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
 	async getMonthlyInventoryReport(
 		@Query('month.eq', new DefaultValuePipe(format(new Date(), 'yyyy-MM'))) month: string
 	) {
@@ -52,7 +53,7 @@ export class InventoryController {
 
 	@Get('audit/export')
 	@UseFilters(AllExceptionsFilter)
-	@AuthGuard()
+	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
 	async exportMonthlyInventoryReport(
 		@Query('month.eq', new DefaultValuePipe(format(new Date(), 'yyyy-MM'))) month: string,
 		@Query('mo_no.in', new DefaultValuePipe([]), ParseArrayPipe) commandNumbers: string[],
@@ -62,8 +63,8 @@ export class InventoryController {
 		return reply.send(buffer)
 	}
 
-	@Api({ endpoint: 'audit/update', method: HttpMethod.PATCH, statusCode: HttpStatus.CREATED })
-	@AuthGuard()
+	@RouteHandler({ endpoint: 'audit/update', method: HttpMethod.PATCH, statusCode: HttpStatus.CREATED })
+	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
 	async updateInventoryReport(
 		@Query(new ZodValidationPipe(updateInventoryReportQuery)) queries: UpdateInventoryReportQueryDTO,
 		@Body(new ZodValidationPipe(updateInventoryReportPayload)) payload: UpdateInventoryReportDTO,
@@ -75,16 +76,16 @@ export class InventoryController {
 		)
 	}
 
-	@Api({ endpoint: 'audit/sync', method: HttpMethod.POST, statusCode: HttpStatus.CREATED })
-	@AuthGuard()
+	@RouteHandler({ endpoint: 'audit/sync', method: HttpMethod.POST, statusCode: HttpStatus.CREATED })
+	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
 	async syncInventoryAuditData(@Headers(CommonRequestHeader.TENANT_ID) tenantId: string) {
 		return await this.syncInventoryAuditDataQueue.add(uniqueId(), {}, { jobId: tenantId })
 	}
 	// #endregion
 
 	// #region Inventory Summary
-	@Api({ endpoint: 'summary', method: HttpMethod.GET, statusCode: HttpStatus.OK })
-	@AuthGuard()
+	@RouteHandler({ endpoint: 'summary', method: HttpMethod.GET, statusCode: HttpStatus.OK })
+	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
 	async getProductInventory(
 		@Query(new ZodValidationPipe(productInventoryReportQuery)) filterQueries: ProductInventoryReportQueryDTO
 	) {
@@ -93,7 +94,7 @@ export class InventoryController {
 
 	@Get('summary/export')
 	@UseFilters(AllExceptionsFilter)
-	@AuthGuard()
+	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
 	async exportInventorySummary(
 		@Headers(CommonRequestHeader.FACTORY_CODE) factory: string,
 		@Res() reply: FastifyReply
@@ -102,8 +103,8 @@ export class InventoryController {
 		return reply.send(buffer)
 	}
 
-	@Api({ endpoint: 'production-features', method: HttpMethod.GET, statusCode: HttpStatus.OK })
-	@AuthGuard()
+	@RouteHandler({ endpoint: 'production-features', method: HttpMethod.GET, statusCode: HttpStatus.OK })
+	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
 	async getProductInventoryFeatures() {
 		return await this.productionInventoryService.getProductionInventoryFeatures()
 	}

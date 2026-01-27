@@ -1,5 +1,5 @@
 import { CommonRequestHeader } from '@/common/constants'
-import { Api, AuthGuard, HttpMethod } from '@/common/decorators'
+import { HttpMethod, RequireAuthorized, RouteHandler } from '@/common/decorators'
 import { ZodValidationPipe } from '@/common/pipes'
 import { stringToBoolean } from '@/common/utils'
 import { InjectQueue } from '@nestjs/bullmq'
@@ -22,6 +22,7 @@ import { pickBy } from 'lodash'
 import { mongo } from 'mongoose'
 import { IMPORT_DATA_QUEUE } from '../constants'
 
+import { UserRole } from '@/modules/user/constants'
 import {
 	RestoreArchivedEpcsDTO,
 	restoreArchivedEpcValidator,
@@ -44,11 +45,11 @@ export class RFIDSharedController {
 		private readonly rfidSharedService: RFIDSharedService
 	) {}
 
-	@Api({
+	@RouteHandler({
 		endpoint: 'archived-epcs/:type',
 		method: HttpMethod.GET
 	})
-	@AuthGuard()
+	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
 	async getArchivedEpcs(
 		@Param('type') type: 'inbound' | 'outbound',
 		@Headers(CommonRequestHeader.FACTORY_CODE) factoryCode: string,
@@ -97,21 +98,21 @@ export class RFIDSharedController {
 		}
 	}
 
-	@Api({
+	@RouteHandler({
 		endpoint: 'archived-epc-features',
 		method: HttpMethod.GET
 	})
-	@AuthGuard()
+	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
 	async getArchivedEpcFeatures() {
 		return await this.rfidSharedService.getArchivedEpcFeatures()
 	}
 
-	@Api({
+	@RouteHandler({
 		endpoint: 'restore-archived-epcs/:type',
 		method: HttpMethod.PATCH,
 		statusCode: HttpStatus.CREATED
 	})
-	@AuthGuard()
+	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
 	async restoreArchivedEpcs(
 		@Headers(CommonRequestHeader.FACTORY_CODE) factoryCode: string,
 		@Body(new ZodValidationPipe(restoreArchivedEpcValidator)) payload: RestoreArchivedEpcsDTO,
@@ -123,13 +124,13 @@ export class RFIDSharedController {
 		return await this.rfidSharedService.restoreArchivedEpcs(type, data as RestoreArchivedEpcsDTO)
 	}
 
-	@Api({
+	@RouteHandler({
 		endpoint: 'upload-data',
 		method: HttpMethod.POST,
 		statusCode: HttpStatus.CREATED,
 		message: 'common.created'
 	})
-	@AuthGuard()
+	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
 	@UseInterceptors(FileFieldsInterceptor([{ name: 'files', maxCount: 500 }]))
 	async uploadDataFile(
 		@UploadedFiles(new CsvFileValidationPipe()) files: Array<StorageFile & { buffer: Buffer }>,

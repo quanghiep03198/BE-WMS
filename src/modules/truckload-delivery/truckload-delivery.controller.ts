@@ -1,13 +1,26 @@
 import { CommonRequestHeader } from '@/common/constants'
-import { Api, AuthGuard, HttpMethod, User } from '@/common/decorators'
+import { HttpMethod, RequestUser, RequireAuthorized, RouteHandler, StrictRoles, User } from '@/common/decorators'
 import { AllExceptionsFilter } from '@/common/filters'
 import { ZodValidationPipe } from '@/common/pipes'
-import { Body, Controller, Get, Headers, HttpStatus, Param, ParseIntPipe, Query, Res, UseFilters } from '@nestjs/common'
+import {
+	Body,
+	Controller,
+	ForbiddenException,
+	Get,
+	Headers,
+	HttpStatus,
+	Param,
+	ParseIntPipe,
+	Query,
+	Res,
+	UseFilters
+} from '@nestjs/common'
 
 import { type FastifyReply } from 'fastify'
 import { pick } from 'lodash'
 import { FactoryAgencyCode } from '../department/constants'
-import { UserEntity } from '../user/entities/user.entity'
+import { UserRole } from '../user/constants'
+
 import {
 	CreateDeliveryDTO,
 	createDeliveryDTO,
@@ -28,24 +41,24 @@ import { TruckloadDeliveryService } from './truckload-delivery.service'
 export class TruckloadDeliveryController {
 	constructor(private readonly deliveryService: TruckloadDeliveryService) {}
 
-	@Api({
+	@RouteHandler({
 		method: HttpMethod.GET,
 		message: 'common.ok'
 	})
-	@AuthGuard()
+	@RequireAuthorized(UserRole.MANAGER, UserRole.IE_STAFF, UserRole.FG_WAREHOUSE_STAFF, UserRole.SECURITY_GUARD)
 	async getAll(@Query(new ZodValidationPipe(filterQueryDTO)) filterQueryDTO: FilterQueryDTO) {
 		return await this.deliveryService.getDispatchOrders(filterQueryDTO)
 	}
 
-	@Api({
+	@RouteHandler({
 		endpoint: 'create',
 		method: HttpMethod.POST,
 		statusCode: HttpStatus.CREATED,
 		message: 'common.created'
 	})
-	@AuthGuard()
+	@RequireAuthorized(UserRole.IE_STAFF, UserRole.FG_WAREHOUSE_STAFF)
 	async insertMany(
-		@User() user: UserEntity,
+		@User() user: RequestUser,
 		@Headers(CommonRequestHeader.FACTORY_CODE) factory_code: string,
 		@Body(new ZodValidationPipe(createDeliveryDTO)) payload: CreateDeliveryDTO
 	) {
@@ -62,15 +75,15 @@ export class TruckloadDeliveryController {
 		)
 	}
 
-	@Api({
+	@RouteHandler({
 		endpoint: 'bulk-update/:dispatchOrder',
 		method: HttpMethod.PATCH,
 		statusCode: HttpStatus.CREATED,
 		message: 'common.updated'
 	})
-	@AuthGuard()
+	@RequireAuthorized(UserRole.IE_STAFF, UserRole.FG_WAREHOUSE_STAFF)
 	async bulkUpdateByDispatchOrder(
-		@User() user: UserEntity,
+		@User() user: RequestUser,
 		@Param('dispatchOrder') dispatchOrder: string,
 		@Body(new ZodValidationPipe(updateDeliveryDTO)) payload: UpdateDeliveryDTO
 	) {
@@ -80,15 +93,16 @@ export class TruckloadDeliveryController {
 			user_name_updated: user?.username
 		})
 	}
-	@Api({
+
+	@RouteHandler({
 		endpoint: 'upsert-purchase-orders/:dispatchOrder',
 		method: HttpMethod.PUT,
 		statusCode: HttpStatus.CREATED,
 		message: 'common.updated'
 	})
-	@AuthGuard()
+	@RequireAuthorized(UserRole.IE_STAFF, UserRole.FG_WAREHOUSE_STAFF)
 	async upsertPurchaseOrders(
-		@User() user: Partial<UserEntity>,
+		@User() user: RequestUser,
 		@Param('dispatchOrder') dispatchOrder: string,
 		@Headers(CommonRequestHeader.FACTORY_CODE) factory_code: string,
 		@Body(new ZodValidationPipe(upsertPurchaseOrdersDTO)) payload: UpsertPurchaseOrdersDTO
@@ -104,40 +118,68 @@ export class TruckloadDeliveryController {
 		)
 	}
 
-	@Api({
+	@RouteHandler({
 		endpoint: 'delete/:id',
 		method: HttpMethod.DELETE,
 		statusCode: HttpStatus.NO_CONTENT,
 		message: 'common.deleted'
 	})
-	@AuthGuard()
+	@RequireAuthorized(UserRole.IE_STAFF, UserRole.FG_WAREHOUSE_STAFF)
 	async deleteOne(@Param('id', ParseIntPipe) id: number) {
 		return await this.deliveryService.deleteOneById(id)
 	}
 
-	@Api({
+	@RouteHandler({
 		endpoint: 'bulk-delete/:dispatchOrder',
 		method: HttpMethod.DELETE,
 		statusCode: HttpStatus.NO_CONTENT,
 		message: 'common.deleted'
 	})
-	@AuthGuard()
+	@RequireAuthorized(UserRole.IE_STAFF, UserRole.FG_WAREHOUSE_STAFF)
 	async bulkDelete(@Param('dispatchOrder') dispatchOrder: string) {
 		return await this.deliveryService.bulkDeleteByDispatchOrder(dispatchOrder)
 	}
 
-	@Api({
+	@RouteHandler({
 		endpoint: 'update-signature/:dispatchOrder',
 		method: HttpMethod.PATCH,
 		statusCode: HttpStatus.CREATED,
 		message: 'common.ok'
 	})
-	@AuthGuard()
+	@StrictRoles()
+	@RequireAuthorized(UserRole.IE_STAFF, UserRole.FG_WAREHOUSE_STAFF, UserRole.SECURITY_GUARD)
 	async updateDispatchOrderStatus(
-		@User() user: Partial<UserEntity>,
+		@User() user: RequestUser,
 		@Param('dispatchOrder') dispatchOrder: string,
 		@Body(new ZodValidationPipe(updateSignatureDTO)) payload: UpdateSignatureDTO
 	) {
+		const ROLE_MAP: Record<string, { role: UserRole; message: string }> = {
+			ie_signature: {
+				role: UserRole.IE_STAFF,
+				message: 'Only IE Staff can update IE Signature'
+			},
+			warehouse_officer_signature: {
+				role: UserRole.FG_WAREHOUSE_STAFF,
+				message: 'Only FG Warehouse Staff can update FG Warehouse Signature'
+			},
+			security_1_signature: {
+				role: UserRole.SECURITY_GUARD,
+				message: 'Only Security Guard can update Security Guard Signature'
+			},
+			security_2_signature: {
+				role: UserRole.SECURITY_GUARD,
+				message: 'Only Security Guard can update Security Guard Signature'
+			}
+		}
+
+		const requirement = ROLE_MAP[payload.signature_type]
+		if (requirement) {
+			const roles = user?.roles ?? []
+			if (!roles.includes(requirement.role)) {
+				throw new ForbiddenException(requirement.message)
+			}
+		}
+
 		return await this.deliveryService.updateDispatchOrderSignature(dispatchOrder, {
 			...payload,
 			user_code_updated: user?.username,
@@ -145,15 +187,15 @@ export class TruckloadDeliveryController {
 		})
 	}
 
-	@Api({
+	@RouteHandler({
 		endpoint: 'update-container-condition/:dispatchOrder',
 		method: HttpMethod.PATCH,
 		statusCode: HttpStatus.CREATED,
 		message: 'common.ok'
 	})
-	@AuthGuard()
+	@RequireAuthorized(UserRole.FG_WAREHOUSE_STAFF)
 	async updateContainerCondition(
-		@User() user: Partial<UserEntity>,
+		@User() user: RequestUser,
 		@Param('dispatchOrder') dispatchOrder: string,
 		@Body(new ZodValidationPipe(updateContainerConditionDTO)) payload: UpdateContainerConditionDTO
 	) {
@@ -166,7 +208,7 @@ export class TruckloadDeliveryController {
 
 	@Get('export')
 	@UseFilters(AllExceptionsFilter)
-	@AuthGuard()
+	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF, UserRole.IE_STAFF, UserRole.SECURITY_GUARD)
 	async exportPackingWeightReport(
 		@Query(new ZodValidationPipe(filterQueryDTO)) filterQueryDTO: FilterQueryDTO,
 		@Headers(CommonRequestHeader.FACTORY_CODE) factoryCode: string,

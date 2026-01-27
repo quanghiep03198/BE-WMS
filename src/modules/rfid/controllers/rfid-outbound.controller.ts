@@ -1,5 +1,5 @@
 import { CommonRequestHeader } from '@/common/constants'
-import { Api, AuthGuard, HttpMethod } from '@/common/decorators'
+import { HttpMethod, Public, RequireAuthorized, RouteHandler } from '@/common/decorators'
 import { AllExceptionsFilter } from '@/common/filters'
 import { ZodValidationPipe } from '@/common/pipes'
 import { InjectQueue } from '@nestjs/bullmq'
@@ -26,6 +26,7 @@ import { isEmpty, isNil, pickBy } from 'lodash'
 import { PaginateResult } from 'mongoose'
 import { POST_DATA_OUTBOUND_QUEUE } from '../constants'
 
+import { UserRole } from '@/modules/user/constants'
 import { UpsertStockOutDTO, upsertStockOutValidator } from '../dto/rfid-outbound.dto'
 import {
 	deleteEpcValidator,
@@ -51,7 +52,7 @@ export class RFIDOutboundController {
 	) {}
 
 	@Get('sse')
-	@AuthGuard()
+	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
 	@UseFilters(AllExceptionsFilter)
 	async streamOutboundRFIDData(
 		@RequestHeaders(CommonRequestHeader.FACTORY_CODE) factoryCode: string,
@@ -80,11 +81,11 @@ export class RFIDOutboundController {
 		})
 	}
 
-	@Api({
+	@RouteHandler({
 		endpoint: 'fetch-epc',
 		method: HttpMethod.GET
 	})
-	@AuthGuard()
+	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
 	async fetchNextOutboundEpc(
 		@RequestHeaders(CommonRequestHeader.FACTORY_CODE) factory: string,
 		@Query('_page', new DefaultValuePipe(1), ParseIntPipe) page: number
@@ -92,16 +93,17 @@ export class RFIDOutboundController {
 		return await this.rfidSharedService.getIncomingEpc(this.epcOutboundModel, factory, { page: page, limit: 50 })
 	}
 
-	@Api({
+	@RouteHandler({
 		endpoint: 'get-epc-by-size',
 		method: HttpMethod.GET
 	})
-	@AuthGuard()
+	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
 	async getOutboundEpcBySize(@Query(new ZodValidationPipe(findEpcBySizeValidator)) queries: FindEpcBySizeDTO) {
 		return await this.rfidSharedService.findDeletableEpcs(this.epcOutboundModel, queries)
 	}
 
-	@Api({
+	@Public()
+	@RouteHandler({
 		endpoint: 'post-data',
 		method: HttpMethod.POST,
 		statusCode: HttpStatus.CREATED,
@@ -116,12 +118,13 @@ export class RFIDOutboundController {
 		return await this.rfidOutboundService.postOutboundRFIDData(payload)
 	}
 
-	@Api({
+	@RouteHandler({
 		endpoint: 'update-stock',
 		method: HttpMethod.PUT,
 		statusCode: HttpStatus.CREATED,
 		message: 'common.created'
 	})
+	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
 	async upsertStockOut(
 		@RequestHeaders(CommonRequestHeader.FACTORY_CODE) factoryCode: string,
 		@Body(new ZodValidationPipe(upsertStockOutValidator)) payload: UpsertStockOutDTO
@@ -129,13 +132,13 @@ export class RFIDOutboundController {
 		return await this.rfidOutboundService.upsertStockOut(factoryCode, payload)
 	}
 
-	@Api({
+	@RouteHandler({
 		endpoint: 'delete-scanned-order/:commandNumber',
 		method: HttpMethod.DELETE,
 		statusCode: HttpStatus.OK,
 		message: 'common.deleted'
 	})
-	@AuthGuard()
+	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
 	async deleteScannedOutboundEpc(
 		@Query('rescannable', new DefaultValuePipe(false), ParseBoolPipe) rescannable: boolean,
 		@Param('commandNumber') commandNumber: string
@@ -146,13 +149,13 @@ export class RFIDOutboundController {
 		])
 	}
 
-	@Api({
+	@RouteHandler({
 		endpoint: 'delete-scanned-epcs',
 		method: HttpMethod.POST,
 		statusCode: HttpStatus.OK,
 		message: 'common.deleted'
 	})
-	@AuthGuard()
+	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
 	async deleteBulkEpcs(
 		@Query('rescannable', new DefaultValuePipe(false), ParseBoolPipe) rescannable: boolean,
 		@Body(new ZodValidationPipe(deleteEpcValidator)) epcs: DeleteScannedEpcDTO
@@ -163,12 +166,12 @@ export class RFIDOutboundController {
 		])
 	}
 
-	@Api({
+	@RouteHandler({
 		endpoint: 'archived-epcs',
 		method: HttpMethod.GET,
 		statusCode: HttpStatus.OK
 	})
-	@AuthGuard()
+	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
 	async getArchivedEpcs(
 		@RequestHeaders(CommonRequestHeader.FACTORY_CODE) factoryCode: string,
 		@Query('_page', new DefaultValuePipe(1), ParseIntPipe) page: number,

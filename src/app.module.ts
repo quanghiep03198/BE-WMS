@@ -92,6 +92,7 @@ import { RedisModule } from './redis/redis.module'
 			verboseMemoryLeak: true,
 			ignoreErrors: false
 		}),
+
 		// * Feature modules
 		AuthModule,
 		DepartmentModule,

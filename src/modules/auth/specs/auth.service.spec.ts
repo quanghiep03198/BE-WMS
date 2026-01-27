@@ -4,7 +4,8 @@ import { JwtService } from '@nestjs/jwt'
 import { Test, TestingModule } from '@nestjs/testing'
 import { Cache } from 'cache-manager'
 import { I18nService } from 'nestjs-i18n'
-import { UserEntity } from '../../user/entities/user.entity'
+
+import { UserEntity } from '@/modules/user/entities/user.entity'
 import { UserService } from '../../user/services/user.service'
 import { AuthService } from '../auth.service'
 import { LoginDTO } from '../dto/auth.dto'
@@ -96,13 +97,13 @@ describe('AuthService', () => {
 
 	describe('login', () => {
 		it('should return user and token', async () => {
-			const user = { id: 1, username: 'E001', role: 'admin' } as UserEntity
+			const user = { id: 1, username: 'E001', roles: 'admin' } as UserEntity
 			const profile = {
 				id: 1,
 				username: 'test',
 				display_name: 'User',
 				employee_code: 'E001',
-				role: 'admin'
+				roles: 'admin'
 			} as UserEntity & { display_name: string }
 			const token = 'token'
 			jest.spyOn(userService, 'getProfile').mockResolvedValue(profile)
@@ -123,7 +124,7 @@ describe('AuthService', () => {
 		})
 
 		it('should return new token', async () => {
-			const user = { id: 1, username: 'E001', role: 'admin' } as UserEntity
+			const user = { id: 1, username: 'E001', roles: 'admin' } as UserEntity
 			const refreshToken = 'refreshToken'
 			jest.spyOn(userService, 'findOneById').mockResolvedValue(user)
 			jest.spyOn(jwtService, 'signAsync').mockResolvedValue(refreshToken)

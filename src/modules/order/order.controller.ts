@@ -1,22 +1,19 @@
 import { CommonRequestHeader } from '@/common/constants'
-import { Api, AuthGuard, HttpMethod } from '@/common/decorators'
+import { HttpMethod, RequireAuthorized, RouteHandler } from '@/common/decorators'
 import { Controller, DefaultValuePipe, Headers, Param, ParseBoolPipe, Query } from '@nestjs/common'
 import { groupBy } from 'lodash'
-import { I18nService } from 'nestjs-i18n'
+import { UserRole } from '../user/constants'
 import { OrderService } from './order.service'
 
 @Controller('order')
 export class OrderController {
-	constructor(
-		private readonly orderService: OrderService,
-		private readonly i18nService: I18nService
-	) {}
+	constructor(private readonly orderService: OrderService) {}
 
-	@Api({
+	@RouteHandler({
 		endpoint: '/command-number/search',
 		method: HttpMethod.GET
 	})
-	@AuthGuard()
+	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF, UserRole.DG_WAREHOUSE_STAFF)
 	async searchCommandNumber(
 		@Headers(CommonRequestHeader.FACTORY_CODE) factoryCode: string,
 		@Query('q', new DefaultValuePipe('')) searchTerm: string
@@ -24,11 +21,11 @@ export class OrderController {
 		return await this.orderService.searchCommandNumber(factoryCode, searchTerm)
 	}
 
-	@Api({
+	@RouteHandler({
 		endpoint: '/purchase-order/search',
 		method: HttpMethod.GET
 	})
-	@AuthGuard()
+	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF, UserRole.DG_WAREHOUSE_STAFF, UserRole.IE_STAFF)
 	async searchPurchaseOrder(
 		@Query('q') searchTerm: string,
 		@Query('filter_all_brands', new DefaultValuePipe(false), ParseBoolPipe) shouldFilterAllBrands?: boolean
@@ -36,20 +33,20 @@ export class OrderController {
 		return await this.orderService.searchPurchaseOrder(searchTerm, shouldFilterAllBrands)
 	}
 
-	@Api({
+	@RouteHandler({
 		endpoint: '/purchase-order/size-run/:purchaseOrder',
 		method: HttpMethod.GET
 	})
-	@AuthGuard()
+	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF, UserRole.DG_WAREHOUSE_STAFF, UserRole.IE_STAFF)
 	async getPurchaseOrderSizeRun(@Param('purchaseOrder') po: string) {
 		return await this.orderService.getPurchaseOrderSizeRun(po)
 	}
 
-	@Api({
+	@RouteHandler({
 		endpoint: '/command-number/:commandNumber',
 		method: HttpMethod.GET
 	})
-	@AuthGuard()
+	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF, UserRole.DG_WAREHOUSE_STAFF)
 	async getOrderDetail(@Param('commandNumber') commandNumber: string) {
 		const [orders, sizes] = await Promise.all([
 			this.orderService.getCustOrderByCommandNumber(commandNumber),

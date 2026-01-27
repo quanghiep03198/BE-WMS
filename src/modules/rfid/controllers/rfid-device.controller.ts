@@ -1,6 +1,7 @@
 import { CommonRequestHeader } from '@/common/constants'
-import { Api, AuthGuard, HttpMethod, User } from '@/common/decorators'
+import { HttpMethod, RequireAuthorized, RouteHandler, User } from '@/common/decorators'
 import { ZodValidationPipe } from '@/common/pipes'
+import { UserRole } from '@/modules/user/constants'
 import { Body, Controller, Headers, HttpStatus, Param } from '@nestjs/common'
 import {
 	CreateRFIDDeviceDTO,
@@ -16,20 +17,18 @@ export class RFIDDeviceController {
 	constructor(private readonly rfidDeviceService: RFIDDeviceService) {}
 
 	// #region Others
-	@Api({
-		method: HttpMethod.GET
-	})
-	@AuthGuard()
+	@RouteHandler({ method: HttpMethod.GET })
+	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
 	async findAllWarehouseDevices(@Headers(CommonRequestHeader.FACTORY_CODE) factoryCode: string) {
 		return await this.rfidDeviceService.findAllWarehouseDevices(factoryCode)
 	}
 
-	@Api({
+	@RouteHandler({
 		endpoint: 'create',
 		method: HttpMethod.POST,
 		statusCode: HttpStatus.CREATED
 	})
-	@AuthGuard()
+	@RequireAuthorized(UserRole.MANAGER)
 	async createRFIDDevice(
 		@Headers(CommonRequestHeader.FACTORY_CODE) factoryCode: string,
 		@Body(new ZodValidationPipe(createRFIDDeviceDTO)) payload: CreateRFIDDeviceDTO,
@@ -41,12 +40,13 @@ export class RFIDDeviceController {
 			factory_code: factoryCode
 		})
 	}
-	@Api({
+
+	@RouteHandler({
 		endpoint: 'update/:deviceSeriesNumber',
 		method: HttpMethod.PATCH,
 		statusCode: HttpStatus.CREATED
 	})
-	@AuthGuard()
+	@RequireAuthorized(UserRole.MANAGER)
 	async updateRFIDDevice(
 		@Param('deviceSeriesNumber') deviceSeriesNumber: string,
 		@Body(new ZodValidationPipe(updateRFIDDeviceDTO)) payload: CreateRFIDDeviceDTO,
@@ -55,12 +55,12 @@ export class RFIDDeviceController {
 		return await this.rfidDeviceService.updateDevice(deviceSeriesNumber, { ...payload, user_code_updated: username })
 	}
 
-	@Api({
+	@RouteHandler({
 		endpoint: 'delete',
 		method: HttpMethod.POST,
 		statusCode: HttpStatus.NO_CONTENT
 	})
-	@AuthGuard()
+	@RequireAuthorized(UserRole.MANAGER)
 	async deleteRFIDDevices(@Body(new ZodValidationPipe(deleteRFIDDeviceDTO)) deviceSeriesNumbers: DeleteRFIDDeviceDTO) {
 		return await this.rfidDeviceService.deleteDevicesBySeriesNumbers(deviceSeriesNumbers)
 	}

@@ -98,16 +98,25 @@ export const updateSignatureDTO = z
 	.transform((data) => {
 		switch (data.signature_type) {
 			case 'ie_signature':
-				return { ie_signature: data.signature }
+				return {
+					signature_type: data.signature_type,
+					ie_signature: data.signature
+				}
 			case 'warehouse_officer_signature':
-				return { warehouse_officer_signature: data.signature }
+				return {
+					signature_type: data.signature_type,
+					warehouse_officer_signature: data.signature
+				}
 			case 'security_1_signature':
 				return {
+					signature_type: data.signature_type,
 					security_1_signature: data.signature,
 					approval_status: data.approval_status
 				}
 			case 'security_2_signature':
 				return {
+					signature_type: data.signature_type,
+
 					security_2_signature: data.signature,
 					approval_status: data.approval_status
 				}

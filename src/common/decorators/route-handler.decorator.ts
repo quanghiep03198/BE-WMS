@@ -35,13 +35,13 @@ interface ApiOptions {
 }
 
 /**
- * @publicApi Decorator that marks a method as an API endpoint.
+ * @description Decorator that marks a method as an API endpoint.
  * @param {ApiOptions} options.endpoint  - The endpoint of the API. Default is inherited from controller.
  * @param {HttpMethod} options.method  - HTTP request method.
  * @param {HttpStatus} options.statusCode  - HTTP response status code. Default is 200.
  * @param {string | I18nPath} options.message  - Response message. Default is 'common.ok'.
  */
-export const Api = (options: ApiOptions) => {
+export const RouteHandler = (options: ApiOptions) => {
 	const { endpoint = '', method, statusCode = HttpStatus.OK, message = 'common.ok' } = options
 
 	const HttpRequest = (route: string) => {

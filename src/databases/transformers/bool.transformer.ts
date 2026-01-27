@@ -20,6 +20,7 @@ export class StringToBoolTransformer implements ValueTransformer {
 	}
 
 	public to(value: boolean) {
+		console.log('value', value)
 		return value ? RecordStatus.ACTIVE : RecordStatus.INACTIVE
 	}
 }

@@ -1,37 +1,87 @@
-import { Api, AuthGuard, HttpMethod, User } from '@/common/decorators'
+import { HttpMethod, RequestUser, RequireAuthorized, RouteHandler, User } from '@/common/decorators'
 import { ZodValidationPipe } from '@/common/pipes'
-import { Body, Controller, HttpStatus } from '@nestjs/common'
-import { ChangePasswordDTO, changePasswordValidator, UpdateProfileDTO, updateProfileValidator } from '../dto/user.dto'
+import { Body, Controller, ForbiddenException, HttpStatus, Param } from '@nestjs/common'
+import { UserRole } from '../constants'
+import {
+	AuthorizeRoleDTO,
+	authorizeRoleValidator,
+	ChangePasswordDTO,
+	changePasswordValidator,
+	UpdateProfileDTO,
+	updateProfileValidator
+} from '../dto/user.dto'
 import { UserService } from '../services/user.service'
-import { CreateUserDTO, registerValidator } from './../dto/user.dto'
+import { CreateUserDTO, createUserValidator } from './../dto/user.dto'
 
 @Controller('user')
 export class UserController {
 	constructor(private readonly userService: UserService) {}
+	// #region User Management
 
-	@Api({
+	@RouteHandler({
 		endpoint: 'create',
 		method: HttpMethod.POST,
 		statusCode: HttpStatus.CREATED,
 		message: 'common.created'
 	})
-	async createUser(@Body(new ZodValidationPipe(registerValidator)) createUserDTO: CreateUserDTO) {
-		return await this.userService.createUser(createUserDTO)
+	@RequireAuthorized(UserRole.ADMIN)
+	async insertOne(
+		@User() user: RequestUser,
+		@Body(new ZodValidationPipe(createUserValidator)) createUserDTO: CreateUserDTO
+	) {
+		return await this.userService.insertOne({
+			...createUserDTO,
+			user_code_created: user?.username ?? 'sa',
+			user_name_created: user?.display_name ?? 'sa'
+		})
 	}
 
-	@Api({ endpoint: 'profile', method: HttpMethod.GET })
-	@AuthGuard()
+	@RouteHandler({ method: HttpMethod.GET })
+	@RequireAuthorized(UserRole.ADMIN)
+	async getUsers() {
+		return await this.userService.findAll()
+	}
+
+	@RouteHandler({
+		endpoint: 'authorize-role/:username',
+		method: HttpMethod.PATCH,
+		statusCode: HttpStatus.CREATED,
+		message: 'common.updated'
+	})
+	@RequireAuthorized(UserRole.ADMIN)
+	async authorizeRoles(
+		@Param('username') username: string,
+		@Body(new ZodValidationPipe(authorizeRoleValidator)) authorizedRoles: AuthorizeRoleDTO
+	) {
+		return this.userService.authorizeRoles(username, authorizedRoles)
+	}
+
+	@RouteHandler({
+		endpoint: 'deactivate/:username',
+		method: HttpMethod.DELETE,
+		statusCode: HttpStatus.OK,
+		message: 'common.ok'
+	})
+	@RequireAuthorized(UserRole.ADMIN)
+	async deactivateUser(@User('username') currentUserName: string, @Param('username') username: string) {
+		if (currentUserName === username) {
+			throw new ForbiddenException('You cannot deactivate your own account')
+		}
+		return this.userService.deactivateUser(username)
+	}
+
+	// #region Self-Service Profile Management
+	@RouteHandler({ endpoint: 'profile', method: HttpMethod.GET })
 	async getProfile(@User('username') username) {
 		return await this.userService.getProfile(username)
 	}
 
-	@Api({
+	@RouteHandler({
 		endpoint: 'profile/update',
 		method: HttpMethod.PATCH,
 		statusCode: HttpStatus.CREATED,
 		message: { i18nKey: 'common.updated' }
 	})
-	@AuthGuard()
 	async updateProfile(
 		@User('employee_code') employeeCode: string,
 		@Body(new ZodValidationPipe(updateProfileValidator)) payload: UpdateProfileDTO
@@ -39,13 +89,12 @@ export class UserController {
 		return await this.userService.updateProfile(employeeCode, payload)
 	}
 
-	@Api({
+	@RouteHandler({
 		endpoint: 'change-password',
 		method: HttpMethod.PATCH,
 		statusCode: HttpStatus.CREATED,
 		message: { i18nKey: 'common.updated' }
 	})
-	@AuthGuard()
 	async changePassword(
 		@User('username') username: string,
 		@Body(new ZodValidationPipe(changePasswordValidator)) payload: ChangePasswordDTO
@@ -58,8 +107,7 @@ export class UserController {
 	 * @param username
 	 * @returns
 	 */
-	@Api({ endpoint: 'companies', method: HttpMethod.GET })
-	@AuthGuard()
+	@RouteHandler({ endpoint: 'companies', method: HttpMethod.GET })
 	async getUserFactory(@User('username') username: string) {
 		return await this.userService.getUserCompany(username)
 	}
