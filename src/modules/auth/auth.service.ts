@@ -6,10 +6,16 @@ import { Cache } from 'cache-manager'
 import { pick } from 'lodash'
 import { I18nContext, I18nService } from 'nestjs-i18n'
 
+import { DATA_SOURCE_SYSCLOUD } from '@/databases/constants'
+import { InjectRepository } from '@nestjs/typeorm'
+import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
+import { createHash, randomBytes } from 'node:crypto'
+import { IsNull, Repository } from 'typeorm'
 import { UserRole } from '../user/constants'
 import { UserEntity } from '../user/entities/user.entity'
 import { UserService } from '../user/services/user.service'
 import { LoginDTO, loginValidator } from './dto/auth.dto'
+import { RefreshTokenEntity } from './entities/refresh-token.entity'
 
 @Injectable()
 export class AuthService {
@@ -17,6 +23,9 @@ export class AuthService {
 
 	constructor(
 		@Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
+		@InjectRepository(RefreshTokenEntity, DATA_SOURCE_SYSCLOUD)
+		private readonly refreshTokenRepository: Repository<RefreshTokenEntity>,
+		@InjectPinoLogger(AuthService.name) private readonly logger: PinoLogger,
 		private readonly jwtService: JwtService,
 		private readonly userService: UserService,
 		private readonly i18nService: I18nService
@@ -37,27 +46,57 @@ export class AuthService {
 	async login(payload: UserEntity) {
 		const username = payload.username
 		const user = await this.userService.getProfile(username)
-		const token = await this.jwtService.signAsync(
-			pick(user, ['id', 'username', 'employee_code', 'display_name', 'roles'])
-		)
-		await this.userService.updateLastLogin(username)
-		await this.cacheManager.set(`token:${username}`, token, this.TOKEN_CACHE_TTL)
-		return { user, token }
+		const tokenPayload = pick(user, ['id', 'username', 'employee_code', 'display_name', 'roles'])
+
+		const [accessToken, refreshToken] = await Promise.all([
+			this.jwtService.signAsync(tokenPayload),
+			this.signRefreshToken(username)
+		])
+		await this.cacheManager.set(`token:${username}`, accessToken, this.TOKEN_CACHE_TTL)
+		return { user, accessToken, refreshToken }
 	}
 
-	async refreshToken(username: string) {
+	async refreshToken(username: string, refreshToken: string) {
+		const isValidRefreshToken = await this.verifyRefreshToken(username, refreshToken)
+		if (!isValidRefreshToken) throw new BadRequestException('Invalid refresh token')
 		const user = await this.userService.findUserByUsername(username)
 		if (!user) throw new NotFoundException('User could not be found')
-		const refreshToken = await this.jwtService.signAsync(
-			pick(user, ['id', 'username', 'employee_code', 'display_name', 'roles'])
-		)
-		await this.cacheManager.set(`token:${username}`, refreshToken, this.TOKEN_CACHE_TTL)
-		return refreshToken
+		// * Generate new access token
+		const userPayload = pick(user, ['id', 'username', 'employee_code', 'display_name', 'roles'])
+		const newAccessToken = await this.jwtService.signAsync(userPayload)
+		// * Cache new access token
+		await this.cacheManager.set(`token:${username}`, newAccessToken, this.TOKEN_CACHE_TTL)
+		return newAccessToken
 	}
 
 	async logout(username: string) {
 		// * Revoke cached token
-		await this.cacheManager.del(`token:${username}`)
+		await Promise.all([
+			this.cacheManager.del(`token:${username}`),
+			this.refreshTokenRepository.update({ username, revoked_at: IsNull() }, { revoked_at: new Date() })
+		])
 		return null
+	}
+
+	async signRefreshToken(username: string): Promise<string> {
+		const opaqueToken = randomBytes(32).toString('base64url')
+		const newRefreshToken = this.refreshTokenRepository.create({
+			username,
+			token_hash: createHash('sha256').update(opaqueToken).digest('hex'),
+			expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 days
+		})
+		await this.refreshTokenRepository.save(newRefreshToken)
+		return opaqueToken
+	}
+
+	async verifyRefreshToken(username: string, opaqueToken: string): Promise<boolean> {
+		this.logger.debug(`Verifying refresh token for user: ${username}, token: ${opaqueToken}`)
+		const tokenHash = createHash('sha256').update(opaqueToken).digest('hex')
+		const storedToken = await this.refreshTokenRepository.findOne({
+			where: { username, token_hash: tokenHash, revoked_at: null }
+		})
+		if (!storedToken) return false
+		if (storedToken.expires_at < new Date()) return false
+		return true
 	}
 }

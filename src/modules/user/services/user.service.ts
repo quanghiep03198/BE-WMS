@@ -41,18 +41,18 @@ export class UserService extends BaseAbstractService<UserEntity> {
 	): Promise<UserEntity> {
 		const user = await this.userRepository.findOne({ where: { username: payload.username } })
 		if (user) throw new ConflictException('User already exists')
-		const newUser = this.userRepository.create(payload)
+		const newUser = this.userRepository.create({
+			...payload,
+			is_active: true,
+			picture: this.generateAvatar({ name: payload.username })
+		})
 		return await this.userRepository.save(newUser)
 	}
 
 	async getProfile(username: string): Promise<Partial<UserEntity> & { picture: string }> {
 		const user = await this.findUserByUsername(username)
 		if (!user) throw new NotFoundException('User could not be found')
-
-		return {
-			...user,
-			picture: this.generateAvatar({ name: user?.display_name })
-		}
+		return user
 	}
 
 	async findUserByUsername(username: string) {
@@ -61,6 +61,7 @@ export class UserService extends BaseAbstractService<UserEntity> {
 				id: true,
 				username: true,
 				display_name: true,
+				picture: true,
 				password: true,
 				email: true,
 				employee_code: true,
@@ -77,12 +78,8 @@ export class UserService extends BaseAbstractService<UserEntity> {
 		return await this.employeeRepository.save({ ...userProfile, ...payload })
 	}
 
-	async updateLastLogin(username: string) {
-		return await this.userRepository.update({ username }, { last_login_at: new Date() })
-	}
-
 	async changePassword(username: string, payload: ChangePasswordDTO) {
-		return await this.userRepository.update({ username }, { ...payload, password_changed_at: new Date() })
+		return await this.userRepository.update({ username }, { ...payload })
 	}
 
 	async resetPassword(username: string) {
@@ -98,6 +95,14 @@ export class UserService extends BaseAbstractService<UserEntity> {
 		await await this.userRepository.update({ username }, { is_active: false })
 		await this.cacheManager.del(`token:${username}`)
 	}
+
+	// async storeUserRefreshToken(username: string, refreshToken: string) {
+	// 	await this.userRepository.update({ username }, { refresh_token: refreshToken })
+	// }
+
+	// async revokeUserRefreshToken(username: string) {
+	// 	await this.userRepository.update({ username }, { refresh_token: null })
+	// }
 
 	private generateAvatar({
 		background = '#525252',
