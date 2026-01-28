@@ -15,6 +15,6 @@ export enum CommonRequestHeader {
 	FACTORY_CODE = 'X-User-Factory',
 	API_VERSION = 'X-Api-Version',
 	ACCESS_TOKEN = 'X-Access-Token',
-	USER = 'X-User',
+	USER_REQUEST = 'X-User-Request',
 	OTP = 'X-Otp'
 }
