@@ -14,7 +14,7 @@ import { AcceptLanguageResolver, HeaderResolver, I18nModule, QueryResolver } fro
 import { LoggerModule, Params } from 'nestjs-pino'
 import { AppController } from './app.controller'
 import { appConfigFactory, validateConfig } from './configs'
-import { RotateLogJob } from './jobs/rotate-log.job'
+import { RotateLogJobService } from './jobs/rotate-log.job'
 // Feature modules
 import { EventGateway } from './events/event.gateway'
 import { AuthModule } from './modules/auth/auth.module'
@@ -113,7 +113,7 @@ import { RedisModule } from './redis/redis.module'
 	controllers: [AppController],
 	providers: [
 		EventGateway,
-		RotateLogJob,
+		RotateLogJobService,
 		{
 			provide: APP_FILTER,
 			useClass: SentryGlobalFilter
