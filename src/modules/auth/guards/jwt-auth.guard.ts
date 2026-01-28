@@ -23,8 +23,8 @@ export class JwtAuthGuard implements CanActivate {
 		])
 		if (isPublic) return true
 
-		const request = context.switchToHttp().getRequest()
-		const token = this.extractTokenFromHeader(request)
+		const request: FastifyRequest = context.switchToHttp().getRequest()
+		const token = request.cookies['access-token']
 		if (!token) throw new UnauthorizedException()
 		try {
 			const payload = await this.jwtService.verifyAsync(token, {
@@ -39,7 +39,7 @@ export class JwtAuthGuard implements CanActivate {
 		return true
 	}
 
-	private extractTokenFromHeader(request: FastifyRequest['raw']): string | undefined {
+	private extractToken(request: FastifyRequest['raw']): string | undefined {
 		const [type, token] = request.headers.authorization?.split(' ') ?? []
 		return type === 'Bearer' ? token : undefined
 	}
