@@ -58,7 +58,6 @@ export class UserEntity extends BaseAbstractEntity {
 	}
 
 	encryptPassword() {
-		console.log(this.password)
 		this.password = hashSync(this.password, env('SALT_ROUND', { fallbackValue: 10, serialize: Number.parseInt }))
 	}
 }
