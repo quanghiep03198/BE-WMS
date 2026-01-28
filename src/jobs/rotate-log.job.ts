@@ -4,7 +4,7 @@ import { writeFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 
 @Injectable()
-export class RotateLogJob {
+export class RotateLogJobService {
 	@Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT, {
 		name: 'ROTATE_LOGS_EVERY_DAY_AT_MIDNIGHT'
 	})
