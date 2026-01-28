@@ -8,6 +8,7 @@ import { UserModule } from '../user/user.module'
 import { AuthController } from './auth.controller'
 import { AuthService } from './auth.service'
 import { RefreshTokenEntity } from './entities/refresh-token.entity'
+import { AuthJobService } from './jobs/auth.job'
 import { LocalStrategy } from './strategies/local.strategy'
 
 @Module({
@@ -21,13 +22,14 @@ import { LocalStrategy } from './strategies/local.strategy'
 				return {
 					secret: configService.getOrThrow('JWT_SECRET'),
 					signOptions: {
-						expiresIn: configService.getOrThrow('JWT_EXPIRES')
+						expiresIn: '15s'
+						//  configService.getOrThrow('JWT_EXPIRES')
 					}
 				}
 			}
 		})
 	],
 	controllers: [AuthController],
-	providers: [AuthService, LocalStrategy]
+	providers: [AuthService, LocalStrategy, AuthJobService]
 })
 export class AuthModule {}
