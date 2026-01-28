@@ -1,6 +1,7 @@
 import { DATA_SOURCE_SYSCLOUD } from '@/databases/constants'
 import { Module } from '@nestjs/common'
 import { TypeOrmModule } from '@nestjs/typeorm'
+import { RefreshTokenEntity } from '../auth/entities/refresh-token.entity'
 import { EmployeeController } from './controllers/employee.controller'
 import { UserController } from './controllers/user.controller'
 import { EmployeeEntity } from './entities/employee.entity'
@@ -10,7 +11,7 @@ import { UserService } from './services/user.service'
 import { UserEntitySubscriber } from './subscribers/user.entity.subscriber'
 
 @Module({
-	imports: [TypeOrmModule.forFeature([UserEntity, EmployeeEntity], DATA_SOURCE_SYSCLOUD)],
+	imports: [TypeOrmModule.forFeature([UserEntity, EmployeeEntity, RefreshTokenEntity], DATA_SOURCE_SYSCLOUD)],
 	providers: [UserService, EmployeeService, UserEntitySubscriber],
 	controllers: [UserController, EmployeeController],
 	exports: [UserService]

@@ -1,4 +1,5 @@
 import { DATA_SOURCE_SYSCLOUD } from '@/databases/constants'
+import { RefreshTokenEntity } from '@/modules/auth/entities/refresh-token.entity'
 import { CACHE_MANAGER } from '@nestjs/cache-manager'
 import { ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common'
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm'
@@ -92,17 +93,23 @@ export class UserService extends BaseAbstractService<UserEntity> {
 	}
 
 	async deactivateUser(username: string) {
-		await await this.userRepository.update({ username }, { is_active: false })
-		await this.cacheManager.del(`token:${username}`)
+		const queryRunner = this.dataSourceSC.createQueryRunner()
+		await queryRunner.connect()
+		try {
+			await queryRunner.startTransaction()
+
+			queryRunner.manager.getRepository(UserEntity).update({ username }, { is_active: false })
+			queryRunner.manager.getRepository(RefreshTokenEntity).update({ username }, { revoked_at: new Date() })
+			this.cacheManager.del(`token:${username}`)
+
+			await queryRunner.commitTransaction()
+		} catch (error) {
+			if (queryRunner.isTransactionActive) await queryRunner.rollbackTransaction()
+			throw error
+		} finally {
+			if (queryRunner.isReleased === false) await queryRunner.release()
+		}
 	}
-
-	// async storeUserRefreshToken(username: string, refreshToken: string) {
-	// 	await this.userRepository.update({ username }, { refresh_token: refreshToken })
-	// }
-
-	// async revokeUserRefreshToken(username: string) {
-	// 	await this.userRepository.update({ username }, { refresh_token: null })
-	// }
 
 	private generateAvatar({
 		background = '#525252',
