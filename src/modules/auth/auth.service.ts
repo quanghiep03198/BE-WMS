@@ -52,21 +52,38 @@ export class AuthService {
 			this.jwtService.signAsync(tokenPayload),
 			this.signRefreshToken(username)
 		])
+
 		await this.cacheManager.set(`token:${username}`, accessToken, this.TOKEN_CACHE_TTL)
 		return { user, accessToken, refreshToken }
 	}
 
+	/**
+	 * @description Refresh access token using refresh token base on one-time use and rotation strategy
+	 * @param username
+	 * @param refreshToken
+	 * @returns
+	 */
 	async refreshToken(username: string, refreshToken: string) {
 		const isValidRefreshToken = await this.verifyRefreshToken(username, refreshToken)
 		if (!isValidRefreshToken) throw new BadRequestException('Invalid refresh token')
+
+		// * Generate new access token
 		const user = await this.userService.findUserByUsername(username)
 		if (!user) throw new NotFoundException('User could not be found')
-		// * Generate new access token
+
 		const userPayload = pick(user, ['id', 'username', 'employee_code', 'display_name', 'roles'])
 		const newAccessToken = await this.jwtService.signAsync(userPayload)
+
+		// * Rotate refresh token
+		await this.refreshTokenRepository.update(
+			{ username, token_hash: this.createHash(refreshToken), revoked_at: IsNull() },
+			{ revoked_at: new Date() }
+		)
+		const newRefreshToken = await this.signRefreshToken(username)
+
 		// * Cache new access token
 		await this.cacheManager.set(`token:${username}`, newAccessToken, this.TOKEN_CACHE_TTL)
-		return newAccessToken
+		return { newAccessToken, newRefreshToken }
 	}
 
 	async logout(username: string) {
@@ -82,21 +99,24 @@ export class AuthService {
 		const opaqueToken = randomBytes(32).toString('base64url')
 		const newRefreshToken = this.refreshTokenRepository.create({
 			username,
-			token_hash: createHash('sha256').update(opaqueToken).digest('hex'),
-			expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 days
+			token_hash: this.createHash(opaqueToken),
+			expires_at: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000) // 30 days
 		})
 		await this.refreshTokenRepository.save(newRefreshToken)
 		return opaqueToken
 	}
 
 	async verifyRefreshToken(username: string, opaqueToken: string): Promise<boolean> {
-		this.logger.debug(`Verifying refresh token for user: ${username}, token: ${opaqueToken}`)
-		const tokenHash = createHash('sha256').update(opaqueToken).digest('hex')
+		const tokenHash = this.createHash(opaqueToken)
 		const storedToken = await this.refreshTokenRepository.findOne({
 			where: { username, token_hash: tokenHash, revoked_at: null }
 		})
 		if (!storedToken) return false
 		if (storedToken.expires_at < new Date()) return false
 		return true
+	}
+
+	private createHash(token: string): string {
+		return createHash('sha256').update(token).digest('hex')
 	}
 }

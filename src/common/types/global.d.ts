@@ -23,6 +23,7 @@ export declare global {
 
 	namespace NodeJS {
 		interface ProcessEnv {
+			// * Application
 			NODE_ENV: RuntimeEnvironment
 			HOST: string
 			PORT: string
@@ -31,7 +32,7 @@ export declare global {
 			POSTMAN_DOCUMENTATION_URL: string | undefined
 			ENABLE_PROMETHEUS_METRICS_LOGGER: 'true' | 'false'
 			ENABLE_LOKI_LOGGER: 'true' | 'false'
-			// * Application
+			CORS_ORIGINS: string
 
 			// * Throttler
 			THROTTLER_TTL: string
