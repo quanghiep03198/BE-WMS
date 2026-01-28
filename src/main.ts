@@ -91,7 +91,7 @@ async function bootstrap() {
 			]
 		})
 
-		const corsOrigins = configService.get<string>('CORS_ORIGINS', '') || []
+		const corsOrigins = configService.get<string>('CORS_ORIGINS', '').split(',')
 
 		app.enableVersioning({ type: VersioningType.HEADER, header: 'X-Api-Version' })
 		app.useLogger(isProduction ? false : logger)
