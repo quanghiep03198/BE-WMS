@@ -22,8 +22,7 @@ import { LocalStrategy } from './strategies/local.strategy'
 				return {
 					secret: configService.getOrThrow('JWT_SECRET'),
 					signOptions: {
-						expiresIn: '15s'
-						//  configService.getOrThrow('JWT_EXPIRES')
+						expiresIn: configService.getOrThrow('JWT_EXPIRES')
 					}
 				}
 			}

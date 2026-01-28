@@ -16,7 +16,6 @@ import { I18nContext, I18nService } from 'nestjs-i18n'
 import { RequestUser } from '@/common/decorators'
 import { DATA_SOURCE_SYSCLOUD } from '@/databases/constants'
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm'
-import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
 import { createHash, randomBytes } from 'node:crypto'
 import { DataSource, IsNull, Repository } from 'typeorm'
 import { UserRole } from '../user/constants'
@@ -29,14 +28,15 @@ export class AuthService {
 	private readonly TOKEN_CACHE_TTL = 60 * 1000 * 5 // 5 minutes
 
 	constructor(
-		@Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
-		@InjectRepository(RefreshTokenEntity, DATA_SOURCE_SYSCLOUD)
-		private readonly refreshTokenRepository: Repository<RefreshTokenEntity>,
-		@InjectPinoLogger(AuthService.name) private readonly logger: PinoLogger,
-		@InjectDataSource(DATA_SOURCE_SYSCLOUD) private readonly dataSource: DataSource,
 		private readonly jwtService: JwtService,
 		private readonly userService: UserService,
-		private readonly i18nService: I18nService
+		private readonly i18nService: I18nService,
+		@Inject(CACHE_MANAGER)
+		private readonly cacheManager: Cache,
+		@InjectDataSource(DATA_SOURCE_SYSCLOUD)
+		private readonly dataSource: DataSource,
+		@InjectRepository(RefreshTokenEntity, DATA_SOURCE_SYSCLOUD)
+		private readonly refreshTokenRepository: Repository<RefreshTokenEntity>
 	) {}
 
 	@UsePipes(new ZodValidationPipe(loginValidator))
@@ -83,8 +83,6 @@ export class AuthService {
 	 * @returns
 	 */
 	async refreshToken(username: string, refreshToken: string) {
-		try {
-		} catch {}
 		const isValidRefreshToken = await this.verifyRefreshToken(username, refreshToken)
 		if (!isValidRefreshToken) throw new ForbiddenException('Invalid refresh token')
 
