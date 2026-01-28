@@ -71,8 +71,9 @@ export class AuthService {
 			return { user, accessToken, refreshToken }
 		} catch (error) {
 			if (queryRunner.isTransactionActive) await queryRunner.rollbackTransaction()
-			if (queryRunner.isReleased === false) await queryRunner.release()
 			throw error
+		} finally {
+			if (queryRunner.isReleased === false) await queryRunner.release()
 		}
 	}
 
