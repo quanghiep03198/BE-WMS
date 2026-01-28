@@ -1,6 +1,7 @@
 import { RequestUser } from '@/common/decorators'
 import { WsExceptionsFilter } from '@/common/filters/ws-exception.filter'
 import { WsZodValidationPipe } from '@/common/pipes/ws-validation.pipe'
+import { env } from '@/common/utils'
 import { SYNC_INVENTORY_AUDIT_QUEUE } from '@/modules/inventory/constants'
 import { SyncInventoryAuditDTO, syncInventoryAuditValidator } from '@/modules/inventory/dto/inventory-report.dto'
 import { FALLBACK_VALUE } from '@/modules/rfid/constants'
@@ -25,7 +26,7 @@ import { Queue } from 'bullmq'
 import { Cache } from 'cache-manager'
 import { uniqBy, uniqueId } from 'lodash'
 import { PaginateModel } from 'mongoose'
-import { PinoLogger } from 'nestjs-pino'
+import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
 import { Socket } from 'socket.io'
 
 class UnauthorizedSocketException extends Error {
@@ -34,15 +35,23 @@ class UnauthorizedSocketException extends Error {
 	}
 }
 
-@WebSocketGateway({ cors: { origin: '*' } })
+@WebSocketGateway({
+	cors: {
+		origin: env<string>('CORS_ORIGINS').split(','),
+		credentials: true
+	}
+	// transports: ['websocket', 'polling']
+})
 export class EventGateway implements OnGatewayConnection, OnGatewayDisconnect {
 	@WebSocketServer()
 	server: Socket
 
 	constructor(
-		private readonly logger: PinoLogger,
 		private readonly jwtService: JwtService,
 		private readonly configService: ConfigService,
+
+		@InjectPinoLogger(EventGateway.name)
+		private readonly logger: PinoLogger,
 
 		@Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
 
@@ -62,18 +71,22 @@ export class EventGateway implements OnGatewayConnection, OnGatewayDisconnect {
 	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	public async handleConnection(client: Socket) {
 		try {
-			const token = client.handshake.headers.authorization?.replace('Bearer ', '')
+			// const token = client.handshake.
+			const token = client.handshake.headers.cookie
+				?.split(';')
+				.find((ck) => ck.trim().startsWith('access-token='))
+				?.split('=')[1]
+
 			if (!token) {
 				this.logger.warn(`Client tried to connect without token: ${client.id}`)
 				throw new UnauthorizedSocketException()
 			}
-			const payload = await this.jwtService.verifyAsync<RequestUser>(token, {
-				secret: this.configService.get('JWT_SECRET')
-			})
-			const cachedToken = await this.cacheManager.get(`token:${payload.id}`)
-			if (!cachedToken) throw new UnauthorizedSocketException()
-		} catch {
+			const payload = await this.jwtService.verifyAsync<RequestUser>(token)
+			client.data.user = payload
+			this.logger.info(`Client connected: ${client.id} - User: ${payload.username}`)
+		} catch (error) {
 			this.logger.warn(`Client tried to connect with invalid token: ${client.id}`)
+			// client.emit('auth_error', { message: 'Token expired or invalid' })
 			client.disconnect()
 		}
 	}
