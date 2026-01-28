@@ -1,31 +1,39 @@
 import { ZodValidationPipe } from '@/common/pipes'
 import { CACHE_MANAGER } from '@nestjs/cache-manager'
-import { BadRequestException, Inject, Injectable, NotFoundException, UsePipes } from '@nestjs/common'
+import {
+	BadRequestException,
+	ForbiddenException,
+	Inject,
+	Injectable,
+	NotFoundException,
+	UsePipes
+} from '@nestjs/common'
 import { JwtService } from '@nestjs/jwt'
 import { Cache } from 'cache-manager'
 import { pick } from 'lodash'
 import { I18nContext, I18nService } from 'nestjs-i18n'
 
+import { RequestUser } from '@/common/decorators'
 import { DATA_SOURCE_SYSCLOUD } from '@/databases/constants'
-import { InjectRepository } from '@nestjs/typeorm'
+import { InjectDataSource, InjectRepository } from '@nestjs/typeorm'
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
 import { createHash, randomBytes } from 'node:crypto'
-import { IsNull, Repository } from 'typeorm'
+import { DataSource, IsNull, Repository } from 'typeorm'
 import { UserRole } from '../user/constants'
-import { UserEntity } from '../user/entities/user.entity'
 import { UserService } from '../user/services/user.service'
 import { LoginDTO, loginValidator } from './dto/auth.dto'
 import { RefreshTokenEntity } from './entities/refresh-token.entity'
 
 @Injectable()
 export class AuthService {
-	private readonly TOKEN_CACHE_TTL = 60 * 1000 * 60 + 30 * 1000
+	private readonly TOKEN_CACHE_TTL = 60 * 1000 * 5 // 5 minutes
 
 	constructor(
 		@Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
 		@InjectRepository(RefreshTokenEntity, DATA_SOURCE_SYSCLOUD)
 		private readonly refreshTokenRepository: Repository<RefreshTokenEntity>,
 		@InjectPinoLogger(AuthService.name) private readonly logger: PinoLogger,
+		@InjectDataSource(DATA_SOURCE_SYSCLOUD) private readonly dataSource: DataSource,
 		private readonly jwtService: JwtService,
 		private readonly userService: UserService,
 		private readonly i18nService: I18nService
@@ -43,18 +51,29 @@ export class AuthService {
 		return { ...user, is_admin: user.roles.includes(UserRole.ADMIN) }
 	}
 
-	async login(payload: UserEntity) {
-		const username = payload.username
-		const user = await this.userService.getProfile(username)
-		const tokenPayload = pick(user, ['id', 'username', 'employee_code', 'display_name', 'roles'])
+	async login(payload: RequestUser) {
+		const queryRunner = this.dataSource.createQueryRunner()
+		await queryRunner.connect()
+		await queryRunner.startTransaction()
+		try {
+			const username = payload.username
+			const user = await this.userService.getProfile(username)
+			const tokenPayload = pick(user, ['id', 'username', 'employee_code', 'display_name', 'roles'])
 
-		const [accessToken, refreshToken] = await Promise.all([
-			this.jwtService.signAsync(tokenPayload),
-			this.signRefreshToken(username)
-		])
+			const [accessToken, refreshToken] = await Promise.all([
+				this.jwtService.signAsync(tokenPayload),
+				this.signRefreshToken(username)
+			])
 
-		await this.cacheManager.set(`token:${username}`, accessToken, this.TOKEN_CACHE_TTL)
-		return { user, accessToken, refreshToken }
+			await this.cacheManager.set(`token:${username}`, accessToken, this.TOKEN_CACHE_TTL)
+			await queryRunner.commitTransaction()
+
+			return { user, accessToken, refreshToken }
+		} catch (error) {
+			if (queryRunner.isTransactionActive) await queryRunner.rollbackTransaction()
+			if (queryRunner.isReleased === false) await queryRunner.release()
+			throw error
+		}
 	}
 
 	/**
@@ -64,8 +83,10 @@ export class AuthService {
 	 * @returns
 	 */
 	async refreshToken(username: string, refreshToken: string) {
+		try {
+		} catch {}
 		const isValidRefreshToken = await this.verifyRefreshToken(username, refreshToken)
-		if (!isValidRefreshToken) throw new BadRequestException('Invalid refresh token')
+		if (!isValidRefreshToken) throw new ForbiddenException('Invalid refresh token')
 
 		// * Generate new access token
 		const user = await this.userService.findUserByUsername(username)
@@ -97,17 +118,18 @@ export class AuthService {
 
 	async signRefreshToken(username: string): Promise<string> {
 		const opaqueToken = randomBytes(32).toString('base64url')
-		const newRefreshToken = this.refreshTokenRepository.create({
+		const refreshTokenRepository = this.dataSource.getRepository(RefreshTokenEntity)
+		const newRefreshToken = refreshTokenRepository.create({
 			username,
 			token_hash: this.createHash(opaqueToken),
 			expires_at: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000) // 30 days
 		})
-		await this.refreshTokenRepository.save(newRefreshToken)
+		await refreshTokenRepository.save(newRefreshToken)
 		return opaqueToken
 	}
 
-	async verifyRefreshToken(username: string, opaqueToken: string): Promise<boolean> {
-		const tokenHash = this.createHash(opaqueToken)
+	async verifyRefreshToken(username: string, refreshToken: string): Promise<boolean> {
+		const tokenHash = this.createHash(refreshToken)
 		const storedToken = await this.refreshTokenRepository.findOne({
 			where: { username, token_hash: tokenHash, revoked_at: null }
 		})
