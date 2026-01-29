@@ -14,8 +14,8 @@ export class TenancyController {
 	}
 
 	@RouteHandler({ endpoint: 'by-factory', method: HttpMethod.GET })
-	getByFactory(@Headers(CommonRequestHeader.FACTORY_CODE) cofactorCode: FactoryCode) {
-		if (!cofactorCode) throw new BadRequestException('Please provide factory code')
-		return this.tenancyService.getByFactory(cofactorCode)
+	getByFactory(@Headers(CommonRequestHeader.FACTORY_CODE) factoryCode: FactoryCode) {
+		if (!factoryCode) throw new BadRequestException('Please provide factory code')
+		return this.tenancyService.getByFactory(factoryCode)
 	}
 }
