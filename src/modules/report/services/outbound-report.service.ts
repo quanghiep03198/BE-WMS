@@ -29,7 +29,7 @@ export class OutboundReportService {
 
 	public async getOutboundReportByDate(date: string): Promise<IOutboundReportResponse> {
 		const data = await this.dataSource.query<IOutboundReportQueryResult[]>(this.outboundReportQuery, [
-			this.request.headers['x-user-company'],
+			this.request.headers['x-user-factory'],
 			date
 		])
 		return data.map((item) => {

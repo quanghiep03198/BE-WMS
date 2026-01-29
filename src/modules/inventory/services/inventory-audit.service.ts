@@ -29,7 +29,7 @@ export class InventoryAuditService {
 	) {}
 
 	public async getMonthlyInventoryAudit(month): Promise<IInventoryReportResponse> {
-		const factory = this.request.headers['x-user-company']
+		const factory = this.request.headers['x-user-factory']
 		const data = await this.dataSource.query<IInventoryReportQueryResult[]>(this.inventoryReportQuery, [
 			month,
 			factory
@@ -156,7 +156,7 @@ export class InventoryAuditService {
 	// #region Inventory report Excel
 	public async exportExcelInventoryAudit(month: string, commandNumbers: string[]) {
 		const currentLanguage = I18nContext.current()?.lang
-		const factoryCode = this.request.headers['x-user-company']
+		const factoryCode = this.request.headers['x-user-factory']
 		const workbook = new Workbook()
 		const worksheet = workbook.addWorksheet(
 			this.i18nService.t(`factory.${factoryCode}`, { lang: currentLanguage }) +

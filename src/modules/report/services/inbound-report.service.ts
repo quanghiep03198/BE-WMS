@@ -30,7 +30,7 @@ export class InboundReportService {
 
 	public async getDailyProductivity(date: string): Promise<IInboundReportResponse> {
 		const data = await this.dataSource.query<IInboundReportQueryResult[]>(this.inboundReportQuery, [
-			this.request.headers['x-user-company'],
+			this.request.headers['x-user-factory'],
 			date
 		])
 		return data.map((item) => ({
@@ -41,7 +41,7 @@ export class InboundReportService {
 
 	public async getDailyShapingDepartmentProductivity(date: string): Promise<IInboundReportResponse> {
 		const data = await this.dataSource.query<IInboundReportQueryResult[]>(this.shapingDepartmentProductivityQuery, [
-			this.request.headers['x-user-company'],
+			this.request.headers['x-user-factory'],
 			date
 		])
 		return data.map((item) => ({
@@ -78,7 +78,7 @@ export class InboundReportService {
 
 	async exportDailyInboundToExcel(reportType: 'daily-productivity' | 'shaping-department-productivity', date: string) {
 		const currentLanguage = I18nContext.current()?.lang
-		const factoryCode = this.request.headers['x-user-company']
+		const factoryCode = this.request.headers['x-user-factory']
 		const workbook = new Workbook()
 		const worksheet = workbook.addWorksheet(
 			this.i18nService.t(`factory.${factoryCode}`, { lang: currentLanguage }) +
