@@ -11,7 +11,10 @@ import { PackingService } from './packing.service'
 export class PackingController {
 	constructor(private readonly packingService: PackingService) {}
 
-	@RouteHandler({ endpoint: 'manifest', method: HttpMethod.GET })
+	@RouteHandler({
+		endpoint: 'manifest',
+		method: HttpMethod.GET
+	})
 	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
 	async getPackingManifest(@Headers(CommonRequestHeader.FACTORY_CODE) factoryCode: string) {
 		return await this.packingService.getPackingManifest(factoryCode)
