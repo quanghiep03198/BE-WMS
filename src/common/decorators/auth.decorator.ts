@@ -7,9 +7,21 @@ export const IS_PUBLIC_KEY = Symbol('isPublic')
 export const Public = () => SetMetadata(IS_PUBLIC_KEY, true)
 
 export const ROLES_KEY = Symbol('roles')
+/**
+ * @description Decorator to specify required user roles for accessing a route.
+ * @param roles
+ * @returns
+ */
 export const Roles = (...roles: Array<UserRole>) => SetMetadata(ROLES_KEY, roles)
 
 export const IS_STRICT_ROLES_KEY = Symbol('isStrictRoles')
+
+/**
+ *
+ * @returns Decorator to enforce strict role checking.
+ * When applied, only the specified roles in the `RequireAuthorized` decorator are allowed access.
+ * Users with the `admin` role will not be granted automatic access.
+ */
 export const StrictRoles = () => SetMetadata(IS_STRICT_ROLES_KEY, true)
 
 /**
