@@ -58,6 +58,13 @@ export class Users1768439528524 implements MigrationInterface {
 				comment: 'JSON array of roles'
 			},
 			{
+				name: 'is_system_user',
+				type: 'bit',
+				isNullable: false,
+				default: 0,
+				comment: 'Indicates if the user is a system user'
+			},
+			{
 				name: 'authorized_factory_codes',
 				type: 'nvarchar',
 				length: '255',

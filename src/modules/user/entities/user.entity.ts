@@ -1,5 +1,6 @@
 import { env } from '@/common/utils'
 import { DATABASE_SCHEMA, DATABASE_SYSCLOUD } from '@/databases/constants'
+import { BoolBitTransformer } from '@/databases/transformers/bool.transformer'
 import { JsonParserTransformer } from '@/databases/transformers/json-parser.transformer'
 import { BaseAbstractEntity } from '@/modules/_base/base.abstract.entity'
 import { FactoryCode } from '@/modules/department/constants'
@@ -37,6 +38,16 @@ export class UserEntity extends BaseAbstractEntity {
 		comment: 'User roles defining access levels and permissions'
 	})
 	roles: UserRole[]
+
+	@Column({
+		name: 'is_system_user',
+		type: 'bit',
+		nullable: false,
+		default: false,
+		comment: 'Indicates if the user is a system user',
+		transformer: new BoolBitTransformer()
+	})
+	is_system_user: boolean
 
 	@Column({
 		name: 'authorized_factory_codes',

@@ -19,8 +19,6 @@ export class UserEntitySubscriber implements EntitySubscriberInterface<UserEntit
 	}
 
 	beforeUpdate(event: UpdateEvent<UserEntity>): Promise<any> | void {
-		if (event.entity && event.entity.password && event.entity.password !== event.databaseEntity.password)
-			event.entity.encryptPassword()
 		if (event.entity.employee_code) event.entity.employee_code = event.entity.employee_code.toUpperCase()
 	}
 }

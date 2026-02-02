@@ -8,7 +8,7 @@ export const createUserValidator = z.object({
 		.string({ message: 'Password is required' })
 		.trim()
 		.nonempty({ message: 'Password is required' })
-		.min(6, { message: 'Password must be at least 6 characters long' }),
+		.min(4, { message: 'Password must be at least 4 characters long' }),
 	email: z.string().trim().email({ message: 'Invalid email' }).optional(),
 	display_name: z.string().trim().nonempty(),
 	employee_code: z.string().trim().nonempty().optional(),
@@ -19,11 +19,12 @@ export const createUserValidator = z.object({
 export const updateUserValidator = createUserValidator.partial().omit({ password: true })
 
 export const updateProfileValidator = z.object({
-	email: z.string().trim().email().optional(),
-	phone: z.string().trim().min(10).max(11).optional()
+	display_name: z.string().trim().nonempty().optional(),
+	email: z.string().trim().email().optional()
 })
 
 export const changePasswordValidator = z.object({
+	currentPassword: z.string().min(1, { message: 'This field is required' }),
 	password: z.string().min(1, { message: 'This field is required' })
 })
 

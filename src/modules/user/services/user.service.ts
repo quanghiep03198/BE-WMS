@@ -1,15 +1,14 @@
 import { DATA_SOURCE_SYSCLOUD } from '@/databases/constants'
 import { RefreshTokenEntity } from '@/modules/auth/entities/refresh-token.entity'
 import { CACHE_MANAGER } from '@nestjs/cache-manager'
-import { ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common'
+import { BadRequestException, ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common'
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm'
 import { Cache } from 'cache-manager'
 import { format } from 'date-fns'
 import { I18nService } from 'nestjs-i18n'
 import { stringify } from 'node:querystring'
-import { DataSource, Repository } from 'typeorm'
+import { DataSource, Equal, Not, Repository } from 'typeorm'
 import { BaseAbstractService } from '../../_base/base.abstract.service'
-import { UserRole } from '../constants'
 import { ChangePasswordDTO, CreateUserDTO, UpdateProfileDTO, UpdateUserDTO, UpdateUserStatusDTO } from '../dto/user.dto'
 import { EmployeeEntity } from '../entities/employee.entity'
 import { UserEntity } from '../entities/user.entity'
@@ -39,11 +38,17 @@ export class UserService extends BaseAbstractService<UserEntity> {
 		super(userRepository)
 	}
 
+	override async findAll(): Promise<UserEntity[]> {
+		return await this.userRepository.find({ where: { is_system_user: false } })
+	}
+
 	override async insertOne(
 		payload: CreateUserDTO & Pick<UserEntity, 'user_code_created' | 'user_name_created'>
 	): Promise<UserEntity> {
-		const user = await this.userRepository.findOne({ where: { username: payload.username } })
-		if (user) throw new ConflictException('User already exists')
+		const user = await this.userRepository.findOne({
+			where: [{ username: payload.username }, { email: payload.email }, { employee_code: payload.employee_code }]
+		})
+		if (user) throw new ConflictException(this.i18nService.t('auth.user_exists'))
 		const newUser = this.userRepository.create({
 			...payload,
 			picture: this.generateAvatar({ name: payload.username })
@@ -52,24 +57,13 @@ export class UserService extends BaseAbstractService<UserEntity> {
 	}
 
 	async getProfile(username: string): Promise<Partial<UserEntity> & { picture: string }> {
-		const user = await this.findUserByUsername(username)
+		const user = await this.findByUsername(username)
 		if (!user) throw new NotFoundException('User could not be found')
 		return user
 	}
 
-	async findUserByUsername(username: string) {
+	async findByUsername(username: string) {
 		return await this.userRepository.findOne({
-			select: {
-				id: true,
-				username: true,
-				display_name: true,
-				picture: true,
-				password: true,
-				email: true,
-				employee_code: true,
-				roles: true,
-				authorized_factory_codes: true
-			},
 			where: { username, is_active: true }
 		})
 	}
@@ -81,23 +75,25 @@ export class UserService extends BaseAbstractService<UserEntity> {
 		return await this.userRepository.update({ username }, payload)
 	}
 
-	async updateProfile(employeeCode: string, payload: UpdateProfileDTO) {
-		const userProfile = await this.employeeRepository.findOneBy({ employee_code: employeeCode })
+	async updateProfile(username: string, payload: UpdateProfileDTO) {
+		const userProfile = await this.userRepository.existsBy({ username })
 		if (!userProfile) throw new NotFoundException('User could not be found')
-		return await this.employeeRepository.save({ ...userProfile, ...payload })
+		const isUserEmailExists = await this.userRepository.existsBy({
+			username: Not(Equal(username)),
+			email: payload.email
+		})
+		if (isUserEmailExists) throw new ConflictException(this.i18nService.t('auth.user_exists'))
+		return await this.userRepository.update({ username }, payload)
 	}
 
 	async changePassword(username: string, payload: ChangePasswordDTO) {
-		return await this.userRepository.update({ username }, { ...payload })
-	}
-
-	async resetPassword(username: string) {
-		const user = await this.findUserByUsername(username)
-		if (!user) throw new NotFoundException(this.i18nService.t('auth.user_not_found'))
-	}
-
-	async authorizeRoles(username: string, authorizedRoles: Array<UserRole>) {
-		return await this.userRepository.update({ username }, { roles: authorizedRoles })
+		const user = await this.findByUsername(username)
+		if (!user) throw new NotFoundException('User could not be found')
+		if (!user.authenticate(payload.currentPassword))
+			throw new BadRequestException(this.i18nService.t('auth.incorrect_password'))
+		user.password = payload.password
+		await user.encryptPassword()
+		return await this.userRepository.update({ username }, { password: user.password })
 	}
 
 	async updateUserActiveStatus(

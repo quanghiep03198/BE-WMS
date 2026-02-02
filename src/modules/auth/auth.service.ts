@@ -41,7 +41,7 @@ export class AuthService {
 
 	@UsePipes(new ZodValidationPipe(loginValidator))
 	async validateUser(payload: LoginDTO) {
-		const user = await this.userService.findUserByUsername(payload.username)
+		const user = await this.userService.findByUsername(payload.username)
 		if (!user)
 			throw new NotFoundException(this.i18nService.t('auth.user_not_found', { lang: I18nContext.current()?.lang }))
 		if (!user.authenticate(payload.password))
@@ -88,7 +88,7 @@ export class AuthService {
 		if (!isValidRefreshToken) throw new ForbiddenException('Invalid refresh token')
 
 		// * Generate new access token
-		const user = await this.userService.findUserByUsername(username)
+		const user = await this.userService.findByUsername(username)
 		if (!user) throw new NotFoundException('User could not be found')
 
 		const userPayload = pick(user, ['id', 'username', 'employee_code', 'display_name', 'roles'])

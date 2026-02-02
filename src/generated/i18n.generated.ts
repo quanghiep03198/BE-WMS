@@ -8,6 +8,7 @@ export type I18nTranslations = {
     "auth": {
         "incorrect_password": string;
         "user_not_found": string;
+        "user_exists": string;
     };
     "common": {
         "ok": string;

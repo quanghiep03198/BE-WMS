@@ -103,17 +103,17 @@ export class UserController {
 	}
 
 	@RouteHandler({
-		endpoint: 'profile/update',
+		endpoint: 'profile',
 		method: HttpMethod.PATCH,
 		statusCode: HttpStatus.CREATED,
 		message: { i18nKey: 'common.updated' }
 	})
 	@RequireAuthenticated()
 	async updateProfile(
-		@User('employee_code') employeeCode: string,
+		@User('username') username: string,
 		@Body(new ZodValidationPipe(updateProfileValidator)) payload: UpdateProfileDTO
 	) {
-		return await this.userService.updateProfile(employeeCode, payload)
+		return await this.userService.updateProfile(username, payload)
 	}
 
 	@RouteHandler({
