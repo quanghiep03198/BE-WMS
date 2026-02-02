@@ -1,5 +1,5 @@
 import { CommonRequestHeader } from '@/common/constants'
-import { HttpMethod, RequestUser, RequireAuthorized, RouteHandler, User } from '@/common/decorators'
+import { HttpMethod, RequestUser, RequireAuthorized, RouteHandler, StrictRoles, User } from '@/common/decorators'
 import { ZodValidationPipe } from '@/common/pipes'
 import {
 	Body,
@@ -122,6 +122,7 @@ export class DefectiveGoodsController {
 		method: HttpMethod.POST,
 		statusCode: HttpStatus.CREATED
 	})
+	@StrictRoles()
 	@RequireAuthorized(UserRole.DG_WAREHOUSE_STAFF)
 	public async create(
 		@User() user: RequestUser,
@@ -192,7 +193,7 @@ export class DefectiveGoodsController {
 		method: HttpMethod.GET,
 		statusCode: HttpStatus.OK
 	})
-	@RequireAuthorized(UserRole.DG_WAREHOUSE_STAFF)
+	@RequireAuthorized(UserRole.MANAGER, UserRole.DG_WAREHOUSE_STAFF)
 	public async getCanInboundEpcs(
 		@Param('type') type: 'inbound' | 'outbound',
 		@Query() queries: Partial<DefectiveGoodsEntity> & { take?: number }
@@ -205,6 +206,7 @@ export class DefectiveGoodsController {
 		method: HttpMethod.PATCH,
 		statusCode: HttpStatus.CREATED
 	})
+	@StrictRoles()
 	@RequireAuthorized(UserRole.DG_WAREHOUSE_STAFF)
 	public async updateOne(
 		@User() user: RequestUser,
@@ -219,6 +221,7 @@ export class DefectiveGoodsController {
 		method: HttpMethod.DELETE,
 		statusCode: HttpStatus.NO_CONTENT
 	})
+	@StrictRoles()
 	@RequireAuthorized(UserRole.DG_WAREHOUSE_STAFF)
 	public async deleteOne(@Param('id', ParseIntPipe) id: number) {
 		return await this.defectiveGoodsService.updateOneById(id, { ri_cancel: true, is_active: false })
@@ -229,6 +232,7 @@ export class DefectiveGoodsController {
 		method: HttpMethod.POST,
 		statusCode: HttpStatus.NO_CONTENT
 	})
+	@StrictRoles()
 	@RequireAuthorized(UserRole.DG_WAREHOUSE_STAFF)
 	public async deleteMany(@Body(new ZodValidationPipe(deleteManyDefectiveGoodsDTO)) ids: DeleteManyDefectiveGoodsDTO) {
 		return await this.defectiveGoodsService.deleteMany(ids)
@@ -240,7 +244,7 @@ export class DefectiveGoodsController {
 		endpoint: 'retrieve-size-qty',
 		statusCode: HttpStatus.OK
 	})
-	@RequireAuthorized(UserRole.DG_WAREHOUSE_STAFF)
+	@RequireAuthorized(UserRole.MANAGER, UserRole.DG_WAREHOUSE_STAFF)
 	public async retrieveSizeQty(@Body() data: string[]) {
 		return await this.defectiveGoodsService.retrieveSizeQty(data)
 	}
@@ -251,6 +255,7 @@ export class DefectiveGoodsController {
 		endpoint: 'inbound',
 		statusCode: HttpStatus.CREATED
 	})
+	@StrictRoles()
 	@RequireAuthorized(UserRole.DG_WAREHOUSE_STAFF)
 	public async updateInboundStatus(
 		@Body(new ZodValidationPipe(updateInboundStatusDTO.partial())) data: UpdateInboundStatusDTO
@@ -263,7 +268,7 @@ export class DefectiveGoodsController {
 		endpoint: 'daily-inbound',
 		statusCode: HttpStatus.OK
 	})
-	@RequireAuthorized(UserRole.DG_WAREHOUSE_STAFF)
+	@RequireAuthorized(UserRole.MANAGER, UserRole.DG_WAREHOUSE_STAFF)
 	public async getDailyInboundReport(
 		@Query('date.eq', new ZodValidationPipe(z.coerce.date().transform((value) => format(value, 'yyyy-MM-dd'))))
 		date: string
@@ -276,7 +281,7 @@ export class DefectiveGoodsController {
 		endpoint: 'export-daily-inbound',
 		statusCode: HttpStatus.OK
 	})
-	@RequireAuthorized(UserRole.DG_WAREHOUSE_STAFF)
+	@RequireAuthorized(UserRole.MANAGER, UserRole.DG_WAREHOUSE_STAFF)
 	async exportDailyOutboundReport(
 		@Query('date.eq', new ZodValidationPipe(z.coerce.date().transform((value) => format(value, 'yyyy-MM-dd'))))
 		date: string,
@@ -306,7 +311,7 @@ export class DefectiveGoodsController {
 		endpoint: 'daily-outbound',
 		statusCode: HttpStatus.OK
 	})
-	@RequireAuthorized(UserRole.DG_WAREHOUSE_STAFF)
+	@RequireAuthorized(UserRole.MANAGER, UserRole.DG_WAREHOUSE_STAFF)
 	public async getDailyOutboundReport(
 		@Query('date.eq', new ZodValidationPipe(z.coerce.date().transform((value) => format(value, 'yyyy-MM-dd'))))
 		date: string
@@ -319,7 +324,7 @@ export class DefectiveGoodsController {
 		endpoint: 'export-daily-outbound',
 		statusCode: HttpStatus.OK
 	})
-	@RequireAuthorized(UserRole.DG_WAREHOUSE_STAFF)
+	@RequireAuthorized(UserRole.MANAGER, UserRole.DG_WAREHOUSE_STAFF)
 	async exportDailyInboundReport(
 		@Query('date.eq', new ZodValidationPipe(z.coerce.date().transform((value) => format(value, 'yyyy-MM-dd'))))
 		date: string,
@@ -338,6 +343,7 @@ export class DefectiveGoodsController {
 		endpoint: 'inventory',
 		statusCode: HttpStatus.OK
 	})
+	@StrictRoles()
 	@RequireAuthorized(UserRole.DG_WAREHOUSE_STAFF)
 	async getDefectiveGoodsInventory() {
 		return await this.defectiveGoodsInventoryService.getDefectiveGoodsInventory()
@@ -348,6 +354,7 @@ export class DefectiveGoodsController {
 		endpoint: 'export-inventory-report',
 		statusCode: HttpStatus.OK
 	})
+	@StrictRoles()
 	@RequireAuthorized(UserRole.MANAGER, UserRole.DG_WAREHOUSE_STAFF)
 	async exportDefectiveGoodsInventory(
 		@Headers(CommonRequestHeader.FACTORY_CODE) factoryCode: string,
