@@ -1,3 +1,4 @@
+import { RecordStatus } from '@/databases/constants'
 import { StringToBoolTransformer } from '@/databases/transformers/bool.transformer'
 import { format } from 'date-fns'
 import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, TableColumnOptions, UpdateDateColumn } from 'typeorm'
@@ -29,7 +30,7 @@ export abstract class BaseAbstractEntity {
 		name: 'isactive',
 		type: 'varchar',
 		length: 1,
-		default: true,
+		default: RecordStatus.ACTIVE,
 		transformer: new StringToBoolTransformer()
 	})
 	is_active: boolean

@@ -1,3 +1,4 @@
+import { isNil } from 'lodash'
 import { ValueTransformer } from 'typeorm'
 import { RecordStatus } from '../constants'
 
@@ -16,10 +17,11 @@ export class BoolBitTransformer implements ValueTransformer {
 
 export class StringToBoolTransformer implements ValueTransformer {
 	public from(value: RecordStatus): boolean {
-		return value === RecordStatus.ACTIVE
+		return isNil(value) || value === RecordStatus.ACTIVE
 	}
 
-	public to(value: boolean) {
+	public to(value: boolean | undefined) {
+		if (isNil(value)) return RecordStatus.ACTIVE
 		return value ? RecordStatus.ACTIVE : RecordStatus.INACTIVE
 	}
 }
