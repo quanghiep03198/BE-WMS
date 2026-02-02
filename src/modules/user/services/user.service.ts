@@ -4,14 +4,16 @@ import { CACHE_MANAGER } from '@nestjs/cache-manager'
 import { ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common'
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm'
 import { Cache } from 'cache-manager'
+import { format } from 'date-fns'
 import { I18nService } from 'nestjs-i18n'
 import { stringify } from 'node:querystring'
 import { DataSource, Repository } from 'typeorm'
 import { BaseAbstractService } from '../../_base/base.abstract.service'
 import { UserRole } from '../constants'
-import { ChangePasswordDTO, CreateUserDTO, UpdateProfileDTO } from '../dto/user.dto'
+import { ChangePasswordDTO, CreateUserDTO, UpdateProfileDTO, UpdateUserDTO, UpdateUserStatusDTO } from '../dto/user.dto'
 import { EmployeeEntity } from '../entities/employee.entity'
 import { UserEntity } from '../entities/user.entity'
+import { IUser } from '../user.interface'
 
 type AvatarGenerateOptions = {
 	name: string
@@ -44,7 +46,6 @@ export class UserService extends BaseAbstractService<UserEntity> {
 		if (user) throw new ConflictException('User already exists')
 		const newUser = this.userRepository.create({
 			...payload,
-			is_active: true,
 			picture: this.generateAvatar({ name: payload.username })
 		})
 		return await this.userRepository.save(newUser)
@@ -73,6 +74,13 @@ export class UserService extends BaseAbstractService<UserEntity> {
 		})
 	}
 
+	async updateOneByUsername(
+		username,
+		payload: UpdateUserDTO & Pick<IUser, 'user_code_updated' | 'user_name_updated'>
+	) {
+		return await this.userRepository.update({ username }, payload)
+	}
+
 	async updateProfile(employeeCode: string, payload: UpdateProfileDTO) {
 		const userProfile = await this.employeeRepository.findOneBy({ employee_code: employeeCode })
 		if (!userProfile) throw new NotFoundException('User could not be found')
@@ -92,17 +100,31 @@ export class UserService extends BaseAbstractService<UserEntity> {
 		return await this.userRepository.update({ username }, { roles: authorizedRoles })
 	}
 
-	async deactivateUser(username: string) {
+	async updateUserActiveStatus(
+		username: string,
+		update: UpdateUserStatusDTO & Pick<IUser, 'user_code_updated' | 'user_name_updated'>
+	) {
 		const queryRunner = this.dataSourceSC.createQueryRunner()
 		await queryRunner.connect()
 		try {
 			await queryRunner.startTransaction()
 
-			queryRunner.manager.getRepository(UserEntity).update({ username }, { is_active: false })
-			queryRunner.manager.getRepository(RefreshTokenEntity).update({ username }, { revoked_at: new Date() })
-			this.cacheManager.del(`token:${username}`)
+			const result = await queryRunner.manager.getRepository(UserEntity).update(
+				{ username },
+				{
+					...update,
+					remark: `${update.is_active ? 'Reactivated' : 'Deactivated'} by ${update.user_code_updated} at ${format(new Date(), 'yyyy-MM-dd HH:mm')}`
+				}
+			)
+
+			if (!update.is_active) {
+				await queryRunner.manager.getRepository(RefreshTokenEntity).update({ username }, { revoked_at: new Date() })
+				await this.cacheManager.del(`token:${username}`)
+			}
 
 			await queryRunner.commitTransaction()
+
+			return result
 		} catch (error) {
 			if (queryRunner.isTransactionActive) await queryRunner.rollbackTransaction()
 			throw error

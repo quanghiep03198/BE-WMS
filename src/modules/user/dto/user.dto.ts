@@ -16,6 +16,8 @@ export const createUserValidator = z.object({
 	authorized_factory_codes: z.array(z.nativeEnum(FactoryCode))
 })
 
+export const updateUserValidator = createUserValidator.partial().omit({ password: true })
+
 export const updateProfileValidator = z.object({
 	email: z.string().trim().email().optional(),
 	phone: z.string().trim().min(10).max(11).optional()
@@ -25,9 +27,13 @@ export const changePasswordValidator = z.object({
 	password: z.string().min(1, { message: 'This field is required' })
 })
 
-export const authorizeRoleValidator = z.array(z.nativeEnum(UserRole)).nonempty()
+export const updateUserStatusValidator = z.object({
+	is_active: z.boolean()
+})
+// export const authorizeRoleValidator = z.array(z.nativeEnum(UserRole)).nonempty()
 
 export type CreateUserDTO = z.infer<typeof createUserValidator>
+export type UpdateUserDTO = z.infer<typeof updateUserValidator>
 export type UpdateProfileDTO = z.infer<typeof updateProfileValidator>
 export type ChangePasswordDTO = z.infer<typeof changePasswordValidator>
-export type AuthorizeRoleDTO = z.infer<typeof authorizeRoleValidator>
+export type UpdateUserStatusDTO = z.infer<typeof updateUserStatusValidator>
