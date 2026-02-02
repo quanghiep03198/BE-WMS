@@ -31,7 +31,6 @@ export const changePasswordValidator = z.object({
 export const updateUserStatusValidator = z.object({
 	is_active: z.boolean()
 })
-// export const authorizeRoleValidator = z.array(z.nativeEnum(UserRole)).nonempty()
 
 export type CreateUserDTO = z.infer<typeof createUserValidator>
 export type UpdateUserDTO = z.infer<typeof updateUserValidator>
