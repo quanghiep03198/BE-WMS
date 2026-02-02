@@ -1,6 +1,7 @@
 import { CommonRequestHeader } from '@/common/constants'
-import { RouteHandler } from '@/common/decorators'
+import { RequireAuthorized, RouteHandler } from '@/common/decorators'
 import { ZodValidationPipe } from '@/common/pipes'
+import { UserRole } from '@/modules/user/constants'
 import { BadRequestException, Body, Controller, Headers, HttpStatus, Param } from '@nestjs/common'
 import { HttpMethod } from '../../../common/decorators/route-handler.decorator'
 import {
@@ -22,6 +23,7 @@ export class StorageLocationController {
 		statusCode: HttpStatus.CREATED,
 		message: { i18nKey: 'common.created' }
 	})
+	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
 	async createStorageLocation(
 		@Headers(CommonRequestHeader.FACTORY_CODE) factoryCode: string,
 		@Body(new ZodValidationPipe(createStorageLocationValidator)) payload: CreateStorageLocationDTO
@@ -38,6 +40,7 @@ export class StorageLocationController {
 		endpoint: ':warehouseCode',
 		method: HttpMethod.GET
 	})
+	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
 	async getStorageLocationByWarhouse(
 		@Headers(CommonRequestHeader.FACTORY_CODE) factoryCode: string,
 		@Param('warehouseCode') warehouseCode: string
