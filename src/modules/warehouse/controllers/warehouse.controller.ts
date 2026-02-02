@@ -27,6 +27,7 @@ export class WarehouseController {
 		endpoint: ':warehouseCode',
 		method: HttpMethod.GET
 	})
+	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
 	async getOneByWarehouseCode(@Param('warehouseCode') cofactorCode: string) {
 		return await this.warehouseService.findOneByWarehouseCode(cofactorCode)
 	}
@@ -36,6 +37,7 @@ export class WarehouseController {
 		statusCode: HttpStatus.CREATED,
 		message: { i18nKey: 'common.created' }
 	})
+	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
 	async createWarehouse(
 		@Headers(CommonRequestHeader.FACTORY_CODE) factoryCode: string,
 		@Body(new ZodValidationPipe(createWarehouseValidator)) payload: CreateWarehouseDTO
@@ -49,6 +51,7 @@ export class WarehouseController {
 		statusCode: HttpStatus.CREATED,
 		message: { i18nKey: 'common.updated' }
 	})
+	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
 	async updateWarehouse(
 		@Param('id') id: string,
 		@Body(new ZodValidationPipe(updateWarehouseValidator)) payload: UpdateWarehouseDTO
@@ -61,6 +64,7 @@ export class WarehouseController {
 		statusCode: HttpStatus.NO_CONTENT,
 		message: { i18nKey: 'common.deleted' }
 	})
+	@RequireAuthorized(UserRole.MANAGER)
 	async deleteWarehouses(@Body(new ZodValidationPipe(deleteWarehouseValidator)) payload: DeleteWarehouseDTO) {
 		return await this.warehouseService.deleteMany(payload.id)
 	}
