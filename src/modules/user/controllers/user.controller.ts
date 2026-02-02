@@ -10,12 +10,14 @@ import { ZodValidationPipe } from '@/common/pipes'
 import { Body, Controller, ForbiddenException, HttpStatus, Param } from '@nestjs/common'
 import { UserRole } from '../constants'
 import {
-	AuthorizeRoleDTO,
-	authorizeRoleValidator,
 	ChangePasswordDTO,
 	changePasswordValidator,
 	UpdateProfileDTO,
-	updateProfileValidator
+	updateProfileValidator,
+	UpdateUserDTO,
+	UpdateUserStatusDTO,
+	updateUserStatusValidator,
+	updateUserValidator
 } from '../dto/user.dto'
 import { UserService } from '../services/user.service'
 import { CreateUserDTO, createUserValidator } from './../dto/user.dto'
@@ -31,7 +33,7 @@ export class UserController {
 		statusCode: HttpStatus.CREATED,
 		message: 'common.created'
 	})
-	// @RequireAuthorized(UserRole.ADMIN)
+	@RequireAuthorized(UserRole.ADMIN)
 	async insertOne(
 		@User() user: RequestUser,
 		@Body(new ZodValidationPipe(createUserValidator)) createUserDTO: CreateUserDTO
@@ -43,6 +45,25 @@ export class UserController {
 		})
 	}
 
+	@RouteHandler({
+		endpoint: 'update/:username',
+		method: HttpMethod.PATCH,
+		statusCode: HttpStatus.CREATED,
+		message: 'common.created'
+	})
+	@RequireAuthorized(UserRole.ADMIN)
+	async updateOne(
+		@User() currentUser: RequestUser,
+		@Param('username') username: string,
+		@Body(new ZodValidationPipe(updateUserValidator)) createUserDTO: UpdateUserDTO
+	) {
+		return await this.userService.updateOneByUsername(username, {
+			...createUserDTO,
+			user_code_updated: currentUser?.username ?? 'sa',
+			user_name_updated: currentUser?.display_name ?? 'sa'
+		})
+	}
+
 	@RouteHandler({ method: HttpMethod.GET })
 	@RequireAuthorized(UserRole.ADMIN)
 	async getUsers() {
@@ -50,31 +71,28 @@ export class UserController {
 	}
 
 	@RouteHandler({
-		endpoint: 'authorize-role/:username',
+		endpoint: 'update-status/:username',
 		method: HttpMethod.PATCH,
-		statusCode: HttpStatus.CREATED,
-		message: 'common.updated'
-	})
-	@RequireAuthorized(UserRole.ADMIN)
-	async authorizeRoles(
-		@Param('username') username: string,
-		@Body(new ZodValidationPipe(authorizeRoleValidator)) authorizedRoles: AuthorizeRoleDTO
-	) {
-		return this.userService.authorizeRoles(username, authorizedRoles)
-	}
-
-	@RouteHandler({
-		endpoint: 'deactivate/:username',
-		method: HttpMethod.DELETE,
 		statusCode: HttpStatus.OK,
 		message: 'common.ok'
 	})
 	@RequireAuthorized(UserRole.ADMIN)
-	async deactivateUser(@User('username') currentUserName: string, @Param('username') username: string) {
-		if (currentUserName === username) {
-			throw new ForbiddenException('You cannot deactivate your own account')
+	async updateUserStatus(
+		@User() currentUser: RequestUser,
+		@Param('username') username: string,
+		@Body(new ZodValidationPipe(updateUserStatusValidator)) { is_active }: UpdateUserStatusDTO
+	) {
+		if (currentUser.username === username) {
+			throw new ForbiddenException('You cannot change status your own account')
 		}
-		return this.userService.deactivateUser(username)
+
+		console.log('payload.is_active', is_active)
+
+		return this.userService.updateUserActiveStatus(username, {
+			is_active,
+			user_code_updated: currentUser.username,
+			user_name_updated: currentUser.display_name
+		})
 	}
 
 	// #region Self-Service Profile Management
