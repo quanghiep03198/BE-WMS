@@ -24,9 +24,3 @@ export enum UserRole {
 	 */
 	SECURITY_GUARD = 'SECURITY_GUARD'
 }
-
-export enum UserAuditAction {
-	PASSWORD_CHANGE = 'password_change',
-	ROLE_CHANGE = 'role_change',
-	DEACTIVATE = 'deactivate'
-}
