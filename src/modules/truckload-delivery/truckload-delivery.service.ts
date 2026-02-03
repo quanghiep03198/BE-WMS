@@ -225,7 +225,7 @@ export class TruckloadDeliveryService
 		return await this.deliveryRepository.update(
 			{ dispatch_order: dispatchOrder },
 			{
-				...omit(payload, ['approval_status']),
+				...omit(payload, ['approval_status', 'signature_type']),
 				...(payload.security_2_signature && { approval_status: payload.approval_status }),
 				...(!!payload.security_1_signature && {
 					container_sealing_time: payload.approval_status === TruckloadDeliveryStatus.CONFIRMED ? new Date() : null
