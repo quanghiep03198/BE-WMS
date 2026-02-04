@@ -119,8 +119,19 @@ export class UserService extends BaseAbstractService<UserEntity> {
 		if (!user.authenticate(payload.currentPassword))
 			throw new BadRequestException(this.i18nService.t('auth.incorrect_password'))
 		user.password = payload.password
-		await user.encryptPassword()
-		return await this.userRepository.update({ username }, { password: user.password })
+		user.encryptPassword()
+		const queryRunner = this.dataSourceSC.createQueryRunner()
+		await queryRunner.connect()
+		try {
+			await queryRunner.startTransaction()
+			await queryRunner.manager.getRepository(UserEntity).update({ username }, { password: user.password })
+			await queryRunner.manager.getRepository(OldUserEntity).update({ username }, { password: payload.password })
+			await queryRunner.commitTransaction()
+		} catch (error) {
+			if (queryRunner.isTransactionActive) await queryRunner.rollbackTransaction()
+			if (!queryRunner.isReleased) await queryRunner.release()
+			throw error
+		}
 	}
 
 	async updateUserActiveStatus(
