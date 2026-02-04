@@ -8,10 +8,10 @@ export const createUserValidator = z.object({
 		.string({ message: 'Password is required' })
 		.trim()
 		.nonempty({ message: 'Password is required' })
-		.min(4, { message: 'Password must be at least 4 characters long' }),
-	email: z.string().trim().email({ message: 'Invalid email' }).optional(),
+		.min(3, { message: 'Password must be at least 3 characters long' }),
+	email: z.string().trim().email({ message: 'Invalid email' }).nullish(),
 	display_name: z.string().trim().nonempty(),
-	employee_code: z.string().trim().nonempty().optional(),
+	employee_code: z.string().trim().nonempty().nullish(),
 	roles: z.array(z.nativeEnum(UserRole)),
 	authorized_factory_codes: z.array(z.nativeEnum(FactoryCode))
 })
@@ -24,8 +24,8 @@ export const updateProfileValidator = z.object({
 })
 
 export const changePasswordValidator = z.object({
-	currentPassword: z.string().min(1, { message: 'This field is required' }),
-	password: z.string().min(1, { message: 'This field is required' })
+	currentPassword: z.string().nonempty(),
+	password: z.string().nonempty()
 })
 
 export const updateUserStatusValidator = z.object({
