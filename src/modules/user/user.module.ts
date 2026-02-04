@@ -6,12 +6,15 @@ import { EmployeeController } from './controllers/employee.controller'
 import { UserController } from './controllers/user.controller'
 import { EmployeeEntity } from './entities/employee.entity'
 import { UserEntity } from './entities/user.entity'
+import { OldUserEntity } from './entities/user.old.entity'
 import { EmployeeService } from './services/employee.service'
 import { UserService } from './services/user.service'
 import { UserEntitySubscriber } from './subscribers/user.entity.subscriber'
 
 @Module({
-	imports: [TypeOrmModule.forFeature([UserEntity, EmployeeEntity, RefreshTokenEntity], DATA_SOURCE_SYSCLOUD)],
+	imports: [
+		TypeOrmModule.forFeature([OldUserEntity, UserEntity, EmployeeEntity, RefreshTokenEntity], DATA_SOURCE_SYSCLOUD)
+	],
 	providers: [UserService, EmployeeService, UserEntitySubscriber],
 	controllers: [UserController, EmployeeController],
 	exports: [UserService]

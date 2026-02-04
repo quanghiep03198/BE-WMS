@@ -16,13 +16,13 @@ export class UserEntity extends BaseAbstractEntity {
 	@Column({ name: 'password', type: 'nvarchar', length: 255 })
 	password: string
 
-	@Column({ name: 'email', type: 'nvarchar', length: 100, unique: true, nullable: true })
+	@Column({ name: 'email', type: 'nvarchar', length: 100, nullable: true })
 	email: string | null
 
 	@Column({ name: 'display_name', type: 'nvarchar', length: 100, nullable: false })
 	display_name: string
 
-	@Column({ name: 'employee_code', type: 'nvarchar', length: 100, unique: true, nullable: true })
+	@Column({ name: 'employee_code', type: 'nvarchar', length: 100, nullable: true })
 	employee_code: string | null
 
 	@Column({ name: 'picture', type: 'nvarchar', length: 'max', nullable: true })

@@ -1,5 +1,7 @@
+import { env } from '@/common/utils'
 import { DATA_SOURCE_SYSCLOUD } from '@/databases/constants'
 import { RefreshTokenEntity } from '@/modules/auth/entities/refresh-token.entity'
+import { FactoryCode } from '@/modules/department/constants'
 import { CACHE_MANAGER } from '@nestjs/cache-manager'
 import { BadRequestException, ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common'
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm'
@@ -12,6 +14,7 @@ import { BaseAbstractService } from '../../_base/base.abstract.service'
 import { ChangePasswordDTO, CreateUserDTO, UpdateProfileDTO, UpdateUserDTO, UpdateUserStatusDTO } from '../dto/user.dto'
 import { EmployeeEntity } from '../entities/employee.entity'
 import { UserEntity } from '../entities/user.entity'
+import { OldUserEntity } from '../entities/user.old.entity'
 import { IUser } from '../user.interface'
 
 type AvatarGenerateOptions = {
@@ -30,6 +33,8 @@ export class UserService extends BaseAbstractService<UserEntity> {
 		private readonly dataSourceSC: DataSource,
 		@InjectRepository(UserEntity, DATA_SOURCE_SYSCLOUD)
 		private readonly userRepository: Repository<UserEntity>,
+		@InjectRepository(OldUserEntity, DATA_SOURCE_SYSCLOUD)
+		private readonly oldUserRepository: Repository<OldUserEntity>,
 		@InjectRepository(EmployeeEntity, DATA_SOURCE_SYSCLOUD)
 		private readonly employeeRepository: Repository<EmployeeEntity>,
 		@Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
@@ -56,16 +61,38 @@ export class UserService extends BaseAbstractService<UserEntity> {
 		return await this.userRepository.save(newUser)
 	}
 
-	async getProfile(username: string): Promise<Partial<UserEntity> & { picture: string }> {
-		const user = await this.findByUsername(username)
+	async getProfile(
+		username: string
+	): Promise<Partial<UserEntity> | (Promise<Partial<OldUserEntity>> & { picture: string })> {
+		const user = await this.findOrCreate(username)
 		if (!user) throw new NotFoundException('User could not be found')
 		return user
 	}
 
-	async findByUsername(username: string) {
-		return await this.userRepository.findOne({
-			where: { username, is_active: true }
-		})
+	async findOrCreate(username: string): Promise<UserEntity> {
+		try {
+			return await this.userRepository.findOneByOrFail({
+				username,
+				is_active: true
+			})
+		} catch {
+			const oldUser = await this.oldUserRepository.findOneBy({ username })
+			if (!oldUser) throw new NotFoundException(this.i18nService.t('auth.user_not_found'))
+			const envFactory = env<keyof FactoryCode>('APP_TENANCY', { fallbackValue: 'GL1' })
+
+			return await this.insertOne({
+				username: oldUser.username,
+				password: oldUser.password,
+				display_name: oldUser.username.toUpperCase(),
+				roles: [],
+				authorized_factory_codes:
+					env<RuntimeEnvironment>('NODE_ENV') === 'development'
+						? [FactoryCode.GL1, FactoryCode.GL3, FactoryCode.GL4]
+						: [FactoryCode[envFactory]],
+				user_code_created: 'sa',
+				user_name_created: 'sa'
+			})
+		}
 	}
 
 	async updateOneByUsername(
@@ -87,7 +114,7 @@ export class UserService extends BaseAbstractService<UserEntity> {
 	}
 
 	async changePassword(username: string, payload: ChangePasswordDTO) {
-		const user = await this.findByUsername(username)
+		const user = await this.findOrCreate(username)
 		if (!user) throw new NotFoundException('User could not be found')
 		if (!user.authenticate(payload.currentPassword))
 			throw new BadRequestException(this.i18nService.t('auth.incorrect_password'))
