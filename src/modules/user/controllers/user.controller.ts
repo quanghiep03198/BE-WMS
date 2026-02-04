@@ -86,8 +86,6 @@ export class UserController {
 			throw new ForbiddenException('You cannot change status your own account')
 		}
 
-		console.log('payload.is_active', is_active)
-
 		return this.userService.updateUserActiveStatus(username, {
 			is_active,
 			user_code_updated: currentUser.username,
