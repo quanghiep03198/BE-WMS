@@ -29,8 +29,7 @@ export class Users1768439528524 implements MigrationInterface {
 				name: 'email',
 				type: 'nvarchar',
 				length: '100',
-				isNullable: true,
-				isUnique: true
+				isNullable: true
 			},
 			{
 				name: 'display_name',
@@ -82,13 +81,13 @@ export class Users1768439528524 implements MigrationInterface {
 				name: 'UQ_ts_users_email',
 				columnNames: ['email'],
 				isUnique: true,
-				where: 'email IS NOT NULL'
+				where: /* SQL */ `email IS NOT NULL`
 			},
 			{
 				name: 'UQ_ts_users_employee_code',
 				columnNames: ['employee_code'],
 				isUnique: true,
-				where: 'employee_code IS NOT NULL'
+				where: /* SQL */ `employee_code IS NOT NULL`
 			}
 		]
 	})
