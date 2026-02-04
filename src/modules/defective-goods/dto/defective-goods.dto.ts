@@ -37,7 +37,7 @@ export const createDefectiveGoodsDTO = baseDefectiveGoodsDTO
 					qty: z.number().min(1)
 				})
 			)
-			.optional()
+			.nullish()
 	})
 	.required({
 		brand_name: true,
@@ -104,15 +104,16 @@ export const createDefectiveGoodsDTO = baseDefectiveGoodsDTO
 		}
 	})
 	.superRefine((values, context) => {
-		values.sizes.forEach((item, index) => {
-			if (values.sizes.findIndex((otherItem) => otherItem.size_code === item.size_code) !== index)
-				context.addIssue({
-					code: 'custom',
-					message: 'Do not select the same Size',
-					fatal: true,
-					path: [`sizes.${index}.size_code`]
-				})
-		})
+		if (Array.isArray(values.sizes) && values.ri_type === 'manually')
+			values.sizes.forEach((item, index) => {
+				if (values.sizes.findIndex((otherItem) => otherItem.size_code === item.size_code) !== index)
+					context.addIssue({
+						code: 'custom',
+						message: 'Do not select the same Size',
+						fatal: true,
+						path: [`sizes.${index}.size_code`]
+					})
+			})
 	})
 
 export const updateDefectiveGoodsDTO = baseDefectiveGoodsDTO
