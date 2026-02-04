@@ -57,7 +57,6 @@ export class DefectiveGoodsController {
 
 	// #region CRUD EPC Combination
 	@RouteHandler({
-		endpoint: '',
 		method: HttpMethod.GET,
 		statusCode: HttpStatus.OK
 	})
@@ -343,8 +342,7 @@ export class DefectiveGoodsController {
 		endpoint: 'inventory',
 		statusCode: HttpStatus.OK
 	})
-	@StrictRoles()
-	@RequireAuthorized(UserRole.DG_WAREHOUSE_STAFF)
+	@RequireAuthorized(UserRole.MANAGER, UserRole.DG_WAREHOUSE_STAFF)
 	async getDefectiveGoodsInventory() {
 		return await this.defectiveGoodsInventoryService.getDefectiveGoodsInventory()
 	}
@@ -354,7 +352,6 @@ export class DefectiveGoodsController {
 		endpoint: 'export-inventory-report',
 		statusCode: HttpStatus.OK
 	})
-	@StrictRoles()
 	@RequireAuthorized(UserRole.MANAGER, UserRole.DG_WAREHOUSE_STAFF)
 	async exportDefectiveGoodsInventory(
 		@Headers(CommonRequestHeader.FACTORY_CODE) factoryCode: string,
