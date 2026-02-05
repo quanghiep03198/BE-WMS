@@ -152,7 +152,10 @@ export class TruckloadDeliveryService
 			.leftJoin(
 				CarLicenseSnapshotEntity,
 				'b',
-				'a.license_plate = b.plate_name AND CAST(a.factory_departure_time AS DATE) = CAST(b.snap_time AS DATE)'
+				/* SQL */ `
+					a.license_plate = b.plate_name 
+					AND b.snap_time BETWEEN DATEADD(MINUTE, 5, ISNULL(a.container_sealing_time, GETDATE())) AND DATEADD(MINUTE, 30, ISNULL(a.factory_departure_time, GETDATE()))
+					`
 			)
 			.where(dateRangeFilterQuery)
 			.andWhere(approvalStatusFilterQuery)
