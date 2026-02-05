@@ -3,7 +3,14 @@ import { DATA_SOURCE_SYSCLOUD } from '@/databases/constants'
 import { RefreshTokenEntity } from '@/modules/auth/entities/refresh-token.entity'
 import { FactoryCode } from '@/modules/department/constants'
 import { CACHE_MANAGER } from '@nestjs/cache-manager'
-import { BadRequestException, ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common'
+import {
+	BadRequestException,
+	ConflictException,
+	ForbiddenException,
+	Inject,
+	Injectable,
+	NotFoundException
+} from '@nestjs/common'
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm'
 import { Cache } from 'cache-manager'
 import { format } from 'date-fns'
@@ -71,11 +78,13 @@ export class UserService extends BaseAbstractService<UserEntity> {
 
 	async findOrCreate(username: string): Promise<UserEntity> {
 		try {
-			return await this.userRepository.findOneByOrFail({
-				username,
-				is_active: true
-			})
-		} catch {
+			const user = await this.userRepository.findOneBy({ username })
+			if (!user) throw new NotFoundException(this.i18nService.t('auth.user_not_found'))
+			if (!user.is_active) throw new ForbiddenException(this.i18nService.t('auth.deactivated_account'))
+			return user
+		} catch (error) {
+			if (error instanceof ForbiddenException) throw error
+
 			const oldUser = await this.oldUserRepository.findOneBy({ username })
 			if (!oldUser) throw new NotFoundException(this.i18nService.t('auth.user_not_found'))
 			const envFactory = env<keyof FactoryCode>('APP_TENANCY', { fallbackValue: 'GL1' })

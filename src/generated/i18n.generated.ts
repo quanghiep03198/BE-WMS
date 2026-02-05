@@ -6,6 +6,7 @@ import { Path } from "nestjs-i18n";
 /* prettier-ignore */
 export type I18nTranslations = {
     "auth": {
+        "deactivated_account": string;
         "incorrect_password": string;
         "user_not_found": string;
         "user_exists": string;
