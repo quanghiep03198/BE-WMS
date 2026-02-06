@@ -14,6 +14,7 @@ import {
 } from '@nestjs/common'
 import { format } from 'date-fns'
 import { FastifyReply } from 'fastify'
+import { FactoryCode } from '../department/constants'
 import { UserRole } from '../user/constants'
 import { InboundReportService } from './services/inbound-report.service'
 import { OutboundReportService } from './services/outbound-report.service'
@@ -77,8 +78,11 @@ export class ReportController {
 
 	@RouteHandler({ endpoint: 'outbound-history/:po', method: HttpMethod.GET })
 	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
-	async getOutboundHistory(@Param('po') po: string) {
-		return await this.outboundReportService.getOutboundHistory(po)
+	async getOutboundHistory(
+		@Headers(CommonRequestHeader.FACTORY_CODE) factoryCode: FactoryCode,
+		@Param('po') po: string
+	) {
+		return await this.outboundReportService.getOutboundHistory(factoryCode, po)
 	}
 
 	@Get('daily-outbound/export')

@@ -98,8 +98,9 @@ SELECT
    b.cofactory_code AS factory_code_produce,
    b.mo_no,
    g.brand_name,
-   f.shoestyle_codecust + '/'+ f.shoestyle_codefactory AS shoe_style,
-   e.color_sn + '/' + UPPER(e.mat_ecolor) AS color,
+	f.shoestyle_codefactory AS factory_shoes_style,
+   f.shoestyle_codecust AS cust_shoes_style,
+   UPPER(CONCAT(e.color_sn, '/', (e.mat_ecolor))) AS color,
    CAST(COALESCE(b.mo_totalqty, 0) AS INT) AS mo_qty,
    COUNT(DISTINCT a.EPC_Code) AS accumulated_inbound_qty,
    (SELECT * FROM daily_inbound_history_cte FOR JSON PATH) AS daily_inbound_history,
@@ -133,8 +134,9 @@ GROUP BY
    b.cofactory_code,
    b.mo_no, CAST(COALESCE(b.mo_totalqty, 0) AS INT),
    g.brand_name,
-   f.shoestyle_codecust + '/' + f.shoestyle_codefactory,
-   e.color_sn + '/' + UPPER(e.mat_ecolor)
+   f.shoestyle_codefactory,
+   f.shoestyle_codecust,
+   UPPER(CONCAT(e.color_sn, '/', (e.mat_ecolor)))
 OPTION (
    OPTIMIZE FOR (@0 UNKNOWN)
 )

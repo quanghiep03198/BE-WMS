@@ -166,9 +166,8 @@ daily_mo_productivity AS (
       COUNT(DISTINCT dd.EPC_Code) AS qty
    FROM daily_data dd
    GROUP BY 
-      dd.po, dd.mo_no, dd.shoestyle_codefactory, dd.color_sn, dd.po, dd.mo_no, dd.shoestyle_codefactory, dd.color_sn, dd.size_code
+      dd.po, dd.mo_no, dd.shoestyle_codefactory, dd.color_sn, dd.size_code
 ),
-
 -- * Aggregate size data for each purchase order
 agg_size_data AS (
    SELECT 
@@ -195,7 +194,6 @@ agg_size_data AS (
       ) AS acc_qty
    FROM po_size_qty ps
 )
-
 -- * Main query * --
 SELECT
    dd.po,
