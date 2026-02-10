@@ -122,6 +122,8 @@ export class RFIDOutboundService {
 				)
 				.exec()
 
+			// TODO: update inventory audit table to reflect outbound action
+
 			await queryRunner.commitTransaction()
 			await session.commitTransaction()
 		} catch (error) {

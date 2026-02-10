@@ -1,6 +1,7 @@
 import { VALID_EPC_PATTERN } from '@/common/constants/regex'
 import { DATA_SOURCE_DATA_LAKE, DATA_SOURCE_ERP } from '@/databases/constants'
 import { EventGateway } from '@/events/event.gateway'
+import { InventoryAuditService } from '@/modules/inventory/services/inventory-audit.service'
 import { TENANCY_DATA_SOURCE } from '@/modules/tenancy/constants'
 import { InjectQueue } from '@nestjs/bullmq'
 import {
@@ -41,6 +42,7 @@ export class RFIDInboundService {
 		@InjectQueue(POST_DATA_INBOUND_QUEUE) private readonly postDataQueue: Queue<PostReaderDataDTO>,
 		@InjectModel(EpcInbound.name) private readonly epcInboundModel: EpcModel,
 		private readonly i18nService: I18nService,
+		private readonly inventoryAuditService: InventoryAuditService,
 		private readonly eventEmitter: EventEmitter2,
 		private readonly eventGateway: EventGateway,
 		private readonly logger: PinoLogger
@@ -95,6 +97,18 @@ export class RFIDInboundService {
 
 				await this.dataSourceTNC.query(upsertInventoryQuery.replace(':values', values))
 			}
+
+			const qtyCoefficient = data.rfid_status === InventoryActions.INBOUND ? 1 : -1
+
+			const sizeQty = Object.entries(Object.groupBy(payload, (item) => item.size_numcode)).map(
+				([size_numcode, items]) => ({
+					size_numcode,
+					qty: items.length * qtyCoefficient
+				})
+			)
+
+			await this.inventoryAuditService.updateStockQuantity({ mo_no: commandNumber }, 'instock_qty', sizeQty)
+
 			await this.epcInboundModel
 				.updateMany({ mo_no: commandNumber }, { $set: { deleted: true, stored_at: new Date() } })
 				.exec()

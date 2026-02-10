@@ -12,8 +12,9 @@ import { isEmpty, isNil } from 'lodash'
 import { I18nContext, I18nService } from 'nestjs-i18n'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { Brackets, DataSource, IsNull, UpdateResult } from 'typeorm'
+import { Brackets, DataSource, In, IsNull, UpdateResult } from 'typeorm'
 import { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity'
+import { InventoryType } from '../constants'
 import { UpdateInventoryReportDTO, UpdateInventoryReportQueryDTO } from '../dto/inventory-report.dto'
 import { InventoryAuditEntity } from '../entities/inventory-report.entity'
 import { IInventoryReportQueryResult, IInventoryReportResponse } from '../interfaces'
@@ -39,6 +40,30 @@ export class InventoryAuditService {
 				...item,
 				detail: SuperJson.parse<IInventoryReportResponse[number]['detail']>(item.detail, 1)
 			}
+		})
+	}
+
+	public async updateStockQuantity(
+		query: Required<Pick<UpdateInventoryReportQueryDTO, 'mo_no'>>,
+		updateField: Extract<keyof InventoryAuditEntity, 'instock_qty' | 'outstock_qty'>,
+		payload: Array<{ size_numcode: string; qty: number }>
+	) {
+		return await Array.fromAsync(payload, async ({ size_numcode, ...update }) => {
+			// TODO: get count distinct EPC from RFID tables (dv_InvRFIDrecorddet & dv_InvRFIDrecorddet_backup_Daily) by "mo_no", "size_code" and "record_time" instead of using the provided qty
+			return await this.updateOneInventoryRecord(
+				{
+					...query,
+					size_numcode,
+					inv_type: InventoryType.FINISHED_GOOD,
+					inv_year_month: format(new Date(), 'yyyyMM')
+				},
+				{
+					[updateField]: () => `${updateField} + ${update.qty}`,
+					final_stock_qty: () =>
+						`inv_initialqty + ${update.qty} + inv_istotalqty + inv_manualqty - inv_ostotalqty - inv_manualqtyout`
+				},
+				{ exactMatch: false }
+			)
 		})
 	}
 
@@ -131,18 +156,22 @@ export class InventoryAuditService {
 
 	private async updateOneInventoryRecord(
 		queries: UpdateInventoryReportQueryDTO & { size_numcode: string },
-		update: QueryDeepPartialEntity<InventoryAuditEntity>
+		update: QueryDeepPartialEntity<InventoryAuditEntity>,
+		options: { exactMatch?: boolean } = { exactMatch: true }
 	) {
+		const POSSIBLE_SIZE_PREFIXES = ['', '0', 'K', 'T']
+		const sizeVariants = POSSIBLE_SIZE_PREFIXES.map((prefix) => `${prefix}${queries.size_numcode.replace(/^0/, '')}`)
+
 		return await this.dataSource
 			.getRepository(InventoryAuditEntity)
 			.createQueryBuilder()
 			.update()
 			.set(update)
 			.where({
-				inv_type: queries.inv_type,
-				size_numcode: queries.size_numcode,
 				mo_no: queries.mo_no,
-				inv_year_month: queries.inv_year_month
+				inv_type: queries.inv_type,
+				inv_year_month: queries.inv_year_month,
+				size_numcode: options.exactMatch ? queries.size_numcode : In(sizeVariants)
 			})
 			.andWhere(
 				new Brackets((qb) => {
