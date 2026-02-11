@@ -5,6 +5,7 @@ import { TENANCY_DATA_SOURCE } from '@/modules/tenancy/constants'
 import { UserEntity } from '@/modules/user/entities/user.entity'
 import { Inject, Injectable, Scope } from '@nestjs/common'
 import { REQUEST } from '@nestjs/core'
+import { OnEvent } from '@nestjs/event-emitter'
 import { addMonths, format } from 'date-fns'
 import { Workbook } from 'exceljs'
 import { FastifyRequest } from 'fastify'
@@ -43,24 +44,45 @@ export class InventoryAuditService {
 		})
 	}
 
-	public async updateStockQuantity(
-		query: Required<Pick<UpdateInventoryReportQueryDTO, 'mo_no'>>,
-		updateField: Extract<keyof InventoryAuditEntity, 'instock_qty' | 'outstock_qty'>,
-		payload: Array<{ size_numcode: string; qty: number }>
-	) {
-		return await Array.fromAsync(payload, async ({ size_numcode, ...update }) => {
+	@OnEvent('inventory.inbound')
+	public async updateInboundInventory({ mo_no, sizes }: { mo_no: string; sizes: string[] }) {
+		return await Array.fromAsync(sizes, async (size_numcode) => {
 			// TODO: get count distinct EPC from RFID tables (dv_InvRFIDrecorddet & dv_InvRFIDrecorddet_backup_Daily) by "mo_no", "size_code" and "record_time" instead of using the provided qty
+			const monthlyInboundQty = await this.getMonthlyInboundQty(mo_no, size_numcode)
 			return await this.updateOneInventoryRecord(
 				{
-					...query,
+					mo_no,
 					size_numcode,
 					inv_type: InventoryType.FINISHED_GOOD,
 					inv_year_month: format(new Date(), 'yyyyMM')
 				},
 				{
-					[updateField]: () => `${updateField} + ${update.qty}`,
+					instock_qty: monthlyInboundQty ?? 0,
 					final_stock_qty: () =>
-						`inv_initialqty + ${update.qty} + inv_istotalqty + inv_manualqty - inv_ostotalqty - inv_manualqtyout`
+						/* SQL */ `inv_initialqty + inv_manualqty + ${monthlyInboundQty} - inv_ostotalqty - inv_manualqtyout`
+				},
+				{ exactMatch: false }
+			)
+		})
+	}
+
+	@OnEvent('inventory.outbound')
+	public async updateOutboundInventory({ po, mo_no, sizes }: { po: string; mo_no: string; sizes: string[] }) {
+		return await Array.fromAsync(sizes, async (size_numcode) => {
+			// TODO: get count distinct EPC from RFID tables (dv_InvRFIDrecorddet & dv_InvRFIDrecorddet_backup_Daily) by "mo_no", "size_code" and "record_time" instead of using the provided qty
+			const monthlyOutboundQty = await this.getMonthlyOutboundQty(po, mo_no, size_numcode)
+			return await this.updateOneInventoryRecord(
+				{
+					po,
+					mo_no,
+					size_numcode,
+					inv_type: InventoryType.FINISHED_GOOD,
+					inv_year_month: format(new Date(), 'yyyyMM')
+				},
+				{
+					outstock_qty: monthlyOutboundQty ?? 0,
+					final_stock_qty: () =>
+						/* SQL */ `inv_initialqty + inv_istotalqty + inv_manualqty - ${monthlyOutboundQty} - inv_manualqtyout`
 				},
 				{ exactMatch: false }
 			)
@@ -180,6 +202,42 @@ export class InventoryAuditService {
 				})
 			)
 			.execute()
+	}
+
+	public async getMonthlyInboundQty(commandNumber: string, sizeCode: string): Promise<number> {
+		const [result] = await this.dataSource.query<Array<{ qty: number }>>(
+			/* SQL */ `
+				WITH CTE AS (
+					SELECT DISTINCT EPC_Code, rfid_status
+					FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet
+					WHERE mo_no = @0
+						AND size_code = @1
+						AND RIGHT(stationNO, 3) = '101'
+						AND rfid_status IN ('A', 'B')
+						AND record_time >= DATEFROMPARTS(YEAR(GETDATE()), MONTH(GETDATE()), 1)
+						AND record_time < DATEADD(MONTH, 1, DATEFROMPARTS(YEAR(GETDATE()), MONTH(GETDATE()), 1))
+					UNION
+					SELECT DISTINCT EPC_Code, rfid_status
+					FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet_backup_Daily
+					WHERE mo_no = @0
+						AND size_code = @1
+						AND RIGHT(stationNO, 3) = '101'
+						AND rfid_status IN ('A', 'B')
+						AND record_time >= DATEFROMPARTS(YEAR(GETDATE()), MONTH(GETDATE()), 1)
+						AND record_time < DATEADD(MONTH, 1, DATEFROMPARTS(YEAR(GETDATE()), MONTH(GETDATE()), 1))
+				)
+				SELECT 
+					SUM(CASE WHEN rfid_status = 'A' THEN 1 ELSE -1 END) AS qty
+				FROM CTE
+			`,
+			[commandNumber, sizeCode]
+		)
+		return result?.qty ?? 0
+	}
+
+	public async getMonthlyOutboundQty(po: string, commandNumber: string, sizeCode: string) {
+		// TODO: Implements get accumulated outbound quantity in current month
+		return 0
 	}
 
 	// #region Inventory report Excel
