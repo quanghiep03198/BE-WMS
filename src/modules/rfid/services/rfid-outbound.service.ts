@@ -101,18 +101,13 @@ export class RFIDOutboundService {
 			const data = epcToUpsert.map((value) => {
 				return {
 					...value,
-					factory_code_produce: factoryCode,
+					factory_code: factoryCode,
 					po: payload.po
 				}
 			})
 
 			for (const item of chunk(data, 100)) {
-				const values = item
-					.map((value) => {
-						return `('${value.epc}', '${value.po}', '${value.mo_no}', '${value.size_numcode}', '${value.station_no}', '${value.factory_code_produce}')`
-					})
-					.join(',')
-				await this.dataSourceDL.query(upsertStockoutQuery.replace(/:values/g, values))
+				await this.dataSourceDL.query(upsertStockoutQuery, [JSON.stringify(item)])
 			}
 
 			await this.epcOutboundModel

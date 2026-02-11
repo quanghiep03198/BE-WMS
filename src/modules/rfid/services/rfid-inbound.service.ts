@@ -86,34 +86,22 @@ export class RFIDInboundService {
 				}),
 				100
 			)) {
-				const values = item
-					.map((value) => {
-						return `(
-							'${value.epc}', '${value.mo_no}', '${value.size_numcode}', '${value.rfid_status}', '${value.rfid_use}', '${value.record_time}', '${value.station_no}',
-							'${value.quantity}', '${value.storage}', '${value.factory_code}', '${value.dept_code}', '${value.dept_name}'
-                  )`
-					})
-					.join(',')
-
-				await this.dataSourceTNC.query(upsertInventoryQuery.replace(':values', values))
+				await this.dataSourceTNC.query(upsertInventoryQuery, [JSON.stringify(item)])
 			}
 
-			const qtyCoefficient = data.rfid_status === InventoryActions.INBOUND ? 1 : -1
+			const sizeCodes = Object.keys(Object.groupBy(payload, (item) => item.size_numcode))
 
-			const sizeQty = Object.entries(Object.groupBy(payload, (item) => item.size_numcode)).map(
-				([size_numcode, items]) => ({
-					size_numcode,
-					qty: items.length * qtyCoefficient
-				})
-			)
-
-			await this.inventoryAuditService.updateStockQuantity({ mo_no: commandNumber }, 'instock_qty', sizeQty)
+			await this.inventoryAuditService.updateInboundInventory({ mo_no: commandNumber, sizes: sizeCodes })
 
 			await this.epcInboundModel
 				.updateMany({ mo_no: commandNumber }, { $set: { deleted: true, stored_at: new Date() } })
 				.exec()
 			await queryRunner.commitTransaction()
 			await session.commitTransaction()
+			await this.eventEmitter.emitAsync('inventory.inbound', {
+				mo_no: commandNumber,
+				sizes: sizeCodes
+			})
 		} catch (error) {
 			this.logger.error(error)
 			if (session.inTransaction()) await session.abortTransaction()
