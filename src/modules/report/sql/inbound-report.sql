@@ -79,11 +79,11 @@ SELECT
 		FOR JSON PATH
 	) AS size_data
 FROM rfid_inbound_cte ric
-LEFT JOIN DV_DATA_LAKE.dbo.dv_rfidmatchmst_cust rmc WITH(FORCESEEK)
+LEFT JOIN DV_DATA_LAKE.dbo.dv_rfidmatchmst_cust rmc 
 	ON ric.EPC_Code = rmc.EPC_Code
-LEFT JOIN wuerp_vnrd.dbo.ta_manufacturmst manf WITH(FORCESEEK)
+LEFT JOIN wuerp_vnrd.dbo.ta_manufacturmst manf 
 	ON manf.mo_no = ric.mo_no
-LEFT JOIN wuerp_vnrd.dbo.ta_productmst prod WITH (FORCESEEK)
+LEFT JOIN wuerp_vnrd.dbo.ta_productmst prod 
 	ON rmc.mat_code = prod.mat_code
 LEFT JOIN storage_list_cte slc
 	ON slc.mo_no = ric.mo_no AND slc.factory_code = ric.factory_code
