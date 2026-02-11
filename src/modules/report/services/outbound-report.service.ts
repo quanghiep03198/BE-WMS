@@ -43,15 +43,18 @@ export class OutboundReportService {
 	public async getOutboundHistory(factoryCode: string, po: string) {
 		return await this.dataSource
 			.query<IOutboundHistory[]>(this.outboundHistoryQuery, [factoryCode, po])
-			.then(([result]) => ({
-				...result,
-				outbound_history: SuperJson.parse<Exclude<IOutboundHistory['outbound_history'], string>>(
-					result.outbound_history,
-					3
-				),
-				overall: SuperJson.parse<Exclude<IOutboundHistory['overall'], string>>(result.overall, 3),
-				progress: ((result.accumulated_outbound_qty / result.po_qty) * 100).toFixed(2) + '%'
-			}))
+			.then(([result]) => {
+				if (!result) return null
+				return {
+					...result,
+					outbound_history: SuperJson.parse<Exclude<IOutboundHistory['outbound_history'], string>>(
+						result?.outbound_history,
+						3
+					),
+					overall: SuperJson.parse<Exclude<IOutboundHistory['overall'], string>>(result.overall, 3),
+					progress: ((result.accumulated_outbound_qty / result.po_qty) * 100).toFixed(2) + '%'
+				}
+			})
 	}
 
 	// #region Outbound report Excel
