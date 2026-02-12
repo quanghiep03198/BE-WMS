@@ -2,6 +2,7 @@ import { VALID_EPC_PATTERN } from '@/common/constants/regex'
 import { DATA_SOURCE_DATA_LAKE, DATA_SOURCE_ERP } from '@/databases/constants'
 import { InjectQueue } from '@nestjs/bullmq'
 import { BadRequestException, Injectable, InternalServerErrorException } from '@nestjs/common'
+import { EventEmitter2 } from '@nestjs/event-emitter'
 import { InjectModel } from '@nestjs/mongoose'
 import { InjectDataSource } from '@nestjs/typeorm'
 import { Queue } from 'bullmq'
@@ -37,7 +38,8 @@ export class RFIDOutboundService {
 		@InjectQueue(POST_DATA_OUTBOUND_QUEUE)
 		private readonly postDataQueue: Queue<PostReaderDataDTO>,
 		@InjectModel(EpcOutbound.name) private readonly epcOutboundModel: EpcModel,
-		private readonly i18nService: I18nService
+		private readonly i18nService: I18nService,
+		private readonly eventEmitter: EventEmitter2
 	) {}
 
 	public async postOutboundRFIDData(payload: PostReaderDataDTO) {
@@ -121,6 +123,36 @@ export class RFIDOutboundService {
 
 			await queryRunner.commitTransaction()
 			await session.commitTransaction()
+
+			if (Array.isArray(payload.sizes) && typeof payload.mo_no === 'string')
+				await this.eventEmitter.emitAsync('inventory.outbound', payload)
+			if (Array.isArray(payload.mo_no)) {
+				const scannedOrderSizes = await this.epcOutboundModel.aggregate<{ mo_no: string; sizes: string[] }>([
+					{
+						$match: {
+							mo_no: { $in: payload.mo_no }
+						}
+					},
+					{
+						$group: {
+							_id: '$mo_no',
+							size_numcodes: {
+								$addToSet: '$size_numcode'
+							}
+						}
+					},
+					{
+						$project: {
+							_id: 0,
+							mo_no: '$_id',
+							size_numcodes: 1
+						}
+					}
+				])
+				for (const item of scannedOrderSizes) {
+					await this.eventEmitter.emitAsync('inventory.outbound', { po: payload.po, ...item })
+				}
+			}
 		} catch (error) {
 			this.logger.error(error)
 			if (session.inTransaction()) await session.abortTransaction()

@@ -213,7 +213,7 @@ export class InventoryAuditService {
 					WHERE mo_no = @0
 						AND size_code = @1
 						AND RIGHT(stationNO, 3) = '101'
-						AND rfid_status IN ('A', 'B')
+						AND rfid_status = 'A'
 						AND record_time >= DATEFROMPARTS(YEAR(GETDATE()), MONTH(GETDATE()), 1)
 						AND record_time < DATEADD(MONTH, 1, DATEFROMPARTS(YEAR(GETDATE()), MONTH(GETDATE()), 1))
 					UNION
@@ -222,7 +222,7 @@ export class InventoryAuditService {
 					WHERE mo_no = @0
 						AND size_code = @1
 						AND RIGHT(stationNO, 3) = '101'
-						AND rfid_status IN ('A', 'B')
+						AND rfid_status = 'A'
 						AND record_time >= DATEFROMPARTS(YEAR(GETDATE()), MONTH(GETDATE()), 1)
 						AND record_time < DATEADD(MONTH, 1, DATEFROMPARTS(YEAR(GETDATE()), MONTH(GETDATE()), 1))
 				)
@@ -236,8 +236,36 @@ export class InventoryAuditService {
 	}
 
 	public async getMonthlyOutboundQty(po: string, commandNumber: string, sizeCode: string) {
-		// TODO: Implements get accumulated outbound quantity in current month
-		return 0
+		const [result] = await this.dataSource.query<Array<{ qty: number }>>(
+			/* SQL */ `
+				WITH CTE AS (
+					SELECT DISTINCT EPC_Code, rfid_status
+					FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet
+					WHERE po = @0
+						AND mo_no = @1
+						AND size_code = @2
+						AND RIGHT(stationNO, 3) = '103'
+						AND rfid_status = 'B'
+						AND record_time >= DATEFROMPARTS(YEAR(GETDATE()), MONTH(GETDATE()), 1)
+						AND record_time < DATEADD(MONTH, 1, DATEFROMPARTS(YEAR(GETDATE()), MONTH(GETDATE()), 1))
+					UNION
+					SELECT DISTINCT EPC_Code, rfid_status
+					FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet_backup_Daily
+					WHERE po = @0
+						AND mo_no = @1
+						AND size_code = @2
+						AND RIGHT(stationNO, 3) = '103'
+						AND rfid_status = 'B'
+						AND record_time >= DATEFROMPARTS(YEAR(GETDATE()), MONTH(GETDATE()), 1)
+						AND record_time < DATEADD(MONTH, 1, DATEFROMPARTS(YEAR(GETDATE()), MONTH(GETDATE()), 1))
+				)
+				SELECT 
+					SUM(CASE WHEN rfid_status = 'A' THEN 1 ELSE -1 END) AS qty
+				FROM CTE
+			`,
+			[po, commandNumber, sizeCode]
+		)
+		return result?.qty ?? 0
 	}
 
 	// #region Inventory report Excel
