@@ -125,7 +125,10 @@ export class RFIDOutboundService {
 			await session.commitTransaction()
 
 			if (Array.isArray(payload.sizes) && typeof payload.mo_no === 'string')
-				await this.eventEmitter.emitAsync('inventory.outbound', payload)
+				await this.eventEmitter.emitAsync('inventory.outbound', {
+					mo_no: payload.mo_no,
+					sizes: payload.sizes.map((item) => item.size_numcode)
+				})
 			if (Array.isArray(payload.mo_no)) {
 				const scannedOrderSizes = await this.epcOutboundModel.aggregate<{ mo_no: string; sizes: string[] }>([
 					{
@@ -136,7 +139,7 @@ export class RFIDOutboundService {
 					{
 						$group: {
 							_id: '$mo_no',
-							size_numcodes: {
+							sizes: {
 								$addToSet: '$size_numcode'
 							}
 						}
@@ -145,12 +148,12 @@ export class RFIDOutboundService {
 						$project: {
 							_id: 0,
 							mo_no: '$_id',
-							size_numcodes: 1
+							sizes: 1
 						}
 					}
 				])
 				for (const item of scannedOrderSizes) {
-					await this.eventEmitter.emitAsync('inventory.outbound', { po: payload.po, ...item })
+					await this.eventEmitter.emitAsync('inventory.outbound', item)
 				}
 			}
 		} catch (error) {
