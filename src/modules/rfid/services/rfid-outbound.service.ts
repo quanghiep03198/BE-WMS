@@ -2,6 +2,7 @@ import { VALID_EPC_PATTERN } from '@/common/constants/regex'
 import { DATA_SOURCE_DATA_LAKE, DATA_SOURCE_ERP } from '@/databases/constants'
 import { InjectQueue } from '@nestjs/bullmq'
 import { BadRequestException, Injectable, InternalServerErrorException } from '@nestjs/common'
+import { EventEmitter2 } from '@nestjs/event-emitter'
 import { InjectModel } from '@nestjs/mongoose'
 import { InjectDataSource } from '@nestjs/typeorm'
 import { Queue } from 'bullmq'
@@ -37,7 +38,8 @@ export class RFIDOutboundService {
 		@InjectQueue(POST_DATA_OUTBOUND_QUEUE)
 		private readonly postDataQueue: Queue<PostReaderDataDTO>,
 		@InjectModel(EpcOutbound.name) private readonly epcOutboundModel: EpcModel,
-		private readonly i18nService: I18nService
+		private readonly i18nService: I18nService,
+		private readonly eventEmitter: EventEmitter2
 	) {}
 
 	public async postOutboundRFIDData(payload: PostReaderDataDTO) {
@@ -101,18 +103,13 @@ export class RFIDOutboundService {
 			const data = epcToUpsert.map((value) => {
 				return {
 					...value,
-					factory_code_produce: factoryCode,
+					factory_code: factoryCode,
 					po: payload.po
 				}
 			})
 
 			for (const item of chunk(data, 100)) {
-				const values = item
-					.map((value) => {
-						return `('${value.epc}', '${value.po}', '${value.mo_no}', '${value.size_numcode}', '${value.station_no}', '${value.factory_code_produce}')`
-					})
-					.join(',')
-				await this.dataSourceDL.query(upsertStockoutQuery.replace(/:values/g, values))
+				await this.dataSourceDL.query(upsertStockoutQuery, [JSON.stringify(item)])
 			}
 
 			await this.epcOutboundModel
@@ -122,8 +119,43 @@ export class RFIDOutboundService {
 				)
 				.exec()
 
+			// TODO: update inventory audit table to reflect outbound action
+
 			await queryRunner.commitTransaction()
 			await session.commitTransaction()
+
+			if (Array.isArray(payload.sizes) && typeof payload.mo_no === 'string')
+				await this.eventEmitter.emitAsync('inventory.outbound', {
+					mo_no: payload.mo_no,
+					sizes: payload.sizes.map((item) => item.size_numcode)
+				})
+			if (Array.isArray(payload.mo_no)) {
+				const scannedOrderSizes = await this.epcOutboundModel.aggregate<{ mo_no: string; sizes: string[] }>([
+					{
+						$match: {
+							mo_no: { $in: payload.mo_no }
+						}
+					},
+					{
+						$group: {
+							_id: '$mo_no',
+							sizes: {
+								$addToSet: '$size_numcode'
+							}
+						}
+					},
+					{
+						$project: {
+							_id: 0,
+							mo_no: '$_id',
+							sizes: 1
+						}
+					}
+				])
+				for (const item of scannedOrderSizes) {
+					await this.eventEmitter.emitAsync('inventory.outbound', item)
+				}
+			}
 		} catch (error) {
 			this.logger.error(error)
 			if (session.inTransaction()) await session.abortTransaction()

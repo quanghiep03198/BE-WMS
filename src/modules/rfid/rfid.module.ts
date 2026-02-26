@@ -7,6 +7,7 @@ import { TypeOrmModule } from '@nestjs/typeorm'
 import MongooseDeletePlugin from 'mongoose-delete'
 import MongoosePaginatePlugin from 'mongoose-paginate-v2'
 import { PinoLogger } from 'nestjs-pino'
+import { InventoryModule } from '../inventory/inventory.module'
 import { TenacyMiddleware } from '../tenancy/tenancy.middleware'
 import { TenancyModule } from '../tenancy/tenancy.module'
 import { ThirdPartyApiModule } from '../third-party-api/third-party-api.module'
@@ -41,6 +42,7 @@ import { RFIDCustomerEntitySubscriber } from './subscribers/rfid-customer.entity
 	imports: [
 		TenancyModule,
 		ThirdPartyApiModule,
+		InventoryModule,
 		BullModule.registerQueue({ name: POST_DATA_INBOUND_QUEUE }),
 		BullModule.registerQueue({ name: POST_DATA_OUTBOUND_QUEUE }),
 		BullModule.registerQueue({ name: IMPORT_DATA_QUEUE }),

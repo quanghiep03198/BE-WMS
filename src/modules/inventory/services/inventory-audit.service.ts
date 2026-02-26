@@ -1,44 +1,85 @@
 import { ExcelColorPalette } from '@/common/constants/excel-color-palette'
 import { type AutoFitColumnOptions, autoFitColumns } from '@/common/helpers'
 import { SuperJson } from '@/common/utils'
-import { TENANCY_DATA_SOURCE } from '@/modules/tenancy/constants'
+import { DATA_SOURCE_DATA_LAKE } from '@/databases/constants'
 import { UserEntity } from '@/modules/user/entities/user.entity'
-import { Inject, Injectable, Scope } from '@nestjs/common'
-import { REQUEST } from '@nestjs/core'
+import { Injectable } from '@nestjs/common'
+import { OnEvent } from '@nestjs/event-emitter'
+import { InjectDataSource } from '@nestjs/typeorm'
 import { addMonths, format } from 'date-fns'
 import { Workbook } from 'exceljs'
-import { FastifyRequest } from 'fastify'
 import { isEmpty, isNil } from 'lodash'
 import { I18nContext, I18nService } from 'nestjs-i18n'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { Brackets, DataSource, IsNull, UpdateResult } from 'typeorm'
+import { Brackets, DataSource, In, IsNull, UpdateResult } from 'typeorm'
 import { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity'
+import { InventoryType } from '../constants'
 import { UpdateInventoryReportDTO, UpdateInventoryReportQueryDTO } from '../dto/inventory-report.dto'
 import { InventoryAuditEntity } from '../entities/inventory-report.entity'
 import { IInventoryReportQueryResult, IInventoryReportResponse } from '../interfaces'
 
-@Injectable({ scope: Scope.REQUEST })
+@Injectable()
 export class InventoryAuditService {
 	private readonly inventoryReportQuery: string = readFileSync(join(__dirname, '../sql/inventory-audit.sql'), 'utf-8')
 
 	constructor(
-		@Inject(TENANCY_DATA_SOURCE) private readonly dataSource: DataSource,
-		@Inject(REQUEST) private readonly request: FastifyRequest['raw'],
+		@InjectDataSource(DATA_SOURCE_DATA_LAKE) private readonly dataSource: DataSource,
 		private readonly i18nService: I18nService
 	) {}
 
-	public async getMonthlyInventoryAudit(month): Promise<IInventoryReportResponse> {
-		const factory = this.request.headers['x-user-factory']
+	public async getMonthlyInventoryAudit(month, factoryCode): Promise<IInventoryReportResponse> {
 		const data = await this.dataSource.query<IInventoryReportQueryResult[]>(this.inventoryReportQuery, [
 			month,
-			factory
+			factoryCode
 		])
 		return data.map((item) => {
 			return {
 				...item,
 				detail: SuperJson.parse<IInventoryReportResponse[number]['detail']>(item.detail, 1)
 			}
+		})
+	}
+
+	@OnEvent('inventory.inbound')
+	public async updateInboundInventory({ mo_no, sizes }: { mo_no: string; sizes: string[] }) {
+		return await Array.fromAsync(sizes, async (size_numcode) => {
+			const monthlyInboundQty = await this.getMonthlyInboundQty(mo_no, size_numcode)
+			return await this.updateOneInventoryRecord(
+				{
+					mo_no,
+					size_numcode,
+					inv_type: InventoryType.FINISHED_GOOD,
+					inv_year_month: format(new Date(), 'yyyyMM')
+				},
+				{
+					instock_qty: monthlyInboundQty ?? 0,
+					final_stock_qty: () =>
+						/* SQL */ `inv_initialqty + inv_manualqty + ${monthlyInboundQty} - inv_ostotalqty - inv_manualqtyout`
+				},
+				{ exactMatch: false }
+			)
+		})
+	}
+
+	@OnEvent('inventory.outbound')
+	public async updateOutboundInventory({ mo_no, sizes }: { mo_no: string; sizes: string[] }) {
+		return await Array.fromAsync(sizes, async (size_numcode) => {
+			const monthlyOutboundQty = await this.getMonthlyOutboundQty(mo_no, size_numcode)
+			return await this.updateOneInventoryRecord(
+				{
+					mo_no,
+					size_numcode,
+					inv_type: InventoryType.FINISHED_GOOD,
+					inv_year_month: format(new Date(), 'yyyyMM')
+				},
+				{
+					outstock_qty: monthlyOutboundQty ?? 0,
+					final_stock_qty: () =>
+						/* SQL */ `inv_initialqty + inv_istotalqty + inv_manualqty - ${monthlyOutboundQty} - inv_manualqtyout`
+				},
+				{ exactMatch: false }
+			)
 		})
 	}
 
@@ -131,18 +172,22 @@ export class InventoryAuditService {
 
 	private async updateOneInventoryRecord(
 		queries: UpdateInventoryReportQueryDTO & { size_numcode: string },
-		update: QueryDeepPartialEntity<InventoryAuditEntity>
+		update: QueryDeepPartialEntity<InventoryAuditEntity>,
+		options: { exactMatch?: boolean } = { exactMatch: true }
 	) {
+		const POSSIBLE_SIZE_PREFIXES = ['', '0', 'K', 'T']
+		const sizeVariants = POSSIBLE_SIZE_PREFIXES.map((prefix) => `${prefix}${queries.size_numcode.replace(/^0/, '')}`)
+
 		return await this.dataSource
 			.getRepository(InventoryAuditEntity)
 			.createQueryBuilder()
 			.update()
 			.set(update)
 			.where({
-				inv_type: queries.inv_type,
-				size_numcode: queries.size_numcode,
 				mo_no: queries.mo_no,
-				inv_year_month: queries.inv_year_month
+				inv_type: queries.inv_type,
+				inv_year_month: queries.inv_year_month,
+				size_numcode: options.exactMatch ? queries.size_numcode : In(sizeVariants)
 			})
 			.andWhere(
 				new Brackets((qb) => {
@@ -153,10 +198,69 @@ export class InventoryAuditService {
 			.execute()
 	}
 
+	public async getMonthlyInboundQty(commandNumber: string, sizeCode: string): Promise<number> {
+		const [result] = await this.dataSource.query<Array<{ qty: number }>>(
+			/* SQL */ `
+				WITH CTE AS (
+					SELECT DISTINCT EPC_Code, rfid_status
+					FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet
+					WHERE mo_no = @0
+						AND size_code = @1
+						AND RIGHT(stationNO, 3) = '101'
+						AND rfid_status = 'A'
+						AND record_time >= DATEFROMPARTS(YEAR(GETDATE()), MONTH(GETDATE()), 1)
+						AND record_time < DATEADD(MONTH, 1, DATEFROMPARTS(YEAR(GETDATE()), MONTH(GETDATE()), 1))
+					UNION
+					SELECT DISTINCT EPC_Code, rfid_status
+					FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet_backup_Daily
+					WHERE mo_no = @0
+						AND size_code = @1
+						AND RIGHT(stationNO, 3) = '101'
+						AND rfid_status = 'A'
+						AND record_time >= DATEFROMPARTS(YEAR(GETDATE()), MONTH(GETDATE()), 1)
+						AND record_time < DATEADD(MONTH, 1, DATEFROMPARTS(YEAR(GETDATE()), MONTH(GETDATE()), 1))
+				)
+				SELECT 
+					SUM(CASE WHEN rfid_status = 'A' THEN 1 ELSE -1 END) AS qty
+				FROM CTE
+			`,
+			[commandNumber, sizeCode]
+		)
+		return result?.qty ?? 0
+	}
+
+	public async getMonthlyOutboundQty(commandNumber: string, sizeCode: string) {
+		const [result] = await this.dataSource.query<Array<{ qty: number }>>(
+			/* SQL */ `
+				WITH CTE AS (
+					SELECT DISTINCT EPC_Code, rfid_status
+					FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet
+					WHERE mo_no = @0
+						AND size_code = @1
+						AND RIGHT(stationNO, 3) = '103'
+						AND rfid_status = 'B'
+						AND record_time >= DATEFROMPARTS(YEAR(GETDATE()), MONTH(GETDATE()), 1)
+						AND record_time < DATEADD(MONTH, 1, DATEFROMPARTS(YEAR(GETDATE()), MONTH(GETDATE()), 1))
+					UNION
+					SELECT DISTINCT EPC_Code, rfid_status
+					FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet_backup_Daily
+					WHERE mo_no = @0
+						AND size_code = @1
+						AND RIGHT(stationNO, 3) = '103'
+						AND rfid_status = 'B'
+						AND record_time >= DATEFROMPARTS(YEAR(GETDATE()), MONTH(GETDATE()), 1)
+						AND record_time < DATEADD(MONTH, 1, DATEFROMPARTS(YEAR(GETDATE()), MONTH(GETDATE()), 1))
+				)
+				SELECT COUNT(DISTINCT EPC_Code) AS qty FROM CTE
+			`,
+			[commandNumber, sizeCode]
+		)
+		return result?.qty ?? 0
+	}
+
 	// #region Inventory report Excel
-	public async exportExcelInventoryAudit(month: string, commandNumbers: string[]) {
+	public async exportExcelInventoryAudit(month: string, factoryCode: string, commandNumbers: string[]) {
 		const currentLanguage = I18nContext.current()?.lang
-		const factoryCode = this.request.headers['x-user-factory']
 		const workbook = new Workbook()
 		const worksheet = workbook.addWorksheet(
 			this.i18nService.t(`factory.${factoryCode}`, { lang: currentLanguage }) +
@@ -211,7 +315,7 @@ export class InventoryAuditService {
 			}
 		].map((item) => ({ ...item, alignment: { vertical: 'middle', horizontal: 'center' } }))
 
-		const data = await this.getMonthlyInventoryAudit(format(new Date(month), 'yyyyMM'))
+		const data = await this.getMonthlyInventoryAudit(format(new Date(month), 'yyyyMM'), factoryCode)
 
 		// * Add data to worksheet
 		const filteredData = data.filter(

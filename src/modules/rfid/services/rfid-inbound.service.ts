@@ -1,6 +1,7 @@
 import { VALID_EPC_PATTERN } from '@/common/constants/regex'
 import { DATA_SOURCE_DATA_LAKE, DATA_SOURCE_ERP } from '@/databases/constants'
 import { EventGateway } from '@/events/event.gateway'
+import { InventoryAuditService } from '@/modules/inventory/services/inventory-audit.service'
 import { TENANCY_DATA_SOURCE } from '@/modules/tenancy/constants'
 import { InjectQueue } from '@nestjs/bullmq'
 import {
@@ -41,6 +42,7 @@ export class RFIDInboundService {
 		@InjectQueue(POST_DATA_INBOUND_QUEUE) private readonly postDataQueue: Queue<PostReaderDataDTO>,
 		@InjectModel(EpcInbound.name) private readonly epcInboundModel: EpcModel,
 		private readonly i18nService: I18nService,
+		private readonly inventoryAuditService: InventoryAuditService,
 		private readonly eventEmitter: EventEmitter2,
 		private readonly eventGateway: EventGateway,
 		private readonly logger: PinoLogger
@@ -84,22 +86,22 @@ export class RFIDInboundService {
 				}),
 				100
 			)) {
-				const values = item
-					.map((value) => {
-						return `(
-							'${value.epc}', '${value.mo_no}', '${value.size_numcode}', '${value.rfid_status}', '${value.rfid_use}', '${value.record_time}', '${value.station_no}',
-							'${value.quantity}', '${value.storage}', '${value.factory_code}', '${value.dept_code}', '${value.dept_name}'
-                  )`
-					})
-					.join(',')
-
-				await this.dataSourceTNC.query(upsertInventoryQuery.replace(':values', values))
+				await this.dataSourceTNC.query(upsertInventoryQuery, [JSON.stringify(item)])
 			}
+
+			const sizeCodes = Object.keys(Object.groupBy(payload, (item) => item.size_numcode))
+
+			await this.inventoryAuditService.updateInboundInventory({ mo_no: commandNumber, sizes: sizeCodes })
+
 			await this.epcInboundModel
 				.updateMany({ mo_no: commandNumber }, { $set: { deleted: true, stored_at: new Date() } })
 				.exec()
 			await queryRunner.commitTransaction()
 			await session.commitTransaction()
+			await this.eventEmitter.emitAsync('inventory.inbound', {
+				mo_no: commandNumber,
+				sizes: sizeCodes
+			})
 		} catch (error) {
 			this.logger.error(error)
 			if (session.inTransaction()) await session.abortTransaction()

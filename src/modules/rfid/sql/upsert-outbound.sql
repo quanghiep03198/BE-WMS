@@ -1,5 +1,21 @@
+
+DECLARE @JsonData NVARCHAR(MAX) = @0;
+
+WITH CTE AS (
+   SELECT 
+      JSON_VALUE(value, '$.epc') EPC_Code,
+      JSON_VALUE(value, '$.po') po,
+      JSON_VALUE(value, '$.mo_no') mo_no,
+      JSON_VALUE(value, '$.size_numcode') size_code,
+      JSON_VALUE(value, '$.station_no') stationNO,
+      JSON_VALUE(value, '$.factory_code') FC_server_code
+   FROM OPENJSON(@JsonData)
+)
 MERGE INTO DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet AS target
-USING (VALUES :values) AS source (EPC_Code, po, mo_no, size_code, stationNO, FC_server_code)
+-- USING (VALUES :values) AS source (EPC_Code, po, mo_no, size_code, stationNO, FC_server_code)
+USING (
+   SELECT * FROM CTE
+) AS source
 ON 
    target.EPC_Code = source.EPC_Code 
    AND target.mo_no = source.mo_no
