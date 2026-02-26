@@ -30,7 +30,6 @@ export class AuthController {
 	@UseGuards(LocalAuthGuard)
 	async login(@User() user: RequestUser, @Res({ passthrough: true }) res: FastifyReply) {
 		const data = await this.authService.login(user)
-		console.log('ACCESS_TOKEN_COOKIE_NAME', ACCESS_TOKEN_COOKIE_NAME)
 		res.setCookie(ACCESS_TOKEN_COOKIE_NAME, data.accessToken, {
 			maxAge: ACCESS_TOKEN_COOKIE_EXPIRATION,
 			...this.defaultCookieOptions
