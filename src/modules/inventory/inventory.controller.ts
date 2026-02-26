@@ -46,9 +46,10 @@ export class InventoryController {
 	@RouteHandler({ endpoint: 'audit', method: HttpMethod.GET })
 	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
 	async getMonthlyInventoryReport(
+		@Headers(CommonRequestHeader.FACTORY_CODE) factoryCode: string,
 		@Query('month.eq', new DefaultValuePipe(format(new Date(), 'yyyy-MM'))) month: string
 	) {
-		return await this.inventoryReportService.getMonthlyInventoryAudit(format(new Date(month), 'yyyyMM'))
+		return await this.inventoryReportService.getMonthlyInventoryAudit(format(new Date(month), 'yyyyMM'), factoryCode)
 	}
 
 	@Get('audit/export')
@@ -57,9 +58,10 @@ export class InventoryController {
 	async exportMonthlyInventoryReport(
 		@Query('month.eq', new DefaultValuePipe(format(new Date(), 'yyyy-MM'))) month: string,
 		@Query('mo_no.in', new DefaultValuePipe([]), ParseArrayPipe) commandNumbers: string[],
+		@Headers(CommonRequestHeader.FACTORY_CODE) factoryCode: string,
 		@Res() reply: FastifyReply
 	) {
-		const buffer = await this.inventoryReportService.exportExcelInventoryAudit(month, commandNumbers)
+		const buffer = await this.inventoryReportService.exportExcelInventoryAudit(month, factoryCode, commandNumbers)
 		return reply.send(buffer)
 	}
 

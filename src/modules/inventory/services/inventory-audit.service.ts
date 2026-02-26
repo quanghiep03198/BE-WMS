@@ -1,14 +1,13 @@
 import { ExcelColorPalette } from '@/common/constants/excel-color-palette'
 import { type AutoFitColumnOptions, autoFitColumns } from '@/common/helpers'
 import { SuperJson } from '@/common/utils'
-import { TENANCY_DATA_SOURCE } from '@/modules/tenancy/constants'
+import { DATA_SOURCE_DATA_LAKE } from '@/databases/constants'
 import { UserEntity } from '@/modules/user/entities/user.entity'
-import { Inject, Injectable, Scope } from '@nestjs/common'
-import { REQUEST } from '@nestjs/core'
+import { Injectable } from '@nestjs/common'
 import { OnEvent } from '@nestjs/event-emitter'
+import { InjectDataSource } from '@nestjs/typeorm'
 import { addMonths, format } from 'date-fns'
 import { Workbook } from 'exceljs'
-import { FastifyRequest } from 'fastify'
 import { isEmpty, isNil } from 'lodash'
 import { I18nContext, I18nService } from 'nestjs-i18n'
 import { readFileSync } from 'node:fs'
@@ -20,21 +19,19 @@ import { UpdateInventoryReportDTO, UpdateInventoryReportQueryDTO } from '../dto/
 import { InventoryAuditEntity } from '../entities/inventory-report.entity'
 import { IInventoryReportQueryResult, IInventoryReportResponse } from '../interfaces'
 
-@Injectable({ scope: Scope.REQUEST })
+@Injectable()
 export class InventoryAuditService {
 	private readonly inventoryReportQuery: string = readFileSync(join(__dirname, '../sql/inventory-audit.sql'), 'utf-8')
 
 	constructor(
-		@Inject(TENANCY_DATA_SOURCE) private readonly dataSource: DataSource,
-		@Inject(REQUEST) private readonly request: FastifyRequest['raw'],
+		@InjectDataSource(DATA_SOURCE_DATA_LAKE) private readonly dataSource: DataSource,
 		private readonly i18nService: I18nService
 	) {}
 
-	public async getMonthlyInventoryAudit(month): Promise<IInventoryReportResponse> {
-		const factory = this.request.headers['x-user-factory']
+	public async getMonthlyInventoryAudit(month, factoryCode): Promise<IInventoryReportResponse> {
 		const data = await this.dataSource.query<IInventoryReportQueryResult[]>(this.inventoryReportQuery, [
 			month,
-			factory
+			factoryCode
 		])
 		return data.map((item) => {
 			return {
@@ -47,7 +44,6 @@ export class InventoryAuditService {
 	@OnEvent('inventory.inbound')
 	public async updateInboundInventory({ mo_no, sizes }: { mo_no: string; sizes: string[] }) {
 		return await Array.fromAsync(sizes, async (size_numcode) => {
-			// TODO: get count distinct EPC from RFID tables (dv_InvRFIDrecorddet & dv_InvRFIDrecorddet_backup_Daily) by "mo_no", "size_code" and "record_time" instead of using the provided qty
 			const monthlyInboundQty = await this.getMonthlyInboundQty(mo_no, size_numcode)
 			return await this.updateOneInventoryRecord(
 				{
@@ -67,13 +63,11 @@ export class InventoryAuditService {
 	}
 
 	@OnEvent('inventory.outbound')
-	public async updateOutboundInventory({ po, mo_no, sizes }: { po: string; mo_no: string; sizes: string[] }) {
+	public async updateOutboundInventory({ mo_no, sizes }: { mo_no: string; sizes: string[] }) {
 		return await Array.fromAsync(sizes, async (size_numcode) => {
-			// TODO: get count distinct EPC from RFID tables (dv_InvRFIDrecorddet & dv_InvRFIDrecorddet_backup_Daily) by "mo_no", "size_code" and "record_time" instead of using the provided qty
-			const monthlyOutboundQty = await this.getMonthlyOutboundQty(po, mo_no, size_numcode)
+			const monthlyOutboundQty = await this.getMonthlyOutboundQty(mo_no, size_numcode)
 			return await this.updateOneInventoryRecord(
 				{
-					po,
 					mo_no,
 					size_numcode,
 					inv_type: InventoryType.FINISHED_GOOD,
@@ -235,15 +229,14 @@ export class InventoryAuditService {
 		return result?.qty ?? 0
 	}
 
-	public async getMonthlyOutboundQty(po: string, commandNumber: string, sizeCode: string) {
+	public async getMonthlyOutboundQty(commandNumber: string, sizeCode: string) {
 		const [result] = await this.dataSource.query<Array<{ qty: number }>>(
 			/* SQL */ `
 				WITH CTE AS (
 					SELECT DISTINCT EPC_Code, rfid_status
 					FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet
-					WHERE po = @0
-						AND mo_no = @1
-						AND size_code = @2
+					WHERE mo_no = @0
+						AND size_code = @1
 						AND RIGHT(stationNO, 3) = '103'
 						AND rfid_status = 'B'
 						AND record_time >= DATEFROMPARTS(YEAR(GETDATE()), MONTH(GETDATE()), 1)
@@ -251,27 +244,23 @@ export class InventoryAuditService {
 					UNION
 					SELECT DISTINCT EPC_Code, rfid_status
 					FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet_backup_Daily
-					WHERE po = @0
-						AND mo_no = @1
-						AND size_code = @2
+					WHERE mo_no = @0
+						AND size_code = @1
 						AND RIGHT(stationNO, 3) = '103'
 						AND rfid_status = 'B'
 						AND record_time >= DATEFROMPARTS(YEAR(GETDATE()), MONTH(GETDATE()), 1)
 						AND record_time < DATEADD(MONTH, 1, DATEFROMPARTS(YEAR(GETDATE()), MONTH(GETDATE()), 1))
 				)
-				SELECT 
-					SUM(CASE WHEN rfid_status = 'A' THEN 1 ELSE -1 END) AS qty
-				FROM CTE
+				SELECT COUNT(DISTINCT EPC_Code) AS qty FROM CTE
 			`,
-			[po, commandNumber, sizeCode]
+			[commandNumber, sizeCode]
 		)
 		return result?.qty ?? 0
 	}
 
 	// #region Inventory report Excel
-	public async exportExcelInventoryAudit(month: string, commandNumbers: string[]) {
+	public async exportExcelInventoryAudit(month: string, factoryCode: string, commandNumbers: string[]) {
 		const currentLanguage = I18nContext.current()?.lang
-		const factoryCode = this.request.headers['x-user-factory']
 		const workbook = new Workbook()
 		const worksheet = workbook.addWorksheet(
 			this.i18nService.t(`factory.${factoryCode}`, { lang: currentLanguage }) +
@@ -326,7 +315,7 @@ export class InventoryAuditService {
 			}
 		].map((item) => ({ ...item, alignment: { vertical: 'middle', horizontal: 'center' } }))
 
-		const data = await this.getMonthlyInventoryAudit(format(new Date(month), 'yyyyMM'))
+		const data = await this.getMonthlyInventoryAudit(format(new Date(month), 'yyyyMM'), factoryCode)
 
 		// * Add data to worksheet
 		const filteredData = data.filter(
