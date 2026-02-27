@@ -6,6 +6,7 @@ import { Inject, Injectable } from '@nestjs/common'
 import { Workbook } from 'exceljs'
 import { I18nContext, I18nService } from 'nestjs-i18n'
 import { DataSource } from 'typeorm'
+import { DefectiveCategory, DefectiveGoodsSource } from '../constants'
 import { DefectiveGoodsEntity } from '../entities/defective-goods.entity'
 import { DefectiveGoodsInboundService } from './defective-inbound.service'
 
@@ -90,9 +91,11 @@ export class DefectiveGoodsInventoryService {
 				brand_name: string
 				po: string
 				mo_no: string
+				defective_category: DefectiveCategory
 				factory_shoes_style: string
 				cust_shoes_style: string
 				storage_location: string
+				shoe_source: DefectiveGoodsSource
 				color_sn: string
 				size_data: string
 			}>()
@@ -108,6 +111,9 @@ export class DefectiveGoodsInventoryService {
 		const currentLanguage = I18nContext.current()?.lang
 		const workbook = new Workbook()
 		const worksheet = workbook.addWorksheet(this.i18nService.t(`factory.${factoryCode}`, { lang: currentLanguage }))
+
+		const data = await this.getDefectiveGoodsInventory()
+
 		worksheet.columns = [
 			{
 				header: this.i18nService.t('erp.fields.brand_name', { lang: currentLanguage }),
@@ -142,7 +148,6 @@ export class DefectiveGoodsInventoryService {
 				key: 'storage_location'
 			}
 		].map((item) => ({ ...item, alignment: { vertical: 'middle', horizontal: 'center' } }))
-		const data = await this.getDefectiveGoodsInventory()
 
 		for (const record of data) {
 			const row = worksheet.addRow({
@@ -194,6 +199,67 @@ export class DefectiveGoodsInventoryService {
 		worksheet.getCell('A1').font = { bold: true, size: 16 }
 		worksheet.getCell('A1').value = this.i18nService.t('defective-goods.defective_goods_inventory_report', {
 			lang: currentLanguage
+		})
+
+		// * Summary rows
+		const summaryRowHead = worksheet.addRow(Array.from({ length: worksheet.columns.length }, () => null))
+		const summaryRow = worksheet.addRow(Array.from({ length: worksheet.columns.length }, () => null))
+		summaryRowHead.height = 30
+		summaryRow.height = 30
+
+		worksheet.mergeCells(`A${summaryRowHead.number}:B${summaryRowHead.number}`)
+		worksheet.mergeCells(`C${summaryRowHead.number}:D${summaryRowHead.number}`)
+		worksheet.mergeCells(`E${summaryRowHead.number}:F${summaryRowHead.number}`)
+		worksheet.mergeCells(`G${summaryRowHead.number}:H${summaryRowHead.number}`)
+
+		worksheet.mergeCells(`A${summaryRow.number}:B${summaryRow.number}`)
+		worksheet.mergeCells(`C${summaryRow.number}:D${summaryRow.number}`)
+		worksheet.mergeCells(`E${summaryRow.number}:F${summaryRow.number}`)
+		worksheet.mergeCells(`G${summaryRow.number}:H${summaryRow.number}`)
+
+		worksheet.getCell(`A${summaryRowHead.number}`).value = this.i18nService.t('defective-goods.categories.B', {
+			lang: currentLanguage
+		})
+		worksheet.getCell(`C${summaryRowHead.number}`).value = this.i18nService.t('defective-goods.categories.C', {
+			lang: currentLanguage
+		})
+		worksheet.getCell(`E${summaryRowHead.number}`).value = this.i18nService.t('defective-goods.categories.RD', {
+			lang: currentLanguage
+		})
+		worksheet.getCell(`G${summaryRowHead.number}`).value = this.i18nService.t('common.fields.total', {
+			lang: currentLanguage
+		})
+
+		worksheet.getCell(`A${summaryRow.number}`).value = data
+			.filter((item) => item.defective_category === DefectiveCategory.B_GRADE)
+			.reduce((acc, curr) => acc + curr.size_data.reduce((_acc, _curr) => +_acc + _curr.qty, 0), 0)
+		worksheet.getCell(`C${summaryRow.number}`).value = data
+			.filter((item) => item.defective_category === DefectiveCategory.C_GRADE)
+			.reduce((acc, curr) => acc + curr.size_data.reduce((_acc, _curr) => +_acc + _curr.qty, 0), 0)
+		worksheet.getCell(`E${summaryRow.number}`).value = data
+			.filter((item) => item.defective_category === DefectiveCategory.RESEARCH_DEVELOPMENT)
+			.reduce((acc, curr) => acc + curr.size_data.reduce((_acc, _curr) => +_acc + _curr.qty, 0), 0)
+		worksheet.getCell(`H${summaryRow.number}`).value = data.reduce(
+			(acc, curr) => acc + curr.size_data.reduce((_acc, _curr) => +_acc + _curr.qty, 0),
+			0
+		)
+
+		summaryRowHead.eachCell((cell) => {
+			cell.font = { bold: true, size: 14 }
+			cell.style.fill = {
+				type: 'pattern',
+				pattern: 'solid',
+				fgColor: { argb: ExcelColorPalette.BG_LIGHT_NEUTRAL }
+			}
+		})
+
+		summaryRow.eachCell((cell) => {
+			cell.font = { bold: true, size: 14 }
+			cell.style.fill = {
+				type: 'pattern',
+				pattern: 'solid',
+				fgColor: { argb: ExcelColorPalette.BG_LIGHT_BLUE }
+			}
 		})
 
 		// * Freeze header row
