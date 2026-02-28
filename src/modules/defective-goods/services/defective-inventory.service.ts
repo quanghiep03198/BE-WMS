@@ -1,9 +1,10 @@
 import { ExcelColorPalette } from '@/common/constants/excel-color-palette'
-import { applyCommonStyles, AutoFitColumnOptions, autoFitColumns } from '@/common/helpers'
+import { applyCommonStyles, AutoFitColumnOptions, autoFitColumns, getLastColumnLetter } from '@/common/helpers'
 import { SuperJson } from '@/common/utils'
 import { TENANCY_DATA_SOURCE } from '@/modules/tenancy/constants'
 import { Inject, Injectable } from '@nestjs/common'
 import { Workbook } from 'exceljs'
+import { omit } from 'lodash'
 import { I18nContext, I18nService } from 'nestjs-i18n'
 import { DataSource } from 'typeorm'
 import { DefectiveCategory, DefectiveGoodsSource } from '../constants'
@@ -114,18 +115,58 @@ export class DefectiveGoodsInventoryService {
 
 		const data = await this.getDefectiveGoodsInventory()
 
+		const distinctSizes = Array.from(
+			new Set(data.flatMap((item) => item.size_data.map((size) => size.size_numcode.replace(/^0/, '') + '#')))
+		).sort((a, b) => Number.parseFloat(a) - Number.parseFloat(b))
+
+		const flattenData = data.map((item) => {
+			const _item = omit(item, ['size_data'])
+			const sizes: { [key: string]: number | undefined } = {}
+			distinctSizes.forEach((size) => {
+				sizes[size] = item.size_data.find((i) => i.size_numcode.replace(/^0/, '') + '#' === size)?.qty
+			})
+			const combined = {
+				defective_category: this.i18nService.t(`defective-goods.categories.${item.defective_category}`, {
+					lang: currentLanguage
+				}),
+				total: item.size_data.reduce((acc, curr) => acc + curr.qty, 0),
+				po: item.po ? item.po.toUpperCase() : '',
+				..._item,
+				...sizes
+			}
+			return Object.fromEntries(
+				Object.entries(combined).sort((a, b) =>
+					a[0].localeCompare(b[0], undefined, { numeric: true, sensitivity: 'base' })
+				)
+			) as {
+				brand_name: string
+				po: string
+				mo_no: string
+				defective_category: DefectiveCategory
+				factory_shoes_style: string
+				cust_shoes_style: string
+				storage_location: string
+				shoe_source: DefectiveGoodsSource
+				color_sn: string
+				[key: `${number}#`]: number | undefined
+			}
+		})
+
 		worksheet.columns = [
 			{
 				header: this.i18nService.t('erp.fields.brand_name', { lang: currentLanguage }),
-				key: 'brand_name'
+				key: 'brand_name',
+				width: 15
 			},
 			{
 				header: this.i18nService.t('erp.fields.po', { lang: currentLanguage }),
-				key: 'po'
+				key: 'po',
+				width: 15
 			},
 			{
 				header: this.i18nService.t('erp.fields.mo_no', { lang: currentLanguage }),
-				key: 'mo_no'
+				key: 'mo_no',
+				width: 15
 			},
 			{
 				header: this.i18nService.t('erp.fields.cust_shoes_style', { lang: currentLanguage }),
@@ -146,50 +187,36 @@ export class DefectiveGoodsInventoryService {
 			{
 				header: this.i18nService.t('warehouse.fields.storage_name', { lang: currentLanguage }),
 				key: 'storage_location'
+			},
+			...distinctSizes.map((size) => ({
+				header: size,
+				key: size,
+				width: 6
+			})),
+			{
+				header: this.i18nService.t('common.fields.total', { lang: currentLanguage }),
+				key: 'total'
 			}
-		].map((item) => ({ ...item, alignment: { vertical: 'middle', horizontal: 'center' } }))
+		]
 
-		for (const record of data) {
+		for (const record of flattenData) {
 			const row = worksheet.addRow({
 				...record,
 				factory_code: this.i18nService.t(`factory.${factoryCode}`, { lang: currentLanguage })
 			})
 			row.height = 20
 			row.alignment = { vertical: 'middle', horizontal: 'center' }
-			for (let i = 1; i <= worksheet.columns.length; i++) {
-				row.getCell(i).fill = {
-					type: 'pattern',
-					pattern: 'solid',
-					fgColor: { argb: ExcelColorPalette.BG_LIGHT_BLUE }
-				}
-			}
-			for (const subRecord of record.size_data) {
-				const row = worksheet.addRow([])
-				row.alignment = { vertical: 'middle', horizontal: 'center' }
-				row.getCell(2).value = subRecord.size_numcode + '#'
-				row.getCell(2).fill = {
-					type: 'pattern',
-					pattern: 'solid',
-					fgColor: { argb: ExcelColorPalette.BG_LIGHT_YELLOW }
-				}
-				row.getCell(3).value = subRecord.qty
-				row.getCell(3).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'f2dcdb' } }
-			}
 		}
 
-		// * Auto fit columns
-		autoFitColumns.call(worksheet, {
-			minWidth: 20,
-			excludeColumns: []
-		} satisfies AutoFitColumnOptions)
-
+		const lastColumnLetter = getLastColumnLetter(worksheet.columns.length)
+		const secondLastColumnLetter = getLastColumnLetter(worksheet.columns.length - 1)
 		// * Add title
 		worksheet.insertRow(1, null)
 		worksheet.getRow(1).font = { bold: true, size: 14 }
 		worksheet.getRow(1).height = 30
 		worksheet.getRow(2).font = { bold: true }
 		worksheet.getRow(2).height = 30
-		worksheet.mergeCells('A1:H1')
+		worksheet.mergeCells(`A1:${lastColumnLetter}1`)
 		worksheet.getCell('A1').alignment = { vertical: 'middle', horizontal: 'center' }
 		worksheet.getCell('A1').fill = {
 			type: 'pattern',
@@ -202,71 +229,41 @@ export class DefectiveGoodsInventoryService {
 		})
 
 		// * Summary rows
-		const summaryRowHead = worksheet.addRow(Array.from({ length: worksheet.columns.length }, () => null))
-		const summaryRow = worksheet.addRow(Array.from({ length: worksheet.columns.length }, () => null))
-		summaryRowHead.height = 30
+		const summaryRow = worksheet.addRow(Array.from({ length: worksheet.columnCount }, () => null))
+
 		summaryRow.height = 30
 
-		worksheet.mergeCells(`A${summaryRowHead.number}:B${summaryRowHead.number}`)
-		worksheet.mergeCells(`C${summaryRowHead.number}:D${summaryRowHead.number}`)
-		worksheet.mergeCells(`E${summaryRowHead.number}:F${summaryRowHead.number}`)
-		worksheet.mergeCells(`G${summaryRowHead.number}:H${summaryRowHead.number}`)
-
-		worksheet.mergeCells(`A${summaryRow.number}:B${summaryRow.number}`)
-		worksheet.mergeCells(`C${summaryRow.number}:D${summaryRow.number}`)
-		worksheet.mergeCells(`E${summaryRow.number}:F${summaryRow.number}`)
-		worksheet.mergeCells(`G${summaryRow.number}:H${summaryRow.number}`)
-
-		worksheet.getCell(`A${summaryRowHead.number}`).value = this.i18nService.t('defective-goods.categories.B', {
-			lang: currentLanguage
-		})
-		worksheet.getCell(`C${summaryRowHead.number}`).value = this.i18nService.t('defective-goods.categories.C', {
-			lang: currentLanguage
-		})
-		worksheet.getCell(`E${summaryRowHead.number}`).value = this.i18nService.t('defective-goods.categories.RD', {
-			lang: currentLanguage
-		})
-		worksheet.getCell(`G${summaryRowHead.number}`).value = this.i18nService.t('common.fields.total', {
-			lang: currentLanguage
-		})
-
-		worksheet.getCell(`A${summaryRow.number}`).value = data
-			.filter((item) => item.defective_category === DefectiveCategory.B_GRADE)
-			.reduce((acc, curr) => acc + curr.size_data.reduce((_acc, _curr) => +_acc + _curr.qty, 0), 0)
-		worksheet.getCell(`C${summaryRow.number}`).value = data
-			.filter((item) => item.defective_category === DefectiveCategory.C_GRADE)
-			.reduce((acc, curr) => acc + curr.size_data.reduce((_acc, _curr) => +_acc + _curr.qty, 0), 0)
-		worksheet.getCell(`E${summaryRow.number}`).value = data
-			.filter((item) => item.defective_category === DefectiveCategory.RESEARCH_DEVELOPMENT)
-			.reduce((acc, curr) => acc + curr.size_data.reduce((_acc, _curr) => +_acc + _curr.qty, 0), 0)
-		worksheet.getCell(`H${summaryRow.number}`).value = data.reduce(
-			(acc, curr) => acc + curr.size_data.reduce((_acc, _curr) => +_acc + _curr.qty, 0),
+		worksheet.mergeCells(`A${summaryRow.number}:${secondLastColumnLetter}${summaryRow.number}`)
+		summaryRow.getCell(worksheet.columnCount - 1).value = this.i18nService.t('common.fields.total')
+		summaryRow.getCell(worksheet.columnCount).value = data.reduce(
+			(acc, curr) => acc + curr.size_data.reduce((_acc, _curr) => _acc + _curr.qty, 0),
 			0
 		)
-
-		summaryRowHead.eachCell((cell) => {
-			cell.font = { bold: true, size: 14 }
-			cell.style.fill = {
+		summaryRow.eachCell((cell) => {
+			cell.font = {
+				size: 12,
+				bold: true
+			}
+			cell.fill = {
 				type: 'pattern',
 				pattern: 'solid',
 				fgColor: { argb: ExcelColorPalette.BG_LIGHT_NEUTRAL }
 			}
 		})
 
-		summaryRow.eachCell((cell) => {
-			cell.font = { bold: true, size: 14 }
-			cell.style.fill = {
-				type: 'pattern',
-				pattern: 'solid',
-				fgColor: { argb: ExcelColorPalette.BG_LIGHT_BLUE }
-			}
-		})
-
 		// * Freeze header row
 		worksheet.views = [{ state: 'frozen', xSplit: 0, ySplit: 2 }]
 
+		// * Auto fit columns
+		autoFitColumns.call(worksheet, {
+			minWidth: 6,
+			excludeColumns: [...distinctSizes]
+		} satisfies AutoFitColumnOptions)
+
 		// * Cell styles
 		applyCommonStyles.call(worksheet)
+
+		worksheet.getRow(1).alignment = { vertical: 'middle', horizontal: 'center' }
 
 		return await workbook.xlsx.writeBuffer()
 	}
