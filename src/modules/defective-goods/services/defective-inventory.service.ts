@@ -126,13 +126,13 @@ export class DefectiveGoodsInventoryService {
 				sizes[size] = item.size_data.find((i) => i.size_numcode.replace(/^0/, '') + '#' === size)?.qty
 			})
 			const combined = {
+				..._item,
+				...sizes,
 				defective_category: this.i18nService.t(`defective-goods.categories.${item.defective_category}`, {
 					lang: currentLanguage
 				}),
 				total: item.size_data.reduce((acc, curr) => acc + curr.qty, 0),
-				po: item.po ? item.po.toUpperCase() : '',
-				..._item,
-				...sizes
+				po: item.po ? item.po.toUpperCase() : ''
 			}
 			return Object.fromEntries(
 				Object.entries(combined).sort((a, b) =>
@@ -202,11 +202,18 @@ export class DefectiveGoodsInventoryService {
 		for (const record of flattenData) {
 			const row = worksheet.addRow({
 				...record,
+
 				factory_code: this.i18nService.t(`factory.${factoryCode}`, { lang: currentLanguage })
 			})
 			row.height = 20
 			row.alignment = { vertical: 'middle', horizontal: 'center' }
 		}
+
+		// * Auto fit columns
+		autoFitColumns.call(worksheet, {
+			minWidth: 5,
+			excludeColumns: [...distinctSizes]
+		} satisfies AutoFitColumnOptions)
 
 		const lastColumnLetter = getLastColumnLetter(worksheet.columns.length)
 		const secondLastColumnLetter = getLastColumnLetter(worksheet.columns.length - 1)
@@ -231,14 +238,13 @@ export class DefectiveGoodsInventoryService {
 		// * Summary rows
 		const summaryRow = worksheet.addRow(Array.from({ length: worksheet.columnCount }, () => null))
 
-		summaryRow.height = 30
-
+		summaryRow.height = 24
+		worksheet.autoFilter = `A2:H${2 + flattenData.length}`
 		worksheet.mergeCells(`A${summaryRow.number}:${secondLastColumnLetter}${summaryRow.number}`)
 		summaryRow.getCell(worksheet.columnCount - 1).value = this.i18nService.t('common.fields.total')
-		summaryRow.getCell(worksheet.columnCount).value = data.reduce(
-			(acc, curr) => acc + curr.size_data.reduce((_acc, _curr) => _acc + _curr.qty, 0),
-			0
-		)
+		summaryRow.getCell(worksheet.columnCount).value = {
+			formula: `SUM(${lastColumnLetter}3:${lastColumnLetter}${summaryRow.number - 1})`
+		}
 		summaryRow.eachCell((cell) => {
 			cell.font = {
 				size: 12,
@@ -253,12 +259,6 @@ export class DefectiveGoodsInventoryService {
 
 		// * Freeze header row
 		worksheet.views = [{ state: 'frozen', xSplit: 0, ySplit: 2 }]
-
-		// * Auto fit columns
-		autoFitColumns.call(worksheet, {
-			minWidth: 6,
-			excludeColumns: [...distinctSizes]
-		} satisfies AutoFitColumnOptions)
 
 		// * Cell styles
 		applyCommonStyles.call(worksheet)
