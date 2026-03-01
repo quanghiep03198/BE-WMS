@@ -116,7 +116,7 @@ export class OutboundReportService {
 					fgColor: { argb: ExcelColorPalette.BG_LIGHT_BLUE }
 				}
 			}
-			//
+
 			const subHeaderRow = worksheet.addRow([])
 			subHeaderRow.font = { bold: true }
 			subHeaderRow.getCell(2).value = this.i18nService.t('erp.fields.size', { lang: currentLanguage })
@@ -161,7 +161,7 @@ export class OutboundReportService {
 		// * Auto fit columns
 		autoFitColumns.call(worksheet, { minWidth: 10 } satisfies AutoFitColumnOptions)
 
-		// * Add  header title
+		// * Add header title
 		worksheet.insertRow(1, null)
 		worksheet.mergeCells('A1:H1')
 		worksheet.getRow(1).height = 30
