@@ -5,14 +5,33 @@ export type AutoFitColumnOptions = { minWidth: number; excludeColumns?: string[]
 
 export function autoFitColumns(this: Worksheet, { minWidth = 6, excludeColumns }: AutoFitColumnOptions) {
 	this.columns.forEach((column) => {
-		let maxWidth: number = 0
-		if (column) {
-			column.eachCell({ includeEmpty: true }, (cell) => {
-				const cellWidth = cell.text.length
-				maxWidth = Math.max(maxWidth, minWidth, cellWidth)
-			})
-			column.width = Array.isArray(excludeColumns) && excludeColumns.includes(column.key) ? minWidth : maxWidth + 2
+		if (!column) return
+
+		if (Array.isArray(excludeColumns) && excludeColumns.includes(column.key)) {
+			column.width = minWidth
+			return
 		}
+
+		let maxWidth: number = minWidth
+		column.eachCell({ includeEmpty: true }, (cell) => {
+			const lines = cell.text.split(/\n/)
+			const longestLineWidth = Math.max(
+				...lines.map((line) => {
+					// Uppercase letters are wider than lowercase in proportional fonts (Calibri)
+					let width = 0
+					for (const char of line) {
+						if (char >= 'A' && char <= 'Z') width += 1.2
+						else if (char >= 'a' && char <= 'z') width += 1
+						else if (char >= '0' && char <= '9') width += 1.1
+						else width += 1
+					}
+					return width
+				})
+			)
+			const cellWidth = cell.font?.bold ? longestLineWidth * 1.2 : longestLineWidth
+			maxWidth = Math.max(maxWidth, cellWidth)
+		})
+		column.width = maxWidth + 2
 	})
 }
 
