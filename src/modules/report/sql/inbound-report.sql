@@ -99,5 +99,6 @@ GROUP BY
 ORDER BY ric.mo_no DESC
 OPTION (
 	OPTIMIZE FOR UNKNOWN,                        		-- * Avoid "Parameter Sniffing" issues
+	USE HINT('ENABLE_PARALLEL_PLAN_PREFERENCE'),    	-- * Prioritize parallel plan
 	RECOMPILE                                         	-- * Re-optimize for each execution
 );
