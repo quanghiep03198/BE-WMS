@@ -21,7 +21,9 @@ storage_list_cte AS (
 	FROM (
 		SELECT DISTINCT storage, mo_no 
 		FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet_backup_Daily
-		WHERE storage IS NOT NULL AND dept_name IS NOT NULL
+		WHERE isactive = 'Y' 
+			AND storage IS NOT NULL 
+			AND dept_name IS NOT NULL
 	) a
 	LEFT JOIN DV_DATA_LAKE.dbo.dv_warehouseccodedet b
 		ON a.storage = b.storage_num

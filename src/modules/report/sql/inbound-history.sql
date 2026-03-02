@@ -5,7 +5,8 @@ WITH daily_inbound_history_cte AS (
       CAST(a.record_time AS DATE) AS inbound_date
    FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet_backup_Daily a WITH (NOLOCK)
    WHERE 
-		a.rfid_status = 'A'
+		a.isactive = 'Y'
+		AND a.rfid_status = 'A'
 		AND a.record_time >= CAST(DATEADD(YEAR, -2, GETDATE()) AS DATE)
 		AND a.EPC_Code NOT LIKE '303429%'
 		AND a.EPC_Code NOT LIKE 'E28%'
@@ -23,7 +24,8 @@ inbound_history_by_size_cte AS (
       COUNT(DISTINCT a.EPC_Code) AS qty
    FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet_backup_Daily a WITH (NOLOCK)
    WHERE 
-		a.rfid_status = 'A'
+		a.isactive = 'Y'
+		AND a.rfid_status = 'A'
 		AND a.record_time >= CAST(DATEADD(YEAR, -2, GETDATE()) AS DATE)
 		AND a.EPC_Code NOT LIKE '303429%'
 		AND a.EPC_Code NOT LIKE 'E28%'
@@ -124,6 +126,7 @@ LEFT JOIN wuerp_vnrd.dbo.ta_shoefactorymst f ON f.shoestyle_systemcodefty = e.sh
 LEFT JOIN wuerp_vnrd.dbo.ta_brand g ON g.custbrand_id = e.custbrand_id
 WHERE 
    a.rfid_status = 'A'
+	AND a.isactive = 'Y'
    AND a.record_time >= CAST(DATEADD(YEAR, -2, GETDATE()) AS DATE)
    AND a.EPC_Code NOT LIKE '303429%'
    AND a.EPC_Code NOT LIKE 'E28%'

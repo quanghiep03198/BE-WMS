@@ -28,7 +28,8 @@ WITH base_data AS (
    LEFT JOIN wuerp_vnrd.dbo.ta_brand b
       ON b.custbrand_id = p.custbrand_id AND b.isactive = 'Y'
    WHERE
-      i.rfid_status = 'B'
+      i.isactive = 'Y'
+      AND i.rfid_status = 'B'
       AND RIGHT(i.stationNO, 5) = 'WH103'
       AND i.FC_server_code = @0
       AND i.po = @1
@@ -64,7 +65,8 @@ WITH base_data AS (
    LEFT JOIN wuerp_vnrd.dbo.ta_brand b 
       ON b.custbrand_id = p.custbrand_id AND b.isactive = 'Y'
    WHERE
-      i.rfid_status = 'B'
+      i.isactive = 'Y'
+      AND i.rfid_status = 'B'
       AND RIGHT(i.stationNO, 5) = 'WH103'
       AND i.FC_server_code = @0
       AND i.po = @1

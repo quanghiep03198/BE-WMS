@@ -27,7 +27,8 @@ SELECT
 INTO #tmp_rfid_data
 FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet_backup_Daily WITH (NOLOCK)
 WHERE 
-    rfid_status IN ('A', 'B')
+    isactive = 'Y' 
+    AND rfid_status IN ('A', 'B')
     AND RIGHT(stationNO, 3) IN ('101', '103')
     AND (
         (CAST(record_time AS DATE) >= CAST(@CurrentMonthStart AS DATE) AND CAST(record_time AS DATE) <= CAST(@CurrentPeriodEnd AS DATE)) OR

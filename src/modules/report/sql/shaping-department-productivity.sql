@@ -5,7 +5,8 @@ WITH rfid_inbound_cte AS (
 	SELECT EPC_Code, COALESCE(mo_no, @FallbackValue) AS mo_no, COALESCE(size_code, @FallbackValue) AS size_numcode, rfid_status, record_time, stationNO, FC_server_code AS factory_code, ISNULL(dept_name, @FallbackValue) AS dept_name, storage
 	FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet WITH (NOLOCK)
 	WHERE 
-		rfid_status = 'A'
+		isactive = 'Y' 
+		AND rfid_status = 'A'
 		AND stationNO LIKE 'CUS%WH10[12]'
 		AND FC_server_code = @0
 		AND mo_no NOT IN ('13D05B006', '13A08C003')
@@ -16,7 +17,8 @@ WITH rfid_inbound_cte AS (
 	SELECT EPC_Code, COALESCE(mo_no, @FallbackValue) AS mo_no, COALESCE(size_code, @FallbackValue) AS size_numcode, rfid_status, record_time, stationNO, FC_server_code AS factory_code, ISNULL(dept_name, @FallbackValue) AS dept_name, storage
 	FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet_backup_Daily WITH (NOLOCK)
 	WHERE 
-		rfid_status = 'A'
+		isactive = 'Y' 
+		AND rfid_status = 'A'
 		AND stationNO LIKE 'CUS%WH10[12]'
 		AND FC_server_code = @0
 		AND mo_no NOT IN ('13D05B006', '13A08C003')

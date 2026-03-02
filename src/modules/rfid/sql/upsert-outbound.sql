@@ -24,6 +24,7 @@ ON
    AND target.rfid_use = 'D'
 WHEN MATCHED THEN
    UPDATE SET 
+      isactive = 'Y',
       po = source.po,
       mo_no = source.mo_no, 
       size_code = source.size_code,

@@ -25,6 +25,7 @@ ON target.EPC_Code = source.EPC_Code
    AND target.rfid_status = 'A'
 WHEN MATCHED THEN
    UPDATE SET 
+      isactive = 'Y',
       created = GETDATE(),
       mo_no = source.mo_no, 
       rfid_status = source.rfid_status, 

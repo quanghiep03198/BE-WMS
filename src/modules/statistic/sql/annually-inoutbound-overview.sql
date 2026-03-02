@@ -28,7 +28,8 @@ inbound_combined AS (
       EPC_Code
    FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet WITH (NOLOCK)
    WHERE 
-      record_time >= @StartDate 
+      isactive = 'Y'
+      AND record_time >= @StartDate 
       AND record_time <= @EndDate
       AND rfid_status = 'A'
       AND stationNO LIKE '%WH101'
@@ -38,7 +39,8 @@ inbound_combined AS (
       EPC_Code
    FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet_backup_Daily WITH (NOLOCK)
    WHERE 
-      record_time >= @StartDate 
+      isactive = 'Y'
+      AND record_time >= @StartDate 
       AND record_time <= @EndDate
       AND rfid_status = 'A'
       AND stationNO LIKE '%WH101'
@@ -50,7 +52,8 @@ outbound_combined AS (
       EPC_Code
    FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet WITH (NOLOCK)
    WHERE 
-      record_time >= @StartDate 
+      isactive = 'Y'
+      AND record_time >= @StartDate 
       AND record_time <= @EndDate
       AND rfid_status = 'B'
       AND stationNO LIKE '%WH103'
@@ -62,7 +65,8 @@ outbound_combined AS (
       EPC_Code
    FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet_backup_Daily WITH (NOLOCK)
    WHERE 
-      record_time >= @StartDate 
+      isactive = 'Y'
+      AND record_time >= @StartDate 
       AND record_time <= @EndDate
       AND rfid_status = 'B'
       AND stationNO LIKE '%WH103'

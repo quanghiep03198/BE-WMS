@@ -204,7 +204,8 @@ export class InventoryAuditService {
 				WITH CTE AS (
 					SELECT DISTINCT EPC_Code, rfid_status
 					FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet
-					WHERE mo_no = @0
+					WHERE isactive = 'Y'
+						AND mo_no = @0
 						AND size_code = @1
 						AND RIGHT(stationNO, 3) = '101'
 						AND rfid_status = 'A'
@@ -213,7 +214,8 @@ export class InventoryAuditService {
 					UNION
 					SELECT DISTINCT EPC_Code, rfid_status
 					FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet_backup_Daily
-					WHERE mo_no = @0
+					WHERE isactive = 'Y'
+						AND mo_no = @0
 						AND size_code = @1
 						AND RIGHT(stationNO, 3) = '101'
 						AND rfid_status = 'A'
@@ -235,7 +237,8 @@ export class InventoryAuditService {
 				WITH CTE AS (
 					SELECT DISTINCT EPC_Code, rfid_status
 					FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet
-					WHERE mo_no = @0
+					WHERE isactive = 'Y'
+						AND mo_no = @0
 						AND size_code = @1
 						AND RIGHT(stationNO, 3) = '103'
 						AND rfid_status = 'B'
@@ -244,7 +247,8 @@ export class InventoryAuditService {
 					UNION
 					SELECT DISTINCT EPC_Code, rfid_status
 					FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet_backup_Daily
-					WHERE mo_no = @0
+					WHERE isactive = 'Y'
+						AND mo_no = @0
 						AND size_code = @1
 						AND RIGHT(stationNO, 3) = '103'
 						AND rfid_status = 'B'
