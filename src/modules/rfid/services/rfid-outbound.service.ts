@@ -13,10 +13,9 @@ import { PinoLogger } from 'nestjs-pino'
 import { readFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { DataSource } from 'typeorm'
-import { InventoryActions, POST_DATA_OUTBOUND_QUEUE } from '../constants'
+import { POST_DATA_OUTBOUND_QUEUE } from '../constants'
 import { UpsertStockOutDTO } from '../dto/rfid-outbound.dto'
 import { PostReaderDataDTO } from '../dto/rfid-shared.dto'
-import { RFIDInventoryBackupEntity } from '../entities/rifd-inventory.entity'
 import { EpcDocument, EpcModel, EpcOutbound } from '../schemas/epc.schema'
 import { EpcInformation, RFIDSearchParams } from '../types'
 
@@ -89,9 +88,9 @@ export class RFIDOutboundService {
 		const queryRunner = this.dataSourceDL.createQueryRunner()
 		const upsertStockoutQuery: string = readFileSync(resolve(join(__dirname, '../sql/upsert-outbound.sql')), 'utf-8')
 
-		const missingOutboundQty = await this.getIsOrderCompleted(payload.po)
+		const missingOutboundQty = await this.getMissingOrderQty(payload.po)
 
-		if (missingOutboundQty === 0 || epcToUpsert.length > missingOutboundQty)
+		if (typeof missingOutboundQty === 'number' && epcToUpsert.length > missingOutboundQty)
 			throw new BadRequestException(
 				this.i18nService.t('inoutbound.notification.over_outbound_limit', { lang: I18nContext.current()?.lang })
 			)
@@ -233,40 +232,26 @@ export class RFIDOutboundService {
 		} satisfies Pagination<EpcInformation>
 	}
 
-	private async getIsOrderCompleted(purchaseOrder: string): Promise<number> {
-		const inboundQueryCTE = this.dataSourceDL
-			.getRepository(RFIDInventoryBackupEntity)
-			.createQueryBuilder('a')
-			.select([/* SQL */ `a.po`, /* SQL */ `COUNT(DISTINCT a.EPC_Code) AS acc_outbound_qty`])
-			.where(/* SQL */ `a.rfid_status = '${InventoryActions.OUTBOUND}'`)
-			.andWhere(/* SQL */ `RIGHT(a.stationNO, 3) = '103'`)
-			.andWhere(/* SQL */ `a.po = '${purchaseOrder}'`)
-			.groupBy('a.po')
+	private async getMissingOrderQty(purchaseOrder: string): Promise<number | undefined> {
+		const [result] = await this.dataSourceERP.query<Array<{ po: string; po_qty: number; missing_qty: number }>>(
+			/* SQL */ `
+				WITH CTE AS (
+					SELECT DISTINCT EPC_Code FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet
+					WHERE po = @0 AND RIGHT(stationNO, 3) = '103' AND rfid_status = 'B'
+					UNION ALL
+					SELECT DISTINCT EPC_Code FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet_backup_Daily
+					WHERE po = @0 AND RIGHT(stationNO, 3) = '103' AND rfid_status = 'B'
+				)
+				SELECT IIF(ISNULL(or_custpoone, '') = '', or_custpo, or_custpoone) AS po, 
+				CAST(SUM(or_totalqty) - SUM(or_totalcqty) AS INT) AS po_qty,
+				CAST(SUM(or_totalqty) - SUM(or_totalcqty) AS INT) - (SELECT COUNT(DISTINCT EPC_Code) FROM CTE) AS missing_qty
+				FROM wuerp_vnrd.dbo.ta_ordermst
+				WHERE IIF(ISNULL(or_custpoone, '') = '', or_custpo, or_custpoone) = @0
+				GROUP BY IIF(ISNULL(or_custpoone, '') = '', or_custpo, or_custpoone)
+			`,
+			[purchaseOrder]
+		)
 
-		const purchaseOrderDetailQueryCTE = this.dataSourceERP
-			.createQueryBuilder()
-			.select([
-				/* SQL */ `IIF(ISNULL(b.or_custpoone, '') = '', b.or_custpo, b.or_custpoone) AS po`,
-				/* SQL */ `CAST(SUM(b.or_totalqty) - SUM(b.or_totalcqty) AS INT) AS po_qty`
-			])
-			.from('wuerp_vnrd.dbo.ta_ordermst', 'b')
-			.where(/* SQL */ `b.isactive = 'Y'`)
-			.andWhere(/* SQL */ `IIF(ISNULL(b.or_custpoone, '') = '', b.or_custpo, b.or_custpoone) = '${purchaseOrder}'`)
-			.groupBy(/* SQL */ `IIF(ISNULL(b.or_custpoone, '') = '', b.or_custpo, b.or_custpoone)`)
-
-		const result = await this.dataSourceDL
-			.createQueryBuilder()
-			.addCommonTableExpression(inboundQueryCTE.getQuery(), 'outbound_qty_cte')
-			.addCommonTableExpression(purchaseOrderDetailQueryCTE.getQuery(), 'po_qty_cte')
-			.select([
-				/* SQL */ `a.po AS po`,
-				/* SQL */ `b.po_qty AS po_qty`,
-				/* SQL */ `b.po_qty - a.acc_outbound_qty AS missing_qty`
-			])
-			.from((qb) => qb.subQuery().select().from('outbound_qty_cte', 'a'), 'a')
-			.leftJoin((qb) => qb.subQuery().select().from('po_qty_cte', 'b'), 'b', /* SQL */ `a.po = b.po`)
-			.getRawOne<{ po: string; po_qty: number; missing_qty: number }>()
-
-		return result?.missing_qty ?? result?.po_qty ?? 0
+		return result?.missing_qty
 	}
 }

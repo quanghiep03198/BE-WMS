@@ -61,8 +61,13 @@ export class RFIDInboundService {
 		const queryRunner = this.dataSourceTNC.createQueryRunner()
 		const session = await this.epcInboundModel.startSession()
 
-		const missingQty = await this.getIsOrderCompleted(commandNumber)
-		if (data.rfid_status === InventoryActions.INBOUND && (missingQty === 0 || payload.length > missingQty))
+		const missingInboudQty = await this.getMissingOrderQty(commandNumber)
+
+		if (
+			data.rfid_status === InventoryActions.INBOUND &&
+			typeof missingInboudQty === 'number' &&
+			payload.length > missingInboudQty
+		)
 			throw new BadRequestException(this.i18nService.t('inoutbound.notification.over_inbound_limit'))
 
 		try {
@@ -312,30 +317,30 @@ export class RFIDInboundService {
 		})
 	}
 
-	private async getIsOrderCompleted(commandNumber: string): Promise<number> {
-		const result = await this.dataSourceDL
-			.getRepository(RFIDInventoryBackupEntity)
-			.createQueryBuilder('a')
-			.select([/* SQL */ `a.mo_no`, /* SQL */ `b.mo_totalqty - COUNT(DISTINCT a.EPC_Code) AS missing_qty`])
-			.leftJoin(
-				(qb) => {
-					return qb
-						.subQuery()
-						.select(['mo_no', 'mo_totalqty'])
-						.from('wuerp_vnrd.dbo.ta_manufacturmst', 'b')
-						.where(`b.isactive = 'Y'`)
-				},
-				'b',
-				/* SQL */ `a.mo_no = b.mo_no`
-			)
-			.where(/* SQL */ `a.rfid_status = 'A'`)
-			.andWhere(/* SQL */ `RIGHT(a.stationNO, 3) = '101'`)
-			.andWhere(/* SQL */ 'a.mo_no = :commandNumber', { commandNumber })
-			.groupBy('a.mo_no')
-			.addGroupBy('b.mo_totalqty')
-			.getRawOne<{ mo_no: string; mo_totalqty: number; missing_qty: number }>()
+	private async getMissingOrderQty(commandNumber: string): Promise<number | undefined> {
+		const [result] = await this.dataSourceDL.query<
+			Array<{
+				mo_no: string
+				mo_qty: number
+				missing_qty: number
+			}>
+		>(
+			/* SQL */ `
+				WITH CTE AS (
+					SELECT DISTINCT EPC_Code FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet
+					WHERE mo_no = @0 AND RIGHT(stationNO, 3) = '101' AND rfid_status = 'A'
+					UNION ALL
+					SELECT DISTINCT EPC_Code FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet_backup_Daily
+					WHERE mo_no = @0 AND RIGHT(stationNO, 3) = '101' AND rfid_status = 'A'
+				)
+				SELECT mo_no, mo_totalqty AS mo_qty, mo_totalqty - (SELECT COUNT(DISTINCT EPC_Code) FROM CTE) AS missing_qty
+				FROM wuerp_vnrd.dbo.ta_manufacturmst
+				WHERE mo_no = @0
+			`,
+			[commandNumber]
+		)
 
-		return result?.missing_qty ?? result?.mo_totalqty ?? 0
+		return result?.missing_qty
 	}
 
 	@OnEvent('rfid.inbound.check', { async: true })
