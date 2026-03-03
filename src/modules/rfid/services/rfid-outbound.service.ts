@@ -89,9 +89,9 @@ export class RFIDOutboundService {
 		const queryRunner = this.dataSourceDL.createQueryRunner()
 		const upsertStockoutQuery: string = readFileSync(resolve(join(__dirname, '../sql/upsert-outbound.sql')), 'utf-8')
 
-		const isPurchaseOrderCompleted = await this.getIsOrderCompleted(payload.po)
+		const missingOutboundQty = await this.getIsOrderCompleted(payload.po)
 
-		if (isPurchaseOrderCompleted)
+		if (missingOutboundQty === 0 || epcToUpsert.length > missingOutboundQty)
 			throw new BadRequestException(
 				this.i18nService.t('inoutbound.notification.over_outbound_limit', { lang: I18nContext.current()?.lang })
 			)
@@ -233,7 +233,7 @@ export class RFIDOutboundService {
 		} satisfies Pagination<EpcInformation>
 	}
 
-	private async getIsOrderCompleted(purchaseOrder: string): Promise<boolean> {
+	private async getIsOrderCompleted(purchaseOrder: string): Promise<number> {
 		const inboundQueryCTE = this.dataSourceDL
 			.getRepository(RFIDInventoryBackupEntity)
 			.createQueryBuilder('a')
@@ -265,8 +265,8 @@ export class RFIDOutboundService {
 			])
 			.from((qb) => qb.subQuery().select().from('outbound_qty_cte', 'a'), 'a')
 			.leftJoin((qb) => qb.subQuery().select().from('po_qty_cte', 'b'), 'b', /* SQL */ `a.po = b.po`)
-			.getRawMany<{ po: string; po_qty: number; missing_qty: number }>()
+			.getRawOne<{ po: string; po_qty: number; missing_qty: number }>()
 
-		return result[0]?.missing_qty === 0
+		return result?.missing_qty ?? result?.po_qty ?? 0
 	}
 }

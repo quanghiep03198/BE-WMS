@@ -61,8 +61,8 @@ export class RFIDInboundService {
 		const queryRunner = this.dataSourceTNC.createQueryRunner()
 		const session = await this.epcInboundModel.startSession()
 
-		const isOrderCompleted = await this.getIsOrderCompleted(commandNumber)
-		if (data.rfid_status === InventoryActions.INBOUND && isOrderCompleted)
+		const missingQty = await this.getIsOrderCompleted(commandNumber)
+		if (data.rfid_status === InventoryActions.INBOUND && (missingQty === 0 || payload.length > missingQty))
 			throw new BadRequestException(this.i18nService.t('inoutbound.notification.over_inbound_limit'))
 
 		try {
@@ -312,7 +312,7 @@ export class RFIDInboundService {
 		})
 	}
 
-	private async getIsOrderCompleted(commandNumber: string): Promise<boolean> {
+	private async getIsOrderCompleted(commandNumber: string): Promise<number> {
 		const result = await this.dataSourceDL
 			.getRepository(RFIDInventoryBackupEntity)
 			.createQueryBuilder('a')
@@ -333,9 +333,9 @@ export class RFIDInboundService {
 			.andWhere(/* SQL */ 'a.mo_no = :commandNumber', { commandNumber })
 			.groupBy('a.mo_no')
 			.addGroupBy('b.mo_totalqty')
-			.getRawMany<{ mo_no: string; mo_totalqty: number; missing_qty: number }>()
+			.getRawOne<{ mo_no: string; mo_totalqty: number; missing_qty: number }>()
 
-		return result[0]?.missing_qty === 0
+		return result?.missing_qty ?? result?.mo_totalqty ?? 0
 	}
 
 	@OnEvent('rfid.inbound.check', { async: true })
