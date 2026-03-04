@@ -4,7 +4,12 @@ import { ZodValidationPipe } from '@/common/pipes'
 import { Body, Controller, Headers, HttpStatus, Param, Query, Res } from '@nestjs/common'
 import { FastifyReply } from 'fastify'
 import { UserRole } from '../user/constants'
-import { UpdatePackingWeightDTO, updatePackingWeightValidator } from './dto/update-packing.dto'
+import {
+	BulkUpdatePackingWeightDTO,
+	bulkUpdatePackingWeightValidator,
+	UpdatePackingWeightDTO,
+	updatePackingWeightValidator
+} from './dto/update-packing.dto'
 import { PackingService } from './packing.service'
 
 @Controller('packing')
@@ -18,6 +23,19 @@ export class PackingController {
 	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
 	async getPackingManifest(@Headers(CommonRequestHeader.FACTORY_CODE) factoryCode: string) {
 		return await this.packingService.getPackingManifest(factoryCode)
+	}
+
+	@RouteHandler({
+		endpoint: 'manifest',
+		method: HttpMethod.PATCH,
+		statusCode: HttpStatus.CREATED,
+		message: { i18nKey: 'common.updated' }
+	})
+	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
+	async bulkUpdatePackingWeight(
+		@Body(new ZodValidationPipe(bulkUpdatePackingWeightValidator)) payload: BulkUpdatePackingWeightDTO
+	) {
+		return await this.packingService.bulkUpdatePackingWeight(payload)
 	}
 
 	@RouteHandler({
@@ -51,7 +69,6 @@ export class PackingController {
 		return await this.packingService.getOneByScanId(scanId)
 	}
 
-	@Public()
 	@RouteHandler({
 		endpoint: 'update-weight/:scanId',
 		method: HttpMethod.PATCH,

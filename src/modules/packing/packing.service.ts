@@ -10,7 +10,7 @@ import { I18nContext, I18nService } from 'nestjs-i18n'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { Brackets, DataSource } from 'typeorm'
-import { UpdatePackingWeightDTO } from './dto/update-packing.dto'
+import { BulkUpdatePackingWeightDTO, UpdatePackingWeightDTO } from './dto/update-packing.dto'
 import { PackingEntity } from './entities/packing.entity'
 
 @Injectable()
@@ -58,6 +58,12 @@ export class PackingService {
 				{ series_number: this.extractSeriesNumber(seriesNumber) },
 				{ actual_weight_in: payload.Actual_weight_in, weighing_time: new Date() }
 			)
+	}
+
+	async bulkUpdatePackingWeight({ po, size, actual_weight_in }: BulkUpdatePackingWeightDTO) {
+		return await this.dataSource
+			.getRepository(PackingEntity)
+			.update({ po, size }, { actual_weight_in, weighing_time: new Date() })
 	}
 
 	async getPackingManifest(factoryCode: string) {

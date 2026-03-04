@@ -46,6 +46,7 @@ SELECT
    pl.brand_name,
    pl.shoes_style,
    pl.color,
+   pk.Size AS original_size_data,
    -- Extract only # items and format numbers (remove commas only within parentheses)
    CASE 
       WHEN CHARINDEX('#', pk.Size) > 0 THEN 
