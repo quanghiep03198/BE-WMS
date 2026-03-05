@@ -125,6 +125,7 @@ export class RFIDOutboundService {
 
 			if (Array.isArray(payload.sizes) && typeof payload.mo_no === 'string')
 				await this.eventEmitter.emitAsync('inventory.outbound', {
+					po: payload.po,
 					mo_no: payload.mo_no,
 					sizes: payload.sizes.map((item) => item.size_numcode)
 				})
@@ -152,7 +153,7 @@ export class RFIDOutboundService {
 					}
 				])
 				for (const item of scannedOrderSizes) {
-					await this.eventEmitter.emitAsync('inventory.outbound', item)
+					await this.eventEmitter.emitAsync('inventory.outbound', { ...item, po: payload.po })
 				}
 			}
 		} catch (error) {

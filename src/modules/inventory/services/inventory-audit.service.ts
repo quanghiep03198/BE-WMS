@@ -63,11 +63,12 @@ export class InventoryAuditService {
 	}
 
 	@OnEvent('inventory.outbound')
-	public async updateOutboundInventory({ mo_no, sizes }: { mo_no: string; sizes: string[] }) {
+	public async updateOutboundInventory({ po, mo_no, sizes }: { po: string; mo_no: string; sizes: string[] }) {
 		return await Array.fromAsync(sizes, async (size_numcode) => {
 			const monthlyOutboundQty = await this.getMonthlyOutboundQty(mo_no, size_numcode)
 			return await this.updateOneInventoryRecord(
 				{
+					po,
 					mo_no,
 					size_numcode,
 					inv_type: InventoryType.FINISHED_GOOD,
@@ -191,7 +192,7 @@ export class InventoryAuditService {
 			})
 			.andWhere(
 				new Brackets((qb) => {
-					if (isEmpty(queries.po)) return qb.andWhere({ po: IsNull() })
+					if (isEmpty(queries.po) || isNil(queries)) return qb.andWhere({ po: IsNull() })
 					return qb.andWhere({ po: queries.po })
 				})
 			)
