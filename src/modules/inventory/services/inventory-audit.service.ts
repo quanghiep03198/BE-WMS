@@ -12,7 +12,7 @@ import { isEmpty, isNil } from 'lodash'
 import { I18nContext, I18nService } from 'nestjs-i18n'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { Brackets, DataSource, In, IsNull, UpdateResult } from 'typeorm'
+import { Brackets, DataSource, Equal, In, IsNull, Not, UpdateResult } from 'typeorm'
 import { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity'
 import { InventoryType } from '../constants'
 import { UpdateInventoryReportDTO, UpdateInventoryReportQueryDTO } from '../dto/inventory-report.dto'
@@ -75,6 +75,7 @@ export class InventoryAuditService {
 					inv_year_month: format(new Date(), 'yyyyMM')
 				},
 				{
+					po,
 					outstock_qty: monthlyOutboundQty ?? 0,
 					final_stock_qty: () =>
 						/* SQL */ `inv_initialqty + inv_istotalqty + inv_manualqty - ${monthlyOutboundQty} - inv_manualqtyout`
@@ -192,8 +193,16 @@ export class InventoryAuditService {
 			})
 			.andWhere(
 				new Brackets((qb) => {
-					if (isEmpty(queries.po) || isNil(queries)) return qb.andWhere({ po: IsNull() })
-					return qb.andWhere({ po: queries.po })
+					if (isEmpty(queries.po) || isNil(queries.po)) return qb.andWhere({ po: IsNull() })
+					return qb
+						.orWhere({
+							po: queries.po,
+							outstock_qty: Not(Equal(0))
+						})
+						.orWhere({
+							po: IsNull(),
+							outstock_qty: 0
+						})
 				})
 			)
 			.execute()
