@@ -1,4 +1,4 @@
-import { Worksheet } from 'exceljs'
+import { ValueType, Worksheet } from 'exceljs'
 import { ExcelColorPalette } from '../constants/excel-color-palette'
 
 export type AutoFitColumnOptions = { minWidth: number; excludeColumns?: string[] }
@@ -53,10 +53,9 @@ export function applyCommonStyles(this: Worksheet) {
 		row.alignment = { vertical: 'middle' }
 		row.eachCell({ includeEmpty: true }, (cell) => {
 			cell.font = { ...cell.font, name: 'Calibri', family: 1 }
-			cell.alignment = {
-				horizontal: typeof cell.value === 'string' ? 'left' : typeof cell.value === 'number' ? 'right' : 'center',
-				vertical: 'middle'
-			}
+			cell.alignment.vertical = 'middle'
+			if (cell.alignment.horizontal !== 'center')
+				cell.alignment.horizontal = cell.type === ValueType.Number ? 'right' : 'left'
 			cell.border = {
 				top: { style: 'thin', color: { argb: ExcelColorPalette.BORDER } },
 				left: { style: 'thin', color: { argb: ExcelColorPalette.BORDER } },
@@ -64,16 +63,5 @@ export function applyCommonStyles(this: Worksheet) {
 				right: { style: 'thin', color: { argb: ExcelColorPalette.BORDER } }
 			}
 		})
-	})
-
-	this.eachColumnKey((col) => {
-		col.alignment = {
-			vertical: 'middle',
-			horizontal: col.values.some((value) => typeof value === 'number')
-				? 'right'
-				: col.values.some((value) => typeof value === 'string')
-					? 'left'
-					: 'center'
-		}
 	})
 }
