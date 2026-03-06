@@ -22,6 +22,10 @@ import { IInventoryReportQueryResult, IInventoryReportResponse } from '../interf
 @Injectable()
 export class InventoryAuditService {
 	private readonly inventoryReportQuery: string = readFileSync(join(__dirname, '../sql/inventory-audit.sql'), 'utf-8')
+	private readonly upsertOutboundInventory: string = readFileSync(
+		join(__dirname, '../sql/upsert-outbound-inventory-audit.sql'),
+		'utf-8'
+	)
 
 	constructor(
 		@InjectDataSource(DATA_SOURCE_DATA_LAKE) private readonly dataSource: DataSource,
@@ -65,23 +69,9 @@ export class InventoryAuditService {
 	@OnEvent('inventory.outbound')
 	public async updateOutboundInventory({ po, mo_no, sizes }: { po: string; mo_no: string; sizes: string[] }) {
 		return await Array.fromAsync(sizes, async (size_numcode) => {
-			const monthlyOutboundQty = await this.getMonthlyOutboundQty(mo_no, size_numcode)
-			return await this.updateOneInventoryRecord(
-				{
-					po,
-					mo_no,
-					size_numcode,
-					inv_type: InventoryType.FINISHED_GOOD,
-					inv_year_month: format(new Date(), 'yyyyMM')
-				},
-				{
-					po,
-					outstock_qty: monthlyOutboundQty ?? 0,
-					final_stock_qty: () =>
-						/* SQL */ `inv_initialqty + inv_istotalqty + inv_manualqty - ${monthlyOutboundQty} - inv_manualqtyout`
-				},
-				{ exactMatch: false }
-			)
+			return await this.dataSource
+				.query(this.upsertOutboundInventory, [po, mo_no, size_numcode])
+				.catch((e) => console.log(`Failed to update outbound inventory:\n ${e}`))
 		})
 	}
 
@@ -187,22 +177,17 @@ export class InventoryAuditService {
 			.set(update)
 			.where({
 				mo_no: queries.mo_no,
-				inv_type: queries.inv_type,
+				inv_type: InventoryType.FINISHED_GOOD,
 				inv_year_month: queries.inv_year_month,
 				size_numcode: options.exactMatch ? queries.size_numcode : In(sizeVariants)
 			})
 			.andWhere(
 				new Brackets((qb) => {
 					if (isEmpty(queries.po) || isNil(queries.po)) return qb.andWhere({ po: IsNull() })
-					return qb
-						.orWhere({
-							po: queries.po,
-							outstock_qty: Not(Equal(0))
-						})
-						.orWhere({
-							po: IsNull(),
-							outstock_qty: 0
-						})
+					return qb.andWhere({
+						po: queries.po,
+						outstock_qty: Not(Equal(0))
+					})
 				})
 			)
 			.execute()
@@ -235,37 +220,6 @@ export class InventoryAuditService {
 				SELECT 
 					SUM(CASE WHEN rfid_status = 'A' THEN 1 ELSE -1 END) AS qty
 				FROM CTE
-			`,
-			[commandNumber, sizeCode]
-		)
-		return result?.qty ?? 0
-	}
-
-	public async getMonthlyOutboundQty(commandNumber: string, sizeCode: string) {
-		const [result] = await this.dataSource.query<Array<{ qty: number }>>(
-			/* SQL */ `
-				WITH CTE AS (
-					SELECT DISTINCT EPC_Code, rfid_status
-					FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet
-					WHERE isactive = 'Y'
-						AND mo_no = @0
-						AND size_code = @1
-						AND RIGHT(stationNO, 3) = '103'
-						AND rfid_status = 'B'
-						AND record_time >= DATEFROMPARTS(YEAR(GETDATE()), MONTH(GETDATE()), 1)
-						AND record_time < DATEADD(MONTH, 1, DATEFROMPARTS(YEAR(GETDATE()), MONTH(GETDATE()), 1))
-					UNION
-					SELECT DISTINCT EPC_Code, rfid_status
-					FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet_backup_Daily
-					WHERE isactive = 'Y'
-						AND mo_no = @0
-						AND size_code = @1
-						AND RIGHT(stationNO, 3) = '103'
-						AND rfid_status = 'B'
-						AND record_time >= DATEFROMPARTS(YEAR(GETDATE()), MONTH(GETDATE()), 1)
-						AND record_time < DATEADD(MONTH, 1, DATEFROMPARTS(YEAR(GETDATE()), MONTH(GETDATE()), 1))
-				)
-				SELECT COUNT(DISTINCT EPC_Code) AS qty FROM CTE
 			`,
 			[commandNumber, sizeCode]
 		)
