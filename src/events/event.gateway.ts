@@ -1,3 +1,4 @@
+import { CommonRequestHeader } from '@/common/constants'
 import { RequestUser } from '@/common/decorators'
 import { WsExceptionsFilter } from '@/common/filters/ws-exception.filter'
 import { WsZodValidationPipe } from '@/common/pipes/ws-validation.pipe'
@@ -9,10 +10,8 @@ import { EpcDocument, EpcInbound } from '@/modules/rfid/schemas/epc.schema'
 import { THIRD_PARTY_API_SYNC } from '@/modules/third-party-api/constants'
 import { SyncDataMessageDTO, syncDataMessageValidator } from '@/modules/third-party-api/dto/third-party-api.dto'
 import { InjectQueue } from '@nestjs/bullmq'
-import { CACHE_MANAGER } from '@nestjs/cache-manager'
-import { Inject, Optional, UseFilters, UsePipes } from '@nestjs/common'
-import { ConfigService } from '@nestjs/config'
-import { JwtService } from '@nestjs/jwt'
+import { Optional, UseFilters, UsePipes } from '@nestjs/common'
+import { JsonWebTokenError, JwtService } from '@nestjs/jwt'
 import { InjectModel } from '@nestjs/mongoose'
 import {
 	MessageBody,
@@ -23,37 +22,29 @@ import {
 	WebSocketServer
 } from '@nestjs/websockets'
 import { Queue } from 'bullmq'
-import { Cache } from 'cache-manager'
 import { uniqBy, uniqueId } from 'lodash'
 import { PaginateModel } from 'mongoose'
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
-import { Socket } from 'socket.io'
+import { Server, Socket } from 'socket.io'
 
-class UnauthorizedSocketException extends Error {
-	constructor(message = 'Unauthorized') {
-		super(message)
-	}
-}
+const ACCESS_TOKEN_KEY = 'access-token'
 
 @WebSocketGateway({
 	cors: {
 		origin: env<string>('CORS_ORIGINS').split(','),
 		credentials: true
-	}
-	// transports: ['websocket', 'polling']
+	},
+	httpCompression: true
 })
 export class EventGateway implements OnGatewayConnection, OnGatewayDisconnect {
 	@WebSocketServer()
-	server: Socket
+	server: Server
 
 	constructor(
 		private readonly jwtService: JwtService,
-		private readonly configService: ConfigService,
 
 		@InjectPinoLogger(EventGateway.name)
 		private readonly logger: PinoLogger,
-
-		@Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
 
 		@Optional()
 		@InjectModel(EpcInbound.name)
@@ -68,31 +59,64 @@ export class EventGateway implements OnGatewayConnection, OnGatewayDisconnect {
 		private readonly syncInventoryAuditDataQueue: Queue<SyncDataMessageDTO>
 	) {}
 
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	public async handleConnection(client: Socket) {
+	public async handleConnection(socket: Socket): Promise<void> {
+		const socketId = socket.id
+		const headers = socket.handshake.headers
+
 		try {
-			// const token = client.handshake.
-			const token = client.handshake.headers.cookie
-				?.split(';')
-				.find((ck) => ck.trim().startsWith('access-token='))
-				?.split('=')[1]
+			const token = this.extractTokenFromCookie(socket)
 
 			if (!token) {
-				this.logger.warn(`Client tried to connect without token: ${client.id}`)
-				throw new UnauthorizedSocketException()
+				this.logger.warn({ socketId }, 'Client attempted connection without access token')
+				this.rejectConnection(socket, 'Missing access token')
+				return
 			}
-			const payload = await this.jwtService.verifyAsync<RequestUser>(token)
-			client.data.user = payload
-			this.logger.info(`Client connected: ${client.id} - User: ${payload.username}`)
+
+			const user = await this.jwtService.verifyAsync<RequestUser>(token)
+			socket.data.user = user
+
+			// Attach extra headers sent during reconnect attempts (factory code, username, etc.)
+			socket.data.factoryCode = headers[CommonRequestHeader.FACTORY_CODE.toLowerCase()] as string
+			socket.data.userRequest = headers[CommonRequestHeader.USER_REQUEST.toLowerCase()] as string
+
+			this.logger.info({ socketId, username: user.username }, 'Client connected')
 		} catch (error) {
-			this.logger.warn(`Client tried to connect with invalid token: ${client.id}`)
-			// client.emit('auth_error', { message: 'Token expired or invalid' })
-			client.disconnect()
+			const err = error instanceof JsonWebTokenError ? error : new Error(String(error))
+			const isJwtError = err.name === 'JsonWebTokenError' || err.name === 'TokenExpiredError'
+
+			this.logger.warn(
+				{ socketId, error: err.message },
+				isJwtError ? 'Client connected with expired/invalid token' : 'Socket authentication failed'
+			)
+			this.rejectConnection(socket, isJwtError ? 'Invalid or expired token' : 'Authentication failed')
 		}
 	}
 
-	public handleDisconnect(client: Socket) {
-		this.logger.info(`Client disconnected: ${client.id}`)
+	public handleDisconnect(socket: Socket): void {
+		this.logger.info({ socketId: socket.id, username: socket.data?.user?.username }, 'Client disconnected')
+	}
+
+	/**
+	 * @description Extract the access token from the socket handshake cookie header.
+	 */
+	private extractTokenFromCookie(socket: Socket): string | undefined {
+		const cookieHeader = socket.handshake.headers.cookie
+		if (!cookieHeader) return undefined
+
+		const tokenCookie = cookieHeader
+			.split(';')
+			.map((c) => c.trim())
+			.find((c) => c.startsWith(`${ACCESS_TOKEN_KEY}=`))
+
+		return tokenCookie?.split('=')[1]
+	}
+
+	/**
+	 * @description Reject a socket connection by emitting an auth error and disconnecting.
+	 */
+	private rejectConnection(socket: Socket, reason: string): void {
+		socket.emit('auth_error', { message: reason })
+		socket.disconnect(true)
 	}
 
 	@SubscribeMessage('sync_decker_data')
