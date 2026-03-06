@@ -194,7 +194,7 @@ export class OutboundReportService {
 			font: { color: { argb: ExcelColorPalette.DESTRUCTIVE_FOREGROUND } }
 		}
 		footerRow.eachCell((cell) => {
-			cell.font = { bold: true, size: 14 }
+			cell.font = { bold: true, size: 12 }
 			cell.style.fill = {
 				type: 'pattern',
 				pattern: 'solid',
