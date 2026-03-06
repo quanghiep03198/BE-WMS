@@ -10,6 +10,7 @@ import { addMonths, format } from 'date-fns'
 import { Workbook } from 'exceljs'
 import { isEmpty, isNil } from 'lodash'
 import { I18nContext, I18nService } from 'nestjs-i18n'
+import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { Brackets, DataSource, Equal, In, IsNull, Not, UpdateResult } from 'typeorm'
@@ -29,6 +30,7 @@ export class InventoryAuditService {
 
 	constructor(
 		@InjectDataSource(DATA_SOURCE_DATA_LAKE) private readonly dataSource: DataSource,
+		@InjectPinoLogger(InventoryAuditEntity.name) private readonly logger: PinoLogger,
 		private readonly i18nService: I18nService
 	) {}
 
@@ -71,7 +73,7 @@ export class InventoryAuditService {
 		return await Array.fromAsync(sizes, async (size_numcode) => {
 			return await this.dataSource
 				.query(this.upsertOutboundInventory, [po, mo_no, size_numcode])
-				.catch((e) => console.log(`Failed to update outbound inventory:\n ${e}`))
+				.catch((e) => this.logger.error(e))
 		})
 	}
 
