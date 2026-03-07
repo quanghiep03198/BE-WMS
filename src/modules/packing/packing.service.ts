@@ -60,10 +60,23 @@ export class PackingService {
 			)
 	}
 
-	async bulkUpdatePackingWeight({ po, size, actual_weight_in }: BulkUpdatePackingWeightDTO) {
-		return await this.dataSource
-			.getRepository(PackingEntity)
-			.update({ po, size }, { actual_weight_in, weighing_time: new Date() })
+	async bulkUpdatePackingWeight({
+		po,
+		size,
+		actual_weight_in,
+		user_name_updated,
+		user_code_updated
+	}: BulkUpdatePackingWeightDTO & Pick<PackingEntity, 'user_name_updated' | 'user_code_updated'>) {
+		return await this.dataSource.getRepository(PackingEntity).update(
+			{ po, size },
+			{
+				actual_weight_in,
+				user_name_updated,
+				user_code_updated,
+				weighing_time: new Date(),
+				remark: 'Manually updated'
+			}
+		)
 	}
 
 	async getPackingManifest(factoryCode: string) {
