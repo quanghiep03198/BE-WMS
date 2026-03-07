@@ -42,7 +42,23 @@ export class RFIDImportDataConsumer extends WorkerHost {
 		for (const file of files) {
 			await new Promise<void>((resolve, reject) => {
 				Readable.from(Buffer.from(file?.buffer))
-					.pipe(csvParser({ headers: ['epc'] }))
+					.pipe(
+						csvParser({
+							headers: [
+								'ant',
+								'direction',
+								'epc',
+								'firstAnt',
+								'firstTime',
+								'humString',
+								'lastTime',
+								'rssi',
+								'tempString',
+								'tid',
+								'victoryAnt'
+							]
+						})
+					)
 					.on('data', (data: { epc?: string }) => {
 						if (typeof data.epc === 'string' && VALID_EPC_PATTERN.test(data.epc) && !results.has(data.epc)) {
 							results.add(data.epc.trim())
