@@ -17,6 +17,7 @@ import {
 	MessageBody,
 	OnGatewayConnection,
 	OnGatewayDisconnect,
+	OnGatewayInit,
 	SubscribeMessage,
 	WebSocketGateway,
 	WebSocketServer
@@ -36,7 +37,7 @@ const ACCESS_TOKEN_KEY = 'access-token'
 	},
 	httpCompression: true
 })
-export class EventGateway implements OnGatewayConnection, OnGatewayDisconnect {
+export class EventGateway implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect {
 	@WebSocketServer()
 	server: Server
 
@@ -59,6 +60,32 @@ export class EventGateway implements OnGatewayConnection, OnGatewayDisconnect {
 		private readonly syncInventoryAuditDataQueue: Queue<SyncDataMessageDTO>
 	) {}
 
+	/**
+	 * @description Register a socket.io middleware that verifies the access token on every incoming event.
+	 * This ensures that expired/invalid tokens are caught even after the initial connection handshake.
+	 */
+	public afterInit(server: Server): void {
+		server.use(async (socket: Socket, next) => {
+			try {
+				const accessToken = this.extractTokenFromCookie(socket)
+				console.log('EventGateway token:>>>', accessToken)
+				if (!accessToken) {
+					return next(new Error('Missing access token'))
+				}
+				const user = await this.jwtService.verifyAsync<RequestUser>(accessToken)
+				socket.data.user = user
+				next()
+			} catch (error) {
+				const message = error instanceof JsonWebTokenError ? 'Invalid or expired token' : 'Authentication failed'
+				this.server.emit('auth_error', {})
+				this.logger.warn({ socketId: socket.id, error: (error as Error).message }, message)
+				next(new Error(message))
+			}
+		})
+
+		this.logger.info('WebSocket gateway initialized with auth middleware')
+	}
+
 	public async handleConnection(socket: Socket): Promise<void> {
 		const socketId = socket.id
 		const headers = socket.handshake.headers
@@ -77,7 +104,6 @@ export class EventGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
 			// Attach extra headers sent during reconnect attempts (factory code, username, etc.)
 			socket.data.factoryCode = headers[CommonRequestHeader.FACTORY_CODE.toLowerCase()] as string
-			socket.data.userRequest = headers[CommonRequestHeader.USER_REQUEST.toLowerCase()] as string
 
 			this.logger.info({ socketId, username: user.username }, 'Client connected')
 		} catch (error) {
@@ -122,7 +148,7 @@ export class EventGateway implements OnGatewayConnection, OnGatewayDisconnect {
 	@SubscribeMessage('sync_decker_data')
 	@UseFilters(new WsExceptionsFilter())
 	@UsePipes(new WsZodValidationPipe(syncDataMessageValidator))
-	protected async onSyncDeckerData(@MessageBody() payload: SyncDataMessageDTO) {
+	protected async handleSyncDeckersData(@MessageBody() payload: SyncDataMessageDTO) {
 		if (!this.syncThirdPartyApiDataQueue) return
 		const validUnknownEpcs = await this.epcModel
 			.distinct('epc', {
@@ -142,7 +168,7 @@ export class EventGateway implements OnGatewayConnection, OnGatewayDisconnect {
 	@SubscribeMessage('sync_inventory_audit_data')
 	@UseFilters(new WsExceptionsFilter())
 	@UsePipes(new WsZodValidationPipe(syncInventoryAuditValidator))
-	protected async onSyncInventoryAuditData(@MessageBody() payload: SyncInventoryAuditDTO) {
+	protected async handleSyncInventoryAuditData(@MessageBody() payload: SyncInventoryAuditDTO) {
 		if (!this.syncInventoryAuditDataQueue) return
 		this.syncInventoryAuditDataQueue.add(uniqueId(), {}, { jobId: payload.tenantId })
 	}
