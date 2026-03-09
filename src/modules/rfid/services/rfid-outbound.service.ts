@@ -111,10 +111,12 @@ export class RFIDOutboundService {
 				await this.dataSourceDL.query(upsertStockoutQuery, [JSON.stringify(item)])
 			}
 
+			const outboundTime = new Date()
+
 			await this.epcOutboundModel
 				.updateMany(
 					{ ...baseFilterQuery, epc: { $in: epcToUpsert.map((item) => item.epc) } },
-					{ $set: { deleted: true, stored_at: new Date(), factory_code_produce: factoryCode, po: payload.po } }
+					{ $set: { deleted: true, stored_at: outboundTime, factory_code_produce: factoryCode, po: payload.po } }
 				)
 				.exec()
 
@@ -123,35 +125,42 @@ export class RFIDOutboundService {
 			await queryRunner.commitTransaction()
 			await session.commitTransaction()
 
-			if (Array.isArray(payload.sizes) && typeof payload.mo_no === 'string')
+			if (typeof payload.mo_no === 'string' && Array.isArray(payload.sizes))
 				await this.eventEmitter.emitAsync('inventory.outbound', {
 					po: payload.po,
 					mo_no: payload.mo_no,
 					sizes: payload.sizes.map((item) => item.size_numcode)
 				})
 			if (Array.isArray(payload.mo_no)) {
-				const scannedOrderSizes = await this.epcOutboundModel.aggregate<{ mo_no: string; sizes: string[] }>([
-					{
-						$match: {
-							mo_no: { $in: payload.mo_no }
-						}
-					},
-					{
-						$group: {
-							_id: '$mo_no',
-							sizes: {
-								$addToSet: '$size_numcode'
+				const scannedOrderSizes = await this.epcOutboundModel
+					.aggregateWithDeleted<{ mo_no: string; sizes: string[] }>([
+						{
+							$match: {
+								mo_no: { $in: payload.mo_no },
+								po: payload.po,
+								factory_code_produce: factoryCode,
+								stored_at: { $eq: outboundTime },
+								deleted: true,
+								scannable: true
+							}
+						},
+						{
+							$group: {
+								_id: '$mo_no',
+								sizes: {
+									$addToSet: '$size_numcode'
+								}
+							}
+						},
+						{
+							$project: {
+								_id: 0,
+								mo_no: '$_id',
+								sizes: 1
 							}
 						}
-					},
-					{
-						$project: {
-							_id: 0,
-							mo_no: '$_id',
-							sizes: 1
-						}
-					}
-				])
+					])
+					.exec()
 				for (const item of scannedOrderSizes) {
 					await this.eventEmitter.emitAsync('inventory.outbound', { ...item, po: payload.po })
 				}

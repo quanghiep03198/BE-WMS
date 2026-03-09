@@ -23,8 +23,8 @@ WITH CurMonthOutboundCte AS (
 ),
 OrderInfo AS (
    SELECT 
-      i.custbrand_id,
-      i.brand_name,
+      h.custbrand_id,
+      h.brand_name,
       a.cofactory_code,
       a.mo_no,
       a.mat_code,
@@ -37,56 +37,55 @@ OrderInfo AS (
       s.size_numcode,
       s.size_qty
    FROM wuerp_vnrd.dbo.ta_manufacturmst a
-      LEFT JOIN wuerp_vnrd.dbo.ta_manufacturdet b ON a.mo_no = b.mo_no AND b.isactive='Y'
+      LEFT JOIN wuerp_vnrd.dbo.ta_manufacturdet b ON a.mo_no = b.mo_no AND b.isactive = 'Y'
       LEFT JOIN wuerp_vnrd.dbo.ta_ordermst c ON c.or_no = b.or_no AND c.isactive = 'Y'
       LEFT JOIN wuerp_vnrd.dbo.ta_productmst d ON d.mat_code = a.mat_code AND d.isactive= 'Y'
       LEFT JOIN wuerp_vnrd.dbo.ta_shoefactorymst e ON e.shoestyle_systemcodefty = d.shoestyle_systemcodefty AND e.isactive = 'Y'
-      LEFT JOIN wuerp_vnrd.dbo.ta_ordersizerun f ON f.or_no = b.or_no AND f.isactive= 'Y'
+      LEFT JOIN wuerp_vnrd.dbo.ta_ordersizerun f ON f.or_no = b.or_no AND f.isactive = 'Y'
       LEFT JOIN wuerp_vnrd.dbo.ta_shoestylecolor g ON g.shoestyle_templink = d.shoestyle_templink AND g.isactive = 'Y'
-      LEFT JOIN wuerp_vnrd.dbo.ta_ordersizerun h ON h.or_no = c.or_no AND h.isactive = 'Y'
-      LEFT JOIN wuerp_vnrd.dbo.ta_brand i ON i.custbrand_id = d.custbrand_id
+      LEFT JOIN wuerp_vnrd.dbo.ta_brand h ON h.custbrand_id = d.custbrand_id
    OUTER APPLY (
    VALUES
-      (h.[size_numcode01], h.[size_qty01]),
-      (h.[size_numcode02], h.[size_qty02]),
-      (h.[size_numcode03], h.[size_qty03]),
-      (h.[size_numcode04], h.[size_qty04]),
-      (h.[size_numcode05], h.[size_qty05]),
-      (h.[size_numcode06], h.[size_qty06]),
-      (h.[size_numcode07], h.[size_qty07]),
-      (h.[size_numcode08], h.[size_qty08]),
-      (h.[size_numcode09], h.[size_qty09]),
-      (h.[size_numcode10], h.[size_qty10]),
-      (h.[size_numcode11], h.[size_qty11]),
-      (h.[size_numcode12], h.[size_qty12]),
-      (h.[size_numcode13], h.[size_qty13]),
-      (h.[size_numcode14], h.[size_qty14]),
-      (h.[size_numcode15], h.[size_qty15]),
-      (h.[size_numcode16], h.[size_qty16]),
-      (h.[size_numcode17], h.[size_qty17]),
-      (h.[size_numcode18], h.[size_qty18]),
-      (h.[size_numcode19], h.[size_qty19]),
-      (h.[size_numcode20], h.[size_qty20]),
-      (h.[size_numcode21], h.[size_qty21]),
-      (h.[size_numcode22], h.[size_qty22]),
-      (h.[size_numcode23], h.[size_qty23]),
-      (h.[size_numcode24], h.[size_qty24]),
-      (h.[size_numcode25], h.[size_qty25]),
-      (h.[size_numcode26], h.[size_qty26]),
-      (h.[size_numcode27], h.[size_qty27]),
-      (h.[size_numcode28], h.[size_qty28]),
-      (h.[size_numcode29], h.[size_qty29]),
-      (h.[size_numcode30], h.[size_qty30]),
-      (h.[size_numcode31], h.[size_qty31]),
-      (h.[size_numcode32], h.[size_qty32]),
-      (h.[size_numcode33], h.[size_qty33]),
-      (h.[size_numcode34], h.[size_qty34]),
-      (h.[size_numcode35], h.[size_qty35]),
-      (h.[size_numcode36], h.[size_qty36]),
-      (h.[size_numcode37], h.[size_qty37]),
-      (h.[size_numcode38], h.[size_qty38]),
-      (h.[size_numcode39], h.[size_qty39]),
-      (h.[size_numcode40], h.[size_qty40])
+      (f.[size_numcode01], f.[size_qty01]),
+      (f.[size_numcode02], f.[size_qty02]),
+      (f.[size_numcode03], f.[size_qty03]),
+      (f.[size_numcode04], f.[size_qty04]),
+      (f.[size_numcode05], f.[size_qty05]),
+      (f.[size_numcode06], f.[size_qty06]),
+      (f.[size_numcode07], f.[size_qty07]),
+      (f.[size_numcode08], f.[size_qty08]),
+      (f.[size_numcode09], f.[size_qty09]),
+      (f.[size_numcode10], f.[size_qty10]),
+      (f.[size_numcode11], f.[size_qty11]),
+      (f.[size_numcode12], f.[size_qty12]),
+      (f.[size_numcode13], f.[size_qty13]),
+      (f.[size_numcode14], f.[size_qty14]),
+      (f.[size_numcode15], f.[size_qty15]),
+      (f.[size_numcode16], f.[size_qty16]),
+      (f.[size_numcode17], f.[size_qty17]),
+      (f.[size_numcode18], f.[size_qty18]),
+      (f.[size_numcode19], f.[size_qty19]),
+      (f.[size_numcode20], f.[size_qty20]),
+      (f.[size_numcode21], f.[size_qty21]),
+      (f.[size_numcode22], f.[size_qty22]),
+      (f.[size_numcode23], f.[size_qty23]),
+      (f.[size_numcode24], f.[size_qty24]),
+      (f.[size_numcode25], f.[size_qty25]),
+      (f.[size_numcode26], f.[size_qty26]),
+      (f.[size_numcode27], f.[size_qty27]),
+      (f.[size_numcode28], f.[size_qty28]),
+      (f.[size_numcode29], f.[size_qty29]),
+      (f.[size_numcode30], f.[size_qty30]),
+      (f.[size_numcode31], f.[size_qty31]),
+      (f.[size_numcode32], f.[size_qty32]),
+      (f.[size_numcode33], f.[size_qty33]),
+      (f.[size_numcode34], f.[size_qty34]),
+      (f.[size_numcode35], f.[size_qty35]),
+      (f.[size_numcode36], f.[size_qty36]),
+      (f.[size_numcode37], f.[size_qty37]),
+      (f.[size_numcode38], f.[size_qty38]),
+      (f.[size_numcode39], f.[size_qty39]),
+      (f.[size_numcode40], f.[size_qty40])
    ) s ([size_numcode],[size_qty])
    WHERE
       a.created >= CAST(DATEADD(YEAR, -2, GETDATE()) AS DATE)
@@ -98,7 +97,8 @@ OrderInfo AS (
                'K' + STUFF(@2, 1, PATINDEX('%[^0]%', @2) - 1, ''),
                'T' + STUFF(@2, 1, PATINDEX('%[^0]%', @2) - 1, '')
       )
-),
+)
+,
 SourceCte AS (
    SELECT 
       MAX(custbrand_id) AS custbrand_id,
@@ -209,4 +209,3 @@ WHEN NOT MATCHED THEN
       Source.inv_initialqty - Source.inv_ostotalqty
    )
 ;
-
