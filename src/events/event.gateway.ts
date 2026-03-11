@@ -63,27 +63,31 @@ export class EventGateway implements OnGatewayInit, OnGatewayConnection, OnGatew
 	/**
 	 * @description Register a socket.io middleware that verifies the access token on every incoming event.
 	 * This ensures that expired/invalid tokens are caught even after the initial connection handshake.
+	 *
+	 * * NOTE: `server.use()` runs during handshake (before connection) — socket.emit() won't reach the client.
+	 * * `socket.use()` runs AFTER connection, on every incoming event packet — socket.emit() works correctly.
 	 */
 	public afterInit(server: Server): void {
-		server.use(async (socket: Socket, next) => {
-			try {
-				const accessToken = this.extractTokenFromCookie(socket)
-				console.log('EventGateway token:>>>', accessToken)
-				if (!accessToken) {
-					return next(new Error('Missing access token'))
+		server.on('connection', (socket: Socket) => {
+			socket.use(async (_event, next) => {
+				try {
+					const user = await this.verifyAccessToken(socket)
+					socket.data.user = user
+					next()
+				} catch (error) {
+					if (error instanceof JsonWebTokenError) {
+						this.logger.warn({ socketId: socket.id, error: error.message }, 'Token expired/invalid on event')
+						socket.emit('jwt_expired', {
+							event: 'jwt_expired',
+							ok: false,
+							error: { name: error.name, message: error.message }
+						})
+						return
+					}
+					next(new Error('Authentication failed'))
 				}
-				const user = await this.jwtService.verifyAsync<RequestUser>(accessToken)
-				socket.data.user = user
-				next()
-			} catch (error) {
-				const message = error instanceof JsonWebTokenError ? 'Invalid or expired token' : 'Authentication failed'
-				this.server.emit('auth_error', {})
-				this.logger.warn({ socketId: socket.id, error: (error as Error).message }, message)
-				next(new Error(message))
-			}
+			})
 		})
-
-		this.logger.info('WebSocket gateway initialized with auth middleware')
 	}
 
 	public async handleConnection(socket: Socket): Promise<void> {
@@ -91,30 +95,22 @@ export class EventGateway implements OnGatewayInit, OnGatewayConnection, OnGatew
 		const headers = socket.handshake.headers
 
 		try {
-			const token = this.extractTokenFromCookie(socket)
-
-			if (!token) {
-				this.logger.warn({ socketId }, 'Client attempted connection without access token')
-				this.rejectConnection(socket, 'Missing access token')
-				return
-			}
-
-			const user = await this.jwtService.verifyAsync<RequestUser>(token)
+			const user = await this.verifyAccessToken(socket)
 			socket.data.user = user
 
 			// Attach extra headers sent during reconnect attempts (factory code, username, etc.)
 			socket.data.factoryCode = headers[CommonRequestHeader.FACTORY_CODE.toLowerCase()] as string
 
 			this.logger.info({ socketId, username: user.username }, 'Client connected')
-		} catch (error) {
-			const err = error instanceof JsonWebTokenError ? error : new Error(String(error))
-			const isJwtError = err.name === 'JsonWebTokenError' || err.name === 'TokenExpiredError'
+		} catch (e) {
+			const error = e instanceof JsonWebTokenError ? e : new Error(String(e))
+			const isJwtError = error.name === 'JsonWebTokenError' || error.name === 'TokenExpiredError'
 
 			this.logger.warn(
-				{ socketId, error: err.message },
+				{ socketId, error: error.message },
 				isJwtError ? 'Client connected with expired/invalid token' : 'Socket authentication failed'
 			)
-			this.rejectConnection(socket, isJwtError ? 'Invalid or expired token' : 'Authentication failed')
+			this.rejectConnection(socket, error)
 		}
 	}
 
@@ -138,10 +134,50 @@ export class EventGateway implements OnGatewayInit, OnGatewayConnection, OnGatew
 	}
 
 	/**
+	 * @description Extract the access token from the Authorization header (Bearer scheme).
+	 */
+	private extractTokenFromHeader(socket: Socket): string | undefined {
+		const authorization = socket.handshake.headers.authorization
+		if (!authorization) return undefined
+
+		const [scheme, token] = authorization.split(' ')
+		return scheme === 'Bearer' ? token : undefined
+	}
+
+	/**
+	 * @description Attempt to verify the access token from cookie first, then fallback to Authorization header.
+	 * @throws {JsonWebTokenError} If both sources fail verification.
+	 */
+	private async verifyAccessToken(socket: Socket): Promise<RequestUser> {
+		const cookieToken = this.extractTokenFromCookie(socket)
+		if (cookieToken) {
+			try {
+				return await this.jwtService.verifyAsync<RequestUser>(cookieToken)
+			} catch {
+				this.logger.debug({ socketId: socket.id }, 'Cookie token verification failed, trying Authorization header')
+			}
+		}
+
+		const headerToken = this.extractTokenFromHeader(socket)
+		if (!headerToken) {
+			throw new JsonWebTokenError('No valid access token found in cookie or Authorization header')
+		}
+
+		return await this.jwtService.verifyAsync<RequestUser>(headerToken)
+	}
+
+	/**
 	 * @description Reject a socket connection by emitting an auth error and disconnecting.
 	 */
-	private rejectConnection(socket: Socket, reason: string): void {
-		socket.emit('auth_error', { message: reason })
+	private rejectConnection(socket: Socket, error: Error | JsonWebTokenError): void {
+		const isTokenExpired = error instanceof JsonWebTokenError
+		const event = isTokenExpired ? 'jwt_expired' : 'auth_error'
+		socket.emit(event, {
+			event,
+			ok: false,
+			message: isTokenExpired ? 'Access token has expired. Please refresh your token and reconnect.' : error.message,
+			metadata: null
+		})
 		socket.disconnect(true)
 	}
 
