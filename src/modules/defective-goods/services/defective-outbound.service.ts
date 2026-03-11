@@ -10,7 +10,7 @@ import { Workbook } from 'exceljs'
 import { omit } from 'lodash'
 import { I18nContext, I18nService } from 'nestjs-i18n'
 import { DataSource, In, IsNull, Repository } from 'typeorm'
-import { DefectiveGoodsOutboundPurpose } from '../constants'
+import { DefectiveCategory, DefectiveGoodsOutboundPurpose } from '../constants'
 import { UpdateOutboundStatusDTO } from '../dto/inoutbound.dto'
 import { DefectiveGoodsEntity } from '../entities/defective-goods.entity'
 
@@ -39,7 +39,16 @@ export class DefectiveGoodsOutboundService {
 				...omit(update, ['epcs']),
 				ri_cancel: true,
 				is_active: false,
-				outbound_date: new Date()
+				outbound_date: new Date(),
+				defective_category: () => {
+					return /* SQL */ `CASE 
+						WHEN 
+							defective_category <> '${DefectiveCategory.C_GRADE}' 
+							AND '${update.outbound_purpose}' = '${DefectiveGoodsOutboundPurpose.ELIMINATE}' 
+						THEN '${DefectiveCategory.C_GRADE}' 
+						ELSE defective_category
+					END`
+				}
 			}
 		)
 	}
