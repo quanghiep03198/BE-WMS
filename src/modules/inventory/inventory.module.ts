@@ -3,6 +3,7 @@ import { EventGateway } from '@/events/event.gateway'
 import { BullModule } from '@nestjs/bullmq'
 import { MiddlewareConsumer, Module, NestModule, RequestMethod } from '@nestjs/common'
 import { TypeOrmModule } from '@nestjs/typeorm'
+import { OrderModule } from '../order/order.module'
 import { TenacyMiddleware } from '../tenancy/tenancy.middleware'
 import { TenancyModule } from '../tenancy/tenancy.module'
 import { SYNC_INVENTORY_AUDIT_QUEUE } from './constants'
@@ -19,6 +20,7 @@ import { ProductionInventoryService } from './services/product-inventory.service
 @Module({
 	imports: [
 		TenancyModule,
+		OrderModule,
 		BullModule.registerQueue({
 			name: SYNC_INVENTORY_AUDIT_QUEUE,
 			defaultJobOptions: { removeOnComplete: true, removeOnFail: true }

@@ -2,13 +2,14 @@ import { ExcelColorPalette } from '@/common/constants/excel-color-palette'
 import { type AutoFitColumnOptions, autoFitColumns } from '@/common/helpers'
 import { SuperJson } from '@/common/utils'
 import { DATA_SOURCE_DATA_LAKE } from '@/databases/constants'
+import { OrderService } from '@/modules/order/order.service'
 import { UserEntity } from '@/modules/user/entities/user.entity'
 import { Injectable } from '@nestjs/common'
 import { OnEvent } from '@nestjs/event-emitter'
 import { InjectDataSource } from '@nestjs/typeorm'
 import { addMonths, format } from 'date-fns'
 import { Workbook } from 'exceljs'
-import { isEmpty, isNil } from 'lodash'
+import { intersection, isEmpty, isNil } from 'lodash'
 import { I18nContext, I18nService } from 'nestjs-i18n'
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
 import { readFileSync } from 'node:fs'
@@ -31,6 +32,7 @@ export class InventoryAuditService {
 	constructor(
 		@InjectDataSource(DATA_SOURCE_DATA_LAKE) private readonly dataSource: DataSource,
 		@InjectPinoLogger(InventoryAuditEntity.name) private readonly logger: PinoLogger,
+		private readonly orderService: OrderService,
 		private readonly i18nService: I18nService
 	) {}
 
@@ -70,11 +72,36 @@ export class InventoryAuditService {
 
 	@OnEvent('inventory.outbound')
 	public async updateOutboundInventory({ po, mo_no, sizes }: { po: string; mo_no: string; sizes: string[] }) {
-		return await Array.fromAsync(sizes, async (size_numcode) => {
+		const payload = await this.getOutboundInventoryPayload(po, mo_no, sizes)
+
+		return await Array.fromAsync(payload.sizes, async (size_numcode) => {
 			return await this.dataSource
-				.query(this.upsertOutboundInventory, [po, mo_no, size_numcode])
+				.query(this.upsertOutboundInventory, [payload.po, payload.mo_no, size_numcode])
 				.catch((e) => this.logger.error(e))
 		})
+	}
+
+	private async getOutboundInventoryPayload(po: string, commandNumber: string, sizes: string[]) {
+		const purchaseOrderInfo = await this.orderService.getPurchaseOrderSizeRun(po)
+
+		const matchOrder = purchaseOrderInfo.filter(
+			(item) => item.po === po && item.mo_no.split('-').at(0).trim() === commandNumber
+		)
+
+		if (matchOrder.length === 0) return
+
+		const matchSizes = intersection(
+			matchOrder.map((item) => item.size_numcode),
+			sizes
+		)
+
+		if (matchSizes.length === 0) return
+
+		return {
+			po,
+			mo_no: commandNumber,
+			sizes: matchSizes
+		}
 	}
 
 	public async bulkUpdateInventoryAudit(

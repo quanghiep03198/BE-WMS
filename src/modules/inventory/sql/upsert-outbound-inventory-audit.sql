@@ -144,6 +144,7 @@ ON
    Target.po = Source.po
    AND Target.mo_no = Source.mo_no
    AND Target.inv_yearmonth = Source.inv_yearmonth
+   AND Target.inv_type = 'FG'
    AND Target.size_numcode IN (
       STUFF(@2, 1, PATINDEX('%[^0]%', @2) - 1, ''),
       '0' + STUFF(@2, 1, PATINDEX('%[^0]%', @2) - 1, ''),
