@@ -97,6 +97,7 @@ OrderInfo AS (
                'K' + STUFF(@2, 1, PATINDEX('%[^0]%', @2) - 1, ''),
                'T' + STUFF(@2, 1, PATINDEX('%[^0]%', @2) - 1, '')
       )
+      AND s.size_qty > 0
 )
 ,
 SourceCte AS (
