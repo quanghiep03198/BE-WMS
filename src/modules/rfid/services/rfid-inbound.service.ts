@@ -1,6 +1,7 @@
 import { VALID_EPC_PATTERN } from '@/common/constants/regex'
 import { DATA_SOURCE_DATA_LAKE, DATA_SOURCE_ERP } from '@/databases/constants'
 import { EventGateway } from '@/events/event.gateway'
+import { IUpsertInventoryEventPayload } from '@/modules/inventory/interfaces'
 import { InventoryAuditService } from '@/modules/inventory/services/inventory-audit.service'
 import { TENANCY_DATA_SOURCE } from '@/modules/tenancy/constants'
 import { InjectQueue } from '@nestjs/bullmq'
@@ -96,7 +97,12 @@ export class RFIDInboundService {
 
 			const sizeCodes = Object.keys(Object.groupBy(payload, (item) => item.size_numcode))
 
-			await this.inventoryAuditService.updateInboundInventory({ mo_no: commandNumber, sizes: sizeCodes })
+			await this.inventoryAuditService.updateInboundInventory({
+				mo_no: commandNumber,
+				sizes: sizeCodes,
+				username: data.username,
+				display_name: data.display_name
+			})
 
 			await this.epcInboundModel
 				.updateMany({ mo_no: commandNumber }, { $set: { deleted: true, stored_at: new Date() } })
@@ -105,8 +111,10 @@ export class RFIDInboundService {
 			await session.commitTransaction()
 			await this.eventEmitter.emitAsync('inventory.inbound', {
 				mo_no: commandNumber,
-				sizes: sizeCodes
-			})
+				sizes: sizeCodes,
+				username: data.username,
+				display_name: data.display_name
+			} satisfies Omit<IUpsertInventoryEventPayload, 'po'>)
 		} catch (error) {
 			this.logger.error(error)
 			if (session.inTransaction()) await session.abortTransaction()

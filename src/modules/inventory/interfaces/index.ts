@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-empty-object-type */
+import { RequestUser } from '@/common/decorators'
 import { InventoryType } from '../constants'
 
 export interface IInventoryReportQueryResult {
@@ -32,3 +34,9 @@ export type IInventoryReportResponse = Array<
 		}>
 	}
 >
+
+export interface IUpsertInventoryEventPayload extends Pick<RequestUser, 'username' | 'display_name'> {
+	po?: string
+	mo_no: string
+	sizes: string[]
+}

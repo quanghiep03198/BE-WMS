@@ -1,6 +1,6 @@
+import { RequestUser } from '@/common/decorators'
 import { z } from 'zod'
 import { InventoryActions, InventoryStorageType } from '../constants'
-import { BaseRFIDInventoryEntity } from '../entities/rifd-inventory.entity'
 
 export const updateStockInValidator = z
 	.object({
@@ -69,7 +69,6 @@ export const upsertEpcInformationSchema = z.object({
 	size_qty: z.number({ required_error: 'ns_validation:required' }).default(0)
 })
 
-export type UpsertStockInDTO = z.infer<typeof updateStockInValidator> &
-	Pick<BaseRFIDInventoryEntity, 'user_code_created' | 'factory_code'>
+export type UpsertStockInDTO = z.infer<typeof updateStockInValidator> & Pick<RequestUser, 'username' | 'display_name'>
 export type ExchangeOrderDTO = z.infer<typeof exchangeOrderValidator>
 export type UpsertEpcInformationDTO = z.infer<typeof upsertEpcInformationSchema>

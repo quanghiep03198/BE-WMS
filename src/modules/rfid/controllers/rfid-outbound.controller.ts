@@ -1,5 +1,5 @@
 import { CommonRequestHeader } from '@/common/constants'
-import { HttpMethod, Public, RequireAuthorized, RouteHandler } from '@/common/decorators'
+import { HttpMethod, Public, RequestUser, RequireAuthorized, RouteHandler, User } from '@/common/decorators'
 import { AllExceptionsFilter } from '@/common/filters'
 import { ZodValidationPipe } from '@/common/pipes'
 import { InjectQueue } from '@nestjs/bullmq'
@@ -22,7 +22,7 @@ import { InjectModel } from '@nestjs/mongoose'
 import { Queue } from 'bullmq'
 import { format } from 'date-fns'
 import { FastifyReply } from 'fastify'
-import { isEmpty, isNil, pickBy } from 'lodash'
+import { isEmpty, isNil, pick, pickBy } from 'lodash'
 import { PaginateResult } from 'mongoose'
 import { POST_DATA_OUTBOUND_QUEUE } from '../constants'
 
@@ -127,9 +127,13 @@ export class RFIDOutboundController {
 	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
 	async upsertStockOut(
 		@RequestHeaders(CommonRequestHeader.FACTORY_CODE) factoryCode: string,
+		@User() user: RequestUser,
 		@Body(new ZodValidationPipe(upsertStockOutValidator)) payload: UpsertStockOutDTO
 	) {
-		return await this.rfidOutboundService.upsertStockOut(factoryCode, payload)
+		return await this.rfidOutboundService.upsertStockOut(factoryCode, {
+			...payload,
+			...pick(user, ['username', 'display_name'])
+		})
 	}
 
 	@RouteHandler({

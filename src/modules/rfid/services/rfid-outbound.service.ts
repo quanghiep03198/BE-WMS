@@ -1,5 +1,7 @@
 import { VALID_EPC_PATTERN } from '@/common/constants/regex'
+import { RequestUser } from '@/common/decorators'
 import { DATA_SOURCE_DATA_LAKE, DATA_SOURCE_ERP } from '@/databases/constants'
+import { IUpsertInventoryEventPayload } from '@/modules/inventory/interfaces'
 import { InjectQueue } from '@nestjs/bullmq'
 import { BadRequestException, Injectable, InternalServerErrorException } from '@nestjs/common'
 import { EventEmitter2 } from '@nestjs/event-emitter'
@@ -45,7 +47,10 @@ export class RFIDOutboundService {
 		return await this.postDataQueue.add('RFID_OUTBOUND', payload)
 	}
 
-	public async upsertStockOut(factoryCode: string, payload: UpsertStockOutDTO) {
+	public async upsertStockOut(
+		factoryCode: string,
+		payload: UpsertStockOutDTO & Pick<RequestUser, 'username' | 'display_name'>
+	) {
 		const baseFilterQuery: FilterQuery<EpcDocument> = {
 			$or: [{ deleted: false }, { deleted: null }],
 			scannable: true
@@ -129,8 +134,10 @@ export class RFIDOutboundService {
 				await this.eventEmitter.emitAsync('inventory.outbound', {
 					po: payload.po,
 					mo_no: payload.mo_no,
-					sizes: payload.sizes.map((item) => item.size_numcode)
-				})
+					sizes: payload.sizes.map((item) => item.size_numcode),
+					username: payload.username,
+					display_name: payload.display_name
+				} satisfies Required<IUpsertInventoryEventPayload>)
 			if (Array.isArray(payload.mo_no)) {
 				const scannedOrderSizes = await this.epcOutboundModel
 					.aggregateWithDeleted<{ mo_no: string; sizes: string[] }>([
@@ -162,7 +169,12 @@ export class RFIDOutboundService {
 					])
 					.exec()
 				for (const item of scannedOrderSizes) {
-					await this.eventEmitter.emitAsync('inventory.outbound', { ...item, po: payload.po })
+					await this.eventEmitter.emitAsync('inventory.outbound', {
+						...item,
+						po: payload.po,
+						username: payload.username,
+						display_name: payload.display_name
+					} satisfies Required<IUpsertInventoryEventPayload>)
 				}
 			}
 		} catch (error) {

@@ -1,5 +1,5 @@
 import { CommonRequestHeader } from '@/common/constants'
-import { HttpMethod, Public, RequireAuthorized, RouteHandler, User } from '@/common/decorators'
+import { HttpMethod, Public, RequestUser, RequireAuthorized, RouteHandler, User } from '@/common/decorators'
 import { AllExceptionsFilter } from '@/common/filters'
 import { ZodValidationPipe } from '@/common/pipes'
 import { UserRole } from '@/modules/user/constants'
@@ -23,7 +23,7 @@ import { InjectModel } from '@nestjs/mongoose'
 import { Queue } from 'bullmq'
 import { format } from 'date-fns'
 import { FastifyReply } from 'fastify'
-import { isEmpty, isNil, pickBy } from 'lodash'
+import { isEmpty, isNil, pick, pickBy } from 'lodash'
 import { PaginateResult } from 'mongoose'
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
 import { POST_DATA_INBOUND_QUEUE } from '../constants'
@@ -138,13 +138,13 @@ export class RFIDInboundController {
 	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
 	async upsertStockIn(
 		@Param('commandNumber') commandNumber: string,
-		@User('username') username: string,
+		@User() user: RequestUser,
 		@Headers(CommonRequestHeader.FACTORY_CODE) factoryCode: string,
 		@Body(new ZodValidationPipe(updateStockInValidator)) payload: UpsertStockInDTO
 	) {
 		return await this.rfidInboundService.upsertStockIn(commandNumber, factoryCode, {
 			...payload,
-			user_code_created: username
+			...pick(user, ['username', 'display_name'])
 		})
 	}
 

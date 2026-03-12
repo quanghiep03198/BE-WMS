@@ -98,8 +98,7 @@ OrderInfo AS (
                'T' + STUFF(@2, 1, PATINDEX('%[^0]%', @2) - 1, '')
       )
       AND s.size_qty > 0
-)
-,
+),
 SourceCte AS (
    SELECT 
       MAX(custbrand_id) AS custbrand_id,
@@ -154,14 +153,17 @@ ON
    )
 WHEN MATCHED THEN
    UPDATE SET 
-      inv_initialqty = Source.inv_initialqty,
-      inv_ostotalqty = Source.inv_ostotalqty,
-      inv_finalqty = 
+      inv_initialqty = Source.inv_initialqty
+      , inv_ostotalqty = Source.inv_ostotalqty
+      , inv_finalqty = 
          Source.inv_initialqty
           + Target.inv_istotalqty 
           + Target.inv_manualqty 
           - Source.inv_ostotalqty 
           - Target.inv_manualqtyout
+      , user_code_updated = @3
+      , user_name_updated = @4
+      , remark = 'Automatically update from WMS'
 WHEN NOT MATCHED THEN
    INSERT (
       inv_type
@@ -185,7 +187,11 @@ WHEN NOT MATCHED THEN
       , inv_ostotalqty
       , inv_manualqty
       , inv_manualqtyout
-      , inv_finalqty)
+      , inv_finalqty
+      , user_code_created 
+      , user_name_created
+      , remark
+      )
    VALUES (
       'FG', -- inv_type
       Source.inv_yearmonth, 
@@ -208,6 +214,9 @@ WHEN NOT MATCHED THEN
       Source.inv_ostotalqty, 
       0, -- inv_manualqty
       0, -- inv_manualqtyout
-      Source.inv_initialqty - Source.inv_ostotalqty
+      Source.inv_initialqty - Source.inv_ostotalqty,
+      @3, -- user_code_created
+      @4, -- user_name_created
+      'Automatically insert from WMS'
    )
 ;

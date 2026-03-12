@@ -19,7 +19,7 @@ import { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity
 import { InventoryType } from '../constants'
 import { UpdateInventoryReportDTO, UpdateInventoryReportQueryDTO } from '../dto/inventory-report.dto'
 import { InventoryAuditEntity } from '../entities/inventory-report.entity'
-import { IInventoryReportQueryResult, IInventoryReportResponse } from '../interfaces'
+import { IInventoryReportQueryResult, IInventoryReportResponse, IUpsertInventoryEventPayload } from '../interfaces'
 
 @Injectable()
 export class InventoryAuditService {
@@ -50,7 +50,12 @@ export class InventoryAuditService {
 	}
 
 	@OnEvent('inventory.inbound')
-	public async updateInboundInventory({ mo_no, sizes }: { mo_no: string; sizes: string[] }) {
+	public async updateInboundInventory({
+		mo_no,
+		sizes,
+		username,
+		display_name
+	}: Omit<IUpsertInventoryEventPayload, 'po'>) {
 		return await Array.fromAsync(sizes, async (size_numcode) => {
 			const monthlyInboundQty = await this.getMonthlyInboundQty(mo_no, size_numcode)
 			return await this.updateOneInventoryRecord(
@@ -61,9 +66,12 @@ export class InventoryAuditService {
 					inv_year_month: format(new Date(), 'yyyyMM')
 				},
 				{
+					user_code_updated: username,
+					user_name_updated: display_name,
 					instock_qty: monthlyInboundQty ?? 0,
 					final_stock_qty: () =>
-						/* SQL */ `inv_initialqty + inv_manualqty + ${monthlyInboundQty} - inv_ostotalqty - inv_manualqtyout`
+						/* SQL */ `inv_initialqty + inv_manualqty + ${monthlyInboundQty} - inv_ostotalqty - inv_manualqtyout`,
+					remark: 'Automatically update from WMS'
 				},
 				{ exactMatch: false }
 			)
@@ -71,12 +79,18 @@ export class InventoryAuditService {
 	}
 
 	@OnEvent('inventory.outbound')
-	public async updateOutboundInventory({ po, mo_no, sizes }: { po: string; mo_no: string; sizes: string[] }) {
+	public async updateOutboundInventory({
+		po,
+		mo_no,
+		sizes,
+		username,
+		display_name
+	}: Required<IUpsertInventoryEventPayload>) {
 		const payload = await this.getOutboundInventoryPayload(po, mo_no, sizes)
 
 		return await Array.fromAsync(payload.sizes, async (size_numcode) => {
 			return await this.dataSource
-				.query(this.upsertOutboundInventory, [payload.po, payload.mo_no, size_numcode])
+				.query(this.upsertOutboundInventory, [payload.po, payload.mo_no, size_numcode, username, display_name])
 				.catch((e) => this.logger.error(e))
 		})
 	}
