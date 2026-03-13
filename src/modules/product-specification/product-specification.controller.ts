@@ -12,7 +12,12 @@ export class ProductSpecificationController {
 		method: HttpMethod.GET,
 		statusCode: HttpStatus.OK
 	})
-	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF, UserRole.DG_WAREHOUSE_STAFF)
+	@RequireAuthorized(
+		UserRole.MANAGER,
+		UserRole.FG_WAREHOUSE_STAFF,
+		UserRole.DG_WAREHOUSE_STAFF,
+		UserRole.INDUSTRIAL_ENGINEERING_STAFF
+	)
 	@CacheKey('cached:apis:product_specification')
 	@CacheTTL(60 * 1000 * 60 * 24 * 7)
 	@UseInterceptors(CacheInterceptor)

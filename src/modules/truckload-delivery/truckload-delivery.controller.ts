@@ -45,7 +45,13 @@ export class TruckloadDeliveryController {
 		method: HttpMethod.GET,
 		message: 'common.ok'
 	})
-	@RequireAuthorized(UserRole.MANAGER, UserRole.IE_STAFF, UserRole.FG_WAREHOUSE_STAFF, UserRole.SECURITY_GUARD)
+	@RequireAuthorized(
+		UserRole.MANAGER,
+		UserRole.IE_STAFF,
+		UserRole.FG_WAREHOUSE_STAFF,
+		UserRole.SECURITY_GUARD,
+		UserRole.INDUSTRIAL_ENGINEERING_STAFF
+	)
 	async getAll(@Query(new ZodValidationPipe(filterQueryDTO)) filterQueryDTO: FilterQueryDTO) {
 		return await this.deliveryService.getDispatchOrders(filterQueryDTO)
 	}

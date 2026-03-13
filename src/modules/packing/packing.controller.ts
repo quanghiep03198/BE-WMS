@@ -20,7 +20,7 @@ export class PackingController {
 		endpoint: 'manifest',
 		method: HttpMethod.GET
 	})
-	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
+	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF, UserRole.INDUSTRIAL_ENGINEERING_STAFF)
 	async getPackingManifest(@Headers(CommonRequestHeader.FACTORY_CODE) factoryCode: string) {
 		return await this.packingService.getPackingManifest(factoryCode)
 	}
@@ -47,7 +47,7 @@ export class PackingController {
 		endpoint: 'manifest/export',
 		method: HttpMethod.GET
 	})
-	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
+	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF, UserRole.INDUSTRIAL_ENGINEERING_STAFF)
 	async exportPackingManifest(
 		@Headers(CommonRequestHeader.FACTORY_CODE) factoryCode: string,
 		@Res() res: FastifyReply

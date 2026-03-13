@@ -31,7 +31,7 @@ export class ReportController {
 	// #region Inbound report
 
 	@RouteHandler({ endpoint: 'daily-inbound', method: HttpMethod.GET })
-	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
+	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF, UserRole.INDUSTRIAL_ENGINEERING_STAFF)
 	async getInboundReportByDate(
 		@Query('date.eq', new DefaultValuePipe(format(new Date(), 'yyyy-MM-dd')))
 		dateQuery: any
@@ -40,14 +40,14 @@ export class ReportController {
 	}
 
 	@RouteHandler({ endpoint: 'inbound-history/:commandNumber', method: HttpMethod.GET })
-	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
+	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF, UserRole.INDUSTRIAL_ENGINEERING_STAFF)
 	async getInboundHistory(@Param('commandNumber') commandNumber: string) {
 		return await this.inboundReportService.getInboundHistory(commandNumber)
 	}
 
 	@Get('daily-inbound/export/:reportType')
 	@UseFilters(AllExceptionsFilter)
-	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
+	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF, UserRole.INDUSTRIAL_ENGINEERING_STAFF)
 	async exportDailyInboundToExcel(
 		@Param('reportType') reportType: 'daily-productivity' | 'shaping-department-productivity',
 		@Query('date.eq') date: string,
@@ -68,7 +68,7 @@ export class ReportController {
 	// #region Outbound report
 
 	@RouteHandler({ endpoint: 'daily-outbound', method: HttpMethod.GET })
-	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
+	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF, UserRole.INDUSTRIAL_ENGINEERING_STAFF)
 	async getOutboundReportByDate(
 		@Query('date.eq', new DefaultValuePipe(format(new Date(), 'yyyy-MM-dd')))
 		dateQuery: any
@@ -77,7 +77,7 @@ export class ReportController {
 	}
 
 	@RouteHandler({ endpoint: 'outbound-history/:po', method: HttpMethod.GET })
-	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
+	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF, UserRole.INDUSTRIAL_ENGINEERING_STAFF)
 	async getOutboundHistory(
 		@Headers(CommonRequestHeader.FACTORY_CODE) factoryCode: FactoryCode,
 		@Param('po') po: string
@@ -102,7 +102,7 @@ export class ReportController {
 	// #region Packing weight report
 
 	@RouteHandler({ endpoint: 'daily-weighing', method: HttpMethod.GET })
-	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
+	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF, UserRole.INDUSTRIAL_ENGINEERING_STAFF)
 	async getDailyPackingReport(
 		@Query('date.eq', new DefaultValuePipe(format(new Date(), 'yyyy-MM-dd'))) date: string,
 		@Headers(CommonRequestHeader.FACTORY_CODE) factoryCode: string
@@ -112,7 +112,7 @@ export class ReportController {
 
 	@Get('daily-weighing/export')
 	@UseFilters(AllExceptionsFilter)
-	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
+	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF, UserRole.INDUSTRIAL_ENGINEERING_STAFF)
 	async exportPackingWeightReport(
 		@Query('date.eq', new DefaultValuePipe(format(new Date(), 'yyyy-MM-dd'))) date: string,
 		@Headers(CommonRequestHeader.FACTORY_CODE) factoryCode: string,

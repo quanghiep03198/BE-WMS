@@ -22,5 +22,9 @@ export enum UserRole {
 	/**
 	 * @descrition Security Guard
 	 */
-	SECURITY_GUARD = 'SECURITY_GUARD'
+	SECURITY_GUARD = 'SECURITY_GUARD',
+	/**
+	 * @description Industrial Engineer
+	 */
+	INDUSTRIAL_ENGINEERING_STAFF = 'INDUSTRIAL_ENGINEERING_STAFF'
 }

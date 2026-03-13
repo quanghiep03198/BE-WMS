@@ -18,7 +18,7 @@ export class WarehouseController {
 	constructor(private readonly warehouseService: WarehouseService) {}
 
 	@RouteHandler({ method: HttpMethod.GET })
-	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
+	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF, UserRole.INDUSTRIAL_ENGINEERING_STAFF)
 	async getWarehouses(@Headers(CommonRequestHeader.FACTORY_CODE) cofactorCode: string) {
 		return await this.warehouseService.findAllByFactory(cofactorCode)
 	}
@@ -27,7 +27,7 @@ export class WarehouseController {
 		endpoint: ':warehouseCode',
 		method: HttpMethod.GET
 	})
-	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
+	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF, UserRole.INDUSTRIAL_ENGINEERING_STAFF)
 	async getOneByWarehouseCode(@Param('warehouseCode') cofactorCode: string) {
 		return await this.warehouseService.findOneByWarehouseCode(cofactorCode)
 	}

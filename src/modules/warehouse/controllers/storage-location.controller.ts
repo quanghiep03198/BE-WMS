@@ -40,7 +40,7 @@ export class StorageLocationController {
 		endpoint: ':warehouseCode',
 		method: HttpMethod.GET
 	})
-	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
+	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF, UserRole.INDUSTRIAL_ENGINEERING_STAFF)
 	async getStorageLocationByWarhouse(
 		@Headers(CommonRequestHeader.FACTORY_CODE) factoryCode: string,
 		@Param('warehouseCode') warehouseCode: string

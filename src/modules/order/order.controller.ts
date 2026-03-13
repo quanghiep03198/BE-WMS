@@ -13,7 +13,12 @@ export class OrderController {
 		endpoint: '/command-number/search',
 		method: HttpMethod.GET
 	})
-	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF, UserRole.DG_WAREHOUSE_STAFF)
+	@RequireAuthorized(
+		UserRole.MANAGER,
+		UserRole.FG_WAREHOUSE_STAFF,
+		UserRole.DG_WAREHOUSE_STAFF,
+		UserRole.INDUSTRIAL_ENGINEERING_STAFF
+	)
 	async searchCommandNumber(
 		@Headers(CommonRequestHeader.FACTORY_CODE) factoryCode: string,
 		@Query('q', new DefaultValuePipe('')) searchTerm: string
@@ -25,7 +30,13 @@ export class OrderController {
 		endpoint: '/purchase-order/search',
 		method: HttpMethod.GET
 	})
-	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF, UserRole.DG_WAREHOUSE_STAFF, UserRole.IE_STAFF)
+	@RequireAuthorized(
+		UserRole.MANAGER,
+		UserRole.FG_WAREHOUSE_STAFF,
+		UserRole.DG_WAREHOUSE_STAFF,
+		UserRole.IE_STAFF,
+		UserRole.INDUSTRIAL_ENGINEERING_STAFF
+	)
 	async searchPurchaseOrder(
 		@Query('q') searchTerm: string,
 		@Query('filter_all_brands', new DefaultValuePipe(false), ParseBoolPipe) shouldFilterAllBrands?: boolean
@@ -37,7 +48,13 @@ export class OrderController {
 		endpoint: '/purchase-order/size-run/:purchaseOrder',
 		method: HttpMethod.GET
 	})
-	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF, UserRole.DG_WAREHOUSE_STAFF, UserRole.IE_STAFF)
+	@RequireAuthorized(
+		UserRole.MANAGER,
+		UserRole.FG_WAREHOUSE_STAFF,
+		UserRole.DG_WAREHOUSE_STAFF,
+		UserRole.IE_STAFF,
+		UserRole.INDUSTRIAL_ENGINEERING_STAFF
+	)
 	async getPurchaseOrderSizeRun(@Param('purchaseOrder') po: string) {
 		return await this.orderService.getPurchaseOrderSizeRun(po)
 	}
@@ -46,7 +63,12 @@ export class OrderController {
 		endpoint: '/command-number/:commandNumber',
 		method: HttpMethod.GET
 	})
-	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF, UserRole.DG_WAREHOUSE_STAFF)
+	@RequireAuthorized(
+		UserRole.MANAGER,
+		UserRole.FG_WAREHOUSE_STAFF,
+		UserRole.DG_WAREHOUSE_STAFF,
+		UserRole.INDUSTRIAL_ENGINEERING_STAFF
+	)
 	async getOrderDetail(@Param('commandNumber') commandNumber: string) {
 		const [orders, sizes] = await Promise.all([
 			this.orderService.getCustOrderByCommandNumber(commandNumber),

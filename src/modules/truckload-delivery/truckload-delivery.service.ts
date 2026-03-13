@@ -154,7 +154,9 @@ export class TruckloadDeliveryService
 				'b',
 				/* SQL */ `
 					a.license_plate = b.plate_name 
-					AND b.snap_time BETWEEN DATEADD(MINUTE, 5, ISNULL(a.container_sealing_time, GETDATE())) AND DATEADD(MINUTE, 30, ISNULL(a.factory_departure_time, GETDATE()))
+					AND b.snap_time BETWEEN DATEADD(MINUTE, 5, ISNULL(a.container_sealing_time, GETDATE())) 
+					AND DATEADD(MINUTE, 30, ISNULL(a.factory_departure_time, GETDATE())) 
+					-- 5 phút sau khi đóng container ~ sau 30 phút kể từ khi bảo vệ thứ 2 ký xác nhận
 					`
 			)
 			.where(dateRangeFilterQuery)

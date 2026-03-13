@@ -12,7 +12,12 @@ export class StatisticController {
 		method: HttpMethod.GET,
 		statusCode: HttpStatus.OK
 	})
-	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF, UserRole.DG_WAREHOUSE_STAFF)
+	@RequireAuthorized(
+		UserRole.MANAGER,
+		UserRole.FG_WAREHOUSE_STAFF,
+		UserRole.DG_WAREHOUSE_STAFF,
+		UserRole.INDUSTRIAL_ENGINEERING_STAFF
+	)
 	async getInventoryComparison() {
 		return await this.statisticService.getInventoryComparison()
 	}
@@ -22,7 +27,12 @@ export class StatisticController {
 		method: HttpMethod.GET,
 		statusCode: HttpStatus.OK
 	})
-	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF, UserRole.DG_WAREHOUSE_STAFF)
+	@RequireAuthorized(
+		UserRole.MANAGER,
+		UserRole.FG_WAREHOUSE_STAFF,
+		UserRole.DG_WAREHOUSE_STAFF,
+		UserRole.INDUSTRIAL_ENGINEERING_STAFF
+	)
 	async getAnnualInoutboundOverview(
 		@Query('year.eq', new DefaultValuePipe(new Date().getFullYear()), ParseIntPipe) year: number
 	) {
@@ -34,7 +44,12 @@ export class StatisticController {
 		method: HttpMethod.GET,
 		statusCode: HttpStatus.OK
 	})
-	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF, UserRole.DG_WAREHOUSE_STAFF)
+	@RequireAuthorized(
+		UserRole.MANAGER,
+		UserRole.FG_WAREHOUSE_STAFF,
+		UserRole.DG_WAREHOUSE_STAFF,
+		UserRole.INDUSTRIAL_ENGINEERING_STAFF
+	)
 	async getMonthlyInboundComparison() {
 		return await this.statisticService.getAssemblyLineProductivity()
 	}
@@ -44,7 +59,12 @@ export class StatisticController {
 		endpoint: 'defective-goods-inventory-composition',
 		statusCode: HttpStatus.OK
 	})
-	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF, UserRole.DG_WAREHOUSE_STAFF)
+	@RequireAuthorized(
+		UserRole.MANAGER,
+		UserRole.FG_WAREHOUSE_STAFF,
+		UserRole.DG_WAREHOUSE_STAFF,
+		UserRole.INDUSTRIAL_ENGINEERING_STAFF
+	)
 	async getDefectiveGoodsInventoryComposition() {
 		return await this.statisticService.getDefectiveGoodsInventoryComposition()
 	}
@@ -54,7 +74,12 @@ export class StatisticController {
 		method: HttpMethod.GET,
 		statusCode: HttpStatus.OK
 	})
-	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF, UserRole.DG_WAREHOUSE_STAFF)
+	@RequireAuthorized(
+		UserRole.MANAGER,
+		UserRole.FG_WAREHOUSE_STAFF,
+		UserRole.DG_WAREHOUSE_STAFF,
+		UserRole.INDUSTRIAL_ENGINEERING_STAFF
+	)
 	async getLastSixMonthsNetFlow() {
 		return await this.statisticService.getLastSixMonthsNetFlow()
 	}

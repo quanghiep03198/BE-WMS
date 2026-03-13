@@ -267,7 +267,7 @@ export class DefectiveGoodsController {
 		endpoint: 'daily-inbound',
 		statusCode: HttpStatus.OK
 	})
-	@RequireAuthorized(UserRole.MANAGER, UserRole.DG_WAREHOUSE_STAFF)
+	@RequireAuthorized(UserRole.MANAGER, UserRole.DG_WAREHOUSE_STAFF, UserRole.INDUSTRIAL_ENGINEERING_STAFF)
 	public async getDailyInboundReport(
 		@Query('date.eq', new ZodValidationPipe(z.coerce.date().transform((value) => format(value, 'yyyy-MM-dd'))))
 		date: string
@@ -280,7 +280,7 @@ export class DefectiveGoodsController {
 		endpoint: 'export-daily-inbound',
 		statusCode: HttpStatus.OK
 	})
-	@RequireAuthorized(UserRole.MANAGER, UserRole.DG_WAREHOUSE_STAFF)
+	@RequireAuthorized(UserRole.MANAGER, UserRole.DG_WAREHOUSE_STAFF, UserRole.INDUSTRIAL_ENGINEERING_STAFF)
 	async exportDailyOutboundReport(
 		@Query('date.eq', new ZodValidationPipe(z.coerce.date().transform((value) => format(value, 'yyyy-MM-dd'))))
 		date: string,
@@ -310,7 +310,7 @@ export class DefectiveGoodsController {
 		endpoint: 'daily-outbound',
 		statusCode: HttpStatus.OK
 	})
-	@RequireAuthorized(UserRole.MANAGER, UserRole.DG_WAREHOUSE_STAFF)
+	@RequireAuthorized(UserRole.MANAGER, UserRole.DG_WAREHOUSE_STAFF, UserRole.INDUSTRIAL_ENGINEERING_STAFF)
 	public async getDailyOutboundReport(
 		@Query('date.eq', new ZodValidationPipe(z.coerce.date().transform((value) => format(value, 'yyyy-MM-dd'))))
 		date: string
@@ -323,7 +323,7 @@ export class DefectiveGoodsController {
 		endpoint: 'export-daily-outbound',
 		statusCode: HttpStatus.OK
 	})
-	@RequireAuthorized(UserRole.MANAGER, UserRole.DG_WAREHOUSE_STAFF)
+	@RequireAuthorized(UserRole.MANAGER, UserRole.DG_WAREHOUSE_STAFF, UserRole.INDUSTRIAL_ENGINEERING_STAFF)
 	async exportDailyInboundReport(
 		@Query('date.eq', new ZodValidationPipe(z.coerce.date().transform((value) => format(value, 'yyyy-MM-dd'))))
 		date: string,
@@ -342,7 +342,7 @@ export class DefectiveGoodsController {
 		endpoint: 'inventory',
 		statusCode: HttpStatus.OK
 	})
-	@RequireAuthorized(UserRole.MANAGER, UserRole.DG_WAREHOUSE_STAFF)
+	@RequireAuthorized(UserRole.MANAGER, UserRole.DG_WAREHOUSE_STAFF, UserRole.INDUSTRIAL_ENGINEERING_STAFF)
 	async getDefectiveGoodsInventory() {
 		return await this.defectiveGoodsInventoryService.getDefectiveGoodsInventory()
 	}
@@ -352,7 +352,7 @@ export class DefectiveGoodsController {
 		endpoint: 'export-inventory-report',
 		statusCode: HttpStatus.OK
 	})
-	@RequireAuthorized(UserRole.MANAGER, UserRole.DG_WAREHOUSE_STAFF)
+	@RequireAuthorized(UserRole.MANAGER, UserRole.DG_WAREHOUSE_STAFF, UserRole.INDUSTRIAL_ENGINEERING_STAFF)
 	async exportDefectiveGoodsInventory(
 		@Headers(CommonRequestHeader.FACTORY_CODE) factoryCode: string,
 		@Res() reply: FastifyReply

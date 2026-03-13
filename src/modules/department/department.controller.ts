@@ -13,7 +13,12 @@ export class DepartmentController {
 		endpoint: 'warehouse',
 		method: HttpMethod.GET
 	})
-	@RequireAuthorized(UserRole.MANAGER, UserRole.DG_WAREHOUSE_STAFF, UserRole.FG_WAREHOUSE_STAFF)
+	@RequireAuthorized(
+		UserRole.MANAGER,
+		UserRole.DG_WAREHOUSE_STAFF,
+		UserRole.FG_WAREHOUSE_STAFF,
+		UserRole.INDUSTRIAL_ENGINEERING_STAFF
+	)
 	async getWarehouseDepartments(@Headers(CommonRequestHeader.FACTORY_CODE) factoryCode: string) {
 		if (!factoryCode) throw new BadRequestException('Factory code is required')
 		if (!Object.values(FactoryCode).includes) throw new UnprocessableEntityException('Invalid factory code')
@@ -24,7 +29,12 @@ export class DepartmentController {
 		endpoint: 'shaping-product-line',
 		method: HttpMethod.GET
 	})
-	@RequireAuthorized(UserRole.MANAGER, UserRole.DG_WAREHOUSE_STAFF, UserRole.FG_WAREHOUSE_STAFF)
+	@RequireAuthorized(
+		UserRole.MANAGER,
+		UserRole.DG_WAREHOUSE_STAFF,
+		UserRole.FG_WAREHOUSE_STAFF,
+		UserRole.INDUSTRIAL_ENGINEERING_STAFF
+	)
 	async getShapingDepartment(@Headers(CommonRequestHeader.FACTORY_CODE) factoryCode: string) {
 		return await this.departmentService.getShapingDepartment(factoryCode)
 	}
@@ -33,7 +43,12 @@ export class DepartmentController {
 		endpoint: 'sewing-product-line',
 		method: HttpMethod.GET
 	})
-	@RequireAuthorized(UserRole.MANAGER, UserRole.DG_WAREHOUSE_STAFF, UserRole.FG_WAREHOUSE_STAFF)
+	@RequireAuthorized(
+		UserRole.MANAGER,
+		UserRole.DG_WAREHOUSE_STAFF,
+		UserRole.FG_WAREHOUSE_STAFF,
+		UserRole.INDUSTRIAL_ENGINEERING_STAFF
+	)
 	async getSewingDepartment(@Headers(CommonRequestHeader.FACTORY_CODE) factoryCode: string) {
 		return await this.departmentService.getSewingDepartment(factoryCode)
 	}
