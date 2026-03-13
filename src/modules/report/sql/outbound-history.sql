@@ -1,9 +1,16 @@
 DECLARE @FallbackValue NVARCHAR(10) = 'Unknown';
 
-WITH base_data AS (
+WITH inv_rfid AS(
+   SELECT EPC_Code, po, mo_no, size_code, rfid_status, stationNO, record_time, FC_server_code, isactive
+   FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet WITH (NOLOCK)
+   UNION ALL
+   SELECT EPC_Code, po, mo_no, size_code, rfid_status, stationNO, record_time, FC_server_code, isactive
+   FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet_backup_Daily WITH (NOLOCK)
+),
+base_data AS (
    SELECT 
+      DISTINCT i.EPC_Code, 
       CAST(i.record_time AS DATE) AS outbound_date,
-      i.EPC_Code, 
       i.po, 
       i.mo_no, 
       b.brand_name,
@@ -20,7 +27,7 @@ WITH base_data AS (
       r.cust_shoestyle AS cust_shoes_style,
       UPPER(CONCAT(p.color_sn,'/', p.mat_ecolor)) AS color_sn,
       i.FC_server_code
-   FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet_backup_Daily i WITH (NOLOCK)
+   FROM inv_rfid i
    LEFT JOIN DV_DATA_LAKE.dbo.dv_rfidmatchmst_cust r WITH (FORCESEEK) 
       ON i.EPC_Code = r.EPC_Code
    LEFT JOIN wuerp_vnrd.dbo.ta_productmst p WITH (FORCESEEK)
@@ -37,42 +44,6 @@ WITH base_data AS (
       AND i.EPC_Code NOT LIKE '303429%'
       AND i.EPC_Code NOT LIKE 'E28%'
       AND i.record_time >= CAST(DATEADD(YEAR, -1, GETDATE()) AS DATE)
-   UNION ALL
-	SELECT 
-      CAST(i.record_time AS DATE) AS outbound_date,
-      i.EPC_Code, 
-      i.po, 
-      i.mo_no, 
-      b.brand_name,
-      CASE 
-         WHEN LEFT(CAST(i.size_code AS NVARCHAR(10)), 1) = '0' THEN i.size_code
-         WHEN ISNUMERIC(i.size_code) = 1 
-            AND i.size_code NOT IN ('', '.', '-', '+')  -- Exclude edge cases
-            AND CAST(i.size_code AS FLOAT) < 10 
-            THEN CAST(CONCAT('0', i.size_code) AS NVARCHAR(10))
-         ELSE CAST(i.size_code AS NVARCHAR(10)) 
-      END AS size_code, 
-      i.record_time,
-      r.shoestyle_codefactory AS factory_shoes_style,
-      r.cust_shoestyle AS cust_shoes_style,
-      UPPER(CONCAT(p.color_sn,'/', p.mat_ecolor)) AS color_sn,
-      i.FC_server_code
-   FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet i WITH (NOLOCK)
-   LEFT JOIN DV_DATA_LAKE.dbo.dv_rfidmatchmst_cust r WITH (FORCESEEK) 
-      ON i.EPC_Code = r.EPC_Code
-   LEFT JOIN wuerp_vnrd.dbo.ta_productmst p WITH (FORCESEEK)
-      ON p.mat_code = r.mat_code AND p.isactive = 'Y'
-   LEFT JOIN wuerp_vnrd.dbo.ta_brand b 
-      ON b.custbrand_id = p.custbrand_id AND b.isactive = 'Y'
-   WHERE
-      i.isactive = 'Y'
-      AND i.rfid_status = 'B'
-      AND RIGHT(i.stationNO, 5) = 'WH103'
-      AND i.FC_server_code = @0
-      AND i.po = @1
-      AND i.mo_no NOT IN ('13D05B006', '13A08C003')
-      AND i.EPC_Code NOT LIKE '303429%'
-      AND i.EPC_Code NOT LIKE 'E28%'
 ),
 
 -- * Size quantity by purchase order 

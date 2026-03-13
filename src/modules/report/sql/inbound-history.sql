@@ -1,9 +1,16 @@
-WITH daily_inbound_history_cte AS (
+WITH inv_rfid AS(
+   SELECT EPC_Code, po, mo_no, size_code, rfid_status, stationNO, record_time, FC_server_code, isactive
+   FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet WITH (NOLOCK)
+   UNION ALL
+   SELECT EPC_Code, po, mo_no, size_code, rfid_status, stationNO, record_time, FC_server_code, isactive
+   FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet_backup_Daily WITH (NOLOCK)
+),
+daily_inbound_history_cte AS (
    SELECT 
       a.size_code AS size_numcode,
       COUNT(DISTINCT a.EPC_Code) AS qty,
       CAST(a.record_time AS DATE) AS inbound_date
-   FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet_backup_Daily a WITH (NOLOCK)
+   FROM inv_rfid a
    WHERE 
 		a.isactive = 'Y'
 		AND a.rfid_status = 'A'
@@ -22,7 +29,7 @@ inbound_history_by_size_cte AS (
    SELECT 
       a.size_code AS size_numcode,
       COUNT(DISTINCT a.EPC_Code) AS qty
-   FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet_backup_Daily a WITH (NOLOCK)
+   FROM inv_rfid a WITH (NOLOCK)
    WHERE 
 		a.isactive = 'Y'
 		AND a.rfid_status = 'A'
@@ -117,7 +124,7 @@ SELECT
       FROM mo_size_run_cte
       ORDER BY size_numcode ASC FOR JSON PATH
    ) AS order_size_run
-FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet_backup_Daily a WITH (NOLOCK)
+FROM inv_rfid a
 LEFT JOIN wuerp_vnrd.dbo.ta_manufacturmst b ON a.mo_no = b.mo_no AND b.isactive = 'Y'
 LEFT JOIN wuerp_vnrd.dbo.ta_manufacturdet c ON c.mo_no = b.mo_no AND c.isactive = 'Y'
 LEFT JOIN wuerp_vnrd.dbo.ta_ordermst d ON c.or_no = c.or_no AND d.isactive = 'Y'
