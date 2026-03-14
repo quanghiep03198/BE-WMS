@@ -42,6 +42,6 @@ export class InboundQtyLimitationGuard implements CanActivate {
 		if (isOverOrderQty)
 			throw new BadRequestException(this.i18nService.t('inoutbound.notification.over_inbound_limit'))
 
-		return isOverOrderQty
+		return !isOverOrderQty
 	}
 }
