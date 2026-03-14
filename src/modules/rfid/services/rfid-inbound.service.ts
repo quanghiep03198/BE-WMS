@@ -5,7 +5,14 @@ import { IUpsertInventoryEventPayload } from '@/modules/inventory/interfaces'
 import { InventoryAuditService } from '@/modules/inventory/services/inventory-audit.service'
 import { TENANCY_DATA_SOURCE } from '@/modules/tenancy/constants'
 import { InjectQueue } from '@nestjs/bullmq'
-import { Inject, Injectable, InternalServerErrorException, NotFoundException, Scope } from '@nestjs/common'
+import {
+	BadRequestException,
+	Inject,
+	Injectable,
+	InternalServerErrorException,
+	NotFoundException,
+	Scope
+} from '@nestjs/common'
 import { EventEmitter2, OnEvent } from '@nestjs/event-emitter'
 import { InjectModel } from '@nestjs/mongoose'
 import { InjectDataSource } from '@nestjs/typeorm'
@@ -29,6 +36,11 @@ import { generateStation } from '../utils'
 
 @Injectable({ scope: Scope.REQUEST })
 export class RFIDInboundService {
+	private readonly missingInboundQtyQuery: string = readFileSync(
+		resolve(join(__dirname, '../sql/missing-inbound-qty.sql')),
+		'utf-8'
+	)
+
 	constructor(
 		@Inject(TENANCY_DATA_SOURCE) private readonly dataSourceTNC: DataSource,
 		@InjectDataSource(DATA_SOURCE_DATA_LAKE) private readonly dataSourceDL: DataSource,
@@ -54,6 +66,17 @@ export class RFIDInboundService {
 		const payload = await this.epcInboundModel.find({ scannable: true, mo_no: commandNumber }).lean(true)
 		const queryRunner = this.dataSourceTNC.createQueryRunner()
 		const session = await this.epcInboundModel.startSession()
+		const missingOrderSizeQty = await this.dataSourceTNC.query<
+			Array<{
+				size_numcode: string
+				missing_qty: number
+			}>
+		>(this.missingInboundQtyQuery, [commandNumber, JSON.stringify(payload)])
+
+		const isOverOrderQty = missingOrderSizeQty.some((size) => size.missing_qty < 0)
+
+		if (isOverOrderQty)
+			throw new BadRequestException(this.i18nService.t('inoutbound.notification.over_inbound_limit'))
 
 		try {
 			const upsertInventoryQuery: string = readFileSync(
