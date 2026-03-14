@@ -16,7 +16,8 @@ import {
 	ParseIntPipe,
 	Query,
 	Res,
-	UseFilters
+	UseFilters,
+	UseGuards
 } from '@nestjs/common'
 import { EventEmitter2 } from '@nestjs/event-emitter'
 import { InjectModel } from '@nestjs/mongoose'
@@ -45,6 +46,7 @@ import {
 	searchCustomerValidator,
 	SearchCustOrderParamsDTO
 } from '../dto/rfid-shared.dto'
+import { InboundQtyLimitationGuard } from '../guards/inbound-qty-limitation.guard'
 import { EpcDocument, EpcInbound, EpcModel } from '../schemas/epc.schema'
 import { RFIDInboundService } from '../services/rfid-inbound.service'
 import { RFIDSharedService } from '../services/rfid-shared.service'
@@ -136,6 +138,7 @@ export class RFIDInboundController {
 		message: 'common.updated'
 	})
 	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
+	@UseGuards(InboundQtyLimitationGuard)
 	async upsertStockIn(
 		@Param('commandNumber') commandNumber: string,
 		@User() user: RequestUser,

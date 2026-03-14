@@ -5,14 +5,7 @@ import { IUpsertInventoryEventPayload } from '@/modules/inventory/interfaces'
 import { InventoryAuditService } from '@/modules/inventory/services/inventory-audit.service'
 import { TENANCY_DATA_SOURCE } from '@/modules/tenancy/constants'
 import { InjectQueue } from '@nestjs/bullmq'
-import {
-	BadRequestException,
-	Inject,
-	Injectable,
-	InternalServerErrorException,
-	NotFoundException,
-	Scope
-} from '@nestjs/common'
+import { Inject, Injectable, InternalServerErrorException, NotFoundException, Scope } from '@nestjs/common'
 import { EventEmitter2, OnEvent } from '@nestjs/event-emitter'
 import { InjectModel } from '@nestjs/mongoose'
 import { InjectDataSource } from '@nestjs/typeorm'
@@ -25,7 +18,7 @@ import { PinoLogger } from 'nestjs-pino'
 import { readFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { DataSource, FindOptionsWhere, In } from 'typeorm'
-import { FALLBACK_VALUE, InventoryActions, POST_DATA_INBOUND_QUEUE } from '../constants'
+import { FALLBACK_VALUE, POST_DATA_INBOUND_QUEUE } from '../constants'
 import { ExchangeOrderDTO, UpsertEpcInformationDTO, UpsertStockInDTO } from '../dto/rfid-inbound.dto'
 import { PostReaderDataDTO, SearchCustOrderParamsDTO } from '../dto/rfid-shared.dto'
 import { RFIDMatchCustomerEntity } from '../entities/rfid-customer-match.entity'
@@ -61,15 +54,6 @@ export class RFIDInboundService {
 		const payload = await this.epcInboundModel.find({ scannable: true, mo_no: commandNumber }).lean(true)
 		const queryRunner = this.dataSourceTNC.createQueryRunner()
 		const session = await this.epcInboundModel.startSession()
-
-		const missingInboudQty = await this.getMissingOrderQty(commandNumber)
-
-		if (
-			data.rfid_status === InventoryActions.INBOUND &&
-			typeof missingInboudQty === 'number' &&
-			payload.length > missingInboudQty
-		)
-			throw new BadRequestException(this.i18nService.t('inoutbound.notification.over_inbound_limit'))
 
 		try {
 			const upsertInventoryQuery: string = readFileSync(
@@ -323,32 +307,6 @@ export class RFIDInboundService {
 				_id: 0
 			}
 		})
-	}
-
-	private async getMissingOrderQty(commandNumber: string): Promise<number | undefined> {
-		const [result] = await this.dataSourceDL.query<
-			Array<{
-				mo_no: string
-				mo_qty: number
-				missing_qty: number
-			}>
-		>(
-			/* SQL */ `
-				WITH CTE AS (
-					SELECT DISTINCT EPC_Code FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet
-					WHERE mo_no = @0 AND RIGHT(stationNO, 3) = '101' AND rfid_status = 'A'
-					UNION ALL
-					SELECT DISTINCT EPC_Code FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet_backup_Daily
-					WHERE mo_no = @0 AND RIGHT(stationNO, 3) = '101' AND rfid_status = 'A'
-				)
-				SELECT mo_no, mo_totalqty AS mo_qty, mo_totalqty - (SELECT COUNT(DISTINCT EPC_Code) FROM CTE) AS missing_qty
-				FROM wuerp_vnrd.dbo.ta_manufacturmst
-				WHERE mo_no = @0
-			`,
-			[commandNumber]
-		)
-
-		return result?.missing_qty
 	}
 
 	@OnEvent('rfid.inbound.check', { async: true })
