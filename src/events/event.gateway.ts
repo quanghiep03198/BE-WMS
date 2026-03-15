@@ -170,15 +170,14 @@ export class EventGateway implements OnGatewayInit, OnGatewayConnection, OnGatew
 	 * @description Reject a socket connection by emitting an auth error and disconnecting.
 	 */
 	private rejectConnection(socket: Socket, error: Error | JsonWebTokenError): void {
-		const isTokenExpired = error instanceof JsonWebTokenError
-		const event = isTokenExpired ? 'jwt_expired' : 'auth_error'
-		socket.emit(event, {
-			event,
+		const isJwtError = error instanceof JsonWebTokenError
+		if (!isJwtError) socket.disconnect(true)
+		socket.emit('jwt_expired', {
+			event: 'jwt_expired',
 			ok: false,
-			message: isTokenExpired ? 'Access token has expired. Please refresh your token and reconnect.' : error.message,
+			message: 'Access token has expired. Please refresh your token and reconnect.',
 			metadata: null
 		})
-		socket.disconnect(true)
 	}
 
 	@SubscribeMessage('sync_decker_data')
