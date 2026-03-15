@@ -12,7 +12,6 @@ WITH CTE AS (
    FROM OPENJSON(@JsonData)
 )
 MERGE INTO DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet AS target
--- USING (VALUES :values) AS source (EPC_Code, po, mo_no, size_code, stationNO, FC_server_code)
 USING (
    SELECT * FROM CTE
 ) AS source

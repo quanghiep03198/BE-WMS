@@ -11,19 +11,14 @@ DECLARE
    @scanned BIT = @9
 ;
 
-WITH
-   undeleted_epcs
-   AS
-   (
-      SELECT value AS EPC_Code
-      FROM OPENJSON(@undeleted_epcs)
-   ),
-   scanned_epcs
-   AS
-   (
-      SELECT JSON_VALUE(value, '$.epc') AS EPC_Code, JSON_VALUE(value, '$.stored_at') AS stored_at, CAST(1 AS BIT) AS scanned
-      FROM OPENJSON(@scanned_epcs)
-   )
+WITH undeleted_epcs AS (
+   SELECT value AS EPC_Code
+   FROM OPENJSON(@undeleted_epcs)
+),
+scanned_epcs AS (
+   SELECT JSON_VALUE(value, '$.epc') AS EPC_Code, JSON_VALUE(value, '$.stored_at') AS stored_at, CAST(1 AS BIT) AS scanned
+   FROM OPENJSON(@scanned_epcs)
+)
 SELECT COUNT(DISTINCT a.EPC_Code) AS count
 FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet_backup_Daily a WITH(NOLOCK)
 LEFT JOIN wuerp_vnrd.dbo.ta_manufacturmst b
@@ -43,11 +38,11 @@ WHERE a.rfid_status = 'A'
       FROM undeleted_epcs
       WHERE EPC_Code = a.EPC_Code
    ) 
-   AND (@epc_like IS NULL  OR a.EPC_Code LIKE CONCAT('%', @epc_like, '%')) 
+   AND (@epc_like IS NULL OR a.EPC_Code LIKE CONCAT('%', @epc_like, '%')) 
    AND (@factory_shoes_style IS NULL  OR d.shoestyle_codefactory = @factory_shoes_style) 
-   AND (@color_sn IS NULL  OR c.color_sn = @color_sn) 
+   AND (@color_sn IS NULL OR c.color_sn = @color_sn) 
    AND (@mo_no IS NULL  OR a.mo_no = @mo_no) 
-   AND (@size_code IS NULL  OR a.size_code = @size_code) 
+   AND (@size_code IS NULL OR a.size_code = @size_code) 
    AND (@scanned IS NULL OR CAST(COALESCE(e.scanned, 0) AS BIT) = CAST(@scanned AS BIT)) 
    AND NOT EXISTS (
       SELECT 1
