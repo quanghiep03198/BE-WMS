@@ -151,8 +151,12 @@ export class OrderService {
 			)
 	}
 
-	async getCustOrderDetails(commandNumbers: Array<string>): Promise<Partial<RFIDMatchCustomerEntity>[]> {
-		let orderInformation: Partial<RFIDMatchCustomerEntity>[] = []
+	async getCustOrderDetails(commandNumbers: Array<string>) {
+		let orderInformation: Array<
+			Partial<RFIDMatchCustomerEntity> & {
+				size_sumqty: number
+			}
+		> = []
 		for (const commandNumber of commandNumbers) {
 			const orderInfo = await this.getCustOrderByCommandNumber(commandNumber)
 			if (orderInfo?.length === 0) continue
