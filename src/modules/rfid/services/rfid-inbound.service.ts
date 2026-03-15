@@ -217,7 +217,13 @@ export class RFIDInboundService {
 		return await this.bulkUpsertRFIDRecords(payload)
 	}
 
-	public async bulkUpsertRFIDRecords(payload: Partial<RFIDMatchCustomerEntity>[]): Promise<void> {
+	public async bulkUpsertRFIDRecords(
+		payload: Array<
+			Partial<RFIDMatchCustomerEntity> & {
+				size_sumqty?: number
+			}
+		>
+	): Promise<void> {
 		const session = await this.epcInboundModel.startSession()
 		const queryRunner = this.dataSourceDL.createQueryRunner()
 		await queryRunner.connect()
@@ -230,10 +236,11 @@ export class RFIDInboundService {
 			await session.startTransaction()
 			await queryRunner.startTransaction()
 
-			for (const data of chunk(payload, 2000)) {
+			for (const data of chunk(payload, 100)) {
 				const upsertSourceData = data.map((item) => ({
 					...item,
 					cust_shoes_style: item.cust_shoes_style?.replace('/', '\/'),
+					size_qty: item.size_sumqty ?? 1,
 					remark: item.remark ?? `[${currentTimestamp}] Info: Upserted from WMS`
 				}))
 
@@ -242,22 +249,20 @@ export class RFIDInboundService {
 
 			const bulkWriteOptions: AnyBulkWriteOperation<typeof EpcInboundSchema>[] = payload.map((item) => ({
 				updateOne: {
-					filter: { epc: item.epc, scannable: true },
+					filter: { epc: item.epc },
 					update: {
 						$set: pick(item, ['mo_no', 'factory_shoes_style', 'color_sn', 'size_numcode', 'factory_code_produce'])
 					}
 				}
 			}))
 
-			const result = await this.epcInboundModel.bulkWrite(bulkWriteOptions, {
+			await this.epcInboundModel.bulkWrite(bulkWriteOptions, {
 				session,
 				writeConcern: { w: 'majority' },
 				readPreference: 'nearest',
 				ordered: false,
 				retryWrites: true
 			})
-
-			console.log('result', result)
 
 			await session.commitTransaction()
 			await queryRunner.commitTransaction()

@@ -1,9 +1,23 @@
 MERGE INTO DV_DATA_LAKE.dbo.dv_rfidmatchmst_cust AS target
-USING (VALUES :values) AS source (
-   EPC_Code, mo_no, mat_code, mo_noseq, or_no, or_custpo, 
-   shoestyle_codefactory, cust_shoestyle, size_code, size_numcode,
-   factory_code_orders, factory_name_orders, factory_code_produce, factory_name_produce, size_qty, remark
-)
+USING (
+   SELECT JSON_VALUE(value, '$.epc') AS EPC_Code,
+      JSON_VALUE(value, '$.mo_no') AS mo_no,
+      JSON_VALUE(value, '$.mat_code') AS mat_code,
+      JSON_VALUE(value, '$.mo_noseq') AS mo_noseq,
+      JSON_VALUE(value, '$.or_no') AS or_no,
+      JSON_VALUE(value, '$.or_cust_po') AS or_custpo,
+      JSON_VALUE(value, '$.factory_shoes_style') AS shoestyle_codefactory,
+      JSON_VALUE(value, '$.cust_shoes_style') AS cust_shoestyle,
+      JSON_VALUE(value, '$.size_code') AS size_code,
+      JSON_VALUE(value, '$.size_numcode') AS size_numcode,
+      JSON_VALUE(value, '$.factory_code_orders') AS factory_code_orders,
+      JSON_VALUE(value, '$.factory_name_orders') AS factory_name_orders,
+      JSON_VALUE(value, '$.factory_code_produce') AS factory_code_produce,
+      JSON_VALUE(value, '$.factory_name_produce') AS factory_name_produce,
+      CAST(JSON_VALUE(value, '$.size_qty') AS INT) AS size_qty,
+      JSON_VALUE(value, '$.remark') AS remark
+   FROM OPENJSON(@0)
+) AS source
 ON target.EPC_Code = source.EPC_Code
 WHEN NOT MATCHED THEN
    INSERT (
