@@ -1,9 +1,9 @@
-WITH mo_size_run AS (
+WITH mo_size_qty AS (
 	SELECT
 		CASE 
 			WHEN ISNUMERIC(b.size_numcode) = 1 THEN CAST(b.size_numcode AS FLOAT) 
 			WHEN LEFT(b.size_numcode, 1) IN ('T', 'K') THEN CAST(SUBSTRING(b.size_numcode, 2, LEN(b.size_numcode)) AS FLOAT)
-		END AS [size_numcode], 
+		END AS size_numcode, 
 		SUM(CAST(b.size_qty AS INT)) AS size_qty
 	FROM wuerp_vnrd.dbo.ta_ordersizerun a
 	LEFT JOIN wuerp_vnrd.dbo.ta_ordermst or1 ON or1.or_no = a.or_no
@@ -58,28 +58,27 @@ WITH mo_size_run AS (
 	AND a1.mo_no = @0
 	GROUP BY a.size_code, b.size_numcode
 ),
-mo_inbound_qty AS (
-   SELECT DISTINCT EPC_Code, size_code
+inbound_epcs AS (
+   SELECT DISTINCT EPC_Code, CAST(size_code AS FLOAT) AS size_numcode
    FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet
    WHERE mo_no = @0 AND RIGHT(stationNO, 3) = '101' AND rfid_status = 'A'
    UNION ALL
-   SELECT DISTINCT EPC_Code, size_code
+   SELECT DISTINCT EPC_Code, CAST(size_code AS FLOAT) AS size_numcode
    FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet_backup_Daily
    WHERE mo_no = @0 AND RIGHT(stationNO, 3) = '101' AND rfid_status = 'A'
 	UNION ALL
-	SELECT JSON_VALUE(value, '$.epc') AS EPC_Code, JSON_VALUE(value, '$.size_numcode') AS size_code
+	SELECT JSON_VALUE(value, '$.epc') AS EPC_Code, CAST(JSON_VALUE(value, '$.size_numcode') AS FLOAT) AS size_numcode
 	FROM OPENJSON(@1)
+),
+inbound_qty AS (
+	SELECT size_numcode, COUNT(DISTINCT EPC_Code) inbound_qty
+	FROM inbound_epcs
+	GROUP BY size_numcode
 )
 SELECT 
-	CASE 
-		WHEN CAST(a.size_numcode AS FLOAT) < 10 THEN CONCAT('0', a.size_numcode)
-		ELSE CAST(a.size_numcode AS NVARCHAR) 
-	END AS size_numcode,
+	a.size_numcode AS size_numcode,
+	a.size_qty AS mo_qty,
+	ISNULL(b.inbound_qty, 0) AS inbound_qty,
    a.size_qty - ISNULL(b.inbound_qty, 0) AS missing_qty
-FROM mo_size_run a
-LEFT JOIN (
-   SELECT size_code AS size_numcode, COUNT(DISTINCT EPC_Code) inbound_qty
-   FROM mo_inbound_qty
-   GROUP BY size_code
-) b ON a.size_numcode = b.size_numcode
-GROUP BY a.size_numcode, b.size_numcode, a.size_qty, b.inbound_qty
+FROM mo_size_qty a
+LEFT JOIN inbound_qty b ON a.size_numcode = b.size_numcode

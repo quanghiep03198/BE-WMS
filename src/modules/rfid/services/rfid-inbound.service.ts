@@ -37,7 +37,7 @@ import { generateStation } from '../utils'
 @Injectable({ scope: Scope.REQUEST })
 export class RFIDInboundService {
 	private readonly missingInboundQtyQuery: string = readFileSync(
-		resolve(join(__dirname, '../sql/missing-inbound-qty.sql')),
+		resolve(join(__dirname, '../sql/mo-inbound-progress.sql')),
 		'utf-8'
 	)
 
@@ -73,10 +73,13 @@ export class RFIDInboundService {
 			}>
 		>(this.missingInboundQtyQuery, [commandNumber, JSON.stringify(payload)])
 
-		const isOverOrderQty = missingOrderSizeQty.some((size) => size.missing_qty < 0)
+		const excessInboundQuantities = missingOrderSizeQty.filter((size) => size.missing_qty < 0)
 
-		if (isOverOrderQty)
-			throw new BadRequestException(this.i18nService.t('inoutbound.notification.over_inbound_limit'))
+		if (excessInboundQuantities.length > 0)
+			throw new BadRequestException(
+				this.i18nService.t('inoutbound.notification.over_inbound_limit', { lang: I18nContext.current()?.lang }),
+				{ cause: excessInboundQuantities }
+			)
 
 		try {
 			const upsertInventoryQuery: string = readFileSync(
@@ -219,6 +222,8 @@ export class RFIDInboundService {
 		const queryRunner = this.dataSourceDL.createQueryRunner()
 		await queryRunner.connect()
 
+		const currentTimestamp = format(new Date(), 'yyyy-MM-dd HH:mm:ss')
+
 		try {
 			const upsertEpcsQuery: string = readFileSync(resolve(join(__dirname, '../sql/upsert-rfid-match.sql')), 'utf-8')
 
@@ -226,17 +231,13 @@ export class RFIDInboundService {
 			await queryRunner.startTransaction()
 
 			for (const data of chunk(payload, 2000)) {
-				const values = data
-					.map((item) => {
-						return `(
-							'${item.epc}', '${item.mo_no}', '${item.mat_code}', '${item.mo_noseq}', '${item.or_no}', '${item.or_cust_po}', 
-							'${item.factory_shoes_style}', '${item.cust_shoes_style.replace('/', '\/')}', '${item.size_code}', '${item.size_numcode}',
-							'${item.factory_code_orders}', '${item.factory_name_orders}', '${item.factory_code_produce}', '${item.factory_name_produce}', ${item.size_qty || 1},
-							'${item.remark ?? ''}'
-						)`
-					})
-					.join(',')
-				await queryRunner.query(upsertEpcsQuery.replace(':values', values))
+				const upsertSourceData = data.map((item) => ({
+					...item,
+					cust_shoes_style: item.cust_shoes_style?.replace('/', '\/'),
+					remark: item.remark ?? `[${currentTimestamp}] Info: Upserted from WMS`
+				}))
+
+				return await queryRunner.manager.query(upsertEpcsQuery, [JSON.stringify(upsertSourceData)])
 			}
 
 			const bulkWriteOptions: AnyBulkWriteOperation<typeof EpcInboundSchema>[] = payload.map((item) => ({
@@ -248,13 +249,15 @@ export class RFIDInboundService {
 				}
 			}))
 
-			await this.epcInboundModel.bulkWrite(bulkWriteOptions, {
+			const result = await this.epcInboundModel.bulkWrite(bulkWriteOptions, {
 				session,
 				writeConcern: { w: 'majority' },
 				readPreference: 'nearest',
 				ordered: false,
 				retryWrites: true
 			})
+
+			console.log('result', result)
 
 			await session.commitTransaction()
 			await queryRunner.commitTransaction()

@@ -31,6 +31,10 @@ export class RFIDOutboundService {
 		resolve(join(__dirname, '../sql/archived-outbound-epc-count.sql')),
 		'utf-8'
 	)
+	private readonly missingOutboundQtyQuery: string = readFileSync(
+		resolve(join(__dirname, '../sql/po-outbound-progess.sql')),
+		'utf-8'
+	)
 
 	constructor(
 		private readonly logger: PinoLogger,
@@ -93,11 +97,16 @@ export class RFIDOutboundService {
 		const queryRunner = this.dataSourceDL.createQueryRunner()
 		const upsertStockoutQuery: string = readFileSync(resolve(join(__dirname, '../sql/upsert-outbound.sql')), 'utf-8')
 
-		const missingOutboundQty = await this.getMissingOrderQty(payload.po)
+		const missingOutboundQty = await this.getPurchaseOrderOutboundProgress(payload.po, epcToUpsert)
 
-		if (typeof missingOutboundQty === 'number' && epcToUpsert.length > missingOutboundQty)
+		const excessOutboundQuantities = missingOutboundQty.filter((size) => size.missing_qty < 0)
+
+		if (excessOutboundQuantities.length > 0)
 			throw new BadRequestException(
-				this.i18nService.t('inoutbound.notification.over_outbound_limit', { lang: I18nContext.current()?.lang })
+				this.i18nService.t('inoutbound.notification.over_outbound_limit', {
+					lang: I18nContext.current()?.lang
+				}),
+				{ cause: excessOutboundQuantities }
 			)
 
 		try {
@@ -254,26 +263,10 @@ export class RFIDOutboundService {
 		} satisfies Pagination<EpcInformation>
 	}
 
-	private async getMissingOrderQty(purchaseOrder: string): Promise<number | undefined> {
-		const [result] = await this.dataSourceERP.query<Array<{ po: string; po_qty: number; missing_qty: number }>>(
-			/* SQL */ `
-				WITH CTE AS (
-					SELECT DISTINCT EPC_Code FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet
-					WHERE po = @0 AND RIGHT(stationNO, 3) = '103' AND rfid_status = 'B'
-					UNION ALL
-					SELECT DISTINCT EPC_Code FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet_backup_Daily
-					WHERE po = @0 AND RIGHT(stationNO, 3) = '103' AND rfid_status = 'B'
-				)
-				SELECT IIF(ISNULL(or_custpoone, '') = '', or_custpo, or_custpoone) AS po, 
-				CAST(SUM(or_totalqty) - SUM(or_totalcqty) AS INT) AS po_qty,
-				CAST(SUM(or_totalqty) - SUM(or_totalcqty) AS INT) - (SELECT COUNT(DISTINCT EPC_Code) FROM CTE) AS missing_qty
-				FROM wuerp_vnrd.dbo.ta_ordermst
-				WHERE IIF(ISNULL(or_custpoone, '') = '', or_custpo, or_custpoone) = @0
-				GROUP BY IIF(ISNULL(or_custpoone, '') = '', or_custpo, or_custpoone)
-			`,
-			[purchaseOrder]
+	private async getPurchaseOrderOutboundProgress(purchaseOrder: string, outboundEpcs: Partial<EpcDocument>[]) {
+		return await this.dataSourceERP.query<Array<{ size_numcode: string; missing_qty: number }>>(
+			this.missingOutboundQtyQuery,
+			[purchaseOrder, JSON.stringify(outboundEpcs)]
 		)
-
-		return result?.missing_qty
 	}
 }
