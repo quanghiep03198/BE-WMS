@@ -25,6 +25,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
 			message: exception.message,
 			statusCode: httpStatus,
 			stack: exception.stack,
+			cause: exception.cause,
 			timestamp: new Date().toISOString(),
 			path: httpAdapter.getRequestUrl(ctx.getRequest())
 		}

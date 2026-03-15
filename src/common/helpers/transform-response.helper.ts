@@ -6,6 +6,7 @@ export interface IResponseBody {
 	message: string
 	statusCode: HttpStatus
 	stack?: HttpException | FatalError | string
+	cause?: unknown
 	timestamp: Date | string
 	path: string
 }
