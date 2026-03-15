@@ -135,7 +135,7 @@ export class ThirdPartyApiConsumer extends WorkerHost {
 	}
 
 	// * Step 2.2.2: Get order information from ERP
-	private async getOrderInformation(commandNumbers: string[]): Promise<any[]> {
+	private async getOrderInformation(commandNumbers: string[]) {
 		try {
 			const data = await this.orderService.getCustOrderDetails(commandNumbers)
 			this.updateProcessState(2, 'processing')
@@ -159,7 +159,7 @@ export class ThirdPartyApiConsumer extends WorkerHost {
 			factory_name_orders: factoryCode,
 			factory_code_produce: factoryCode,
 			factory_name_produce: factoryCode,
-			remark: `Fetched from Decker API at ${currentTimestamp}`
+			remark: `[${currentTimestamp}] Info: Synchronized from Deckers API with command number "${item.commandNumber}"`
 		}))
 		await this.rfidInboundService.bulkUpsertRFIDRecords(payload)
 	}
