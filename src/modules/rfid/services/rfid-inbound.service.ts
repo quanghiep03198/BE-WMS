@@ -80,21 +80,22 @@ export class RFIDInboundService {
 			await session.startTransaction()
 			await queryRunner.startTransaction()
 
-			for (const item of chunk(
-				payload.map((value) => {
-					const factory = value.factory_code_produce ?? factoryCode
-					return {
-						...value,
-						...data,
-						factory_code: factory,
-						station_no: generateStation(factory, 'WH101'),
-						record_time: format(new Date(), 'yyyy-MM-dd HH:mm:ss')
-					}
-				}),
-				100
-			)) {
-				await this.dataSourceDL.query(upsertInventoryQuery, [JSON.stringify(item)])
-			}
+			const upsertPayload = payload.map((value) => {
+				const factory = value.factory_code_produce ?? factoryCode
+				return {
+					...value,
+					...data,
+					factory_code: factory,
+					station_no: generateStation(factory, 'WH101'),
+					record_time: format(new Date(), 'yyyy-MM-dd HH:mm:ss')
+				}
+			})
+
+			await Promise.all(
+				chunk(upsertPayload, 100).map(async (item) => {
+					return await this.dataSourceDL.query(upsertInventoryQuery, [JSON.stringify(item)])
+				})
+			)
 
 			const sizeCodes = Object.keys(Object.groupBy(payload, (item) => item.size_numcode))
 
@@ -176,21 +177,19 @@ export class RFIDInboundService {
 	}
 
 	public async upsertEpcInformation(factoryCode: string, update: UpsertEpcInformationDTO) {
-		const epcToExchange = await this.epcInboundModel.distinct(
-			'epc',
+		const epcToExchange = await this.epcInboundModel.find(
 			{
 				...pick(update, ['mo_no', 'factory_shoes_style', 'color_sn', 'size_numcode']),
 				deleted: false,
 				scannable: true
 			},
-			{ limit: update.quantity }
+			{ _id: 0, epc: 1 },
+			{ limit: update.quantity, lean: true }
 		)
-
-		this.logger.debug(epcToExchange)
 
 		const currentTimestamp = format(new Date(), 'yyyy-MM-dd HH:mm:ss')
 
-		const payload = epcToExchange.map((epc) => ({
+		const payload = epcToExchange.map(({ epc }) => ({
 			...update,
 			epc,
 			mo_no: update.mo_no_actual,
@@ -217,8 +216,6 @@ export class RFIDInboundService {
 			}
 		>
 	): Promise<void> {
-		this.logger.debug(payload)
-
 		const session = await this.epcInboundModel.startSession()
 		const queryRunner = this.dataSourceDL.createQueryRunner()
 		await queryRunner.connect()
@@ -251,7 +248,7 @@ export class RFIDInboundService {
 				}
 			}))
 
-			const bulkWriteResult = await this.epcInboundModel
+			await this.epcInboundModel
 				.bulkWrite(bulkWriteOptions, {
 					session,
 					writeConcern: { w: 'majority' },
@@ -263,8 +260,6 @@ export class RFIDInboundService {
 					console.log('value', value)
 					return value
 				})
-
-			this.logger.debug(bulkWriteResult, 'bulkWriteResult')
 
 			await session.commitTransaction()
 			await queryRunner.commitTransaction()
