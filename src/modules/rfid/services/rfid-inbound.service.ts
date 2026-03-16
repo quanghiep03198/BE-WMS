@@ -3,16 +3,8 @@ import { DATA_SOURCE_DATA_LAKE, DATA_SOURCE_ERP } from '@/databases/constants'
 import { EventGateway } from '@/events/event.gateway'
 import { IUpsertInventoryEventPayload } from '@/modules/inventory/interfaces'
 import { InventoryAuditService } from '@/modules/inventory/services/inventory-audit.service'
-import { TENANCY_DATA_SOURCE } from '@/modules/tenancy/constants'
 import { InjectQueue } from '@nestjs/bullmq'
-import {
-	BadRequestException,
-	Inject,
-	Injectable,
-	InternalServerErrorException,
-	NotFoundException,
-	Scope
-} from '@nestjs/common'
+import { BadRequestException, Injectable, InternalServerErrorException, NotFoundException, Scope } from '@nestjs/common'
 import { EventEmitter2, OnEvent } from '@nestjs/event-emitter'
 import { InjectModel } from '@nestjs/mongoose'
 import { InjectDataSource } from '@nestjs/typeorm'
@@ -42,7 +34,6 @@ export class RFIDInboundService {
 	)
 
 	constructor(
-		@Inject(TENANCY_DATA_SOURCE) private readonly dataSourceTNC: DataSource,
 		@InjectDataSource(DATA_SOURCE_DATA_LAKE) private readonly dataSourceDL: DataSource,
 		@InjectDataSource(DATA_SOURCE_ERP) private readonly dataSourceERP: DataSource,
 		@InjectQueue(POST_DATA_INBOUND_QUEUE) private readonly postDataQueue: Queue<PostReaderDataDTO>,
@@ -64,9 +55,9 @@ export class RFIDInboundService {
 
 	public async upsertStockIn(commandNumber: string, factoryCode: string, data: UpsertStockInDTO) {
 		const payload = await this.epcInboundModel.find({ scannable: true, mo_no: commandNumber }).lean(true)
-		const queryRunner = this.dataSourceTNC.createQueryRunner()
+		const queryRunner = this.dataSourceDL.createQueryRunner()
 		const session = await this.epcInboundModel.startSession()
-		const missingOrderSizeQty = await this.dataSourceTNC.query<
+		const missingOrderSizeQty = await this.dataSourceDL.query<
 			Array<{
 				size_numcode: string
 				missing_qty: number
@@ -102,7 +93,7 @@ export class RFIDInboundService {
 				}),
 				100
 			)) {
-				await this.dataSourceTNC.query(upsertInventoryQuery, [JSON.stringify(item)])
+				await this.dataSourceDL.query(upsertInventoryQuery, [JSON.stringify(item)])
 			}
 
 			const sizeCodes = Object.keys(Object.groupBy(payload, (item) => item.size_numcode))
@@ -139,16 +130,17 @@ export class RFIDInboundService {
 	public async exchangeEpcByCommandNumber(payload: ExchangeOrderDTO) {
 		const queryRunner = this.dataSourceDL.createQueryRunner()
 		const session = await this.epcInboundModel.startSession()
-		const epcToExchange = await this.epcInboundModel
-			.find({
+		const epcToExchange = await this.epcInboundModel.distinct(
+			'epc',
+			{
 				deleted: false,
 				scannable: true,
 				mo_no: { $in: payload.mo_no.split(',').map((m) => m.trim()) },
 				color_sn: payload.color_sn,
 				factory_shoes_style: payload.factory_shoes_style
-			})
-			.select('epc')
-			.lean(true)
+			},
+			{ lean: true }
+		)
 
 		if (epcToExchange.length === 0) {
 			throw new NotFoundException(
@@ -160,10 +152,7 @@ export class RFIDInboundService {
 			await session.startTransaction()
 			await queryRunner.startTransaction()
 
-			for (const epcBatch of chunk(
-				epcToExchange.map((item) => item.epc),
-				2000
-			)) {
+			for (const epcBatch of chunk(epcToExchange, 2000)) {
 				const criteria: FindOptionsWhere<RFIDMatchCustomerEntity> = {
 					epc: In(epcBatch)
 				}
@@ -173,7 +162,7 @@ export class RFIDInboundService {
 				})
 			}
 			await this.epcInboundModel.updateMany(
-				{ epc: { $in: epcToExchange.map((item) => item.epc) }, mo_no: { $ne: payload.mo_no_actual } },
+				{ epc: { $in: epcToExchange }, mo_no: { $ne: payload.mo_no_actual } },
 				{ mo_no: payload.mo_no_actual }
 			)
 			await queryRunner.commitTransaction()
@@ -187,20 +176,23 @@ export class RFIDInboundService {
 	}
 
 	public async upsertEpcInformation(factoryCode: string, update: UpsertEpcInformationDTO) {
-		const epcToExchange = await this.epcInboundModel
-			.find({
+		const epcToExchange = await this.epcInboundModel.distinct(
+			'epc',
+			{
 				...pick(update, ['mo_no', 'factory_shoes_style', 'color_sn', 'size_numcode']),
+				deleted: false,
 				scannable: true
-			})
-			.select('epc')
-			.limit(update.quantity)
-			.lean(true)
+			},
+			{ limit: update.quantity }
+		)
+
+		this.logger.debug(epcToExchange)
 
 		const currentTimestamp = format(new Date(), 'yyyy-MM-dd HH:mm:ss')
 
-		const payload = epcToExchange.map((item) => ({
+		const payload = epcToExchange.map((epc) => ({
 			...update,
-			epc: item.epc,
+			epc,
 			mo_no: update.mo_no_actual,
 			factory_shoes_style: update.factory_shoes_style_actual,
 			color_sn: update.color_sn_actual,
@@ -214,6 +206,7 @@ export class RFIDInboundService {
 					? `[${currentTimestamp}] Info: Combined from WMS`
 					: `[${currentTimestamp}] Info: Exchanged from M.O "${update.mo_no}" and Size "${update.size_numcode}"`
 		}))
+
 		return await this.bulkUpsertRFIDRecords(payload)
 	}
 
@@ -224,6 +217,8 @@ export class RFIDInboundService {
 			}
 		>
 	): Promise<void> {
+		this.logger.debug(payload)
+
 		const session = await this.epcInboundModel.startSession()
 		const queryRunner = this.dataSourceDL.createQueryRunner()
 		await queryRunner.connect()
@@ -244,25 +239,32 @@ export class RFIDInboundService {
 					remark: item.remark ?? `[${currentTimestamp}] Info: Upserted from WMS`
 				}))
 
-				return await queryRunner.manager.query(upsertEpcsQuery, [JSON.stringify(upsertSourceData)])
+				await queryRunner.manager.query(upsertEpcsQuery, [JSON.stringify(upsertSourceData)])
 			}
 
 			const bulkWriteOptions: AnyBulkWriteOperation<typeof EpcInboundSchema>[] = payload.map((item) => ({
 				updateOne: {
-					filter: { epc: item.epc },
+					filter: { epc: item.epc, deleted: false, scannable: true },
 					update: {
 						$set: pick(item, ['mo_no', 'factory_shoes_style', 'color_sn', 'size_numcode', 'factory_code_produce'])
 					}
 				}
 			}))
 
-			await this.epcInboundModel.bulkWrite(bulkWriteOptions, {
-				session,
-				writeConcern: { w: 'majority' },
-				readPreference: 'nearest',
-				ordered: false,
-				retryWrites: true
-			})
+			const bulkWriteResult = await this.epcInboundModel
+				.bulkWrite(bulkWriteOptions, {
+					session,
+					writeConcern: { w: 'majority' },
+					readPreference: 'nearest',
+					ordered: false,
+					retryWrites: true
+				})
+				.then((value) => {
+					console.log('value', value)
+					return value
+				})
+
+			this.logger.debug(bulkWriteResult, 'bulkWriteResult')
 
 			await session.commitTransaction()
 			await queryRunner.commitTransaction()

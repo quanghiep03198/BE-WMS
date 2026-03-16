@@ -1,14 +1,13 @@
 import { DATA_SOURCE_DATA_LAKE } from '@/databases/constants'
 import { EventGateway } from '@/events/event.gateway'
 import { BullModule } from '@nestjs/bullmq'
-import { MiddlewareConsumer, Module, NestModule, OnModuleInit, RequestMethod } from '@nestjs/common'
+import { Module, OnModuleInit } from '@nestjs/common'
 import { InjectModel, MongooseModule } from '@nestjs/mongoose'
 import { TypeOrmModule } from '@nestjs/typeorm'
 import MongooseDeletePlugin from 'mongoose-delete'
 import MongoosePaginatePlugin from 'mongoose-paginate-v2'
 import { PinoLogger } from 'nestjs-pino'
 import { InventoryModule } from '../inventory/inventory.module'
-import { TenacyMiddleware } from '../tenancy/tenancy.middleware'
 import { TenancyModule } from '../tenancy/tenancy.module'
 import { ThirdPartyApiModule } from '../third-party-api/third-party-api.module'
 import { IMPORT_DATA_QUEUE, POST_DATA_INBOUND_QUEUE, POST_DATA_OUTBOUND_QUEUE } from './constants'
@@ -97,18 +96,12 @@ import { RFIDCustomerEntitySubscriber } from './subscribers/rfid-customer.entity
 	],
 	exports: [MongooseModule, RFIDInboundService]
 })
-export class RFIDModule implements NestModule, OnModuleInit {
+export class RFIDModule implements OnModuleInit {
 	constructor(
 		private readonly logger: PinoLogger,
 		@InjectModel(EpcInbound.name) private readonly epcInboundModel: EpcModel,
 		@InjectModel(EpcOutbound.name) private readonly epcOutboundModel: EpcModel
 	) {}
-
-	configure(consumer: MiddlewareConsumer) {
-		consumer
-			.apply(TenacyMiddleware)
-			.forRoutes({ path: '/rfid/inbound/update-stock/:commandNumber', method: RequestMethod.PUT })
-	}
 
 	async onModuleInit() {
 		try {
