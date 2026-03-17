@@ -33,15 +33,15 @@ export class OrderService {
 			.from(/* SQL */ `wuerp_vnrd.dbo.ta_manufacturmst`, 'manu')
 			.where(/* SQL */ `manu.mo_no LIKE :searchTerm`)
 			.andWhere(/* SQL */ `manu.created >= CAST(DATEADD(YEAR, -2, GETDATE()) AS DATE)`)
-			.andWhere(
-				/* SQL */ `(
-					(:factoryCode = 'VA1' AND RIGHT(LEFT(manu.mo_no, 3), 1) = 'A') OR
-					(:factoryCode = 'VB1' AND RIGHT(LEFT(manu.mo_no, 3), 1) = 'B') OR
-					(:factoryCode = 'VB2' AND RIGHT(LEFT(manu.mo_no, 3), 1) = 'C') OR
-					(:factoryCode = 'CA1' AND RIGHT(LEFT(manu.mo_no, 3), 1) = 'D')
-			)`
-			)
-			// .andWhere (/* SQL */ `manu.cofactory_code = :factoryCode`)
+			// .andWhere(
+			// 	/* SQL */ `(
+			// 		(:factoryCode = 'VA1' AND RIGHT(LEFT(manu.mo_no, 3), 1) = 'A')
+			// 		OR (:factoryCode = 'VB1' AND RIGHT(LEFT(manu.mo_no, 3), 1) = 'B')
+			// 		OR (:factoryCode = 'VB2' AND RIGHT(LEFT(manu.mo_no, 3), 1) = 'C')
+			// 		OR (:factoryCode = 'CA1' AND RIGHT(LEFT(manu.mo_no, 3), 1) = 'D')
+			// 	)`
+			// )
+			.andWhere(/* SQL */ `manu.cofactory_code = :factoryCode`)
 			.setParameters({ factoryCode, searchTerm: `%${searchTerm}%` })
 			.orderBy('manu.created', 'DESC')
 			.getRawMany()
