@@ -1,5 +1,5 @@
 import { ExcelColorPalette } from '@/common/constants/excel-color-palette'
-import { type AutoFitColumnOptions, autoFitColumns } from '@/common/helpers'
+import { applyCommonStyles, type AutoFitColumnOptions, autoFitColumns } from '@/common/helpers'
 import { SuperJson } from '@/common/utils'
 import { DATA_SOURCE_DATA_LAKE } from '@/databases/constants'
 import { OrderService } from '@/modules/order/order.service'
@@ -350,21 +350,25 @@ export class InventoryAuditService {
 			}
 			for (const subRecord of record.detail) {
 				const subRow = worksheet.addRow([])
-				subRow.getCell(3).value = subRecord.size + '#'
-				subRow.getCell(3).fill = {
+				subRow.getCell(5).value = subRecord.size + '#'
+				subRow.getCell(5).fill = {
 					type: 'pattern',
 					pattern: 'solid',
 					fgColor: { argb: ExcelColorPalette.BG_LIGHT_YELLOW }
 				}
-				subRow.getCell(3).font = { bold: true }
-				subRow.getCell(4).value = subRecord.initial_stock_qty
-				subRow.getCell(4).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'f2dcdb' } }
-				subRow.getCell(5).value = subRecord.instock_qty
-				subRow.getCell(5).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'f2dcdb' } }
-				subRow.getCell(6).value = subRecord.outstock_qty
+				subRow.getCell(5).font = { bold: true }
+				subRow.getCell(6).value = subRecord.order_qty_by_size
 				subRow.getCell(6).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'f2dcdb' } }
-				subRow.getCell(7).value = subRecord.final_stock_qty
+				subRow.getCell(7).value = subRecord.initial_stock_qty
 				subRow.getCell(7).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'f2dcdb' } }
+				subRow.getCell(8).value = subRecord.instock_qty
+				subRow.getCell(8).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'f2dcdb' } }
+				subRow.getCell(9).value = subRecord.outstock_qty
+				subRow.getCell(9).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'f2dcdb' } }
+				subRow.getCell(10).value = subRecord.actual_instock_qty - subRecord.actual_outstock_qty
+				subRow.getCell(10).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'f2dcdb' } }
+				subRow.getCell(11).value = subRecord.final_stock_qty
+				subRow.getCell(11).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'f2dcdb' } }
 			}
 		}
 
@@ -395,6 +399,9 @@ export class InventoryAuditService {
 			lang: currentLanguage
 		})
 
+		// * Auto filter
+		worksheet.autoFilter = `A2:D${2 + filteredData.length}`
+
 		// * Freeze header row
 		worksheet.views = [{ state: 'frozen', xSplit: 0, ySplit: 2 }]
 
@@ -411,6 +418,9 @@ export class InventoryAuditService {
 				}
 			})
 		})
+
+		// * Cell styles
+		applyCommonStyles.call(worksheet)
 
 		return await workbook.xlsx.writeBuffer()
 	}
