@@ -1,16 +1,16 @@
 import { ExcelColorPalette } from '@/common/constants/excel-color-palette'
 import { type AutoFitColumnOptions, autoFitColumns } from '@/common/helpers'
 import { SuperJson } from '@/common/utils'
-import { DATA_SOURCE_DATA_LAKE } from '@/databases/constants'
+import { DATA_SOURCE_DATA_LAKE, DATA_SOURCE_ERP } from '@/databases/constants'
 import { Injectable, NotFoundException } from '@nestjs/common'
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm'
-import { format, isValid } from 'date-fns'
+import { format } from 'date-fns'
 import { Workbook } from 'exceljs'
 import { omit, padStart } from 'lodash'
 import { I18nContext, I18nService } from 'nestjs-i18n'
 import { readFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
-import { DataSource, Repository } from 'typeorm'
+import { DataSource, Repository, SelectQueryBuilder } from 'typeorm'
 import { BaseAbstractEntity } from '../_base/base.abstract.entity'
 import { BaseAbstractService } from '../_base/base.abstract.service'
 import { FactoryAgencyCode } from '../department/constants'
@@ -21,10 +21,11 @@ import {
 	UpdateSignatureDTO,
 	UpsertPurchaseOrdersDTO
 } from './dto/truckload-delivery.dto'
-import { CarLicenseSnapshotEntity } from './entities/car-license.entity'
 import { TruckloadDeliveryEntity } from './entities/truckload-delivery.entity'
 import { DispatchOrder, ITruckloadDeliveryService } from './truckload-delivery.interface'
 import type { TruckloadDeliveryDispatchOrder } from './types'
+
+type SelectQueryBuilderColumns = FirstParameter<SelectQueryBuilder<TruckloadDeliveryEntity>['select']>
 
 @Injectable()
 export class TruckloadDeliveryService
@@ -36,168 +37,114 @@ export class TruckloadDeliveryService
 		'utf-8'
 	)
 
+	private readonly getDispatchOrderQuery: string = readFileSync(
+		resolve(join(__dirname, './sql/dispatch-orders.sql')),
+		'utf-8'
+	)
+
+	private readonly getDispatchOrderWithProductAttrQuery: string = readFileSync(
+		resolve(join(__dirname, './sql/dispatch-orders-with-product-attributes.sql')),
+		'utf-8'
+	)
+
 	constructor(
 		@InjectRepository(TruckloadDeliveryEntity, DATA_SOURCE_DATA_LAKE)
 		private readonly deliveryRepository: Repository<TruckloadDeliveryEntity>,
 		@InjectDataSource(DATA_SOURCE_DATA_LAKE) private readonly dataSourceDL: DataSource,
+		@InjectDataSource(DATA_SOURCE_ERP) private readonly dataSourceERP: DataSource,
 		private readonly i18nService: I18nService
 	) {
 		super(deliveryRepository)
 	}
 
-	public async getDispatchOrders(filters?: FilterQueryDTO): Promise<DispatchOrder[]> {
-		const dateRangeFilterQuery = () => {
-			const hasValidFrom = filters?.from && isValid(new Date(filters.from))
-			const hasValidTo = filters?.to && isValid(new Date(filters.to))
+	/**
+	 * Get dispatch orders with optional product variant details
+	 * @param filters FilterQueryDTO
+	 */
+	public async getDispatchOrders(filters: FilterQueryDTO) {
+		const queryParams = [+filters.page, +filters.limit, filters.from, filters.to, filters.status]
 
-			if (hasValidFrom && hasValidTo) {
-				return /* SQL */ `a.created BETWEEN CAST('${filters.from}' AS DATETIME) AND CAST('${filters.to}' AS DATETIME)`
-			}
-			if (hasValidFrom) return /* SQL */ `a.created >= CAST('${filters.from}' AS DATETIME)`
-			if (hasValidTo) return /* SQL */ `a.created <= CAST('${filters.to}' AS DATETIME)`
-			return '1 = 1'
-		}
-
-		const approvalStatusFilterQuery = () =>
-			filters?.status ? /* SQL */ `a.approval_status = '${filters.status}'` : '1 = 1'
-
-		const deliveryDetailsCte = this.dataSourceDL
-			.getRepository(TruckloadDeliveryEntity)
-			.createQueryBuilder('a')
-			.select([
-				'DISTINCT a.po AS po',
-				'a.id AS id',
-				'a.dispatch_order AS dispatch_order',
-				'e.brand_name AS brand_name',
-				'd.shoestyle_codefactory AS factory_shoes_style',
-				'c.color_sn AS color_sn',
-				'a.outbound_qty AS outbound_qty',
-				'a.user_code_created AS user_code_created',
-				'a.created AS created '
-			])
-			.leftJoin(
-				(qb) =>
-					qb
-						.select(/* SQL */ `IIF(ISNULL(or_custpoone, '') = '', or_custpo, or_custpoone)`, 'po')
-						.addSelect('mat_code', 'mat_code')
-						.addSelect('custbrand_id', 'custbrand_id')
-						.from('wuerp_vnrd.dbo.ta_ordermst', 'b'),
-				'b',
-				/* SQL */ `a.po = b.po`
-			)
-			.leftJoin(
-				(qb) =>
-					qb
-						.select('mat_code', 'mat_code')
-						.addSelect('color_sn', 'color_sn')
-						.addSelect('shoestyle_systemcodefty', 'shoestyle_systemcodefty')
-						.from('wuerp_vnrd.dbo.ta_productmst', 'c'),
-				'c',
-				'c.mat_code = b.mat_code'
-			)
-			.leftJoin(
-				(qb) =>
-					qb
-						.select('shoestyle_codefactory', 'shoestyle_codefactory')
-						.addSelect('shoestyle_systemcodefty', 'shoestyle_systemcodefty')
-						.from('wuerp_vnrd.dbo.ta_shoefactorymst', 'd'),
-				'd',
-				'd.shoestyle_systemcodefty = c.shoestyle_systemcodefty'
-			)
-			.leftJoin(
-				(qb) => qb.select('custbrand_id').addSelect('brand_name').from('wuerp_vnrd.dbo.ta_brand', 'e'),
-				'e',
-				'e.custbrand_id = b.custbrand_id'
-			)
-			.where(dateRangeFilterQuery)
-			.andWhere(approvalStatusFilterQuery)
-
-		return await this.deliveryRepository
-			.createQueryBuilder('a')
-			.addCommonTableExpression(deliveryDetailsCte.getQuery(), 'delivery_details')
-			.select('a.dispatch_order', 'dispatch_order')
-			.addSelect('a.license_plate', 'license_plate')
-			.addSelect('a.container_number', 'container_number')
-			.addSelect('a.punctured_container', 'punctured_container')
-			.addSelect('a.smelling_container', 'smelling_container')
-			.addSelect('a.moist_container', 'moist_container')
-			.addSelect('MAX(a.container_sealing_time)', 'container_sealing_time')
-			.addSelect('MAX(a.factory_departure_time)', 'factory_departure_time')
-			.addSelect('a.approval_status', 'approval_status')
-			.addSelect('a.ie_signature', 'ie_signature')
-			.addSelect('a.warehouse_officer_signature', 'warehouse_officer_signature')
-			.addSelect('a.security_1_signature', 'security_1_signature')
-			.addSelect('a.security_2_signature', 'security_2_signature')
-			.addSelect('MAX(a.created)', 'created_at')
-			.addSelect('MAX(b.snap_time)', 'actual_factory_departure_time')
-			.addSelect('MAX(b.images)', 'license_plate_image')
-			.addSelect(
-				/* SQL */ `(
-					SELECT
-						dd.id,
-						dd.po,
-						dd.brand_name,
-						dd.factory_shoes_style,
-						dd.color_sn,
-						dd.outbound_qty,
-						dd.user_code_created,
-						dd.created
-					FROM delivery_details dd
-					WHERE dd.dispatch_order = a.dispatch_order
-					FOR JSON PATH
-				)`,
-				'delivery_details'
-			)
-			.addSelect('CAST(a.remark AS NVARCHAR(255))', 'remark')
-			.leftJoin(
-				CarLicenseSnapshotEntity,
-				'b',
+		const [dispatchOrders, [{ totalPages }], [{ totalDocs }]] = await Promise.all([
+			this.dataSourceDL.query<DispatchOrder[]>(
 				/* SQL */ `
-					a.license_plate = b.plate_name 
-					AND b.snap_time BETWEEN DATEADD(MINUTE, 5, ISNULL(a.container_sealing_time, GETDATE())) 
-					AND DATEADD(MINUTE, 30, ISNULL(a.factory_departure_time, GETDATE())) 
-					-- 5 phút sau khi đóng container ~ sau 30 phút kể từ khi bảo vệ thứ 2 ký xác nhận
-					`
+				WITH CTE AS (${this.getDispatchOrderQuery})
+				SELECT * FROM CTE
+				ORDER BY created DESC
+				OFFSET @0 ROWS FETCH NEXT @1 ROWS ONLY;
+				`,
+				queryParams
+			),
+			this.dataSourceDL.query<Record<'totalPages', number>[]>(
+				/* SQL */ `
+				WITH CTE AS (${this.getDispatchOrderQuery})
+				SELECT CEILING(COUNT(*)/10.0) AS totalPages FROM CTE
+				`,
+				queryParams
+			),
+			this.dataSourceDL.query<Record<'totalDocs', number>[]>(
+				/* SQL */ `
+				WITH CTE AS (${this.getDispatchOrderQuery})
+				SELECT COUNT(*) AS totalDocs FROM CTE
+				`,
+				queryParams
 			)
-			.where(dateRangeFilterQuery)
-			.andWhere(approvalStatusFilterQuery)
-			.groupBy('a.dispatch_order')
-			.addGroupBy('a.license_plate')
-			.addGroupBy('a.container_number')
-			.addGroupBy('a.punctured_container')
-			.addGroupBy('a.smelling_container')
-			.addGroupBy('a.moist_container')
-			.addGroupBy('a.approval_status')
-			.addGroupBy('a.ie_signature')
-			.addGroupBy('a.warehouse_officer_signature')
-			.addGroupBy('a.security_1_signature')
-			.addGroupBy('a.security_2_signature')
-			.addGroupBy('CAST(a.remark AS NVARCHAR(255))')
-			.orderBy('a.dispatch_order', 'DESC')
-			.addOrderBy('MAX(a.created)', 'DESC')
-			.getRawMany<DispatchOrder>()
-			.then((results) =>
-				results.map((row) => ({
-					...row,
-					delivery_details: SuperJson.parse<
-						Array<{
-							id: number
-							po: string
-							brand_name: string
-							factory_shoes_style: string
-							color_sn: string
-							outbound_qty: number
-							user_code_created: string
-							created: Date
-						}>
-					>(row.delivery_details, 1).sort((a, b) => a.id - b.id)
-				}))
-			)
+		])
+
+		const data = dispatchOrders.map((row: DispatchOrder) => ({
+			...row,
+			delivery_details: SuperJson.parse<
+				Array<{
+					id: number
+					po: string
+					brand_name?: string
+					factory_shoes_style?: string
+					color_sn?: string
+					outbound_qty: number
+					user_code_created: string
+					created: Date
+				}>
+			>(row.delivery_details, 1).sort((a, b) => a.id - b.id)
+		})) satisfies DispatchOrder[]
+
+		const hasNextPage: boolean = filters.page < totalPages
+		const hasPrevPage: boolean = filters.page > 1
+
+		return {
+			data,
+			totalDocs,
+			totalPages,
+			hasNextPage,
+			hasPrevPage,
+			page: filters.page,
+			limit: filters.limit,
+			nextPage: hasNextPage ? filters.page + 1 : null,
+			prevPage: hasPrevPage ? filters.page - 1 : null
+		}
 	}
 
 	public override async insertMany(payload: Partial<TruckloadDeliveryEntity>[]) {
 		const entities = payload.map((item) => this.deliveryRepository.create(item))
 		return await this.deliveryRepository.insert(entities)
+	}
+
+	public async searchDispatchOutboundPurchaseOrder(searchTerm: string) {
+		return await this.dataSourceERP
+			.createQueryBuilder()
+			.select([
+				/* SQL */ `ISNULL(IIF(ISNULL(a.or_custpoone, '') = '', a.or_custpo, a.or_custpoone), b.po) AS po`,
+				/* SQL */ `SUM(ISNULL(a.or_totalqty), 0) - SUM(ISNULL(b.outbound_qty, 0)) AS dispatched_outbound_qty`
+			])
+			.from('wuerp_vnrd.dbo.ta_ordermst', 'a')
+			.leftJoin(
+				(qb) => qb.select(['po', 'outbound_qty']).from('DV_DATA_LAKE.dbo.dv_truckload_delivery', 'b'),
+				'b',
+				/* SQL */ `IIF(ISNULL(a.or_custpoone, '') = '', a.or_custpo, a.or_custpoone) = b.po
+			`
+			)
+			.where(/* SQL */ `IIF(ISNULL(a.or_custpoone, '') = '', a.or_custpo, a.or_custpoone) LIKE '%${searchTerm}%'`)
+			.groupBy(/* SQL */ `ISNULL(IIF(ISNULL(a.or_custpoone, '') = '', a.or_custpo, a.or_custpoone), b.po)`)
+			.limit(5)
+			.getRawMany<{ po: string; dispatched_outbound_qty: number }>()
 	}
 
 	public async bulkUpdateByDispatchOrder(
@@ -269,13 +216,17 @@ export class TruckloadDeliveryService
 		return await this.deliveryRepository.update({ dispatch_order: dispatchOrder }, payload)
 	}
 
-	public async exportToExcel(factoryCode: string, filters?: FilterQueryDTO) {
+	public async exportToExcel(factoryCode: string, filters?: Omit<FilterQueryDTO, 'page' | 'limit'>) {
 		const workbook = new Workbook()
 		const worksheet = workbook.addWorksheet('Truckload Deliveries')
 		const currentLanguage = I18nContext.current()?.lang
 
 		// * Fetch data
-		const data = await this.getDispatchOrders(filters)
+		const data = await this.dataSourceDL.query(this.getDispatchOrderWithProductAttrQuery, [
+			filters.from,
+			filters.to,
+			filters.status
+		])
 		const worksheetData = data.map((item) => ({
 			...item,
 			punctured_container: item.punctured_container ? '✕' : '',
