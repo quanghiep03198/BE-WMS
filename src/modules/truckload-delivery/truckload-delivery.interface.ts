@@ -28,9 +28,10 @@ export type DispatchOrder = {
 		| Array<{
 				id: number
 				po: string
-				brand_name: string
-				factory_shoes_style: string
-				color_sn: string
+				brand_name?: string
+				factory_shoes_style?: string
+				dispatched_outbound_qty?: number
+				color_sn?: string
 				outbound_qty: number
 				user_code_created: string
 				created: Date
@@ -38,7 +39,7 @@ export type DispatchOrder = {
 }
 
 export interface ITruckloadDeliveryService extends IBaseService<TruckloadDeliveryEntity> {
-	getDispatchOrders(filters?: FilterQueryDTO): Promise<DispatchOrder[]>
+	getDispatchOrders(filters?: FilterQueryDTO): Promise<Pagination<DispatchOrder>>
 	getNextDispatchOrder(factoryCode: FactoryAgencyCode): Promise<TruckloadDeliveryDispatchOrder>
 	updateDispatchOrderSignature(dispatchOrder: string, payload: UpdateSignatureDTO): Promise<UpdateResult>
 	upsertPurchaseOrderDeliveries(dispatchOrder: string, payload: UpsertPurchaseOrdersDTO): Promise<any>

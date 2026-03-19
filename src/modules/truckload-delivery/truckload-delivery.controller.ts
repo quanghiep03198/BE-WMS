@@ -5,6 +5,7 @@ import { ZodValidationPipe } from '@/common/pipes'
 import {
 	Body,
 	Controller,
+	DefaultValuePipe,
 	ForbiddenException,
 	Get,
 	Headers,
@@ -21,6 +22,7 @@ import { pick } from 'lodash'
 import { FactoryAgencyCode } from '../department/constants'
 import { UserRole } from '../user/constants'
 
+import z from 'zod'
 import {
 	CreateDeliveryDTO,
 	createDeliveryDTO,
@@ -52,7 +54,10 @@ export class TruckloadDeliveryController {
 		UserRole.SECURITY_GUARD,
 		UserRole.INDUSTRIAL_ENGINEERING_STAFF
 	)
-	async getAll(@Query(new ZodValidationPipe(filterQueryDTO)) filterQueryDTO: FilterQueryDTO) {
+	async getAll(
+		@Query(new ZodValidationPipe(filterQueryDTO), new DefaultValuePipe({ page: 1, limit: 20 }))
+		filterQueryDTO: FilterQueryDTO
+	) {
 		return await this.deliveryService.getDispatchOrders(filterQueryDTO)
 	}
 
@@ -79,6 +84,15 @@ export class TruckloadDeliveryController {
 				user_name_created: user?.username
 			}))
 		)
+	}
+
+	@RouteHandler({
+		endpoint: 'search-dispatch-purchase-order',
+		method: HttpMethod.GET
+	})
+	@RequireAuthorized(UserRole.IE_STAFF, UserRole.FG_WAREHOUSE_STAFF)
+	async searchDispatchOutboundPurchaseOrder(@Query('search', new ZodValidationPipe(z.string())) searchTerm: string) {
+		return await this.deliveryService.searchDispatchOutboundPurchaseOrder(searchTerm)
 	}
 
 	@RouteHandler({

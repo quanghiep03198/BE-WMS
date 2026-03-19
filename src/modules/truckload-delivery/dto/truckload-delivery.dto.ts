@@ -5,6 +5,8 @@ import { TruckloadDeliveryStatus } from '../constants'
 
 export const filterQueryDTO = z
 	.object({
+		page: z.string().refine((value) => !isNaN(+value)),
+		limit: z.string().refine((value) => !isNaN(+value)),
 		from: z.coerce.date().optional(),
 		to: z.coerce.date().optional(),
 		status: z.nativeEnum(TruckloadDeliveryStatus).optional()
@@ -22,6 +24,8 @@ export const filterQueryDTO = z
 	})
 	.transform((values) => ({
 		...values,
+		page: +values.page,
+		limit: +values.limit,
 		...(isValid(new Date(values.from)) && {
 			from: format(new Date(new Date(values.from).setHours(0, 0, 0, 0)), 'yyyy-MM-dd HH:mm:ss.SSS')
 		}),
