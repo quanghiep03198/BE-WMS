@@ -45,6 +45,21 @@ export class OrderController {
 	}
 
 	@RouteHandler({
+		endpoint: '/purchase-order/:purchaseOrder',
+		method: HttpMethod.GET
+	})
+	@RequireAuthorized(
+		UserRole.MANAGER,
+		UserRole.FG_WAREHOUSE_STAFF,
+		UserRole.DG_WAREHOUSE_STAFF,
+		UserRole.IE_STAFF,
+		UserRole.INDUSTRIAL_ENGINEERING_STAFF
+	)
+	async getPurchaseOrderInfo(@Param('purchaseOrder') purchaseOrder: string) {
+		return await this.orderService.getPurchaseOrderInfo(purchaseOrder)
+	}
+
+	@RouteHandler({
 		endpoint: '/purchase-order/size-run/:purchaseOrder',
 		method: HttpMethod.GET
 	})

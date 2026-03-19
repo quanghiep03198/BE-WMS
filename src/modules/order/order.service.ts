@@ -127,6 +127,45 @@ export class OrderService {
 		return await queryBuilder.getRawMany<{ po: string; is_completed: boolean }>()
 	}
 
+	async getPurchaseOrderInfo(purchaseOrder: string) {
+		return await this.dataSourceERP
+			.createQueryBuilder()
+			.select([
+				`IIF(ISNULL(a.or_custpoone, '') = '', a.or_custpo, a.or_custpoone) AS po`,
+				`d.brand_name AS brand_name`,
+				`c.shoestyle_codefactory AS factory_shoes_style`,
+				`b.color_sn AS color_sn`
+			])
+			.from('wuerp_vnrd.dbo.ta_ordermst', 'a')
+			.leftJoin(
+				(qb) =>
+					qb
+						.select('mat_code', 'mat_code')
+						.addSelect('color_sn', 'color_sn')
+						.addSelect('shoestyle_systemcodefty', 'shoestyle_systemcodefty')
+						.from('wuerp_vnrd.dbo.ta_productmst', 'b'),
+				'b',
+				'b.mat_code = a.mat_code'
+			)
+			.leftJoin(
+				(qb) =>
+					qb
+						.select('shoestyle_codefactory', 'shoestyle_codefactory')
+						.addSelect('shoestyle_systemcodefty', 'shoestyle_systemcodefty')
+						.from('wuerp_vnrd.dbo.ta_shoefactorymst', 'c'),
+				'c',
+				'c.shoestyle_systemcodefty = b.shoestyle_systemcodefty'
+			)
+			.leftJoin(
+				(qb) => qb.select('custbrand_id').addSelect('brand_name').from('wuerp_vnrd.dbo.ta_brand', 'e'),
+				'd',
+				'd.custbrand_id = a.custbrand_id'
+			)
+			.where(`IIF(ISNULL(a.or_custpoone, '') = '', a.or_custpo, a.or_custpoone) = :purchaseOrder`)
+			.setParameters({ purchaseOrder })
+			.getRawOne<{ po: string; brand_name: string; factory_shoes_style: string; color_sn: string }>()
+	}
+
 	async getPurchaseOrderSizeRun(purchaseOrder: string) {
 		return await this.dataSourceERP
 			.query<
