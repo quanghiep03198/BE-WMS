@@ -119,7 +119,7 @@ export class DefectiveGoodsInventoryService {
 			new Set(data.flatMap((item) => item.size_data.map((size) => size.size_numcode.replace(/^0/, '') + '#')))
 		).sort((a, b) => Number.parseFloat(a) - Number.parseFloat(b))
 
-		const flattenData = data.map((item) => {
+		const pivotData = data.map((item) => {
 			const _item = omit(item, ['size_data'])
 			const sizes: { [key: string]: number | undefined } = {}
 			distinctSizes.forEach((size) => {
@@ -199,7 +199,7 @@ export class DefectiveGoodsInventoryService {
 			}
 		]
 
-		for (const record of flattenData) {
+		for (const record of pivotData) {
 			const row = worksheet.addRow({
 				...record,
 
@@ -217,6 +217,7 @@ export class DefectiveGoodsInventoryService {
 
 		const lastColumnLetter = getLastColumnLetter(worksheet.columns.length)
 		const secondLastColumnLetter = getLastColumnLetter(worksheet.columns.length - 1)
+
 		// * Add title
 		worksheet.insertRow(1, null)
 		worksheet.getRow(1).font = { bold: true, size: 14 }
@@ -235,11 +236,12 @@ export class DefectiveGoodsInventoryService {
 			lang: currentLanguage
 		})
 
+		// * Auto filter
+		worksheet.autoFilter = `A2:D${2 + pivotData.length}`
+
 		// * Summary rows
 		const summaryRow = worksheet.addRow(Array.from({ length: worksheet.columnCount }, () => null))
-
 		summaryRow.height = 24
-		worksheet.autoFilter = `A2:H${2 + flattenData.length}`
 		worksheet.mergeCells(`A${summaryRow.number}:${secondLastColumnLetter}${summaryRow.number}`)
 		summaryRow.getCell(worksheet.columnCount - 1).value = this.i18nService.t('common.fields.total')
 		summaryRow.getCell(worksheet.columnCount).value = {
