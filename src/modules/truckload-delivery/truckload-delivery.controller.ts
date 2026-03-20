@@ -16,18 +16,18 @@ import {
 	Res,
 	UseFilters
 } from '@nestjs/common'
-
 import { type FastifyReply } from 'fastify'
+import { unflatten } from 'flat'
 import { pick } from 'lodash'
+import z from 'zod'
 import { FactoryAgencyCode } from '../department/constants'
 import { UserRole } from '../user/constants'
-
-import z from 'zod'
 import {
 	CreateDeliveryDTO,
 	createDeliveryDTO,
 	filterQueryDTO,
 	FilterQueryDTO,
+	UnflatedFilterQueryDTO,
 	UpdateContainerConditionDTO,
 	updateContainerConditionDTO,
 	updateDeliveryDTO,
@@ -58,7 +58,8 @@ export class TruckloadDeliveryController {
 		@Query(new ZodValidationPipe(filterQueryDTO), new DefaultValuePipe({ page: 1, limit: 20 }))
 		filterQueryDTO: FilterQueryDTO
 	) {
-		return await this.deliveryService.getDispatchOrders(filterQueryDTO)
+		const unflatedFilterQuery = unflatten<FilterQueryDTO, UnflatedFilterQueryDTO>(filterQueryDTO)
+		return await this.deliveryService.getDispatchOrders(unflatedFilterQuery)
 	}
 
 	@RouteHandler({
