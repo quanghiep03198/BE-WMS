@@ -1,6 +1,8 @@
+
+
 SELECT
    a.dispatch_order
-   , a.created
+   , MIN(a.created) AS created_at
    , a.factory_code
    , a.approval_status
    , a.license_plate
@@ -10,7 +12,8 @@ SELECT
    , a.smelling_container
    , a.moist_container
    , a.factory_departure_time
-   , MAX(b.snap_time) AS actual_departure_time
+   , MAX(b.snap_time) AS actual_factory_departure_time
+   , SUM(a.outbound_qty) AS total_outbound_qty
    , c.delivery_details
 FROM DV_DATA_LAKE.dbo.dv_truckload_delivery a
 LEFT JOIN DV_DATA_LAKE.dbo.dv_carlicenseplates b
@@ -27,9 +30,9 @@ CROSS APPLY (
 ) AS c (delivery_details)
 WHERE a.isactive = 'Y'
    AND (
-      (@2 IS NOT NULL AND @3 IS NOT NULL AND a.created BETWEEN @2 AND @3)
-      OR (@2 IS NOT NULL AND @3 IS NULL AND a.created >= @2)
-      OR (@2 IS NULL AND @3 IS NOT NULL AND a.created <= @3)
+      (@2 IS NOT NULL AND @3 IS NOT NULL AND CAST(a.created AS DATE) BETWEEN CAST(@2 AS DATE) AND CAST(@3 AS DATE))
+      OR (@2 IS NOT NULL AND @3 IS NULL AND CAST(a.created AS DATE) >= CAST(@2 AS DATE))
+      OR (@2 IS NULL AND @3 IS NOT NULL AND CAST(a.created AS DATE) <= CAST(@3 AS DATE))
       OR (@2 IS NULL AND @3 IS NULL)
    )
    AND (
@@ -44,7 +47,6 @@ GROUP BY a.dispatch_order
    , a.container_sealing_time
    , a.factory_departure_time
    , a.approval_status
-   , a.created
    , a.punctured_container
    , a.smelling_container
    , a.moist_container

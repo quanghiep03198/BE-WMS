@@ -1,16 +1,16 @@
 import { ExcelColorPalette } from '@/common/constants/excel-color-palette'
 import { type AutoFitColumnOptions, autoFitColumns } from '@/common/helpers'
 import { SuperJson } from '@/common/utils'
-import { DATA_SOURCE_DATA_LAKE, DATA_SOURCE_ERP } from '@/databases/constants'
+import { DATA_SOURCE_DATA_LAKE, DATA_SOURCE_ERP, RecordStatus } from '@/databases/constants'
 import { Injectable, NotFoundException } from '@nestjs/common'
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm'
 import { format } from 'date-fns'
 import { Workbook } from 'exceljs'
-import { omit, padStart } from 'lodash'
+import { omit, padStart, upperCase } from 'lodash'
 import { I18nContext, I18nService } from 'nestjs-i18n'
 import { readFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
-import { DataSource, Repository, SelectQueryBuilder } from 'typeorm'
+import { DataSource, Repository } from 'typeorm'
 import { BaseAbstractEntity } from '../_base/base.abstract.entity'
 import { BaseAbstractService } from '../_base/base.abstract.service'
 import { FactoryAgencyCode } from '../department/constants'
@@ -24,8 +24,6 @@ import {
 import { TruckloadDeliveryEntity } from './entities/truckload-delivery.entity'
 import { DispatchOrder, ITruckloadDeliveryService } from './truckload-delivery.interface'
 import type { TruckloadDeliveryDispatchOrder } from './types'
-
-type SelectQueryBuilderColumns = FirstParameter<SelectQueryBuilder<TruckloadDeliveryEntity>['select']>
 
 @Injectable()
 export class TruckloadDeliveryService
@@ -62,14 +60,33 @@ export class TruckloadDeliveryService
 	 * @param filters FilterQueryDTO
 	 */
 	public async getDispatchOrders(filters: FilterQueryDTO) {
-		const queryParams = [+filters.page, +filters.limit, filters.from, filters.to, filters.status]
+		const queryParams = [
+			filters.page,
+			filters.limit,
+			filters['from.eq'],
+			filters['to.eq'],
+			filters['approval_status.eq']
+			// filters['q']
+		]
+
+		const sortingClause = (() => {
+			if (filters.sort && typeof filters.sort === 'object') {
+				const sortingCriteria = Object.entries(filters.sort)
+					.map(([column, dir]) => `${column} ${upperCase(dir.toString())}`)
+					.join(', ')
+				return /* SQL */ `ORDER BY ${sortingCriteria}`
+			}
+			return /* SQL */ `ORDER BY created_at DESC`
+		})()
+
+		console.log('sortingClause', sortingClause)
 
 		const [dispatchOrders, [{ totalPages }], [{ totalDocs }]] = await Promise.all([
 			this.dataSourceDL.query<DispatchOrder[]>(
 				/* SQL */ `
 				WITH CTE AS (${this.getDispatchOrderQuery})
 				SELECT * FROM CTE
-				ORDER BY created DESC
+				${sortingClause}
 				OFFSET @0 ROWS FETCH NEXT @1 ROWS ONLY;
 				`,
 				queryParams
@@ -122,6 +139,117 @@ export class TruckloadDeliveryService
 		}
 	}
 
+	public async getDispatchOrderDetail(dispatchOrder: string) {
+		const dispatchOrderDetailQuery = this.deliveryRepository
+			.createQueryBuilder()
+			.select([
+				`DISTINCT po AS po`,
+				`MAX(keyid) AS id`,
+				`(CAST(MAX(created) AS DATE)) AS created`,
+				`STRING_AGG(user_code_created, ', ') AS user_code_created`,
+				`MAX(outbound_qty) AS outbound_qty`
+			])
+			.where('dispatch_order = :dispatchOrder')
+			.groupBy('po')
+			.getQuery()
+
+		const dispatchedPurchaseOrderQuery = this.deliveryRepository
+			.createQueryBuilder()
+			.select([`po`, `SUM(outbound_qty) AS dispatched_outbound_qty`])
+			.groupBy('po')
+			.getQuery()
+
+		return await this.dataSourceDL
+			.createQueryBuilder()
+			.addCommonTableExpression(dispatchOrderDetailQuery, 'dispatch_order_detail')
+			.addCommonTableExpression(dispatchedPurchaseOrderQuery, 'dispatch_po_outbound')
+			.select([
+				`MAX(a.id) AS id`,
+				`a.po AS po`,
+				`e.brand_name AS brand_name`,
+				`d.shoestyle_codefactory AS factory_shoes_style`,
+				`c.color_sn AS color_sn`,
+				`SUM(ISNULL(b.or_totalqty, 0)) AS po_qty`,
+				`MAX(a.outbound_qty) AS outbound_qty`,
+				`MAX(aa.dispatched_outbound_qty) AS dispatched_outbound_qty`,
+				`a.created AS created`,
+				`a.user_code_created AS user_code_created`
+			])
+			.from((qb) => {
+				return qb.select('*').from('dispatch_order_detail', 'a')
+			}, 'a')
+			.leftJoin(
+				(qb) => {
+					return qb.select('*').from('dispatch_po_outbound', 'aa')
+				},
+				'aa',
+				'aa.po = a.po'
+			)
+			.leftJoin(
+				(qb) => {
+					return qb
+						.select([
+							`IIF(ISNULL(b.or_custpoone, '') = '', b.or_custpo, b.or_custpoone) AS po`,
+							'b.mat_code',
+							'b.custbrand_id',
+							'b.or_totalqty'
+						])
+						.from('wuerp_vnrd.dbo.ta_ordermst', 'b')
+						.where('b.isactive = :isActive')
+				},
+				'b',
+				'a.po = b.po'
+			)
+			.leftJoin(
+				(qb) => {
+					return qb
+						.select(['c.mat_code', 'c.color_sn', 'c.shoestyle_systemcodefty'])
+						.from('wuerp_vnrd.dbo.ta_productmst', 'c')
+						.where('c.isactive = :isActive')
+				},
+				'c',
+				`c.mat_code = b.mat_code`
+			)
+			.leftJoin(
+				(qb) => {
+					return qb
+						.select(['d.shoestyle_systemcodefty', 'd.shoestyle_codefactory'])
+						.from('wuerp_vnrd.dbo.ta_shoefactorymst', 'd')
+						.where('d.isactive = :isActive')
+				},
+				'd',
+				'd.shoestyle_systemcodefty = c.shoestyle_systemcodefty'
+			)
+			.leftJoin(
+				(qb) => {
+					return qb
+						.select(['e.custbrand_id', 'e.brand_name'])
+						.from('wuerp_vnrd.dbo.ta_brand', 'e')
+						.where('e.isactive = :isActive')
+				},
+				'e',
+				'b.custbrand_id = e.custbrand_id'
+			)
+			.groupBy('a.po')
+			.addGroupBy('e.brand_name')
+			.addGroupBy('d.shoestyle_codefactory')
+			.addGroupBy('c.color_sn')
+			.addGroupBy('a.user_code_created')
+			.addGroupBy('a.created')
+			// .addGroupBy('a.outbound_qty')
+			// .addGroupBy('aa.dispatched_outbound_qty')
+			.setParameters({ isActive: RecordStatus.ACTIVE, dispatchOrder })
+			.getRawMany<{
+				po: string
+				brand_name: string
+				factory_shoes_style: string
+				color_sn: string
+				po_qty: number
+				user_code_created: string
+				dispatched_outbound_qty: number
+			}>()
+	}
+
 	public override async insertMany(payload: Partial<TruckloadDeliveryEntity>[]) {
 		const entities = payload.map((item) => this.deliveryRepository.create(item))
 		return await this.deliveryRepository.insert(entities)
@@ -140,6 +268,31 @@ export class TruckloadDeliveryService
 				'b',
 				/* SQL */ `IIF(ISNULL(a.or_custpoone, '') = '', a.or_custpo, a.or_custpoone) = b.po
 			`
+			)
+			.leftJoin(
+				(qb) => {
+					return qb
+						.select(['c.mat_code', 'c.color_sn', 'c.shoestyle_systemcodefty'])
+						.from('wuerp_vnrd.dbo.ta_productmst', 'c')
+						.where({ 'c.isactive': RecordStatus.ACTIVE })
+				},
+				'c',
+				`c.mat_code = b.mat_code`
+			)
+			.leftJoin(
+				(qb) => {
+					return qb
+						.select(['d.shoestyle_systemcodefty', 'd.shoestyle_codefactory'])
+						.from('wuerp_vnrd.dbo.ta_shoefactorymst', 'd')
+						.where({ 'd.isactive': RecordStatus.ACTIVE })
+				},
+				'd',
+				'd.shoestyle_systemcodefty = c.shoestyle_systemcodefty'
+			)
+			.leftJoin(
+				(qb) => qb.select(['e.custbrand_id', 'e.brand_name']).from('wuerp_vnrd.dbo.ta_brand', 'e'),
+				'd',
+				'e.custbrand_id = a.custbrand_id'
 			)
 			.where(/* SQL */ `IIF(ISNULL(a.or_custpoone, '') = '', a.or_custpo, a.or_custpoone) LIKE '%${searchTerm}%'`)
 			.groupBy(/* SQL */ `ISNULL(IIF(ISNULL(a.or_custpoone, '') = '', a.or_custpo, a.or_custpoone), b.po)`)
@@ -223,9 +376,9 @@ export class TruckloadDeliveryService
 
 		// * Fetch data
 		const data = await this.dataSourceDL.query(this.getDispatchOrderWithProductAttrQuery, [
-			filters.from,
-			filters.to,
-			filters.status
+			filters['from.eq'],
+			filters['to.eq'],
+			filters['status.eq']
 		])
 		const worksheetData = data.map((item) => ({
 			...item,

@@ -54,11 +54,27 @@ export class TruckloadDeliveryController {
 		UserRole.SECURITY_GUARD,
 		UserRole.INDUSTRIAL_ENGINEERING_STAFF
 	)
-	async getAll(
+	async getDispatchOrders(
 		@Query(new ZodValidationPipe(filterQueryDTO), new DefaultValuePipe({ page: 1, limit: 20 }))
 		filterQueryDTO: FilterQueryDTO
 	) {
 		return await this.deliveryService.getDispatchOrders(filterQueryDTO)
+	}
+
+	@RouteHandler({
+		endpoint: ':dispatchOrder',
+		method: HttpMethod.GET,
+		message: 'common.ok'
+	})
+	@RequireAuthorized(
+		UserRole.MANAGER,
+		UserRole.IE_STAFF,
+		UserRole.FG_WAREHOUSE_STAFF,
+		UserRole.SECURITY_GUARD,
+		UserRole.INDUSTRIAL_ENGINEERING_STAFF
+	)
+	async getDispatchOrderDetail(@Param('dispatchOrder') dispatchOrder: string) {
+		return await this.deliveryService.getDispatchOrderDetail(dispatchOrder)
 	}
 
 	@RouteHandler({

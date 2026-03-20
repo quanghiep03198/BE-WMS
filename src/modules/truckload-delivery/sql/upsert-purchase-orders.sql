@@ -13,7 +13,10 @@ USING (
       CAST(JSON_VALUE(value, '$.outbound_qty') AS INT) AS outbound_qty
    FROM OPENJSON(@0)
 ) AS source
-ON target.keyid = source.keyid
+ON 
+   target.keyid = source.keyid
+   AND target.dispatch_order = source.dispatch_order
+   AND target.po = source.po
 WHEN MATCHED THEN
    UPDATE SET 
       target.po = source.po,
