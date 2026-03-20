@@ -17,6 +17,7 @@ import { FactoryAgencyCode } from '../department/constants'
 import { TruckloadDeliveryStatus } from './constants'
 import {
 	FilterQueryDTO,
+	UnflatedFilterQueryDTO,
 	UpdateDeliveryDTO,
 	UpdateSignatureDTO,
 	UpsertPurchaseOrdersDTO
@@ -59,7 +60,7 @@ export class TruckloadDeliveryService
 	 * Get dispatch orders with optional product variant details
 	 * @param filters FilterQueryDTO
 	 */
-	public async getDispatchOrders(filters: FilterQueryDTO) {
+	public async getDispatchOrders(filters: UnflatedFilterQueryDTO) {
 		const queryParams = [
 			filters.page,
 			filters.limit,
@@ -69,8 +70,10 @@ export class TruckloadDeliveryService
 			// filters['q']
 		]
 
+		console.log('filters', filters)
+
 		const sortingClause = (() => {
-			if (filters.sort && typeof filters.sort === 'object') {
+			if (filters.sort) {
 				const sortingCriteria = Object.entries(filters.sort)
 					.map(([column, dir]) => `${column} ${upperCase(dir.toString())}`)
 					.join(', ')
@@ -79,22 +82,15 @@ export class TruckloadDeliveryService
 			return /* SQL */ `ORDER BY created_at DESC`
 		})()
 
-		console.log('sortingClause', sortingClause)
+		console.log('\n\nsortingClause', sortingClause, '\n\n')
 
-		const [dispatchOrders, [{ totalPages }], [{ totalDocs }]] = await Promise.all([
+		const [dispatchOrders, [{ totalDocs }]] = await Promise.all([
 			this.dataSourceDL.query<DispatchOrder[]>(
 				/* SQL */ `
 				WITH CTE AS (${this.getDispatchOrderQuery})
 				SELECT * FROM CTE
 				${sortingClause}
 				OFFSET @0 ROWS FETCH NEXT @1 ROWS ONLY;
-				`,
-				queryParams
-			),
-			this.dataSourceDL.query<Record<'totalPages', number>[]>(
-				/* SQL */ `
-				WITH CTE AS (${this.getDispatchOrderQuery})
-				SELECT CEILING(COUNT(*)/10.0) AS totalPages FROM CTE
 				`,
 				queryParams
 			),
@@ -123,6 +119,7 @@ export class TruckloadDeliveryService
 			>(row.delivery_details, 1).sort((a, b) => a.id - b.id)
 		})) satisfies DispatchOrder[]
 
+		const totalPages: number = Math.ceil(totalDocs / filters.limit)
 		const hasNextPage: boolean = filters.page < totalPages
 		const hasPrevPage: boolean = filters.page > 1
 
