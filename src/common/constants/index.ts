@@ -18,3 +18,8 @@ export enum CommonRequestHeader {
 	USER_REQUEST = 'X-User-Request',
 	OTP = 'X-Otp'
 }
+
+export enum SortDirection {
+	ASC = 'asc',
+	DESC = 'desc'
+}
