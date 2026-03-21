@@ -58,23 +58,34 @@ export class TruckloadDeliveryService
 
 	/**
 	 * Get dispatch orders with optional product variant details
-	 * @param filters FilterQueryDTO
+	 * @param queryParams FilterQueryDTO
 	 */
-	public async getDispatchOrders(filters: UnflatedFilterQueryDTO) {
-		const queryParams = [
-			filters.page,
-			filters.limit,
-			filters['from.eq'],
-			filters['to.eq'],
-			filters['approval_status.eq']
+	public async getDispatchOrders(queryParams: UnflatedFilterQueryDTO) {
+		const params = [
+			queryParams.page,
+			queryParams.limit,
+			queryParams['from.eq'],
+			queryParams['to.eq'],
+			queryParams['approval_status.eq']
 			// filters['q']
 		]
 
-		console.log('filters', filters)
+		const whereClause = (() => {
+			if (!queryParams.where) return ''
+			const whereCondition = Object.entries(queryParams.where)
+				.map(([column, expression]) => {
+					const [operator, ...values] = expression.split('_')
+
+					return `${column} ${upperCase(operator)} '${values.join('AND')}'`
+				})
+				.join('AND')
+
+			return /* SQL */ `WHERE ${whereCondition}`
+		})()
 
 		const sortingClause = (() => {
-			if (filters.sort) {
-				const sortingCriteria = Object.entries(filters.sort)
+			if (queryParams.sort) {
+				const sortingCriteria = Object.entries(queryParams.sort)
 					.map(([column, dir]) => `${column} ${upperCase(dir.toString())}`)
 					.join(', ')
 				return /* SQL */ `ORDER BY ${sortingCriteria}`
@@ -89,17 +100,19 @@ export class TruckloadDeliveryService
 				/* SQL */ `
 				WITH CTE AS (${this.getDispatchOrderQuery})
 				SELECT * FROM CTE
+				${whereClause}
 				${sortingClause}
 				OFFSET @0 ROWS FETCH NEXT @1 ROWS ONLY;
 				`,
-				queryParams
+				params
 			),
 			this.dataSourceDL.query<Record<'totalDocs', number>[]>(
 				/* SQL */ `
 				WITH CTE AS (${this.getDispatchOrderQuery})
 				SELECT COUNT(*) AS totalDocs FROM CTE
+				${whereClause}
 				`,
-				queryParams
+				params
 			)
 		])
 
@@ -119,9 +132,9 @@ export class TruckloadDeliveryService
 			>(row.delivery_details, 1).sort((a, b) => a.id - b.id)
 		})) satisfies DispatchOrder[]
 
-		const totalPages: number = Math.ceil(totalDocs / filters.limit)
-		const hasNextPage: boolean = filters.page < totalPages
-		const hasPrevPage: boolean = filters.page > 1
+		const totalPages: number = Math.ceil(totalDocs / queryParams.limit)
+		const hasNextPage: boolean = queryParams.page < totalPages
+		const hasPrevPage: boolean = queryParams.page > 1
 
 		return {
 			data,
@@ -129,10 +142,10 @@ export class TruckloadDeliveryService
 			totalPages,
 			hasNextPage,
 			hasPrevPage,
-			page: filters.page,
-			limit: filters.limit,
-			nextPage: hasNextPage ? filters.page + 1 : null,
-			prevPage: hasPrevPage ? filters.page - 1 : null
+			page: queryParams.page,
+			limit: queryParams.limit,
+			nextPage: hasNextPage ? queryParams.page + 1 : null,
+			prevPage: hasPrevPage ? queryParams.page - 1 : null
 		}
 	}
 
