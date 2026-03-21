@@ -14,27 +14,30 @@ export const filterQueryDTO = z
 			.string()
 			.refine((value) => !isNaN(+value))
 			.transform((value) => +value),
-		'from.eq': z
+		from: z
 			.string()
 			.refine((value) => isValid(new Date(value)))
 			.optional(),
-		'to.eq': z
+		to: z
 			.string()
 			.refine((value) => isValid(new Date(value)))
 			.optional(),
-		'approval_status.eq': z.nativeEnum(TruckloadDeliveryStatus).optional(),
+		approval_status: z.nativeEnum(TruckloadDeliveryStatus).optional(),
 		'sort.container_number': z.nativeEnum(SortDirection).optional(),
 		'sort.license_plate': z.nativeEnum(SortDirection).optional(),
 		'sort.total_outbound_qty': z.nativeEnum(SortDirection).optional(),
 		'sort.created': z.nativeEnum(SortDirection).optional(),
 		'sort.container_sealing_time': z.nativeEnum(SortDirection).optional(),
 		'sort.factory_departure_time': z.nativeEnum(SortDirection).optional(),
-		'sort.actual_factory_departure_time': z.nativeEnum(SortDirection).optional()
+		'sort.actual_factory_departure_time': z.nativeEnum(SortDirection).optional(),
+		'where.license_plate': z.string().optional(),
+		'where.container_number': z.string().optional(),
+		'where.po': z.string().optional()
 	})
 	.optional()
 	.superRefine((values, ctx) => {
-		if (isValid(new Date(values['from.eq'])) && isValid(new Date(values['to.eq']))) {
-			if (isAfter(new Date(values['from.eq']), new Date(values['to.eq']))) {
+		if (isValid(new Date(values['from'])) && isValid(new Date(values['to']))) {
+			if (isAfter(new Date(values['from']), new Date(values['to']))) {
 				ctx.addIssue({
 					code: z.ZodIssueCode.custom,
 					message: 'From date must be earlier than to date'
@@ -44,11 +47,11 @@ export const filterQueryDTO = z
 	})
 	.transform((values) => ({
 		...values,
-		...(isValid(new Date(values['from.eq'])) && {
-			['from.eq']: format(new Date(new Date(values['from.eq']).setHours(0, 0, 0, 0)), 'yyyy-MM-dd HH:mm:ss.SSS')
+		...(isValid(new Date(values['from'])) && {
+			['from']: format(new Date(new Date(values['from']).setHours(0, 0, 0, 0)), 'yyyy-MM-dd HH:mm:ss.SSS')
 		}),
-		...(isValid(new Date(values['to.eq'])) && {
-			['to']: format(new Date(new Date(values['to.eq']).setHours(23, 59, 59, 999)), 'yyyy-MM-dd HH:mm:ss.SSS')
+		...(isValid(new Date(values['to'])) && {
+			['to']: format(new Date(new Date(values['to']).setHours(23, 59, 59, 999)), 'yyyy-MM-dd HH:mm:ss.SSS')
 		})
 	}))
 
@@ -170,10 +173,7 @@ export type UpdateDeliveryDTO = z.infer<typeof updateDeliveryDTO>
 export type UpdateSignatureDTO = z.infer<typeof updateSignatureDTO>
 export type UpsertPurchaseOrdersDTO = z.infer<typeof upsertPurchaseOrdersDTO>
 export type UpdateContainerConditionDTO = z.infer<typeof updateContainerConditionDTO>
-export type UnflatedFilterQueryDTO = Pick<
-	FilterQueryDTO,
-	'page' | 'limit' | 'from.eq' | 'to.eq' | 'approval_status.eq'
-> & {
+export type UnflatedFilterQueryDTO = Pick<FilterQueryDTO, 'page' | 'limit' | 'from' | 'approval_status'> & {
 	sort: {
 		container_number: SortDirection
 		license_plate: SortDirection
@@ -182,5 +182,10 @@ export type UnflatedFilterQueryDTO = Pick<
 		container_sealing_time: SortDirection
 		factory_departure_time: SortDirection
 		actual_departure_time: SortDirection
+	}
+	where: {
+		license_plate: string
+		container_number: string
+		po: string
 	}
 }
