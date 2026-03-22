@@ -251,7 +251,8 @@ export class TruckloadDeliveryController {
 		@Headers(CommonRequestHeader.FACTORY_CODE) factoryCode: string,
 		@Res() reply: FastifyReply
 	) {
-		const buffer = await this.deliveryService.exportToExcel(factoryCode, filterQueryDTO)
+		const unflattenedFilterQuery = unflatten<FilterQueryDTO, UnflatedFilterQueryDTO>(filterQueryDTO)
+		const buffer = await this.deliveryService.exportToExcel(factoryCode, unflattenedFilterQuery)
 		return reply.send(buffer)
 	}
 }

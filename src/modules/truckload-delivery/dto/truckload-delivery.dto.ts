@@ -1,8 +1,13 @@
 import { SortDirection } from '@/common/constants'
-import { format, isAfter, isValid } from 'date-fns'
+import { isValid } from 'date-fns'
 import { isNil } from 'lodash'
 import z from 'zod'
 import { TruckloadDeliveryStatus } from '../constants'
+
+const isWhereClauseExpValid = (value: string) => {
+	const WHERE_CLAUSE_REGEX = /^(?<operator>=|\w+|):(?<value>.+)$/
+	return value.match(WHERE_CLAUSE_REGEX)
+}
 
 export const filterQueryDTO = z
 	.object({
@@ -29,31 +34,36 @@ export const filterQueryDTO = z
 		'sort.created': z.nativeEnum(SortDirection).optional(),
 		'sort.container_sealing_time': z.nativeEnum(SortDirection).optional(),
 		'sort.factory_departure_time': z.nativeEnum(SortDirection).optional(),
-		'sort.actual_factory_departure_time': z.nativeEnum(SortDirection).optional(),
-		'where.license_plate': z.string().optional(),
-		'where.container_number': z.string().optional(),
-		'where.po': z.string().optional()
+		'sort.actual_departure_time': z.nativeEnum(SortDirection).optional(),
+		'where.approval_status': z.string().refine(isWhereClauseExpValid).optional(),
+		'where.license_plate': z.string().refine(isWhereClauseExpValid).optional(),
+		'where.container_number': z.string().refine(isWhereClauseExpValid).optional(),
+		'where.po': z.string().refine(isWhereClauseExpValid).optional(),
+		'where.created_at': z.string().refine(isWhereClauseExpValid).optional(),
+		'where.container_sealing_time': z.string().refine(isWhereClauseExpValid).optional(),
+		'where.factory_departure_time': z.string().refine(isWhereClauseExpValid).optional(),
+		'where.actual_departure_time': z.string().refine(isWhereClauseExpValid).optional()
 	})
 	.optional()
-	.superRefine((values, ctx) => {
-		if (isValid(new Date(values['from'])) && isValid(new Date(values['to']))) {
-			if (isAfter(new Date(values['from']), new Date(values['to']))) {
-				ctx.addIssue({
-					code: z.ZodIssueCode.custom,
-					message: 'From date must be earlier than to date'
-				})
-			}
-		}
-	})
-	.transform((values) => ({
-		...values,
-		...(isValid(new Date(values['from'])) && {
-			['from']: format(new Date(new Date(values['from']).setHours(0, 0, 0, 0)), 'yyyy-MM-dd HH:mm:ss.SSS')
-		}),
-		...(isValid(new Date(values['to'])) && {
-			['to']: format(new Date(new Date(values['to']).setHours(23, 59, 59, 999)), 'yyyy-MM-dd HH:mm:ss.SSS')
-		})
-	}))
+// .superRefine((values, ctx) => {
+// 	if (isValid(new Date(values['from'])) && isValid(new Date(values['to']))) {
+// 		if (isAfter(new Date(values['from']), new Date(values['to']))) {
+// 			ctx.addIssue({
+// 				code: z.ZodIssueCode.custom,
+// 				message: 'From date must be earlier than to date'
+// 			})
+// 		}
+// 	}
+// })
+// .transform((values) => ({
+// 	...values,
+// 	...(isValid(new Date(values['from'])) && {
+// 		['from']: format(new Date(new Date(values['from']).setHours(0, 0, 0, 0)), 'yyyy-MM-dd HH:mm:ss.SSS')
+// 	}),
+// 	...(isValid(new Date(values['to'])) && {
+// 		['to']: format(new Date(new Date(values['to']).setHours(23, 59, 59, 999)), 'yyyy-MM-dd HH:mm:ss.SSS')
+// 	})
+// }))
 
 export const createDeliveryDTO = z.object({
 	license_plate: z.string().nonempty().nullish(),
