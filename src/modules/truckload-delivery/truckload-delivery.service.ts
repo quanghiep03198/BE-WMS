@@ -8,6 +8,7 @@ import { format } from 'date-fns'
 import { Workbook } from 'exceljs'
 import { omit, padStart, upperCase } from 'lodash'
 import { I18nContext, I18nService } from 'nestjs-i18n'
+import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
 import { readFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { DataSource, Repository } from 'typeorm'
@@ -16,7 +17,6 @@ import { BaseAbstractService } from '../_base/base.abstract.service'
 import { FactoryAgencyCode } from '../department/constants'
 import { TruckloadDeliveryStatus } from './constants'
 import {
-	FilterQueryDTO,
 	UnflatedFilterQueryDTO,
 	UpdateDeliveryDTO,
 	UpdateSignatureDTO,
@@ -51,9 +51,32 @@ export class TruckloadDeliveryService
 		private readonly deliveryRepository: Repository<TruckloadDeliveryEntity>,
 		@InjectDataSource(DATA_SOURCE_DATA_LAKE) private readonly dataSourceDL: DataSource,
 		@InjectDataSource(DATA_SOURCE_ERP) private readonly dataSourceERP: DataSource,
-		private readonly i18nService: I18nService
+		private readonly i18nService: I18nService,
+		@InjectPinoLogger(TruckloadDeliveryService.name) private readonly logger: PinoLogger
 	) {
 		super(deliveryRepository)
+	}
+
+	private generateRawWhereClause(queryParams: UnflatedFilterQueryDTO): string {
+		if (!queryParams.where) return ''
+		const whereCaluse = Object.entries(queryParams.where)
+			.map(([column, expression]) => {
+				const [operator, value] = expression.split(':')
+				if (operator === 'between') {
+					const [from, to] = value.split(',').map((value) => value.trim())
+					return /* SQL */ `${column} BETWEEN '${from}' AND '${to}'`
+				}
+				if (column === 'po')
+					return /* SQL */ `EXISTS (
+						SELECT JSON_VALUE(value, '$.po') AS po
+						FROM OPENJSON(delivery_details) 
+						WHERE JSON_VALUE(value, '$.po') ${operator} '${value}'
+					)`
+				return /* SQL */ `${column} ${operator} '${value}'`
+			})
+			.join(' AND ')
+
+		return /* SQL */ `WHERE ${whereCaluse}`
 	}
 
 	/**
@@ -61,27 +84,9 @@ export class TruckloadDeliveryService
 	 * @param queryParams FilterQueryDTO
 	 */
 	public async getDispatchOrders(queryParams: UnflatedFilterQueryDTO) {
-		const params = [
-			queryParams.page,
-			queryParams.limit,
-			queryParams['from.eq'],
-			queryParams['to.eq'],
-			queryParams['approval_status.eq']
-			// filters['q']
-		]
+		const params = [(queryParams.page - 1) * queryParams.limit, queryParams.limit]
 
-		const whereClause = (() => {
-			if (!queryParams.where) return ''
-			const whereCondition = Object.entries(queryParams.where)
-				.map(([column, expression]) => {
-					const [operator, ...values] = expression.split('_')
-
-					return `${column} ${upperCase(operator)} '${values.join('AND')}'`
-				})
-				.join('AND')
-
-			return /* SQL */ `WHERE ${whereCondition}`
-		})()
+		const whereClause = this.generateRawWhereClause(queryParams)
 
 		const sortingClause = (() => {
 			if (queryParams.sort) {
@@ -93,7 +98,13 @@ export class TruckloadDeliveryService
 			return /* SQL */ `ORDER BY created_at DESC`
 		})()
 
-		console.log('\n\nsortingClause', sortingClause, '\n\n')
+		this.logger.debug(/* SQL */ `
+				WITH CTE AS (${this.getDispatchOrderQuery})
+				SELECT * FROM CTE
+				${whereClause}
+				${sortingClause}
+				OFFSET ${params[0]} ROWS FETCH NEXT {params[1]} ROWS ONLY;
+				`)
 
 		const [dispatchOrders, [{ totalDocs }]] = await Promise.all([
 			this.dataSourceDL.query<DispatchOrder[]>(
@@ -269,8 +280,11 @@ export class TruckloadDeliveryService
 		return await this.dataSourceERP
 			.createQueryBuilder()
 			.select([
-				/* SQL */ `ISNULL(IIF(ISNULL(a.or_custpoone, '') = '', a.or_custpo, a.or_custpoone), b.po) AS po`,
-				/* SQL */ `SUM(ISNULL(a.or_totalqty), 0) - SUM(ISNULL(b.outbound_qty, 0)) AS dispatched_outbound_qty`
+				`DISTINCT TOP 5 IIF(ISNULL(a.or_custpoone, '') = '', a.or_custpo, a.or_custpoone) AS po`,
+				`e.brand_name AS brand_name`,
+				`d.shoestyle_codefactory AS factory_shoes_style`,
+				`c.color_sn AS color_sn`,
+				`SUM(ISNULL(a.or_totalqty, 0)) - SUM(ISNULL(b.outbound_qty, 0)) AS max_outbound_qty`
 			])
 			.from('wuerp_vnrd.dbo.ta_ordermst', 'a')
 			.leftJoin(
@@ -282,32 +296,45 @@ export class TruckloadDeliveryService
 			.leftJoin(
 				(qb) => {
 					return qb
-						.select(['c.mat_code', 'c.color_sn', 'c.shoestyle_systemcodefty'])
+						.select(['mat_code', 'color_sn', 'shoestyle_systemcodefty'])
 						.from('wuerp_vnrd.dbo.ta_productmst', 'c')
-						.where({ 'c.isactive': RecordStatus.ACTIVE })
+						.where(`c.isactive = :isActive`)
 				},
 				'c',
-				`c.mat_code = b.mat_code`
+				`c.mat_code = a.mat_code`
 			)
 			.leftJoin(
 				(qb) => {
 					return qb
-						.select(['d.shoestyle_systemcodefty', 'd.shoestyle_codefactory'])
+						.select(['shoestyle_systemcodefty', 'shoestyle_codefactory'])
 						.from('wuerp_vnrd.dbo.ta_shoefactorymst', 'd')
-						.where({ 'd.isactive': RecordStatus.ACTIVE })
+						.where(`d.isactive = :isActive`)
 				},
 				'd',
 				'd.shoestyle_systemcodefty = c.shoestyle_systemcodefty'
 			)
 			.leftJoin(
-				(qb) => qb.select(['e.custbrand_id', 'e.brand_name']).from('wuerp_vnrd.dbo.ta_brand', 'e'),
-				'd',
+				(qb) =>
+					qb
+						.select(['custbrand_id', 'brand_name'])
+						.from('wuerp_vnrd.dbo.ta_brand', 'e')
+						.where(`e.isactive = :isActive`),
+				'e',
 				'e.custbrand_id = a.custbrand_id'
 			)
 			.where(/* SQL */ `IIF(ISNULL(a.or_custpoone, '') = '', a.or_custpo, a.or_custpoone) LIKE '%${searchTerm}%'`)
-			.groupBy(/* SQL */ `ISNULL(IIF(ISNULL(a.or_custpoone, '') = '', a.or_custpo, a.or_custpoone), b.po)`)
-			.limit(5)
-			.getRawMany<{ po: string; dispatched_outbound_qty: number }>()
+			.groupBy(/* SQL */ `IIF(ISNULL(a.or_custpoone, '') = '', a.or_custpo, a.or_custpoone)`)
+			.addGroupBy('e.brand_name')
+			.addGroupBy('d.shoestyle_codefactory')
+			.addGroupBy('c.color_sn')
+			.setParameters({ isActive: RecordStatus.ACTIVE })
+			.getRawMany<{
+				po: string
+				brand_name: string | null
+				factory_shoes_style: string | null
+				color_sn: string | null
+				max_outbound_qty: number
+			}>()
 	}
 
 	public async bulkUpdateByDispatchOrder(
@@ -379,17 +406,20 @@ export class TruckloadDeliveryService
 		return await this.deliveryRepository.update({ dispatch_order: dispatchOrder }, payload)
 	}
 
-	public async exportToExcel(factoryCode: string, filters?: Omit<FilterQueryDTO, 'page' | 'limit'>) {
+	public async exportToExcel(factoryCode: string, queryParams?: Omit<UnflatedFilterQueryDTO, 'page' | 'limit'>) {
 		const workbook = new Workbook()
 		const worksheet = workbook.addWorksheet('Truckload Deliveries')
 		const currentLanguage = I18nContext.current()?.lang
 
+		const whereClause = this.generateRawWhereClause(queryParams)
+
 		// * Fetch data
-		const data = await this.dataSourceDL.query(this.getDispatchOrderWithProductAttrQuery, [
-			filters['from.eq'],
-			filters['to.eq'],
-			filters['status.eq']
-		])
+		const data = await this.dataSourceDL.query(/* SQL */ `
+			WITH CTE AS (${this.getDispatchOrderWithProductAttrQuery})
+			SELECT * FROM CTE
+			${whereClause}
+		`)
+
 		const worksheetData = data.map((item) => ({
 			...item,
 			punctured_container: item.punctured_container ? '✕' : '',
@@ -413,8 +443,8 @@ export class TruckloadDeliveryService
 				key: 'factory_departure_time'
 			},
 			{
-				header: this.i18nService.t('erp.fields.actual_factory_departure_time', { lang: currentLanguage }),
-				key: 'actual_factory_departure_time'
+				header: this.i18nService.t('erp.fields.actual_departure_time', { lang: currentLanguage }),
+				key: 'actual_departure_time'
 			},
 			{
 				header: this.i18nService.t('erp.fields.punctured_container', { lang: currentLanguage }),
@@ -549,7 +579,7 @@ export class TruckloadDeliveryService
 			minWidth: 14,
 			excludeColumns: [
 				'created_at',
-				'actual_factory_departure_time',
+				'actual_departure_time',
 				'ie_signature',
 				'warehouse_officer_signature',
 				'security_1_signature',

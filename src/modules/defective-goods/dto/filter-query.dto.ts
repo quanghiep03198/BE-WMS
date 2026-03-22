@@ -17,9 +17,5 @@ export const filterQueryDTO = z
 		created: z.string().optional()
 	})
 	.optional()
-	.default({
-		page: 1,
-		limit: 10
-	})
 
 export type FilterQueryDTO = z.infer<typeof filterQueryDTO>
