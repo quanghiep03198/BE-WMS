@@ -4,7 +4,7 @@ import { SuperJson } from '@/common/utils'
 import { DATA_SOURCE_DATA_LAKE, DATA_SOURCE_ERP, RecordStatus } from '@/databases/constants'
 import { Injectable, NotFoundException } from '@nestjs/common'
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm'
-import { format } from 'date-fns'
+import { format, isValid } from 'date-fns'
 import { Workbook } from 'exceljs'
 import { omit, padStart, upperCase } from 'lodash'
 import { I18nContext, I18nService } from 'nestjs-i18n'
@@ -62,9 +62,23 @@ export class TruckloadDeliveryService
 		const whereCaluse = Object.entries(queryParams.where)
 			.map(([column, expression]) => {
 				const [operator, value] = expression.split(':')
-				if (operator === 'between') {
-					const [from, to] = value.split(',').map((value) => value.trim())
-					return /* SQL */ `${column} BETWEEN '${from}' AND '${to}'`
+				if (
+					['created_at', 'container_sealing_time', 'factory_departure_time', 'actual_departure_time'].includes(
+						column
+					)
+				) {
+					if (operator === 'between') {
+						const [from, to] = value.split(',').map((value) => value.trim())
+						if (!isValid(new Date(from)) || !isValid(new Date(to))) return ''
+						const fromDate = format(new Date(new Date(from).setHours(0, 0, 0, 0)), 'yyyy-MM-dd HH:mm:ss.SSS')
+						const toDate = format(new Date(new Date(to).setHours(23, 59, 59, 999)), 'yyyy-MM-dd HH:mm:ss.SSS')
+						return /* SQL */ `${column} BETWEEN CAST('${fromDate}' AS DATETIME) AND CAST('${toDate}' AS DATETIME)`
+					} else if (operator === '=' && isValid(new Date(value))) {
+						const dateValue = format(new Date(value), 'yyyy-MM-dd')
+						return /* SQL */ `CAST(${column} AS DATE) = CAST('${dateValue}' AS DATE)`
+					} else {
+						return ''
+					}
 				}
 				if (column === 'po')
 					return /* SQL */ `EXISTS (
@@ -284,11 +298,18 @@ export class TruckloadDeliveryService
 				`e.brand_name AS brand_name`,
 				`d.shoestyle_codefactory AS factory_shoes_style`,
 				`c.color_sn AS color_sn`,
-				`SUM(ISNULL(a.or_totalqty, 0)) - SUM(ISNULL(b.outbound_qty, 0)) AS max_outbound_qty`
+				`ISNULL(b.dispatched_outbound_qty, 0) AS dispatched_outbound_qty`,
+				`SUM(ISNULL(a.or_totalqty, 0)) AS po_qty`,
+				`SUM(ISNULL(a.or_totalqty, 0)) - ISNULL(b.dispatched_outbound_qty, 0) AS max_outbound_qty`
 			])
 			.from('wuerp_vnrd.dbo.ta_ordermst', 'a')
 			.leftJoin(
-				(qb) => qb.select(['po', 'outbound_qty']).from('DV_DATA_LAKE.dbo.dv_truckload_delivery', 'b'),
+				(qb) =>
+					qb
+						.select(['po', 'SUM(outbound_qty) AS dispatched_outbound_qty'])
+						.from('DV_DATA_LAKE.dbo.dv_truckload_delivery', 'b')
+						.where(/* SQL */ `po LIKE '%${searchTerm}%'`)
+						.groupBy('po'),
 				'b',
 				/* SQL */ `IIF(ISNULL(a.or_custpoone, '') = '', a.or_custpo, a.or_custpoone) = b.po
 			`
@@ -327,6 +348,7 @@ export class TruckloadDeliveryService
 			.addGroupBy('e.brand_name')
 			.addGroupBy('d.shoestyle_codefactory')
 			.addGroupBy('c.color_sn')
+			.addGroupBy('b.dispatched_outbound_qty')
 			.setParameters({ isActive: RecordStatus.ACTIVE })
 			.getRawMany<{
 				po: string
