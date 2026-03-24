@@ -67,11 +67,11 @@ WITH po_size_qty AS (
 outbound_epcs AS (
    SELECT DISTINCT EPC_Code, CAST(size_code AS FLOAT) AS size_numcode 
    FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet
-   WHERE po = @0 AND RIGHT(stationNO, 3) = '103' AND rfid_status = 'B'
+   WHERE po = @0 AND RIGHT(stationNO, 3) = '103' AND rfid_status = 'B' AND isactive = 'Y'
    UNION ALL
    SELECT DISTINCT EPC_Code, CAST(size_code AS FLOAT) AS size_numcode 
    FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet_backup_Daily
-   WHERE po = @0 AND RIGHT(stationNO, 3) = '103' AND rfid_status = 'B'
+   WHERE po = @0 AND RIGHT(stationNO, 3) = '103' AND rfid_status = 'B' AND isactive = 'Y'
    UNION ALL
    SELECT JSON_VALUE(value, '$.epc') AS EPC_Code, CAST(JSON_VALUE(value, '$.size_numcode') AS FLOAT) AS size_numcode 
    FROM OPENJSON(@1)
