@@ -109,7 +109,7 @@ export class TruckloadDeliveryService
 					.join(', ')
 				return /* SQL */ `ORDER BY ${sortingCriteria}`
 			}
-			return /* SQL */ `ORDER BY created_at DESC`
+			return /* SQL */ `ORDER BY created_at DESC, container_sealing_time DESC`
 		})()
 
 		this.logger.debug(/* SQL */ `
@@ -177,15 +177,8 @@ export class TruckloadDeliveryService
 	public async getDispatchOrderDetail(dispatchOrder: string) {
 		const dispatchOrderDetailQuery = this.deliveryRepository
 			.createQueryBuilder()
-			.select([
-				`DISTINCT po AS po`,
-				`MAX(keyid) AS id`,
-				`(CAST(MAX(created) AS DATE)) AS created`,
-				`STRING_AGG(user_code_created, ', ') AS user_code_created`,
-				`MAX(outbound_qty) AS outbound_qty`
-			])
+			.select([`DISTINCT po AS po`, `keyid AS id`, `created`, `user_code_created`, `outbound_qty`])
 			.where('dispatch_order = :dispatchOrder')
-			.groupBy('po')
 			.getQuery()
 
 		const dispatchedPurchaseOrderQuery = this.deliveryRepository
@@ -199,13 +192,13 @@ export class TruckloadDeliveryService
 			.addCommonTableExpression(dispatchOrderDetailQuery, 'dispatch_order_detail')
 			.addCommonTableExpression(dispatchedPurchaseOrderQuery, 'dispatch_po_outbound')
 			.select([
-				`MAX(a.id) AS id`,
+				`DISTINCT a.id`,
 				`a.po AS po`,
 				`e.brand_name AS brand_name`,
 				`d.shoestyle_codefactory AS factory_shoes_style`,
 				`c.color_sn AS color_sn`,
 				`SUM(ISNULL(b.or_totalqty, 0)) AS po_qty`,
-				`MAX(a.outbound_qty) AS outbound_qty`,
+				`a.outbound_qty AS outbound_qty`,
 				`MAX(aa.dispatched_outbound_qty) AS dispatched_outbound_qty`,
 				`a.created AS created`,
 				`a.user_code_created AS user_code_created`
@@ -265,13 +258,14 @@ export class TruckloadDeliveryService
 				'e',
 				'b.custbrand_id = e.custbrand_id'
 			)
-			.groupBy('a.po')
+			.groupBy('a.id')
+			.addGroupBy('a.po')
 			.addGroupBy('e.brand_name')
 			.addGroupBy('d.shoestyle_codefactory')
 			.addGroupBy('c.color_sn')
 			.addGroupBy('a.user_code_created')
 			.addGroupBy('a.created')
-			// .addGroupBy('a.outbound_qty')
+			.addGroupBy('a.outbound_qty')
 			// .addGroupBy('aa.dispatched_outbound_qty')
 			.setParameters({ isActive: RecordStatus.ACTIVE, dispatchOrder })
 			.getRawMany<{
