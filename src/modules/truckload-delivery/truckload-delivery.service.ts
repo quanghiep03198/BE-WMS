@@ -112,57 +112,34 @@ export class TruckloadDeliveryService
 			return /* SQL */ `ORDER BY created_at DESC, container_sealing_time DESC`
 		})()
 
-		this.logger.debug(/* SQL */ `
-				WITH CTE AS (${this.getDispatchOrderQuery})
-				SELECT * FROM CTE
-				${whereClause}
-				${sortingClause}
-				OFFSET ${params[0]} ROWS FETCH NEXT {params[1]} ROWS ONLY;
-				`)
-
 		const [dispatchOrders, [{ totalDocs }]] = await Promise.all([
 			this.dataSourceDL.query<DispatchOrder[]>(
 				/* SQL */ `
-				WITH CTE AS (${this.getDispatchOrderQuery})
-				SELECT * FROM CTE
-				${whereClause}
-				${sortingClause}
-				OFFSET @0 ROWS FETCH NEXT @1 ROWS ONLY;
+					WITH CTE AS (${this.getDispatchOrderQuery})
+					SELECT * FROM CTE
+					${whereClause}
+					${sortingClause}
+					OFFSET @0 ROWS FETCH NEXT @1 ROWS ONLY
+					OPTION (FAST ${queryParams.limit})
 				`,
 				params
 			),
 			this.dataSourceDL.query<Record<'totalDocs', number>[]>(
 				/* SQL */ `
-				WITH CTE AS (${this.getDispatchOrderQuery})
-				SELECT COUNT(*) AS totalDocs FROM CTE
-				${whereClause}
+					WITH CTE AS (${this.getDispatchOrderQuery})
+					SELECT COUNT(*) AS totalDocs FROM CTE
+					${whereClause}
 				`,
 				params
 			)
 		])
-
-		const data = dispatchOrders.map((row: DispatchOrder) => ({
-			...row,
-			delivery_details: SuperJson.parse<
-				Array<{
-					id: number
-					po: string
-					brand_name?: string
-					factory_shoes_style?: string
-					color_sn?: string
-					outbound_qty: number
-					user_code_created: string
-					created: Date
-				}>
-			>(row.delivery_details, 1).sort((a, b) => a.id - b.id)
-		})) satisfies DispatchOrder[]
 
 		const totalPages: number = Math.ceil(totalDocs / queryParams.limit)
 		const hasNextPage: boolean = queryParams.page < totalPages
 		const hasPrevPage: boolean = queryParams.page > 1
 
 		return {
-			data,
+			data: dispatchOrders,
 			totalDocs,
 			totalPages,
 			hasNextPage,
@@ -436,15 +413,32 @@ export class TruckloadDeliveryService
 			${whereClause}
 		`)
 
-		const worksheetData = data.map((item) => ({
-			...item,
-			punctured_container: item.punctured_container ? '✕' : '',
-			smelling_container: item.smelling_container ? '✕' : '',
-			moist_container: item.moist_container ? '✕' : '',
-			factory_departure_time: item.factory_departure_time
-				? format(new Date(item.factory_departure_time), 'yyyy-MM-dd HH:mm:ss')
-				: ''
-		}))
+		const worksheetData = data.map((row) => {
+			const detail = SuperJson.parse<
+				Array<{
+					id: number
+					po: string
+					brand_name?: string
+					factory_shoes_style?: string
+					color_sn?: string
+					outbound_qty: number
+					user_code_created: string
+					created: Date
+				}>
+			>(row.delivery_details, 1).sort((a, b) => a.id - b.id)
+
+			return {
+				...row,
+				total_outbound_qty: detail.reduce((acc, curr) => acc + curr.outbound_qty, 0),
+				delivery_details: detail,
+				punctured_container: row.punctured_container ? '✕' : '',
+				smelling_container: row.smelling_container ? '✕' : '',
+				moist_container: row.moist_container ? '✕' : '',
+				factory_departure_time: row.factory_departure_time
+					? format(new Date(row.factory_departure_time), 'yyyy-MM-dd HH:mm:ss')
+					: ''
+			}
+		})
 
 		// * Define worksheet columns
 		worksheet.columns = [

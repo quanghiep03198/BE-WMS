@@ -11,7 +11,6 @@ SELECT
    , a.moist_container
    , a.factory_departure_time
    , MAX(b.snap_time) AS actual_departure_time
-   , SUM(a.outbound_qty) AS total_outbound_qty
    , c.delivery_details
    , MAX(a.ie_signature) AS ie_signature
    , MAX(a.warehouse_officer_signature) AS warehouse_officer_signature
