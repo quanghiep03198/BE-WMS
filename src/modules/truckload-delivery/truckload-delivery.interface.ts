@@ -14,6 +14,7 @@ export type DispatchOrder = {
 	created_at: Date
 	dispatch_order: string
 	license_plate: string | null
+	license_plate_image?: string | null
 	container_number: string | null
 	punctured_container: boolean
 	smelling_container: boolean
