@@ -17,16 +17,26 @@ SELECT
    , MAX(a.warehouse_officer_signature) AS warehouse_officer_signature
    , MAX(a.security_1_signature) AS security_1_signature
    , MAX(a.security_2_signature) AS security_2_signature
+   , d.delivery_details
 FROM DV_DATA_LAKE.dbo.dv_truckload_delivery a
 LEFT JOIN DV_DATA_LAKE.dbo.dv_carlicenseplates b
 ON TRIM(UPPER(a.license_plate)) = TRIM(UPPER(b.plate_name)) 
    AND b.snap_time 
       BETWEEN DATEADD(MINUTE, 1, a.container_sealing_time) 
       AND DATEADD(MINUTE, 30, a.factory_departure_time) 
-LEFT JOIN (
-   SELECT dispatch_order, SUM(outbound_qty) AS total_outbound_qty FROM DV_DATA_LAKE.dbo.dv_truckload_delivery
-   GROUP BY dispatch_order
-) c ON c.dispatch_order = a.dispatch_order
+CROSS APPLY (
+   SELECT SUM(td.outbound_qty) AS total_outbound_qty
+   FROM DV_DATA_LAKE.dbo.dv_truckload_delivery td
+   WHERE td.dispatch_order = a.dispatch_order AND td.isactive = 'Y'
+) c
+CROSS APPLY (
+    SELECT
+        td.po,
+        td.outbound_qty
+    FROM DV_DATA_LAKE.dbo.dv_truckload_delivery td
+    WHERE td.dispatch_order = a.dispatch_order AND td.isactive = 'Y'
+    FOR JSON PATH
+) AS d (delivery_details)
 WHERE a.isactive = 'Y'
 GROUP BY a.dispatch_order
    , a.factory_code
@@ -40,3 +50,4 @@ GROUP BY a.dispatch_order
    , a.smelling_container
    , a.moist_container
    , c.total_outbound_qty
+   , d.delivery_details
