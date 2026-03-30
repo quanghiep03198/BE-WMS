@@ -21,6 +21,7 @@ export const appConfigFactory: ConfigFactory = () => ({
 			db: env('REDIS_DB', { fallbackValue: 0, serialize: (value): number => Number.parseInt(value) })
 		},
 		defaultJobOptions: {
+			removeOnFail: true,
 			removeOnComplete: true,
 			attempts: 3,
 			backoff: {
