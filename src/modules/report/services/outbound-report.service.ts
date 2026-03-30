@@ -32,13 +32,11 @@ export class OutboundReportService {
 			this.request.headers['x-user-factory'],
 			date
 		])
-		return data.map((item) => {
-			return {
-				...item,
-				detail: SuperJson.parse<IOutboundReportResponse[number]['detail']>(item.detail),
-				overall: SuperJson.parse<IOutboundReportResponse[number]['overall']>(item.overall)
-			}
-		})
+		return data.map((item) => ({
+			...item,
+			detail: SuperJson.parse<IOutboundReportResponse[number]['detail']>(item.detail),
+			overall: SuperJson.parse<IOutboundReportResponse[number]['overall']>(item.overall)
+		}))
 	}
 	public async getOutboundHistory(factoryCode: string, po: string) {
 		return await this.dataSource
@@ -136,26 +134,27 @@ export class OutboundReportService {
 			subHeaderRow.getCell(5).value = this.i18nService.t('erp.fields.missing_qty', { lang: currentLanguage })
 			subHeaderRow.getCell(5).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'f2dcdb' } }
 
-			record.overall.forEach((subRecord) => {
-				const subRow = worksheet.addRow([])
-				subRow.getCell(2).value = subRecord.size_numcode + '#'
-				subRow.getCell(2).font = { bold: true }
-				subRow.getCell(2).fill = {
-					type: 'pattern',
-					pattern: 'solid',
-					fgColor: { argb: ExcelColorPalette.BG_LIGHT_YELLOW }
-				}
-				subRow.getCell(3).value = subRecord.daily_qty
-				subRow.getCell(3).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'f2dcdb' } }
-				subRow.getCell(4).value = subRecord.po_size_qty
-				subRow.getCell(4).fill = {
-					type: 'pattern',
-					pattern: 'solid',
-					fgColor: { argb: ExcelColorPalette.BG_LIGHT_YELLOW }
-				}
-				subRow.getCell(5).value = subRecord.missing_qty
-				subRow.getCell(5).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'f2dcdb' } }
-			})
+			if (Array.isArray(record.overall))
+				record.overall.forEach((subRecord) => {
+					const subRow = worksheet.addRow([])
+					subRow.getCell(2).value = subRecord.size_numcode + '#'
+					subRow.getCell(2).font = { bold: true }
+					subRow.getCell(2).fill = {
+						type: 'pattern',
+						pattern: 'solid',
+						fgColor: { argb: ExcelColorPalette.BG_LIGHT_YELLOW }
+					}
+					subRow.getCell(3).value = subRecord.daily_qty
+					subRow.getCell(3).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'f2dcdb' } }
+					subRow.getCell(4).value = subRecord.po_size_qty
+					subRow.getCell(4).fill = {
+						type: 'pattern',
+						pattern: 'solid',
+						fgColor: { argb: ExcelColorPalette.BG_LIGHT_YELLOW }
+					}
+					subRow.getCell(5).value = subRecord.missing_qty
+					subRow.getCell(5).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'f2dcdb' } }
+				})
 		}
 
 		// * Auto fit columns

@@ -151,7 +151,7 @@ po_acc_outbound_qty AS (
 po_info AS (
    SELECT
       IIF(ISNULL(a.or_custpoone, '') = '', a.or_custpo, a.or_custpoone) AS po,
-      CAST(SUM(a.or_totalqty) - SUM(a.or_totalcqty) AS INT) AS po_qty
+      CAST(SUM((a.or_totalqty)) - SUM(a.or_totalcqty) AS INT) AS po_qty
    FROM wuerp_vnrd.dbo.ta_ordermst a
    WHERE a.isactive = 'Y'
    GROUP BY IIF(ISNULL(a.or_custpoone, '') = '', a.or_custpo, a.or_custpoone)
@@ -201,10 +201,10 @@ SELECT
    dd.po,
    COALESCE(dd.shoestyle_codefactory, @FallbackValue) AS factory_shoes_style,
    COALESCE(dd.color_sn, @FallbackValue) AS color_sn,
-   pi.po_qty AS order_qty,
+   ISNULL(pi.po_qty, 0) AS order_qty,
    COUNT(DISTINCT dd.EPC_Code) AS daily_outbound_qty,
    paoq.po_acc_outbound_qty accumulated_qty,
-   CAST(pi.po_qty - paoq.po_acc_outbound_qty AS INT) AS missing_qty,
+   CAST(ISNULL(pi.po_qty - paoq.po_acc_outbound_qty, 0) AS INT) AS missing_qty,
    (
       SELECT 
          dmp.mo_no,
@@ -227,8 +227,8 @@ SELECT
          dmp.po, dmp.mo_no, dmp.shoestyle_codefactory, dmp.color_sn
       FOR JSON PATH
    ) AS detail,
-   (
-      SELECT 
+   ISNULL(
+     (SELECT 
          size_numcode,
          po_size_qty,
          COALESCE(daily_qty, 0) AS daily_qty,
@@ -236,7 +236,8 @@ SELECT
       FROM agg_size_data
       WHERE po = dd.po
       ORDER BY size_numcode ASC
-      FOR JSON PATH
+      FOR JSON PATH), 
+   '[]'
    ) overall
 FROM daily_data dd
 LEFT JOIN po_acc_outbound_qty paoq ON paoq.po = dd.po
