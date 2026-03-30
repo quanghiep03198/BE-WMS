@@ -19,9 +19,10 @@ SELECT
    , MAX(a.security_2_signature) AS security_2_signature
 FROM DV_DATA_LAKE.dbo.dv_truckload_delivery a
 LEFT JOIN DV_DATA_LAKE.dbo.dv_carlicenseplates b
-ON a.license_plate = b.plate_name 
-   AND b.snap_time BETWEEN DATEADD(MINUTE, 5, ISNULL(a.container_sealing_time, GETDATE())) 
-   AND DATEADD(MINUTE, 30, ISNULL(a.factory_departure_time, GETDATE())) 
+ON TRIM(UPPER(a.license_plate)) = TRIM(UPPER(b.plate_name)) 
+   AND b.snap_time 
+      BETWEEN DATEADD(MINUTE, 1, a.container_sealing_time) 
+      AND DATEADD(MINUTE, 30, a.factory_departure_time) 
 CROSS APPLY (
     SELECT
         dd.po,
