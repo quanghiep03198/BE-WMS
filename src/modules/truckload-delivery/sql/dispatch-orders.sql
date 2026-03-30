@@ -1,6 +1,7 @@
 SELECT
    a.dispatch_order
    , MIN(a.created) AS created_at
+   , MAX(b.images) AS license_plate_image
    , a.factory_code
    , a.approval_status
    , a.license_plate
