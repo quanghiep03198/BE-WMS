@@ -19,7 +19,10 @@ export type DispatchOrder = {
 	punctured_container: boolean
 	smelling_container: boolean
 	moist_container: boolean
+	container_sealing_time: Date | null
 	factory_departure_time: Date | null
+	actual_snap_time: Date | null
+	actual_departure_time: Date | null
 	ie_signature: string | null
 	warehouse_officer_signature: string | null
 	security_1_signature: string | null
@@ -34,8 +37,8 @@ export type DispatchOrder = {
 				dispatched_outbound_qty?: number
 				color_sn?: string
 				outbound_qty: number
-				user_code_created: string
-				created: Date
+				user_code_created?: string
+				created?: Date
 		  }>
 }
 

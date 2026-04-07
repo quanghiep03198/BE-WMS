@@ -139,7 +139,10 @@ export class TruckloadDeliveryService
 		const hasPrevPage: boolean = queryParams.page > 1
 
 		return {
-			data: dispatchOrders,
+			data: dispatchOrders.map((order) => ({
+				...order,
+				delivery_details: SuperJson.parse(order.delivery_details, 1)
+			})),
 			totalDocs,
 			totalPages,
 			hasNextPage,
