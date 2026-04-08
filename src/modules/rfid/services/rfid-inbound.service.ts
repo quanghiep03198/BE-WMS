@@ -257,7 +257,6 @@ export class RFIDInboundService {
 					retryWrites: true
 				})
 				.then((value) => {
-					console.log('value', value)
 					return value
 				})
 
