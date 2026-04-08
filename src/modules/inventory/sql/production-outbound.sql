@@ -12,10 +12,6 @@ WHERE
    AND (@1 = 'ALL' OR shoes_style = @1) 
    AND (@2 = 'ALL' OR color = @2) 
 OPTION (
-   OPTIMIZE FOR UNKNOWN, 
-	USE HINT('ENABLE_PARALLEL_PLAN_PREFERENCE'),        		-- * Prioritize parallel execution plans
-	QUERYTRACEON 2371,                                			-- * Enable automatic statistics updates for large tables
-	QUERYTRACEON 4199,                                			-- * Enable all query optimizer fixes
-	QUERYTRACEON 4138,                                			-- * Enable batch mode for rowstore (SQL 2019+)
-	RECOMPILE																-- * Re-optimize for each execution
+   OPTIMIZE FOR (@1 = 'ALL', @2 = 'ALL'), 
+	RECOMPILE																	-- * Re-optimize for each execution
 )
