@@ -1,8 +1,12 @@
 import { EventGateway } from '@/events/event.gateway'
 import { Processor, WorkerHost } from '@nestjs/bullmq'
 // import { Logger } from '@nestjs/common'
+import { SuperJson } from '@/common/utils'
 import { FactoryCode } from '@/modules/department/constants'
+import { CACHE_MANAGER } from '@nestjs/cache-manager'
+import { Inject } from '@nestjs/common'
 import { Job } from 'bullmq'
+import { Cache } from 'cache-manager'
 import { format } from 'date-fns'
 import { groupBy } from 'lodash'
 import { PinoLogger } from 'nestjs-pino'
@@ -19,6 +23,7 @@ export class ThirdPartyApiConsumer extends WorkerHost {
 	private processState: SyncProcessState[]
 
 	constructor(
+		@Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
 		private readonly logger: PinoLogger,
 		private readonly thirdPartyApiService: ThirdPartyApiService,
 		private readonly thirdPartyApiOAuth2Service: DeckersOAuth2Strategy,
@@ -47,6 +52,8 @@ export class ThirdPartyApiConsumer extends WorkerHost {
 			await this.broadcastStateChange()
 			this.logger.error(error)
 			throw error
+		} finally {
+			await this.cacheManager.del('sync_states:deckers_data')
 		}
 	}
 
@@ -71,6 +78,16 @@ export class ThirdPartyApiConsumer extends WorkerHost {
 	}
 
 	private async broadcastStateChange() {
+		await this.cacheManager.set(
+			'sync_states:deckers_data',
+			SuperJson.stringify({
+				event: 'sync_decker_data',
+				ok: true,
+				metadata: this.processState,
+				error: null
+			}),
+			60 * 1000 * 5
+		)
 		this.eventGateway.server.emit('sync_decker_data', {
 			event: 'sync_decker_data',
 			ok: true,

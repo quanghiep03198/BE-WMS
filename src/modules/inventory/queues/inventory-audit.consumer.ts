@@ -1,64 +1,82 @@
+import { SuperJson } from '@/common/utils'
+import { DATA_SOURCE_DATA_LAKE } from '@/databases/constants'
 import { EventGateway } from '@/events/event.gateway'
-import { TenancyService } from '@/modules/tenancy/tenancy.service'
-import { Processor, WorkerHost } from '@nestjs/bullmq'
-import { Logger as NestLogger, Scope } from '@nestjs/common'
-import { Job } from 'bullmq'
-import { PinoLogger } from 'nestjs-pino'
+import { OnQueueEvent, Processor, WorkerHost } from '@nestjs/bullmq'
+import { CACHE_MANAGER } from '@nestjs/cache-manager'
+import { Inject } from '@nestjs/common'
+import { InjectDataSource } from '@nestjs/typeorm'
+import { Cache } from 'cache-manager'
+import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
+import { DataSource } from 'typeorm'
 import { SYNC_INVENTORY_AUDIT_QUEUE } from '../constants'
 
-@Processor({ name: SYNC_INVENTORY_AUDIT_QUEUE, scope: Scope.REQUEST })
+/** Cache TTL: 5 minutes — đủ để client reconnect trong khoảng này vẫn nhận được state */
+const SYNC_STATE_TTL_MS = 5 * 60 * 1000
+const SYNC_STATE_CACHE_KEY = 'sync_states:inventory_audit'
+
+type SyncStatus = 'progress' | 'completed' | 'failed'
+
+interface SyncStatePayload {
+	event: string
+	ok: boolean
+	metadata: { status: SyncStatus }
+	error: Error | null
+}
+
+@Processor({ name: SYNC_INVENTORY_AUDIT_QUEUE })
 export class InventoryAuditDataSyncConsumer extends WorkerHost {
-	private readonly socketEvent = 'sync_inventory_audit_data'
+	private readonly SOCKET_EVENT = 'sync_inventory_audit_data'
 
 	constructor(
+		@InjectPinoLogger(InventoryAuditDataSyncConsumer.name)
 		private readonly logger: PinoLogger,
-		private readonly tenancyService: TenancyService, // Replace 'any' with the actual type of your data source
-		private readonly eventGateway: EventGateway
+		@InjectDataSource(DATA_SOURCE_DATA_LAKE) private readonly dataSource: DataSource,
+		private readonly eventGateway: EventGateway,
+		@Inject(CACHE_MANAGER) private readonly cacheManager: Cache
 	) {
 		super()
 	}
 
-	async process({ id }: Job<object>) {
-		NestLogger.log('Inventory audit sync in progress', InventoryAuditDataSyncConsumer.name)
-		const currentTenant = this.tenancyService.findOneById(id)
-		const dataSource = await this.tenancyService.getTenancyDataSource(currentTenant?.host)
-		const queryRunner = dataSource.createQueryRunner()
+	async process(): Promise<void> {
+		this.logger.info('Inventory audit sync started')
+		const queryRunner = this.dataSource.createQueryRunner()
+
 		try {
 			await queryRunner.startTransaction()
-			this.broadcastProgress({
-				metadata: { status: 'progress' },
-				event: this.socketEvent,
-				ok: true,
-				error: null
-			})
-			// await queryRunner.manager.getRepository(InventoryAuditEntity).delete({
-			// 	inv_type: InventoryType.FINISHED_GOOD,
-			// 	inv_year_month: format(new Date(), 'yyyyMM')
-			// })
+			await this.broadcastSyncState('progress', true, null)
+
 			await queryRunner.query(/* SQL */ `EXEC DV_DATA_LAKE.dbo.sp_import_invprod_VER2`)
 			await queryRunner.commitTransaction()
-			this.broadcastProgress({
-				metadata: { status: 'completed' },
-				event: this.socketEvent,
-				ok: true,
-				error: null
-			})
-			NestLogger.log('Inventory audit sync completed', InventoryAuditDataSyncConsumer.name)
+
+			await this.broadcastSyncState('completed', true, null)
+			this.logger.info('Inventory audit sync completed')
 		} catch (error) {
-			if (queryRunner.isTransactionActive) queryRunner.rollbackTransaction()
-			this.logger.error(error)
-			this.broadcastProgress({
-				metadata: { status: 'failed' },
-				event: this.socketEvent,
-				ok: false,
-				error: error as Error
-			})
+			if (queryRunner.isTransactionActive) await queryRunner.rollbackTransaction()
+			this.logger.error({ err: error }, 'Inventory audit sync failed')
+			await this.broadcastSyncState('failed', false, error as Error)
 		} finally {
-			queryRunner.release()
+			await queryRunner.release()
 		}
 	}
 
-	private broadcastProgress(data: WsResponseBody<{ status: 'progress' | 'completed' | 'failed' }>) {
-		this.eventGateway.server.emit('sync_inventory_audit_data', data)
+	/**
+	 * Cập nhật trạng thái sync vào cache và broadcast ngay cho tất cả clients.
+	 * Cache được giữ lại (không xóa sau khi xong) để client reconnect vẫn nhận được state cuối cùng.
+	 */
+	private async broadcastSyncState(status: SyncStatus, ok: boolean, error: Error | null): Promise<void> {
+		const payload: SyncStatePayload = {
+			event: this.SOCKET_EVENT,
+			ok,
+			metadata: { status },
+			error
+		}
+
+		await this.cacheManager.set(SYNC_STATE_CACHE_KEY, SuperJson.stringify(payload), SYNC_STATE_TTL_MS)
+		this.eventGateway.server.emit(this.SOCKET_EVENT, payload)
+	}
+
+	@OnQueueEvent('deduplicated')
+	onDeduplicated(): void {
+		this.logger.warn('Duplicated job detected, skipping')
 	}
 }

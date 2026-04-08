@@ -18,7 +18,6 @@ import {
 import { Queue } from 'bullmq'
 import { format } from 'date-fns'
 import { FastifyReply } from 'fastify'
-import { uniqueId } from 'lodash'
 import { UserRole } from '../user/constants'
 import { SYNC_INVENTORY_AUDIT_QUEUE } from './constants'
 import {
@@ -80,8 +79,11 @@ export class InventoryController {
 
 	@RouteHandler({ endpoint: 'audit/sync', method: HttpMethod.POST, statusCode: HttpStatus.CREATED })
 	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
-	async syncInventoryAuditData(@Headers(CommonRequestHeader.TENANT_ID) tenantId: string) {
-		return await this.syncInventoryAuditDataQueue.add(uniqueId(), {}, { jobId: tenantId })
+	async syncInventoryAuditData(
+		@Headers(CommonRequestHeader.FACTORY_CODE) factoryCode: string,
+		@Headers(CommonRequestHeader.USER_REQUEST) user: string
+	) {
+		return await this.syncInventoryAuditDataQueue.add(factoryCode, {}, { jobId: user })
 	}
 	// #endregion
 

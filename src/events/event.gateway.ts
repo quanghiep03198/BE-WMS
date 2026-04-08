@@ -1,16 +1,17 @@
 import { CommonRequestHeader } from '@/common/constants'
 import { RequestUser } from '@/common/decorators'
-import { WsExceptionsFilter } from '@/common/filters/ws-exception.filter'
+import { WsExceptionsFilter } from '@/common/filters'
+
 import { WsZodValidationPipe } from '@/common/pipes/ws-validation.pipe'
-import { env } from '@/common/utils'
+import { env, SuperJson } from '@/common/utils'
 import { SYNC_INVENTORY_AUDIT_QUEUE } from '@/modules/inventory/constants'
-import { SyncInventoryAuditDTO, syncInventoryAuditValidator } from '@/modules/inventory/dto/inventory-report.dto'
 import { FALLBACK_VALUE } from '@/modules/rfid/constants'
 import { EpcDocument, EpcInbound } from '@/modules/rfid/schemas/epc.schema'
 import { THIRD_PARTY_API_SYNC } from '@/modules/third-party-api/constants'
 import { SyncDataMessageDTO, syncDataMessageValidator } from '@/modules/third-party-api/dto/third-party-api.dto'
 import { InjectQueue } from '@nestjs/bullmq'
-import { Optional, UseFilters, UsePipes } from '@nestjs/common'
+import { CACHE_MANAGER } from '@nestjs/cache-manager'
+import { Inject, Optional, UseFilters, UsePipes } from '@nestjs/common'
 import { JsonWebTokenError, JwtService } from '@nestjs/jwt'
 import { InjectModel } from '@nestjs/mongoose'
 import {
@@ -23,7 +24,8 @@ import {
 	WebSocketServer
 } from '@nestjs/websockets'
 import { Queue } from 'bullmq'
-import { uniqBy, uniqueId } from 'lodash'
+import { Cache } from 'cache-manager'
+import { uniqBy } from 'lodash'
 import { PaginateModel } from 'mongoose'
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
 import { Server, Socket } from 'socket.io'
@@ -57,7 +59,9 @@ export class EventGateway implements OnGatewayInit, OnGatewayConnection, OnGatew
 
 		@Optional()
 		@InjectQueue(SYNC_INVENTORY_AUDIT_QUEUE)
-		private readonly syncInventoryAuditDataQueue: Queue<SyncDataMessageDTO>
+		private readonly syncInventoryAuditDataQueue: Queue<SyncDataMessageDTO>,
+
+		@Inject(CACHE_MANAGER) private readonly cacheManager: Cache
 	) {}
 
 	/**
@@ -75,6 +79,7 @@ export class EventGateway implements OnGatewayInit, OnGatewayConnection, OnGatew
 					socket.data.user = user
 					next()
 				} catch (error) {
+					this.logger.error(error)
 					if (error instanceof JsonWebTokenError) {
 						this.logger.warn({ socketId: socket.id, error: error.message }, 'Token expired/invalid on event')
 						socket.emit('jwt_expired', {
@@ -102,6 +107,17 @@ export class EventGateway implements OnGatewayInit, OnGatewayConnection, OnGatew
 			socket.data.factoryCode = headers[CommonRequestHeader.FACTORY_CODE.toLowerCase()] as string
 
 			this.logger.info({ socketId, username: user.username }, 'Client connected')
+			const [syncInventoryAuditProcess, syncDeckerDataProcess] = await Promise.all([
+				this.cacheManager.get('sync_states:inventory_audit'),
+				this.cacheManager.get('sync_states:deckers_data')
+			])
+			// Gửi lại trạng thái sync cho đúng client vừa (re)connect, không broadcast toàn bộ
+			if (SuperJson.isValid(syncInventoryAuditProcess)) {
+				socket.emit('sync_inventory_audit_data', SuperJson.parse(syncInventoryAuditProcess))
+			}
+			if (SuperJson.isValid(syncDeckerDataProcess)) {
+				socket.emit('sync_decker_data', SuperJson.parse(syncDeckerDataProcess))
+			}
 		} catch (e) {
 			const error = e instanceof JsonWebTokenError ? e : new Error(String(e))
 			const isJwtError = error.name === 'JsonWebTokenError' || error.name === 'TokenExpiredError'
@@ -180,6 +196,7 @@ export class EventGateway implements OnGatewayInit, OnGatewayConnection, OnGatew
 		})
 	}
 
+	// @UseGuards(WebsocketJwtGuard)
 	@SubscribeMessage('sync_decker_data')
 	@UseFilters(new WsExceptionsFilter())
 	@UsePipes(new WsZodValidationPipe(syncDataMessageValidator))
@@ -200,11 +217,35 @@ export class EventGateway implements OnGatewayInit, OnGatewayConnection, OnGatew
 		})
 	}
 
+	// @UseGuards(WebsocketJwtGuard)
 	@SubscribeMessage('sync_inventory_audit_data')
 	@UseFilters(new WsExceptionsFilter())
-	@UsePipes(new WsZodValidationPipe(syncInventoryAuditValidator))
-	protected async handleSyncInventoryAuditData(@MessageBody() payload: SyncInventoryAuditDTO) {
+	protected async handleSyncInventoryAuditData(client: Socket) {
 		if (!this.syncInventoryAuditDataQueue) return
-		this.syncInventoryAuditDataQueue.add(uniqueId(), {}, { jobId: payload.tenantId })
+
+		// Thông tin user/factory có thể đã được gán vào socket.data trong handleConnection/afterInit
+		const user = client.data?.user
+		const factoryCode = client.data?.factoryCode
+
+		this.logger.info(
+			{ socketId: client.id, factoryCode, username: user?.username },
+			'Received sync_inventory_audit_data'
+		)
+
+		this.syncInventoryAuditDataQueue.add(
+			'sync_inventory_audit_data',
+			{},
+			{
+				/**
+				 * Deduplication theo factoryCode — đảm bảo mỗi factory chỉ có tối đa 1 job
+				 * đang chờ/chạy trong cùng một thời điểm.
+				 * TTL 5 phút khớp với SYNC_STATE_TTL_MS trong consumer.
+				 */
+				// deduplication: { id: `sync_inventory_audit:${factoryCode}`, ttl: 5 * 60 * 1000 },
+				jobId: factoryCode,
+				removeOnComplete: true,
+				removeOnFail: true
+			}
+		)
 	}
 }
