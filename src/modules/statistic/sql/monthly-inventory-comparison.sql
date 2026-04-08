@@ -18,9 +18,9 @@ IF OBJECT_ID('tempdb..#tmp_rfid_data') IS NOT NULL DROP TABLE #tmp_rfid_data;
 
 
 WITH CTE AS (
-    SELECT EPC_Code, rfid_status, stationNO, record_time, isactive FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet WITH (NOLOCK) WHERE isactive = 'Y'
+    SELECT EPC_Code, rfid_status, stationNO, record_time, isactive FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet WITH (NOLOCK) WHERE isactive = 'Y' AND rfid_use <> 'C'
     UNION ALL 
-    SELECT EPC_Code, rfid_status, stationNO, record_time, isactive FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet_backup_Daily WITH (NOLOCK) WHERE isactive = 'Y'
+    SELECT EPC_Code, rfid_status, stationNO, record_time, isactive FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet_backup_Daily WITH (NOLOCK) WHERE isactive = 'Y' AND rfid_use <> 'C'
 )
 SELECT 
     CASE 
@@ -91,5 +91,3 @@ CROSS JOIN aggregated_data agg;
 
 -- * Cleanup
 DROP TABLE #tmp_rfid_data;
-
-
