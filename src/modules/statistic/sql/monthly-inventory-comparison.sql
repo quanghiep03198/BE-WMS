@@ -16,6 +16,12 @@ DECLARE @PrevYearMonth VARCHAR(10) = CAST(@PrevYear AS VARCHAR(10)) + RIGHT('0' 
 -- * Temporary table approach cho large dataset
 IF OBJECT_ID('tempdb..#tmp_rfid_data') IS NOT NULL DROP TABLE #tmp_rfid_data;
 
+
+WITH CTE AS (
+    SELECT EPC_Code, rfid_status, stationNO, record_time, isactive FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet WITH (NOLOCK) WHERE isactive = 'Y'
+    UNION ALL 
+    SELECT EPC_Code, rfid_status, stationNO, record_time, isactive FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet_backup_Daily WITH (NOLOCK) WHERE isactive = 'Y'
+)
 SELECT 
     CASE 
         WHEN CAST(record_time AS DATE) >= CAST(@CurrentMonthStart AS DATE) AND CAST(record_time AS DATE) <= CAST (@CurrentPeriodEnd AS DATE) THEN 'CURR'
@@ -25,7 +31,7 @@ SELECT
     RIGHT(stationNO, 3) AS station_suffix,
     COUNT(DISTINCT EPC_Code) as record_count
 INTO #tmp_rfid_data
-FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet_backup_Daily WITH (NOLOCK)
+FROM (SELECT DISTINCT EPC_Code, rfid_status, stationNO, record_time, isactive FROM CTE) a
 WHERE 
     isactive = 'Y' 
     AND rfid_status IN ('A', 'B')
