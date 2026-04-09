@@ -33,6 +33,8 @@ export class DefectiveGoodsOutboundService {
 
 		if (existsNotInbounded) throw new ConflictException(this.i18nService.t('inoutbound.notification.not_inbound_yet'))
 
+		const currentTime = format(new Date(), 'yyyy-MM-dd HH:mm:ss')
+
 		return await this.defectiveGoodsRepository.update(
 			{ epc: In(epcs) },
 			{
@@ -47,6 +49,15 @@ export class DefectiveGoodsOutboundService {
 							AND '${update.outbound_purpose}' = '${DefectiveGoodsOutboundPurpose.ELIMINATE}' 
 						THEN '${DefectiveCategory.C_GRADE}' 
 						ELSE defective_category
+					END`
+				},
+				remark: () => {
+					return /* SQL */ `CASE 
+						WHEN 
+							defective_category <> '${DefectiveCategory.C_GRADE}' 
+							AND '${update.outbound_purpose}' = '${DefectiveGoodsOutboundPurpose.ELIMINATE}' 
+						THEN '[${currentTime}] Info: Outbound purpose changed to "ELIMINATE", defective category downgraded to "C" automatically.'
+						ELSE NULL
 					END`
 				}
 			}
