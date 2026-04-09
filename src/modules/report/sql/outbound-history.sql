@@ -13,7 +13,7 @@ base_data AS (
       CAST(i.record_time AS DATE) AS outbound_date,
       i.po, 
       i.mo_no, 
-      b.brand_name,
+     
       CASE 
          WHEN LEFT(CAST(i.size_code AS NVARCHAR(10)), 1) = '0' THEN i.size_code
          WHEN ISNUMERIC(i.size_code) = 1 
@@ -23,17 +23,9 @@ base_data AS (
          ELSE CAST(i.size_code AS NVARCHAR(10)) 
       END AS size_code, 
       i.record_time,
-      r.shoestyle_codefactory AS factory_shoes_style,
-      r.cust_shoestyle AS cust_shoes_style,
-      UPPER(CONCAT(p.color_sn,'/', p.mat_ecolor)) AS color_sn,
+     
       i.FC_server_code
    FROM inv_rfid i
-   LEFT JOIN DV_DATA_LAKE.dbo.dv_rfidmatchmst_cust r WITH (FORCESEEK) 
-      ON i.EPC_Code = r.EPC_Code
-   LEFT JOIN wuerp_vnrd.dbo.ta_productmst p WITH (FORCESEEK)
-      ON p.mat_code = r.mat_code AND p.isactive = 'Y'
-   LEFT JOIN wuerp_vnrd.dbo.ta_brand b
-      ON b.custbrand_id = p.custbrand_id AND b.isactive = 'Y'
    WHERE
       i.isactive = 'Y'
       AND i.rfid_status = 'B'
@@ -49,7 +41,7 @@ base_data AS (
 -- * Size quantity by purchase order 
 po_size_qty AS (
    SELECT 
-      IIF(ISNULL(or1.or_custpoone, '') = '', or1.or_custpo, or1.or_custpoone) AS po,
+      IIF(ISNULL(or1.or_custpoone, @1) = @1, or1.or_custpo, or1.or_custpoone) AS po,
       CASE 
          WHEN ISNUMERIC(b.size_numcode) = 1 THEN CAST(b.size_numcode AS NVARCHAR) 
          WHEN LEFT(b.size_numcode, 1) IN ('T', 'K') THEN SUBSTRING(b.size_numcode, 2, LEN(b.size_numcode))
@@ -107,7 +99,7 @@ po_size_qty AS (
       AND a.isactive = 'Y'
       AND or1.isactive = 'Y'
    GROUP BY 
-      IIF(ISNULL(or1.or_custpoone, '') = '', or1.or_custpo, or1.or_custpoone), 
+      IIF(ISNULL(or1.or_custpoone, @1) = @1, or1.or_custpo, or1.or_custpoone), 
       CASE 
          WHEN ISNUMERIC(b.size_numcode) = 1 THEN CAST(b.size_numcode AS NVARCHAR) 
          WHEN LEFT(b.size_numcode, 1) IN ('T', 'K') THEN SUBSTRING(b.size_numcode, 2, LEN(b.size_numcode))
@@ -124,11 +116,35 @@ po_acc_outbound_qty AS (
 -- * Purchase order information
 po_info AS (
    SELECT
-      IIF(ISNULL(a.or_custpoone, '') = '', a.or_custpo, a.or_custpoone) AS po,
-      CAST(SUM(a.or_totalqty) - SUM(a.or_totalcqty) AS INT) AS po_qty
-   FROM wuerp_vnrd.dbo.ta_ordermst a
-   WHERE a.isactive = 'Y'
-   GROUP BY IIF(ISNULL(a.or_custpoone, '') = '', a.or_custpo, a.or_custpoone)
+      IIF(ISNULL(ord.or_custpoone, @1) = @1, ord.or_custpo, ord.or_custpoone) AS po,
+      CAST(SUM(ord.or_totalqty) - SUM(ord.or_totalcqty) AS INT) AS po_qty,
+      br.brand_name,
+      sfm.shoestyle_codefactory AS factory_shoes_style,
+      sfm.shoestyle_codecust AS cust_shoes_style,
+      UPPER(CONCAT(prod.color_sn, '/', prod.mat_ecolor)) AS color_sn
+   FROM wuerp_vnrd.dbo.ta_ordermst ord
+   LEFT JOIN wuerp_vnrd.dbo.ta_productmst prod
+      ON prod.mat_code = ord.mat_code
+      AND prod.isactive = 'Y'
+   LEFT JOIN wuerp_vnrd.dbo.ta_brand br
+      ON br.custbrand_id = ord.custbrand_id
+      AND br.isactive = 'Y'
+   LEFT JOIN wuerp_vnrd.dbo.ta_shoefactorymst sfm
+      ON sfm.shoestyle_systemcodefty = prod.shoestyle_systemcodefty
+      AND sfm.isactive = 'Y'
+   LEFT JOIN wuerp_vnrd.dbo.ta_manufacturdet mand
+      ON ord.or_no = mand.or_no
+      AND mand.isactive = 'Y'
+   LEFT JOIN DV_DATA_LAKE.dbo.dv_OrderProcessR05 ordp
+      ON ordp.PO = IIF(ISNULL(ord.or_custpoone,  @1) =  @1, ord.or_custpo, ord.or_custpoone)
+   WHERE ord.isactive = 'Y'
+   GROUP BY
+      IIF(ISNULL(ord.or_custpoone, @1) = @1, ord.or_custpo, ord.or_custpoone),
+      br.brand_name,
+      sfm.shoestyle_codefactory,
+      sfm.shoestyle_codecust,
+      prod.color_sn,
+      prod.mat_ecolor
 ),
 
 -- * Daily productivity by size groupped by Manufacturing Order (MO)
@@ -137,14 +153,11 @@ daily_mo_productivity AS (
       bd.outbound_date,
       bd.po,
       bd.mo_no,
-      bd.factory_shoes_style,
-      bd.cust_shoes_style,
-      bd.color_sn,
       bd.size_code,
       COUNT(DISTINCT bd.EPC_Code) AS qty
    FROM base_data bd
    GROUP BY 
-      bd.po, bd.outbound_date, bd.mo_no, bd.factory_shoes_style, bd.cust_shoes_style, bd.color_sn, bd.size_code
+      bd.po, bd.outbound_date, bd.mo_no, bd.size_code
 ),
 
 -- * Aggregate size data for each purchase order
@@ -167,14 +180,14 @@ agg_size_data AS (
 )
 -- * Main query * --
 SELECT
-   bd.po,
-   bd.brand_name AS brand_name, 
-   COALESCE(bd.factory_shoes_style, @FallbackValue) AS factory_shoes_style,
-   COALESCE(bd.cust_shoes_style, @FallbackValue) AS cust_shoes_style,
-   COALESCE(bd.color_sn, @FallbackValue) AS color_sn,
+   pi.po,
+   pi.brand_name AS brand_name, 
+   COALESCE(pi.factory_shoes_style, @FallbackValue) AS factory_shoes_style,
+   COALESCE(pi.cust_shoes_style, @FallbackValue) AS cust_shoes_style,
+   COALESCE(pi.color_sn, @FallbackValue) AS color_sn,
    pi.po_qty AS po_qty,
-   paoq.po_acc_outbound_qty AS accumulated_outbound_qty,
-   CAST(pi.po_qty - paoq.po_acc_outbound_qty AS INT) AS missing_qty,
+   ISNULL(paoq.po_acc_outbound_qty, 0) AS accumulated_outbound_qty,
+   CAST(ISNULL(pi.po_qty - paoq.po_acc_outbound_qty, 0) AS INT) AS missing_qty,
    (
       SELECT 
          dmp.outbound_date,
@@ -185,36 +198,31 @@ SELECT
             WHERE 
                dmp2.po = dmp.po  
                AND dmp2.mo_no = dmp.mo_no 
-               AND dmp2.factory_shoes_style = dmp.factory_shoes_style 
-               AND dmp2.color_sn = dmp.color_sn
                AND dmp2.outbound_date = dmp.outbound_date
             FOR JSON PATH
          ) AS sizes
       FROM daily_mo_productivity dmp
-      WHERE 
-         dmp.po = bd.po 
-         AND dmp.factory_shoes_style = bd.factory_shoes_style 
-         AND dmp.color_sn = bd.color_sn
+      WHERE dmp.po = pi.po
       GROUP BY 
-         dmp.po, dmp.outbound_date, dmp.mo_no, dmp.factory_shoes_style, dmp.cust_shoes_style, dmp.color_sn
+         dmp.po, dmp.outbound_date, dmp.mo_no
       FOR JSON PATH
    ) AS outbound_history,
-(
+   (
       SELECT 
          size_numcode,
          po_size_qty,
          acc_qty,
          (po_size_qty - COALESCE(acc_qty, 0)) AS missing_qty
       FROM agg_size_data
-      WHERE po = bd.po
+      WHERE po = pi.po
       ORDER BY size_numcode ASC
       FOR JSON PATH
-   ) overall
-FROM base_data bd
-LEFT JOIN po_acc_outbound_qty paoq ON paoq.po = bd.po
-LEFT JOIN po_info pi ON pi.po = bd.po
-GROUP BY bd.brand_name, bd.po, bd.factory_shoes_style, bd.cust_shoes_style, bd.color_sn, pi.po_qty, paoq.po_acc_outbound_qty
-ORDER BY bd.po
+   ) AS overall
+FROM po_info pi
+LEFT JOIN po_acc_outbound_qty paoq ON paoq.po = pi.po
+WHERE pi.po = @1
+GROUP BY pi.brand_name, pi.po, pi.factory_shoes_style, pi.cust_shoes_style, pi.color_sn, pi.po_qty, paoq.po_acc_outbound_qty
+ORDER BY pi.po
 OPTION (
 	OPTIMIZE FOR UNKNOWN,                           -- * Avoid "Paramenter Sniffing" issues
 	USE HINT('ENABLE_PARALLEL_PLAN_PREFERENCE'),    -- * Prioritize parallel plan
