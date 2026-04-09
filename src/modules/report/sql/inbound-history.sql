@@ -124,22 +124,14 @@ SELECT
       FROM mo_size_run_cte
       ORDER BY size_numcode ASC FOR JSON PATH
    ) AS order_size_run
-FROM inv_rfid a
-LEFT JOIN wuerp_vnrd.dbo.ta_manufacturmst b ON a.mo_no = b.mo_no AND b.isactive = 'Y'
+FROM wuerp_vnrd.dbo.ta_manufacturmst b 
+LEFT JOIN inv_rfid a ON a.mo_no = b.mo_no AND b.isactive = 'Y'
 LEFT JOIN wuerp_vnrd.dbo.ta_manufacturdet c ON c.mo_no = b.mo_no AND c.isactive = 'Y'
 LEFT JOIN wuerp_vnrd.dbo.ta_ordermst d ON c.or_no = c.or_no AND d.isactive = 'Y'
 LEFT JOIN wuerp_vnrd.dbo.ta_productmst e ON e.mat_code = b.mat_code AND e.isactive = 'Y'
 LEFT JOIN wuerp_vnrd.dbo.ta_shoefactorymst f ON f.shoestyle_systemcodefty = e.shoestyle_systemcodefty AND f.isactive = 'Y'
 LEFT JOIN wuerp_vnrd.dbo.ta_brand g ON g.custbrand_id = e.custbrand_id
-WHERE 
-   a.rfid_status = 'A'
-	AND a.isactive = 'Y'
-   AND a.record_time >= CAST(DATEADD(YEAR, -2, GETDATE()) AS DATE)
-   AND a.EPC_Code NOT LIKE '303429%'
-   AND a.EPC_Code NOT LIKE 'E28%'
-   AND a.mo_no NOT IN ('13D05B006', '13A08C003')
-   AND a.mo_no = @0
-   AND a.stationNO LIKE 'CUS%WH10[12]'
+WHERE b.mo_no = @0
 GROUP BY 
    b.cofactory_code,
    b.mo_no, CAST(COALESCE(b.mo_totalqty, 0) AS INT),
