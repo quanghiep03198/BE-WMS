@@ -49,7 +49,7 @@ OUTER APPLY (
    SELECT TOP (1) CAST(1 AS TINYINT) AS possible_signing_late, snap_time, images
    FROM DV_DATA_LAKE.dbo.dv_carlicenseplates e
    WHERE TRIM(UPPER(e.plate_name)) = TRIM(UPPER(a.license_plate))
-      AND e.snap_time BETWEEN DATEADD(MINUTE, -15, a.container_sealing_time)
+      AND e.snap_time BETWEEN DATEADD(MINUTE, -30, a.container_sealing_time)
       AND a.container_sealing_time
 ) f (possible_signing_late, snap_time, images)
 WHERE a.isactive = 'Y'
