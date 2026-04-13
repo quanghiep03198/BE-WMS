@@ -7,7 +7,7 @@ import { Workbook } from 'exceljs'
 import { omit } from 'lodash'
 import { I18nContext, I18nService } from 'nestjs-i18n'
 import { DataSource } from 'typeorm'
-import { DefectiveCategory, DefectiveGoodsSource } from '../constants'
+import { DefectiveCategory, DefectiveGoodsSource, FALLBACK_PURCHASE_ORDER } from '../constants'
 import { DefectiveGoodsEntity } from '../entities/defective-goods.entity'
 import { DefectiveGoodsInboundService } from './defective-inbound.service'
 
@@ -21,7 +21,7 @@ export class DefectiveGoodsInventoryService {
 
 	public async getDefectiveGoodsInventory() {
 		const storageListCommonTableExpression = this.defectiveInboundService.getStorageLocationsQuery({
-			shouldCheckReturnInstructionStatus: true
+			shouldCheckReturnInstructionStatus: false
 		})
 
 		return await this.dataSourceTNC
@@ -29,7 +29,7 @@ export class DefectiveGoodsInventoryService {
 			.createQueryBuilder('a')
 			.addCommonTableExpression(storageListCommonTableExpression, 'storage_list_cte')
 			.select('a.brand_name', 'brand_name')
-			.addSelect('a.po', 'po')
+			.addSelect(`ISNULL(IIF(a.po = '', :fallbackPurchaseOrder, a.po), :fallbackPurchaseOrder)`, 'po')
 			.addSelect('a.mo_no', 'mo_no')
 			.addSelect('a.factory_shoes_style', 'factory_shoes_style')
 			.addSelect('a.cust_shoes_style', 'cust_shoes_style')
@@ -71,8 +71,8 @@ export class DefectiveGoodsInventoryService {
                a.brand_name = b.brand_name 
                AND a.factory_shoes_style = b.factory_shoes_style 
                AND a.color_sn = b.color_sn 
-               AND a.mo_no = b.mo_no 
-               AND a.po = b.po
+               AND ISNULL(a.mo_no, :fallbackPurchaseOrder) = ISNULL(b.mo_no, :fallbackPurchaseOrder)
+               AND ISNULL(a.po, :fallbackPurchaseOrder) = ISNULL(b.po, :fallbackPurchaseOrder)
                AND a.defective_category = b.defective_category
                AND a.shoe_source = b.shoe_source
             `
@@ -88,6 +88,7 @@ export class DefectiveGoodsInventoryService {
 			.addGroupBy('a.defective_category')
 			.addGroupBy('a.shoe_source')
 			.addGroupBy('b.storage_location')
+			.setParameter('fallbackPurchaseOrder', FALLBACK_PURCHASE_ORDER)
 			.getRawMany<{
 				brand_name: string
 				po: string

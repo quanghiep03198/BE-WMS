@@ -28,3 +28,5 @@ export enum DefectiveGoodsUnit {
 	PRS = 'prs',
 	PCS = 'pcs'
 }
+
+export const FALLBACK_PURCHASE_ORDER = 'PRELOAD'

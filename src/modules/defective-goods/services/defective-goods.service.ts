@@ -6,6 +6,7 @@ import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
 import { And, Between, DataSource, Equal, FindOptionsWhere, In, IsNull, Like, Not, Repository } from 'typeorm'
 import { BaseAbstractService } from '../../_base/base.abstract.service'
 import { FALLBACK_VALUE } from '../../rfid/constants'
+import { FALLBACK_PURCHASE_ORDER } from '../constants'
 import { DeleteManyDefectiveGoodsDTO } from '../dto/defective-goods.dto'
 import { DefectiveGoodsEntity } from '../entities/defective-goods.entity'
 
@@ -82,7 +83,15 @@ export class DefectiveGoodsService extends BaseAbstractService<DefectiveGoodsEnt
 		try {
 			await queryRunner.startTransaction()
 			await Promise.all(
-				chunk(epcs, 100).map((batch) => this.dataSource.getRepository(DefectiveGoodsEntity).insert(batch))
+				chunk(epcs, 100).map((batch) => {
+					return this.dataSource.getRepository(DefectiveGoodsEntity).insert(
+						batch.map((item) => {
+							item.mo_no ||= null
+							item.po ||= FALLBACK_PURCHASE_ORDER
+							return item
+						})
+					)
+				})
 			)
 			await queryRunner.commitTransaction()
 		} catch (error) {
