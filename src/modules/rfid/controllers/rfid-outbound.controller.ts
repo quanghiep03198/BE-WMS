@@ -9,6 +9,7 @@ import {
 	DefaultValuePipe,
 	Get,
 	HttpStatus,
+	Inject,
 	Param,
 	ParseBoolPipe,
 	ParseIntPipe,
@@ -27,6 +28,9 @@ import { PaginateResult } from 'mongoose'
 import { POST_DATA_OUTBOUND_QUEUE } from '../constants'
 
 import { UserRole } from '@/modules/user/constants'
+import { CACHE_MANAGER } from '@nestjs/cache-manager'
+import { Cache } from 'cache-manager'
+import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
 import { UpsertStockOutDTO, upsertStockOutValidator } from '../dto/rfid-outbound.dto'
 import {
 	deleteEpcValidator,
@@ -46,6 +50,8 @@ export class RFIDOutboundController {
 	constructor(
 		@InjectQueue(POST_DATA_OUTBOUND_QUEUE) private readonly postOutboundDataQueue: Queue<PostReaderDataDTO>,
 		@InjectModel(EpcOutbound.name) private readonly epcOutboundModel: EpcModel,
+		@Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
+		@InjectPinoLogger(RFIDOutboundController.name) private readonly logger: PinoLogger,
 		private readonly eventEmitter: EventEmitter2,
 		private readonly rfidSharedService: RFIDSharedService,
 		private readonly rfidOutboundService: RFIDOutboundService
@@ -74,9 +80,19 @@ export class RFIDOutboundController {
 		}
 		await handleChange()
 		const changeStream = this.rfidSharedService.captureDataChange(this.epcOutboundModel, handleChange)
+		let currentWatchers = await this.cacheManager.get<number>('cached:rfid:outbound_watchers')
+		await this.cacheManager.set('cached:rfid:outbound_watchers', currentWatchers ? currentWatchers + 1 : 1)
+
 		reply.raw.on('close', async () => {
-			changeStream.removeListener('change', handleChange)
-			await changeStream.close()
+			currentWatchers = await this.cacheManager.get<number>('cached:rfid:outbound_watchers')
+			await this.cacheManager.set('cached:rfid:outbound_watchers', currentWatchers - 1)
+			currentWatchers = await this.cacheManager.get<number>('cached:rfid:outbound_watchers')
+			if (currentWatchers === 0) {
+				this.logger.info('Stop receiving data from Android RFID device')
+				await this.rfidSharedService.cleanupQueue(this.postOutboundDataQueue)
+				changeStream.removeListener('change', handleChange)
+				await changeStream.close()
+			}
 			reply.raw.end()
 		})
 	}

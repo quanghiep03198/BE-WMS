@@ -4,6 +4,7 @@ import { AllExceptionsFilter } from '@/common/filters'
 import { ZodValidationPipe } from '@/common/pipes'
 import { UserRole } from '@/modules/user/constants'
 import { InjectQueue } from '@nestjs/bullmq'
+import { CACHE_MANAGER } from '@nestjs/cache-manager'
 import {
 	Body,
 	Controller,
@@ -11,6 +12,7 @@ import {
 	Get,
 	Headers,
 	HttpStatus,
+	Inject,
 	Param,
 	ParseBoolPipe,
 	ParseIntPipe,
@@ -21,6 +23,7 @@ import {
 import { EventEmitter2 } from '@nestjs/event-emitter'
 import { InjectModel } from '@nestjs/mongoose'
 import { Queue } from 'bullmq'
+import { Cache } from 'cache-manager'
 import { format } from 'date-fns'
 import { FastifyReply } from 'fastify'
 import { isEmpty, isNil, pick, pickBy } from 'lodash'
@@ -52,10 +55,13 @@ import { RFIDSearchParams, ScannedOrderDetail } from '../types'
 
 @Controller('rfid/inbound')
 export class RFIDInboundController {
+	private inboundWatcher: number = 0
+
 	constructor(
 		@InjectPinoLogger(RFIDInboundController.name) private readonly logger: PinoLogger,
 		@InjectModel(EpcInbound.name) private readonly epcInboundModel: EpcModel,
 		@InjectQueue(POST_DATA_INBOUND_QUEUE) private readonly postInboundDataQueue: Queue<PostReaderDataDTO>,
+		@Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
 		private readonly eventEmitter: EventEmitter2,
 		private readonly rfidSharedService: RFIDSharedService,
 		private readonly rfidInboundService: RFIDInboundService
@@ -82,14 +88,22 @@ export class RFIDInboundController {
 			})
 			if (data) reply.sse(data)
 		}
+
 		await handleChange()
+		let currentWatchers = await this.cacheManager.get<number>('cached:rfid:inbound_watchers')
+		await this.cacheManager.set('cached:rfid:inbound_watchers', currentWatchers ? currentWatchers + 1 : 1)
 		const changeStream = await this.rfidSharedService.captureDataChange(this.epcInboundModel, handleChange)
 
 		reply.raw.on('close', async () => {
-			this.logger.info('Stop receiving data from Android RFID device')
-			await this.rfidSharedService.cleanupQueue(this.postInboundDataQueue)
-			changeStream.removeListener('change', handleChange)
-			changeStream.close()
+			currentWatchers = await this.cacheManager.get<number>('cached:rfid:inbound_watchers')
+			await this.cacheManager.set('cached:rfid:inbound_watchers', currentWatchers - 1)
+			currentWatchers = await this.cacheManager.get<number>('cached:rfid:inbound_watchers')
+			if (currentWatchers === 0) {
+				this.logger.info('Stop receiving data from Android RFID device')
+				await this.rfidSharedService.cleanupQueue(this.postInboundDataQueue)
+				changeStream.removeListener('change', handleChange)
+				changeStream.close()
+			}
 			reply.raw.end()
 		})
 	}
