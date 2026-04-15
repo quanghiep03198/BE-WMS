@@ -1,9 +1,11 @@
 import { DATA_SOURCE_DATA_LAKE } from '@/databases/constants'
 import { EventGateway } from '@/events/event.gateway'
 import { BullModule } from '@nestjs/bullmq'
-import { Module, OnModuleInit } from '@nestjs/common'
+import { CACHE_MANAGER } from '@nestjs/cache-manager'
+import { Inject, Module, OnModuleInit } from '@nestjs/common'
 import { InjectModel, MongooseModule } from '@nestjs/mongoose'
 import { TypeOrmModule } from '@nestjs/typeorm'
+import { Cache } from 'cache-manager'
 import MongooseDeletePlugin from 'mongoose-delete'
 import MongoosePaginatePlugin from 'mongoose-paginate-v2'
 import { PinoLogger } from 'nestjs-pino'
@@ -99,6 +101,7 @@ import { RFIDCustomerEntitySubscriber } from './subscribers/rfid-customer.entity
 export class RFIDModule implements OnModuleInit {
 	constructor(
 		private readonly logger: PinoLogger,
+		@Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
 		@InjectModel(EpcInbound.name) private readonly epcInboundModel: EpcModel,
 		@InjectModel(EpcOutbound.name) private readonly epcOutboundModel: EpcModel
 	) {}
@@ -106,6 +109,10 @@ export class RFIDModule implements OnModuleInit {
 	async onModuleInit() {
 		try {
 			await Promise.all([this.epcInboundModel.syncIndexes(), this.epcOutboundModel.syncIndexes()])
+			await Promise.all([
+				this.cacheManager.set('cached:rfid:inbound_watchers', 0),
+				this.cacheManager.set('cached:rfid:outbound_watchers', 0)
+			])
 		} catch (error) {
 			this.logger.error(error)
 		}
