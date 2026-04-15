@@ -19,7 +19,6 @@ import { stringify } from 'node:querystring'
 import { DataSource, Equal, Not, Repository } from 'typeorm'
 import { BaseAbstractService } from '../../_base/base.abstract.service'
 import { ChangePasswordDTO, CreateUserDTO, UpdateProfileDTO, UpdateUserDTO, UpdateUserStatusDTO } from '../dto/user.dto'
-import { EmployeeEntity } from '../entities/employee.entity'
 import { UserEntity } from '../entities/user.entity'
 import { OldUserEntity } from '../entities/user.old.entity'
 import { IUser } from '../user.interface'
@@ -42,8 +41,6 @@ export class UserService extends BaseAbstractService<UserEntity> {
 		private readonly userRepository: Repository<UserEntity>,
 		@InjectRepository(OldUserEntity, DATA_SOURCE_SYSCLOUD)
 		private readonly oldUserRepository: Repository<OldUserEntity>,
-		@InjectRepository(EmployeeEntity, DATA_SOURCE_SYSCLOUD)
-		private readonly employeeRepository: Repository<EmployeeEntity>,
 		@Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
 		private readonly i18nService: I18nService
 	) {

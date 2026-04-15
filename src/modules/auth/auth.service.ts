@@ -57,7 +57,7 @@ export class AuthService {
 		try {
 			const username = payload.username
 			const user = await this.userService.getProfile(username)
-			const tokenPayload = pick(user, ['id', 'username', 'employee_code', 'display_name', 'roles'])
+			const tokenPayload = pick(user, ['id', 'username', 'employee_code', 'display_name', 'roles', 'is_system_user'])
 
 			const [accessToken, refreshToken] = await Promise.all([
 				this.jwtService.signAsync(tokenPayload),
@@ -90,7 +90,7 @@ export class AuthService {
 		const user = await this.userService.findOrCreate(username)
 		if (!user) throw new NotFoundException('User could not be found')
 
-		const userPayload = pick(user, ['id', 'username', 'employee_code', 'display_name', 'roles'])
+		const userPayload = pick(user, ['id', 'username', 'employee_code', 'display_name', 'roles', 'is_system_user'])
 		const newAccessToken = await this.jwtService.signAsync(userPayload)
 
 		// * Rotate refresh token

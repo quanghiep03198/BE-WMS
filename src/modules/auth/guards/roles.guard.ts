@@ -34,8 +34,9 @@ export class RolesGuard implements CanActivate {
 
 		if (!Array.isArray(user.roles)) return false
 
-		// If user is `admin` and roles are not restricted, grant access
-		if (user.roles.some((role) => role === UserRole.ADMIN) && !shouldRestrictAdministrator) return true
+		// * Grant access if Admin is system user
+		if (user.roles.some((role) => role === UserRole.ADMIN) && (!shouldRestrictAdministrator || user.is_system_user))
+			return true
 
 		return requiredRoles.some((role) => user.roles?.includes(role))
 	}
