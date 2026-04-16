@@ -4,11 +4,20 @@ import { EventGateway } from '@/events/event.gateway'
 import { IUpsertInventoryEventPayload } from '@/modules/inventory/interfaces'
 import { InventoryAuditService } from '@/modules/inventory/services/inventory-audit.service'
 import { InjectQueue } from '@nestjs/bullmq'
-import { BadRequestException, Injectable, InternalServerErrorException, NotFoundException, Scope } from '@nestjs/common'
+import { CACHE_MANAGER } from '@nestjs/cache-manager'
+import {
+	BadRequestException,
+	Inject,
+	Injectable,
+	InternalServerErrorException,
+	NotFoundException,
+	Scope
+} from '@nestjs/common'
 import { EventEmitter2, OnEvent } from '@nestjs/event-emitter'
 import { InjectModel } from '@nestjs/mongoose'
 import { InjectDataSource } from '@nestjs/typeorm'
 import { Queue } from 'bullmq'
+import { Cache } from 'cache-manager'
 import { format } from 'date-fns'
 import { chunk, pick } from 'lodash'
 import { AnyBulkWriteOperation, FilterQuery } from 'mongoose'
@@ -38,6 +47,7 @@ export class RFIDInboundService {
 		@InjectDataSource(DATA_SOURCE_ERP) private readonly dataSourceERP: DataSource,
 		@InjectQueue(POST_DATA_INBOUND_QUEUE) private readonly postDataQueue: Queue<PostReaderDataDTO>,
 		@InjectModel(EpcInbound.name) private readonly epcInboundModel: EpcModel,
+		@Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
 		private readonly i18nService: I18nService,
 		private readonly inventoryAuditService: InventoryAuditService,
 		private readonly eventEmitter: EventEmitter2,
@@ -46,10 +56,12 @@ export class RFIDInboundService {
 	) {}
 
 	public async postInboundRFIDData(data: PostReaderDataDTO) {
-		await this.eventEmitter.emitAsync(
-			'rfid.inbound.check',
-			data.data.tagList.map((item) => item.epc)
-		)
+		const isDeduplicationEnabled = await this.cacheManager.get<boolean>('cached:rfid:enable_deduplicate_inbound_epc')
+		if (!isDeduplicationEnabled)
+			await this.eventEmitter.emitAsync(
+				'rfid.inbound.check',
+				data.data.tagList.map((item) => item.epc)
+			)
 		return await this.postDataQueue.add('RFID_INBOUND', data, { lifo: true })
 	}
 
