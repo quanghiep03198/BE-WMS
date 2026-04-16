@@ -1,16 +1,17 @@
 import { VALID_EPC_PATTERN } from '@/common/constants/regex'
 import { DATA_SOURCE_DATA_LAKE } from '@/databases/constants'
-import { Injectable } from '@nestjs/common'
+import { CACHE_MANAGER } from '@nestjs/cache-manager'
+import { Inject, Injectable } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
 import { InjectDataSource } from '@nestjs/typeorm'
 import { Queue } from 'bullmq'
+import { Cache } from 'cache-manager'
 import { throttle } from 'lodash'
 import { AnyBulkWriteOperation, FilterQuery, mongo, UpdateWriteOpResult } from 'mongoose'
 import { readFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { DataSource } from 'typeorm'
 import { EXCLUDED_EPC_PREFIX, EXCLUDED_ORDERS, FALLBACK_VALUE } from '../constants'
-
 import { FindEpcBySizeDTO, PostReaderDataDTO, RestoreArchivedEpcsDTO } from '../dto/rfid-shared.dto'
 import { EpcDocument, EpcInbound, EpcModel, EpcOutbound, EpcSchema } from '../schemas/epc.schema'
 import { RFIDSearchParams, ScannedOrderDetail, StoredRFIDReaderItem } from '../types'
@@ -22,8 +23,13 @@ export class RFIDSharedService {
 		resolve(join(__dirname, '../sql/epc-information.sql')),
 		'utf-8'
 	)
+	private readonly deduplicatedEpcInformationQuery: string = readFileSync(
+		resolve(join(__dirname, '../sql/deduplicated-epc-information.sql')),
+		'utf-8'
+	)
 
 	constructor(
+		@Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
 		@InjectDataSource(DATA_SOURCE_DATA_LAKE) private readonly dataSourceDL: DataSource,
 		@InjectModel(EpcInbound.name) private readonly epcInboundModel: EpcModel,
 		@InjectModel(EpcOutbound.name) private readonly epcOutboundModel: EpcModel,
@@ -203,7 +209,11 @@ export class RFIDSharedService {
 		 * * Get the EPCs information from the database with received data
 		 * * Do not receive EPCs that start with '303429' (Dansko's EPCs)
 		 */
-		const scannedEpcs = await this.dataSourceDL.query<StoredRFIDReaderItem[]>(this.epcInformationQuery, [
+		const isDeduplicationEnabled = await this.cacheManager.get<boolean>('cached:rfid:enable_deduplicate_inbound_epc')
+
+		const epcInfoQuery = isDeduplicationEnabled ? this.deduplicatedEpcInformationQuery : this.epcInformationQuery
+
+		const scannedEpcs = await this.dataSourceDL.query<StoredRFIDReaderItem[]>(epcInfoQuery, [
 			epcList,
 			excludedOrderList
 		])

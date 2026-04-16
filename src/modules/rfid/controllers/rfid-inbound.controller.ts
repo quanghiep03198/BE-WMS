@@ -3,6 +3,7 @@ import { HttpMethod, Public, RequestUser, RequireAuthorized, RouteHandler, User 
 import { AllExceptionsFilter } from '@/common/filters'
 import { ZodValidationPipe } from '@/common/pipes'
 import { UserRole } from '@/modules/user/constants'
+import { RedisService } from '@/redis/redis.service'
 import { InjectQueue } from '@nestjs/bullmq'
 import { CACHE_MANAGER } from '@nestjs/cache-manager'
 import {
@@ -29,6 +30,7 @@ import { FastifyReply } from 'fastify'
 import { isEmpty, isNil, pick, pickBy } from 'lodash'
 import { PaginateResult } from 'mongoose'
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
+import z from 'zod'
 import { POST_DATA_INBOUND_QUEUE } from '../constants'
 import {
 	ExchangeOrderDTO,
@@ -55,13 +57,12 @@ import { RFIDSearchParams, ScannedOrderDetail } from '../types'
 
 @Controller('rfid/inbound')
 export class RFIDInboundController {
-	private inboundWatcher: number = 0
-
 	constructor(
 		@InjectPinoLogger(RFIDInboundController.name) private readonly logger: PinoLogger,
 		@InjectModel(EpcInbound.name) private readonly epcInboundModel: EpcModel,
 		@InjectQueue(POST_DATA_INBOUND_QUEUE) private readonly postInboundDataQueue: Queue<PostReaderDataDTO>,
 		@Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
+		private readonly redisService: RedisService,
 		private readonly eventEmitter: EventEmitter2,
 		private readonly rfidSharedService: RFIDSharedService,
 		private readonly rfidInboundService: RFIDInboundService
@@ -106,6 +107,27 @@ export class RFIDInboundController {
 			}
 			reply.raw.end()
 		})
+	}
+
+	@Get('enable_deduplicate_inbound_epc')
+	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
+	@UseFilters(AllExceptionsFilter)
+	async getIsDeduplicationEnabled(@Res() reply: FastifyReply & { sse: (data: { enabled: boolean }) => void }) {
+		const isDeduplicationEnabled = await this.cacheManager.get<boolean>('cached:rfid:enable_deduplicate_inbound_epc')
+		reply.sse({ enabled: isDeduplicationEnabled })
+		this.redisService.subscribe('enable_deduplicate_inbound_epc', (message) => {
+			reply.sse({ enabled: JSON.parse(message) })
+		})
+	}
+
+	@RouteHandler({ endpoint: 'enable_deduplicate_inbound_epc', method: HttpMethod.PUT })
+	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
+	@UseFilters(AllExceptionsFilter)
+	async enableDeduplication(
+		@Body(new ZodValidationPipe(z.object({ enabled: z.boolean() }))) payload: { enabled: boolean }
+	) {
+		await this.cacheManager.set<boolean>('cached:rfid:enable_deduplicate_inbound_epc', payload.enabled)
+		return await this.redisService.publish('enable_deduplicate_inbound_epc', JSON.stringify(payload.enabled))
 	}
 
 	@RouteHandler({
@@ -231,7 +253,6 @@ export class RFIDInboundController {
 			deviceSeriesNumber: payload.sn,
 			lastUsageTime: format(new Date(), 'yyyy-MM-dd HH:mm:ss.SSS')
 		})
-
 		return await this.rfidInboundService.postInboundRFIDData(payload)
 	}
 

@@ -111,7 +111,8 @@ export class RFIDModule implements OnModuleInit {
 			await Promise.all([this.epcInboundModel.syncIndexes(), this.epcOutboundModel.syncIndexes()])
 			await Promise.all([
 				this.cacheManager.set('cached:rfid:inbound_watchers', 0),
-				this.cacheManager.set('cached:rfid:outbound_watchers', 0)
+				this.cacheManager.set('cached:rfid:outbound_watchers', 0),
+				this.cacheManager.set('cached:rfid:enable_deduplicate_inbound_epc', true)
 			])
 		} catch (error) {
 			this.logger.error(error)
