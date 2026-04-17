@@ -12,7 +12,7 @@ import { SyncDataMessageDTO, syncDataMessageValidator } from '@/modules/third-pa
 import { InjectQueue } from '@nestjs/bullmq'
 import { CACHE_MANAGER } from '@nestjs/cache-manager'
 import { Inject, Optional, UseFilters, UsePipes } from '@nestjs/common'
-import { JsonWebTokenError, JwtService } from '@nestjs/jwt'
+import { JsonWebTokenError, JwtService, TokenExpiredError } from '@nestjs/jwt'
 import { InjectModel } from '@nestjs/mongoose'
 import {
 	MessageBody,
@@ -185,8 +185,8 @@ export class EventGateway implements OnGatewayInit, OnGatewayConnection, OnGatew
 	/**
 	 * @description Reject a socket connection by emitting an auth error and disconnecting.
 	 */
-	private rejectConnection(socket: Socket, error: Error | JsonWebTokenError): void {
-		const isJwtError = error instanceof JsonWebTokenError
+	private rejectConnection(socket: Socket, error: Error | JsonWebTokenError | TokenExpiredError): void {
+		const isJwtError = error.name === 'JsonWebTokenError' || error.name === 'TokenExpiredError'
 		if (!isJwtError) socket.disconnect(true)
 		socket.emit('jwt_expired', {
 			event: 'jwt_expired',
