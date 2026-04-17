@@ -158,6 +158,14 @@ export class TruckloadDeliveryEntity extends BaseAbstractEntity {
 	})
 	factory_departure_time: Date
 
+	@Column({
+		name: 'actual_factory_departure_time',
+		type: 'datetime',
+		nullable: true,
+		comment: 'The actual departure time from the factory that is captured from camera'
+	})
+	actual_factory_departure_time: Date
+
 	@BeforeInsert()
 	setDefaultStatus() {
 		if (!this.approval_status) this.approval_status = TruckloadDeliveryStatus.PENDING
