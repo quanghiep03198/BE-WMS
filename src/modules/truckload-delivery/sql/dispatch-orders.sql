@@ -12,7 +12,7 @@ SELECT
    , a.moist_container
    , a.factory_departure_time
    , MAX(f.snap_time) AS actual_snap_time
-   , MAX(b.snap_time) AS actual_departure_time
+   , ISNULL(MAX(b.snap_time), MAX(f.snap_time)) AS actual_departure_time
    , c.total_outbound_qty
    , MAX(a.ie_signature) AS ie_signature
    , MAX(a.warehouse_officer_signature) AS warehouse_officer_signature
@@ -50,7 +50,7 @@ OUTER APPLY (
    FROM DV_DATA_LAKE.dbo.dv_carlicenseplates e
    WHERE TRIM(UPPER(e.plate_name)) = TRIM(UPPER(a.license_plate))
       AND e.snap_time BETWEEN DATEADD(MINUTE, -30, a.container_sealing_time)
-      AND a.container_sealing_time
+      AND DATEADD(MINUTE, 30, a.container_sealing_time)
 ) f (possible_signing_late, snap_time, images)
 WHERE a.isactive = 'Y'
 GROUP BY a.dispatch_order

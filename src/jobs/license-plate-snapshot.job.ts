@@ -20,7 +20,11 @@ export class RotateLogJobService {
 			ON 
 				TRIM(UPPER(a.license_plate)) = TRIM(UPPER(b.plate_name)) 
 				AND 
-					b.snap_time BETWEEN DATEADD(MINUTE, 1, a.container_sealing_time) AND DATEADD(MINUTE, 30, a.factory_departure_time)
+					(
+						b.snap_time BETWEEN DATEADD(MINUTE, 1, a.container_sealing_time) AND DATEADD(MINUTE, 30, a.factory_departure_time)
+						OR b.snap_time BETWEEN DATEADD(MINUTE, -30, a.container_sealing_time) AND DATEADD(MINUTE, 30, a.container_sealing_time)
+					)
+
 			WHERE a.actual_factory_departure_time IS NULL
 		`)
 	}
