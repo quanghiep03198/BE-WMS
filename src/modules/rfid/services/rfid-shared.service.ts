@@ -211,7 +211,8 @@ export class RFIDSharedService {
 		 */
 		const isDeduplicationEnabled = await this.cacheManager.get<boolean>('cached:rfid:enable_deduplicate_inbound_epc')
 
-		const epcInfoQuery = isDeduplicationEnabled ? this.deduplicatedEpcInformationQuery : this.epcInformationQuery
+		const epcInfoQuery =
+			isDeduplicationEnabled && station === 'WH101' ? this.deduplicatedEpcInformationQuery : this.epcInformationQuery
 
 		const scannedEpcs = await this.dataSourceDL.query<StoredRFIDReaderItem[]>(epcInfoQuery, [
 			epcList,
