@@ -111,13 +111,6 @@ export class RFIDInboundService {
 
 			const sizeCodes = Object.keys(Object.groupBy(payload, (item) => item.size_numcode))
 
-			await this.inventoryAuditService.updateInboundInventory({
-				mo_no: commandNumber,
-				sizes: sizeCodes,
-				username: data.username,
-				display_name: data.display_name
-			})
-
 			await this.epcInboundModel
 				.updateMany({ mo_no: commandNumber }, { $set: { deleted: true, stored_at: new Date() } })
 				.exec()
