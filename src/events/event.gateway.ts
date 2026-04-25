@@ -13,7 +13,7 @@ import { IUser } from '@/modules/user/user.interface'
 import { InjectQueue } from '@nestjs/bullmq'
 import { CACHE_MANAGER } from '@nestjs/cache-manager'
 import { Inject, Optional, UseFilters, UsePipes } from '@nestjs/common'
-import { JsonWebTokenError, JwtService } from '@nestjs/jwt'
+import { JwtService, TokenExpiredError } from '@nestjs/jwt'
 import { InjectModel } from '@nestjs/mongoose'
 import {
 	ConnectedSocket,
@@ -70,29 +70,26 @@ export class EventGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
 		try {
 			const payload = await this.jwtService.verifyAsync<Partial<IUser>>(accessToken)
-
 			socket.request['user'] = payload
+
+			const [syncInventoryAuditProcess, syncDeckerDataProcess] = await Promise.all([
+				this.cacheManager.get<string | undefined>('sync_states:inventory_audit'),
+				this.cacheManager.get<string | undefined>('sync_states:deckers_data')
+			])
+			// Gửi lại trạng thái sync cho đúng client vừa (re)connect, _không broadcast toàn bộ
+			if (SuperJson.isValid(syncInventoryAuditProcess)) {
+				socket.emit('sync_inventory_audit_data', SuperJson.parse<SyncStatePayload>(syncInventoryAuditProcess))
+			}
+			if (SuperJson.isValid(syncDeckerDataProcess)) {
+				socket.emit('sync_decker_data', SuperJson.parse<SyncProcessState>(syncDeckerDataProcess))
+			}
 		} catch (e) {
-			const error = e instanceof JsonWebTokenError ? e : new Error(String(e))
-			const isJwtError = error.name === 'TokenExpiredError' || error.name === 'JsonWebTokenError'
+			const error = e instanceof TokenExpiredError ? e : new Error(String(e))
+			const isJwtError = error.name === 'TokenExpiredError'
 			if (isJwtError) {
 				socket.emit('jwt_expired')
-			}
-
-			try {
-				const [syncInventoryAuditProcess, syncDeckerDataProcess] = await Promise.all([
-					this.cacheManager.get<string | undefined>('sync_states:inventory_audit'),
-					this.cacheManager.get<string | undefined>('sync_states:deckers_data')
-				])
-				// Gửi lại trạng thái sync cho đúng client vừa (re)connect, _không broadcast toàn bộ
-				if (SuperJson.isValid(syncInventoryAuditProcess)) {
-					socket.emit('sync_inventory_audit_data', SuperJson.parse<SyncStatePayload>(syncInventoryAuditProcess))
-				}
-				if (SuperJson.isValid(syncDeckerDataProcess)) {
-					socket.emit('sync_decker_data', SuperJson.parse<SyncProcessState>(syncDeckerDataProcess))
-				}
-			} catch (e) {
-				this.logger.error(e)
+			} else {
+				socket.client._disconnect()
 			}
 		}
 	}
