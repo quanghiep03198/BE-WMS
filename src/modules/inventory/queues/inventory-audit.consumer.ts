@@ -16,7 +16,7 @@ const SYNC_STATE_CACHE_KEY = 'sync_states:inventory_audit'
 
 type SyncStatus = 'progress' | 'completed' | 'failed'
 
-interface SyncStatePayload {
+export interface SyncStatePayload {
 	event: string
 	ok: boolean
 	metadata: { status: SyncStatus }
@@ -39,11 +39,10 @@ export class InventoryAuditDataSyncConsumer extends WorkerHost {
 
 	async process(): Promise<void> {
 		this.logger.info('Inventory audit sync started')
+		await this.broadcastSyncState('progress', true, null)
 		const queryRunner = this.dataSource.createQueryRunner()
-
 		try {
 			await queryRunner.startTransaction()
-			await this.broadcastSyncState('progress', true, null)
 
 			await queryRunner.query(/* SQL */ `EXEC DV_DATA_LAKE.dbo.sp_import_invprod_VER2`)
 			await queryRunner.commitTransaction()
@@ -56,6 +55,7 @@ export class InventoryAuditDataSyncConsumer extends WorkerHost {
 			await this.broadcastSyncState('failed', false, error as Error)
 		} finally {
 			await queryRunner.release()
+			await this.cacheManager.del(SYNC_STATE_CACHE_KEY)
 		}
 	}
 

@@ -1,24 +1,25 @@
-import { CommonRequestHeader } from '@/common/constants'
-import { RequestUser } from '@/common/decorators'
 import { WsExceptionsFilter } from '@/common/filters'
 
 import { WsZodValidationPipe } from '@/common/pipes/ws-validation.pipe'
 import { env, SuperJson } from '@/common/utils'
 import { SYNC_INVENTORY_AUDIT_QUEUE } from '@/modules/inventory/constants'
+import { SyncStatePayload } from '@/modules/inventory/queues/inventory-audit.consumer'
 import { FALLBACK_VALUE } from '@/modules/rfid/constants'
 import { EpcDocument, EpcInbound } from '@/modules/rfid/schemas/epc.schema'
 import { THIRD_PARTY_API_SYNC } from '@/modules/third-party-api/constants'
 import { SyncDataMessageDTO, syncDataMessageValidator } from '@/modules/third-party-api/dto/third-party-api.dto'
+import { SyncProcessState } from '@/modules/third-party-api/interfaces/third-party-api.interface'
+import { IUser } from '@/modules/user/user.interface'
 import { InjectQueue } from '@nestjs/bullmq'
 import { CACHE_MANAGER } from '@nestjs/cache-manager'
 import { Inject, Optional, UseFilters, UsePipes } from '@nestjs/common'
-import { JsonWebTokenError, JwtService, TokenExpiredError } from '@nestjs/jwt'
+import { JsonWebTokenError, JwtService } from '@nestjs/jwt'
 import { InjectModel } from '@nestjs/mongoose'
 import {
+	ConnectedSocket,
 	MessageBody,
 	OnGatewayConnection,
 	OnGatewayDisconnect,
-	OnGatewayInit,
 	SubscribeMessage,
 	WebSocketGateway,
 	WebSocketServer
@@ -30,8 +31,6 @@ import { PaginateModel } from 'mongoose'
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
 import { Server, Socket } from 'socket.io'
 
-const ACCESS_TOKEN_KEY = 'access-token'
-
 @WebSocketGateway({
 	cors: {
 		origin: env<string>('CORS_ORIGINS').split(','),
@@ -39,7 +38,7 @@ const ACCESS_TOKEN_KEY = 'access-token'
 	},
 	httpCompression: true
 })
-export class EventGateway implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect {
+export class EventGateway implements OnGatewayConnection, OnGatewayDisconnect {
 	@WebSocketServer()
 	server: Server
 
@@ -64,136 +63,42 @@ export class EventGateway implements OnGatewayInit, OnGatewayConnection, OnGatew
 		@Inject(CACHE_MANAGER) private readonly cacheManager: Cache
 	) {}
 
-	/**
-	 * @description Register a socket.io middleware that verifies the access token on every incoming event.
-	 * This ensures that expired/invalid tokens are caught even after the initial connection handshake.
-	 *
-	 * * NOTE: `server.use()` runs during handshake (before connection) — socket.emit() won't reach the client.
-	 * * `socket.use()` runs AFTER connection, on every incoming event packet — socket.emit() works correctly.
-	 */
-	public afterInit(server: Server): void {
-		server.on('connection', (socket: Socket) => {
-			socket.use(async (_event, next) => {
-				try {
-					const user = await this.verifyAccessToken(socket)
-					socket.data.user = user
-					next()
-				} catch (error) {
-					this.logger.error(error)
-					if (error instanceof JsonWebTokenError) {
-						this.logger.warn({ socketId: socket.id, error: error.message }, 'Token expired/invalid on event')
-						socket.emit('jwt_expired', {
-							event: 'jwt_expired',
-							ok: false,
-							error: { name: error.name, message: error.message }
-						})
-						return
-					}
-					next(new Error('Authentication failed'))
-				}
-			})
-		})
-	}
-
 	public async handleConnection(socket: Socket): Promise<void> {
-		const socketId = socket.id
-		const headers = socket.handshake.headers
+		const accessToken = socket.handshake.auth?.accessToken
+
+		if (!accessToken) socket.client._disconnect()
 
 		try {
-			const user = await this.verifyAccessToken(socket)
-			socket.data.user = user
+			const payload = await this.jwtService.verifyAsync<Partial<IUser>>(accessToken)
 
-			// Attach extra headers sent during reconnect attempts (factory code, username, etc.)
-			socket.data.factoryCode = headers[CommonRequestHeader.FACTORY_CODE.toLowerCase()] as string
-
-			this.logger.info({ socketId, username: user.username }, 'Client connected')
-			const [syncInventoryAuditProcess, syncDeckerDataProcess] = await Promise.all([
-				this.cacheManager.get('sync_states:inventory_audit'),
-				this.cacheManager.get('sync_states:deckers_data')
-			])
-			// Gửi lại trạng thái sync cho đúng client vừa (re)connect, không broadcast toàn bộ
-			if (SuperJson.isValid(syncInventoryAuditProcess)) {
-				socket.emit('sync_inventory_audit_data', SuperJson.parse(syncInventoryAuditProcess))
-			}
-			if (SuperJson.isValid(syncDeckerDataProcess)) {
-				socket.emit('sync_decker_data', SuperJson.parse(syncDeckerDataProcess))
-			}
+			socket.request['user'] = payload
 		} catch (e) {
 			const error = e instanceof JsonWebTokenError ? e : new Error(String(e))
-			const isJwtError = error.name === 'JsonWebTokenError' || error.name === 'TokenExpiredError'
+			const isJwtError = error.name === 'TokenExpiredError' || error.name === 'JsonWebTokenError'
+			if (isJwtError) {
+				socket.emit('jwt_expired')
+			}
 
-			this.logger.warn(
-				{ socketId, error: error.message },
-				isJwtError ? 'Client connected with expired/invalid token' : 'Socket authentication failed'
-			)
-			this.rejectConnection(socket, error)
+			try {
+				const [syncInventoryAuditProcess, syncDeckerDataProcess] = await Promise.all([
+					this.cacheManager.get<string | undefined>('sync_states:inventory_audit'),
+					this.cacheManager.get<string | undefined>('sync_states:deckers_data')
+				])
+				// Gửi lại trạng thái sync cho đúng client vừa (re)connect, _không broadcast toàn bộ
+				if (SuperJson.isValid(syncInventoryAuditProcess)) {
+					socket.emit('sync_inventory_audit_data', SuperJson.parse<SyncStatePayload>(syncInventoryAuditProcess))
+				}
+				if (SuperJson.isValid(syncDeckerDataProcess)) {
+					socket.emit('sync_decker_data', SuperJson.parse<SyncProcessState>(syncDeckerDataProcess))
+				}
+			} catch (e) {
+				this.logger.error(e)
+			}
 		}
 	}
 
 	public handleDisconnect(socket: Socket): void {
-		this.logger.info({ socketId: socket.id, username: socket.data?.user?.username }, 'Client disconnected')
-	}
-
-	/**
-	 * @description Extract the access token from the socket handshake cookie header.
-	 */
-	private extractTokenFromCookie(socket: Socket): string | undefined {
-		const cookieHeader = socket.handshake.headers.cookie
-		if (!cookieHeader) return undefined
-
-		const tokenCookie = cookieHeader
-			.split(';')
-			.map((c) => c.trim())
-			.find((c) => c.startsWith(`${ACCESS_TOKEN_KEY}=`))
-
-		return tokenCookie?.split('=')[1]
-	}
-
-	/**
-	 * @description Extract the access token from the Authorization header (Bearer scheme).
-	 */
-	private extractTokenFromHeader(socket: Socket): string | undefined {
-		const authorization = socket.handshake.headers.authorization
-		if (!authorization) return undefined
-
-		const [scheme, token] = authorization.split(' ')
-		return scheme === 'Bearer' ? token : undefined
-	}
-
-	/**
-	 * @description Attempt to verify the access token from cookie first, then fallback to Authorization header.
-	 * @throws {JsonWebTokenError} If both sources fail verification.
-	 */
-	private async verifyAccessToken(socket: Socket): Promise<RequestUser> {
-		const cookieToken = this.extractTokenFromCookie(socket)
-		if (cookieToken) {
-			try {
-				return await this.jwtService.verifyAsync<RequestUser>(cookieToken)
-			} catch {
-				this.logger.debug({ socketId: socket.id }, 'Cookie token verification failed, trying Authorization header')
-			}
-		}
-
-		const headerToken = this.extractTokenFromHeader(socket)
-		if (!headerToken) {
-			throw new JsonWebTokenError('No valid access token found in cookie or Authorization header')
-		}
-
-		return await this.jwtService.verifyAsync<RequestUser>(headerToken)
-	}
-
-	/**
-	 * @description Reject a socket connection by emitting an auth error and disconnecting.
-	 */
-	private rejectConnection(socket: Socket, error: Error | JsonWebTokenError | TokenExpiredError): void {
-		const isJwtError = error.name === 'JsonWebTokenError' || error.name === 'TokenExpiredError'
-		if (!isJwtError) socket.disconnect(true)
-		socket.emit('jwt_expired', {
-			event: 'jwt_expired',
-			ok: false,
-			message: 'Access token has expired. Please refresh your token and reconnect.',
-			metadata: null
-		})
+		this.logger.info({ socketId: socket.id, username: socket.request?.['user'] }, 'Client disconnected')
 	}
 
 	// @UseGuards(WebsocketJwtGuard)
@@ -210,7 +115,7 @@ export class EventGateway implements OnGatewayInit, OnGatewayConnection, OnGatew
 			})
 			.lean(true)
 		const jobData = uniqBy(validUnknownEpcs, (item) => item.substring(0, 22))
-		this.syncThirdPartyApiDataQueue.add(payload.id, jobData, {
+		this.syncThirdPartyApiDataQueue.add('sync_deckers_data', jobData, {
 			jobId: payload.factory,
 			removeOnComplete: true,
 			removeOnFail: true
@@ -220,28 +125,14 @@ export class EventGateway implements OnGatewayInit, OnGatewayConnection, OnGatew
 	// @UseGuards(WebsocketJwtGuard)
 	@SubscribeMessage('sync_inventory_audit_data')
 	@UseFilters(new WsExceptionsFilter())
-	protected async handleSyncInventoryAuditData(client: Socket) {
+	protected async handleSyncInventoryAuditData(@ConnectedSocket() client: Socket) {
 		if (!this.syncInventoryAuditDataQueue) return
-
-		// Thông tin user/factory có thể đã được gán vào socket.data trong handleConnection/afterInit
-		const user = client.data?.user
-		const factoryCode = client.data?.factoryCode
-
-		this.logger.info(
-			{ socketId: client.id, factoryCode, username: user?.username },
-			'Received sync_inventory_audit_data'
-		)
+		const factoryCode = client.handshake.auth?.factoryCode
 
 		this.syncInventoryAuditDataQueue.add(
 			'sync_inventory_audit_data',
 			{},
 			{
-				/**
-				 * Deduplication theo factoryCode — đảm bảo mỗi factory chỉ có tối đa 1 job
-				 * đang chờ/chạy trong cùng một thời điểm.
-				 * TTL 5 phút khớp với SYNC_STATE_TTL_MS trong consumer.
-				 */
-				// deduplication: { id: `sync_inventory_audit:${factoryCode}`, ttl: 5 * 60 * 1000 },
 				jobId: factoryCode,
 				removeOnComplete: true,
 				removeOnFail: true
