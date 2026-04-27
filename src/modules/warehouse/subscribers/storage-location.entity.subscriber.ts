@@ -20,6 +20,6 @@ export class StorageLocationSubscriber implements EntitySubscriberInterface<Stor
 			type_storage: event.entity.type_storage
 		})
 
-		event.entity.storage_num = `${event.entity.cofactory_code}${event.entity.type_storage}${count + 1}`
+		event.entity.storage_num = `${event.entity.warehouse_num}${event.entity.type_storage}${count + 1}`
 	}
 }
