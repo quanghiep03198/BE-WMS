@@ -1,9 +1,11 @@
 WITH inv_rfid AS(
    SELECT EPC_Code, po, mo_no, size_code, rfid_status, stationNO, record_time, FC_server_code, isactive
    FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet WITH (NOLOCK)
+   WHERE stationNO LIKE 'CUS%WH10[12]'
    UNION ALL
    SELECT EPC_Code, po, mo_no, size_code, rfid_status, stationNO, record_time, FC_server_code, isactive
    FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet_backup_Daily WITH (NOLOCK)
+   WHERE stationNO LIKE 'CUS%WH10[12]'
 ),
 daily_inbound_history_cte AS (
    SELECT 
