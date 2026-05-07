@@ -120,7 +120,7 @@ export class TruckloadDeliveryService
 					${whereClause}
 					${sortingClause}
 					OFFSET @0 ROWS FETCH NEXT @1 ROWS ONLY
-					OPTION (FAST ${queryParams.limit})
+					OPTION (FAST ${queryParams.limit}, KEEPFIXED PLAN)
 				`,
 				params
 			),
@@ -129,6 +129,7 @@ export class TruckloadDeliveryService
 					WITH CTE AS (${this.getDispatchOrderQuery})
 					SELECT COUNT(*) AS totalDocs FROM CTE
 					${whereClause}
+					OPTION (KEEPFIXED PLAN)
 				`,
 				params
 			)
