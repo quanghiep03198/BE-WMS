@@ -171,7 +171,7 @@ export const upsertPurchaseOrdersDTO = z
 				id: z.number().nullable().default(null),
 				po: z.string().trim().nonempty(),
 				outbound_qty: z.number().int().positive(),
-				max_outbound_qty: z.number().nonnegative().default(Infinity)
+				max_outbound_qty: z.number().positive().nullish().default(Infinity)
 			})
 		)
 	})
