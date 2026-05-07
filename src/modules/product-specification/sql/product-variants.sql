@@ -19,9 +19,25 @@ CROSS APPLY (
    CROSS APPLY ( 
       SELECT (
          SELECT 
-            DISTINCT CASE 
-               WHEN ISNUMERIC(sz.size_numcode) = 1 THEN CAST(sz.size_numcode AS NVARCHAR) 
-               WHEN LEFT(sz.size_numcode, 1) IN ('T', 'K') THEN SUBSTRING(sz.size_numcode, 2, LEN(sz.size_numcode))
+            DISTINCT
+            CASE
+               -- If prefixed with T/K remove prefix then drop leading zero if next char is digit
+               WHEN LEFT(sz.size_numcode, 1) IN ('T', 'K') THEN
+                  CASE
+                     WHEN LEFT(SUBSTRING(sz.size_numcode, 2, LEN(sz.size_numcode)), 1) = '0'
+                        AND SUBSTRING(SUBSTRING(sz.size_numcode, 2, LEN(sz.size_numcode)), 2, 1) BETWEEN '0' AND '9'
+                     THEN STUFF(SUBSTRING(sz.size_numcode, 2, LEN(sz.size_numcode)), 1, 1, '')
+                     ELSE SUBSTRING(sz.size_numcode, 2, LEN(sz.size_numcode))
+                  END
+               -- If numeric and has leading zero (e.g. '05' or '05.5') drop the leading zero
+               WHEN ISNUMERIC(sz.size_numcode) = 1 THEN
+                  CASE
+                     WHEN LEFT(CAST(sz.size_numcode AS NVARCHAR), 1) = '0'
+                        AND SUBSTRING(CAST(sz.size_numcode AS NVARCHAR), 2, 1) BETWEEN '0' AND '9'
+                     THEN STUFF(CAST(sz.size_numcode AS NVARCHAR), 1, 1, '')
+                     ELSE CAST(sz.size_numcode AS NVARCHAR)
+                  END
+               ELSE CAST(sz.size_numcode AS NVARCHAR)
             END AS size
          FROM wuerp_vnrd.dbo.ta_productmst p
          INNER JOIN wuerp_vnrd.dbo.ta_manufacturmst m ON p.mat_code = m.mat_code AND m.isactive = 'Y'

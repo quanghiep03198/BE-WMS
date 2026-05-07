@@ -28,7 +28,8 @@ export class DefectiveGoodsService extends BaseAbstractService<DefectiveGoodsEnt
 		const filterQueries: FindOptionsWhere<DefectiveGoodsEntity> = {}
 		for (const [key, value] of Object.entries(omit(filters, ['take', 'action']))) {
 			if (value !== undefined && value !== null) {
-				filterQueries[key] = Like(`%${value}%`)
+				if (key === 'size_code') filterQueries[key] = value as string
+				else filterQueries[key] = Like(`%${value}%`)
 			}
 		}
 
