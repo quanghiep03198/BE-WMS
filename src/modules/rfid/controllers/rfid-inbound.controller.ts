@@ -2,6 +2,7 @@ import { CommonRequestHeader } from '@/common/constants'
 import { HttpMethod, Public, RequestUser, RequireAuthorized, RouteHandler, User } from '@/common/decorators'
 import { AllExceptionsFilter } from '@/common/filters'
 import { ZodValidationPipe } from '@/common/pipes'
+import { EventGateway } from '@/events/event.gateway'
 import { UserRole } from '@/modules/user/constants'
 import { RedisService } from '@/redis/redis.service'
 import { InjectQueue } from '@nestjs/bullmq'
@@ -62,6 +63,7 @@ export class RFIDInboundController {
 		@InjectModel(EpcInbound.name) private readonly epcInboundModel: EpcModel,
 		@InjectQueue(POST_DATA_INBOUND_QUEUE) private readonly postInboundDataQueue: Queue<PostReaderDataDTO>,
 		@Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
+		private readonly eventGateway: EventGateway,
 		private readonly redisService: RedisService,
 		private readonly eventEmitter: EventEmitter2,
 		private readonly rfidSharedService: RFIDSharedService,
@@ -93,12 +95,15 @@ export class RFIDInboundController {
 		await handleChange()
 		let currentWatchers = await this.cacheManager.get<number>('cached:rfid:inbound_watchers')
 		await this.cacheManager.set('cached:rfid:inbound_watchers', currentWatchers ? currentWatchers + 1 : 1)
+		currentWatchers = await this.cacheManager.get<number>('cached:rfid:inbound_watchers')
+		this.eventGateway.server.emit('rfid_inbound_watcher', currentWatchers)
 		const changeStream = await this.rfidSharedService.captureDataChange(this.epcInboundModel, handleChange)
 
 		reply.raw.on('close', async () => {
 			currentWatchers = await this.cacheManager.get<number>('cached:rfid:inbound_watchers')
-			await this.cacheManager.set('cached:rfid:inbound_watchers', currentWatchers - 1)
+			await this.cacheManager.set('cached:rfid:inbound_watchers', currentWatchers > 0 ? currentWatchers - 1 : 0)
 			currentWatchers = await this.cacheManager.get<number>('cached:rfid:inbound_watchers')
+			this.eventGateway.server.emit('rfid_inbound_watcher', currentWatchers)
 			if (currentWatchers === 0) {
 				this.logger.info('Stop receiving data from Android RFID device')
 				await this.rfidSharedService.cleanupQueue(this.postInboundDataQueue)
