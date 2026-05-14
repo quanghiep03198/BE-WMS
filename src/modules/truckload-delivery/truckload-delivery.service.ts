@@ -41,6 +41,8 @@ export class TruckloadDeliveryService
 		'utf-8'
 	)
 
+	private readonly getNextSeqNoQuery: string = readFileSync(resolve(join(__dirname, './sql/next-seq-no.sql')), 'utf-8')
+
 	private readonly getDispatchOrderWithProductAttrQuery: string = readFileSync(
 		resolve(join(__dirname, './sql/dispatch-orders-with-product-attributes.sql')),
 		'utf-8'
@@ -388,14 +390,8 @@ export class TruckloadDeliveryService
 	public async getNextDispatchOrder(factoryCode: FactoryAgencyCode): Promise<TruckloadDeliveryDispatchOrder> {
 		const createDate = format(new Date(), 'yyyyMMdd')
 
-		const count: Awaited<number> = await this.deliveryRepository
-			.createQueryBuilder()
-			.select(/* SQL */ `COUNT(DISTINCT dispatch_order)`, 'count')
-			.where(/* SQL */ `CAST(created AS DATE) = CAST(GETDATE() AS DATE)`)
-			.getRawOne<{ count: number }>()
-			.then((results) => results.count)
-
-		const sequenceNumber = padStart((count + 1).toString(), 3, '0')
+		const [{ next_seq_no }] = await this.dataSourceDL.query<Array<{ next_seq_no: number }>>(this.getNextSeqNoQuery)
+		const sequenceNumber = padStart(next_seq_no.toString(), 3, '0')
 		return `${factoryCode}-EXP-${createDate}-${sequenceNumber}` satisfies TruckloadDeliveryDispatchOrder
 	}
 
