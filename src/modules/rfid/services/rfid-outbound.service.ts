@@ -66,7 +66,9 @@ export class RFIDOutboundService {
 		 */
 		const epcToUpsert = await (async () => {
 			if (!Array.isArray(payload.sizes)) {
-				return await this.epcOutboundModel.findWithDeleted({ ...baseFilterQuery, mo_no: payload.mo_no }).lean(true)
+				return (await this.epcOutboundModel
+					.findWithDeleted({ ...baseFilterQuery, mo_no: payload.mo_no })
+					.lean(true)) as Awaited<Partial<EpcDocument>[]>
 			}
 
 			const facetPipeline = payload.sizes.reduce<PipelineStage.Facet['$facet']>((acc, curr) => {
@@ -89,7 +91,7 @@ export class RFIDOutboundService {
 				}
 			}, {})
 			const aggregatedEpcData = await this.epcOutboundModel.aggregateWithDeleted([{ $facet: facetPipeline }])
-			const extractedValues = Object.values<Array<Partial<EpcDocument>>>(aggregatedEpcData[0])
+			const extractedValues = Object.values<Partial<EpcDocument>[]>(aggregatedEpcData[0])
 			return extractedValues.every((facetGroup) => Array.isArray(facetGroup)) ? extractedValues.flat() : []
 		})()
 
