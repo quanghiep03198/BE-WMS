@@ -1,10 +1,13 @@
+packages:
+  - "packages/*"
+  - "."
 allowBuilds:
-  '@automock/adapters.nestjs': true
-  '@compodoc/compodoc': true
-  '@nestjs/core': true
-  '@sentry/cli': true
-  '@sentry/profiling-node': true
-  '@swc/core': true
+  "@automock/adapters.nestjs": true
+  "@compodoc/compodoc": true
+  "@nestjs/core": true
+  "@sentry/cli": true
+  "@sentry/profiling-node": true
+  "@swc/core": true
   bcrypt: true
   msgpackr-extract: true
   nestjs-pino: set this to true or false
