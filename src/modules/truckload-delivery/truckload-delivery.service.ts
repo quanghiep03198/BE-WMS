@@ -31,6 +31,17 @@ export class TruckloadDeliveryService
 	extends BaseAbstractService<TruckloadDeliveryEntity>
 	implements ITruckloadDeliveryService
 {
+	constructor(
+		@InjectRepository(TruckloadDeliveryEntity, DATA_SOURCE_DATA_LAKE)
+		private readonly deliveryRepository: Repository<TruckloadDeliveryEntity>,
+		@InjectDataSource(DATA_SOURCE_DATA_LAKE) private readonly dataSourceDL: DataSource,
+		@InjectDataSource(DATA_SOURCE_ERP) private readonly dataSourceERP: DataSource,
+		private readonly i18nService: I18nService,
+		@InjectPinoLogger(TruckloadDeliveryService.name) private readonly logger: PinoLogger
+	) {
+		super(deliveryRepository)
+	}
+
 	private readonly upsertPurchaseOrderDeliveryQuery: string = readFileSync(
 		resolve(join(__dirname, './sql/upsert-purchase-orders.sql')),
 		'utf-8'
@@ -48,19 +59,9 @@ export class TruckloadDeliveryService
 		'utf-8'
 	)
 
-	constructor(
-		@InjectRepository(TruckloadDeliveryEntity, DATA_SOURCE_DATA_LAKE)
-		private readonly deliveryRepository: Repository<TruckloadDeliveryEntity>,
-		@InjectDataSource(DATA_SOURCE_DATA_LAKE) private readonly dataSourceDL: DataSource,
-		@InjectDataSource(DATA_SOURCE_ERP) private readonly dataSourceERP: DataSource,
-		private readonly i18nService: I18nService,
-		@InjectPinoLogger(TruckloadDeliveryService.name) private readonly logger: PinoLogger
-	) {
-		super(deliveryRepository)
-	}
-
-	private generateRawWhereClause(queryParams: UnflatedFilterQueryDTO): string {
+	private generateRawWhereClause(queryParams: UnflatedFilterQueryDTO, alias = ''): string {
 		if (!queryParams.where) return ''
+		const qualified = (column: string) => (alias ? `${alias}.${column}` : column)
 		const whereCaluse = Object.entries(queryParams.where)
 			.map(([column, expression]) => {
 				const [operator, value] = expression.split(':')
@@ -74,25 +75,38 @@ export class TruckloadDeliveryService
 						if (!isValid(new Date(from)) || !isValid(new Date(to))) return ''
 						const fromDate = format(new Date(new Date(from).setHours(0, 0, 0, 0)), 'yyyy-MM-dd HH:mm:ss.SSS')
 						const toDate = format(new Date(new Date(to).setHours(23, 59, 59, 999)), 'yyyy-MM-dd HH:mm:ss.SSS')
-						return /* SQL */ `${column} BETWEEN CAST('${fromDate}' AS DATETIME) AND CAST('${toDate}' AS DATETIME)`
+						return /* SQL */ `${qualified(column)} BETWEEN CAST('${fromDate}' AS DATETIME) AND CAST('${toDate}' AS DATETIME)`
 					} else if (operator === '=' && isValid(new Date(value))) {
 						const dateValue = format(new Date(value), 'yyyy-MM-dd')
-						return /* SQL */ `CAST(${column} AS DATE) = CAST('${dateValue}' AS DATE)`
+						return /* SQL */ `CAST(${qualified(column)} AS DATE) = CAST('${dateValue}' AS DATE)`
 					} else {
 						return ''
 					}
 				}
 				if (column === 'po')
 					return /* SQL */ `EXISTS (
-						SELECT JSON_VALUE(value, '$.po') AS po
-						FROM OPENJSON(delivery_details) 
-						WHERE JSON_VALUE(value, '$.po') ${operator} '${value}'
+						SELECT 1
+						FROM DV_DATA_LAKE.dbo.dv_truckload_delivery td
+						WHERE td.dispatch_order = ${qualified('dispatch_order')}
+							AND td.isactive = '${RecordStatus.ACTIVE}'
+							AND td.po ${operator} '${value}'
 					)`
-				return /* SQL */ `${column} ${operator} '${value}'`
+				return /* SQL */ `${qualified(column)} ${operator} '${value}'`
 			})
 			.join(' AND ')
 
 		return /* SQL */ `WHERE ${whereCaluse}`
+	}
+
+	private generateSortingClause(queryParams: UnflatedFilterQueryDTO, alias = ''): string {
+		const qualified = (column: string) => (alias ? `${alias}.${column}` : column)
+		if (queryParams.sort) {
+			const sortingCriteria = Object.entries(queryParams.sort)
+				.map(([column, dir]) => `${qualified(column)} ${upperCase(dir.toString())}`)
+				.join(', ')
+			return /* SQL */ `ORDER BY ${sortingCriteria}`
+		}
+		return /* SQL */ `ORDER BY ${qualified('created_at')} DESC, ${qualified('container_sealing_time')} DESC`
 	}
 
 	/**
@@ -102,26 +116,34 @@ export class TruckloadDeliveryService
 	public async getDispatchOrders(queryParams: UnflatedFilterQueryDTO) {
 		const params = [(queryParams.page - 1) * queryParams.limit, queryParams.limit]
 
-		const whereClause = this.generateRawWhereClause(queryParams)
-
-		const sortingClause = (() => {
-			if (queryParams.sort) {
-				const sortingCriteria = Object.entries(queryParams.sort)
-					.map(([column, dir]) => `${column} ${upperCase(dir.toString())}`)
-					.join(', ')
-				return /* SQL */ `ORDER BY ${sortingCriteria}`
-			}
-			return /* SQL */ `ORDER BY created_at DESC, container_sealing_time DESC`
-		})()
+		const whereClause = this.generateRawWhereClause(queryParams, 'c')
+		const sortingClause = this.generateSortingClause(queryParams, 'c')
+		const finalSortingClause = this.generateSortingClause(queryParams, 'p')
 
 		const [dispatchOrders, [{ totalDocs }]] = await Promise.all([
 			this.dataSourceDL.query<DispatchOrder[]>(
 				/* SQL */ `
-					WITH CTE AS (${this.getDispatchOrderQuery})
-					SELECT * FROM CTE
-					${whereClause}
-					${sortingClause}
-					OFFSET @0 ROWS FETCH NEXT @1 ROWS ONLY
+					WITH CTE AS (${this.getDispatchOrderQuery}),
+					PAGED AS (
+						SELECT * FROM CTE c
+						${whereClause}
+						${sortingClause}
+						OFFSET @0 ROWS FETCH NEXT @1 ROWS ONLY
+					)
+					SELECT
+						p.*,
+						d.delivery_details
+					FROM PAGED p
+					OUTER APPLY (
+						SELECT (
+							SELECT td.po, td.outbound_qty
+							FROM DV_DATA_LAKE.dbo.dv_truckload_delivery td
+							WHERE td.dispatch_order = p.dispatch_order
+								AND td.isactive = '${RecordStatus.ACTIVE}'
+							FOR JSON PATH
+						) AS delivery_details
+					) d
+					${finalSortingClause}
 					OPTION (FAST ${queryParams.limit}, KEEPFIXED PLAN)
 				`,
 				params
@@ -129,7 +151,7 @@ export class TruckloadDeliveryService
 			this.dataSourceDL.query<Record<'totalDocs', number>[]>(
 				/* SQL */ `
 					WITH CTE AS (${this.getDispatchOrderQuery})
-					SELECT COUNT(*) AS totalDocs FROM CTE
+					SELECT COUNT(*) AS totalDocs FROM CTE c
 					${whereClause}
 					OPTION (KEEPFIXED PLAN)
 				`,
