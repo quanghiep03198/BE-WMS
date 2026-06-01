@@ -41,7 +41,6 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pnpm clean --lockfile
           pnpm install --fix-lockfile
 
       - name: Sentry CLI verification
@@ -71,7 +70,6 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pnpm clean --lockfile
           pnpm install --fix-lockfile
 
       - name: Sentry CLI verification
@@ -102,7 +100,6 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pnpm clean --lockfile
           pnpm install --fix-lockfile
 
       - name: Sentry CLI verification
