@@ -1,111 +1,117 @@
 name: Deploy app to Windows Server (Self-hosted)
 
 on:
-   push:
-      branches:
-         - develop
-   pull_request:
-      branches:
-         - develop
-   workflow_dispatch:
+  push:
+    branches:
+      - develop
+  pull_request:
+    branches:
+      - develop
+  workflow_dispatch:
 
 jobs:
-   sonarcloud:
-      name: SonarCloud
-      runs-on: ubuntu-latest
-      steps:
-         - uses: actions/checkout@v4
-           with:
-              fetch-depth: 0
+  sonarcloud:
+    name: SonarCloud
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-         - name: SonarCloud Scan
-           uses: SonarSource/sonarcloud-github-action@master
-           env:
-              GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-              SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      - name: SonarCloud Scan
+        uses: SonarSource/sonarcloud-github-action@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
-   deploy-server-19:
-      if: ${{github.ref == 'refs/heads/develop'}}
-      name: Deploy to server 0.19
-      runs-on: [self-hosted, 'Server-19']
-      steps:
-         - uses: actions/checkout@v4
-           with:
-              fetch-depth: 0
-              clean: false
+  deploy-server-19:
+    if: ${{github.ref == 'refs/heads/develop'}}
+    name: Deploy to server 0.19
+    runs-on: [self-hosted, "Server-19"]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          clean: false
 
-         - name: Load environment variables
-           run: |
-              $env = "${{ secrets.ENV_VARIABLE_SVR19 }}"
-              $env | Out-File -FilePath .env -Encoding utf8
+      - name: Load environment variables
+        run: |
+          $env = "${{ secrets.ENV_VARIABLE_SVR19 }}"
+          $env | Out-File -FilePath .env -Encoding utf8
 
-         - name: Install dependencies
-           run: pnpm install --fix-lockfile
+      - name: Install dependencies
+        run: |
+          pnpm clean --lockfile
+          pnpm install --fix-lockfile
 
-         - name: Sentry CLI verification
-           run: npx sentry-cli login --auth-token ${{secrets.SENTRY_AUTH_TOKEN}}
+      - name: Sentry CLI verification
+        run: npx sentry-cli login --auth-token ${{secrets.SENTRY_AUTH_TOKEN}}
 
-         - name: Build Nest application
-           run: pnpm build
+      - name: Build Nest application
+        run: pnpm build
 
-         - name: Restart and save PM2 process
-           run: |
-              pm2 restart ecosystem.config.js --update-env
-              pm2 save
+      - name: Restart and save PM2 process
+        run: |
+          pm2 restart ecosystem.config.js --update-env
+          pm2 save
 
-   deploy-server-201:
-      if: ${{github.ref == 'refs/heads/develop'}}
-      name: Deploy to server 201.201
-      runs-on: [self-hosted, 'Server-201201']
-      steps:
-         - uses: actions/checkout@v4
-           with:
-              fetch-depth: 0
-              clean: false
-         - name: Load environment variables
-           run: |
-              $env = "${{ secrets.ENV_VARIABLE_SVR201201 }}"
-              $env | Out-File -FilePath .env -Encoding utf8
+  deploy-server-201:
+    if: ${{github.ref == 'refs/heads/develop'}}
+    name: Deploy to server 201.201
+    runs-on: [self-hosted, "Server-201201"]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          clean: false
+      - name: Load environment variables
+        run: |
+          $env = "${{ secrets.ENV_VARIABLE_SVR201201 }}"
+          $env | Out-File -FilePath .env -Encoding utf8
 
-         - name: Install dependencies
-           run: pnpm install --fix-lockfile
+      - name: Install dependencies
+        run: |
+          pnpm clean --lockfile
+          pnpm install --fix-lockfile
 
-         - name: Sentry CLI verification
-           run: npx sentry-cli login --auth-token ${{secrets.SENTRY_AUTH_TOKEN}}
+      - name: Sentry CLI verification
+        run: npx sentry-cli login --auth-token ${{secrets.SENTRY_AUTH_TOKEN}}
 
-         - name: Build Nest application
-           run: pnpm build
+      - name: Build Nest application
+        run: pnpm build
 
-         - name: Restart and save PM2 process
-           run: |
-              pm2 restart ecosystem.config.js --update-env
-              pm2 save
+      - name: Restart and save PM2 process
+        run: |
+          pm2 restart ecosystem.config.js --update-env
+          pm2 save
 
-   deploy-server-5251:
-      if: ${{github.ref == 'refs/heads/develop'}}
-      name: Deploy to server 5.251
-      runs-on: [self-hosted, 'Server-5251']
-      steps:
-         - uses: actions/checkout@v4
-           with:
-              fetch-depth: 0
-              clean: false
+  deploy-server-5251:
+    if: ${{github.ref == 'refs/heads/develop'}}
+    name: Deploy to server 5.251
+    runs-on: [self-hosted, "Server-5251"]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          clean: false
 
-         - name: Load environment variables
-           run: |
-              $env = "${{ secrets.ENV_VARIABLE_SVR5251 }}"
-              $env | Out-File -FilePath .env -Encoding utf8
+      - name: Load environment variables
+        run: |
+          $env = "${{ secrets.ENV_VARIABLE_SVR5251 }}"
+          $env | Out-File -FilePath .env -Encoding utf8
 
-         - name: Install dependencies
-           run: pnpm install --fix-lockfile
+      - name: Install dependencies
+        run: |
+          pnpm clean --lockfile
+          pnpm install --fix-lockfile
 
-         - name: Sentry CLI verification
-           run: npx sentry-cli login --auth-token ${{secrets.SENTRY_AUTH_TOKEN}}
+      - name: Sentry CLI verification
+        run: npx sentry-cli login --auth-token ${{secrets.SENTRY_AUTH_TOKEN}}
 
-         - name: Build Nest application
-           run: pnpm build
+      - name: Build Nest application
+        run: pnpm build
 
-         - name: Restart and save PM2 process
-           run: |
-              pm2 restart ecosystem.config.js --update-env
-              pm2 save
+      - name: Restart and save PM2 process
+        run: |
+          pm2 restart ecosystem.config.js --update-env
+          pm2 save
