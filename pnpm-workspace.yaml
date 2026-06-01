@@ -6,6 +6,7 @@ allowBuilds:
   "@compodoc/compodoc": true
   "@nestjs/core": true
   "@sentry/cli": true
+  "@sentry-internal/node-cpu-profiler": true
   "@sentry/profiling-node": true
   "@swc/core": true
   bcrypt: true
