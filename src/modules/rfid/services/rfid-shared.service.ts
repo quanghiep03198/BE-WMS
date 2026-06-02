@@ -63,7 +63,7 @@ export class RFIDSharedService {
 			scannable: true,
 			station_no: { $regex: new RegExp(factory, 'i') },
 			mo_no: args['mo_no.eq'],
-			device_sn: args['device_sn.eq']
+			...(args['device_sn.eq'] && { device_sn: args['device_sn.eq'] })
 		}
 		if (!args['mo_no.eq']) delete filterQuery.mo_no
 
@@ -95,7 +95,7 @@ export class RFIDSharedService {
 		return Boolean(hasInvalidEpc)
 	}
 
-	public async getOrderDetail($model: EpcModel, factory: string, device_sn: string) {
+	public async getOrderDetail($model: EpcModel, factory: string, device_sn?: string) {
 		return await $model.aggregate<ScannedOrderDetail>(
 			[
 				// * Stage 1: Match documents that are not deleted
@@ -104,7 +104,7 @@ export class RFIDSharedService {
 						$or: [{ deleted: false }, { deleted: null }],
 						scannable: true,
 						station_no: { $regex: new RegExp(factory, 'i') },
-						device_sn
+						...(device_sn && { device_sn })
 					}
 				},
 				// * Stage 2: Group by mo_no, color_sn, and factory_shoes_style, and aggregate sizes
