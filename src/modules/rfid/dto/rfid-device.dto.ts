@@ -2,6 +2,9 @@ import { RecordStatus } from '@/databases/constants'
 import z from 'zod'
 
 export const createRFIDDeviceDTO = z.object({
+	device_name_vi: z.string().nullish(),
+	device_name_en: z.string().nullish(),
+	device_name_cn: z.string().nullish(),
 	device_sn: z.string({ required_error: 'Required' }).nonempty({ message: 'Required' }),
 	station_no: z.string({ required_error: 'Required' }).nonempty({ message: 'Required' }),
 	ip_address: z.string({ required_error: 'Required' }).ip({ message: 'Invalid IP value' }),

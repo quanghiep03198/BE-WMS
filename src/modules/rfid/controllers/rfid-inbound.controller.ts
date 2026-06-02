@@ -70,11 +70,12 @@ export class RFIDInboundController {
 		private readonly rfidInboundService: RFIDInboundService
 	) {}
 
-	@Get('sse')
+	@Get('sse/:device_sn')
 	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
 	@UseFilters(AllExceptionsFilter)
 	async streamInboundRFIDData(
 		@Headers(CommonRequestHeader.FACTORY_CODE) factory: string,
+		@Param('device_sn') device_sn: string,
 		@Res()
 		reply: FastifyReply & {
 			sse: (data: {
@@ -87,7 +88,8 @@ export class RFIDInboundController {
 		const handleChange = async () => {
 			const data = await this.rfidSharedService.fetchLatestData(this.epcInboundModel, factory, {
 				page: 1,
-				limit: 50
+				limit: 50,
+				'device_sn.eq': device_sn
 			})
 			if (data) reply.sse(data)
 		}
@@ -153,12 +155,15 @@ export class RFIDInboundController {
 	}
 
 	@RouteHandler({
-		endpoint: 'manufacturing-order-detail',
+		endpoint: 'manufacturing-order-detail/:device_sn',
 		method: HttpMethod.GET
 	})
 	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
-	async getOrderDetails(@Headers(CommonRequestHeader.FACTORY_CODE) factory: string) {
-		return this.rfidSharedService.getOrderDetail(this.epcInboundModel, factory)
+	async getOrderDetails(
+		@Headers(CommonRequestHeader.FACTORY_CODE) factory: string,
+		@Param('device_sn') device_sn: string
+	) {
+		return this.rfidSharedService.getOrderDetail(this.epcInboundModel, factory, device_sn)
 	}
 
 	@RouteHandler({

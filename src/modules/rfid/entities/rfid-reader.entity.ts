@@ -7,6 +7,15 @@ export class RFIDReaderEntity {
 	@PrimaryGeneratedColumn({ name: 'id', type: 'int' })
 	id: number
 
+	@Column({ name: 'English' })
+	device_name_en: string
+
+	@Column({ name: 'Vietnamese' })
+	device_name_vi: string
+
+	@Column({ name: 'SimplifiedChinese' })
+	device_name_cn: string
+
 	@Column({ name: 'device_sn' })
 	device_sn: string
 

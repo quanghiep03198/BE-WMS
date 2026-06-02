@@ -51,7 +51,7 @@ export class RFIDSharedService {
 	public async fetchLatestData($model: EpcModel, factory: string, args: RFIDSearchParams) {
 		const [epcs, orders, has_invalid] = await Promise.all([
 			this.getIncomingEpc($model, factory, args),
-			this.getOrderDetail($model, factory),
+			this.getOrderDetail($model, factory, args['device_sn.eq']),
 			this.checkInvalidEpcExist($model, factory)
 		])
 
@@ -62,7 +62,8 @@ export class RFIDSharedService {
 		const filterQuery: FilterQuery<EpcDocument> = {
 			scannable: true,
 			station_no: { $regex: new RegExp(factory, 'i') },
-			mo_no: args['mo_no.eq']
+			mo_no: args['mo_no.eq'],
+			device_sn: args['device_sn.eq']
 		}
 		if (!args['mo_no.eq']) delete filterQuery.mo_no
 
@@ -94,7 +95,7 @@ export class RFIDSharedService {
 		return Boolean(hasInvalidEpc)
 	}
 
-	public async getOrderDetail($model: EpcModel, factory: string) {
+	public async getOrderDetail($model: EpcModel, factory: string, device_sn: string) {
 		return await $model.aggregate<ScannedOrderDetail>(
 			[
 				// * Stage 1: Match documents that are not deleted
@@ -102,7 +103,8 @@ export class RFIDSharedService {
 					$match: {
 						$or: [{ deleted: false }, { deleted: null }],
 						scannable: true,
-						station_no: { $regex: new RegExp(factory, 'i') }
+						station_no: { $regex: new RegExp(factory, 'i') },
+						device_sn
 					}
 				},
 				// * Stage 2: Group by mo_no, color_sn, and factory_shoes_style, and aggregate sizes
@@ -224,7 +226,7 @@ export class RFIDSharedService {
 		const bulkWriteOptions: AnyBulkWriteOperation<EpcSchema>[] = scannedEpcs.map((item) => ({
 			updateOne: {
 				filter: { epc: item.epc, scannable: true },
-				update: { ...item, station_no: stationNO, record_time: new Date(), deleted: false },
+				update: { ...item, device_sn: sn, station_no: stationNO, record_time: new Date(), deleted: false },
 				upsert: true
 			}
 		}))

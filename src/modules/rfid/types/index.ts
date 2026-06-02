@@ -17,6 +17,7 @@ export type RFIDSearchParams = {
 	page: number
 	limit: number
 	q?: string
+	'device_sn.eq'?: string
 	'mo_no.eq'?: string
 	'shoes_style.eq'?: string
 	'color_sn.eq'?: string
