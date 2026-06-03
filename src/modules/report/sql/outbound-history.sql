@@ -3,9 +3,19 @@ DECLARE @FallbackValue NVARCHAR(10) = 'Unknown';
 WITH inv_rfid AS(
    SELECT EPC_Code, po, mo_no, size_code, rfid_status, stationNO, record_time, FC_server_code, isactive
    FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet WITH (NOLOCK)
+   WHERE 
+      isactive = 'Y'
+      AND FC_server_code = @0
+      AND po = @1
+      AND RIGHT(stationNO, 5) = 'WH103'
    UNION ALL
    SELECT EPC_Code, po, mo_no, size_code, rfid_status, stationNO, record_time, FC_server_code, isactive
    FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet_backup_Daily WITH (NOLOCK)
+   WHERE 
+      isactive = 'Y'
+      AND FC_server_code = @0
+      AND po = @1
+      AND RIGHT(stationNO, 5) = 'WH103'
 ),
 base_data AS (
    SELECT 
@@ -13,7 +23,6 @@ base_data AS (
       CAST(i.record_time AS DATE) AS outbound_date,
       i.po, 
       i.mo_no, 
-     
       CASE 
          WHEN LEFT(CAST(i.size_code AS NVARCHAR(10)), 1) = '0' THEN i.size_code
          WHEN ISNUMERIC(i.size_code) = 1 
@@ -23,7 +32,6 @@ base_data AS (
          ELSE CAST(i.size_code AS NVARCHAR(10)) 
       END AS size_code, 
       i.record_time,
-     
       i.FC_server_code
    FROM inv_rfid i
    WHERE
