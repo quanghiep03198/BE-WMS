@@ -59,4 +59,8 @@ report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 # Sentry Config File
 .sentryclirc
 
+# Compodoc generated documentation
 .compodoc/
+
+# Backup files
+backup/

@@ -14,7 +14,7 @@ import { AcceptLanguageResolver, HeaderResolver, I18nModule, QueryResolver } fro
 import { LoggerModule, Params } from 'nestjs-pino'
 import { AppController } from './app.controller'
 import { appConfigFactory, validateConfig } from './configs'
-import { RotateLogJobService } from './jobs/rotate-log.job'
+import { RotateLogTask } from './tasks/rotate-log.task'
 // Feature modules
 import { EventGateway } from './events/event.gateway'
 import { AuthModule } from './modules/auth/auth.module'
@@ -33,6 +33,8 @@ import { TruckloadDeliveryModule } from './modules/truckload-delivery/truckload-
 import { UserModule } from './modules/user/user.module'
 import { WarehouseModule } from './modules/warehouse/warehouse.module'
 import { RedisModule } from './redis/redis.module'
+import { MongoDumpTask } from './tasks/mongodump.task'
+import { SyncLicensePlateSnapshotTask } from './tasks/sync-license-plate-snapshot.task'
 
 @Module({
 	imports: [
@@ -113,7 +115,9 @@ import { RedisModule } from './redis/redis.module'
 	controllers: [AppController],
 	providers: [
 		EventGateway,
-		RotateLogJobService,
+		RotateLogTask,
+		MongoDumpTask,
+		SyncLicensePlateSnapshotTask,
 		{
 			provide: APP_FILTER,
 			useClass: SentryGlobalFilter
