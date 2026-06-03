@@ -7,12 +7,11 @@ import * as path from 'path'
 export class MongoDumpTask {
 	private readonly logger = new Logger(MongoDumpTask.name)
 
-	// Ví dụ: Chạy mỗi ngày vào lúc nửa đêm
 	@Cron(CronExpression.EVERY_30_MINUTES)
 	handleDump() {
 		this.logger.log('Starting mongodump ...')
 
-		// Xác định đường dẫn tuyệt đối tới file .ps1 của bạn
+		// Path to the PowerShell script that performs mongodump
 		const scriptPath = path.join(__dirname, '../../scripts/mongodump.ps1')
 
 		/**
