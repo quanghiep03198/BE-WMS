@@ -24,7 +24,7 @@ import { RefreshTokenEntity } from './entities/refresh-token.entity'
 
 @Injectable()
 export class AuthService {
-	private readonly TOKEN_CACHE_TTL = 60 * 1000 * 5 // 5 minutes
+	private readonly TOKEN_CACHE_TTL = 60 * 1000 * 24 // 24h
 
 	constructor(
 		private readonly jwtService: JwtService,
