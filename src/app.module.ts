@@ -35,6 +35,7 @@ import { WarehouseModule } from './modules/warehouse/warehouse.module'
 import { RedisModule } from './redis/redis.module'
 import { MongoDumpTask } from './tasks/mongodump.task'
 import { SyncLicensePlateSnapshotTask } from './tasks/sync-license-plate-snapshot.task'
+import { SyncProductSpecificationTask } from './tasks/sync-product-specification.task'
 
 @Module({
 	imports: [
@@ -118,6 +119,7 @@ import { SyncLicensePlateSnapshotTask } from './tasks/sync-license-plate-snapsho
 		RotateLogTask,
 		MongoDumpTask,
 		SyncLicensePlateSnapshotTask,
+		SyncProductSpecificationTask,
 		{
 			provide: APP_FILTER,
 			useClass: SentryGlobalFilter

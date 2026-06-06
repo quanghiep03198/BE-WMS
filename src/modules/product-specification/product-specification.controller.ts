@@ -19,7 +19,7 @@ export class ProductSpecificationController {
 		UserRole.INDUSTRIAL_ENGINEERING_STAFF
 	)
 	@CacheKey('cached:apis:product_specification')
-	@CacheTTL(60 * 1000 * 60 * 24 * 7)
+	@CacheTTL(60 * 1000 * 5)
 	@UseInterceptors(CacheInterceptor)
 	public async getProductSpecification() {
 		return await this.productSpecificationService.getProductSpecification()
