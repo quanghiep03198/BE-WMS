@@ -38,7 +38,7 @@ export class SyncProductSpecificationTask {
 		private readonly productSpecificationModel: Model<ProductSpecificationDocument>
 	) {}
 
-	@Cron(CronExpression.EVERY_30_SECONDS, {
+	@Cron(CronExpression.EVERY_HOUR, {
 		name: 'SYNC_PRODUCT_SPECIFICATION'
 	})
 	async handleSyncProductSpecification() {
