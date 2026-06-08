@@ -138,19 +138,21 @@ export class RFIDInboundController {
 	}
 
 	@RouteHandler({
-		endpoint: 'fetch-epc',
+		endpoint: 'fetch-epc/:device_sn',
 		method: HttpMethod.GET
 	})
 	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
 	async fetchNextInboundEpc(
 		@Headers(CommonRequestHeader.FACTORY_CODE) factory: string,
+		@Param('device_sn') deviceSerialNumber: string,
 		@Query('_page', new DefaultValuePipe(1), ParseIntPipe) page: number,
 		@Query('mo_no.eq', new DefaultValuePipe('')) selectedOrder: string
 	) {
 		return await this.rfidSharedService.getIncomingEpc(this.epcInboundModel, factory, {
 			page,
 			limit: 50,
-			'mo_no.eq': selectedOrder
+			'mo_no.eq': selectedOrder,
+			'device_sn.eq': deviceSerialNumber
 		})
 	}
 
