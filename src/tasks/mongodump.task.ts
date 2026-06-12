@@ -12,7 +12,7 @@ export class MongoDumpTask {
 		this.logger.log('Starting mongodump ...')
 
 		// Path to the PowerShell script that performs mongodump
-		const scriptPath = path.join(__dirname, '../../scripts/mongodump.ps1')
+		const scriptPath = path.resolve('scripts/mongodump.ps1')
 
 		/**
 		 * * PowerShell Script:
