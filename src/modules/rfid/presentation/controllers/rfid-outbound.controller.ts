@@ -25,13 +25,13 @@ import { format } from 'date-fns'
 import { FastifyReply } from 'fastify'
 import { isEmpty, isNil, pick, pickBy } from 'lodash'
 import { PaginateResult } from 'mongoose'
-import { POST_DATA_OUTBOUND_QUEUE } from '../constants'
+import { POST_DATA_OUTBOUND_QUEUE } from '../../domain/constants'
 
 import { UserRole } from '@/modules/user/constants'
 import { CACHE_MANAGER } from '@nestjs/cache-manager'
 import { Cache } from 'cache-manager'
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
-import { UpsertStockOutDTO, upsertStockOutValidator } from '../dto/rfid-outbound.dto'
+import { UpsertStockOutDTO, upsertStockOutValidator } from '../../application/dto/rfid-outbound.dto'
 import {
 	deleteEpcValidator,
 	DeleteScannedEpcDTO,
@@ -39,11 +39,11 @@ import {
 	findEpcBySizeValidator,
 	PostReaderDataDTO,
 	readerPostDataValidator
-} from '../dto/rfid-shared.dto'
-import { EpcDocument, EpcModel, EpcOutbound } from '../schemas/epc.schema'
-import { RFIDOutboundService } from '../services/rfid-outbound.service'
-import { RFIDSharedService } from '../services/rfid-shared.service'
-import { RFIDSearchParams, ScannedOrderDetail } from '../types'
+} from '../../application/dto/rfid-shared.dto'
+import { RFIDOutboundService } from '../../application/services/rfid-outbound.service'
+import { RFIDSharedService } from '../../application/services/rfid-shared.service'
+import { EpcModel, EpcOutbound, InventoryEpcDocument } from '../../infrastructure/schemas/epc.schema'
+import { RFIDSearchParams, ScannedOrderDetail } from '../../types'
 
 @Controller('rfid/outbound')
 export class RFIDOutboundController {
@@ -65,21 +65,21 @@ export class RFIDOutboundController {
 		@Res()
 		reply: FastifyReply & {
 			sse: (data: {
-				epcs: PaginateResult<EpcDocument>
-				orders: Array<ScannedOrderDetail>
+				epcs: PaginateResult<InventoryEpcDocument>
+				orders: ScannedOrderDetail[]
 				has_invalid: boolean
 			}) => void
 		}
 	) {
 		const handleChange = async () => {
-			const data = await this.rfidSharedService.fetchLatestData(this.epcOutboundModel, factoryCode, {
+			const data = await this.rfidSharedService.fetchLatestData({
 				page: 1,
 				limit: 50
 			})
 			if (data) reply.sse(data)
 		}
 		await handleChange()
-		const changeStream = this.rfidSharedService.captureDataChange(this.epcOutboundModel, handleChange)
+		const changeStream = this.rfidSharedService.captureDataChange({}, handleChange)
 		let currentWatchers = await this.cacheManager.get<number>('cached:rfid:outbound_watchers')
 		await this.cacheManager.set('cached:rfid:outbound_watchers', currentWatchers ? currentWatchers + 1 : 1)
 
@@ -106,7 +106,7 @@ export class RFIDOutboundController {
 		@RequestHeaders(CommonRequestHeader.FACTORY_CODE) factory: string,
 		@Query('_page', new DefaultValuePipe(1), ParseIntPipe) page: number
 	) {
-		return await this.rfidSharedService.getIncomingEpc(this.epcOutboundModel, factory, { page: page, limit: 50 })
+		return await this.rfidSharedService.getIncomingEpc({ page: page, limit: 50 })
 	}
 
 	@RouteHandler({

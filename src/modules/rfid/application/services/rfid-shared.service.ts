@@ -11,10 +11,20 @@ import { AnyBulkWriteOperation, FilterQuery, mongo, UpdateWriteOpResult } from '
 import { readFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { DataSource } from 'typeorm'
-import { EXCLUDED_EPC_PREFIX, EXCLUDED_ORDERS, FALLBACK_VALUE } from '../constants'
+
+import { EXCLUDED_EPC_PREFIX, EXCLUDED_ORDERS, FALLBACK_VALUE } from '../../domain/constants'
+import {
+	EpcDocument,
+	EpcInbound,
+	EpcModel,
+	EpcOutbound,
+	EpcSchema,
+	InventoryEpc,
+	InventoryEpcDocument,
+	InventoryEpcModel
+} from '../../infrastructure/schemas/epc.schema'
+import { RFIDSearchParams, ScannedOrderDetail, StoredRFIDReaderItem } from '../../types'
 import { FindEpcBySizeDTO, PostReaderDataDTO, RestoreArchivedEpcsDTO } from '../dto/rfid-shared.dto'
-import { EpcDocument, EpcInbound, EpcModel, EpcOutbound, EpcSchema } from '../schemas/epc.schema'
-import { RFIDSearchParams, ScannedOrderDetail, StoredRFIDReaderItem } from '../types'
 import { RFIDDeviceService } from './rfid-device.service'
 
 @Injectable()
@@ -33,6 +43,7 @@ export class RFIDSharedService {
 		@InjectDataSource(DATA_SOURCE_DATA_LAKE) private readonly dataSourceDL: DataSource,
 		@InjectModel(EpcInbound.name) private readonly epcInboundModel: EpcModel,
 		@InjectModel(EpcOutbound.name) private readonly epcOutboundModel: EpcModel,
+		@InjectModel(InventoryEpc.name) private readonly inventoryEpcModel: InventoryEpcModel,
 		private readonly rfidDeviceService: RFIDDeviceService
 	) {}
 
@@ -48,27 +59,28 @@ export class RFIDSharedService {
 		])
 	}
 
-	public async fetchLatestData($model: EpcModel, factory: string, args: RFIDSearchParams) {
+	public async fetchLatestData(args: RFIDSearchParams) {
 		const [epcs, orders, has_invalid] = await Promise.all([
-			this.getIncomingEpc($model, factory, args),
-			this.getOrderDetail($model, factory, args['device_sn.eq']),
-			this.checkInvalidEpcExist($model, factory)
+			this.getIncomingEpc(args),
+			this.getOrderDetail({}),
+			this.checkInvalidEpcExist(args)
 		])
 
 		return { epcs, orders, has_invalid }
 	}
 
-	public async getIncomingEpc($model: EpcModel, factory: string, args: RFIDSearchParams) {
+	public async getIncomingEpc(args: RFIDSearchParams) {
 		const filterQuery: FilterQuery<EpcDocument> = {
 			scannable: true,
-			station_no: { $regex: new RegExp(factory, 'i') },
+			// station_no: { $regex: new RegExp(factory, 'i') },
 			mo_no: args['mo_no.eq'],
-			...(args['device_sn.eq'] && { device_sn: args['device_sn.eq'] })
+			...(args['inbound_device_sn.eq'] && { inbound_device_sn: args['inbound_device_sn.eq'] }),
+			...(args['outbound_device_sn.eq'] && { outbound_device_sn: args['outbound_device_sn.eq'] })
 		}
 		if (!args['mo_no.eq']) delete filterQuery.mo_no
 
-		return await $model.paginate(filterQuery, {
-			sort: { record_time: -1, epc: 1, mo_no: 1 },
+		return await this.inventoryEpcModel.paginate(filterQuery, {
+			sort: { last_scanned_at: -1, epc: 1, mo_no: 1 },
 			select: ['epc', 'mo_no'],
 			lean: true,
 			page: args.page,
@@ -83,28 +95,40 @@ export class RFIDSharedService {
 		})
 	}
 
-	private async checkInvalidEpcExist($model: EpcModel, factory: string): Promise<boolean> {
-		const hasInvalidEpc = await $model
+	private async checkInvalidEpcExist(
+		args: Pick<RFIDSearchParams, 'inbound_device_sn.eq' | 'outbound_device_sn.eq'>
+	): Promise<boolean> {
+		const hasInvalidEpc = await this.inventoryEpcModel
 			.exists({
 				scannable: true,
 				epc: { $regex: /^E28/i },
-				station_no: { $regex: new RegExp(factory, 'i') }
+				...(args['inbound_device_sn.eq'] && { inbound_device_sn: args['inbound_device_sn.eq'] }),
+				...(args['outbound_device_sn.eq'] && { outbound_device_sn: args['outbound_device_sn.eq'] })
 			})
 			.lean(true)
 
 		return Boolean(hasInvalidEpc)
 	}
 
-	public async getOrderDetail($model: EpcModel, factory: string, device_sn?: string) {
-		return await $model.aggregate<ScannedOrderDetail>(
+	public async getOrderDetail(filter: FilterQuery<InventoryEpcDocument>) {
+		return await this.inventoryEpcModel.aggregate<ScannedOrderDetail>(
 			[
 				// * Stage 1: Match documents that are not deleted
 				{
 					$match: {
-						$or: [{ deleted: false }, { deleted: null }],
 						scannable: true,
-						station_no: { $regex: new RegExp(factory, 'i') },
-						...(device_sn && { device_sn })
+						...(filter.inbound_device_sn && {
+							inbound_device_sn: filter.inbound_device_sn,
+							inbound_at: null,
+							outbound_at: null,
+							po: null
+						}),
+						...(filter.outbound_device_sn && {
+							outbound_device_sn: filter.outbound_device_sn,
+							inbound_at: { $ne: null },
+							outbound_at: null,
+							po: null
+						})
 					}
 				},
 				// * Stage 2: Group by mo_no, color_sn, and factory_shoes_style, and aggregate sizes
@@ -174,14 +198,21 @@ export class RFIDSharedService {
 	 * @param onSnapshot
 	 * @returns {mongodb.ChangeStream<ResultType, ChangeType>}
 	 */
-	public captureDataChange($model: EpcModel, onSnapshot: (change?: any) => unknown): ReturnType<typeof $model.watch> {
-		const changeStream = $model.watch(
+	public captureDataChange(
+		filterQuery: FilterQuery<InventoryEpcDocument>,
+		onSnapshot: (change?: any) => unknown
+	): ReturnType<InventoryEpcModel['watch']> {
+		const changeStream = this.inventoryEpcModel.watch(
 			[
 				{
 					$match: {
 						operationType: {
 							$in: ['insert', 'update', 'delete']
-						}
+						},
+						...(filterQuery.inbound_device_sn,
+						{ 'fullDocument.inbound_device_sn': filterQuery.inbound_device_sn }),
+						...(filterQuery.outbound_device_sn,
+						{ 'fullDocument.outbound_device_sn': filterQuery.outbound_device_sn })
 					}
 				}
 			],

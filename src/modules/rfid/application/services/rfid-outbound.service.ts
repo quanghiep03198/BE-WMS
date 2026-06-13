@@ -15,11 +15,11 @@ import { PinoLogger } from 'nestjs-pino'
 import { readFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { DataSource } from 'typeorm'
-import { POST_DATA_OUTBOUND_QUEUE } from '../constants'
+import { POST_DATA_OUTBOUND_QUEUE } from '../../domain/constants'
+import { EpcDocument, EpcModel, EpcOutbound } from '../../infrastructure/schemas/epc.schema'
+import { EpcInformation, RFIDSearchParams } from '../../types'
 import { UpsertStockOutDTO } from '../dto/rfid-outbound.dto'
 import { PostReaderDataDTO } from '../dto/rfid-shared.dto'
-import { EpcDocument, EpcModel, EpcOutbound } from '../schemas/epc.schema'
-import { EpcInformation, RFIDSearchParams } from '../types'
 
 @Injectable()
 export class RFIDOutboundService {

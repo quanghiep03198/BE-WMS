@@ -2,11 +2,11 @@ import { OnWorkerEvent, Processor, WorkerHost } from '@nestjs/bullmq'
 import { InjectModel } from '@nestjs/mongoose'
 import { Job } from 'bullmq'
 import { PinoLogger } from 'nestjs-pino'
-import { POST_DATA_INBOUND_QUEUE } from '../constants'
+import { POST_DATA_INBOUND_QUEUE } from '../domain/constants'
 
-import { PostReaderDataDTO } from '../dto/rfid-shared.dto'
-import { EpcInbound, EpcModel } from '../schemas/epc.schema'
-import { RFIDSharedService } from '../services/rfid-shared.service'
+import { PostReaderDataDTO } from '../application/dto/rfid-shared.dto'
+import { RFIDSharedService } from '../application/services/rfid-shared.service'
+import { EpcInbound, EpcModel } from '../infrastructure/schemas/epc.schema'
 
 @Processor(POST_DATA_INBOUND_QUEUE, { concurrency: 2 })
 export class RFIDInboundConsumer extends WorkerHost {

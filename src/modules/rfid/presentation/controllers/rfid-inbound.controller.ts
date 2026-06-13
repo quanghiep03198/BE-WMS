@@ -3,6 +3,24 @@ import { HttpMethod, Public, RequestUser, RequireAuthorized, RouteHandler, User 
 import { AllExceptionsFilter } from '@/common/filters'
 import { ZodValidationPipe } from '@/common/pipes'
 import { EventGateway } from '@/events/event.gateway'
+import {
+	ExchangeOrderDTO,
+	exchangeOrderValidator,
+	updateStockInValidator,
+	UpsertEpcInformationDTO,
+	upsertEpcInformationSchema,
+	UpsertStockInDTO
+} from '@/modules/rfid/application/dto/rfid-inbound.dto'
+import {
+	deleteEpcValidator,
+	DeleteScannedEpcDTO,
+	FindEpcBySizeDTO,
+	findEpcBySizeValidator,
+	PostReaderDataDTO,
+	readerPostDataValidator,
+	searchCustomerValidator,
+	SearchCustOrderParamsDTO
+} from '@/modules/rfid/application/dto/rfid-shared.dto'
 import { UserRole } from '@/modules/user/constants'
 import { RedisService } from '@/redis/redis.service'
 import { InjectQueue } from '@nestjs/bullmq'
@@ -32,29 +50,12 @@ import { isEmpty, isNil, pick, pickBy } from 'lodash'
 import { PaginateResult } from 'mongoose'
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
 import z from 'zod'
-import { POST_DATA_INBOUND_QUEUE } from '../constants'
-import {
-	ExchangeOrderDTO,
-	exchangeOrderValidator,
-	updateStockInValidator,
-	UpsertEpcInformationDTO,
-	upsertEpcInformationSchema,
-	UpsertStockInDTO
-} from '../dto/rfid-inbound.dto'
-import {
-	deleteEpcValidator,
-	DeleteScannedEpcDTO,
-	FindEpcBySizeDTO,
-	findEpcBySizeValidator,
-	PostReaderDataDTO,
-	readerPostDataValidator,
-	searchCustomerValidator,
-	SearchCustOrderParamsDTO
-} from '../dto/rfid-shared.dto'
-import { EpcDocument, EpcInbound, EpcModel } from '../schemas/epc.schema'
-import { RFIDInboundService } from '../services/rfid-inbound.service'
-import { RFIDSharedService } from '../services/rfid-shared.service'
-import { RFIDSearchParams, ScannedOrderDetail } from '../types'
+import { POST_DATA_INBOUND_QUEUE } from '../../domain/constants'
+import { EpcInbound, EpcModel, InventoryEpcDocument } from '../../infrastructure/schemas/epc.schema'
+
+import { RFIDInboundService } from '../../application/services/rfid-inbound.service'
+import { RFIDSharedService } from '../../application/services/rfid-shared.service'
+import { RFIDSearchParams, ScannedOrderDetail } from '../../types'
 
 @Controller('rfid/inbound')
 export class RFIDInboundController {
@@ -79,39 +80,42 @@ export class RFIDInboundController {
 		@Res()
 		reply: FastifyReply & {
 			sse: (data: {
-				epcs: PaginateResult<EpcDocument>
-				orders: Array<ScannedOrderDetail>
+				epcs: PaginateResult<InventoryEpcDocument>
+				orders: ScannedOrderDetail[]
 				has_invalid: boolean
 			}) => void
 		}
 	) {
 		const handleChange = async () => {
-			const data = await this.rfidSharedService.fetchLatestData(this.epcInboundModel, factory, {
+			const data = await this.rfidSharedService.fetchLatestData({
 				page: 1,
 				limit: 50,
-				'device_sn.eq': device_sn
+				'inbound_device_sn.eq': device_sn
 			})
 			if (data) reply.sse(data)
 		}
 
 		await handleChange()
-		let currentWatchers = await this.cacheManager.get<number>('cached:rfid:inbound_watchers')
-		await this.cacheManager.set('cached:rfid:inbound_watchers', currentWatchers ? currentWatchers + 1 : 1)
-		currentWatchers = await this.cacheManager.get<number>('cached:rfid:inbound_watchers')
-		this.eventGateway.server.emit('rfid_inbound_watcher', currentWatchers)
-		const changeStream = await this.rfidSharedService.captureDataChange(this.epcInboundModel, handleChange)
+		// let currentWatchers = await this.cacheManager.get<number>('cached:rfid:inbound_watchers')
+		// await this.cacheManager.set('cached:rfid:inbound_watchers', currentWatchers ? currentWatchers + 1 : 1)
+		// currentWatchers = await this.cacheManager.get<number>('cached:rfid:inbound_watchers')
+		// this.eventGateway.server.emit('rfid_inbound_watcher', currentWatchers)
+		const changeStream = await this.rfidSharedService.captureDataChange(
+			{ inbound_device_sn: device_sn },
+			handleChange
+		)
 
 		reply.raw.on('close', async () => {
-			currentWatchers = await this.cacheManager.get<number>('cached:rfid:inbound_watchers')
-			await this.cacheManager.set('cached:rfid:inbound_watchers', currentWatchers > 0 ? currentWatchers - 1 : 0)
-			currentWatchers = await this.cacheManager.get<number>('cached:rfid:inbound_watchers')
-			this.eventGateway.server.emit('rfid_inbound_watcher', currentWatchers)
-			if (currentWatchers === 0) {
-				this.logger.info('Stop receiving data from Android RFID device')
-				await this.rfidSharedService.cleanupQueue(this.postInboundDataQueue)
-				changeStream.removeListener('change', handleChange)
-				changeStream.close()
-			}
+			// currentWatchers = await this.cacheManager.get<number>('cached:rfid:inbound_watchers')
+			// await this.cacheManager.set('cached:rfid:inbound_watchers', currentWatchers > 0 ? currentWatchers - 1 : 0)
+			// currentWatchers = await this.cacheManager.get<number>('cached:rfid:inbound_watchers')
+			// this.eventGateway.server.emit('rfid_inbound_watcher', currentWatchers)
+			// if (currentWatchers === 0) {
+			// 	this.logger.info('Stop receiving data from Android RFID device')
+			// }
+			await this.rfidSharedService.cleanupQueue(this.postInboundDataQueue)
+			changeStream.removeListener('change', handleChange)
+			changeStream.close()
 			reply.raw.end()
 		})
 	}
@@ -148,11 +152,11 @@ export class RFIDInboundController {
 		@Query('_page', new DefaultValuePipe(1), ParseIntPipe) page: number,
 		@Query('mo_no.eq', new DefaultValuePipe('')) selectedOrder: string
 	) {
-		return await this.rfidSharedService.getIncomingEpc(this.epcInboundModel, factory, {
+		return await this.rfidSharedService.getIncomingEpc({
 			page,
 			limit: 50,
 			'mo_no.eq': selectedOrder,
-			'device_sn.eq': deviceSerialNumber
+			'inbound_device_sn.eq': deviceSerialNumber
 		})
 	}
 
@@ -161,11 +165,8 @@ export class RFIDInboundController {
 		method: HttpMethod.GET
 	})
 	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
-	async getOrderDetails(
-		@Headers(CommonRequestHeader.FACTORY_CODE) factory: string,
-		@Param('device_sn') device_sn: string
-	) {
-		return this.rfidSharedService.getOrderDetail(this.epcInboundModel, factory, device_sn)
+	async getOrderDetails(@Param('device_sn') device_sn: string) {
+		return this.rfidSharedService.getOrderDetail({ 'inbound_device_sn.eq': device_sn })
 	}
 
 	@RouteHandler({

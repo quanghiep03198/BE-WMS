@@ -1,5 +1,5 @@
-import { RFIDMatchCustomerEntity } from '../entities/rfid-customer-match.entity'
-import { RFIDReaderEntity } from '../entities/rfid-reader.entity'
+import { RFIDMatchCustomerEntity } from '../infrastructure/entities/rfid-customer-match.entity'
+import { RFIDReaderEntity } from '../infrastructure/entities/rfid-reader.entity'
 
 export type EpcInformation = Pick<RFIDMatchCustomerEntity, 'epc' | 'mo_no' | 'size_numcode' | 'factory_shoes_style'> & {
 	color_sn: string
@@ -17,7 +17,8 @@ export type RFIDSearchParams = {
 	page: number
 	limit: number
 	q?: string
-	'device_sn.eq'?: string
+	'inbound_device_sn.eq'?: string
+	'outbound_device_sn.eq'?: string
 	'mo_no.eq'?: string
 	'shoes_style.eq'?: string
 	'color_sn.eq'?: string

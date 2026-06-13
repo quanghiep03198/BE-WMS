@@ -4,14 +4,14 @@ WITH inv_rfid AS(
    WHERE 
       mo_no = @0
       AND isactive = 'Y' 
-      AND (RIGHT(stationNO, 5) = 'WH101' OR RIGHT(stationNO, 5) = 'WH102')
+      AND RIGHT(stationNO, 5) <> 'WH103' 
    UNION ALL
    SELECT EPC_Code, po, mo_no, size_code, rfid_status, stationNO, record_time, FC_server_code, isactive
    FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet_backup_Daily WITH (NOLOCK)
    WHERE 
       mo_no = @0
       AND isactive = 'Y' 
-      AND (RIGHT(stationNO, 5) = 'WH101' OR RIGHT(stationNO, 5) = 'WH102')
+      AND RIGHT(stationNO, 5) <> 'WH103' 
 ),
 daily_inbound_history_cte AS (
    SELECT 
@@ -27,7 +27,7 @@ daily_inbound_history_cte AS (
 		AND a.EPC_Code NOT LIKE 'E28%'
 		AND a.mo_no NOT IN ('13D05B006', '13A08C003')
       AND a.mo_no = @0
-		AND (RIGHT(a.stationNO, 5) = 'WH101' OR RIGHT(a.stationNO, 5) = 'WH102')
+      AND RIGHT(a.stationNO, 5) <> 'WH103' 
    GROUP BY 
       a.mo_no, 
       a.size_code,
@@ -46,7 +46,7 @@ inbound_history_by_size_cte AS (
 		AND a.EPC_Code NOT LIKE 'E28%'
 		AND a.mo_no NOT IN ('13D05B006', '13A08C003')
       AND a.mo_no = @0
-		AND (RIGHT(a.stationNO, 5) = 'WH101' OR RIGHT(a.stationNO, 5) = 'WH102')
+      AND RIGHT(a.stationNO, 5) <> 'WH103' 
    GROUP BY 
       a.mo_no, 
       a.size_code
@@ -148,5 +148,6 @@ GROUP BY
    f.shoestyle_codecust,
    UPPER(CONCAT(e.color_sn, '/', (e.mat_ecolor)))
 OPTION (
-   OPTIMIZE FOR (@0 UNKNOWN)
+   OPTIMIZE FOR (@0 UNKNOWN),
+	KEEPFIXED PLAN
 )

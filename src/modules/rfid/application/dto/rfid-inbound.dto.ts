@@ -1,6 +1,6 @@
 import { RequestUser } from '@/common/decorators'
 import { z } from 'zod'
-import { InventoryActions, InventoryStorageType } from '../constants'
+import { InventoryActions, InventoryStorageType } from '../../domain/constants'
 
 export const updateStockInValidator = z
 	.object({

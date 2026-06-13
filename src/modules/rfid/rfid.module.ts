@@ -12,17 +12,14 @@ import { PinoLogger } from 'nestjs-pino'
 import { InventoryModule } from '../inventory/inventory.module'
 import { TenancyModule } from '../tenancy/tenancy.module'
 import { ThirdPartyApiModule } from '../third-party-api/third-party-api.module'
-import { IMPORT_DATA_QUEUE, POST_DATA_INBOUND_QUEUE, POST_DATA_OUTBOUND_QUEUE } from './constants'
-import { RFIDDeviceController } from './controllers/rfid-device.controller'
-import { RFIDInboundController } from './controllers/rfid-inbound.controller'
-import { RFIDOutboundController } from './controllers/rfid-outbound.controller'
-import { RFIDSharedController } from './controllers/rfid-shared.controller'
-import { RFIDMatchCustomerEntity } from './entities/rfid-customer-match.entity'
-import { RFIDReaderEntity } from './entities/rfid-reader.entity'
-import { RFIDInventoryBackupEntity, RFIDInventoryEntity } from './entities/rifd-inventory.entity'
-import { RFIDImportDataConsumer } from './queues/rfid-import-data.consumer'
-import { RFIDInboundConsumer } from './queues/rfid-inbound.consumer'
-import { RFIDOutboundConsumer } from './queues/rfid-outbound.consumer'
+import { RFIDDeviceService } from './application/services/rfid-device.service'
+import { RFIDInboundService } from './application/services/rfid-inbound.service'
+import { RFIDOutboundService } from './application/services/rfid-outbound.service'
+import { RFIDSharedService } from './application/services/rfid-shared.service'
+import { IMPORT_DATA_QUEUE, POST_DATA_INBOUND_QUEUE, POST_DATA_OUTBOUND_QUEUE } from './domain/constants'
+import { RFIDMatchCustomerEntity } from './infrastructure/entities/rfid-customer-match.entity'
+import { RFIDReaderEntity } from './infrastructure/entities/rfid-reader.entity'
+import { RFIDInventoryBackupEntity, RFIDInventoryEntity } from './infrastructure/entities/rifd-inventory.entity'
 import {
 	EPC_INBOUND_COLLECTION,
 	EPC_OUTBOUND_COLLECTION,
@@ -30,14 +27,21 @@ import {
 	EpcInboundSchema,
 	EpcModel,
 	EpcOutbound,
-	EpcOutboundSchema
-} from './schemas/epc.schema'
-import { RFIDDeviceService } from './services/rfid-device.service'
-import { RFIDInboundService } from './services/rfid-inbound.service'
-import { RFIDOutboundService } from './services/rfid-outbound.service'
-import { RFIDSharedService } from './services/rfid-shared.service'
-import { FPInventoryEntitySubscriber } from './subscribers/fp-inventory.entity.subscriber'
-import { RFIDCustomerEntitySubscriber } from './subscribers/rfid-customer.entity.subscriber'
+	EpcOutboundSchema,
+	INVENTORY_EPC_COLLECTION,
+	InventoryEpc,
+	InventoryEpcModel,
+	InventoryEpcSchema
+} from './infrastructure/schemas/epc.schema'
+import { FPInventoryEntitySubscriber } from './infrastructure/subscribers/inventory-rfid.entity.subscriber'
+import { RFIDCustomerEntitySubscriber } from './infrastructure/subscribers/rfid-customer.entity.subscriber'
+import { RFIDDeviceController } from './presentation/controllers/rfid-device.controller'
+import { RFIDInboundController } from './presentation/controllers/rfid-inbound.controller'
+import { RFIDOutboundController } from './presentation/controllers/rfid-outbound.controller'
+import { RFIDSharedController } from './presentation/controllers/rfid-shared.controller'
+import { RFIDImportDataConsumer } from './queues/rfid-import-data.consumer'
+import { RFIDInboundConsumer } from './queues/rfid-inbound.consumer'
+import { RFIDOutboundConsumer } from './queues/rfid-outbound.consumer'
 
 @Module({
 	imports: [
@@ -80,6 +84,19 @@ import { RFIDCustomerEntitySubscriber } from './subscribers/rfid-customer.entity
 					})
 					return EpcOutboundSchema
 				}
+			},
+			{
+				name: InventoryEpc.name,
+				collection: INVENTORY_EPC_COLLECTION,
+				useFactory: () => {
+					InventoryEpcSchema.index({ record_time: 1 }, { expires: '365d' })
+					InventoryEpcSchema.index({ mo_no: 1, po: 1, size_numcode: 1, factory_shoes_style: 1, color_sn: 1 })
+					InventoryEpcSchema.index({ inbound_device_sn: 1 })
+					InventoryEpcSchema.index({ outbound_device_sn: 1 })
+					InventoryEpcSchema.plugin(MongoosePaginatePlugin)
+
+					return InventoryEpcSchema
+				}
 			}
 		])
 	],
@@ -103,17 +120,22 @@ export class RFIDModule implements OnModuleInit {
 		private readonly logger: PinoLogger,
 		@Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
 		@InjectModel(EpcInbound.name) private readonly epcInboundModel: EpcModel,
-		@InjectModel(EpcOutbound.name) private readonly epcOutboundModel: EpcModel
+		@InjectModel(EpcOutbound.name) private readonly epcOutboundModel: EpcModel,
+		@InjectModel(InventoryEpc.name) private readonly inventoryEpcModel: InventoryEpcModel
 	) {}
 
 	async onModuleInit() {
 		try {
-			await Promise.all([this.epcInboundModel.syncIndexes(), this.epcOutboundModel.syncIndexes()])
 			await Promise.all([
-				this.cacheManager.set('cached:rfid:inbound_watchers', 0),
-				this.cacheManager.set('cached:rfid:outbound_watchers', 0),
-				this.cacheManager.set('cached:rfid:enable_deduplicate_inbound_epc', true)
+				// this.epcInboundModel.syncIndexes(),
+				// this.epcOutboundModel.syncIndexes(),
+				this.inventoryEpcModel.syncIndexes()
 			])
+			// await Promise.all([
+			// 	this.cacheManager.set('cached:rfid:inbound_watchers', 0),
+			// 	this.cacheManager.set('cached:rfid:outbound_watchers', 0),
+			// 	this.cacheManager.set('cached:rfid:enable_deduplicate_inbound_epc', true)
+			// ])
 		} catch (error) {
 			this.logger.error(error)
 		}
