@@ -20,21 +20,21 @@ import { FileFieldsInterceptor, StorageFile, UploadedFiles } from '@blazity/nest
 import { Queue } from 'bullmq'
 import { pickBy } from 'lodash'
 import { mongo } from 'mongoose'
-import { IMPORT_DATA_QUEUE } from '../../domain/constants'
+import { IMPORT_DATA_QUEUE } from '../../infrastructure/constants/queue'
 
 import { UserRole } from '@/modules/user/constants'
+import { RFIDInboundService } from '../../application/services/rfid-inbound.service'
+import { RFIDOutboundService } from '../../application/services/rfid-outbound.service'
+import { RFIDSharedService } from '../../application/services/rfid-shared.service'
 import {
 	RestoreArchivedEpcsDTO,
 	restoreArchivedEpcValidator,
 	UploadDataDTO,
 	uploadDataValidator
-} from '../../application/dto/rfid-shared.dto'
-import { RFIDInboundService } from '../../application/services/rfid-inbound.service'
-import { RFIDOutboundService } from '../../application/services/rfid-outbound.service'
-import { RFIDSharedService } from '../../application/services/rfid-shared.service'
-import { CsvFileValidationPipe } from '../../pipes/csv-validation.pipe'
-import { RFIDSearchParams } from '../../types'
-import { generateStation } from '../../utils'
+} from '../../infrastructure/dto/rfid-shared.dto'
+import { CsvFileValidationPipe } from '../../infrastructure/pipes/csv-validation.pipe'
+import { RFIDSearchParams } from '../../infrastructure/types'
+import { generateStation } from '../../infrastructure/utils'
 
 @Controller('rfid')
 export class RFIDSharedController {

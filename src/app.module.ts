@@ -4,6 +4,7 @@ import { CacheModule } from '@nestjs/cache-manager'
 import { Module, type OnApplicationBootstrap, type OnApplicationShutdown } from '@nestjs/common'
 import { ConfigModule, ConfigService } from '@nestjs/config'
 import { APP_FILTER } from '@nestjs/core'
+import { CqrsModule } from '@nestjs/cqrs'
 import { EventEmitterModule } from '@nestjs/event-emitter'
 import { ScheduleModule } from '@nestjs/schedule'
 import { ThrottlerModule } from '@nestjs/throttler'
@@ -14,7 +15,6 @@ import { AcceptLanguageResolver, HeaderResolver, I18nModule, QueryResolver } fro
 import { LoggerModule, Params } from 'nestjs-pino'
 import { AppController } from './app.controller'
 import { appConfigFactory, validateConfig } from './configs'
-import { RotateLogTask } from './tasks/rotate-log.task'
 // Feature modules
 import { EventGateway } from './events/event.gateway'
 import { AuthModule } from './modules/auth/auth.module'
@@ -33,7 +33,9 @@ import { TruckloadDeliveryModule } from './modules/truckload-delivery/truckload-
 import { UserModule } from './modules/user/user.module'
 import { WarehouseModule } from './modules/warehouse/warehouse.module'
 import { RedisModule } from './redis/redis.module'
+// Schedule Tasks
 import { MongoDumpTask } from './tasks/mongodump.task'
+import { RotateLogTask } from './tasks/rotate-log.task'
 import { SyncLicensePlateSnapshotTask } from './tasks/sync-license-plate-snapshot.task'
 import { SyncProductSpecificationTask } from './tasks/sync-product-specification.task'
 
@@ -60,6 +62,7 @@ import { SyncProductSpecificationTask } from './tasks/sync-product-specification
 			load: [appConfigFactory],
 			validate: validateConfig
 		}),
+		CqrsModule.forRoot(),
 		DatabaseModule.forRootAsync(),
 		RedisModule.forRoot(),
 		SentryModule.forRoot(),

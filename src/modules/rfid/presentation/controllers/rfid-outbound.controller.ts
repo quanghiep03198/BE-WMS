@@ -2,7 +2,9 @@ import { CommonRequestHeader } from '@/common/constants'
 import { HttpMethod, Public, RequestUser, RequireAuthorized, RouteHandler, User } from '@/common/decorators'
 import { AllExceptionsFilter } from '@/common/filters'
 import { ZodValidationPipe } from '@/common/pipes'
+import { UserRole } from '@/modules/user/constants'
 import { InjectQueue } from '@nestjs/bullmq'
+import { CACHE_MANAGER } from '@nestjs/cache-manager'
 import {
 	Body,
 	Controller,
@@ -21,17 +23,16 @@ import {
 import { EventEmitter2 } from '@nestjs/event-emitter'
 import { InjectModel } from '@nestjs/mongoose'
 import { Queue } from 'bullmq'
+import { Cache } from 'cache-manager'
 import { format } from 'date-fns'
 import { FastifyReply } from 'fastify'
 import { isEmpty, isNil, pick, pickBy } from 'lodash'
 import { PaginateResult } from 'mongoose'
-import { POST_DATA_OUTBOUND_QUEUE } from '../../domain/constants'
-
-import { UserRole } from '@/modules/user/constants'
-import { CACHE_MANAGER } from '@nestjs/cache-manager'
-import { Cache } from 'cache-manager'
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
-import { UpsertStockOutDTO, upsertStockOutValidator } from '../../application/dto/rfid-outbound.dto'
+import { RFIDOutboundService } from '../../application/services/rfid-outbound.service'
+import { RFIDSharedService } from '../../application/services/rfid-shared.service'
+import { POST_DATA_OUTBOUND_QUEUE } from '../../infrastructure/constants/queue'
+import { UpsertStockOutDTO, upsertStockOutValidator } from '../../infrastructure/dto/rfid-outbound.dto'
 import {
 	deleteEpcValidator,
 	DeleteScannedEpcDTO,
@@ -39,11 +40,9 @@ import {
 	findEpcBySizeValidator,
 	PostReaderDataDTO,
 	readerPostDataValidator
-} from '../../application/dto/rfid-shared.dto'
-import { RFIDOutboundService } from '../../application/services/rfid-outbound.service'
-import { RFIDSharedService } from '../../application/services/rfid-shared.service'
-import { EpcModel, EpcOutbound, InventoryEpcDocument } from '../../infrastructure/schemas/epc.schema'
-import { RFIDSearchParams, ScannedOrderDetail } from '../../types'
+} from '../../infrastructure/dto/rfid-shared.dto'
+import { EpcModel, EpcOutbound, InventoryEpcDocument } from '../../infrastructure/persistence/mongodb/epc.schema'
+import { RFIDSearchParams, ScannedOrderDetail } from '../../infrastructure/types'
 
 @Controller('rfid/outbound')
 export class RFIDOutboundController {

@@ -11,14 +11,15 @@ import { readFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { Readable } from 'node:stream'
 import { DataSource } from 'typeorm'
-import { EXCLUDED_ORDERS, IMPORT_DATA_QUEUE } from '../domain/constants'
-import { EpcInbound, EpcModel, EpcOutbound, EpcSchema } from '../infrastructure/schemas/epc.schema'
+import { EXCLUDED_ORDERS } from '../../domain/constants'
+import { IMPORT_DATA_QUEUE } from '../constants/queue'
+import { EpcInbound, EpcModel, EpcOutbound, EpcSchema } from '../persistence/mongodb/epc.schema'
 import { StoredRFIDReaderItem } from '../types'
 
 @Processor(IMPORT_DATA_QUEUE)
 export class RFIDImportDataConsumer extends WorkerHost {
 	private readonly epcInformationQuery: string = readFileSync(
-		resolve(join(__dirname, '../sql/epc-information.sql')),
+		resolve(join(__dirname, '../../domain/sql/epc-information.sql')),
 		'utf-8'
 	)
 

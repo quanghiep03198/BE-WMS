@@ -13,6 +13,7 @@ import { join, resolve } from 'node:path'
 import { DataSource } from 'typeorm'
 
 import { EXCLUDED_EPC_PREFIX, EXCLUDED_ORDERS, FALLBACK_VALUE } from '../../domain/constants'
+import { FindEpcBySizeDTO, PostReaderDataDTO, RestoreArchivedEpcsDTO } from '../../infrastructure/dto/rfid-shared.dto'
 import {
 	EpcDocument,
 	EpcInbound,
@@ -22,9 +23,8 @@ import {
 	InventoryEpc,
 	InventoryEpcDocument,
 	InventoryEpcModel
-} from '../../infrastructure/schemas/epc.schema'
-import { RFIDSearchParams, ScannedOrderDetail, StoredRFIDReaderItem } from '../../types'
-import { FindEpcBySizeDTO, PostReaderDataDTO, RestoreArchivedEpcsDTO } from '../dto/rfid-shared.dto'
+} from '../../infrastructure/persistence/mongodb/epc.schema'
+import { RFIDSearchParams } from '../../infrastructure/types'
 import { RFIDDeviceService } from './rfid-device.service'
 
 @Injectable()
@@ -261,7 +261,7 @@ export class RFIDSharedService {
 				upsert: true
 			}
 		}))
-		await $model.bulkWrite(bulkWriteOptions, {
+		return await $model.bulkWrite(bulkWriteOptions, {
 			writeConcern: { w: 'majority' },
 			ordered: false,
 			retryWrites: true,

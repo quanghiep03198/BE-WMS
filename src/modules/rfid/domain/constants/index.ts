@@ -8,8 +8,6 @@ export enum InventoryStorageType {
 	NORMAL_EXPORT = 'B',
 	RECYCLING = 'C',
 	SCRAP = 'F'
-	// TRANSFER_INBOUND = 'D',
-	// TRANSFER_OUTBOUND = 'E',
 }
 
 export enum ProducingProcessSuffix {
@@ -25,6 +23,6 @@ export const INTERNAL_EPC_PATTERN: string = 'E28%'
 export const FALLBACK_VALUE: string = 'Unknown'
 export const MATCH_EPC_CHAR_LEN = 22
 
-export const POST_DATA_INBOUND_QUEUE = 'POST_DATA_INBOUND_QUEUE'
-export const POST_DATA_OUTBOUND_QUEUE = 'POST_DATA_OUTBOUND_QUEUE'
-export const IMPORT_DATA_QUEUE = 'IMPORT_DATA_QUEUE'
+// export const POST_DATA_INBOUND_QUEUE = 'POST_DATA_INBOUND_QUEUE'
+// export const POST_DATA_OUTBOUND_QUEUE = 'POST_DATA_OUTBOUND_QUEUE'
+// export const IMPORT_DATA_QUEUE = 'IMPORT_DATA_QUEUE'

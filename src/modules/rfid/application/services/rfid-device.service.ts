@@ -8,7 +8,7 @@ import Redis from 'ioredis'
 import { isNil } from 'lodash'
 import { PinoLogger } from 'nestjs-pino'
 import { CachedResult, DataSource, In, Like } from 'typeorm'
-import { CreateRFIDDeviceDTO, DeleteRFIDDeviceDTO, UpdateRFIDDeviceDTO } from '../../application/dto/rfid-device.dto'
+import { CreateRFIDDeviceDTO, DeleteRFIDDeviceDTO, UpdateRFIDDeviceDTO } from '../../infrastructure/dto/rfid-device.dto'
 import { RFIDReaderEntity } from '../../infrastructure/entities/rfid-reader.entity'
 import { ExtendedRFIDReaderEntity } from '../../types'
 

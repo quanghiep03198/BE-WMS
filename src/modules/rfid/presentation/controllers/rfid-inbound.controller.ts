@@ -10,7 +10,7 @@ import {
 	UpsertEpcInformationDTO,
 	upsertEpcInformationSchema,
 	UpsertStockInDTO
-} from '@/modules/rfid/application/dto/rfid-inbound.dto'
+} from '@/modules/rfid/infrastructure/dto/rfid-inbound.dto'
 import {
 	deleteEpcValidator,
 	DeleteScannedEpcDTO,
@@ -20,7 +20,7 @@ import {
 	readerPostDataValidator,
 	searchCustomerValidator,
 	SearchCustOrderParamsDTO
-} from '@/modules/rfid/application/dto/rfid-shared.dto'
+} from '@/modules/rfid/infrastructure/dto/rfid-shared.dto'
 import { UserRole } from '@/modules/user/constants'
 import { RedisService } from '@/redis/redis.service'
 import { InjectQueue } from '@nestjs/bullmq'
@@ -50,12 +50,11 @@ import { isEmpty, isNil, pick, pickBy } from 'lodash'
 import { PaginateResult } from 'mongoose'
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
 import z from 'zod'
-import { POST_DATA_INBOUND_QUEUE } from '../../domain/constants'
-import { EpcInbound, EpcModel, InventoryEpcDocument } from '../../infrastructure/schemas/epc.schema'
-
 import { RFIDInboundService } from '../../application/services/rfid-inbound.service'
 import { RFIDSharedService } from '../../application/services/rfid-shared.service'
-import { RFIDSearchParams, ScannedOrderDetail } from '../../types'
+import { POST_DATA_INBOUND_QUEUE } from '../../infrastructure/constants/queue'
+import { EpcInbound, EpcModel, InventoryEpcDocument } from '../../infrastructure/persistence/mongodb/epc.schema'
+import { RFIDSearchParams, ScannedOrderDetail } from '../../infrastructure/types'
 
 @Controller('rfid/inbound')
 export class RFIDInboundController {

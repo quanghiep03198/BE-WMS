@@ -15,24 +15,23 @@ import { PinoLogger } from 'nestjs-pino'
 import { readFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { DataSource } from 'typeorm'
-import { POST_DATA_OUTBOUND_QUEUE } from '../../domain/constants'
-import { EpcDocument, EpcModel, EpcOutbound } from '../../infrastructure/schemas/epc.schema'
-import { EpcInformation, RFIDSearchParams } from '../../types'
-import { UpsertStockOutDTO } from '../dto/rfid-outbound.dto'
-import { PostReaderDataDTO } from '../dto/rfid-shared.dto'
-
+import { POST_DATA_OUTBOUND_QUEUE } from '../../infrastructure/constants/queue'
+import { UpsertStockOutDTO } from '../../infrastructure/dto/rfid-outbound.dto'
+import { PostReaderDataDTO } from '../../infrastructure/dto/rfid-shared.dto'
+import { EpcDocument, EpcModel, EpcOutbound } from '../../infrastructure/persistence/mongodb/epc.schema'
+import { EpcInformation, RFIDSearchParams } from '../../infrastructure/types'
 @Injectable()
 export class RFIDOutboundService {
 	private readonly archivedOutboundEpcQuery: string = readFileSync(
-		resolve(join(__dirname, '../sql/archived-outbound-epc.sql')),
+		resolve(join(__dirname, '../../infrastructure/sql/archived-outbound-epc.sql')),
 		'utf-8'
 	)
 	private readonly archivedOutboundEpcCountQuery: string = readFileSync(
-		resolve(join(__dirname, '../sql/archived-outbound-epc-count.sql')),
+		resolve(join(__dirname, '../../infrastructure/sql/archived-outbound-epc-count.sql')),
 		'utf-8'
 	)
 	private readonly missingOutboundQtyQuery: string = readFileSync(
-		resolve(join(__dirname, '../sql/po-outbound-progess.sql')),
+		resolve(join(__dirname, '../../infrastructure/sql/po-outbound-progess.sql')),
 		'utf-8'
 	)
 
