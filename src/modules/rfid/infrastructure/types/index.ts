@@ -1,5 +1,5 @@
-import { RFIDMatchCustomerEntity } from '../entities/rfid-customer-match.entity'
-import { RFIDReaderEntity } from '../entities/rfid-reader.entity'
+import { RFIDMatchCustomerEntity } from '../persistence/mssql/rfid-customer-match.entity'
+import { RFIDReaderEntity } from '../persistence/mssql/rfid-reader.entity'
 
 export type EpcInformation = Pick<RFIDMatchCustomerEntity, 'epc' | 'mo_no' | 'size_numcode' | 'factory_shoes_style'> & {
 	color_sn: string

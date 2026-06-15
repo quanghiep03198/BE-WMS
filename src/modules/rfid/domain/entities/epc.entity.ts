@@ -1,17 +1,28 @@
-export class ElectronicProductCode {
-	private readonly EXCLUDED_EPC_PREFIX = '303429'
-	private readonly INTERNAL_EPC_PREFIX = 'E28'
+import { EXCLUDED_EPC_PREFIX, INTERNAL_EPC_PREFIX } from '../constants'
 
-	constructor(public readonly value: string) {
-		this.value = value
+export class ElectronicProductCode {
+	constructor(
+		private readonly code: string,
+		private readonly commandNumber?: string,
+		private readonly factoryShoeStyle?: string,
+		private readonly color?: string,
+		private readonly scannable?: boolean
+	) {}
+
+	getCode() {
+		return this.code
 	}
 
 	getIsWritable() {
-		return !this.value.startsWith(this.EXCLUDED_EPC_PREFIX)
+		return !this.code.startsWith(EXCLUDED_EPC_PREFIX)
+	}
+
+	getIsScannable() {
+		return this.scannable
 	}
 
 	getIsInternal() {
-		return this.value.startsWith(this.INTERNAL_EPC_PREFIX)
+		return this.code.startsWith(INTERNAL_EPC_PREFIX)
 	}
 
 	// getIsValid(value: string) {

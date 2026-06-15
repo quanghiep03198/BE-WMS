@@ -1,3 +1,3 @@
-import { GetEpcInformationQueryHandler } from './get-epc-information/get-epc-information.handler'
+import { GetDeviceInformationQueryHandler } from './get-device-information/get-device-information.handler'
 
-export const RFIDQueryHandlers = [GetEpcInformationQueryHandler]
+export const RFIDQueryHandlers = [GetDeviceInformationQueryHandler]

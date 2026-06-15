@@ -8,7 +8,7 @@ import { PinoLogger } from 'nestjs-pino'
 import { join, resolve } from 'node:path'
 import { DataSource } from 'typeorm'
 import { OrderService } from '../order/order.service'
-import { RFIDMatchCustomerEntity } from '../rfid/infrastructure/entities/rfid-customer-match.entity'
+import { RFIDMatchCustomerEntity } from '../rfid/infrastructure/persistence/mssql/rfid-customer-match.entity'
 import { TENANCY_DATA_SOURCE } from '../tenancy/constants'
 import { ThirdPartyApiResponseData } from './interfaces/third-party-api.interface'
 

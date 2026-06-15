@@ -24,17 +24,17 @@ import {
 	InventoryEpcDocument,
 	InventoryEpcModel
 } from '../../infrastructure/persistence/mongodb/epc.schema'
-import { RFIDSearchParams } from '../../infrastructure/types'
+import { RFIDSearchParams, ScannedOrderDetail, StoredRFIDReaderItem } from '../../infrastructure/types'
 import { RFIDDeviceService } from './rfid-device.service'
 
 @Injectable()
 export class RFIDSharedService {
 	private readonly epcInformationQuery: string = readFileSync(
-		resolve(join(__dirname, '../sql/epc-information.sql')),
+		resolve(join(__dirname, '../../infrastructure/sql/epc-information.sql')),
 		'utf-8'
 	)
 	private readonly deduplicatedEpcInformationQuery: string = readFileSync(
-		resolve(join(__dirname, '../sql/deduplicated-epc-information.sql')),
+		resolve(join(__dirname, '../../infrastructure/sql/deduplicated-epc-information.sql')),
 		'utf-8'
 	)
 

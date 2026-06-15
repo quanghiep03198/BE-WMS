@@ -6,6 +6,7 @@ import { Inject, Module, OnModuleInit } from '@nestjs/common'
 import { InjectModel, MongooseModule } from '@nestjs/mongoose'
 import { TypeOrmModule } from '@nestjs/typeorm'
 import { Cache } from 'cache-manager'
+import MongooseDeletePlugin from 'mongoose-delete'
 import MongoosePaginatePlugin from 'mongoose-paginate-v2'
 import { PinoLogger } from 'nestjs-pino'
 import { InventoryModule } from '../inventory/inventory.module'
@@ -17,18 +18,25 @@ import { RFIDInboundService } from './application/services/rfid-inbound.service'
 import { RFIDOutboundService } from './application/services/rfid-outbound.service'
 import { RFIDSharedService } from './application/services/rfid-shared.service'
 import { IMPORT_DATA_QUEUE, POST_DATA_INBOUND_QUEUE, POST_DATA_OUTBOUND_QUEUE } from './infrastructure/constants/queue'
-import { RFIDMatchCustomerEntity } from './infrastructure/entities/rfid-customer-match.entity'
-import { RFIDReaderEntity } from './infrastructure/entities/rfid-reader.entity'
-import { RFIDInventoryBackupEntity, RFIDInventoryEntity } from './infrastructure/entities/rifd-inventory.entity'
 import {
+	EPC_INBOUND_COLLECTION,
+	EPC_OUTBOUND_COLLECTION,
 	EpcInbound,
+	EpcInboundSchema,
 	EpcModel,
 	EpcOutbound,
+	EpcOutboundSchema,
 	INVENTORY_EPC_COLLECTION,
 	InventoryEpc,
 	InventoryEpcModel,
 	InventoryEpcSchema
 } from './infrastructure/persistence/mongodb/epc.schema'
+import { RFIDMatchCustomerEntity } from './infrastructure/persistence/mssql/rfid-customer-match.entity'
+import { RFIDReaderEntity } from './infrastructure/persistence/mssql/rfid-reader.entity'
+import {
+	RFIDInventoryBackupEntity,
+	RFIDInventoryEntity
+} from './infrastructure/persistence/mssql/rifd-inventory.entity'
 import { RFIDImportDataConsumer } from './infrastructure/queues/rfid-import-data.consumer'
 import { RFIDInboundConsumer } from './infrastructure/queues/rfid-inbound.consumer'
 import { RFIDOutboundConsumer } from './infrastructure/queues/rfid-outbound.consumer'
@@ -64,36 +72,36 @@ import { RFIDSharedController } from './presentation/controllers/rfid-shared.con
 
 					return InventoryEpcSchema
 				}
+			},
+			{
+				name: EpcInbound.name,
+				collection: EPC_INBOUND_COLLECTION,
+				useFactory: () => {
+					EpcInboundSchema.index({ record_time: 1 }, { expires: '365d' })
+					EpcInboundSchema.index({ mo_no: 1, size_numcode: 1, factory_shoes_style: 1, color_sn: 1 })
+					EpcInboundSchema.plugin(MongoosePaginatePlugin)
+					EpcInboundSchema.plugin(MongooseDeletePlugin, {
+						overrideMethods: true,
+						indexFields: ['deleted']
+					})
+					return EpcInboundSchema
+				}
+			},
+			{
+				name: EpcOutbound.name,
+				collection: EPC_OUTBOUND_COLLECTION,
+				useFactory: () => {
+					EpcOutboundSchema.index({ record_time: 1 }, { expires: '365d' })
+					EpcOutboundSchema.index({ mo_no: 1, size_numcode: 1, factory_shoes_style: 1, color_sn: 1 })
+					EpcOutboundSchema.index({ po: 1 })
+					EpcOutboundSchema.plugin(MongoosePaginatePlugin)
+					EpcOutboundSchema.plugin(MongooseDeletePlugin, {
+						overrideMethods: true,
+						indexFields: ['deleted']
+					})
+					return EpcOutboundSchema
+				}
 			}
-			// {
-			// 	name: EpcInbound.name,
-			// 	collection: EPC_INBOUND_COLLECTION,
-			// 	useFactory: () => {
-			// 		EpcInboundSchema.index({ record_time: 1 }, { expires: '365d' })
-			// 		EpcInboundSchema.index({ mo_no: 1, size_numcode: 1, factory_shoes_style: 1, color_sn: 1 })
-			// 		EpcInboundSchema.plugin(MongoosePaginatePlugin)
-			// 		EpcInboundSchema.plugin(MongooseDeletePlugin, {
-			// 			overrideMethods: true,
-			// 			indexFields: ['deleted']
-			// 		})
-			// 		return EpcInboundSchema
-			// 	}
-			// },
-			// {
-			// 	name: EpcOutbound.name,
-			// 	collection: EPC_OUTBOUND_COLLECTION,
-			// 	useFactory: () => {
-			// 		EpcOutboundSchema.index({ record_time: 1 }, { expires: '365d' })
-			// 		EpcOutboundSchema.index({ mo_no: 1, size_numcode: 1, factory_shoes_style: 1, color_sn: 1 })
-			// 		EpcOutboundSchema.index({ po: 1 })
-			// 		EpcOutboundSchema.plugin(MongoosePaginatePlugin)
-			// 		EpcOutboundSchema.plugin(MongooseDeletePlugin, {
-			// 			overrideMethods: true,
-			// 			indexFields: ['deleted']
-			// 		})
-			// 		return EpcOutboundSchema
-			// 	}
-			// },
 		])
 	],
 	controllers: [RFIDSharedController, RFIDInboundController, RFIDOutboundController, RFIDDeviceController],
@@ -102,8 +110,8 @@ import { RFIDSharedController } from './presentation/controllers/rfid-shared.con
 		RFIDSharedService,
 		RFIDDeviceService,
 		RFIDInboundService,
-		...RFIDQueryHandlers,
 		RFIDOutboundService,
+		...RFIDQueryHandlers,
 		RFIDInboundConsumer,
 		RFIDOutboundConsumer,
 		RFIDImportDataConsumer,

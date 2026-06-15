@@ -1,7 +1,7 @@
 import { DATABASE_DATA_LAKE, DATABASE_SCHEMA } from '@/databases/constants'
 import { BaseAbstractEntity } from '@/modules/_base/base.abstract.entity'
+import { InventoryActions, InventoryStorageType } from '@/modules/rfid/domain/constants'
 import { Column, Entity } from 'typeorm'
-import { InventoryActions, InventoryStorageType } from '../../domain/constants'
 
 /**
  * @description RFID Production Management Entity - Describes status of RFID tags in the factory (3034xxx)

@@ -5,7 +5,8 @@ import { readFileSync } from 'fs-extra'
 import { join, resolve } from 'node:path'
 import { DataSource } from 'typeorm'
 import { InventoryActions } from '../rfid/domain/constants'
-import { RFIDMatchCustomerEntity } from '../rfid/infrastructure/entities/rfid-customer-match.entity'
+
+import { RFIDMatchCustomerEntity } from '../rfid/infrastructure/persistence/mssql/rfid-customer-match.entity'
 import { TENANCY_DATA_SOURCE } from '../tenancy/constants'
 import { SizeRun } from './types'
 

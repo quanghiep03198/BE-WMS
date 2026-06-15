@@ -1,19 +1,17 @@
 import { OnWorkerEvent, Processor, WorkerHost } from '@nestjs/bullmq'
-import { InjectModel } from '@nestjs/mongoose'
 import { Job } from 'bullmq'
 import { PinoLogger } from 'nestjs-pino'
 import { POST_DATA_OUTBOUND_QUEUE } from '../constants/queue'
 
-import { RFIDSharedService } from '../../application/services/rfid-shared.service'
+import { CommandBus } from '@nestjs/cqrs'
+import { BulkWriteInventoryCommand } from '../../application/commands/bulk-write-inventory/bulk-write-inventory.command'
 import { PostReaderDataDTO } from '../dto/rfid-shared.dto'
-import { EpcModel, EpcOutbound } from '../persistence/mongodb/epc.schema'
 
 @Processor(POST_DATA_OUTBOUND_QUEUE, { concurrency: 2 })
 export class RFIDOutboundConsumer extends WorkerHost {
 	constructor(
 		private readonly logger: PinoLogger,
-		@InjectModel(EpcOutbound.name) private readonly epcModel: EpcModel,
-		private readonly rfidSharedService: RFIDSharedService
+		private readonly commandBus: CommandBus
 	) {
 		super()
 	}
@@ -24,8 +22,7 @@ export class RFIDOutboundConsumer extends WorkerHost {
 	 * @param {Job<PostReaderDataDTO, void, string>} job
 	 */
 	public async process(job: Job<PostReaderDataDTO, void, string>): Promise<void> {
-		const { data, sn } = job.data
-		return await this.rfidSharedService.bulkWriteRFIDData(this.epcModel, 'WH103', { data, sn })
+		return await this.commandBus.execute(new BulkWriteInventoryCommand({ action: 'outbound', payload: job.data }))
 	}
 
 	@OnWorkerEvent('completed')

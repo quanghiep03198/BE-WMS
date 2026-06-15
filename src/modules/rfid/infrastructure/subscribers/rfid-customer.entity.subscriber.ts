@@ -1,7 +1,7 @@
 import { DATA_SOURCE_DATA_LAKE } from '@/databases/constants'
 import { InjectDataSource } from '@nestjs/typeorm'
 import { DataSource, EntitySubscriberInterface, EventSubscriber, InsertEvent } from 'typeorm'
-import { RFIDMatchCustomerEntity } from '../entities/rfid-customer-match.entity'
+import { RFIDMatchCustomerEntity } from '../persistence/mssql/rfid-customer-match.entity'
 
 @EventSubscriber()
 export class RFIDCustomerEntitySubscriber implements EntitySubscriberInterface<RFIDMatchCustomerEntity> {

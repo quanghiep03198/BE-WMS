@@ -26,19 +26,21 @@ import { PinoLogger } from 'nestjs-pino'
 import { readFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { DataSource, FindOptionsWhere, In } from 'typeorm'
-import { FALLBACK_VALUE, POST_DATA_INBOUND_QUEUE } from '../../domain/constants'
+import { FALLBACK_VALUE } from '../../domain/constants'
 import { ExchangeOrderDTO, UpsertEpcInformationDTO, UpsertStockInDTO } from '../../infrastructure/dto/rfid-inbound.dto'
 import { PostReaderDataDTO, SearchCustOrderParamsDTO } from '../../infrastructure/dto/rfid-shared.dto'
-import { RFIDMatchCustomerEntity } from '../../infrastructure/entities/rfid-customer-match.entity'
-import { RFIDInventoryBackupEntity } from '../../infrastructure/entities/rifd-inventory.entity'
+
+import { POST_DATA_INBOUND_QUEUE } from '../../infrastructure/constants/queue'
 import {
 	EpcDocument,
 	EpcInbound,
 	EpcInboundSchema,
 	EpcModel
 } from '../../infrastructure/persistence/mongodb/epc.schema'
+import { RFIDMatchCustomerEntity } from '../../infrastructure/persistence/mssql/rfid-customer-match.entity'
+import { RFIDInventoryBackupEntity } from '../../infrastructure/persistence/mssql/rifd-inventory.entity'
+import { RFIDSearchParams } from '../../infrastructure/types'
 import { generateStation } from '../../infrastructure/utils'
-import { RFIDSearchParams } from '../../types'
 
 @Injectable({ scope: Scope.REQUEST })
 export class RFIDInboundService {
