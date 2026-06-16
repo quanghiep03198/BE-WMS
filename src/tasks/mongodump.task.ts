@@ -7,8 +7,14 @@ import * as path from 'path'
 export class MongoDumpTask {
 	private readonly logger = new Logger(MongoDumpTask.name)
 
-	@Cron(CronExpression.EVERY_30_MINUTES)
+	@Cron(CronExpression.EVERY_10_MINUTES)
 	handleDump() {
+		const instanceId = process.env.NODE_APP_INSTANCE
+		if (instanceId && instanceId !== '0') {
+			this.logger.log(`Skipping mongodump on PM2 instance ${instanceId}`)
+			return
+		}
+
 		this.logger.log('Starting mongodump ...')
 
 		// Path to the PowerShell script that performs mongodump
