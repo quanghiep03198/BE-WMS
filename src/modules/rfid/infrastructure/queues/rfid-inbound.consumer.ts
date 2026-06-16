@@ -3,8 +3,8 @@ import { CommandBus } from '@nestjs/cqrs'
 import { Job } from 'bullmq'
 import { PinoLogger } from 'nestjs-pino'
 import { BulkWriteInventoryCommand } from '../../application/commands/bulk-write-inventory/bulk-write-inventory.command'
+import { PostReaderDataDTO } from '../../presentation/dto/rfid-shared.dto'
 import { POST_DATA_INBOUND_QUEUE } from '../constants/queue'
-import { PostReaderDataDTO } from '../dto/rfid-shared.dto'
 
 @Processor(POST_DATA_INBOUND_QUEUE, { concurrency: 2 })
 export class RFIDInboundConsumer extends WorkerHost {

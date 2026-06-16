@@ -31,8 +31,11 @@ import { PaginateResult } from 'mongoose'
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
 import { RFIDOutboundService } from '../../application/services/rfid-outbound.service'
 import { RFIDSharedService } from '../../application/services/rfid-shared.service'
+import { ScannedOrderDetail } from '../../domain/types'
 import { POST_DATA_OUTBOUND_QUEUE } from '../../infrastructure/constants/queue'
-import { UpsertStockOutDTO, upsertStockOutValidator } from '../../infrastructure/dto/rfid-outbound.dto'
+import { EpcModel, EpcOutbound, InventoryEpcDocument } from '../../infrastructure/persistence/mongodb/epc.schema'
+import { RFIDSearchParams } from '../../infrastructure/types'
+import { UpsertStockOutDTO, upsertStockOutValidator } from '../dto/rfid-outbound.dto'
 import {
 	deleteEpcValidator,
 	DeleteScannedEpcDTO,
@@ -40,9 +43,7 @@ import {
 	findEpcBySizeValidator,
 	PostReaderDataDTO,
 	readerPostDataValidator
-} from '../../infrastructure/dto/rfid-shared.dto'
-import { EpcModel, EpcOutbound, InventoryEpcDocument } from '../../infrastructure/persistence/mongodb/epc.schema'
-import { RFIDSearchParams, ScannedOrderDetail } from '../../infrastructure/types'
+} from '../dto/rfid-shared.dto'
 
 @Controller('rfid/outbound')
 export class RFIDOutboundController {

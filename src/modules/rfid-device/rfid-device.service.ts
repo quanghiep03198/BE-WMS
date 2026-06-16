@@ -8,9 +8,9 @@ import Redis from 'ioredis'
 import { isNil } from 'lodash'
 import { PinoLogger } from 'nestjs-pino'
 import { CachedResult, DataSource, In, Like } from 'typeorm'
-import { CreateRFIDDeviceDTO, DeleteRFIDDeviceDTO, UpdateRFIDDeviceDTO } from '../../infrastructure/dto/rfid-device.dto'
-import { RFIDReaderEntity } from '../../infrastructure/persistence/mssql/rfid-reader.entity'
-import { ExtendedRFIDReaderEntity } from '../../infrastructure/types'
+import { RFIDReaderEntity } from '../rfid/infrastructure/persistence/mssql/rfid-reader.entity'
+import { ExtendedRFIDReaderEntity } from '../rfid/infrastructure/types'
+import { CreateRFIDDeviceDTO, DeleteRFIDDeviceDTO, UpdateRFIDDeviceDTO } from '../rfid/presentation/dto/rfid-device.dto'
 
 @Injectable()
 export class RFIDDeviceService {

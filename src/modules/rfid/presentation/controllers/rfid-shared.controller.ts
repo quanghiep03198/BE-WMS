@@ -26,15 +26,15 @@ import { UserRole } from '@/modules/user/constants'
 import { RFIDInboundService } from '../../application/services/rfid-inbound.service'
 import { RFIDOutboundService } from '../../application/services/rfid-outbound.service'
 import { RFIDSharedService } from '../../application/services/rfid-shared.service'
+import { CsvFileValidationPipe } from '../../infrastructure/pipes/csv-validation.pipe'
+import { RFIDSearchParams } from '../../infrastructure/types'
+import { generateStation } from '../../infrastructure/utils'
 import {
 	RestoreArchivedEpcsDTO,
 	restoreArchivedEpcValidator,
 	UploadDataDTO,
 	uploadDataValidator
-} from '../../infrastructure/dto/rfid-shared.dto'
-import { CsvFileValidationPipe } from '../../infrastructure/pipes/csv-validation.pipe'
-import { RFIDSearchParams } from '../../infrastructure/types'
-import { generateStation } from '../../infrastructure/utils'
+} from '../dto/rfid-shared.dto'
 
 @Controller('rfid')
 export class RFIDSharedController {

@@ -14,7 +14,6 @@ import { TenancyModule } from '../tenancy/tenancy.module'
 import { ThirdPartyApiModule } from '../third-party-api/third-party-api.module'
 import { RFIDCommandHandlers } from './application/commands'
 import { RFIDQueryHandlers } from './application/queries'
-import { RFIDDeviceService } from './application/services/rfid-device.service'
 import { RFIDInboundService } from './application/services/rfid-inbound.service'
 import { RFIDOutboundService } from './application/services/rfid-outbound.service'
 import { RFIDSharedService } from './application/services/rfid-shared.service'
@@ -44,10 +43,8 @@ import { RFIDOutboundConsumer } from './infrastructure/queues/rfid-outbound.cons
 import { RFIDRepository } from './infrastructure/repositories/rfid.repository'
 import { FPInventoryEntitySubscriber } from './infrastructure/subscribers/inventory-rfid.entity.subscriber'
 import { RFIDCustomerEntitySubscriber } from './infrastructure/subscribers/rfid-customer.entity.subscriber'
-import { RFIDDeviceController } from './presentation/controllers/rfid-device.controller'
-import { RFIDInboundController } from './presentation/controllers/rfid-inbound.controller'
-import { RFIDOutboundController } from './presentation/controllers/rfid-outbound.controller'
-import { RFIDSharedController } from './presentation/controllers/rfid-shared.controller'
+import { RFIDControllers } from './presentation/controllers'
+import { RFIDListeners } from './presentation/listeners'
 
 @Module({
 	imports: [
@@ -110,14 +107,15 @@ import { RFIDSharedController } from './presentation/controllers/rfid-shared.con
 			}
 		])
 	],
-	controllers: [RFIDSharedController, RFIDInboundController, RFIDOutboundController, RFIDDeviceController],
+	controllers: RFIDControllers,
 	providers: [
 		EventGateway,
 		RFIDSharedService,
-		RFIDDeviceService,
 		RFIDInboundService,
 		RFIDOutboundService,
 		RFIDRepository,
+
+		...RFIDListeners,
 		...RFIDQueryHandlers,
 		...RFIDCommandHandlers,
 		RFIDInboundConsumer,

@@ -1,6 +1,7 @@
+import { AggregateRoot } from '@nestjs/cqrs'
 import { EXCLUDED_EPC_PREFIX, FALLBACK_VALUE, INTERNAL_EPC_PREFIX } from '../constants'
 
-export class ElectronicProductCode {
+export class ElectronicProductCode extends AggregateRoot {
 	constructor(
 		private readonly productCode: string,
 		private readonly scannable?: boolean,
@@ -9,11 +10,14 @@ export class ElectronicProductCode {
 		private readonly color?: string,
 		private readonly size?: string,
 		private readonly factoryProduce?: string
-	) {}
+	) {
+		super()
+		this.autoCommit = true
+	}
 
 	public static createFactory(
 		data: Array<{
-			epc: string
+			epc?: string
 		}>
 	): ElectronicProductCode[] {
 		return data.map((item) => new ElectronicProductCode(item.epc.trim())).filter((item) => item.getIsWritable())

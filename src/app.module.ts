@@ -34,6 +34,7 @@ import { UserModule } from './modules/user/user.module'
 import { WarehouseModule } from './modules/warehouse/warehouse.module'
 import { RedisModule } from './redis/redis.module'
 // Schedule Tasks
+import { RFIDDeviceModule } from './modules/rfid-device/rfid-device.module'
 import { MongoDumpTask } from './tasks/mongodump.task'
 import { RotateLogTask } from './tasks/rotate-log.task'
 import { SyncLicensePlateSnapshotTask } from './tasks/sync-license-plate-snapshot.task'
@@ -114,7 +115,8 @@ import { SyncProductSpecificationTask } from './tasks/sync-product-specification
 		DefectiveGoodsModule,
 		ProductSpecificationModule,
 		StatisticModule,
-		TruckloadDeliveryModule
+		TruckloadDeliveryModule,
+		RFIDDeviceModule
 	],
 	controllers: [AppController],
 	providers: [

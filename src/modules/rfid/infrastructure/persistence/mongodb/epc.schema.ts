@@ -100,7 +100,7 @@ export class InventoryEpc {
 	@Prop({ type: mongoose.Schema.Types.ObjectId })
 	_id: mongoose.Types.ObjectId
 
-	@Prop({ type: String, required: true, unique: true, length: 24 })
+	@Prop({ type: String, required: true, unique: true, length: 24, immutable: true })
 	epc: string
 
 	@Prop({ type: Boolean, required: true, default: true })
@@ -130,13 +130,13 @@ export class InventoryEpc {
 	@Prop({ type: String })
 	inbound_device_sn?: string
 
-	@Prop({ type: Date })
+	@Prop({ type: Date, immutable: true })
 	inbound_at?: Date
 
 	@Prop({ type: String })
 	outbound_device_sn?: string
 
-	@Prop({ type: Date })
+	@Prop({ type: Date, immutable: true })
 	outbound_at?: Date
 }
 

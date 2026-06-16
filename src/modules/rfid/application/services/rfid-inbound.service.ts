@@ -2,7 +2,6 @@ import { VALID_EPC_PATTERN } from '@/common/constants/regex'
 import { DATA_SOURCE_DATA_LAKE, DATA_SOURCE_ERP } from '@/databases/constants'
 import { EventGateway } from '@/events/event.gateway'
 import { IUpsertInventoryEventPayload } from '@/modules/inventory/interfaces'
-import { InventoryAuditService } from '@/modules/inventory/services/inventory-audit.service'
 import { InjectQueue } from '@nestjs/bullmq'
 import { CACHE_MANAGER } from '@nestjs/cache-manager'
 import {
@@ -27,8 +26,8 @@ import { readFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { DataSource, FindOptionsWhere, In } from 'typeorm'
 import { FALLBACK_VALUE } from '../../domain/constants'
-import { ExchangeOrderDTO, UpsertEpcInformationDTO, UpsertStockInDTO } from '../../infrastructure/dto/rfid-inbound.dto'
-import { PostReaderDataDTO, SearchCustOrderParamsDTO } from '../../infrastructure/dto/rfid-shared.dto'
+import { ExchangeOrderDTO, UpsertEpcInformationDTO, UpsertStockInDTO } from '../../presentation/dto/rfid-inbound.dto'
+import { PostReaderDataDTO, SearchCustOrderParamsDTO } from '../../presentation/dto/rfid-shared.dto'
 
 import { POST_DATA_INBOUND_QUEUE } from '../../infrastructure/constants/queue'
 import {
@@ -56,12 +55,15 @@ export class RFIDInboundService {
 		@InjectModel(EpcInbound.name) private readonly epcInboundModel: EpcModel,
 		@Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
 		private readonly i18nService: I18nService,
-		private readonly inventoryAuditService: InventoryAuditService,
+		// private readonly inventoryAuditService: InventoryAuditService,
 		private readonly eventEmitter: EventEmitter2,
 		private readonly eventGateway: EventGateway,
 		private readonly logger: PinoLogger
 	) {}
 
+	/**
+	 * @deprecated
+	 */
 	public async postInboundRFIDData(data: PostReaderDataDTO) {
 		const isDeduplicationEnabled = await this.cacheManager.get<boolean>('cached:rfid:enable_deduplicate_inbound_epc')
 		if (!isDeduplicationEnabled)

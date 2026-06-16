@@ -7,6 +7,6 @@ export class GetInternalEpcsExistsHandler implements IQueryHandler<GetInternalEp
 	constructor(private readonly rfidRepository: RFIDRepository) {}
 
 	public async execute({ params }: GetInternalEpcsExistsQuery) {
-		return await this.rfidRepository.getInternalEpcsExist(params)
+		return await this.rfidRepository.getInternalEPCExist(params)
 	}
 }

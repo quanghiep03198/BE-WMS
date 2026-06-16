@@ -1,26 +1,22 @@
-import { CommandHandler, ICommandHandler } from '@nestjs/cqrs'
-
 import { ElectronicProductCode } from '@/modules/rfid/domain/entities/epc.entity'
-import { RFIDRepository } from '@/modules/rfid/infrastructure/repositories/rfid.repository'
+import { IRFIDRepository } from '@/modules/rfid/domain/repositories/rfid.repository.interface'
+import { CommandHandler, ICommandHandler } from '@nestjs/cqrs'
 import { BulkWriteInventoryCommand } from './bulk-write-inventory.command'
 
 @CommandHandler(BulkWriteInventoryCommand)
 export class BulkWriteInventoryCommandHandler implements ICommandHandler<BulkWriteInventoryCommand, void> {
-	constructor(private readonly rfidRepository: RFIDRepository) {}
+	constructor(private readonly rfidRepository: IRFIDRepository) {}
 
 	public async execute({ request }: BulkWriteInventoryCommand) {
-		const { data, sn } = request.payload as {
-			sn: string
-			data: { tagList: Array<{ epc: string }> }
-		}
+		const { data, sn } = request.payload
 
-		const epcs = ElectronicProductCode.createFactory(data.tagList)
+		const epcs = ElectronicProductCode.createFactory(data.tagList!)
 
-		const scannedEpcs = await this.rfidRepository.getEpcInformation(epcs)
+		const scannedEpcs = await this.rfidRepository.getEPCInformation(epcs)
 
 		if (scannedEpcs.length === 0) return
 
-		await this.rfidRepository.bulkWriteInventoryEpcs({
+		await this.rfidRepository.bulkWriteInventoryEPCs({
 			action: request.action,
 			payload: {
 				eProductCodes: scannedEpcs,

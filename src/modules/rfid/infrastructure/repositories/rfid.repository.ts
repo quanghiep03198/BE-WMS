@@ -1,21 +1,27 @@
 import { DATA_SOURCE_DATA_LAKE } from '@/databases/constants'
-import { Injectable } from '@nestjs/common'
+import { CACHE_MANAGER } from '@nestjs/cache-manager'
+import { Inject, Injectable } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
 import { InjectDataSource } from '@nestjs/typeorm'
+import { Cache } from 'cache-manager'
+import { AnyBulkWriteOperation, FilterQuery } from 'mongoose'
 import { Brackets, DataSource } from 'typeorm'
 import { EXCLUDED_ORDERS } from '../../domain/constants'
 import { ElectronicProductCode } from '../../domain/entities/epc.entity'
-import { InventoryEpc, InventoryEpcModel } from '../persistence/mongodb/epc.schema'
-import { RFIDSearchParams, ScannedOrderDetail } from '../types'
+import { IRFIDRepository } from '../../domain/repositories/rfid.repository.interface'
+import { ScannedOrderDetail, UploadAction } from '../../domain/types'
+import { InventoryEpc, InventoryEpcDocument, InventoryEpcModel } from '../persistence/mongodb/epc.schema'
+import { RFIDSearchParams } from '../types'
 
 @Injectable()
-export class RFIDRepository {
+export class RFIDRepository implements IRFIDRepository {
 	constructor(
 		@InjectDataSource(DATA_SOURCE_DATA_LAKE) private readonly dataSourceDL: DataSource,
-		@InjectModel(InventoryEpc.name) private readonly inventoryEpcModel: InventoryEpcModel
+		@InjectModel(InventoryEpc.name) private readonly inventoryEpcModel: InventoryEpcModel,
+		@Inject(CACHE_MANAGER) private readonly cacheManager: Cache
 	) {}
 
-	public async getEpcInformation(epcs: ElectronicProductCode[]) {
+	public async getEPCInformation(epcs: ElectronicProductCode[]): Promise<ElectronicProductCode[]> {
 		const rawData = await this.dataSourceDL
 			.createQueryBuilder()
 			.select([
@@ -54,9 +60,46 @@ export class RFIDRepository {
 					item.mo_no,
 					item.factory_shoes_style,
 					item.color_sn,
-					item.size_numcode
+					item.size_numcode,
+					item.factory_code_produce
 				)
 		)
+	}
+
+	public async getScanningEPCs(params: RFIDSearchParams): Promise<Pagination<Record<'epc' | 'mo_no', string>>> {
+		const filterQuery: FilterQuery<InventoryEpcDocument> = {
+			scannable: true,
+			...(params['mo_no.eq'] && { mo_no: params['mo_no.eq'] }),
+			...(params['inbound_device_sn.eq'] && { inbound_device_sn: params['inbound_device_sn.eq'] }),
+			...(params['outbound_device_sn.eq'] && { outbound_device_sn: params['outbound_device_sn.eq'] })
+		}
+
+		const paginateResult = await this.inventoryEpcModel.paginate(filterQuery, {
+			sort: { last_scanned_at: -1, epc: 1, mo_no: 1 },
+			select: ['epc', 'mo_no'],
+			lean: true,
+			page: params.page,
+			limit: params.limit,
+			options: { readPreference: 'nearest' },
+			customLabels: { docs: 'data' },
+			projection: {
+				_id: 0,
+				epc: 1,
+				mo_no: 1
+			}
+		})
+
+		return {
+			data: paginateResult.data as Record<'epc' | 'mo_no', string>[],
+			page: paginateResult.page,
+			limit: paginateResult.limit,
+			hasNextPage: paginateResult.hasNextPage,
+			hasPrevPage: paginateResult.hasPrevPage,
+			nextPage: paginateResult.nextPage,
+			prevPage: paginateResult.prevPage,
+			totalDocs: paginateResult.totalDocs,
+			totalPages: paginateResult.totalPages
+		}
 	}
 
 	public async getScanningMOs(
@@ -132,11 +175,11 @@ export class RFIDRepository {
 		)
 	}
 
-	public async getInternalEpcsExist(
+	public async getInternalEPCExist(
 		params:
 			| Required<Pick<RFIDSearchParams, 'inbound_device_sn.eq'>>
 			| Required<Pick<RFIDSearchParams, 'outbound_device_sn.eq'>>
-	) {
+	): Promise<boolean> {
 		const existedRecord = await this.inventoryEpcModel
 			.exists({
 				scannable: true,
@@ -149,30 +192,54 @@ export class RFIDRepository {
 		return Boolean(existedRecord)
 	}
 
-	public async bulkWriteInventoryEpcs({
+	public async bulkWriteInventoryEPCs({
 		action,
 		payload
 	}: {
-		action: 'inbound' | 'outbound'
+		action: UploadAction
 		payload: { eProductCodes: ElectronicProductCode[]; deviceSerialNumber: string }
-	}) {
-		const bulkWriteOptions = payload.eProductCodes.map((item) => ({
-			updateOne: {
-				filter: { epc: item.getProductCode(), scannable: true },
-				update: {
-					epc: item.getProductCode(),
-					mo_no: item.getCommandNumber(),
-					factory_shoes_style: item.getShoeStyle(),
-					color_sn: item.getColor(),
-					size_numcode: item.getSize(),
-					last_scanned_at: new Date(),
-					factory_code_produce: item.getFactoryProduce(),
-					...(action === 'inbound' && { inbound_at: null, inbound_device_sn: payload.deviceSerialNumber }),
-					...(action === 'outbound' && { outbound_at: null, outbound_device_sn: payload.deviceSerialNumber })
-				},
-				upsert: true
+	}): Promise<void> {
+		const isDeduplicationEnabled = await this.cacheManager.get<boolean>('cached:rfid:enable_deduplicate_inbound_epc')
+		const bulkWriteOptions: AnyBulkWriteOperation<InventoryEpcDocument>[] = payload.eProductCodes.map((item) => {
+			const operation: AnyBulkWriteOperation<InventoryEpcDocument> = {
+				updateOne: {
+					filter: { epc: item.getProductCode(), scannable: true },
+					update: {
+						epc: item.getProductCode(),
+						mo_no: item.getCommandNumber(),
+						factory_shoes_style: item.getShoeStyle(),
+						color_sn: item.getColor(),
+						size_numcode: item.getSize(),
+						last_scanned_at: new Date(),
+						factory_code_produce: item.getFactoryProduce()
+					},
+					upsert: true
+				}
 			}
-		}))
+
+			if (action === 'inbound') {
+				operation.updateOne.update = {
+					...operation.updateOne.update,
+					inbound_device_sn: payload.deviceSerialNumber
+				}
+				if (!isDeduplicationEnabled) {
+					operation.updateOne.overwriteImmutable = true
+					operation.updateOne.update = {
+						...operation.updateOne.filter,
+						inbound_at: null,
+						deleted: false
+					}
+				}
+			}
+
+			if (action === 'outbound')
+				operation.updateOne.update = {
+					...operation.updateOne.update,
+					outbound_device_sn: payload.deviceSerialNumber
+				}
+
+			return operation
+		})
 
 		await this.inventoryEpcModel.bulkWrite(bulkWriteOptions, {
 			writeConcern: { w: 'majority' },

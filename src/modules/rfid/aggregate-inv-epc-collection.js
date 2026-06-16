@@ -33,7 +33,8 @@ db.getCollection('epcs_inbound').aggregate([
 			inbound_device_sn: '$device_sn',
 			inbound_at: '$stored_at',
 			outbound_device_sn: '$epcs_outbound.device_sn',
-			outbound_at: '$epcs_outbound.stored_at'
+			outbound_at: '$epcs_outbound.stored_at',
+			updated_at: '$epcs_outbound.modified_at'
 		}
 	},
 	{

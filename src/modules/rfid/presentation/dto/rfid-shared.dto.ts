@@ -10,17 +10,19 @@ export const readerPostDataValidator = z.object({
 		id: z.string(),
 		timestamp: z.string().optional(),
 		temperature: z.string().optional(),
-		tagList: z.array(
-			z.object({
-				ant: z.number(),
-				epc: z.string().nonempty(),
-				firstAnt: z.number(),
-				firstTime: z.number(),
-				lastTime: z.number(),
-				direction: z.string().optional(),
-				rssi: z.string().optional()
-			})
-		)
+		tagList: z
+			.array(
+				z.object({
+					ant: z.number(),
+					epc: z.string().nonempty(),
+					firstAnt: z.number(),
+					firstTime: z.number(),
+					lastTime: z.number(),
+					direction: z.string().optional(),
+					rssi: z.string().optional()
+				})
+			)
+			.nonempty()
 	})
 })
 
@@ -38,15 +40,17 @@ export const uploadDataValidator = z.object({
 
 export const restoreArchivedEpcValidator = z
 	.array(
-		z.object({
-			epc: z.string().nonempty(),
-			factory_shoes_style: z.string().nonempty(),
-			color_sn: z.string().nonempty(),
-			mo_no: z.string().nonempty(),
-			size_numcode: z.string().nonempty(),
-			station_no: z.string().optional(),
-			factory_code_produce: z.string().optional()
-		})
+		z
+			.object({
+				epc: z.string().nonempty(),
+				factory_shoes_style: z.string().nonempty(),
+				color_sn: z.string().nonempty(),
+				mo_no: z.string().nonempty(),
+				size_numcode: z.string().nonempty(),
+				station_no: z.string().optional(),
+				factory_code_produce: z.string().optional()
+			})
+			.required()
 	)
 	.nonempty()
 

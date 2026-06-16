@@ -5,7 +5,7 @@ import { POST_DATA_OUTBOUND_QUEUE } from '../constants/queue'
 
 import { CommandBus } from '@nestjs/cqrs'
 import { BulkWriteInventoryCommand } from '../../application/commands/bulk-write-inventory/bulk-write-inventory.command'
-import { PostReaderDataDTO } from '../dto/rfid-shared.dto'
+import { PostReaderDataDTO } from '../../presentation/dto/rfid-shared.dto'
 
 @Processor(POST_DATA_OUTBOUND_QUEUE, { concurrency: 2 })
 export class RFIDOutboundConsumer extends WorkerHost {

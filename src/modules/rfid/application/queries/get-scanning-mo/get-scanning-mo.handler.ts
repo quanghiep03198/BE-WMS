@@ -1,11 +1,10 @@
-import { RFIDRepository } from '@/modules/rfid/infrastructure/repositories/rfid.repository'
-import { ScannedOrderDetail } from '@/modules/rfid/infrastructure/types'
+import { IRFIDRepository } from '@/modules/rfid/domain/repositories/rfid.repository.interface'
 import { IQueryHandler, QueryHandler } from '@nestjs/cqrs'
 import { GetScanningMOsQuery } from './get-scanning-mo.query'
 
 @QueryHandler(GetScanningMOsQuery)
-export class GetScanningMOsHandler implements IQueryHandler<GetScanningMOsQuery, ScannedOrderDetail[]> {
-	constructor(private readonly rfidRepository: RFIDRepository) {}
+export class GetScanningMOsHandler implements IQueryHandler<GetScanningMOsQuery> {
+	constructor(private readonly rfidRepository: IRFIDRepository) {}
 
 	public async execute({ params }: GetScanningMOsQuery) {
 		return await this.rfidRepository.getScanningMOs(params)

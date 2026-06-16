@@ -9,10 +9,6 @@ export type EpcInformation = Pick<RFIDMatchCustomerEntity, 'epc' | 'mo_no' | 'si
 
 export type StoredRFIDReaderItem = EpcInformation & Record<'station_no' | 'factory_code_produce', string>
 
-export type StoredRFIDReaderData = {
-	epcs: Array<StoredRFIDReaderItem>
-}
-
 export type RFIDSearchParams = {
 	page: number
 	limit: number
@@ -25,33 +21,6 @@ export type RFIDSearchParams = {
 	'size_numcode.eq'?: string
 }
 
-export type SearchCustOrderParams = {
-	'mo_no.eq': string
-	'mat_code.eq': string
-	'size_numcode.eq'?: string
-	'factory_code.eq': string
-	q: string
-}
-
-export type UpsertRFIDCustomerData = {
-	commandNumber: string
-	items: Partial<RFIDMatchCustomerEntity>[]
-}
-
-export type CustomerOrderSizeDetail = Pick<
-	RFIDMatchCustomerEntity,
-	'mo_no' | 'mat_code' | 'factory_shoes_style' | 'size_numcode'
-> & {
-	count: number
-}
-
 export type UploadActions = 'inbound' | 'outbound'
-
-export type ScannedOrderDetail = {
-	mo_no
-	color_sn
-	factory_shoes_style
-	sizes: Array<{ size_numcode: string; count: number }>
-}
 
 export type ExtendedRFIDReaderEntity = RFIDReaderEntity & { last_used_time: string | null }

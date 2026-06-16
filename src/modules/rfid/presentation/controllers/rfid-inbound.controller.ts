@@ -10,7 +10,7 @@ import {
 	UpsertEpcInformationDTO,
 	upsertEpcInformationSchema,
 	UpsertStockInDTO
-} from '@/modules/rfid/infrastructure/dto/rfid-inbound.dto'
+} from '@/modules/rfid/presentation/dto/rfid-inbound.dto'
 import {
 	deleteEpcValidator,
 	DeleteScannedEpcDTO,
@@ -20,7 +20,7 @@ import {
 	readerPostDataValidator,
 	searchCustomerValidator,
 	SearchCustOrderParamsDTO
-} from '@/modules/rfid/infrastructure/dto/rfid-shared.dto'
+} from '@/modules/rfid/presentation/dto/rfid-shared.dto'
 import { UserRole } from '@/modules/user/constants'
 import { RedisService } from '@/redis/redis.service'
 import { InjectQueue } from '@nestjs/bullmq'
@@ -56,9 +56,10 @@ import { GetScanningEpcsQuery } from '../../application/queries/get-scanning-epc
 import { GetScanningMOsQuery } from '../../application/queries/get-scanning-mo/get-scanning-mo.query'
 import { RFIDInboundService } from '../../application/services/rfid-inbound.service'
 import { RFIDSharedService } from '../../application/services/rfid-shared.service'
+import { ScannedOrderDetail } from '../../domain/types'
 import { POST_DATA_INBOUND_QUEUE } from '../../infrastructure/constants/queue'
 import { EpcInbound, EpcModel, InventoryEpcDocument } from '../../infrastructure/persistence/mongodb/epc.schema'
-import { RFIDSearchParams, ScannedOrderDetail } from '../../infrastructure/types'
+import { RFIDSearchParams } from '../../infrastructure/types'
 
 @Controller('rfid/inbound')
 export class RFIDInboundController {
@@ -267,11 +268,12 @@ export class RFIDInboundController {
 		message: 'common.created'
 	})
 	async postInboundData(@Body(new ZodValidationPipe(readerPostDataValidator)) payload: PostReaderDataDTO) {
-		await this.eventEmitter.emitAsync('rfid.reader.post_data', {
+		this.eventEmitter.emitAsync('rfid.reader.post_data', {
 			deviceSeriesNumber: payload.sn,
 			lastUsageTime: format(new Date(), 'yyyy-MM-dd HH:mm:ss.SSS')
 		})
-		return await this.rfidInboundService.postInboundRFIDData(payload)
+		this.eventEmitter.emitAsync('rfid.inbound.check', payload)
+		return await this.postInboundDataQueue.add('RFID_INBOUND', payload, { lifo: true })
 	}
 
 	@RouteHandler({

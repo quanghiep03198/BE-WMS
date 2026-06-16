@@ -12,8 +12,8 @@ import { readFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { DataSource } from 'typeorm'
 
-import { EXCLUDED_EPC_PREFIX, EXCLUDED_ORDERS, FALLBACK_VALUE } from '../../domain/constants'
-import { FindEpcBySizeDTO, PostReaderDataDTO, RestoreArchivedEpcsDTO } from '../../infrastructure/dto/rfid-shared.dto'
+import { FALLBACK_VALUE } from '../../domain/constants'
+import { ScannedOrderDetail } from '../../domain/types'
 import {
 	EpcDocument,
 	EpcInbound,
@@ -24,8 +24,8 @@ import {
 	InventoryEpcDocument,
 	InventoryEpcModel
 } from '../../infrastructure/persistence/mongodb/epc.schema'
-import { RFIDSearchParams, ScannedOrderDetail, StoredRFIDReaderItem } from '../../infrastructure/types'
-import { RFIDDeviceService } from './rfid-device.service'
+import { RFIDSearchParams } from '../../infrastructure/types'
+import { FindEpcBySizeDTO, RestoreArchivedEpcsDTO } from '../../presentation/dto/rfid-shared.dto'
 
 @Injectable()
 export class RFIDSharedService {
@@ -43,8 +43,8 @@ export class RFIDSharedService {
 		@InjectDataSource(DATA_SOURCE_DATA_LAKE) private readonly dataSourceDL: DataSource,
 		@InjectModel(EpcInbound.name) private readonly epcInboundModel: EpcModel,
 		@InjectModel(EpcOutbound.name) private readonly epcOutboundModel: EpcModel,
-		@InjectModel(InventoryEpc.name) private readonly inventoryEpcModel: InventoryEpcModel,
-		private readonly rfidDeviceService: RFIDDeviceService
+		@InjectModel(InventoryEpc.name) private readonly inventoryEpcModel: InventoryEpcModel
+		// private readonly rfidDeviceService: RFIDDeviceService
 	) {}
 
 	public async cleanupQueue($queue: Queue): Promise<unknown[]> {
@@ -237,47 +237,47 @@ export class RFIDSharedService {
 		return changeStream
 	}
 
-	public async bulkWriteRFIDData($model: EpcModel, station: 'WH101' | 'WH103', { data, sn }: PostReaderDataDTO) {
-		// * Get the RFID reader information from the database
-		const deviceInformation = await this.rfidDeviceService.findOneBySeriesNumber(sn, station)
+	// public async bulkWriteRFIDData($model: EpcModel, station: 'WH101' | 'WH103', { data, sn }: PostReaderDataDTO) {
+	// 	// * Get the RFID reader information from the database
+	// 	const deviceInformation = await this.rfidDeviceService.findOneBySeriesNumber(sn, station)
 
-		const stationNO = deviceInformation?.station_no ?? FALLBACK_VALUE
-		const epcList = data.tagList
-			.map((item) => item.epc.trim().toUpperCase())
-			.filter((item) => !item.startsWith(EXCLUDED_EPC_PREFIX))
-			.join(',')
+	// 	const stationNO = deviceInformation?.station_no ?? FALLBACK_VALUE
+	// 	const epcList = data.tagList
+	// 		.map((item) => item.epc.trim().toUpperCase())
+	// 		.filter((item) => !item.startsWith(EXCLUDED_EPC_PREFIX))
+	// 		.join(',')
 
-		const excludedOrderList = EXCLUDED_ORDERS.join(',')
-		/**
-		 * * Get the EPCs information from the database with received data
-		 * * Do not receive EPCs that start with '303429' (Dansko's EPCs)
-		 */
-		const isDeduplicationEnabled = await this.cacheManager.get<boolean>('cached:rfid:enable_deduplicate_inbound_epc')
+	// 	const excludedOrderList = EXCLUDED_ORDERS.join(',')
+	// 	/**
+	// 	 * * Get the EPCs information from the database with received data
+	// 	 * * Do not receive EPCs that start with '303429' (Dansko's EPCs)
+	// 	 */
+	// 	const isDeduplicationEnabled = await this.cacheManager.get<boolean>('cached:rfid:enable_deduplicate_inbound_epc')
 
-		const epcInfoQuery =
-			isDeduplicationEnabled && station === 'WH101' ? this.deduplicatedEpcInformationQuery : this.epcInformationQuery
+	// 	const epcInfoQuery =
+	// 		isDeduplicationEnabled && station === 'WH101' ? this.deduplicatedEpcInformationQuery : this.epcInformationQuery
 
-		const scannedEpcs = await this.dataSourceDL.query<StoredRFIDReaderItem[]>(epcInfoQuery, [
-			epcList,
-			excludedOrderList
-		])
+	// 	const scannedEpcs = await this.dataSourceDL.query<StoredRFIDReaderItem[]>(epcInfoQuery, [
+	// 		epcList,
+	// 		excludedOrderList
+	// 	])
 
-		if (scannedEpcs.length === 0) return
+	// 	if (scannedEpcs.length === 0) return
 
-		const bulkWriteOptions: AnyBulkWriteOperation<EpcSchema>[] = scannedEpcs.map((item) => ({
-			updateOne: {
-				filter: { epc: item.epc, scannable: true },
-				update: { ...item, device_sn: sn, station_no: stationNO, record_time: new Date(), deleted: false },
-				upsert: true
-			}
-		}))
-		return await $model.bulkWrite(bulkWriteOptions, {
-			writeConcern: { w: 'majority' },
-			ordered: false,
-			retryWrites: true,
-			timestamps: true
-		})
-	}
+	// 	const bulkWriteOptions: AnyBulkWriteOperation<EpcSchema>[] = scannedEpcs.map((item) => ({
+	// 		updateOne: {
+	// 			filter: { epc: item.epc, scannable: true },
+	// 			update: { ...item, device_sn: sn, station_no: stationNO, record_time: new Date(), deleted: false },
+	// 			upsert: true
+	// 		}
+	// 	}))
+	// 	return await $model.bulkWrite(bulkWriteOptions, {
+	// 		writeConcern: { w: 'majority' },
+	// 		ordered: false,
+	// 		retryWrites: true,
+	// 		timestamps: true
+	// 	})
+	// }
 
 	public async deleteScannedOrder(
 		$model: EpcModel,

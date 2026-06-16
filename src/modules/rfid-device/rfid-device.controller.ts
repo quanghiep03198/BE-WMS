@@ -3,14 +3,14 @@ import { HttpMethod, RequireAuthorized, RouteHandler, User } from '@/common/deco
 import { ZodValidationPipe } from '@/common/pipes'
 import { UserRole } from '@/modules/user/constants'
 import { Body, Controller, Headers, HttpStatus, Param } from '@nestjs/common'
-import { RFIDDeviceService } from '../../application/services/rfid-device.service'
 import {
 	CreateRFIDDeviceDTO,
 	createRFIDDeviceDTO,
 	DeleteRFIDDeviceDTO,
 	deleteRFIDDeviceDTO,
 	updateRFIDDeviceDTO
-} from '../../infrastructure/dto/rfid-device.dto'
+} from '../rfid/presentation/dto/rfid-device.dto'
+import { RFIDDeviceService } from './rfid-device.service'
 
 @Controller('rfid/devices')
 export class RFIDDeviceController {
