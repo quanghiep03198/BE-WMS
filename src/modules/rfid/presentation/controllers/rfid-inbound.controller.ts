@@ -40,6 +40,7 @@ import {
 	Res,
 	UseFilters
 } from '@nestjs/common'
+import { CommandBus, QueryBus } from '@nestjs/cqrs'
 import { EventEmitter2 } from '@nestjs/event-emitter'
 import { InjectModel } from '@nestjs/mongoose'
 import { Queue } from 'bullmq'
@@ -50,6 +51,9 @@ import { isEmpty, isNil, pick, pickBy } from 'lodash'
 import { PaginateResult } from 'mongoose'
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
 import z from 'zod'
+import { GetInternalEpcsExistsQuery } from '../../application/queries/get-internal-epcs-exists/get-internal-epcs-exists.query'
+import { GetScanningEpcsQuery } from '../../application/queries/get-scanning-epcs/get-scanning-epcs.query'
+import { GetScanningMOsQuery } from '../../application/queries/get-scanning-mo/get-scanning-mo.query'
 import { RFIDInboundService } from '../../application/services/rfid-inbound.service'
 import { RFIDSharedService } from '../../application/services/rfid-shared.service'
 import { POST_DATA_INBOUND_QUEUE } from '../../infrastructure/constants/queue'
@@ -67,14 +71,15 @@ export class RFIDInboundController {
 		private readonly redisService: RedisService,
 		private readonly eventEmitter: EventEmitter2,
 		private readonly rfidSharedService: RFIDSharedService,
-		private readonly rfidInboundService: RFIDInboundService
+		private readonly rfidInboundService: RFIDInboundService,
+		private readonly queryBus: QueryBus,
+		private readonly commandBus: CommandBus
 	) {}
 
 	@Get('sse/:device_sn')
 	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
 	@UseFilters(AllExceptionsFilter)
 	async streamInboundRFIDData(
-		@Headers(CommonRequestHeader.FACTORY_CODE) factory: string,
 		@Param('device_sn') device_sn: string,
 		@Res()
 		reply: FastifyReply & {
@@ -86,12 +91,13 @@ export class RFIDInboundController {
 		}
 	) {
 		const handleChange = async () => {
-			const data = await this.rfidSharedService.fetchLatestData({
-				page: 1,
-				limit: 50,
-				'inbound_device_sn.eq': device_sn
-			})
-			if (data) reply.sse(data)
+			const [epcs, orders, has_invalid] = await Promise.all([
+				this.queryBus.execute(new GetScanningEpcsQuery({ page: 1, limit: 50, 'inbound_device_sn.eq': device_sn })),
+				this.queryBus.execute(new GetScanningMOsQuery({ 'inbound_device_sn.eq': device_sn })),
+				this.queryBus.execute(new GetInternalEpcsExistsQuery({ 'inbound_device_sn.eq': device_sn }))
+			])
+
+			reply.sse({ epcs, orders, has_invalid })
 		}
 
 		await handleChange()
@@ -100,7 +106,7 @@ export class RFIDInboundController {
 		// currentWatchers = await this.cacheManager.get<number>('cached:rfid:inbound_watchers')
 		// this.eventGateway.server.emit('rfid_inbound_watcher', currentWatchers)
 		const changeStream = await this.rfidSharedService.captureDataChange(
-			{ inbound_device_sn: device_sn },
+			{ 'fullDocument.inbound_device_sn': device_sn },
 			handleChange
 		)
 

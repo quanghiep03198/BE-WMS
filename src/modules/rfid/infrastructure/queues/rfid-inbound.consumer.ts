@@ -24,7 +24,6 @@ export class RFIDInboundConsumer extends WorkerHost {
 	 */
 	public async process(job: Job<PostReaderDataDTO, void, string>): Promise<void> {
 		return await this.commandBus.execute(new BulkWriteInventoryCommand({ action: 'inbound', payload: job.data }))
-		// return await this.rfidSharedService.bulkWriteRFIDData(this.epcModel, 'WH101', { data, sn })
 	}
 
 	@OnWorkerEvent('completed')

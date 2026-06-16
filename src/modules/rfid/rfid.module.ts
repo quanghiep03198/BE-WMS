@@ -12,6 +12,7 @@ import { PinoLogger } from 'nestjs-pino'
 import { InventoryModule } from '../inventory/inventory.module'
 import { TenancyModule } from '../tenancy/tenancy.module'
 import { ThirdPartyApiModule } from '../third-party-api/third-party-api.module'
+import { RFIDCommandHandlers } from './application/commands'
 import { RFIDQueryHandlers } from './application/queries'
 import { RFIDDeviceService } from './application/services/rfid-device.service'
 import { RFIDInboundService } from './application/services/rfid-inbound.service'
@@ -40,6 +41,7 @@ import {
 import { RFIDImportDataConsumer } from './infrastructure/queues/rfid-import-data.consumer'
 import { RFIDInboundConsumer } from './infrastructure/queues/rfid-inbound.consumer'
 import { RFIDOutboundConsumer } from './infrastructure/queues/rfid-outbound.consumer'
+import { RFIDRepository } from './infrastructure/repositories/rfid.repository'
 import { FPInventoryEntitySubscriber } from './infrastructure/subscribers/inventory-rfid.entity.subscriber'
 import { RFIDCustomerEntitySubscriber } from './infrastructure/subscribers/rfid-customer.entity.subscriber'
 import { RFIDDeviceController } from './presentation/controllers/rfid-device.controller'
@@ -64,11 +66,15 @@ import { RFIDSharedController } from './presentation/controllers/rfid-shared.con
 				name: InventoryEpc.name,
 				collection: INVENTORY_EPC_COLLECTION,
 				useFactory: () => {
-					InventoryEpcSchema.index({ record_time: 1 }, { expires: '365d' })
+					InventoryEpcSchema.index({ created_at: 1 }, { expires: '365d' })
 					InventoryEpcSchema.index({ mo_no: 1, po: 1, size_numcode: 1, factory_shoes_style: 1, color_sn: 1 })
 					InventoryEpcSchema.index({ inbound_device_sn: 1 })
 					InventoryEpcSchema.index({ outbound_device_sn: 1 })
 					InventoryEpcSchema.plugin(MongoosePaginatePlugin)
+					InventoryEpcSchema.plugin(MongooseDeletePlugin, {
+						overrideMethods: true,
+						indexFields: ['deleted']
+					})
 
 					return InventoryEpcSchema
 				}
@@ -111,7 +117,9 @@ import { RFIDSharedController } from './presentation/controllers/rfid-shared.con
 		RFIDDeviceService,
 		RFIDInboundService,
 		RFIDOutboundService,
+		RFIDRepository,
 		...RFIDQueryHandlers,
+		...RFIDCommandHandlers,
 		RFIDInboundConsumer,
 		RFIDOutboundConsumer,
 		RFIDImportDataConsumer,

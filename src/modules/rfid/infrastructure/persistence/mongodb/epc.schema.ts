@@ -86,8 +86,8 @@ export class EpcOutbound extends BaseAbstractEpcSchema {}
 @Schema({
 	collection: INVENTORY_EPC_COLLECTION,
 	timestamps: {
-		createdAt: 'record_time',
-		updatedAt: 'modified_at'
+		createdAt: 'created_at',
+		updatedAt: 'updated_at'
 	},
 	versionKey: false,
 	suppressReservedKeysWarning: false,

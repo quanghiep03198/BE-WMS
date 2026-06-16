@@ -199,7 +199,10 @@ export class RFIDSharedService {
 	 * @returns {mongodb.ChangeStream<ResultType, ChangeType>}
 	 */
 	public captureDataChange(
-		filterQuery: FilterQuery<InventoryEpcDocument>,
+		filterQuery:
+			| { 'fullDocument.inbound_device_sn': string }
+			| { 'fullDocument.outbound_device_sn': string }
+			| Record<string, never>,
 		onSnapshot: (change?: any) => unknown
 	): ReturnType<InventoryEpcModel['watch']> {
 		const changeStream = this.inventoryEpcModel.watch(
@@ -209,10 +212,7 @@ export class RFIDSharedService {
 						operationType: {
 							$in: ['insert', 'update', 'delete']
 						},
-						...(filterQuery.inbound_device_sn,
-						{ 'fullDocument.inbound_device_sn': filterQuery.inbound_device_sn }),
-						...(filterQuery.outbound_device_sn,
-						{ 'fullDocument.outbound_device_sn': filterQuery.outbound_device_sn })
+						...filterQuery
 					}
 				}
 			],
@@ -222,7 +222,17 @@ export class RFIDSharedService {
 			}
 		)
 
-		changeStream.on('change', throttle(onSnapshot, 500, { leading: true, trailing: true }))
+		changeStream.on(
+			'change',
+			throttle(
+				(change) => {
+					console.log('change :>>>', change)
+					onSnapshot(change)
+				},
+				500,
+				{ leading: true, trailing: true }
+			)
+		)
 
 		return changeStream
 	}
