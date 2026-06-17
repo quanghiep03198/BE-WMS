@@ -1,8 +1,8 @@
 import { DATA_SOURCE_DATA_LAKE } from '@/databases/constants'
 import { InjectDataSource } from '@nestjs/typeorm'
 import { DataSource, EntitySubscriberInterface, EventSubscriber, InsertEvent } from 'typeorm'
-import { InventoryActions } from '../../domain/constants'
-import { BaseRFIDInventoryEntity } from '../persistence/mssql/rifd-inventory.entity'
+import { InventoryActions } from '../../../../domain/constants'
+import { BaseRFIDInventoryEntity } from '../rifd-inventory.entity'
 
 @EventSubscriber()
 export class FPInventoryEntitySubscriber implements EntitySubscriberInterface<BaseRFIDInventoryEntity> {

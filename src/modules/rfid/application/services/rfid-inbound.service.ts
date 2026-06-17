@@ -36,7 +36,7 @@ import {
 	EpcInboundSchema,
 	EpcModel
 } from '../../infrastructure/persistence/mongodb/epc.schema'
-import { RFIDMatchCustomerEntity } from '../../infrastructure/persistence/mssql/rfid-customer-match.entity'
+import { RFIDMatchEntity } from '../../infrastructure/persistence/mssql/rfid-match.entity'
 import { RFIDInventoryBackupEntity } from '../../infrastructure/persistence/mssql/rifd-inventory.entity'
 import { RFIDSearchParams } from '../../infrastructure/types'
 import { generateStation } from '../../infrastructure/utils'
@@ -168,10 +168,10 @@ export class RFIDInboundService {
 			await queryRunner.startTransaction()
 
 			for (const epcBatch of chunk(epcToExchange, 2000)) {
-				const criteria: FindOptionsWhere<RFIDMatchCustomerEntity> = {
+				const criteria: FindOptionsWhere<RFIDMatchEntity> = {
 					epc: In(epcBatch)
 				}
-				await queryRunner.manager.update(RFIDMatchCustomerEntity, criteria, {
+				await queryRunner.manager.update(RFIDMatchEntity, criteria, {
 					mo_no: payload.mo_no_actual,
 					remark: `[${currentTimestamp}] Info: Exchanged from M.O "${payload.mo_no}"`
 				})
@@ -225,7 +225,7 @@ export class RFIDInboundService {
 
 	public async bulkUpsertRFIDRecords(
 		payload: Array<
-			Partial<RFIDMatchCustomerEntity> & {
+			Partial<RFIDMatchEntity> & {
 				size_sumqty?: number
 			}
 		>

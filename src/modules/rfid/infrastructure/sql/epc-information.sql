@@ -8,7 +8,6 @@ SELECT DISTINCT a.EPC_Code AS epc,
    b.factory_code_produce
 FROM (SELECT value AS EPC_Code FROM OPENJSON(@0)) AS a
 LEFT JOIN DV_DATA_LAKE.dbo.dv_rfidmatchmst_cust b ON a.EPC_Code = b.EPC_Code
--- LEFT JOIN wuerp_vnrd.dbo.ta_productmst c ON b.mat_code = c.mat_code
 WHERE 
    a.EPC_Code NOT LIKE '303429%'
    AND LEN(a.EPC_Code) = 24

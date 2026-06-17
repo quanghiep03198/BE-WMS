@@ -3,7 +3,7 @@ import { format } from 'date-fns'
 import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm'
 
 @Entity('dv_rfidreader', { database: DATABASE_DATA_LAKE, schema: DATABASE_SCHEMA, synchronize: true })
-export class RFIDReaderEntity {
+export class RFIDDeviceEntity {
 	@PrimaryGeneratedColumn({ name: 'id', type: 'int' })
 	id: number
 

@@ -45,7 +45,6 @@ import { EventEmitter2 } from '@nestjs/event-emitter'
 import { InjectModel } from '@nestjs/mongoose'
 import { Queue } from 'bullmq'
 import { Cache } from 'cache-manager'
-import { format } from 'date-fns'
 import { FastifyReply } from 'fastify'
 import { isEmpty, isNil, pick, pickBy } from 'lodash'
 import { PaginateResult } from 'mongoose'
@@ -158,12 +157,14 @@ export class RFIDInboundController {
 		@Query('_page', new DefaultValuePipe(1), ParseIntPipe) page: number,
 		@Query('mo_no.eq', new DefaultValuePipe('')) selectedOrder: string
 	) {
-		return await this.rfidSharedService.getIncomingEpc({
-			page,
-			limit: 50,
-			'mo_no.eq': selectedOrder,
-			'inbound_device_sn.eq': deviceSerialNumber
-		})
+		return await this.queryBus.execute(
+			new GetScanningEpcsQuery({
+				page: 1,
+				limit: 50,
+				'mo_no.eq': selectedOrder,
+				'inbound_device_sn.eq': deviceSerialNumber
+			})
+		)
 	}
 
 	@RouteHandler({
@@ -172,7 +173,7 @@ export class RFIDInboundController {
 	})
 	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
 	async getOrderDetails(@Param('device_sn') device_sn: string) {
-		return this.rfidSharedService.getOrderDetail({ 'inbound_device_sn.eq': device_sn })
+		return await this.queryBus.execute(new GetScanningMOsQuery({ 'inbound_device_sn.eq': device_sn }))
 	}
 
 	@RouteHandler({
@@ -268,10 +269,10 @@ export class RFIDInboundController {
 		message: 'common.created'
 	})
 	async postInboundData(@Body(new ZodValidationPipe(readerPostDataValidator)) payload: PostReaderDataDTO) {
-		this.eventEmitter.emitAsync('rfid.reader.post_data', {
-			deviceSeriesNumber: payload.sn,
-			lastUsageTime: format(new Date(), 'yyyy-MM-dd HH:mm:ss.SSS')
-		})
+		// this.eventEmitter.emitAsync('rfid.reader.post_data', {
+		// 	deviceSeriesNumber: payload.sn,
+		// 	lastUsageTime: format(new Date(), 'yyyy-MM-dd HH:mm:ss.SSS')
+		// })
 		this.eventEmitter.emitAsync('rfid.inbound.check', payload)
 		return await this.postInboundDataQueue.add('RFID_INBOUND', payload, { lifo: true })
 	}

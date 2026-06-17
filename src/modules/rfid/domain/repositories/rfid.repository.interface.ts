@@ -22,3 +22,5 @@ export interface IRFIDRepository {
 		}
 	}): Promise<void>
 }
+
+export const RFID_REPOSITORY = 'IRFIDRepository'

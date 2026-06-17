@@ -8,9 +8,9 @@ import Redis from 'ioredis'
 import { isNil } from 'lodash'
 import { PinoLogger } from 'nestjs-pino'
 import { CachedResult, DataSource, In, Like } from 'typeorm'
-import { RFIDReaderEntity } from '../rfid/infrastructure/persistence/mssql/rfid-reader.entity'
-import { ExtendedRFIDReaderEntity } from '../rfid/infrastructure/types'
 import { CreateRFIDDeviceDTO, DeleteRFIDDeviceDTO, UpdateRFIDDeviceDTO } from '../rfid/presentation/dto/rfid-device.dto'
+import { RFIDDeviceEntity } from './entities/rfid-device.entity'
+import { ExtendedRFIDReaderEntity } from './types'
 
 @Injectable()
 export class RFIDDeviceService {
@@ -40,14 +40,14 @@ export class RFIDDeviceService {
 	}
 
 	public async createDevice(
-		payload: CreateRFIDDeviceDTO & Pick<RFIDReaderEntity, 'user_code_created' | 'factory_code'>
+		payload: CreateRFIDDeviceDTO & Pick<RFIDDeviceEntity, 'user_code_created' | 'factory_code'>
 	) {
 		// const newDevice = this.dataSourceDL.getRepository(RFIDReaderEntity).create(payload)
-		return await this.dataSourceDL.getRepository(RFIDReaderEntity).insert(payload)
+		return await this.dataSourceDL.getRepository(RFIDDeviceEntity).insert(payload)
 	}
 
 	public async updateDevice(deviceSeriesNumber: string, payload: UpdateRFIDDeviceDTO & { user_code_updated: string }) {
-		return await this.dataSourceDL.getRepository(RFIDReaderEntity).update({ device_sn: deviceSeriesNumber }, payload)
+		return await this.dataSourceDL.getRepository(RFIDDeviceEntity).update({ device_sn: deviceSeriesNumber }, payload)
 	}
 
 	public async findAllWarehouseDevices(factoryCode: string) {
@@ -61,7 +61,7 @@ export class RFIDDeviceService {
 			.disableEscaping()
 
 		return await this.dataSourceDL
-			.getRepository(RFIDReaderEntity)
+			.getRepository(RFIDDeviceEntity)
 			.createQueryBuilder('a')
 			.addCommonTableExpression(activeReadersQuery.getQuery(), 'active_readers_cte')
 			.select('a.device_sn', 'device_sn')
@@ -88,12 +88,12 @@ export class RFIDDeviceService {
 			.addGroupBy('b.last_used_time')
 			.orderBy('a.device_name', 'ASC')
 			.disableEscaping()
-			.getRawMany<RFIDReaderEntity>()
+			.getRawMany<RFIDDeviceEntity>()
 	}
 
 	public async findOneBySeriesNumber(deviceSeriesNumber: string, station?: string) {
 		return await this.dataSourceDL
-			.getRepository(RFIDReaderEntity)
+			.getRepository(RFIDDeviceEntity)
 			.createQueryBuilder()
 			.distinct()
 			.select('device_sn', 'device_sn')
@@ -110,7 +110,7 @@ export class RFIDDeviceService {
 			.addGroupBy('ip_address')
 			.addGroupBy('ip_port')
 			.cache(`${this.CACHE_KEY_PREFIX}:${deviceSeriesNumber}`, this.CACHE_TTL_MILLISECONDS)
-			.getRawOne<RFIDReaderEntity>()
+			.getRawOne<RFIDDeviceEntity>()
 	}
 
 	/**
@@ -150,6 +150,6 @@ export class RFIDDeviceService {
 	}
 
 	public async deleteDevicesBySeriesNumbers(deviceSeriesNumbers: DeleteRFIDDeviceDTO) {
-		return await this.dataSourceDL.getRepository(RFIDReaderEntity).delete({ device_sn: In(deviceSeriesNumbers) })
+		return await this.dataSourceDL.getRepository(RFIDDeviceEntity).delete({ device_sn: In(deviceSeriesNumbers) })
 	}
 }

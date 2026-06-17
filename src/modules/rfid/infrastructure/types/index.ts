@@ -1,7 +1,6 @@
-import { RFIDMatchCustomerEntity } from '../persistence/mssql/rfid-customer-match.entity'
-import { RFIDReaderEntity } from '../persistence/mssql/rfid-reader.entity'
+import { RFIDMatchEntity } from '../persistence/mssql/rfid-match.entity'
 
-export type EpcInformation = Pick<RFIDMatchCustomerEntity, 'epc' | 'mo_no' | 'size_numcode' | 'factory_shoes_style'> & {
+export type EpcInformation = Pick<RFIDMatchEntity, 'epc' | 'mo_no' | 'size_numcode' | 'factory_shoes_style'> & {
 	color_sn: string
 	scanned?: boolean
 	stored_at?: null | Date | string
@@ -22,5 +21,3 @@ export type RFIDSearchParams = {
 }
 
 export type UploadActions = 'inbound' | 'outbound'
-
-export type ExtendedRFIDReaderEntity = RFIDReaderEntity & { last_used_time: string | null }

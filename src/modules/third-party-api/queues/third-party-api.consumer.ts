@@ -13,7 +13,7 @@ import { PinoLogger } from 'nestjs-pino'
 import { OrderService } from '../../order/order.service'
 import { RFIDInboundService } from '../../rfid/application/services/rfid-inbound.service'
 // import { RFIDMatchCustomerEntity } from '../../rfid/infrastructure/entities/rfid-customer-match.entity'
-import { RFIDMatchCustomerEntity } from '@/modules/rfid/infrastructure/persistence/mssql/rfid-customer-match.entity'
+import { RFIDMatchEntity } from '@/modules/rfid/infrastructure/persistence/mssql/rfid-match.entity'
 import { THIRD_PARTY_API_SYNC } from '../constants'
 import { SyncProcessState } from '../interfaces/third-party-api.interface'
 import { DeckersOAuth2Strategy } from '../strategies/deckers-oauth2.strategy'
@@ -169,7 +169,7 @@ export class ThirdPartyApiConsumer extends WorkerHost {
 	// * Step 3: Upsert data to database
 	private async upsertData(epcs: any[], orderInformation: any[], factoryCode: string) {
 		const currentTimestamp = format(new Date(), 'yyyy-MM-dd HH:mm:ss')
-		const payload: Partial<RFIDMatchCustomerEntity>[] = epcs.map((item) => ({
+		const payload: Partial<RFIDMatchEntity>[] = epcs.map((item) => ({
 			...orderInformation.find((data) => data.mo_no === item.commandNumber.slice(0, 9)),
 			epc: item.epc,
 			size_numcode: item.sizeNumber,

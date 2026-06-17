@@ -6,7 +6,7 @@ import { join, resolve } from 'node:path'
 import { DataSource } from 'typeorm'
 import { InventoryActions } from '../rfid/domain/constants'
 
-import { RFIDMatchCustomerEntity } from '../rfid/infrastructure/persistence/mssql/rfid-customer-match.entity'
+import { RFIDMatchEntity } from '../rfid/infrastructure/persistence/mssql/rfid-match.entity'
 import { TENANCY_DATA_SOURCE } from '../tenancy/constants'
 import { SizeRun } from './types'
 
@@ -193,7 +193,7 @@ export class OrderService {
 
 	async getCustOrderDetails(commandNumbers: Array<string>) {
 		let orderInformation: Array<
-			Partial<RFIDMatchCustomerEntity> & {
+			Partial<RFIDMatchEntity> & {
 				size_sumqty: number
 			}
 		> = []
@@ -207,7 +207,7 @@ export class OrderService {
 
 	async getCustOrderByCommandNumber(
 		commandNumber: string
-	): Promise<Array<Partial<RFIDMatchCustomerEntity> & { size_sumqty: number }>> {
+	): Promise<Array<Partial<RFIDMatchEntity> & { size_sumqty: number }>> {
 		return await this.dataSourceERP
 			.createQueryBuilder()
 			.select('a.mo_no', 'mo_no')
@@ -249,7 +249,7 @@ export class OrderService {
 			.addOrderBy('a.created', 'DESC')
 			.limit(1)
 			.setParameters({ commandNumber, recordStatus: RecordStatus.ACTIVE })
-			.getRawMany<Partial<RFIDMatchCustomerEntity> & { size_sumqty: number }>()
+			.getRawMany<Partial<RFIDMatchEntity> & { size_sumqty: number }>()
 	}
 
 	async getSizeRunByCommandNumber(commandNumber: string) {

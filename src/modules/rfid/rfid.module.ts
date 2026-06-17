@@ -10,6 +10,7 @@ import MongooseDeletePlugin from 'mongoose-delete'
 import MongoosePaginatePlugin from 'mongoose-paginate-v2'
 import { PinoLogger } from 'nestjs-pino'
 import { InventoryModule } from '../inventory/inventory.module'
+import { RFIDDeviceEntity } from '../rfid-device/entities/rfid-device.entity'
 import { TenancyModule } from '../tenancy/tenancy.module'
 import { ThirdPartyApiModule } from '../third-party-api/third-party-api.module'
 import { RFIDCommandHandlers } from './application/commands'
@@ -17,6 +18,7 @@ import { RFIDQueryHandlers } from './application/queries'
 import { RFIDInboundService } from './application/services/rfid-inbound.service'
 import { RFIDOutboundService } from './application/services/rfid-outbound.service'
 import { RFIDSharedService } from './application/services/rfid-shared.service'
+import { RFID_REPOSITORY } from './domain/repositories/rfid.repository.interface'
 import { IMPORT_DATA_QUEUE, POST_DATA_INBOUND_QUEUE, POST_DATA_OUTBOUND_QUEUE } from './infrastructure/constants/queue'
 import {
 	EPC_INBOUND_COLLECTION,
@@ -31,18 +33,17 @@ import {
 	InventoryEpcModel,
 	InventoryEpcSchema
 } from './infrastructure/persistence/mongodb/epc.schema'
-import { RFIDMatchCustomerEntity } from './infrastructure/persistence/mssql/rfid-customer-match.entity'
-import { RFIDReaderEntity } from './infrastructure/persistence/mssql/rfid-reader.entity'
+import { RFIDMatchEntity } from './infrastructure/persistence/mssql/rfid-match.entity'
 import {
 	RFIDInventoryBackupEntity,
 	RFIDInventoryEntity
 } from './infrastructure/persistence/mssql/rifd-inventory.entity'
+import { FPInventoryEntitySubscriber } from './infrastructure/persistence/mssql/subscribers/rfid-inventory.entity.subscriber'
+import { RFIDCustomerEntitySubscriber } from './infrastructure/persistence/mssql/subscribers/rfid-match.entity.subscriber'
 import { RFIDImportDataConsumer } from './infrastructure/queues/rfid-import-data.consumer'
 import { RFIDInboundConsumer } from './infrastructure/queues/rfid-inbound.consumer'
 import { RFIDOutboundConsumer } from './infrastructure/queues/rfid-outbound.consumer'
 import { RFIDRepository } from './infrastructure/repositories/rfid.repository'
-import { FPInventoryEntitySubscriber } from './infrastructure/subscribers/inventory-rfid.entity.subscriber'
-import { RFIDCustomerEntitySubscriber } from './infrastructure/subscribers/rfid-customer.entity.subscriber'
 import { RFIDControllers } from './presentation/controllers'
 import { RFIDListeners } from './presentation/listeners'
 
@@ -55,7 +56,7 @@ import { RFIDListeners } from './presentation/listeners'
 		BullModule.registerQueue({ name: POST_DATA_OUTBOUND_QUEUE }),
 		BullModule.registerQueue({ name: IMPORT_DATA_QUEUE }),
 		TypeOrmModule.forFeature(
-			[RFIDInventoryEntity, RFIDInventoryBackupEntity, RFIDMatchCustomerEntity, RFIDReaderEntity],
+			[RFIDInventoryEntity, RFIDInventoryBackupEntity, RFIDMatchEntity, RFIDDeviceEntity],
 			DATA_SOURCE_DATA_LAKE
 		),
 		MongooseModule.forFeatureAsync([
@@ -64,9 +65,17 @@ import { RFIDListeners } from './presentation/listeners'
 				collection: INVENTORY_EPC_COLLECTION,
 				useFactory: () => {
 					InventoryEpcSchema.index({ created_at: 1 }, { expires: '365d' })
-					InventoryEpcSchema.index({ mo_no: 1, po: 1, size_numcode: 1, factory_shoes_style: 1, color_sn: 1 })
-					InventoryEpcSchema.index({ inbound_device_sn: 1 })
-					InventoryEpcSchema.index({ outbound_device_sn: 1 })
+					InventoryEpcSchema.index({ epc: 1 }, { unique: true })
+					InventoryEpcSchema.index({
+						mo_no: 1,
+						po: 1,
+						size_numcode: 1,
+						factory_shoes_style: 1,
+						color_sn: 1,
+						created_at: -1
+					})
+					InventoryEpcSchema.index({ inbound_device_sn: 1, created_at: -1 })
+					InventoryEpcSchema.index({ outbound_device_sn: 1, created_at: -1 })
 					InventoryEpcSchema.plugin(MongoosePaginatePlugin)
 					InventoryEpcSchema.plugin(MongooseDeletePlugin, {
 						overrideMethods: true,
@@ -113,7 +122,10 @@ import { RFIDListeners } from './presentation/listeners'
 		RFIDSharedService,
 		RFIDInboundService,
 		RFIDOutboundService,
-		RFIDRepository,
+		{
+			provide: RFID_REPOSITORY,
+			useClass: RFIDRepository
+		},
 
 		...RFIDListeners,
 		...RFIDQueryHandlers,

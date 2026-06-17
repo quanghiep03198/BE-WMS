@@ -1,11 +1,12 @@
 import { ElectronicProductCode } from '@/modules/rfid/domain/entities/epc.entity'
-import { IRFIDRepository } from '@/modules/rfid/domain/repositories/rfid.repository.interface'
+import { IRFIDRepository, RFID_REPOSITORY } from '@/modules/rfid/domain/repositories/rfid.repository.interface'
+import { Inject } from '@nestjs/common'
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs'
 import { BulkWriteInventoryCommand } from './bulk-write-inventory.command'
 
 @CommandHandler(BulkWriteInventoryCommand)
 export class BulkWriteInventoryCommandHandler implements ICommandHandler<BulkWriteInventoryCommand, void> {
-	constructor(private readonly rfidRepository: IRFIDRepository) {}
+	constructor(@Inject(RFID_REPOSITORY) private readonly rfidRepository: IRFIDRepository) {}
 
 	public async execute({ request }: BulkWriteInventoryCommand) {
 		const { data, sn } = request.payload
@@ -15,6 +16,8 @@ export class BulkWriteInventoryCommandHandler implements ICommandHandler<BulkWri
 		const scannedEpcs = await this.rfidRepository.getEPCInformation(epcs)
 
 		if (scannedEpcs.length === 0) return
+
+		console.log('request.action', request.action)
 
 		await this.rfidRepository.bulkWriteInventoryEPCs({
 			action: request.action,

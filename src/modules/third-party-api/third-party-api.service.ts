@@ -8,7 +8,7 @@ import { PinoLogger } from 'nestjs-pino'
 import { join, resolve } from 'node:path'
 import { DataSource } from 'typeorm'
 import { OrderService } from '../order/order.service'
-import { RFIDMatchCustomerEntity } from '../rfid/infrastructure/persistence/mssql/rfid-customer-match.entity'
+import { RFIDMatchEntity } from '../rfid/infrastructure/persistence/mssql/rfid-match.entity'
 import { TENANCY_DATA_SOURCE } from '../tenancy/constants'
 import { ThirdPartyApiResponseData } from './interfaces/third-party-api.interface'
 
@@ -132,7 +132,7 @@ export class ThirdPartyApiService {
 
 		const currentTimestamp = format(new Date(), 'yyyy-MM-dd HH:mm:ss')
 
-		const upsertPayload: Partial<RFIDMatchCustomerEntity> = {
+		const upsertPayload: Partial<RFIDMatchEntity> = {
 			...orderInformation,
 			epc: data.epc,
 			cust_shoes_style: orderInformation.cust_shoes_style?.replace('/', '\/'),
