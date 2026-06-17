@@ -20,12 +20,12 @@ import { EventGateway } from './events/event.gateway'
 import { AuthModule } from './modules/auth/auth.module'
 import { DefectiveGoodsModule } from './modules/defective-goods/defective-goods.module'
 import { DepartmentModule } from './modules/department/department.module'
+import { InoutboundModule } from './modules/inoutbound/inoutbound.module'
 import { InventoryModule } from './modules/inventory/inventory.module'
 import { OrderModule } from './modules/order/order.module'
 import { PackingModule } from './modules/packing/packing.module'
 import { ProductSpecificationModule } from './modules/product-specification/product-specification.module'
 import { ReportModule } from './modules/report/report.module'
-import { RFIDModule } from './modules/rfid/rfid.module'
 import { StatisticModule } from './modules/statistic/statistic.module'
 import { TenancyModule } from './modules/tenancy/tenancy.module'
 import { ThirdPartyApiModule } from './modules/third-party-api/third-party-api.module'
@@ -106,7 +106,7 @@ import { SyncProductSpecificationTask } from './tasks/sync-product-specification
 		OrderModule,
 		PackingModule,
 		ReportModule,
-		RFIDModule,
+		InoutboundModule,
 		TenancyModule,
 		ThirdPartyApiModule,
 		InventoryModule,

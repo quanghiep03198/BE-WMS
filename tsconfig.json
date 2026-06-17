@@ -24,7 +24,6 @@
 		"forceConsistentCasingInFileNames": false,
 		"noFallthroughCasesInSwitch": false,
 		/* Path alias */
-		// "ignoreDeprecations": "6.0",
 		"baseUrl": "./",
 		"paths": {
 			"@/*": ["src/*"]

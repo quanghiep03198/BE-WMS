@@ -10,9 +10,9 @@ import { upperCase } from 'lodash'
 import { PinoLogger } from 'nestjs-pino'
 import { Agent } from 'node:https'
 import { FactoryCode } from '../department/constants'
+import { BaseRFIDInventoryEntity } from '../inoutbound/infrastructure/persistence/mssql/entities/rfid-inventory.entity'
+import { InoutboundModule } from '../inoutbound/inoutbound.module'
 import { OrderModule } from '../order/order.module'
-import { BaseRFIDInventoryEntity } from '../rfid/infrastructure/persistence/mssql/rifd-inventory.entity'
-import { RFIDModule } from '../rfid/rfid.module'
 import { TenacyMiddleware } from '../tenancy/tenancy.middleware'
 import { TenancyModule } from '../tenancy/tenancy.module'
 import { DECKERS_OAUTH2_STRATEGY, THIRD_PARTY_API_SYNC } from './constants'
@@ -32,7 +32,7 @@ import { ThirdPartyApiService } from './third-party-api.service'
 			name: THIRD_PARTY_API_SYNC,
 			defaultJobOptions: { removeOnComplete: true, removeOnFail: true }
 		}),
-		forwardRef(() => RFIDModule)
+		forwardRef(() => InoutboundModule)
 	],
 	controllers: [ThirdPartyApiController],
 	providers: [

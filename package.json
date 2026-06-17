@@ -154,20 +154,5 @@
 			"npm run format",
 			"git add ."
 		]
-	},
-	"pnpm": {
-		"onlyBuiltDependencies": [
-			"@automock/adapters.nestjs",
-			"@compodoc/compodoc",
-			"@nestjs/core",
-			"@sentry-internal/node-cpu-profiler",
-			"@sentry/cli",
-			"@sentry/profiling-node",
-			"@swc/core",
-			"bcrypt",
-			"msgpackr-extract",
-			"nestjs-pino",
-			"protobufjs"
-		]
 	}
 }

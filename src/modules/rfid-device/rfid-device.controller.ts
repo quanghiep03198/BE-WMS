@@ -9,7 +9,7 @@ import {
 	DeleteRFIDDeviceDTO,
 	deleteRFIDDeviceDTO,
 	updateRFIDDeviceDTO
-} from '../rfid/presentation/dto/rfid-device.dto'
+} from '../inoutbound/presentation/dto/rfid-device.dto'
 import { RFIDDeviceService } from './rfid-device.service'
 
 @Controller('rfid/devices')

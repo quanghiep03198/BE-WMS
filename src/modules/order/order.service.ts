@@ -4,9 +4,9 @@ import { InjectDataSource } from '@nestjs/typeorm'
 import { readFileSync } from 'fs-extra'
 import { join, resolve } from 'node:path'
 import { DataSource } from 'typeorm'
-import { InventoryActions } from '../rfid/domain/constants'
+import { InventoryActions } from '../inoutbound/domain/constants'
 
-import { RFIDMatchEntity } from '../rfid/infrastructure/persistence/mssql/rfid-match.entity'
+import { RFIDMatchEntity } from '../inoutbound/infrastructure/persistence/mssql/entities/rfid-match.entity'
 import { TENANCY_DATA_SOURCE } from '../tenancy/constants'
 import { SizeRun } from './types'
 

@@ -2,10 +2,13 @@ import { WsExceptionsFilter } from '@/common/filters'
 
 import { WsZodValidationPipe } from '@/common/pipes/ws-validation.pipe'
 import { env, SuperJson } from '@/common/utils'
+import { FALLBACK_VALUE } from '@/modules/inoutbound/domain/constants'
+import {
+	EpcDocument,
+	EpcInbound
+} from '@/modules/inoutbound/infrastructure/persistence/mongodb/schemas/inventory-epc.schema'
 import { SYNC_INVENTORY_AUDIT_QUEUE } from '@/modules/inventory/constants'
 import { SyncStatePayload } from '@/modules/inventory/queues/inventory-audit.consumer'
-import { FALLBACK_VALUE } from '@/modules/rfid/domain/constants'
-import { EpcDocument, EpcInbound } from '@/modules/rfid/infrastructure/persistence/mongodb/epc.schema'
 import { THIRD_PARTY_API_SYNC } from '@/modules/third-party-api/constants'
 import { SyncDataMessageDTO, syncDataMessageValidator } from '@/modules/third-party-api/dto/third-party-api.dto'
 import { SyncProcessState } from '@/modules/third-party-api/interfaces/third-party-api.interface'
