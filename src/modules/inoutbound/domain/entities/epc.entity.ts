@@ -1,34 +1,49 @@
-import { AggregateRoot } from '@nestjs/cqrs'
 import { EXCLUDED_EPC_PREFIX, FALLBACK_VALUE, INTERNAL_EPC_PREFIX } from '../constants'
 
-export class ElectronicProductCode extends AggregateRoot {
+export class ElectronicProductCode {
 	constructor(
-		private readonly productCode: string,
+		private readonly sku: string,
 		private readonly scannable?: boolean,
-		private readonly commandNumber?: string,
+		private readonly manufacturingOrder?: string,
 		private readonly shoeStyle?: string,
 		private readonly color?: string,
 		private readonly size?: string,
 		private readonly factoryProduce?: string
-	) {
-		super()
-		this.autoCommit = true
-	}
+	) {}
 
 	public static createFactory(
 		data: Array<{
-			epc?: string
+			sku: string
+			scannable?: boolean
+			manufacturingOrder?: string
+			shoeStyle?: string
+			color?: string
+			size?: string
+			factoryProduce?: string
 		}>
 	): ElectronicProductCode[] {
-		return data.map((item) => new ElectronicProductCode(item.epc.trim())).filter((item) => item.getIsWritable())
+		return data
+			.map(
+				(item) =>
+					new ElectronicProductCode(
+						item.sku.trim(),
+						item.scannable,
+						item.manufacturingOrder,
+						item.shoeStyle,
+						item.color,
+						item.size,
+						item.factoryProduce
+					)
+			)
+			.filter((item) => item.getIsWritable())
 	}
 
-	public getProductCode() {
-		return this.productCode
+	public getStockKeepingUnit() {
+		return this.sku
 	}
 
-	public getCommandNumber() {
-		return this.commandNumber ?? FALLBACK_VALUE
+	public getManufacturingOrder() {
+		return this.manufacturingOrder ?? FALLBACK_VALUE
 	}
 
 	public getFactoryProduce() {
@@ -48,7 +63,7 @@ export class ElectronicProductCode extends AggregateRoot {
 	}
 
 	public getIsWritable() {
-		return !this.productCode.startsWith(EXCLUDED_EPC_PREFIX)
+		return !this.sku.startsWith(EXCLUDED_EPC_PREFIX)
 	}
 
 	public getIsScannable() {
@@ -56,7 +71,7 @@ export class ElectronicProductCode extends AggregateRoot {
 	}
 
 	public getIsInternal() {
-		return this.productCode.startsWith(INTERNAL_EPC_PREFIX)
+		return this.sku.startsWith(INTERNAL_EPC_PREFIX)
 	}
 
 	public getCanExchange(target: ElectronicProductCode) {

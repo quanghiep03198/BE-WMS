@@ -18,10 +18,10 @@ import { RFIDQueryHandlers } from './application/queries'
 import { RFIDInboundService } from './application/services/rfid-inbound.service'
 import { RFIDOutboundService } from './application/services/rfid-outbound.service'
 import { RFIDSharedService } from './application/services/rfid-shared.service'
-import { INOUTBOUND_MONGO_REPOSITORY } from './domain/repositories/inventory-epc.repository.interface'
-import { INOUTBOUND_MSSQL_REPOSITORY } from './domain/repositories/rfid.repository.interface'
+import { IO_MONGO_REPOSITORY } from './domain/repositories/io-mongo.repository.interface'
+import { IO_MSSQL_REPOSITORY } from './domain/repositories/io-mssql.repository.interface'
 import { IMPORT_DATA_QUEUE, POST_DATA_INBOUND_QUEUE, POST_DATA_OUTBOUND_QUEUE } from './infrastructure/constants/queue'
-import { InventoryEpcRepository } from './infrastructure/persistence/mongodb/repositories/inventory-epc.repository'
+import { InoutboundMongoRepository } from './infrastructure/persistence/mongodb/repositories/io-mongo.repository'
 import {
 	EPC_INBOUND_COLLECTION,
 	EPC_OUTBOUND_COLLECTION,
@@ -39,7 +39,7 @@ import {
 	RFIDInventoryEntity
 } from './infrastructure/persistence/mssql/entities/rfid-inventory.entity'
 import { RFIDMatchEntity } from './infrastructure/persistence/mssql/entities/rfid-match.entity'
-import { RFIDMssqlRepository } from './infrastructure/persistence/mssql/repositories/rfid.mssql.repository'
+import { InoutboundMssqlRepository } from './infrastructure/persistence/mssql/repositories/io-mssql.repository'
 import { RFIDInventoryEntitySubscriber } from './infrastructure/persistence/mssql/subscribers/rfid-inventory.entity.subscriber'
 import { RFIDCustomerEntitySubscriber } from './infrastructure/persistence/mssql/subscribers/rfid-match.entity.subscriber'
 import { RFIDImportDataConsumer } from './infrastructure/queues/rfid-import-data.consumer'
@@ -124,12 +124,12 @@ import { RFIDListeners } from './presentation/listeners'
 		RFIDInboundService,
 		RFIDOutboundService,
 		{
-			provide: INOUTBOUND_MSSQL_REPOSITORY,
-			useClass: RFIDMssqlRepository
+			provide: IO_MSSQL_REPOSITORY,
+			useClass: InoutboundMssqlRepository
 		},
 		{
-			provide: INOUTBOUND_MONGO_REPOSITORY,
-			useClass: InventoryEpcRepository
+			provide: IO_MONGO_REPOSITORY,
+			useClass: InoutboundMongoRepository
 		},
 
 		...RFIDListeners,

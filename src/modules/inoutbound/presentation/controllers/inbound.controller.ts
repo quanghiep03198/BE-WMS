@@ -46,10 +46,11 @@ import { InjectModel } from '@nestjs/mongoose'
 import { Queue } from 'bullmq'
 import { Cache } from 'cache-manager'
 import { FastifyReply } from 'fastify'
-import { isEmpty, isNil, pick, pickBy } from 'lodash'
+import { isEmpty, isNil, pickBy } from 'lodash'
 import { PaginateResult } from 'mongoose'
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
 import z from 'zod'
+import { StockInCommand } from '../../application/commands/stock-in/stock-in.command'
 import { GetInternalEpcsExistsQuery } from '../../application/queries/get-internal-epcs-exists/get-internal-epcs-exists.query'
 import { GetScanningEpcsQuery } from '../../application/queries/get-scanning-epcs/get-scanning-epcs.query'
 import { GetScanningMOsQuery } from '../../application/queries/get-scanning-mo/get-scanning-mo.query'
@@ -189,22 +190,33 @@ export class RFIDInboundController {
 	}
 
 	@RouteHandler({
-		endpoint: 'update-stock/:commandNumber',
+		endpoint: 'stock-in/:deviceSerialNumber/:manufacturingOrder',
 		method: HttpMethod.PUT,
 		statusCode: HttpStatus.CREATED,
 		message: 'common.updated'
 	})
 	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
 	async upsertStockIn(
-		@Param('commandNumber') commandNumber: string,
+		@Param('deviceSerialNumber') deviceSerialNumber: string,
+		@Param('manufacturingOrder') manufacturingOrder: string,
 		@User() user: RequestUser,
 		@Headers(CommonRequestHeader.FACTORY_CODE) factoryCode: string,
 		@Body(new ZodValidationPipe(updateStockInValidator)) payload: UpsertStockInDTO
 	) {
-		return await this.rfidInboundService.upsertStockIn(commandNumber, factoryCode, {
-			...payload,
-			...pick(user, ['username', 'display_name'])
-		})
+		return await this.commandBus.execute(
+			new StockInCommand({
+				...payload,
+				mo_no: manufacturingOrder,
+				inbound_device_sn: deviceSerialNumber,
+				factory_code_produce: factoryCode,
+				username: user.username,
+				display_name: user.display_name
+			})
+		)
+		// return await this.rfidInboundService.upsertStockIn(commandNumber, factoryCode, {
+		// 	...payload,
+		// 	...pick(user, ['username', 'display_name'])
+		// })
 	}
 
 	@RouteHandler({

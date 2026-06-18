@@ -1,26 +1,48 @@
-import { DATA_SOURCE_DATA_LAKE } from '@/databases/constants'
+import { ElectronicProductCode } from '@/modules/inoutbound/domain/entities/epc.entity'
+import { IInoutboundMongoRepository } from '@/modules/inoutbound/domain/repositories/io-mongo.repository.interface'
+import { InventoryAction, ScannedOrderDetail } from '@/modules/inoutbound/domain/types'
+import { RestoreArchivedEpcsDTO } from '@/modules/inoutbound/presentation/dto/rfid-shared.dto'
 import { CACHE_MANAGER } from '@nestjs/cache-manager'
 import { Inject, Injectable } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
-import { InjectDataSource } from '@nestjs/typeorm'
 import { Cache } from 'cache-manager'
 import { AnyBulkWriteOperation, FilterQuery } from 'mongoose'
-import { DataSource } from 'typeorm'
-
-import { ElectronicProductCode } from '@/modules/inoutbound/domain/entities/epc.entity'
-import { ScannedOrderDetail, UploadAction } from '@/modules/inoutbound/domain/types'
 import { RFIDSearchParams } from '../../../types'
 import { InventoryEpc, InventoryEpcDocument, InventoryEpcModel } from '../schemas/inventory-epc.schema'
 
 @Injectable()
-export class InventoryEpcRepository {
+export class InoutboundMongoRepository implements IInoutboundMongoRepository {
 	constructor(
-		@InjectDataSource(DATA_SOURCE_DATA_LAKE) private readonly dataSourceDL: DataSource,
 		@InjectModel(InventoryEpc.name) private readonly inventoryEpcModel: InventoryEpcModel,
 		@Inject(CACHE_MANAGER) private readonly cacheManager: Cache
 	) {}
 
-	public async getScanningEPCs(params: RFIDSearchParams): Promise<Pagination<Record<'epc' | 'mo_no', string>>> {
+	public async getAllScanningEpcsByOrder(
+		deviceSerialNumber: string,
+		manufacturingOrder: string
+	): Promise<ElectronicProductCode[]> {
+		const rawData = await this.inventoryEpcModel
+			.find({ scannable: true, inbound_device_sn: deviceSerialNumber, mo_no: manufacturingOrder })
+			.lean()
+		return rawData
+			.map(
+				(item) =>
+					new ElectronicProductCode(
+						item.epc,
+						item.scannable,
+						item.mo_no,
+						item.factory_shoes_style,
+						item.color_sn,
+						item.size_numcode,
+						item.factory_code_produce
+					)
+			)
+			.filter((item) => item.getIsWritable())
+	}
+
+	public async getPaginatedScanningEpcs(
+		params: RFIDSearchParams
+	): Promise<Pagination<Record<'epc' | 'mo_no', string>>> {
 		const manufacturingOrder = params['mo_no.eq']
 		const inboundDeviceSerialNumber = params['inbound_device_sn.eq']
 		const outboundDeviceSerialNumber = params['outbound_device_sn.eq']
@@ -70,7 +92,7 @@ export class InventoryEpcRepository {
 		}
 	}
 
-	public async getScanningMOs(
+	public async getScanningManufacturingOrders(
 		params:
 			| Required<Pick<RFIDSearchParams, 'inbound_device_sn.eq'>>
 			| Required<Pick<RFIDSearchParams, 'outbound_device_sn.eq'>>
@@ -143,7 +165,7 @@ export class InventoryEpcRepository {
 		)
 	}
 
-	public async getInternalEPCExist(
+	public async getInternalEpcExist(
 		params:
 			| Required<Pick<RFIDSearchParams, 'inbound_device_sn.eq'>>
 			| Required<Pick<RFIDSearchParams, 'outbound_device_sn.eq'>>
@@ -160,23 +182,21 @@ export class InventoryEpcRepository {
 		return Boolean(existedRecord)
 	}
 
-	public async bulkWriteInventoryEPCs({
+	public async bulkWriteInventoryEpcs({
 		action,
 		payload
 	}: {
-		action: UploadAction
+		action: InventoryAction
 		payload: { eProductCodes: ElectronicProductCode[]; deviceSerialNumber: string }
-	}): Promise<void> {
-		console.log('[bulkWriteInventoryEPCs] action :>>', action)
-
+	}): Promise<number> {
 		const isDeduplicationEnabled = await this.cacheManager.get<boolean>('cached:rfid:enable_deduplicate_inbound_epc')
 		const bulkWriteOptions: AnyBulkWriteOperation<InventoryEpcDocument>[] = payload.eProductCodes.map((item) => {
 			const operation: AnyBulkWriteOperation<InventoryEpcDocument> = {
 				updateOne: {
-					filter: { epc: item.getProductCode(), scannable: true },
+					filter: { epc: item.getStockKeepingUnit(), scannable: true },
 					update: {
-						epc: item.getProductCode(),
-						mo_no: item.getCommandNumber(),
+						epc: item.getStockKeepingUnit(),
+						mo_no: item.getManufacturingOrder(),
 						factory_shoes_style: item.getShoeStyle(),
 						color_sn: item.getColor(),
 						size_numcode: item.getSize(),
@@ -203,11 +223,82 @@ export class InventoryEpcRepository {
 			return operation
 		})
 
-		await this.inventoryEpcModel.bulkWrite(bulkWriteOptions, {
+		const result = await this.inventoryEpcModel.bulkWrite(bulkWriteOptions, {
 			writeConcern: { w: 'majority' },
 			ordered: false,
 			retryWrites: true,
 			timestamps: true
 		})
+
+		return result.upsertedCount
+	}
+
+	public async updateStockInDate(scannedEpcs: Array<ElectronicProductCode>): Promise<number> {
+		const result = await this.inventoryEpcModel
+			.updateMany(
+				{ epc: { $in: scannedEpcs.map((epc) => epc.getStockKeepingUnit()) } },
+				{ $set: { inbound_at: new Date() } }
+			)
+			.exec()
+
+		return result.modifiedCount
+	}
+
+	public async deleteScannedOrder(
+		action: InventoryAction,
+		manufacturingOrder: string,
+		deviceSerialNumber: string,
+		rescannable: boolean
+	): Promise<number> {
+		const result = await this.inventoryEpcModel
+			.updateMany(
+				{
+					mo_no: manufacturingOrder,
+					...(action === 'inbound' && { inbound_at: null, inbound_device_sn: deviceSerialNumber }),
+					...(action === 'outbound' && { outbound_at: null, outbound_device_sn: deviceSerialNumber })
+				},
+				{ deleted: true, scannable: rescannable }
+			)
+			.exec()
+
+		return result.matchedCount
+	}
+
+	public async deleteBulkEpcs(epcs: string[], rescannable: boolean): Promise<number> {
+		const result = await this.inventoryEpcModel
+			.updateMany({ epc: { $in: epcs } }, { deleted: true, scannable: rescannable })
+			.exec()
+
+		return result.matchedCount
+	}
+
+	public async restoreArchivedEpcs(action: InventoryAction, epcs: RestoreArchivedEpcsDTO): Promise<number> {
+		const bulkWriteOptions: AnyBulkWriteOperation<InventoryEpcDocument>[] = epcs.map((item) => ({
+			updateOne: {
+				filter: {
+					epc: item.epc
+					// ? Temporarily exclude deleted items
+					// stored_at: null
+				},
+				update: {
+					...item,
+					deleted: false,
+					scannable: true,
+					stored_at: null,
+					...(action === 'inbound' && { inbound_at: null }),
+					...(action === 'outbound' && { outbound_at: null, po: null })
+				},
+				upsert: true
+			}
+		}))
+
+		const result = await this.inventoryEpcModel.bulkWrite(bulkWriteOptions, {
+			writeConcern: { w: 'majority' },
+			readPreference: 'nearest',
+			ordered: false,
+			retryWrites: true
+		})
+
+		return result.matchedCount
 	}
 }

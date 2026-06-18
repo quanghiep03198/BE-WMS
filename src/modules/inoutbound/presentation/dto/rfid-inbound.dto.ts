@@ -69,6 +69,11 @@ export const upsertEpcInformationSchema = z.object({
 	size_qty: z.number({ required_error: 'ns_validation:required' }).default(0)
 })
 
-export type UpsertStockInDTO = z.infer<typeof updateStockInValidator> & Pick<RequestUser, 'username' | 'display_name'>
+export type UpsertStockInDTO = z.infer<typeof updateStockInValidator> &
+	Pick<RequestUser, 'username' | 'display_name'> & {
+		inbound_device_sn: string
+		mo_no: string
+		factory_code_produce: string
+	}
 export type ExchangeOrderDTO = z.infer<typeof exchangeOrderValidator>
 export type UpsertEpcInformationDTO = z.infer<typeof upsertEpcInformationSchema>

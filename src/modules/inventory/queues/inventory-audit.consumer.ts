@@ -5,7 +5,9 @@ import { OnQueueEvent, Processor, WorkerHost } from '@nestjs/bullmq'
 import { CACHE_MANAGER } from '@nestjs/cache-manager'
 import { Inject } from '@nestjs/common'
 import { InjectDataSource } from '@nestjs/typeorm'
+import { Job } from 'bullmq'
 import { Cache } from 'cache-manager'
+import { format, lastDayOfMonth } from 'date-fns'
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
 import { DataSource } from 'typeorm'
 import { SYNC_INVENTORY_AUDIT_QUEUE } from '../constants'
@@ -37,14 +39,17 @@ export class InventoryAuditDataSyncConsumer extends WorkerHost {
 		super()
 	}
 
-	async process(): Promise<void> {
+	async process(job: Job<{ year: number; month: number }>): Promise<void> {
 		this.logger.info('Inventory audit sync started')
 		await this.broadcastSyncState('progress', true, null)
 		const queryRunner = this.dataSource.createQueryRunner()
 		try {
 			await queryRunner.startTransaction()
+			lastDayOfMonth(new Date(job.data.year, job.data.month - 1))
 
-			await queryRunner.query(/* SQL */ `EXEC DV_DATA_LAKE.dbo.sp_import_invprod_VER2`)
+			await queryRunner.query(/* SQL */ `EXEC DV_DATA_LAKE.dbo.sp_import_invprod_VER2 CAST(@0 AS DATE)`, [
+				format(lastDayOfMonth(new Date(job.data.year, job.data.month - 1)), 'yyyy-MM-dd')
+			])
 			await queryRunner.commitTransaction()
 
 			await this.broadcastSyncState('completed', true, null)

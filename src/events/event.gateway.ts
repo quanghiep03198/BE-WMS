@@ -29,6 +29,7 @@ import {
 } from '@nestjs/websockets'
 import { Queue } from 'bullmq'
 import { Cache } from 'cache-manager'
+import { format } from 'date-fns'
 import { uniqBy } from 'lodash'
 import { PaginateModel } from 'mongoose'
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
@@ -61,7 +62,7 @@ export class EventGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
 		@Optional()
 		@InjectQueue(SYNC_INVENTORY_AUDIT_QUEUE)
-		private readonly syncInventoryAuditDataQueue: Queue<SyncDataMessageDTO>,
+		private readonly syncInventoryAuditDataQueue: Queue<{ year: number; month: number }>,
 
 		@Inject(CACHE_MANAGER) private readonly cacheManager: Cache
 	) {}
@@ -125,18 +126,16 @@ export class EventGateway implements OnGatewayConnection, OnGatewayDisconnect {
 	// @UseGuards(WebsocketJwtGuard)
 	@SubscribeMessage('sync_inventory_audit_data')
 	@UseFilters(new WsExceptionsFilter())
-	protected async handleSyncInventoryAuditData(@ConnectedSocket() client: Socket) {
+	protected async handleSyncInventoryAuditData(
+		@ConnectedSocket() client: Socket,
+		@MessageBody() payload: { year: number; month: number }
+	) {
 		if (!this.syncInventoryAuditDataQueue) return
-		const factoryCode = client.handshake.auth?.factoryCode
 
-		this.syncInventoryAuditDataQueue.add(
-			'sync_inventory_audit_data',
-			{},
-			{
-				jobId: factoryCode,
-				removeOnComplete: true,
-				removeOnFail: true
-			}
-		)
+		this.syncInventoryAuditDataQueue.add('sync_inventory_audit_data', payload, {
+			jobId: format(new Date(payload.year, payload.month - 1), 'yyyyMM'),
+			removeOnComplete: true,
+			removeOnFail: true
+		})
 	}
 }

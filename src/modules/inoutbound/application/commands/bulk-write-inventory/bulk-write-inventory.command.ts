@@ -1,7 +1,9 @@
-import { UploadAction } from '@/modules/inoutbound/domain/types'
+import { InventoryAction } from '@/modules/inoutbound/domain/types'
 import { PostReaderDataDTO } from '@/modules/inoutbound/presentation/dto/rfid-shared.dto'
-import { ICommand } from '@nestjs/cqrs'
+import { Command } from '@nestjs/cqrs'
 
-export class BulkWriteInventoryCommand implements ICommand {
-	constructor(public readonly request: { action: UploadAction; payload: PostReaderDataDTO }) {}
+export class BulkWriteInventoryCommand extends Command<void> {
+	constructor(public readonly command: { action: InventoryAction; payload: PostReaderDataDTO }) {
+		super()
+	}
 }
