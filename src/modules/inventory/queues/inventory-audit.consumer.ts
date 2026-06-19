@@ -47,9 +47,13 @@ export class InventoryAuditDataSyncConsumer extends WorkerHost {
 			await queryRunner.startTransaction()
 			lastDayOfMonth(new Date(job.data.year, job.data.month - 1))
 
-			await queryRunner.query(/* SQL */ `EXEC DV_DATA_LAKE.dbo.sp_import_invprod_VER2 CAST(@0 AS DATE)`, [
-				format(lastDayOfMonth(new Date(job.data.year, job.data.month - 1)), 'yyyy-MM-dd')
-			])
+			await queryRunner.query(
+				/* SQL */ `
+					DECLARE @Period DATE = CAST(@0 AS DATE);
+					EXEC DV_DATA_LAKE.dbo.sp_import_invprod_VER2 @Period
+				`,
+				[format(lastDayOfMonth(new Date(job.data.year, job.data.month - 1)), 'yyyy-MM-dd')]
+			)
 			await queryRunner.commitTransaction()
 
 			await this.broadcastSyncState('completed', true, null)

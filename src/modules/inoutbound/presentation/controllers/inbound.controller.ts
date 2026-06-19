@@ -74,9 +74,9 @@ export class RFIDInboundController {
 		@Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
 		private readonly eventGateway: EventGateway,
 		private readonly redisService: RedisService,
-		private readonly eventEmitter: EventEmitter2,
 		private readonly rfidSharedService: RFIDSharedService,
 		private readonly rfidInboundService: RFIDInboundService,
+		private readonly eventEmitter: EventEmitter2,
 		private readonly queryBus: QueryBus,
 		private readonly commandBus: CommandBus
 	) {}
@@ -190,15 +190,13 @@ export class RFIDInboundController {
 	}
 
 	@RouteHandler({
-		endpoint: 'stock-in/:deviceSerialNumber/:manufacturingOrder',
+		endpoint: 'stock-in',
 		method: HttpMethod.PUT,
 		statusCode: HttpStatus.CREATED,
 		message: 'common.updated'
 	})
 	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
-	async upsertStockIn(
-		@Param('deviceSerialNumber') deviceSerialNumber: string,
-		@Param('manufacturingOrder') manufacturingOrder: string,
+	async stockIn(
 		@User() user: RequestUser,
 		@Headers(CommonRequestHeader.FACTORY_CODE) factoryCode: string,
 		@Body(new ZodValidationPipe(updateStockInValidator)) payload: UpsertStockInDTO
@@ -206,8 +204,8 @@ export class RFIDInboundController {
 		return await this.commandBus.execute(
 			new StockInCommand({
 				...payload,
-				mo_no: manufacturingOrder,
-				inbound_device_sn: deviceSerialNumber,
+				// mo_no: manufacturingOrder,
+				// inbound_device_sn: deviceSerialNumber,
 				factory_code_produce: factoryCode,
 				username: user.username,
 				display_name: user.display_name

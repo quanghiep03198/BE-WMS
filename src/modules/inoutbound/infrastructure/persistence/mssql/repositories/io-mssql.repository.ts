@@ -1,8 +1,9 @@
 import { DATA_SOURCE_DATA_LAKE } from '@/databases/constants'
-import { EXCLUDED_ORDERS } from '@/modules/inoutbound/domain/constants'
+import { EXCLUDED_ORDERS, InventoryActions } from '@/modules/inoutbound/domain/constants'
 import { ElectronicProductCode } from '@/modules/inoutbound/domain/entities/epc.entity'
 import { IInoutboundMssqlRepository } from '@/modules/inoutbound/domain/repositories/io-mssql.repository.interface'
 import { UpsertStockInDTO } from '@/modules/inoutbound/presentation/dto/rfid-inbound.dto'
+import { Transactional } from '@nestjs-cls/transactional'
 import { Injectable } from '@nestjs/common'
 import { InjectDataSource } from '@nestjs/typeorm'
 import { format } from 'date-fns'
@@ -12,6 +13,7 @@ import { readFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { Brackets, DataSource } from 'typeorm'
 import { generateStation } from '../../../utils'
+import { RFIDInventoryBackupEntity, RFIDInventoryEntity } from '../entities/rfid-inventory.entity'
 
 @Injectable()
 export class InoutboundMssqlRepository implements IInoutboundMssqlRepository {
@@ -77,7 +79,7 @@ export class InoutboundMssqlRepository implements IInoutboundMssqlRepository {
 			missing_qty: number
 		}>
 	> {
-		const sql: string = readFileSync(resolve(join(__dirname, '../../../sql/mo-inbound-progress')), 'utf-8')
+		const sql: string = readFileSync(resolve(join(__dirname, '../../../sql/mo-inbound-progress.sql')), 'utf-8')
 
 		const missingOrderSizeQty = await this.dataSourceDL.query<
 			Array<{
@@ -92,40 +94,51 @@ export class InoutboundMssqlRepository implements IInoutboundMssqlRepository {
 		return missingOrderSizeQty.filter((size) => size.missing_qty < 0)
 	}
 
+	@Transactional()
 	public async stockIn(epcs: Array<ElectronicProductCode>, stockInDetails: UpsertStockInDTO): Promise<void> {
 		const sql: string = readFileSync(resolve(join(__dirname, '../../../sql/upsert-inbound.sql')), 'utf-8')
 
-		const queryRunner = this.dataSourceDL.createQueryRunner()
-		await queryRunner.startTransaction()
+		const upsertPayload = epcs
+			.filter((item) => item.getIsWritable() && !item.getIsInternal())
+			.map((item) => {
+				return {
+					...omit(stockInDetails, ['mo_no', 'inbound_device_sn']),
+					epc: item.getStockKeepingUnit(),
+					mo_no: item.getManufacturingOrder(),
+					size_numcode: item.getSize(),
+					factory_code: item.getFactoryProduce(),
+					station_no: generateStation(item.getFactoryProduce(), 'WH101'),
+					record_time: format(new Date(), 'yyyy-MM-dd HH:mm:ss')
+				}
+			})
 
-		try {
-			const upsertPayload = epcs
-				.filter((item) => item.getIsWritable() && !item.getIsInternal())
-				.map((item) => {
-					return {
-						...omit(stockInDetails, ['mo_no', 'inbound_device_sn']),
-						epc: item.getStockKeepingUnit(),
-						mo_no: item.getManufacturingOrder(),
-						size_numcode: item.getSize(),
-						factory_code: item.getFactoryProduce(),
-						station_no: generateStation(item.getFactoryProduce(), 'WH101'),
-						record_time: format(new Date(), 'yyyy-MM-dd HH:mm:ss')
-					}
-				})
+		await Promise.all(
+			chunk(upsertPayload, 100).map(async (item) => {
+				return await this.dataSourceDL.query(sql, [JSON.stringify(item)])
+			})
+		)
+	}
 
-			await Promise.all(
-				chunk(upsertPayload, 100).map(async (item) => {
-					return await this.dataSourceDL.query(sql, [JSON.stringify(item)])
-				})
-			)
+	@Transactional()
+	public async rollbackStoredEpcs(epcs: Array<ElectronicProductCode>): Promise<void> {
+		await this.dataSourceDL
+			.getRepository(RFIDInventoryEntity)
+			.createQueryBuilder()
+			.delete()
+			.where('epc IN (:...epcs)', { epcs: epcs.map((item) => item.getStockKeepingUnit()) })
+			.andWhere('RIGH(stationNO, 5) = :station_no', { station_no: 'WH101' })
+			.andWhere('rfid_status = :rfid_status', { rfid_status: InventoryActions.INBOUND })
+			.andWhere('CAST(record_time AS DATE) = CAST(GETDATE() AS DATE)')
+			.execute()
 
-			await queryRunner.commitTransaction()
-		} catch (error) {
-			this.logger.error(error)
-			if (queryRunner.isTransactionActive) await queryRunner.rollbackTransaction()
-			throw error
-		} finally {
-			if (!queryRunner.isReleased) await queryRunner.release()
-		}
+		await this.dataSourceDL
+			.getRepository(RFIDInventoryBackupEntity)
+			.createQueryBuilder()
+			.delete()
+			.where('epc IN (:...epcs)', { epcs: epcs.map((item) => item.getStockKeepingUnit()) })
+			.andWhere('RIGH(stationNO, 5) = :station_no', { station_no: 'WH101' })
+			.andWhere('rfid_status = :rfid_status', { rfid_status: InventoryActions.INBOUND })
+			.andWhere('CAST(record_time AS DATE) = CAST(GETDATE() AS DATE)')
+			.execute()
 	}
 }

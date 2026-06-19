@@ -2,7 +2,7 @@ import { ElectronicProductCode } from '@/modules/inoutbound/domain/entities/epc.
 import { Command } from '@nestjs/cqrs'
 
 export class UpdateStockInDateCommand extends Command<number> {
-	constructor(public readonly command: { scannedEpcs: Array<ElectronicProductCode> }) {
+	constructor(public readonly scannedEpcs: Array<ElectronicProductCode>) {
 		super()
 	}
 }

@@ -13,11 +13,13 @@ import { InventoryModule } from '../inventory/inventory.module'
 import { RFIDDeviceEntity } from '../rfid-device/entities/rfid-device.entity'
 import { TenancyModule } from '../tenancy/tenancy.module'
 import { ThirdPartyApiModule } from '../third-party-api/third-party-api.module'
-import { RFIDCommandHandlers } from './application/commands'
-import { RFIDQueryHandlers } from './application/queries'
+import { InoutboundCommandHandlers } from './application/commands'
+import { InoutboundQueryHandlers } from './application/queries'
+import { InoutboundSagas } from './application/sagas'
 import { RFIDInboundService } from './application/services/rfid-inbound.service'
 import { RFIDOutboundService } from './application/services/rfid-outbound.service'
 import { RFIDSharedService } from './application/services/rfid-shared.service'
+import { InoutboundEventHandlers } from './domain/events'
 import { IO_MONGO_REPOSITORY } from './domain/repositories/io-mongo.repository.interface'
 import { IO_MSSQL_REPOSITORY } from './domain/repositories/io-mssql.repository.interface'
 import { IMPORT_DATA_QUEUE, POST_DATA_INBOUND_QUEUE, POST_DATA_OUTBOUND_QUEUE } from './infrastructure/constants/queue'
@@ -133,8 +135,10 @@ import { RFIDListeners } from './presentation/listeners'
 		},
 
 		...RFIDListeners,
-		...RFIDQueryHandlers,
-		...RFIDCommandHandlers,
+		...InoutboundQueryHandlers,
+		...InoutboundCommandHandlers,
+		...InoutboundEventHandlers,
+		...InoutboundSagas,
 		RFIDInboundConsumer,
 		RFIDOutboundConsumer,
 		RFIDImportDataConsumer,

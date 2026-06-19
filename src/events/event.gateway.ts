@@ -133,7 +133,7 @@ export class EventGateway implements OnGatewayConnection, OnGatewayDisconnect {
 		if (!this.syncInventoryAuditDataQueue) return
 
 		this.syncInventoryAuditDataQueue.add('sync_inventory_audit_data', payload, {
-			jobId: format(new Date(payload.year, payload.month - 1), 'yyyyMM'),
+			jobId: format(new Date(payload.year, payload.month - 1), 'yyyy-MM'),
 			removeOnComplete: true,
 			removeOnFail: true
 		})

@@ -1,4 +1,7 @@
 import { DatabaseModule } from '@/databases'
+import { ClsPluginTransactional } from '@nestjs-cls/transactional'
+import { TransactionalAdapterMongoose } from '@nestjs-cls/transactional-adapter-mongoose'
+import { TransactionalAdapterTypeOrm } from '@nestjs-cls/transactional-adapter-typeorm'
 import { BullModule } from '@nestjs/bullmq'
 import { CacheModule } from '@nestjs/cache-manager'
 import { Module, type OnApplicationBootstrap, type OnApplicationShutdown } from '@nestjs/common'
@@ -8,9 +11,11 @@ import { CqrsModule } from '@nestjs/cqrs'
 import { EventEmitterModule } from '@nestjs/event-emitter'
 import { ScheduleModule } from '@nestjs/schedule'
 import { ThrottlerModule } from '@nestjs/throttler'
+import { getDataSourceToken } from '@nestjs/typeorm'
 import * as Sentry from '@sentry/nestjs'
 import { SentryGlobalFilter, SentryModule } from '@sentry/nestjs/setup'
 import { PrometheusModule } from '@willsoto/nestjs-prometheus'
+import { ClsModule } from 'nestjs-cls'
 import { AcceptLanguageResolver, HeaderResolver, I18nModule, QueryResolver } from 'nestjs-i18n'
 import { LoggerModule, Params } from 'nestjs-pino'
 import { AppController } from './app.controller'
@@ -34,6 +39,8 @@ import { UserModule } from './modules/user/user.module'
 import { WarehouseModule } from './modules/warehouse/warehouse.module'
 import { RedisModule } from './redis/redis.module'
 // Schedule Tasks
+import { getConnectionToken } from '@nestjs/mongoose'
+import { DATA_SOURCE_DATA_LAKE, DATA_SOURCE_ERP, DATA_SOURCE_SYSCLOUD } from './databases/constants'
 import { RFIDDeviceModule } from './modules/rfid-device/rfid-device.module'
 import { MongoDumpTask } from './tasks/mongodump.task'
 import { RotateLogTask } from './tasks/rotate-log.task'
@@ -68,6 +75,37 @@ import { SyncProductSpecificationTask } from './tasks/sync-product-specification
 		RedisModule.forRoot(),
 		SentryModule.forRoot(),
 		ScheduleModule.forRoot(),
+		ClsModule.forRoot({
+			plugins: [
+				new ClsPluginTransactional({
+					imports: [DatabaseModule],
+					connectionName: DATA_SOURCE_DATA_LAKE, // Đặt tên định danh cho plugin này
+					adapter: new TransactionalAdapterTypeOrm({
+						dataSourceToken: getDataSourceToken(DATA_SOURCE_DATA_LAKE)
+					})
+				}),
+				new ClsPluginTransactional({
+					imports: [DatabaseModule],
+					connectionName: DATA_SOURCE_SYSCLOUD,
+					adapter: new TransactionalAdapterTypeOrm({
+						dataSourceToken: getDataSourceToken(DATA_SOURCE_SYSCLOUD)
+					})
+				}),
+				new ClsPluginTransactional({
+					imports: [DatabaseModule],
+					connectionName: DATA_SOURCE_ERP,
+					adapter: new TransactionalAdapterTypeOrm({
+						dataSourceToken: getDataSourceToken(DATA_SOURCE_ERP)
+					})
+				}),
+				new ClsPluginTransactional({
+					imports: [DatabaseModule],
+					adapter: new TransactionalAdapterMongoose({
+						mongooseConnectionToken: getConnectionToken()
+					})
+				})
+			]
+		}),
 		I18nModule.forRootAsync({
 			inject: [ConfigService],
 			useFactory: (configService: ConfigService) => configService.getOrThrow('i18n'),

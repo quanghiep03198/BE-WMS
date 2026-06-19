@@ -1,4 +1,3 @@
-import { TransactionRegistry } from '@/common/stores/transaction.registry'
 import { DynamicModule, Module, Scope } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { MongooseModule, MongooseModuleOptions } from '@nestjs/mongoose'
@@ -27,15 +26,6 @@ import {
 					database: DATABASE_DATA_LAKE,
 					...configService.getOrThrow<TypeOrmModuleAsyncOptions>('mssql')
 				}
-			},
-			dataSourceFactory: async (options) => {
-				const dataSource = new DataSource(options)
-
-				await dataSource.initialize()
-
-				TransactionRegistry.register(DATA_SOURCE_DATA_LAKE, dataSource)
-
-				return dataSource
 			}
 		}),
 		TypeOrmModule.forRootAsync({

@@ -2,4 +2,4 @@ import { GetInternalEpcsExistsHandler } from './get-internal-epcs-exists/get-int
 import { GetScanningEpcsHandler } from './get-scanning-epcs/get-scanning-ecps.handler'
 import { GetScanningMOsHandler } from './get-scanning-mo/get-scanning-mo.handler'
 
-export const RFIDQueryHandlers = [GetScanningEpcsHandler, GetScanningMOsHandler, GetInternalEpcsExistsHandler]
+export const InoutboundQueryHandlers = [GetScanningEpcsHandler, GetScanningMOsHandler, GetInternalEpcsExistsHandler]

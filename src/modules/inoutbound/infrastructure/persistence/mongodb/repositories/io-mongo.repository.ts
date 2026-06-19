@@ -7,12 +7,14 @@ import { Inject, Injectable } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
 import { Cache } from 'cache-manager'
 import { AnyBulkWriteOperation, FilterQuery } from 'mongoose'
+import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
 import { RFIDSearchParams } from '../../../types'
 import { InventoryEpc, InventoryEpcDocument, InventoryEpcModel } from '../schemas/inventory-epc.schema'
 
 @Injectable()
 export class InoutboundMongoRepository implements IInoutboundMongoRepository {
 	constructor(
+		@InjectPinoLogger(InoutboundMongoRepository.name) private readonly logger: PinoLogger,
 		@InjectModel(InventoryEpc.name) private readonly inventoryEpcModel: InventoryEpcModel,
 		@Inject(CACHE_MANAGER) private readonly cacheManager: Cache
 	) {}
@@ -234,12 +236,12 @@ export class InoutboundMongoRepository implements IInoutboundMongoRepository {
 	}
 
 	public async updateStockInDate(scannedEpcs: Array<ElectronicProductCode>): Promise<number> {
+		throw new Error('Method not implemented.')
 		const result = await this.inventoryEpcModel
-			.updateMany(
-				{ epc: { $in: scannedEpcs.map((epc) => epc.getStockKeepingUnit()) } },
-				{ $set: { inbound_at: new Date() } }
-			)
+			.updateMany({ epc: { $in: scannedEpcs.map((epc) => epc.getStockKeepingUnit()) } }, { inbound_at: new Date() })
 			.exec()
+
+		this.logger.debug(result)
 
 		return result.modifiedCount
 	}
@@ -257,7 +259,8 @@ export class InoutboundMongoRepository implements IInoutboundMongoRepository {
 					...(action === 'inbound' && { inbound_at: null, inbound_device_sn: deviceSerialNumber }),
 					...(action === 'outbound' && { outbound_at: null, outbound_device_sn: deviceSerialNumber })
 				},
-				{ deleted: true, scannable: rescannable }
+				{ deleted: true, scannable: rescannable },
+				{ overwriteImmutable: true }
 			)
 			.exec()
 

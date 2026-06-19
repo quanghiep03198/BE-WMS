@@ -8,10 +8,11 @@ import {
 	IO_MSSQL_REPOSITORY
 } from '@/modules/inoutbound/domain/repositories/io-mssql.repository.interface'
 import { BadRequestException, Inject } from '@nestjs/common'
-import { EventBus, ICommandHandler } from '@nestjs/cqrs'
+import { CommandHandler, EventBus, ICommandHandler } from '@nestjs/cqrs'
 import { I18nContext, I18nService } from 'nestjs-i18n'
 import { StockInCommand } from './stock-in.command'
 
+@CommandHandler(StockInCommand)
 export class StockInHandler implements ICommandHandler<StockInCommand> {
 	constructor(
 		private readonly i18nService: I18nService,

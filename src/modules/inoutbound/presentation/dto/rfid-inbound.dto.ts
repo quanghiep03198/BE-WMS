@@ -4,6 +4,8 @@ import { InventoryActions, InventoryStorageType } from '../../domain/constants'
 
 export const updateStockInValidator = z
 	.object({
+		mo_no: z.string(),
+		inbound_device_sn: z.string(),
 		rfid_status: z.nativeEnum(InventoryActions, { required_error: 'Required' }),
 		rfid_use: z.nativeEnum(InventoryStorageType, { required_error: 'Required' }),
 		dept_code: z.string().optional(),
