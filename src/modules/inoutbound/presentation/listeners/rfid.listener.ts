@@ -1,15 +1,15 @@
-import { EventGateway } from '@/events/event.gateway'
 import { Injectable } from '@nestjs/common'
 import { OnEvent } from '@nestjs/event-emitter'
 import { InjectModel } from '@nestjs/mongoose'
 import { InventoryEpc, InventoryEpcModel } from '../../infrastructure/persistence/mongodb/schemas/inventory-epc.schema'
 import { PostReaderDataDTO } from '../dto/rfid-shared.dto'
+import { InoutboundGateway } from '../gateways/inoutbound.gateway'
 
 @Injectable()
 export class RFIDListener {
 	constructor(
 		@InjectModel(InventoryEpc.name) private readonly inventoryEpcModel: InventoryEpcModel,
-		private readonly eventGateway: EventGateway
+		private readonly eventGateway: InoutboundGateway
 	) {}
 
 	@OnEvent('rfid.inbound.check', { async: true })

@@ -2,7 +2,6 @@ import { CommonRequestHeader } from '@/common/constants'
 import { HttpMethod, Public, RequestUser, RequireAuthorized, RouteHandler, User } from '@/common/decorators'
 import { AllExceptionsFilter } from '@/common/filters'
 import { ZodValidationPipe } from '@/common/pipes'
-import { EventGateway } from '@/events/event.gateway'
 import {
 	ExchangeOrderDTO,
 	exchangeOrderValidator,
@@ -72,7 +71,6 @@ export class RFIDInboundController {
 		@InjectModel(EpcInbound.name) private readonly epcInboundModel: EpcModel,
 		@InjectQueue(POST_DATA_INBOUND_QUEUE) private readonly postInboundDataQueue: Queue<PostReaderDataDTO>,
 		@Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
-		private readonly eventGateway: EventGateway,
 		private readonly redisService: RedisService,
 		private readonly rfidSharedService: RFIDSharedService,
 		private readonly rfidInboundService: RFIDInboundService,

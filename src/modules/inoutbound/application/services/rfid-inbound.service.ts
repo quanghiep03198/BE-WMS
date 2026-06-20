@@ -1,6 +1,5 @@
 import { VALID_EPC_PATTERN } from '@/common/constants/regex'
 import { DATA_SOURCE_DATA_LAKE, DATA_SOURCE_ERP } from '@/databases/constants'
-import { EventGateway } from '@/events/event.gateway'
 import { IUpsertInventoryEventPayload } from '@/modules/inventory/interfaces'
 import { InjectQueue } from '@nestjs/bullmq'
 import { CACHE_MANAGER } from '@nestjs/cache-manager'
@@ -40,6 +39,7 @@ import { RFIDInventoryBackupEntity } from '../../infrastructure/persistence/mssq
 import { RFIDMatchEntity } from '../../infrastructure/persistence/mssql/entities/rfid-match.entity'
 import { RFIDSearchParams } from '../../infrastructure/types'
 import { generateStation } from '../../infrastructure/utils'
+import { InoutboundGateway } from '../../presentation/gateways/inoutbound.gateway'
 
 @Injectable({ scope: Scope.REQUEST })
 export class RFIDInboundService {
@@ -57,7 +57,7 @@ export class RFIDInboundService {
 		private readonly i18nService: I18nService,
 		// private readonly inventoryAuditService: InventoryAuditService,
 		private readonly eventEmitter: EventEmitter2,
-		private readonly eventGateway: EventGateway,
+		private readonly eventGateway: InoutboundGateway,
 		private readonly logger: PinoLogger
 	) {}
 

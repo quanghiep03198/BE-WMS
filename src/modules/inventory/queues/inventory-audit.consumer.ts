@@ -1,6 +1,5 @@
 import { SuperJson } from '@/common/utils'
 import { DATA_SOURCE_DATA_LAKE } from '@/databases/constants'
-import { EventGateway } from '@/events/event.gateway'
 import { OnQueueEvent, Processor, WorkerHost } from '@nestjs/bullmq'
 import { CACHE_MANAGER } from '@nestjs/cache-manager'
 import { Inject } from '@nestjs/common'
@@ -11,6 +10,7 @@ import { format, lastDayOfMonth } from 'date-fns'
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
 import { DataSource } from 'typeorm'
 import { SYNC_INVENTORY_AUDIT_QUEUE } from '../constants'
+import { InventoryGateway } from '../gateways/inventory.gateway'
 
 /** Cache TTL: 5 minutes — đủ để client reconnect trong khoảng này vẫn nhận được state */
 const SYNC_STATE_TTL_MS = 5 * 60 * 1000
@@ -33,7 +33,7 @@ export class InventoryAuditDataSyncConsumer extends WorkerHost {
 		@InjectPinoLogger(InventoryAuditDataSyncConsumer.name)
 		private readonly logger: PinoLogger,
 		@InjectDataSource(DATA_SOURCE_DATA_LAKE) private readonly dataSource: DataSource,
-		private readonly eventGateway: EventGateway,
+		private readonly eventGateway: InventoryGateway,
 		@Inject(CACHE_MANAGER) private readonly cacheManager: Cache
 	) {
 		super()

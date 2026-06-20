@@ -1,5 +1,4 @@
 import { DATA_SOURCE_DATA_LAKE } from '@/databases/constants'
-import { EventGateway } from '@/events/event.gateway'
 import { BullModule } from '@nestjs/bullmq'
 import { CACHE_MANAGER } from '@nestjs/cache-manager'
 import { Inject, Module, OnModuleInit } from '@nestjs/common'
@@ -44,10 +43,9 @@ import { RFIDMatchEntity } from './infrastructure/persistence/mssql/entities/rfi
 import { InoutboundMssqlRepository } from './infrastructure/persistence/mssql/repositories/io-mssql.repository'
 import { RFIDInventoryEntitySubscriber } from './infrastructure/persistence/mssql/subscribers/rfid-inventory.entity.subscriber'
 import { RFIDCustomerEntitySubscriber } from './infrastructure/persistence/mssql/subscribers/rfid-match.entity.subscriber'
-import { RFIDImportDataConsumer } from './infrastructure/queues/rfid-import-data.consumer'
-import { RFIDInboundConsumer } from './infrastructure/queues/rfid-inbound.consumer'
-import { RFIDOutboundConsumer } from './infrastructure/queues/rfid-outbound.consumer'
+import { RFIDConsumers } from './infrastructure/queues'
 import { RFIDControllers } from './presentation/controllers'
+import { InoutboundGateway } from './presentation/gateways/inoutbound.gateway'
 import { RFIDListeners } from './presentation/listeners'
 
 @Module({
@@ -121,7 +119,6 @@ import { RFIDListeners } from './presentation/listeners'
 	],
 	controllers: RFIDControllers,
 	providers: [
-		EventGateway,
 		RFIDSharedService,
 		RFIDInboundService,
 		RFIDOutboundService,
@@ -133,19 +130,17 @@ import { RFIDListeners } from './presentation/listeners'
 			provide: IO_MONGO_REPOSITORY,
 			useClass: InoutboundMongoRepository
 		},
-
+		...RFIDConsumers,
 		...RFIDListeners,
 		...InoutboundQueryHandlers,
 		...InoutboundCommandHandlers,
 		...InoutboundEventHandlers,
 		...InoutboundSagas,
-		RFIDInboundConsumer,
-		RFIDOutboundConsumer,
-		RFIDImportDataConsumer,
+		InoutboundGateway,
 		RFIDCustomerEntitySubscriber,
 		RFIDInventoryEntitySubscriber
 	],
-	exports: [MongooseModule, RFIDInboundService]
+	exports: [MongooseModule, RFIDInboundService, InoutboundGateway]
 })
 export class InoutboundModule implements OnModuleInit {
 	constructor(

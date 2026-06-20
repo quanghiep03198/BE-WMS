@@ -1,5 +1,4 @@
 import { DATA_SOURCE_DATA_LAKE } from '@/databases/constants'
-import { EventGateway } from '@/events/event.gateway'
 import { HttpModule, HttpService } from '@nestjs/axios'
 import { BullModule } from '@nestjs/bullmq'
 import { forwardRef, MiddlewareConsumer, Module, NestModule, OnModuleInit } from '@nestjs/common'
@@ -36,7 +35,6 @@ import { ThirdPartyApiService } from './third-party-api.service'
 	],
 	controllers: [ThirdPartyApiController],
 	providers: [
-		EventGateway,
 		ThirdPartyApiService,
 		ThirdPartyApiConsumer,
 		DeckersOAuth2Strategy,

@@ -1,4 +1,4 @@
-import { RollbackMssqlInboundDataEvent } from '@/modules/inoutbound/domain/events/rollback-mssql-inbound-data/rollback-mssql-inbound-data.event'
+import { UpdateStockInDateFailedEvent } from '@/modules/inoutbound/domain/events/update-stock-in-date-failed/update-stock-in-date-failed.event'
 import {
 	IInoutboundMongoRepository,
 	IO_MONGO_REPOSITORY
@@ -18,11 +18,13 @@ export class UpdateStockInDateHandler implements ICommandHandler<UpdateStockInDa
 
 	public async execute({ scannedEpcs }: UpdateStockInDateCommand): Promise<number> {
 		try {
+			if (1 === 1) throw new Error('RollbackMssqlInboundDataEvent')
+
 			this.logger.debug(scannedEpcs.map((item) => item.getStockKeepingUnit()))
 			return await this.inoutboundMongoRepository.updateStockInDate(scannedEpcs)
 		} catch (error) {
 			this.logger.error(error)
-			this.eventBus.publish(new RollbackMssqlInboundDataEvent())
+			this.eventBus.publish(new UpdateStockInDateFailedEvent(scannedEpcs))
 		}
 	}
 }

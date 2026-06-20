@@ -1,5 +1,4 @@
 import { DATA_SOURCE_DATA_LAKE } from '@/databases/constants'
-import { EventGateway } from '@/events/event.gateway'
 import { MiddlewareConsumer, Module, NestModule, RequestMethod } from '@nestjs/common'
 import { TypeOrmModule } from '@nestjs/typeorm'
 import { TenacyMiddleware } from '../tenancy/tenancy.middleware'
@@ -15,7 +14,6 @@ import { DefectiveGoodsOutboundService } from './services/defective-outbound.ser
 	imports: [TenancyModule, TypeOrmModule.forFeature([DefectiveGoodsEntity], DATA_SOURCE_DATA_LAKE)],
 	controllers: [DefectiveGoodsController],
 	providers: [
-		EventGateway,
 		DefectiveGoodsService,
 		DefectiveGoodsInboundService,
 		DefectiveGoodsOutboundService,
