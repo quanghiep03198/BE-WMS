@@ -16,7 +16,7 @@ export interface IInoutboundMongoRepository {
 		params: { 'inbound_device_sn.eq': string } | { 'outbound_device_sn.eq': string }
 	): Promise<boolean>
 
-	updateStockInDate(scannedEpcs: Array<ElectronicProductCode>): Promise<number>
+	updateInboundTimestamp(scannedEpcs: Array<ElectronicProductCode>): Promise<number>
 
 	bulkWriteInventoryEpcs({
 		action,
@@ -32,7 +32,8 @@ export interface IInoutboundMongoRepository {
 		deviceSerialNumber: string,
 		rescannable: boolean
 	): Promise<number>
-	deleteBulkEpcs(epcs: string[], rescannable: boolean): Promise<number>
+
+	bulkDeleteEpcs(inventoryAction: InventoryAction, epcs: string[], rescannable: boolean): Promise<number>
 
 	restoreArchivedEpcs(action: InventoryAction, epcs: RestoreArchivedEpcsDTO): Promise<number>
 }

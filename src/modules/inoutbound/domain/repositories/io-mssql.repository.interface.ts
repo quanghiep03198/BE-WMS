@@ -16,7 +16,7 @@ export interface IInoutboundMssqlRepository {
 
 	stockIn(epcs: Array<ElectronicProductCode>, stockInDetails: UpsertStockInDTO): Promise<void>
 
-	rollbackStoredEpcs(epcs: Array<ElectronicProductCode>): Promise<void>
+	rollbackStoredEpcs(stationNO: 'WH101' | 'WH103', epcs: Array<ElectronicProductCode>): Promise<void>
 }
 
 export const IO_MSSQL_REPOSITORY = 'IInoutboundMssqlRepository'

@@ -2,7 +2,10 @@ import { ElectronicProductCode } from '@/modules/inoutbound/domain/entities/epc.
 import { Command } from '@nestjs/cqrs'
 
 export class RollbackStoredEpcsCommand extends Command<any> {
-	constructor(public readonly scannedEpcs: Array<ElectronicProductCode>) {
+	constructor(
+		public readonly stationNo: 'WH101' | 'WH103',
+		public readonly scannedEpcs: Array<ElectronicProductCode>
+	) {
 		super()
 	}
 }

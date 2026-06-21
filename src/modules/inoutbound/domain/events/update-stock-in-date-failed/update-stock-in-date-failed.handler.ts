@@ -8,7 +8,9 @@ export class UpdateStockInDateFailedEventHandler implements IEventHandler<Update
 	constructor(
 		private readonly inoutboundGateway: InoutboundGateway,
 		private readonly i18nService: I18nService
-	) {}
+	) {
+		void this.i18nService
+	}
 
 	public async handle() {
 		this.inoutboundGateway.server.emit(

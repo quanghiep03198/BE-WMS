@@ -120,13 +120,13 @@ export class InoutboundMssqlRepository implements IInoutboundMssqlRepository {
 	}
 
 	@Transactional()
-	public async rollbackStoredEpcs(epcs: Array<ElectronicProductCode>): Promise<void> {
+	public async rollbackStoredEpcs(stationNO: 'WH101' | 'WH103', epcs: Array<ElectronicProductCode>): Promise<void> {
 		await this.dataSourceDL
 			.getRepository(RFIDInventoryEntity)
 			.createQueryBuilder()
 			.delete()
 			.where('epc IN (:...epcs)', { epcs: epcs.map((item) => item.getStockKeepingUnit()) })
-			.andWhere('RIGHT(stationNO, 5) = :station_no', { station_no: 'WH101' })
+			.andWhere('RIGHT(stationNO, 5) = :station_no', { station_no: stationNO })
 			.andWhere('rfid_status = :rfid_status', { rfid_status: InventoryActions.INBOUND })
 			.andWhere('CAST(record_time AS DATE) = CAST(GETDATE() AS DATE)')
 			.execute()
@@ -136,7 +136,7 @@ export class InoutboundMssqlRepository implements IInoutboundMssqlRepository {
 			.createQueryBuilder()
 			.delete()
 			.where('epc IN (:...epcs)', { epcs: epcs.map((item) => item.getStockKeepingUnit()) })
-			.andWhere('RIGHT(stationNO, 5) = :station_no', { station_no: 'WH101' })
+			.andWhere('RIGHT(stationNO, 5) = :station_no', { station_no: stationNO })
 			.andWhere('rfid_status = :rfid_status', { rfid_status: InventoryActions.INBOUND })
 			.andWhere('CAST(record_time AS DATE) = CAST(GETDATE() AS DATE)')
 			.execute()

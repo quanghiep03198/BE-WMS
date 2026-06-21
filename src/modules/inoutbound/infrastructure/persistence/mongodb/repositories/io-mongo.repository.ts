@@ -235,10 +235,12 @@ export class InoutboundMongoRepository implements IInoutboundMongoRepository {
 		return result.upsertedCount
 	}
 
-	public async updateStockInDate(scannedEpcs: Array<ElectronicProductCode>): Promise<number> {
-		throw new Error('Method not implemented.')
+	public async updateInboundTimestamp(scannedEpcs: Array<ElectronicProductCode>): Promise<number> {
 		const result = await this.inventoryEpcModel
-			.updateMany({ epc: { $in: scannedEpcs.map((epc) => epc.getStockKeepingUnit()) } }, { inbound_at: new Date() })
+			.updateMany(
+				{ epc: { $in: scannedEpcs.map((epc) => epc.getStockKeepingUnit()) }, inbound_at: null },
+				{ inbound_at: new Date() }
+			)
 			.exec()
 
 		this.logger.debug(result)
@@ -267,9 +269,20 @@ export class InoutboundMongoRepository implements IInoutboundMongoRepository {
 		return result.matchedCount
 	}
 
-	public async deleteBulkEpcs(epcs: string[], rescannable: boolean): Promise<number> {
+	public async bulkDeleteEpcs(
+		inventoryAction: InventoryAction,
+		epcs: string[],
+		rescannable: boolean
+	): Promise<number> {
 		const result = await this.inventoryEpcModel
-			.updateMany({ epc: { $in: epcs } }, { deleted: true, scannable: rescannable })
+			.updateMany(
+				{
+					epc: { $in: epcs },
+					...(inventoryAction === 'inbound' && { inbound_at: null }),
+					...(inventoryAction === 'outbound' && { outbound_at: null, po: null })
+				},
+				{ deleted: true, scannable: rescannable }
+			)
 			.exec()
 
 		return result.matchedCount

@@ -14,8 +14,8 @@ export class RollbackStoredEpcsHandler implements ICommandHandler<RollbackStored
 		@Inject(IO_MSSQL_REPOSITORY) private readonly inoutboundMssqlRepository: IInoutboundMssqlRepository
 	) {}
 
-	public async execute({ scannedEpcs }: RollbackStoredEpcsCommand): Promise<void> {
+	public async execute({ stationNo: stationNO, scannedEpcs }: RollbackStoredEpcsCommand): Promise<void> {
 		this.logger.debug(`Rolling back stored EPCs: ${scannedEpcs.map((epc) => epc.getStockKeepingUnit()).join(', ')}`)
-		await this.inoutboundMssqlRepository.rollbackStoredEpcs(scannedEpcs)
+		await this.inoutboundMssqlRepository.rollbackStoredEpcs(stationNO, scannedEpcs)
 	}
 }

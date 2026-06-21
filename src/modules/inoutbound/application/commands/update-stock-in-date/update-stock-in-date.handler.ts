@@ -1,4 +1,5 @@
 import { UpdateStockInDateFailedEvent } from '@/modules/inoutbound/domain/events/update-stock-in-date-failed/update-stock-in-date-failed.event'
+import { UpdateStockInDateSuccessEvent } from '@/modules/inoutbound/domain/events/update-stock-in-date-success/update-stock-in-date-success.event'
 import {
 	IInoutboundMongoRepository,
 	IO_MONGO_REPOSITORY
@@ -18,13 +19,16 @@ export class UpdateStockInDateHandler implements ICommandHandler<UpdateStockInDa
 
 	public async execute({ scannedEpcs }: UpdateStockInDateCommand): Promise<number> {
 		try {
-			if (1 === 1) throw new Error('RollbackMssqlInboundDataEvent')
-
 			this.logger.debug(scannedEpcs.map((item) => item.getStockKeepingUnit()))
-			return await this.inoutboundMongoRepository.updateStockInDate(scannedEpcs)
+			const result = await this.inoutboundMongoRepository.updateInboundTimestamp(scannedEpcs)
+			this.eventBus.publish(
+				new UpdateStockInDateSuccessEvent({ year: new Date().getFullYear(), month: new Date().getMonth() + 1 })
+			)
+			return result
 		} catch (error) {
 			this.logger.error(error)
-			this.eventBus.publish(new UpdateStockInDateFailedEvent(scannedEpcs))
+			this.eventBus.publish(new UpdateStockInDateFailedEvent('WH101', scannedEpcs))
+			throw error
 		}
 	}
 }
