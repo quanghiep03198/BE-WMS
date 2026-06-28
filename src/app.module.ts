@@ -42,10 +42,7 @@ import { RedisModule } from './redis/redis.module'
 import { getConnectionToken } from '@nestjs/mongoose'
 import { DATA_SOURCE_DATA_LAKE, DATA_SOURCE_ERP, DATA_SOURCE_SYSCLOUD } from './databases/constants'
 import { RFIDDeviceModule } from './modules/rfid-device/rfid-device.module'
-import { MongoDumpTask } from './tasks/mongodump.task'
-import { RotateLogTask } from './tasks/rotate-log.task'
-import { SyncLicensePlateSnapshotTask } from './tasks/sync-license-plate-snapshot.task'
-import { SyncProductSpecificationTask } from './tasks/sync-product-specification.task'
+import { ScheduleTasks } from './tasks'
 
 @Module({
 	imports: [
@@ -158,11 +155,8 @@ import { SyncProductSpecificationTask } from './tasks/sync-product-specification
 	],
 	controllers: [AppController],
 	providers: [
+		...ScheduleTasks,
 		EventGateway,
-		RotateLogTask,
-		MongoDumpTask,
-		SyncLicensePlateSnapshotTask,
-		SyncProductSpecificationTask,
 		{
 			provide: APP_FILTER,
 			useClass: SentryGlobalFilter
