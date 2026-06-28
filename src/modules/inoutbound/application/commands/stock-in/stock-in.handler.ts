@@ -1,14 +1,16 @@
-import { StockedInEvent } from '@/modules/inoutbound/domain/events/stocked-in/stocked-in.event'
 import {
-	IInoutboundMongoRepository,
+	IIoMongoRepository,
 	IO_MONGO_REPOSITORY
-} from '@/modules/inoutbound/domain/repositories/io-mongo.repository.interface'
+} from '@/modules/inoutbound/application/ports/io-mongo.repository.port'
 import {
-	IInoutboundMssqlRepository,
+	IIoMssqlRepository,
 	IO_MSSQL_REPOSITORY
-} from '@/modules/inoutbound/domain/repositories/io-mssql.repository.interface'
+} from '@/modules/inoutbound/application/ports/io-mssql.repository.port'
+import { StockedInEvent } from '@/modules/inoutbound/domain/events/stocked-in/stocked-in.event'
+import { ExcessInboundOrderException } from '@/modules/inoutbound/domain/exceptions/excess-inbound-order.exception'
+import { StockInTransaction } from '@/modules/inoutbound/domain/models/stock-in-transaction.model'
 import { BadRequestException, Inject } from '@nestjs/common'
-import { CommandHandler, EventBus, ICommandHandler } from '@nestjs/cqrs'
+import { CommandHandler, EventPublisher, ICommandHandler } from '@nestjs/cqrs'
 import { I18nContext, I18nService } from 'nestjs-i18n'
 import { StockInCommand } from './stock-in.command'
 
@@ -16,31 +18,40 @@ import { StockInCommand } from './stock-in.command'
 export class StockInHandler implements ICommandHandler<StockInCommand> {
 	constructor(
 		private readonly i18nService: I18nService,
-		@Inject(IO_MSSQL_REPOSITORY) private readonly inoutboundMssqlRepository: IInoutboundMssqlRepository,
-		@Inject(IO_MONGO_REPOSITORY) private readonly inoutboundMongoRepository: IInoutboundMongoRepository,
-		private readonly eventBus: EventBus
+		@Inject(IO_MSSQL_REPOSITORY) private readonly inoutboundMssqlRepository: IIoMssqlRepository,
+		@Inject(IO_MONGO_REPOSITORY) private readonly inoutboundMongoRepository: IIoMongoRepository,
+		private readonly eventPublisher: EventPublisher
 	) {}
 
-	// @Transactional(DATA_SOURCE_DATA_LAKE)
 	public async execute({ command }: StockInCommand): Promise<void> {
-		const payload = await this.inoutboundMongoRepository.getAllScanningEpcsByOrder(
-			command.inbound_device_sn,
-			command.mo_no
-		)
-
-		const excessInboundQuantities = await this.inoutboundMssqlRepository.getExcessInboundQuantities(
-			command.mo_no,
-			payload
-		)
-
-		if (excessInboundQuantities.length > 0)
-			throw new BadRequestException(
-				this.i18nService.t('inoutbound.notification.over_inbound_limit', { lang: I18nContext.current()?.lang }),
-				{ cause: excessInboundQuantities }
+		try {
+			const pendingInboundEpcs = await this.inoutboundMongoRepository.getPendingInboundEpcs(
+				command.inbound_device_sn,
+				command.mo_no
 			)
 
-		await this.inoutboundMssqlRepository.stockIn(payload, command)
+			const currentInboundProgress = await this.inoutboundMssqlRepository.getMoInboundProgress(
+				command.mo_no,
+				pendingInboundEpcs
+			)
 
-		await this.eventBus.publish(new StockedInEvent(payload))
+			const inboundTransaction = new StockInTransaction(pendingInboundEpcs, currentInboundProgress)
+
+			const inboundEpcs = inboundTransaction.verify(pendingInboundEpcs)
+
+			await this.inoutboundMssqlRepository.stockIn(inboundEpcs, command)
+
+			inboundTransaction.apply(new StockedInEvent(inboundEpcs))
+			this.eventPublisher.mergeObjectContext(inboundTransaction)
+			inboundTransaction.commit()
+		} catch (error) {
+			if (error instanceof ExcessInboundOrderException)
+				throw new BadRequestException(
+					this.i18nService.t('inoutbound.notification.over_inbound_limit', { lang: I18nContext.current()?.lang }),
+					{ cause: error.cause }
+				)
+
+			throw error
+		}
 	}
 }

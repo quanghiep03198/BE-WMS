@@ -1,5 +1,5 @@
 import { IEvent } from '@nestjs/cqrs'
-import { ElectronicProductCode } from '../../entities/epc.entity'
+import { ElectronicProductCode } from '../../value-objects/epc.vo'
 
 export class UpdateStockInDateFailedEvent implements IEvent {
 	constructor(

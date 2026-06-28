@@ -1,7 +1,7 @@
 import { RFIDSearchParams } from '@/modules/inoutbound/infrastructure/types'
 import { IQuery } from '@nestjs/cqrs'
 
-export class GetScanningMOsQuery implements IQuery {
+export class GetScanningMosQuery implements IQuery {
 	constructor(
 		public readonly params:
 			| Required<Pick<RFIDSearchParams, 'inbound_device_sn.eq'>>

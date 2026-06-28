@@ -19,7 +19,7 @@ import { StoredRFIDReaderItem } from '../types'
 @Processor(IMPORT_DATA_QUEUE)
 export class RFIDImportDataConsumer extends WorkerHost {
 	private readonly epcInformationQuery: string = readFileSync(
-		resolve(join(__dirname, '../sql/epc-information.sql')),
+		resolve(join(__dirname, '../persistence/mssql/sql/epc-information.sql')),
 		'utf-8'
 	)
 

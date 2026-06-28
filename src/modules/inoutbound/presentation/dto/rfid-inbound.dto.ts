@@ -1,8 +1,7 @@
-import { RequestUser } from '@/common/decorators'
 import { z } from 'zod'
 import { InventoryActions, InventoryStorageType } from '../../domain/constants'
 
-export const updateStockInValidator = z
+export const stockInValidator = z
 	.object({
 		mo_no: z.string(),
 		inbound_device_sn: z.string(),
@@ -71,11 +70,6 @@ export const upsertEpcInformationSchema = z.object({
 	size_qty: z.number({ required_error: 'ns_validation:required' }).default(0)
 })
 
-export type UpsertStockInDTO = z.infer<typeof updateStockInValidator> &
-	Pick<RequestUser, 'username' | 'display_name'> & {
-		inbound_device_sn: string
-		mo_no: string
-		factory_code_produce: string
-	}
+export type StockInDTO = Required<z.infer<typeof stockInValidator>>
 export type ExchangeOrderDTO = z.infer<typeof exchangeOrderValidator>
 export type UpsertEpcInformationDTO = z.infer<typeof upsertEpcInformationSchema>

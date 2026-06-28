@@ -5,10 +5,10 @@ import { ZodValidationPipe } from '@/common/pipes'
 import {
 	ExchangeOrderDTO,
 	exchangeOrderValidator,
-	updateStockInValidator,
+	StockInDTO,
+	stockInValidator,
 	UpsertEpcInformationDTO,
-	upsertEpcInformationSchema,
-	UpsertStockInDTO
+	upsertEpcInformationSchema
 } from '@/modules/inoutbound/presentation/dto/rfid-inbound.dto'
 import {
 	deleteEpcValidator,
@@ -49,10 +49,11 @@ import { isEmpty, isNil, pickBy } from 'lodash'
 import { PaginateResult } from 'mongoose'
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
 import z from 'zod'
+import { CreateEpcChangeStreamCommand } from '../../application/commands/create-epc-change-stream/create-epc-change-stream.command'
 import { StockInCommand } from '../../application/commands/stock-in/stock-in.command'
 import { GetInternalEpcsExistsQuery } from '../../application/queries/get-internal-epcs-exists/get-internal-epcs-exists.query'
 import { GetScanningEpcsQuery } from '../../application/queries/get-scanning-epcs/get-scanning-epcs.query'
-import { GetScanningMOsQuery } from '../../application/queries/get-scanning-mo/get-scanning-mo.query'
+import { GetScanningMosQuery } from '../../application/queries/get-scanning-mo/get-scanning-mo.query'
 import { RFIDInboundService } from '../../application/services/rfid-inbound.service'
 import { RFIDSharedService } from '../../application/services/rfid-shared.service'
 import { ScannedOrderDetail } from '../../domain/types'
@@ -96,7 +97,7 @@ export class RFIDInboundController {
 		const handleChange = async () => {
 			const [epcs, orders, has_invalid] = await Promise.all([
 				this.queryBus.execute(new GetScanningEpcsQuery({ page: 1, limit: 50, 'inbound_device_sn.eq': device_sn })),
-				this.queryBus.execute(new GetScanningMOsQuery({ 'inbound_device_sn.eq': device_sn })),
+				this.queryBus.execute(new GetScanningMosQuery({ 'inbound_device_sn.eq': device_sn })),
 				this.queryBus.execute(new GetInternalEpcsExistsQuery({ 'inbound_device_sn.eq': device_sn }))
 			])
 
@@ -104,24 +105,12 @@ export class RFIDInboundController {
 		}
 
 		await handleChange()
-		// let currentWatchers = await this.cacheManager.get<number>('cached:rfid:inbound_watchers')
-		// await this.cacheManager.set('cached:rfid:inbound_watchers', currentWatchers ? currentWatchers + 1 : 1)
-		// currentWatchers = await this.cacheManager.get<number>('cached:rfid:inbound_watchers')
-		// this.eventGateway.server.emit('rfid_inbound_watcher', currentWatchers)
-		const changeStream = await this.rfidSharedService.captureDataChange(
-			{ 'fullDocument.inbound_device_sn': device_sn },
-			handleChange
+
+		const changeStream = await this.commandBus.execute(
+			new CreateEpcChangeStreamCommand({ 'fullDocument.inbound_device_sn': device_sn }, handleChange)
 		)
 
 		reply.raw.on('close', async () => {
-			// currentWatchers = await this.cacheManager.get<number>('cached:rfid:inbound_watchers')
-			// await this.cacheManager.set('cached:rfid:inbound_watchers', currentWatchers > 0 ? currentWatchers - 1 : 0)
-			// currentWatchers = await this.cacheManager.get<number>('cached:rfid:inbound_watchers')
-			// this.eventGateway.server.emit('rfid_inbound_watcher', currentWatchers)
-			// if (currentWatchers === 0) {
-			// 	this.logger.info('Stop receiving data from Android RFID device')
-			// }
-			await this.rfidSharedService.cleanupQueue(this.postInboundDataQueue)
 			changeStream.removeListener('change', handleChange)
 			changeStream.close()
 			reply.raw.end()
@@ -175,7 +164,7 @@ export class RFIDInboundController {
 	})
 	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
 	async getOrderDetails(@Param('device_sn') device_sn: string) {
-		return await this.queryBus.execute(new GetScanningMOsQuery({ 'inbound_device_sn.eq': device_sn }))
+		return await this.queryBus.execute(new GetScanningMosQuery({ 'inbound_device_sn.eq': device_sn }))
 	}
 
 	@RouteHandler({
@@ -188,7 +177,6 @@ export class RFIDInboundController {
 	}
 
 	@RouteHandler({
-		endpoint: 'stock-in',
 		method: HttpMethod.PUT,
 		statusCode: HttpStatus.CREATED,
 		message: 'common.updated'
@@ -197,22 +185,16 @@ export class RFIDInboundController {
 	async stockIn(
 		@User() user: RequestUser,
 		@Headers(CommonRequestHeader.FACTORY_CODE) factoryCode: string,
-		@Body(new ZodValidationPipe(updateStockInValidator)) payload: UpsertStockInDTO
+		@Body(new ZodValidationPipe(stockInValidator)) payload: StockInDTO
 	) {
 		return await this.commandBus.execute(
 			new StockInCommand({
 				...payload,
-				// mo_no: manufacturingOrder,
-				// inbound_device_sn: deviceSerialNumber,
 				factory_code_produce: factoryCode,
 				username: user.username,
 				display_name: user.display_name
 			})
 		)
-		// return await this.rfidInboundService.upsertStockIn(commandNumber, factoryCode, {
-		// 	...payload,
-		// 	...pick(user, ['username', 'display_name'])
-		// })
 	}
 
 	@RouteHandler({

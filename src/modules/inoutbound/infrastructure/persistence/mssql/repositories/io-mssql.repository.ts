@@ -1,9 +1,10 @@
 import { DATA_SOURCE_DATA_LAKE } from '@/databases/constants'
+import { IIoMssqlRepository } from '@/modules/inoutbound/application/ports/io-mssql.repository.port'
 import { EXCLUDED_ORDERS, InventoryActions } from '@/modules/inoutbound/domain/constants'
-import { ElectronicProductCode } from '@/modules/inoutbound/domain/entities/epc.entity'
-import { IInoutboundMssqlRepository } from '@/modules/inoutbound/domain/repositories/io-mssql.repository.interface'
-import { UpsertStockInDTO } from '@/modules/inoutbound/presentation/dto/rfid-inbound.dto'
-import { Transactional } from '@nestjs-cls/transactional'
+import { ElectronicProductCode } from '@/modules/inoutbound/domain/value-objects/epc.vo'
+import { StockInDTO } from '@/modules/inoutbound/presentation/dto/rfid-inbound.dto'
+import { Transactional, TransactionHost } from '@nestjs-cls/transactional'
+import { TransactionalAdapterTypeOrm } from '@nestjs-cls/transactional-adapter-typeorm'
 import { Injectable } from '@nestjs/common'
 import { InjectDataSource } from '@nestjs/typeorm'
 import { format } from 'date-fns'
@@ -11,21 +12,29 @@ import { chunk, omit } from 'lodash'
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
 import { readFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
-import { Brackets, DataSource } from 'typeorm'
+import { Brackets, DataSource, In } from 'typeorm'
 import { generateStation } from '../../../utils'
 import { RFIDInventoryBackupEntity, RFIDInventoryEntity } from '../entities/rfid-inventory.entity'
+import { RFIDMatchEntity } from '../entities/rfid-match.entity'
 
 @Injectable()
-export class InoutboundMssqlRepository implements IInoutboundMssqlRepository {
+export class InoutboundMssqlRepository implements IIoMssqlRepository {
 	constructor(
 		@InjectDataSource(DATA_SOURCE_DATA_LAKE) private readonly dataSourceDL: DataSource,
-		@InjectPinoLogger(InoutboundMssqlRepository.name) private readonly logger: PinoLogger
+		@InjectPinoLogger(InoutboundMssqlRepository.name) private readonly logger: PinoLogger,
+		private readonly txHost: TransactionHost<TransactionalAdapterTypeOrm>
 	) {}
 
 	public async getEpcsInformation(epcs: ElectronicProductCode[]): Promise<ElectronicProductCode[]> {
 		if (!epcs.length) return []
 
-		const generatedValues = epcs.map((e) => `('${e.getStockKeepingUnit()}')`).join(',')
+		const generatedValues = epcs
+			.filter((e) => e.getIsWritable())
+			.map((e) => {
+				const sku = e.getStockKeepingUnit()
+				return `('${sku}')`
+			})
+			.join(',')
 
 		const rawData = await this.dataSourceDL
 			.createQueryBuilder()
@@ -58,45 +67,43 @@ export class InoutboundMssqlRepository implements IInoutboundMssqlRepository {
 
 		return rawData.map(
 			(item) =>
-				new ElectronicProductCode(
-					item.epc,
-					undefined,
-					item.mo_no,
-					item.factory_shoes_style,
-					item.color_sn,
-					item.size_numcode,
-					item.factory_code_produce
-				)
+				new ElectronicProductCode(item.epc, {
+					mo_no: item.mo_no,
+					factory_shoes_style: item.factory_shoes_style,
+					color_sn: item.color_sn,
+					size_numcode: item.size_numcode,
+					factory_code_produce: item.factory_code_produce
+				})
 		)
 	}
 
-	public async getExcessInboundQuantities(
+	public async getMoInboundProgress(
 		manufacturingOrder: string,
-		epcs: ElectronicProductCode[]
+		pendingInboundEpcs: ElectronicProductCode[]
 	): Promise<
 		Array<{
 			size_numcode: string
-			missing_qty: number
+			size_qty: number
+			accumulated_inbound_qty: number
 		}>
 	> {
-		const sql: string = readFileSync(resolve(join(__dirname, '../../../sql/mo-inbound-progress.sql')), 'utf-8')
+		const sql: string = readFileSync(resolve(join(__dirname, '../sql/mo-inbound-progress.sql')), 'utf-8')
 
-		const missingOrderSizeQty = await this.dataSourceDL.query<
+		return await this.dataSourceDL.query<
 			Array<{
 				size_numcode: string
-				missing_qty: number
+				size_qty: number
+				accumulated_inbound_qty: number
 			}>
 		>(sql, [
 			manufacturingOrder,
-			JSON.stringify(epcs.map((e) => ({ epc: e.getStockKeepingUnit(), size_numcode: e.getSize() })))
+			JSON.stringify(pendingInboundEpcs.map((e) => ({ epc: e.getStockKeepingUnit(), size_numcode: e.getSize() })))
 		])
-
-		return missingOrderSizeQty.filter((size) => size.missing_qty < 0)
 	}
 
-	@Transactional()
-	public async stockIn(epcs: Array<ElectronicProductCode>, stockInDetails: UpsertStockInDTO): Promise<void> {
-		const sql: string = readFileSync(resolve(join(__dirname, '../../../sql/upsert-inbound.sql')), 'utf-8')
+	@Transactional<TransactionalAdapterTypeOrm>()
+	public async stockIn(epcs: Array<ElectronicProductCode>, stockInDetails: StockInDTO): Promise<void> {
+		const sql: string = readFileSync(resolve(join(__dirname, '../sql/upsert-inbound.sql')), 'utf-8')
 
 		const upsertPayload = epcs
 			.filter((item) => item.getIsWritable() && !item.getIsInternal())
@@ -114,14 +121,37 @@ export class InoutboundMssqlRepository implements IInoutboundMssqlRepository {
 
 		await Promise.all(
 			chunk(upsertPayload, 100).map(async (item) => {
-				return await this.dataSourceDL.query(sql, [JSON.stringify(item)])
+				return await this.txHost.tx.query(sql, [JSON.stringify(item)])
 			})
 		)
 	}
 
-	@Transactional()
-	public async rollbackStoredEpcs(stationNO: 'WH101' | 'WH103', epcs: Array<ElectronicProductCode>): Promise<void> {
-		await this.dataSourceDL
+	@Transactional<TransactionalAdapterTypeOrm>()
+	public async exchangeManufacturingOrder(exchangeSkus: Array<string>, targetMo: string): Promise<number> {
+		const currentTimestamp = format(new Date(), 'yyyy-MM-dd HH:mm:ss')
+
+		const result = await Promise.all(
+			chunk(exchangeSkus, 2000).map(async (skus) => {
+				return await this.txHost.tx.getRepository(RFIDMatchEntity).update(
+					{ epc: In(skus) },
+					{
+						mo_no: targetMo,
+						actual_mo_no: () => 'mo_no',
+						remark: () => /* SQL */ `CONCAT('[${currentTimestamp}] Info: Exchanged from M.O ', '"',mo_no, '"')`
+					}
+				)
+			})
+		)
+
+		return result.reduce((acc, curr) => acc + curr.affected, 0)
+	}
+
+	@Transactional<TransactionalAdapterTypeOrm>()
+	public async rollbackInoutboundTransaction(
+		stationNO: 'WH101' | 'WH103',
+		epcs: Array<ElectronicProductCode>
+	): Promise<void> {
+		await this.txHost.tx
 			.getRepository(RFIDInventoryEntity)
 			.createQueryBuilder()
 			.delete()
@@ -131,7 +161,7 @@ export class InoutboundMssqlRepository implements IInoutboundMssqlRepository {
 			.andWhere('CAST(record_time AS DATE) = CAST(GETDATE() AS DATE)')
 			.execute()
 
-		await this.dataSourceDL
+		await this.txHost.tx
 			.getRepository(RFIDInventoryBackupEntity)
 			.createQueryBuilder()
 			.delete()

@@ -25,7 +25,7 @@ import { readFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { DataSource, FindOptionsWhere, In } from 'typeorm'
 import { FALLBACK_VALUE } from '../../domain/constants'
-import { ExchangeOrderDTO, UpsertEpcInformationDTO, UpsertStockInDTO } from '../../presentation/dto/rfid-inbound.dto'
+import { ExchangeOrderDTO, StockInDTO, UpsertEpcInformationDTO } from '../../presentation/dto/rfid-inbound.dto'
 import { PostReaderDataDTO, SearchCustOrderParamsDTO } from '../../presentation/dto/rfid-shared.dto'
 
 import { POST_DATA_INBOUND_QUEUE } from '../../infrastructure/constants/queue'
@@ -44,7 +44,7 @@ import { InoutboundGateway } from '../../presentation/gateways/inoutbound.gatewa
 @Injectable({ scope: Scope.REQUEST })
 export class RFIDInboundService {
 	private readonly missingInboundQtyQuery: string = readFileSync(
-		resolve(join(__dirname, '../../infrastructure/sql/mo-inbound-progress.sql')),
+		resolve(join(__dirname, '../../infrastructure/persistence/mssql/sql/mo-inbound-progress.sql')),
 		'utf-8'
 	)
 
@@ -74,7 +74,7 @@ export class RFIDInboundService {
 		return await this.postDataQueue.add('RFID_INBOUND', data, { lifo: true })
 	}
 
-	public async upsertStockIn(commandNumber: string, factoryCode: string, data: UpsertStockInDTO) {
+	public async upsertStockIn(commandNumber: string, factoryCode: string, data: StockInDTO) {
 		const payload = await this.epcInboundModel.find({ scannable: true, mo_no: commandNumber }).lean(true)
 		const queryRunner = this.dataSourceDL.createQueryRunner()
 		const session = await this.epcInboundModel.startSession()

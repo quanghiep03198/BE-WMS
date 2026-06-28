@@ -1,12 +1,12 @@
-import { ElectronicProductCode } from '@/modules/inoutbound/domain/entities/epc.entity'
 import {
-	IInoutboundMongoRepository,
+	IIoMongoRepository,
 	IO_MONGO_REPOSITORY
-} from '@/modules/inoutbound/domain/repositories/io-mongo.repository.interface'
+} from '@/modules/inoutbound/application/ports/io-mongo.repository.port'
 import {
-	IInoutboundMssqlRepository,
+	IIoMssqlRepository,
 	IO_MSSQL_REPOSITORY
-} from '@/modules/inoutbound/domain/repositories/io-mssql.repository.interface'
+} from '@/modules/inoutbound/application/ports/io-mssql.repository.port'
+import { ElectronicProductCode } from '@/modules/inoutbound/domain/value-objects/epc.vo'
 import { Inject } from '@nestjs/common'
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs'
 import { BulkWriteInventoryCommand } from './bulk-write-inventory.command'
@@ -14,25 +14,23 @@ import { BulkWriteInventoryCommand } from './bulk-write-inventory.command'
 @CommandHandler(BulkWriteInventoryCommand)
 export class BulkWriteInventoryCommandHandler implements ICommandHandler<BulkWriteInventoryCommand, void> {
 	constructor(
-		@Inject(IO_MSSQL_REPOSITORY) private readonly rfidRepository: IInoutboundMssqlRepository,
-		@Inject(IO_MONGO_REPOSITORY) private readonly inventoryEpcRepository: IInoutboundMongoRepository
+		@Inject(IO_MSSQL_REPOSITORY) private readonly ioMssqlRepository: IIoMssqlRepository,
+		@Inject(IO_MONGO_REPOSITORY) private readonly ioMongoRepository: IIoMongoRepository
 	) {}
 
 	public async execute({ command }: BulkWriteInventoryCommand) {
 		const { data, sn } = command.payload
 
-		const epcs = ElectronicProductCode.createFactory(data.tagList.map((tag) => ({ sku: tag.epc })))
+		const epcs = ElectronicProductCode.createFactory(data.tagList.map((tag) => ({ sku: tag.epc, attributes: null })))
 
-		const scannedEpcs = await this.rfidRepository.getEpcsInformation(epcs)
+		const scannedEpcs = await this.ioMssqlRepository.getEpcsInformation(epcs)
 
 		if (scannedEpcs.length === 0) return
 
-		console.log('request.action', command.action)
-
-		await this.inventoryEpcRepository.bulkWriteInventoryEpcs({
+		await this.ioMongoRepository.bulkWriteInventoryEpcs({
 			action: command.action,
 			payload: {
-				eProductCodes: scannedEpcs,
+				epcs: scannedEpcs,
 				deviceSerialNumber: sn
 			}
 		})

@@ -30,11 +30,11 @@ import { FindEpcBySizeDTO, RestoreArchivedEpcsDTO } from '../../presentation/dto
 @Injectable()
 export class RFIDSharedService {
 	private readonly epcInformationQuery: string = readFileSync(
-		resolve(join(__dirname, '../../infrastructure/sql/epc-information.sql')),
+		resolve(join(__dirname, '../../infrastructure/persistence/mssql/sql/epc-information.sql')),
 		'utf-8'
 	)
 	private readonly deduplicatedEpcInformationQuery: string = readFileSync(
-		resolve(join(__dirname, '../../infrastructure/sql/deduplicated-epc-information.sql')),
+		resolve(join(__dirname, '../../infrastructure/persistence/mssql/sql/deduplicated-epc-information.sql')),
 		'utf-8'
 	)
 
@@ -209,10 +209,15 @@ export class RFIDSharedService {
 			[
 				{
 					$match: {
-						operationType: {
-							$in: ['insert', 'update', 'delete']
-						},
-						...filterQuery
+						$or: [
+							{
+								operationType: { $in: ['insert', 'update'] },
+								...filterQuery
+							},
+							{
+								operationType: 'delete'
+							}
+						]
 					}
 				}
 			],
