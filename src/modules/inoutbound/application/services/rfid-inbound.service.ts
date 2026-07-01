@@ -128,8 +128,8 @@ export class RFIDInboundService {
 			await this.eventEmitter.emitAsync('inventory.inbound', {
 				mo_no: commandNumber,
 				sizes: sizeCodes,
-				username: data.username,
-				display_name: data.display_name
+				username: data['username'],
+				display_name: data['display_name']
 			} satisfies Omit<IUpsertInventoryEventPayload, 'po'>)
 		} catch (error) {
 			this.logger.error(error)
