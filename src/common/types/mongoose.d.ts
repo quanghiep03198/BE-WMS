@@ -1,5 +1,6 @@
-import type { MongooseBulkWriteResult } from 'mongoose/types'
+import { mongo } from 'mongoose'
 
 export module 'mongoose' {
-	type BulkWriteResult = Omit<MongooseBulkWriteResult, 'mongoose'>
+	type BulkWriteResult = mongo.BulkWriteResult
+	type ChangeStream = mongo.ChangeStream
 }
