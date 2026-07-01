@@ -76,7 +76,7 @@ import { ScheduleTasks } from './tasks'
 			plugins: [
 				new ClsPluginTransactional({
 					imports: [DatabaseModule],
-					connectionName: DATA_SOURCE_DATA_LAKE, // Đặt tên định danh cho plugin này
+					connectionName: DATA_SOURCE_DATA_LAKE,
 					adapter: new TransactionalAdapterTypeOrm({
 						dataSourceToken: getDataSourceToken(DATA_SOURCE_DATA_LAKE)
 					})
