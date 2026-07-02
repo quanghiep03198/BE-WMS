@@ -41,6 +41,14 @@ export class InoutboundMongoRepository implements IIoMongoRepository {
 			.filter((item) => item.getIsWritable())
 	}
 
+	public async getPendingExchangeEpcs(deviceSerialNumber: string, sourceMos: string[]): Promise<string[]> {
+		return await this.inventoryEpcModel.distinct('epc', {
+			inbound_device_sn: deviceSerialNumber,
+			mo_no: { $in: sourceMos },
+			scannable: true
+		})
+	}
+
 	public async getScanningEpcs(params: {
 		mo_no: string
 		color_sn: string

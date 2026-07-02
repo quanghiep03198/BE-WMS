@@ -4,27 +4,39 @@ import { InvalidSourceMoException, NoExchangableEpcException } from '../exceptio
 
 export class MoExchangeSession extends AggregateRoot {
 	constructor(
-		private readonly source: Array<{ mo_no: string; factory_shoes_style: string; color_sn: string }>,
-		private readonly target: { mo_no: string; factory_shoes_style: string; color_sn: string }
+		private readonly sourceMos: Array<{
+			mo_no: string
+			factory_shoes_style: string
+			color_sn: string
+			mo_size_run: Record<'size_numcode', string>[]
+		}>,
+		private readonly targetMo: {
+			mo_no: string
+			factory_shoes_style: string
+			color_sn: string
+			mo_size_run: Record<'size_numcode', string>[]
+		}
 	) {
 		super()
 	}
 
-	public verify(exchangeSkus: Array<string>) {
-		if (exchangeSkus.length === 0) throw new NoExchangableEpcException()
+	public verify(pendingExchangeSkus) {
+		if (pendingExchangeSkus.length === 0) throw new NoExchangableEpcException()
 
-		if (this.source.includes(this.target)) throw new InvalidSourceMoException()
+		if (this.sourceMos.includes(this.targetMo)) throw new InvalidSourceMoException()
 
 		if (
-			this.source.some(
+			this.sourceMos.some(
 				(sourceMo) =>
-					sourceMo.factory_shoes_style !== this.target.factory_shoes_style ||
-					sourceMo.color_sn !== this.target.color_sn
+					sourceMo.factory_shoes_style !== this.targetMo.factory_shoes_style ||
+					sourceMo.color_sn !== this.targetMo.color_sn
 			)
 		) {
 			throw new InvalidSourceMoException()
 		}
 
-		this.apply(new ExchangeMoSuccessEvent(exchangeSkus, this.source, this.target))
+		// TODO: Check if all of size in target MO includes sizes in source MOs
+
+		this.apply(new ExchangeMoSuccessEvent(pendingExchangeSkus, this.sourceMos, this.targetMo))
 	}
 }

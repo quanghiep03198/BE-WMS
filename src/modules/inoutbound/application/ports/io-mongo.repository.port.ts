@@ -5,6 +5,8 @@ import { RestoreArchivedEpcsDTO } from '../../presentation/dto/rfid-shared.dto'
 export interface IIoMongoRepository {
 	getPendingInboundEpcs(deviceSerialNumber: string, manufacturingOrder: string): Promise<ElectronicProductCode[]>
 
+	getPendingExchangeEpcs(deviceSerialNumber: string, sourceMos: string[]): Promise<string[]>
+
 	updateInboundTimestamp(scannedEpcs: Array<ElectronicProductCode>): Promise<void>
 
 	bulkWriteInventoryEpcs({

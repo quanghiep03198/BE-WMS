@@ -17,14 +17,13 @@ export class UpdateStockInDateHandler implements ICommandHandler<UpdateStockInDa
 		private readonly eventBus: EventBus
 	) {}
 
-	public async execute({ scannedEpcs }: UpdateStockInDateCommand): Promise<number> {
+	public async execute({ scannedEpcs }: UpdateStockInDateCommand): Promise<void> {
 		try {
 			this.logger.debug(scannedEpcs.map((item) => item.getStockKeepingUnit()))
-			const result = await this.inoutboundMongoRepository.updateInboundTimestamp(scannedEpcs)
+			await this.inoutboundMongoRepository.updateInboundTimestamp(scannedEpcs)
 			this.eventBus.publish(
 				new UpdateStockInDateSuccessEvent({ year: new Date().getFullYear(), month: new Date().getMonth() + 1 })
 			)
-			return result
 		} catch (error) {
 			this.logger.error(error)
 			this.eventBus.publish(new UpdateStockInDateFailedEvent('WH101', scannedEpcs))

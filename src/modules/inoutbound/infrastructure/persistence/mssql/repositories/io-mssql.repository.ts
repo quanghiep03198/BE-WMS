@@ -1,6 +1,7 @@
-import { DATA_SOURCE_DATA_LAKE } from '@/databases/constants'
+import { DATA_SOURCE_DATA_LAKE, DATA_SOURCE_ERP } from '@/databases/constants'
 import { IIoMssqlRepository } from '@/modules/inoutbound/application/ports/io-mssql.repository.port'
 import { EXCLUDED_ORDERS, InventoryActions } from '@/modules/inoutbound/domain/constants'
+import { MoExchangeSession } from '@/modules/inoutbound/domain/models/mo-exchange-session.model'
 import { ElectronicProductCode } from '@/modules/inoutbound/domain/value-objects/epc.vo'
 import { StockInDTO } from '@/modules/inoutbound/presentation/dto/rfid-inbound.dto'
 import { Transactional, TransactionHost } from '@nestjs-cls/transactional'
@@ -21,6 +22,7 @@ import { RFIDMatchEntity } from '../entities/rfid-match.entity'
 export class InoutboundMssqlRepository implements IIoMssqlRepository {
 	constructor(
 		@InjectDataSource(DATA_SOURCE_DATA_LAKE) private readonly dataSourceDL: DataSource,
+		@InjectDataSource(DATA_SOURCE_ERP) private readonly dataSourceERP: DataSource,
 		@InjectPinoLogger(InoutboundMssqlRepository.name) private readonly logger: PinoLogger,
 		private readonly txHost: TransactionHost<TransactionalAdapterTypeOrm>
 	) {}
@@ -101,6 +103,30 @@ export class InoutboundMssqlRepository implements IIoMssqlRepository {
 		])
 	}
 
+	public async getPendingExchangeMosDetails(sourceMos: Array<string>, targetMo: string): Promise<MoExchangeSession> {
+		const sql: string = readFileSync(resolve(join(__dirname, '../sql/mo-size-run.sql')), 'utf-8')
+		const [targetManufacturingOrder, ...sourceManufacturingOrders] = await this.dataSourceERP
+			.query<
+				Array<{
+					mo_no: string
+					factory_shoes_style: string
+					color_sn: string
+					mo_size_run: string
+				}>
+			>(sql, [JSON.stringify([...sourceMos, targetMo])])
+			.then((records) =>
+				records
+					.map((rec) => ({
+						...rec,
+						is_target: rec.mo_no === targetMo,
+						mo_size_run: JSON.parse(rec.mo_size_run) as Array<{ size_numcode: string }>
+					}))
+					.sort((mo) => (mo.is_target ? 1 : -1))
+			)
+
+		return new MoExchangeSession(sourceManufacturingOrders, targetManufacturingOrder)
+	}
+
 	@Transactional<TransactionalAdapterTypeOrm>()
 	public async stockIn(epcs: Array<ElectronicProductCode>, stockInDetails: StockInDTO): Promise<void> {
 		const sql: string = readFileSync(resolve(join(__dirname, '../sql/upsert-inbound.sql')), 'utf-8')
@@ -127,10 +153,10 @@ export class InoutboundMssqlRepository implements IIoMssqlRepository {
 	}
 
 	@Transactional<TransactionalAdapterTypeOrm>()
-	public async exchangeManufacturingOrder(exchangeSkus: Array<string>, targetMo: string): Promise<number> {
+	public async exchangeManufacturingOrder(exchangeSkus: Array<string>, targetMo: string): Promise<void> {
 		const currentTimestamp = format(new Date(), 'yyyy-MM-dd HH:mm:ss')
 
-		const result = await Promise.all(
+		await Promise.all(
 			chunk(exchangeSkus, 2000).map(async (skus) => {
 				return await this.txHost.tx.getRepository(RFIDMatchEntity).update(
 					{ epc: In(skus) },
@@ -142,8 +168,6 @@ export class InoutboundMssqlRepository implements IIoMssqlRepository {
 				)
 			})
 		)
-
-		return result.reduce((acc, curr) => acc + curr.affected, 0)
 	}
 
 	@Transactional<TransactionalAdapterTypeOrm>()

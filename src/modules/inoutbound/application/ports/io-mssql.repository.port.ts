@@ -1,4 +1,5 @@
 import { InventoryActions, InventoryStorageType } from '../../domain/constants'
+import { MoExchangeSession } from '../../domain/models/mo-exchange-session.model'
 import { ElectronicProductCode } from '../../domain/value-objects/epc.vo'
 
 /**
@@ -37,9 +38,11 @@ export interface IIoMssqlRepository {
 		}
 	): Promise<void>
 
+	getPendingExchangeMosDetails(sourceMos: Array<string>, targetMo: string): Promise<MoExchangeSession>
+
 	rollbackInoutboundTransaction(stationNO: 'WH101' | 'WH103', epcs: Array<ElectronicProductCode>): Promise<void>
 
-	exchangeManufacturingOrder(exchangeSkus: Array<string>, targetMo: string): Promise<number>
+	exchangeManufacturingOrder(exchangeSkus: Array<string>, targetMo: string): Promise<void>
 }
 
 export const IO_MSSQL_REPOSITORY = 'IInoutboundMssqlRepository'
