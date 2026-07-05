@@ -1,6 +1,8 @@
-import { RFIDMatchEntity } from '../persistence/mssql/entities/rfid-match.entity'
-
-export type EpcInformation = Pick<RFIDMatchEntity, 'epc' | 'mo_no' | 'size_numcode' | 'factory_shoes_style'> & {
+export type EpcInformation = {
+	epc: string
+	mo_no: string
+	size_numcode: string
+	factory_shoes_style: string
 	color_sn: string
 	scanned?: boolean
 	stored_at?: null | Date | string
@@ -19,5 +21,3 @@ export type RFIDSearchParams = {
 	'color_sn.eq'?: string
 	'size_numcode.eq'?: string
 }
-
-export type UploadActions = 'inbound' | 'outbound'

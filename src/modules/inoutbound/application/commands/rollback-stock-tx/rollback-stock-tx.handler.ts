@@ -5,7 +5,7 @@ import {
 import { Inject } from '@nestjs/common'
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs'
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
-import { RollbackStockTransactionCommand } from './rollback-stock-transaction.command'
+import { RollbackStockTransactionCommand } from './rollback-stock-tx.command'
 
 @CommandHandler(RollbackStockTransactionCommand)
 export class RollbackStockTransactionHandler implements ICommandHandler<RollbackStockTransactionCommand> {

@@ -1,4 +1,5 @@
 import { EXCLUDED_EPC_PREFIX, FALLBACK_VALUE, INTERNAL_EPC_PREFIX } from '../constants'
+import { SizeNumber } from './size-number.vo'
 
 export class ElectronicProductCode {
 	private _inboundTransactionId: string
@@ -10,7 +11,7 @@ export class ElectronicProductCode {
 			mo_no: string
 			factory_shoes_style: string
 			color_sn: string
-			size_numcode: string
+			size_numcode: SizeNumber
 			factory_code_produce: string
 			po?: string
 		}
@@ -38,7 +39,10 @@ export class ElectronicProductCode {
 		return data
 			.map((item) => {
 				const attributes = item.attributes ?? null
-				return new ElectronicProductCode(item.sku.trim(), attributes)
+				return new ElectronicProductCode(item.sku.trim(), {
+					...attributes,
+					...(attributes?.size_numcode && { size_numcode: new SizeNumber(attributes.size_numcode) })
+				})
 			})
 			.filter((item) => item.getIsWritable())
 	}
@@ -71,8 +75,9 @@ export class ElectronicProductCode {
 		return this.attributes?.color_sn ?? FALLBACK_VALUE
 	}
 
-	public getSize() {
-		return this.attributes?.size_numcode ?? FALLBACK_VALUE
+	public getSize(options?: Partial<{ normalize: boolean }>) {
+		if (!this.attributes?.size_numcode) return FALLBACK_VALUE
+		return this.attributes.size_numcode.getValue(options)
 	}
 
 	public getIsWritable() {
@@ -81,15 +86,5 @@ export class ElectronicProductCode {
 
 	public getIsInternal() {
 		return this.sku.startsWith(INTERNAL_EPC_PREFIX)
-	}
-
-	public getCanExchange(target: ElectronicProductCode) {
-		if (this.getIsInternal() || target.getIsInternal()) return false
-		if (!this.getIsWritable() || !target.getIsWritable()) return false
-		return (
-			this.attributes.factory_shoes_style === target.attributes.factory_shoes_style &&
-			this.attributes.color_sn === target.attributes.color_sn &&
-			this.attributes.size_numcode === target.attributes.size_numcode
-		)
 	}
 }

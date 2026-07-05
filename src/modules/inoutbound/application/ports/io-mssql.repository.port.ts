@@ -1,6 +1,7 @@
 import { InventoryActions, InventoryStorageType } from '../../domain/constants'
-import { MoExchangeSession } from '../../domain/models/mo-exchange-session.model'
+import { MoExchangeTransaction } from '../../domain/models/mo-exchange-transaction.model'
 import { ElectronicProductCode } from '../../domain/value-objects/epc.vo'
+import { SizeNumber } from '../../domain/value-objects/size-number.vo'
 
 /**
  * @description
@@ -15,7 +16,7 @@ export interface IIoMssqlRepository {
 		pendingInboundEpcs: ElectronicProductCode[]
 	): Promise<
 		Array<{
-			size_numcode: string
+			size_numcode: SizeNumber
 			size_qty: number
 			accumulated_inbound_qty: number
 		}>
@@ -38,11 +39,21 @@ export interface IIoMssqlRepository {
 		}
 	): Promise<void>
 
-	getPendingExchangeMosDetails(sourceMos: Array<string>, targetMo: string): Promise<MoExchangeSession>
+	getExchangeTargetMo(
+		sourceMos: Array<{
+			mo_no: string
+			factory_shoes_style: string
+			color_sn: string
+			sizes: Array<string>
+		}>,
+		targetMo: string
+	): Promise<MoExchangeTransaction>
 
 	rollbackInoutboundTransaction(stationNO: 'WH101' | 'WH103', epcs: Array<ElectronicProductCode>): Promise<void>
 
-	exchangeManufacturingOrder(exchangeSkus: Array<string>, targetMo: string): Promise<void>
+	exchangeManufacturingOrder(pendingExchangeEpcs: Array<string>, targetMo: string): Promise<void>
+
+	rollbackExchangeMoTransaction(exchangedEpcs: Array<string>): void
 }
 
 export const IO_MSSQL_REPOSITORY = 'IInoutboundMssqlRepository'

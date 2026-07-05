@@ -67,6 +67,41 @@ import { RFIDListeners } from './presentation/listeners'
 				useFactory: () => {
 					InventoryEpcSchema.index({ created_at: 1 }, { expires: '365d' })
 					InventoryEpcSchema.index({ epc: 1 }, { unique: true })
+					InventoryEpcSchema.index(
+						{
+							scannable: 1,
+							deleted: 1,
+							inbound_device_sn: 1,
+							inbound_at: 1,
+							last_scanned_at: -1,
+							epc: 1,
+							mo_no: 1
+						},
+						{ name: 'idx_inventory_epc_inbound_scan_page' }
+					)
+					InventoryEpcSchema.index(
+						{
+							scannable: 1,
+							deleted: 1,
+							outbound_device_sn: 1,
+							outbound_at: 1,
+							po: 1,
+							last_scanned_at: -1,
+							epc: 1,
+							mo_no: 1
+						},
+						{ name: 'idx_inventory_epc_outbound_scan_page' }
+					)
+					InventoryEpcSchema.index(
+						{
+							scannable: 1,
+							deleted: 1,
+							mo_no: 1,
+							last_scanned_at: -1,
+							epc: 1
+						},
+						{ name: 'idx_inventory_epc_mo_scan_page' }
+					)
 					InventoryEpcSchema.index({
 						mo_no: 1,
 						po: 1,

@@ -6,7 +6,7 @@ import { ExchangeMoSuccessEvent } from './exchange-mo-success.event'
 export class ExchangeMoSuccessEventHandler implements IEventHandler<ExchangeMoSuccessEvent> {
 	constructor(@InjectPinoLogger(ExchangeMoSuccessEventHandler.name) private readonly logger: PinoLogger) {}
 
-	public async handle({ source: sourceMos, target: targetMo }: ExchangeMoSuccessEvent) {
-		this.logger.info(`Updated ${sourceMos.join(', ')} to ${targetMo} in MSSQL`)
+	public async handle({ exchangeSkus, targetMo }: ExchangeMoSuccessEvent) {
+		this.logger.info(`Updated ${exchangeSkus.length} EPCs to target MO ${targetMo} successfully.`)
 	}
 }

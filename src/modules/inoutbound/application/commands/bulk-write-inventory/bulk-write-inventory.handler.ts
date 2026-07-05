@@ -12,7 +12,7 @@ import { CommandHandler, ICommandHandler } from '@nestjs/cqrs'
 import { BulkWriteInventoryCommand } from './bulk-write-inventory.command'
 
 @CommandHandler(BulkWriteInventoryCommand)
-export class BulkWriteInventoryCommandHandler implements ICommandHandler<BulkWriteInventoryCommand, void> {
+export class BulkWriteInventoryHandler implements ICommandHandler<BulkWriteInventoryCommand, void> {
 	constructor(
 		@Inject(IO_MSSQL_REPOSITORY) private readonly ioMssqlRepository: IIoMssqlRepository,
 		@Inject(IO_MONGO_REPOSITORY) private readonly ioMongoRepository: IIoMongoRepository

@@ -1,9 +1,9 @@
 import { InoutboundGateway } from '@/modules/inoutbound/presentation/gateways/inoutbound.gateway'
 import { EventsHandler, IEventHandler } from '@nestjs/cqrs'
-import { UpdateStockInDateSuccessEvent } from './update-stock-in-date-success.event'
+import { UpdateStockInTimestampSuccessEvent } from './update-stock-in-timestamp-success.event'
 
-@EventsHandler(UpdateStockInDateSuccessEvent)
-export class UpdateStockInDateSuccessEventHandler implements IEventHandler<UpdateStockInDateSuccessEvent> {
+@EventsHandler(UpdateStockInTimestampSuccessEvent)
+export class UpdateStockInTimestampSuccessEventHandler implements IEventHandler<UpdateStockInTimestampSuccessEvent> {
 	constructor(private readonly inoutboundGateway: InoutboundGateway) {}
 
 	public async handle() {

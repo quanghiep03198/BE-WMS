@@ -17,9 +17,17 @@ export class GetScanningEpcsHandler implements IQueryHandler<GetScanningEpcsQuer
 		const inboundDeviceSerialNumber = params['inbound_device_sn.eq']
 		const outboundDeviceSerialNumber = params['outbound_device_sn.eq']
 
+		const paginationHint = inboundDeviceSerialNumber
+			? 'idx_inventory_epc_inbound_scan_page'
+			: outboundDeviceSerialNumber
+				? 'idx_inventory_epc_outbound_scan_page'
+				: manufacturingOrder
+					? 'idx_inventory_epc_mo_scan_page'
+					: undefined
+
 		const filterQuery: FilterQuery<InventoryEpcDocument> = {
 			scannable: true,
-			deleted: { $ne: true },
+			deleted: false,
 			...(manufacturingOrder && {
 				mo_no: manufacturingOrder
 			}),
@@ -35,12 +43,15 @@ export class GetScanningEpcsHandler implements IQueryHandler<GetScanningEpcsQuer
 		}
 
 		const paginateResult = await this.inventoryEpcModel.paginate(filterQuery, {
+			// leanWithId: false,
 			sort: { last_scanned_at: -1, epc: 1, mo_no: 1 },
-			select: ['epc', 'mo_no'],
 			lean: true,
 			page: params.page,
 			limit: params.limit,
-			options: { readPreference: 'nearest' },
+			options: {
+				readPreference: 'nearest',
+				...(paginationHint && { hint: paginationHint })
+			},
 			customLabels: { docs: 'data' },
 			projection: {
 				_id: 0,

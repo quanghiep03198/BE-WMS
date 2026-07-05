@@ -25,6 +25,7 @@ import { RedisService } from '@/redis/redis.service'
 import { InjectQueue } from '@nestjs/bullmq'
 import { CACHE_MANAGER } from '@nestjs/cache-manager'
 import {
+	BadRequestException,
 	Body,
 	Controller,
 	DefaultValuePipe,
@@ -50,8 +51,10 @@ import { PaginateResult } from 'mongoose'
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
 import z from 'zod'
 import { CreateEpcChangeStreamCommand } from '../../application/commands/create-epc-change-stream/create-epc-change-stream.command'
+import { ExchangeMoRmCommand } from '../../application/commands/exchange-mo/impl/exchange-mo-rm.command'
 import { StockInCommand } from '../../application/commands/stock-in/stock-in.command'
 import { GetInternalEpcsExistsQuery } from '../../application/queries/get-internal-epcs-exists/get-internal-epcs-exists.query'
+import { GetScanningEpcsBySizeQuery } from '../../application/queries/get-scanning-epcs-by-size/get-scanning-epcs-by-size.query'
 import { GetScanningEpcsQuery } from '../../application/queries/get-scanning-epcs/get-scanning-epcs.query'
 import { GetScanningMosQuery } from '../../application/queries/get-scanning-mo/get-scanning-mo.query'
 import { RFIDInboundService } from '../../application/services/rfid-inbound.service'
@@ -80,11 +83,11 @@ export class RFIDInboundController {
 		private readonly commandBus: CommandBus
 	) {}
 
-	@Get('sse/:device_sn')
+	@Get('sse')
 	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
 	@UseFilters(AllExceptionsFilter)
 	async streamInboundRFIDData(
-		@Param('device_sn') device_sn: string,
+		@Headers(CommonRequestHeader.RFID_READER_ID) deviceSerialNumber: string,
 		@Res()
 		reply: FastifyReply & {
 			sse: (data: {
@@ -94,11 +97,15 @@ export class RFIDInboundController {
 			}) => void
 		}
 	) {
+		if (!deviceSerialNumber) throw new BadRequestException('Cannot detect RFID device serial number')
+
 		const handleChange = async () => {
 			const [epcs, orders, has_invalid] = await Promise.all([
-				this.queryBus.execute(new GetScanningEpcsQuery({ page: 1, limit: 50, 'inbound_device_sn.eq': device_sn })),
-				this.queryBus.execute(new GetScanningMosQuery({ 'inbound_device_sn.eq': device_sn })),
-				this.queryBus.execute(new GetInternalEpcsExistsQuery({ 'inbound_device_sn.eq': device_sn }))
+				this.queryBus.execute(
+					new GetScanningEpcsQuery({ page: 1, limit: 50, 'inbound_device_sn.eq': deviceSerialNumber })
+				),
+				this.queryBus.execute(new GetScanningMosQuery({ 'inbound_device_sn.eq': deviceSerialNumber })),
+				this.queryBus.execute(new GetInternalEpcsExistsQuery({ 'inbound_device_sn.eq': deviceSerialNumber }))
 			])
 
 			reply.sse({ epcs, orders, has_invalid })
@@ -107,7 +114,7 @@ export class RFIDInboundController {
 		await handleChange()
 
 		const changeStream = await this.commandBus.execute(
-			new CreateEpcChangeStreamCommand({ 'fullDocument.inbound_device_sn': device_sn }, handleChange)
+			new CreateEpcChangeStreamCommand({ 'fullDocument.inbound_device_sn': deviceSerialNumber }, handleChange)
 		)
 
 		reply.raw.on('close', async () => {
@@ -139,12 +146,12 @@ export class RFIDInboundController {
 	}
 
 	@RouteHandler({
-		endpoint: 'fetch-epc/:device_sn',
+		endpoint: 'fetch-epc',
 		method: HttpMethod.GET
 	})
 	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
 	async fetchNextInboundEpc(
-		@Param('device_sn') deviceSerialNumber: string,
+		@Headers(CommonRequestHeader.RFID_READER_ID) deviceSerialNumber: string,
 		@Query('_page', new DefaultValuePipe(1), ParseIntPipe) page: number,
 		@Query('mo_no.eq', new DefaultValuePipe('')) selectedOrder: string
 	) {
@@ -159,12 +166,12 @@ export class RFIDInboundController {
 	}
 
 	@RouteHandler({
-		endpoint: 'manufacturing-order-detail/:device_sn',
+		endpoint: 'manufacturing-order-detail',
 		method: HttpMethod.GET
 	})
 	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
-	async getOrderDetails(@Param('device_sn') device_sn: string) {
-		return await this.queryBus.execute(new GetScanningMosQuery({ 'inbound_device_sn.eq': device_sn }))
+	async getOrderDetails(@Headers(CommonRequestHeader.RFID_READER_ID) deviceSerialNumber: string) {
+		return await this.queryBus.execute(new GetScanningMosQuery({ 'inbound_device_sn.eq': deviceSerialNumber }))
 	}
 
 	@RouteHandler({
@@ -172,11 +179,19 @@ export class RFIDInboundController {
 		method: HttpMethod.GET
 	})
 	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
-	async getOutboundEpcBySize(@Query(new ZodValidationPipe(findEpcBySizeValidator)) queries: FindEpcBySizeDTO) {
-		return await this.rfidSharedService.findDeletableEpcs(this.epcInboundModel, queries)
+	async getOutboundEpcBySize(
+		@Headers(CommonRequestHeader.RFID_READER_ID) deviceSerialNumber: string,
+		@Query(new ZodValidationPipe(findEpcBySizeValidator)) queries: FindEpcBySizeDTO
+	) {
+		const manufacturingOrder = queries['mo_no.eq']
+		const sizeNumber = queries['size_numcode.eq']
+		return await this.queryBus.execute(
+			new GetScanningEpcsBySizeQuery('inbound', manufacturingOrder, sizeNumber, deviceSerialNumber)
+		)
 	}
 
 	@RouteHandler({
+		endpoint: 'stock-in',
 		method: HttpMethod.PUT,
 		statusCode: HttpStatus.CREATED,
 		message: 'common.updated'
@@ -204,8 +219,13 @@ export class RFIDInboundController {
 		message: 'common.updated'
 	})
 	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
-	async exchangeEpc(@Body(new ZodValidationPipe(exchangeOrderValidator)) payload: ExchangeOrderDTO) {
-		return await this.rfidInboundService.exchangeEpcByCommandNumber(payload)
+	async exchangeEpc(
+		@Headers(CommonRequestHeader.RFID_READER_ID) deviceSerialNumber: string,
+		@Body(new ZodValidationPipe(exchangeOrderValidator)) payload: ExchangeOrderDTO
+	) {
+		return await this.commandBus.execute(
+			new ExchangeMoRmCommand(deviceSerialNumber, payload.mo_no.split(','), payload.mo_no_actual)
+		)
 	}
 
 	@RouteHandler({

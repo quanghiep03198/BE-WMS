@@ -1,6 +1,7 @@
 import { IIoMongoRepository } from '@/modules/inoutbound/application/ports/io-mongo.repository.port'
-import { InventoryAction } from '@/modules/inoutbound/domain/types'
+import { StockMovementDirection } from '@/modules/inoutbound/domain/types'
 import { ElectronicProductCode } from '@/modules/inoutbound/domain/value-objects/epc.vo'
+import { SizeNumber } from '@/modules/inoutbound/domain/value-objects/size-number.vo'
 import { RestoreArchivedEpcsDTO } from '@/modules/inoutbound/presentation/dto/rfid-shared.dto'
 import { CACHE_MANAGER } from '@nestjs/cache-manager'
 import { Inject, Injectable } from '@nestjs/common'
@@ -33,7 +34,7 @@ export class InoutboundMongoRepository implements IIoMongoRepository {
 						mo_no: item.mo_no,
 						factory_shoes_style: item.factory_shoes_style,
 						color_sn: item.color_sn,
-						size_numcode: item.size_numcode,
+						size_numcode: new SizeNumber(item.size_numcode),
 						factory_code_produce: item.factory_code_produce,
 						po: item.po
 					})
@@ -41,14 +42,50 @@ export class InoutboundMongoRepository implements IIoMongoRepository {
 			.filter((item) => item.getIsWritable())
 	}
 
-	public async getPendingExchangeEpcs(deviceSerialNumber: string, sourceMos: string[]): Promise<string[]> {
-		return await this.inventoryEpcModel.distinct('epc', {
-			inbound_device_sn: deviceSerialNumber,
-			mo_no: { $in: sourceMos },
-			scannable: true
+	public async getPendingExchangeMos(
+		deviceSerialNumber: string,
+		sourceMos: string[]
+	): Promise<
+		Array<{
+			epcs: Array<string>
+			mo_no: string
+			factory_shoes_style: string
+			color_sn: string
+			sizes: Array<string>
+		}>
+	> {
+		const epcs = await this.inventoryEpcModel
+			.find(
+				{
+					inbound_device_sn: deviceSerialNumber,
+					mo_no: { $in: sourceMos },
+					scannable: true
+				},
+				{ epc: 1, mo_no: 1, factory_shoes_style: 1, color_sn: 1, size_numcode: 1, _id: 0 }
+			)
+			.lean()
+
+		const result = Object.entries(
+			Object.groupBy(epcs, (item) => `${item.mo_no}/${item.factory_shoes_style}/${item.color_sn}`)
+		).map(([aggregateAttributes, value]) => {
+			const [mo_no, factory_shoes_style, color_sn] = aggregateAttributes.split('/')
+			return {
+				epcs: [...new Set(value.map((item) => item.epc))],
+				mo_no,
+				factory_shoes_style,
+				color_sn,
+				sizes: [...new Set(value.map((item) => item.size_numcode))].map((size_numcode) => size_numcode)
+			}
 		})
+
+		return result
 	}
 
+	/**
+	 * @deprecated
+	 * @param params
+	 * @returns
+	 */
 	public async getScanningEpcs(params: {
 		mo_no: string
 		color_sn: string
@@ -73,7 +110,7 @@ export class InoutboundMongoRepository implements IIoMongoRepository {
 		action,
 		payload
 	}: {
-		action: InventoryAction
+		action: StockMovementDirection
 		payload: { epcs: ElectronicProductCode[]; deviceSerialNumber: string }
 	}): Promise<void> {
 		const isDeduplicationEnabled = await this.cacheManager.get<boolean>('cached:rfid:enable_deduplicate_inbound_epc')
@@ -99,6 +136,7 @@ export class InoutboundMongoRepository implements IIoMongoRepository {
 							}),
 						...(action === 'outbound' && {
 							inbound_device_sn: payload.deviceSerialNumber,
+							po: null,
 							outbound_at: null
 						})
 					},
@@ -128,7 +166,7 @@ export class InoutboundMongoRepository implements IIoMongoRepository {
 	}
 
 	public async deletePendingInboundMo(
-		action: InventoryAction,
+		action: StockMovementDirection,
 		manufacturingOrder: string,
 		deviceSerialNumber: string,
 		rescannable: boolean
@@ -146,7 +184,11 @@ export class InoutboundMongoRepository implements IIoMongoRepository {
 			.exec()
 	}
 
-	public async bulkDeleteEpcs(inventoryAction: InventoryAction, epcs: string[], rescannable: boolean): Promise<void> {
+	public async bulkDeleteEpcs(
+		inventoryAction: StockMovementDirection,
+		epcs: string[],
+		rescannable: boolean
+	): Promise<void> {
 		await this.inventoryEpcModel
 			.updateMany(
 				{
@@ -159,7 +201,11 @@ export class InoutboundMongoRepository implements IIoMongoRepository {
 			.exec()
 	}
 
-	public async restoreArchivedEpcs(action: InventoryAction, epcs: RestoreArchivedEpcsDTO): Promise<void> {
+	public async exchangeMo(pendingExchangeEpcs: Array<string>, targetMo: string): Promise<void> {
+		await this.inventoryEpcModel.updateMany({ epc: { $in: pendingExchangeEpcs } }, { mo_no: targetMo }).exec()
+	}
+
+	public async restoreArchivedEpcs(action: StockMovementDirection, epcs: RestoreArchivedEpcsDTO): Promise<void> {
 		const bulkWriteOptions: AnyBulkWriteOperation<InventoryEpcDocument>[] = epcs.map((item) => ({
 			updateOne: {
 				filter: { epc: item.epc },

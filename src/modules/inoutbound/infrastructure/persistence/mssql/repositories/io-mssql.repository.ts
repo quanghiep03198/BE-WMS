@@ -1,10 +1,11 @@
 import { DATA_SOURCE_DATA_LAKE, DATA_SOURCE_ERP } from '@/databases/constants'
 import { IIoMssqlRepository } from '@/modules/inoutbound/application/ports/io-mssql.repository.port'
 import { EXCLUDED_ORDERS, InventoryActions } from '@/modules/inoutbound/domain/constants'
-import { MoExchangeSession } from '@/modules/inoutbound/domain/models/mo-exchange-session.model'
+import { MoExchangeTransaction } from '@/modules/inoutbound/domain/models/mo-exchange-transaction.model'
 import { ElectronicProductCode } from '@/modules/inoutbound/domain/value-objects/epc.vo'
+import { SizeNumber } from '@/modules/inoutbound/domain/value-objects/size-number.vo'
 import { StockInDTO } from '@/modules/inoutbound/presentation/dto/rfid-inbound.dto'
-import { Transactional, TransactionHost } from '@nestjs-cls/transactional'
+import { InjectTransactionHost, Transactional, TransactionHost } from '@nestjs-cls/transactional'
 import { TransactionalAdapterTypeOrm } from '@nestjs-cls/transactional-adapter-typeorm'
 import { Injectable } from '@nestjs/common'
 import { InjectDataSource } from '@nestjs/typeorm'
@@ -21,10 +22,11 @@ import { RFIDMatchEntity } from '../entities/rfid-match.entity'
 @Injectable()
 export class InoutboundMssqlRepository implements IIoMssqlRepository {
 	constructor(
+		@InjectPinoLogger(InoutboundMssqlRepository.name) private readonly logger: PinoLogger,
 		@InjectDataSource(DATA_SOURCE_DATA_LAKE) private readonly dataSourceDL: DataSource,
 		@InjectDataSource(DATA_SOURCE_ERP) private readonly dataSourceERP: DataSource,
-		@InjectPinoLogger(InoutboundMssqlRepository.name) private readonly logger: PinoLogger,
-		private readonly txHost: TransactionHost<TransactionalAdapterTypeOrm>
+		@InjectTransactionHost(DATA_SOURCE_DATA_LAKE)
+		private readonly txHostDL: TransactionHost<TransactionalAdapterTypeOrm>
 	) {}
 
 	public async getEpcsInformation(epcs: ElectronicProductCode[]): Promise<ElectronicProductCode[]> {
@@ -73,7 +75,7 @@ export class InoutboundMssqlRepository implements IIoMssqlRepository {
 					mo_no: item.mo_no,
 					factory_shoes_style: item.factory_shoes_style,
 					color_sn: item.color_sn,
-					size_numcode: item.size_numcode,
+					size_numcode: new SizeNumber(item.size_numcode),
 					factory_code_produce: item.factory_code_produce
 				})
 		)
@@ -84,14 +86,14 @@ export class InoutboundMssqlRepository implements IIoMssqlRepository {
 		pendingInboundEpcs: ElectronicProductCode[]
 	): Promise<
 		Array<{
-			size_numcode: string
+			size_numcode: SizeNumber
 			size_qty: number
 			accumulated_inbound_qty: number
 		}>
 	> {
 		const sql: string = readFileSync(resolve(join(__dirname, '../sql/mo-inbound-progress.sql')), 'utf-8')
 
-		return await this.dataSourceDL.query<
+		const queryResult = await this.dataSourceDL.query<
 			Array<{
 				size_numcode: string
 				size_qty: number
@@ -101,30 +103,42 @@ export class InoutboundMssqlRepository implements IIoMssqlRepository {
 			manufacturingOrder,
 			JSON.stringify(pendingInboundEpcs.map((e) => ({ epc: e.getStockKeepingUnit(), size_numcode: e.getSize() })))
 		])
+
+		return queryResult.map((record) => ({ ...record, size_numcode: new SizeNumber(record.size_numcode) }))
 	}
 
-	public async getPendingExchangeMosDetails(sourceMos: Array<string>, targetMo: string): Promise<MoExchangeSession> {
+	public async getExchangeTargetMo(
+		source: Array<{
+			epcs: Array<string>
+			mo_no: string
+			factory_shoes_style: string
+			color_sn: string
+			sizes: Array<string>
+		}>,
+		targetMo: string
+	): Promise<MoExchangeTransaction> {
 		const sql: string = readFileSync(resolve(join(__dirname, '../sql/mo-size-run.sql')), 'utf-8')
-		const [targetManufacturingOrder, ...sourceManufacturingOrders] = await this.dataSourceERP
+
+		const [target] = await this.dataSourceERP
 			.query<
 				Array<{
 					mo_no: string
 					factory_shoes_style: string
 					color_sn: string
-					mo_size_run: string
+					sizes: string
 				}>
-			>(sql, [JSON.stringify([...sourceMos, targetMo])])
+			>(sql, [targetMo])
 			.then((records) =>
-				records
-					.map((rec) => ({
-						...rec,
-						is_target: rec.mo_no === targetMo,
-						mo_size_run: JSON.parse(rec.mo_size_run) as Array<{ size_numcode: string }>
-					}))
-					.sort((mo) => (mo.is_target ? 1 : -1))
+				records.map((record) => ({
+					...record,
+					sizes: JSON.parse(record.sizes) as Array<string>
+				}))
 			)
 
-		return new MoExchangeSession(sourceManufacturingOrders, targetManufacturingOrder)
+		return new MoExchangeTransaction(
+			source.map((record) => ({ ...record, sizes: record.sizes.map((size) => new SizeNumber(size)) })),
+			{ ...target, sizes: target.sizes.map((size) => new SizeNumber(size)) }
+		)
 	}
 
 	@Transactional<TransactionalAdapterTypeOrm>()
@@ -147,7 +161,7 @@ export class InoutboundMssqlRepository implements IIoMssqlRepository {
 
 		await Promise.all(
 			chunk(upsertPayload, 100).map(async (item) => {
-				return await this.txHost.tx.query(sql, [JSON.stringify(item)])
+				return await this.txHostDL.tx.query(sql, [JSON.stringify(item)])
 			})
 		)
 	}
@@ -158,7 +172,7 @@ export class InoutboundMssqlRepository implements IIoMssqlRepository {
 
 		await Promise.all(
 			chunk(exchangeSkus, 2000).map(async (skus) => {
-				return await this.txHost.tx.getRepository(RFIDMatchEntity).update(
+				return await this.txHostDL.tx.getRepository(RFIDMatchEntity).update(
 					{ epc: In(skus) },
 					{
 						mo_no: targetMo,
@@ -175,7 +189,7 @@ export class InoutboundMssqlRepository implements IIoMssqlRepository {
 		stationNO: 'WH101' | 'WH103',
 		epcs: Array<ElectronicProductCode>
 	): Promise<void> {
-		await this.txHost.tx
+		await this.txHostDL.tx
 			.getRepository(RFIDInventoryEntity)
 			.createQueryBuilder()
 			.delete()
@@ -185,7 +199,7 @@ export class InoutboundMssqlRepository implements IIoMssqlRepository {
 			.andWhere('CAST(record_time AS DATE) = CAST(GETDATE() AS DATE)')
 			.execute()
 
-		await this.txHost.tx
+		await this.txHostDL.tx
 			.getRepository(RFIDInventoryBackupEntity)
 			.createQueryBuilder()
 			.delete()
@@ -194,5 +208,21 @@ export class InoutboundMssqlRepository implements IIoMssqlRepository {
 			.andWhere('rfid_status = :rfid_status', { rfid_status: InventoryActions.INBOUND })
 			.andWhere('CAST(record_time AS DATE) = CAST(GETDATE() AS DATE)')
 			.execute()
+	}
+
+	@Transactional<TransactionalAdapterTypeOrm>()
+	public async rollbackExchangeMoTransaction(originalSkus: Array<string>): Promise<void> {
+		await Promise.all(
+			chunk(originalSkus, 2000).map(async (skus) => {
+				return await this.txHostDL.tx.getRepository(RFIDMatchEntity).update(
+					{ epc: In(skus) },
+					{
+						mo_no: () => 'mo_no_actual',
+						actual_mo_no: null,
+						remark: null
+					}
+				)
+			})
+		)
 	}
 }

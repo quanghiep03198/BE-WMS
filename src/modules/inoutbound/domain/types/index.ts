@@ -1,4 +1,4 @@
-export type InventoryAction = 'inbound' | 'outbound'
+export type StockMovementDirection = 'inbound' | 'outbound'
 
 export type ScannedOrderDetail = {
 	mo_no

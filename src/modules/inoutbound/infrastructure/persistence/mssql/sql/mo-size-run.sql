@@ -1,9 +1,7 @@
-DECLARE @0 NVARCHAR(20) = '["15A10C001"]';
-
-WITH mo_size_runs AS (
-	SELECT mo_no, msr.size_numcode, msr.size_qty
-	FROM ta_manufactursizerun
-	OUTER APPLY (
+WITH mo_size_source AS (
+	SELECT t.mo_no, CAST(msr.size_numcode AS NVARCHAR(50)) AS size_numcode
+	FROM ta_manufactursizerun t
+	CROSS APPLY (
 	VALUES
 		([size_numcode01], [size_qty01]),
 		([size_numcode02], [size_qty02]),
@@ -45,33 +43,39 @@ WITH mo_size_runs AS (
 		([size_numcode38], [size_qty38]),
 		([size_numcode39], [size_qty39]),
 		([size_numcode40], [size_qty40])
-	) msr ([size_numcode],[size_qty])
-	WHERE mo_no IN (SELECT value as mo_no FROM OPENJSON(@0)) AND msr.size_qty > 0
+	) msr ([size_numcode], [size_qty])
+	WHERE t.mo_no = @0
+		AND msr.size_qty > 0
+		AND msr.size_numcode IS NOT NULL
+)
+, mo_size_json AS (
+	SELECT
+		d.mo_no,
+		CONCAT(
+			'[',
+			STRING_AGG(
+				CONCAT('"', STRING_ESCAPE(CAST(d.size_numcode AS NVARCHAR(50)), 'json'), '"'),
+				','
+			) WITHIN GROUP (ORDER BY CAST(d.size_numcode AS FLOAT) ASC),
+			']'
+		) AS mo_size_run
+	FROM (
+		SELECT DISTINCT mo_no, size_numcode
+		FROM mo_size_source
+	) d
+	GROUP BY d.mo_no
 )
 SELECT 
 	a.mo_no AS mo_no,
 	d.brand_name AS brand_name,
 	c.shoestyle_codefactory AS factory_shoes_style,
 	b.color_sn AS color_sn,
-   j.size_run AS mo_size_run
+   ISNULL(msj.mo_size_run, '[]') AS sizes
 FROM wuerp_vnrd.dbo.ta_manufacturmst a
 LEFT JOIN wuerp_vnrd.dbo.ta_productmst b ON b.mat_code= a.mat_code AND b.isactive= 'Y'
 LEFT JOIN wuerp_vnrd.dbo.ta_shoefactorymst c ON c.shoestyle_systemcodefty = b.shoestyle_systemcodefty AND c.isactive = 'Y'
 LEFT JOIN wuerp_vnrd.dbo.ta_brand d ON d.custbrand_id = b.custbrand_id
-LEFT JOIN mo_size_runs i ON i.mo_no = a.mo_no
-CROSS APPLY (
-   SELECT size_numcode FROM mo_size_runs 
-   WHERE mo_no = a.mo_no
-   ORDER BY CAST(size_numcode AS FLOAT) ASC
-   FOR JSON PATH
-) j (size_run)
+LEFT JOIN mo_size_json msj ON msj.mo_no = a.mo_no
 WHERE
-	a.created >= CAST(DATEADD(YEAR, -2, GETDATE()) AS DATE)
-	AND a.isactive = 'Y' 
-	AND a.mo_no IN (SELECT value as mo_no FROM OPENJSON(@0))
-GROUP BY 
-   a.mo_no
-   , d.brand_name
-   , b.color_sn
-   , c.shoestyle_codefactory
-   , j.size_run
+	a.mo_no = @0
+	AND a.isactive = 'Y';
