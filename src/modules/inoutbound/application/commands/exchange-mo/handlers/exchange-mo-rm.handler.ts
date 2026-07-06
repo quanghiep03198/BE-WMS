@@ -3,6 +3,8 @@ import {
 	InconsistentMoSpecsException,
 	NoExchangableEpcException
 } from '@/modules/inoutbound/domain/exceptions/mo-exchange-session.exception'
+import { MoExchangeTransaction } from '@/modules/inoutbound/domain/models/mo-exchange-transaction.model'
+import { SizeNumber } from '@/modules/inoutbound/domain/value-objects/size-number.vo'
 import { BadRequestException, Inject, NotFoundException } from '@nestjs/common'
 import { CommandHandler, EventPublisher, ICommandHandler } from '@nestjs/cqrs'
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
@@ -19,12 +21,17 @@ export class ExchangeMoRmHandler implements ICommandHandler<ExchangeMoRmCommand>
 		private readonly publisher: EventPublisher
 	) {}
 
-	public async execute(command: ExchangeMoRmCommand): Promise<void> {
+	public async execute({ deviceSerialNumber, sourceMos, targetMo }: ExchangeMoRmCommand): Promise<void> {
 		try {
-			this.logger.debug(command)
-			const { deviceSerialNumber, sourceMos, targetMo } = command
 			const pendingExchangeData = await this.ioMongoRepository.getPendingExchangeMos(deviceSerialNumber, sourceMos)
-			const moExchangeTransaction = await this.ioMssqlRepository.getExchangeTargetMo(pendingExchangeData, targetMo)
+			const exchangeTargetMo = await this.ioMssqlRepository.getExchangeTargetMo(targetMo)
+			const moExchangeTransaction = new MoExchangeTransaction(
+				pendingExchangeData.map((record) => ({
+					...record,
+					sizes: record.sizes.map((size) => new SizeNumber(size))
+				})),
+				{ ...exchangeTargetMo, sizes: exchangeTargetMo.sizes.map((size) => new SizeNumber(size)) }
+			)
 			moExchangeTransaction.verify()
 			const pendingExchangeSkus = moExchangeTransaction.getPendingExchangeSkus()
 			await this.ioMssqlRepository.exchangeManufacturingOrder(pendingExchangeSkus, targetMo)

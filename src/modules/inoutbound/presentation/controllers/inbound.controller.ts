@@ -11,8 +11,6 @@ import {
 	upsertEpcInformationSchema
 } from '@/modules/inoutbound/presentation/dto/rfid-inbound.dto'
 import {
-	deleteEpcValidator,
-	DeleteScannedEpcDTO,
 	FindEpcBySizeDTO,
 	findEpcBySizeValidator,
 	PostReaderDataDTO,
@@ -42,7 +40,6 @@ import {
 } from '@nestjs/common'
 import { CommandBus, QueryBus } from '@nestjs/cqrs'
 import { EventEmitter2 } from '@nestjs/event-emitter'
-import { InjectModel } from '@nestjs/mongoose'
 import { Queue } from 'bullmq'
 import { Cache } from 'cache-manager'
 import { FastifyReply } from 'fastify'
@@ -51,32 +48,27 @@ import { PaginateResult } from 'mongoose'
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
 import z from 'zod'
 import { CreateEpcChangeStreamCommand } from '../../application/commands/create-epc-change-stream/create-epc-change-stream.command'
+import { DeleteScanningMoCommand } from '../../application/commands/delete-scanning-mo/delete-scanning-mo.command'
 import { ExchangeMoRmCommand } from '../../application/commands/exchange-mo/impl/exchange-mo-rm.command'
 import { StockInCommand } from '../../application/commands/stock-in/stock-in.command'
 import { GetInternalEpcsExistsQuery } from '../../application/queries/get-internal-epcs-exists/get-internal-epcs-exists.query'
 import { GetScanningEpcsBySizeQuery } from '../../application/queries/get-scanning-epcs-by-size/get-scanning-epcs-by-size.query'
 import { GetScanningEpcsQuery } from '../../application/queries/get-scanning-epcs/get-scanning-epcs.query'
 import { GetScanningMosQuery } from '../../application/queries/get-scanning-mo/get-scanning-mo.query'
+import { SearchExchangableMoQuery } from '../../application/queries/search-exchangable-mo/search-exchangable-mo.query'
 import { RFIDInboundService } from '../../application/services/rfid-inbound.service'
-import { RFIDSharedService } from '../../application/services/rfid-shared.service'
 import { ScannedOrderDetail } from '../../domain/types'
 import { POST_DATA_INBOUND_QUEUE } from '../../infrastructure/constants/queue'
-import {
-	EpcInbound,
-	EpcModel,
-	InventoryEpcDocument
-} from '../../infrastructure/persistence/mongodb/schemas/inventory-epc.schema'
+import { InventoryEpcDocument } from '../../infrastructure/persistence/mongodb/schemas/inventory-epc.schema'
 import { RFIDSearchParams } from '../../infrastructure/types'
 
 @Controller('rfid/inbound')
 export class RFIDInboundController {
 	constructor(
 		@InjectPinoLogger(RFIDInboundController.name) private readonly logger: PinoLogger,
-		@InjectModel(EpcInbound.name) private readonly epcInboundModel: EpcModel,
 		@InjectQueue(POST_DATA_INBOUND_QUEUE) private readonly postInboundDataQueue: Queue<PostReaderDataDTO>,
 		@Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
 		private readonly redisService: RedisService,
-		private readonly rfidSharedService: RFIDSharedService,
 		private readonly rfidInboundService: RFIDInboundService,
 		private readonly eventEmitter: EventEmitter2,
 		private readonly queryBus: QueryBus,
@@ -251,27 +243,11 @@ export class RFIDInboundController {
 		@Query('rescannable', new DefaultValuePipe(false), ParseBoolPipe) rescannable: boolean,
 		@Param('commandNumber') commandNumber: string
 	) {
-		return await Promise.all([
-			this.rfidSharedService.cleanupQueue(this.postInboundDataQueue),
-			this.rfidSharedService.deleteScannedOrder(this.epcInboundModel, commandNumber, rescannable)
-		])
-	}
-
-	@RouteHandler({
-		endpoint: 'delete-scanned-epcs',
-		method: HttpMethod.POST,
-		statusCode: HttpStatus.OK,
-		message: 'common.deleted'
-	})
-	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
-	async deleteBulkEpcs(
-		@Query('rescannable', new DefaultValuePipe(false), ParseBoolPipe) rescannable: boolean,
-		@Body(new ZodValidationPipe(deleteEpcValidator)) epcs: DeleteScannedEpcDTO
-	) {
-		return await Promise.all([
-			this.rfidSharedService.cleanupQueue(this.postInboundDataQueue),
-			this.rfidSharedService.deleteBulkEpcs(this.epcInboundModel, epcs, rescannable)
-		])
+		return await this.commandBus.execute(new DeleteScanningMoCommand('inbound', commandNumber, rescannable))
+		// return await Promise.all([
+		// 	this.rfidSharedService.cleanupQueue(this.postInboundDataQueue),
+		// 	this.rfidSharedService.deleteScannedOrder(this.epcInboundModel, commandNumber, rescannable)
+		// ])
 	}
 
 	@Public()
@@ -300,10 +276,7 @@ export class RFIDInboundController {
 		@Query(new ZodValidationPipe(searchCustomerValidator))
 		queries: SearchCustOrderParamsDTO
 	) {
-		return await this.rfidInboundService.searchExchangableOrder({
-			'factory_code.eq': factory_code,
-			...queries
-		} satisfies SearchCustOrderParamsDTO)
+		return await this.queryBus.execute(new SearchExchangableMoQuery(queries.q, factory_code, queries['color_sn.eq']))
 	}
 
 	@RouteHandler({

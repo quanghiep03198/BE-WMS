@@ -6,7 +6,8 @@ export class GetScanningEpcsBySizeQuery extends Query<Record<'epc', string>[]> {
 		public readonly stockMovementDirection: StockMovementDirection,
 		public readonly manufacturingOrder: string,
 		public readonly sizeNumber: string,
-		public readonly inboundDeviceSerialNumber?: string
+		public readonly inboundDeviceSerialNumber?: string,
+		public readonly limit?: number
 	) {
 		super()
 	}

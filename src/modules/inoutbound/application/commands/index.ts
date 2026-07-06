@@ -1,6 +1,7 @@
 import { BulkWriteInventoryHandler } from './bulk-write-inventory/bulk-write-inventory.handler'
 import { CreateEpcChangeStreamHandler } from './create-epc-change-stream/create-epc-change-stream.handler'
 import { DeleteScanningEpcsHandler } from './delete-scanning-epcs/delete-scanning-epcs.handler'
+import { DeleteScanningMoHandler } from './delete-scanning-mo/delete-scanning-mo.handler'
 import { ExchangeMoRmHandler } from './exchange-mo/handlers/exchange-mo-rm.handler'
 import { ExchangeMoWmHandler } from './exchange-mo/handlers/exchange-mo-wm.handler'
 import { RollbackExchangeMoTransactionHandler } from './rollback-exchange-mo-tx/rollback-exchange-mo-tx.handler'
@@ -13,6 +14,7 @@ export const InoutboundCommandHandlers = [
 	BulkWriteInventoryHandler,
 	CreateEpcChangeStreamHandler,
 	DeleteScanningEpcsHandler,
+	DeleteScanningMoHandler,
 	ExchangeMoWmHandler,
 	ExchangeMoRmHandler,
 	RollbackExchangeMoTransactionHandler,

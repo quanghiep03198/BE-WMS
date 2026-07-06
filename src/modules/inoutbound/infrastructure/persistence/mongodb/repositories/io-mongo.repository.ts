@@ -1,4 +1,5 @@
 import { IIoMongoRepository } from '@/modules/inoutbound/application/ports/io-mongo.repository.port'
+import { GetScanningEpcsBySizeQuery } from '@/modules/inoutbound/application/queries/get-scanning-epcs-by-size/get-scanning-epcs-by-size.query'
 import { StockMovementDirection } from '@/modules/inoutbound/domain/types'
 import { ElectronicProductCode } from '@/modules/inoutbound/domain/value-objects/epc.vo'
 import { SizeNumber } from '@/modules/inoutbound/domain/value-objects/size-number.vo'
@@ -7,7 +8,7 @@ import { CACHE_MANAGER } from '@nestjs/cache-manager'
 import { Inject, Injectable } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
 import { Cache } from 'cache-manager'
-import { AnyBulkWriteOperation } from 'mongoose'
+import { AnyBulkWriteOperation, FilterQuery } from 'mongoose'
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
 import { InventoryEpc, InventoryEpcDocument, InventoryEpcModel } from '../schemas/inventory-epc.schema'
 
@@ -106,6 +107,26 @@ export class InoutboundMongoRepository implements IIoMongoRepository {
 		)
 	}
 
+	public async getScanningEpcsBySize(query: GetScanningEpcsBySizeQuery): Promise<Array<{ epc: string }>> {
+		const filterQuery: FilterQuery<InventoryEpcDocument> = {
+			scannable: true,
+			mo_no: query.manufacturingOrder,
+			size_numcode: query.sizeNumber
+		}
+
+		if (query.stockMovementDirection === 'inbound' && query.inboundDeviceSerialNumber) {
+			filterQuery.inbound_device_sn = { $eq: query.inboundDeviceSerialNumber }
+			filterQuery.inbound_at = { $eq: null }
+		}
+
+		if (query.stockMovementDirection === 'outbound') {
+			filterQuery.outbound_at = { $eq: null }
+			filterQuery.po = { $eq: null }
+		}
+
+		return await this.inventoryEpcModel.find(filterQuery, { _id: 0, epc: 1 }, { lean: true, limit: query.limit })
+	}
+
 	public async bulkWriteInventoryEpcs({
 		action,
 		payload
@@ -161,42 +182,6 @@ export class InoutboundMongoRepository implements IIoMongoRepository {
 			.updateMany(
 				{ epc: { $in: scannedEpcs.map((epc) => epc.getStockKeepingUnit()) }, inbound_at: null },
 				{ inbound_at: new Date() }
-			)
-			.exec()
-	}
-
-	public async deletePendingInboundMo(
-		action: StockMovementDirection,
-		manufacturingOrder: string,
-		deviceSerialNumber: string,
-		rescannable: boolean
-	): Promise<void> {
-		await this.inventoryEpcModel
-			.updateMany(
-				{
-					mo_no: manufacturingOrder,
-					...(action === 'inbound' && { inbound_at: null, inbound_device_sn: deviceSerialNumber }),
-					...(action === 'outbound' && { outbound_at: null, outbound_device_sn: deviceSerialNumber })
-				},
-				{ deleted: true, scannable: rescannable },
-				{ overwriteImmutable: true }
-			)
-			.exec()
-	}
-
-	public async bulkDeleteEpcs(
-		inventoryAction: StockMovementDirection,
-		epcs: string[],
-		rescannable: boolean
-	): Promise<void> {
-		await this.inventoryEpcModel
-			.updateMany(
-				{
-					epc: { $in: epcs },
-					...(inventoryAction === 'inbound' && { inbound_at: null }),
-					...(inventoryAction === 'outbound' && { outbound_at: null, po: null })
-				},
-				{ deleted: true, scannable: rescannable }
 			)
 			.exec()
 	}

@@ -11,6 +11,7 @@ import {
 	Headers,
 	HttpStatus,
 	Param,
+	ParseBoolPipe,
 	ParseIntPipe,
 	Query,
 	UseInterceptors
@@ -23,6 +24,8 @@ import { mongo } from 'mongoose'
 import { IMPORT_DATA_QUEUE } from '../../infrastructure/constants/queue'
 
 import { UserRole } from '@/modules/user/constants'
+import { CommandBus } from '@nestjs/cqrs'
+import { DeleteScanningEpcsCommand } from '../../application/commands/delete-scanning-epcs/delete-scanning-epcs.command'
 import { RFIDInboundService } from '../../application/services/rfid-inbound.service'
 import { RFIDOutboundService } from '../../application/services/rfid-outbound.service'
 import { RFIDSharedService } from '../../application/services/rfid-shared.service'
@@ -30,6 +33,8 @@ import { CsvFileValidationPipe } from '../../infrastructure/pipes/csv-validation
 import { RFIDSearchParams } from '../../infrastructure/types'
 import { generateStation } from '../../infrastructure/utils'
 import {
+	deleteEpcValidator,
+	DeleteScannedEpcDTO,
 	RestoreArchivedEpcsDTO,
 	restoreArchivedEpcValidator,
 	UploadDataDTO,
@@ -42,7 +47,8 @@ export class RFIDSharedController {
 		@InjectQueue(IMPORT_DATA_QUEUE) private readonly importDataQueue: Queue,
 		private readonly rfidInboundService: RFIDInboundService,
 		private readonly rfidOutboundService: RFIDOutboundService,
-		private readonly rfidSharedService: RFIDSharedService
+		private readonly rfidSharedService: RFIDSharedService,
+		private readonly commandBus: CommandBus
 	) {}
 
 	@RouteHandler({
@@ -122,6 +128,20 @@ export class RFIDSharedController {
 		const station = generateStation(factoryCode, type === 'inbound' ? 'WH101' : 'WH103')
 		const data = payload.map((item) => ({ ...item, station_no: station, factory_code_produce: factoryCode }))
 		return await this.rfidSharedService.restoreArchivedEpcs(type, data as RestoreArchivedEpcsDTO)
+	}
+
+	@RouteHandler({
+		endpoint: 'delete-scanning-epcs',
+		method: HttpMethod.POST,
+		statusCode: HttpStatus.OK,
+		message: 'common.deleted'
+	})
+	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
+	async deleteBulkEpcs(
+		@Query('rescannable', new DefaultValuePipe(false), ParseBoolPipe) rescannable: boolean,
+		@Body(new ZodValidationPipe(deleteEpcValidator)) epcs: DeleteScannedEpcDTO
+	) {
+		return await this.commandBus.execute(new DeleteScanningEpcsCommand(epcs, rescannable))
 	}
 
 	@RouteHandler({

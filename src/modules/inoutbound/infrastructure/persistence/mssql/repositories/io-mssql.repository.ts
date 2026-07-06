@@ -1,7 +1,6 @@
 import { DATA_SOURCE_DATA_LAKE, DATA_SOURCE_ERP } from '@/databases/constants'
 import { IIoMssqlRepository } from '@/modules/inoutbound/application/ports/io-mssql.repository.port'
 import { EXCLUDED_ORDERS, InventoryActions } from '@/modules/inoutbound/domain/constants'
-import { MoExchangeTransaction } from '@/modules/inoutbound/domain/models/mo-exchange-transaction.model'
 import { ElectronicProductCode } from '@/modules/inoutbound/domain/value-objects/epc.vo'
 import { SizeNumber } from '@/modules/inoutbound/domain/value-objects/size-number.vo'
 import { StockInDTO } from '@/modules/inoutbound/presentation/dto/rfid-inbound.dto'
@@ -108,18 +107,23 @@ export class InoutboundMssqlRepository implements IIoMssqlRepository {
 	}
 
 	public async getExchangeTargetMo(
-		source: Array<{
-			epcs: Array<string>
-			mo_no: string
-			factory_shoes_style: string
-			color_sn: string
-			sizes: Array<string>
-		}>,
+		// source: Array<{
+		// 	epcs: Array<string>
+		// 	mo_no: string
+		// 	factory_shoes_style: string
+		// 	color_sn: string
+		// 	sizes: Array<string>
+		// }>,
 		targetMo: string
-	): Promise<MoExchangeTransaction> {
+	): Promise<{
+		sizes: Array<string>
+		mo_no: string
+		factory_shoes_style: string
+		color_sn: string
+	}> {
 		const sql: string = readFileSync(resolve(join(__dirname, '../sql/mo-size-run.sql')), 'utf-8')
 
-		const [target] = await this.dataSourceERP
+		const [result] = await this.dataSourceERP
 			.query<
 				Array<{
 					mo_no: string
@@ -135,10 +139,12 @@ export class InoutboundMssqlRepository implements IIoMssqlRepository {
 				}))
 			)
 
-		return new MoExchangeTransaction(
-			source.map((record) => ({ ...record, sizes: record.sizes.map((size) => new SizeNumber(size)) })),
-			{ ...target, sizes: target.sizes.map((size) => new SizeNumber(size)) }
-		)
+		return result
+
+		// return new MoExchangeTransaction(
+		// 	source.map((record) => ({ ...record, sizes: record.sizes.map((size) => new SizeNumber(size)) })),
+		// 	{ ...target, sizes: target.sizes.map((size) => new SizeNumber(size)) }
+		// )
 	}
 
 	@Transactional<TransactionalAdapterTypeOrm>()

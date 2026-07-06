@@ -1,5 +1,4 @@
 import { InventoryActions, InventoryStorageType } from '../../domain/constants'
-import { MoExchangeTransaction } from '../../domain/models/mo-exchange-transaction.model'
 import { ElectronicProductCode } from '../../domain/value-objects/epc.vo'
 import { SizeNumber } from '../../domain/value-objects/size-number.vo'
 
@@ -39,15 +38,12 @@ export interface IIoMssqlRepository {
 		}
 	): Promise<void>
 
-	getExchangeTargetMo(
-		sourceMos: Array<{
-			mo_no: string
-			factory_shoes_style: string
-			color_sn: string
-			sizes: Array<string>
-		}>,
-		targetMo: string
-	): Promise<MoExchangeTransaction>
+	getExchangeTargetMo(targetMo: string): Promise<{
+		sizes: Array<string>
+		mo_no: string
+		factory_shoes_style: string
+		color_sn: string
+	}>
 
 	rollbackInoutboundTransaction(stationNO: 'WH101' | 'WH103', epcs: Array<ElectronicProductCode>): Promise<void>
 

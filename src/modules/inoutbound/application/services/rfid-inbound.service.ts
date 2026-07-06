@@ -262,17 +262,13 @@ export class RFIDInboundService {
 				}
 			}))
 
-			await this.epcInboundModel
-				.bulkWrite(bulkWriteOptions, {
-					session,
-					writeConcern: { w: 'majority' },
-					readPreference: 'nearest',
-					ordered: false,
-					retryWrites: true
-				})
-				.then((value) => {
-					return value
-				})
+			await this.epcInboundModel.bulkWrite(bulkWriteOptions, {
+				session,
+				writeConcern: { w: 'majority' },
+				readPreference: 'nearest',
+				ordered: false,
+				retryWrites: true
+			})
 
 			await session.commitTransaction()
 			await queryRunner.commitTransaction()
@@ -290,7 +286,7 @@ export class RFIDInboundService {
 	public async searchExchangableOrder(params: SearchCustOrderParamsDTO) {
 		return await this.dataSourceERP
 			.createQueryBuilder()
-			.select(/* SQL */ `DISTINCT TOP 5 a.mo_no`)
+			.select(/* SQL */ `DISTINCT TOP 5 a.mo_no AS mo_no`)
 			.addSelect(/* SQL */ `a.created`, 'created')
 			.from('ta_manufacturmst', 'a')
 			.leftJoin('ta_productmst', 'b', /* SQL */ `b.mat_code = a.mat_code AND b.isactive = 'Y'`)
@@ -318,7 +314,7 @@ export class RFIDInboundService {
 				factoryCode: params['factory_code.eq'],
 				color: params['color_sn.eq']
 			})
-			.getRawMany()
+			.getRawMany<{ mo_no: string; created: Date }>()
 	}
 
 	public async retrieveDeletedEpcs(factoryCode: string, args: RFIDSearchParams & { 'scannable.eq'?: boolean }) {
