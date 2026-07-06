@@ -144,7 +144,7 @@ export class InvDefectiveGoods1757390824605 implements MigrationInterface {
 				length: '20',
 				isNullable: true,
 				enumName: 'CHK_defective_goods_outbound_purpose',
-				enum: Object.values(DefectiveGoodsOutboundPurpose) // SELL, GIVEAWAY, ELIMINATE
+				enum: Object.values(DefectiveGoodsOutboundPurpose) // SHIPPING, LAB, RUIN, B_TO_C
 			},
 			{
 				name: 'unit',
