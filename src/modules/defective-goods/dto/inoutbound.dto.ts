@@ -19,7 +19,7 @@ export const updateOutboundStatusDTO = z
 		po: z.string().trim().optional()
 	})
 	.superRefine((values, ctx) => {
-		if (values.outbound_purpose === DefectiveGoodsOutboundPurpose.SELL && !values.po) {
+		if (values.outbound_purpose === DefectiveGoodsOutboundPurpose.SHIPPING && !values.po) {
 			ctx.addIssue({
 				path: ['po'],
 				code: 'custom',

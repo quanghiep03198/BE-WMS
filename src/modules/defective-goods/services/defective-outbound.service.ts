@@ -46,7 +46,7 @@ export class DefectiveGoodsOutboundService {
 					return /* SQL */ `CASE 
 						WHEN 
 							defective_category <> '${DefectiveCategory.C_GRADE}' 
-							AND '${update.outbound_purpose}' = '${DefectiveGoodsOutboundPurpose.ELIMINATE}' 
+							AND '${update.outbound_purpose}' = '${DefectiveGoodsOutboundPurpose.RUIN}' 
 						THEN '${DefectiveCategory.C_GRADE}' 
 						ELSE defective_category
 					END`
@@ -55,8 +55,8 @@ export class DefectiveGoodsOutboundService {
 					return /* SQL */ `CASE 
 						WHEN 
 							defective_category <> '${DefectiveCategory.C_GRADE}' 
-							AND '${update.outbound_purpose}' = '${DefectiveGoodsOutboundPurpose.ELIMINATE}' 
-						THEN '[${currentTime}] Info: Outbound purpose changed to "ELIMINATE", defective category downgraded to "C" automatically.'
+							AND '${update.outbound_purpose}' = '${DefectiveGoodsOutboundPurpose.RUIN}' 
+						THEN '[${currentTime}] Info: Outbound purpose changed to "RUIN", defective category downgraded to "C" automatically.'
 						ELSE NULL
 					END`
 				}

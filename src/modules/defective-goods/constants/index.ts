@@ -12,16 +12,17 @@ export enum DefectiveLocation {
 }
 
 export enum DefectiveGoodsOutboundPurpose {
-	SELL = 'SELL',
-	GIVEAWAY = 'GIVEAWAY',
-	ELIMINATE = 'ELIMINATE'
+	SHIPPING = 'SHIPPING',
+	LAB = 'LAB',
+	RUIN = 'RUIN',
+	DOWNGRADE = 'B_TO_C'
 }
 
 export enum DefectiveGoodsSource {
 	FINAL_INSPECTION = 'A',
 	ASSEMBLY = 'B',
-	REPACKING_INSPECTION = 'C',
-	OTHER = 'D'
+	REPACKING = 'C',
+	OVERRUN = 'D'
 }
 
 export enum DefectiveGoodsUnit {
