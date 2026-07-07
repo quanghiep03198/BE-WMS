@@ -51,6 +51,7 @@ import { CreateEpcChangeStreamCommand } from '../../application/commands/create-
 import { DeleteScanningMoCommand } from '../../application/commands/delete-scanning-mo/delete-scanning-mo.command'
 import { ExchangeMoRmCommand } from '../../application/commands/exchange-mo/impl/exchange-mo-rm.command'
 import { StockInCommand } from '../../application/commands/stock-in/stock-in.command'
+import { UpsertEpcInfoCommand } from '../../application/commands/upsert-epc-info/upsert-epc-info.command'
 import { GetInternalEpcsExistsQuery } from '../../application/queries/get-internal-epcs-exists/get-internal-epcs-exists.query'
 import { GetScanningEpcsBySizeQuery } from '../../application/queries/get-scanning-epcs-by-size/get-scanning-epcs-by-size.query'
 import { GetScanningEpcsQuery } from '../../application/queries/get-scanning-epcs/get-scanning-epcs.query'
@@ -226,10 +227,19 @@ export class RFIDInboundController {
 	})
 	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
 	async upsertEpcInformation(
-		@Headers(CommonRequestHeader.FACTORY_CODE) factoryCode: string,
+		@Headers(CommonRequestHeader.RFID_READER_ID) deviceSerialNumber: string,
 		@Body(new ZodValidationPipe(upsertEpcInformationSchema)) payload: UpsertEpcInformationDTO
 	) {
-		return await this.rfidInboundService.upsertEpcInformation(factoryCode, payload)
+		return await this.commandBus.execute(
+			new UpsertEpcInfoCommand(
+				deviceSerialNumber,
+				payload.mo_no,
+				payload.mo_no_actual,
+				payload.mo_noseq,
+				payload.size_numcode,
+				payload.quantity
+			)
+		)
 	}
 
 	@RouteHandler({

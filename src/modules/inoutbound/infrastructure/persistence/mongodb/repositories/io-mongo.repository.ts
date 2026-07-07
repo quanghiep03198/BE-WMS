@@ -43,6 +43,27 @@ export class InoutboundMongoRepository implements IIoMongoRepository {
 			.filter((item) => item.getIsWritable())
 	}
 
+	public async getPendingExchangeEpcs(query: {
+		deviceSerialNumber: string
+		manufacturingOrder: string
+		sizeNumber: string
+		quantity: number
+	}): Promise<
+		Array<{ epc: string; mo_no: string; factory_shoes_style: string; color_sn: string; size_numcode: string }>
+	> {
+		return await this.inventoryEpcModel.find(
+			{
+				mo_no: query.manufacturingOrder,
+				size_numcode: query.sizeNumber,
+				inbound_device_sn: query.deviceSerialNumber,
+				deleted: false,
+				scannable: true
+			},
+			{ _id: 0, epc: 1, mo_no: 1, factory_shoes_style: 1, color_sn: 1, size_numcode: 1 },
+			{ limit: query.quantity, lean: true }
+		)
+	}
+
 	public async getPendingExchangeMos(
 		deviceSerialNumber: string,
 		sourceMos: string[]

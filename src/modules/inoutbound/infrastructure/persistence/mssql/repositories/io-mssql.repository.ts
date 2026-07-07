@@ -107,19 +107,17 @@ export class InoutboundMssqlRepository implements IIoMssqlRepository {
 	}
 
 	public async getExchangeTargetMo(
-		// source: Array<{
-		// 	epcs: Array<string>
-		// 	mo_no: string
-		// 	factory_shoes_style: string
-		// 	color_sn: string
-		// 	sizes: Array<string>
-		// }>,
-		targetMo: string
+		targetMo: string,
+		moSeq?: string
 	): Promise<{
-		sizes: Array<string>
 		mo_no: string
+		mo_noseq: string
+		or_custpo: string
 		factory_shoes_style: string
+		cust_shoes_style: string
+		mat_code: string
 		color_sn: string
+		sizes: Array<string>
 	}> {
 		const sql: string = readFileSync(resolve(join(__dirname, '../sql/mo-size-run.sql')), 'utf-8')
 
@@ -127,11 +125,15 @@ export class InoutboundMssqlRepository implements IIoMssqlRepository {
 			.query<
 				Array<{
 					mo_no: string
+					mo_noseq: string
+					or_custpo: string
 					factory_shoes_style: string
+					cust_shoes_style: string
+					mat_code: string
 					color_sn: string
 					sizes: string
 				}>
-			>(sql, [targetMo])
+			>(sql, [targetMo, moSeq])
 			.then((records) =>
 				records.map((record) => ({
 					...record,

@@ -1,13 +1,14 @@
-import { Inject } from '@nestjs/common'
+import { ROLLBACK_EXCHANGE_MO_TX_QUEUE } from '@/modules/inoutbound/infrastructure/constants/queue'
+import { InjectQueue } from '@nestjs/bullmq'
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs'
-import { IIoMssqlRepository, IO_MSSQL_REPOSITORY } from '../../ports/io-mssql.repository.port'
+import { Queue } from 'bullmq'
 import { RollbackExchangeMoTransactionCommand } from './rollback-exchange-mo-tx.command'
 
 @CommandHandler(RollbackExchangeMoTransactionCommand)
 export class RollbackExchangeMoTransactionHandler implements ICommandHandler<RollbackExchangeMoTransactionCommand> {
-	constructor(@Inject(IO_MSSQL_REPOSITORY) private readonly ioMssqlRepository: IIoMssqlRepository) {}
+	constructor(@InjectQueue(ROLLBACK_EXCHANGE_MO_TX_QUEUE) private readonly rollbackExchangeMoTxQueue: Queue) {}
 
 	public async execute({ exchangedEpcs: exchangeSkus }: RollbackExchangeMoTransactionCommand) {
-		await this.ioMssqlRepository.rollbackExchangeMoTransaction(exchangeSkus)
+		this.rollbackExchangeMoTxQueue.add('ROLLBACK_EXCHANGE_MO_TX_JOB', exchangeSkus)
 	}
 }

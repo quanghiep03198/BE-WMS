@@ -2,7 +2,7 @@ import {
 	InconsistentMoSizesException,
 	InconsistentMoSpecsException,
 	NoExchangableEpcException
-} from '@/modules/inoutbound/domain/exceptions/mo-exchange-session.exception'
+} from '@/modules/inoutbound/domain/exceptions/mo-exchange-tx.exception'
 import { MoExchangeTransaction } from '@/modules/inoutbound/domain/models/mo-exchange-transaction.model'
 import { SizeNumber } from '@/modules/inoutbound/domain/value-objects/size-number.vo'
 import { BadRequestException, Inject, NotFoundException } from '@nestjs/common'

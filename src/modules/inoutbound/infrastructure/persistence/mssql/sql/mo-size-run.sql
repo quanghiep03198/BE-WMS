@@ -1,5 +1,18 @@
+SET STATISTICS IO ON;
+SET STATISTICS TIME ON;
+
 WITH mo_size_source AS (
-	SELECT t.mo_no, CAST(msr.size_numcode AS NVARCHAR(50)) AS size_numcode
+	SELECT
+		t.mo_no,
+		REPLACE(
+			TRANSLATE(
+				UPPER(msr.size_numcode), 
+				'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 
+				'                          '
+			),
+				' ',
+				''
+		) AS size_numcode
 	FROM ta_manufactursizerun t
 	CROSS APPLY (
 	VALUES
@@ -56,7 +69,7 @@ WITH mo_size_source AS (
 			STRING_AGG(
 				CONCAT('"', STRING_ESCAPE(CAST(d.size_numcode AS NVARCHAR(50)), 'json'), '"'),
 				','
-			) WITHIN GROUP (ORDER BY CAST(d.size_numcode AS FLOAT) ASC),
+			) WITHIN GROUP (ORDER BY TRY_CAST(d.size_numcode AS FLOAT) ASC, d.size_numcode ASC),
 			']'
 		) AS mo_size_run
 	FROM (
@@ -67,15 +80,24 @@ WITH mo_size_source AS (
 )
 SELECT 
 	a.mo_no AS mo_no,
+	aa.mo_noseq AS mo_noseq,
+	aa.or_no AS or_no,
+	e.or_custpo AS or_custpo,
 	d.brand_name AS brand_name,
 	c.shoestyle_codefactory AS factory_shoes_style,
+	CONCAT(c.shoestyle_codecust, '/', c.shoestyle_namecust) AS cust_shoes_style,
+	b.mat_code AS mat_code,
 	b.color_sn AS color_sn,
    ISNULL(msj.mo_size_run, '[]') AS sizes
 FROM wuerp_vnrd.dbo.ta_manufacturmst a
+LEFT JOIN wuerp_vnrd.dbo.ta_manufacturdet aa ON aa.mo_no = a.mo_no AND aa.isactive = 'Y'
 LEFT JOIN wuerp_vnrd.dbo.ta_productmst b ON b.mat_code= a.mat_code AND b.isactive= 'Y'
 LEFT JOIN wuerp_vnrd.dbo.ta_shoefactorymst c ON c.shoestyle_systemcodefty = b.shoestyle_systemcodefty AND c.isactive = 'Y'
 LEFT JOIN wuerp_vnrd.dbo.ta_brand d ON d.custbrand_id = b.custbrand_id
+LEFT JOIN wuerp_vnrd.dbo.ta_ordermst e ON e.or_no = aa.or_no AND e.isactive = 'Y'
 LEFT JOIN mo_size_json msj ON msj.mo_no = a.mo_no
 WHERE
 	a.mo_no = @0
-	AND a.isactive = 'Y';
+	AND aa.mo_noseq = ISNULL(@1, '001')
+	AND a.isactive = 'Y'
+ORDER BY aa.mo_noseq;

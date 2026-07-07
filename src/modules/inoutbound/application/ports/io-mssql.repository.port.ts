@@ -38,11 +38,18 @@ export interface IIoMssqlRepository {
 		}
 	): Promise<void>
 
-	getExchangeTargetMo(targetMo: string): Promise<{
-		sizes: Array<string>
+	getExchangeTargetMo(
+		targetMo: string,
+		moSeq?: string
+	): Promise<{
 		mo_no: string
+		mo_noseq: string
+		or_custpo: string
 		factory_shoes_style: string
+		cust_shoes_style: string
+		mat_code: string
 		color_sn: string
+		sizes: Array<string>
 	}>
 
 	rollbackInoutboundTransaction(stationNO: 'WH101' | 'WH103', epcs: Array<ElectronicProductCode>): Promise<void>

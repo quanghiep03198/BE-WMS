@@ -9,6 +9,7 @@ import { RollbackStockTransactionHandler } from './rollback-stock-tx/rollback-st
 import { StockInHandler } from './stock-in/stock-in.handler'
 import { SyncInventoryAuditHandler } from './sync-inventory-audit/sync-inventory-audit.handler'
 import { UpdateStockInTimestampHandler } from './update-stock-in-timestamp/update-stock-in-timestamp.handler'
+import { UpsertEpcInfoHandler } from './upsert-epc-info/upsert-epc-info.handler'
 
 export const InoutboundCommandHandlers = [
 	BulkWriteInventoryHandler,
@@ -21,5 +22,6 @@ export const InoutboundCommandHandlers = [
 	RollbackStockTransactionHandler,
 	StockInHandler,
 	SyncInventoryAuditHandler,
-	UpdateStockInTimestampHandler
+	UpdateStockInTimestampHandler,
+	UpsertEpcInfoHandler
 ]

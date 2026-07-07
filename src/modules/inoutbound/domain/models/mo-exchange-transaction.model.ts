@@ -4,7 +4,7 @@ import {
 	InconsistentMoSizesException,
 	InconsistentMoSpecsException,
 	NoExchangableEpcException
-} from '../exceptions/mo-exchange-session.exception'
+} from '../exceptions/mo-exchange-tx.exception'
 import { SizeNumber } from '../value-objects/size-number.vo'
 
 export class MoExchangeTransaction extends AggregateRoot {

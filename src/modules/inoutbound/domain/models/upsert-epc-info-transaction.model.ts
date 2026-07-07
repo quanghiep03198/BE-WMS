@@ -7,28 +7,16 @@ export type UpsertEpcInformationPayload = Array<{
 	factory_shoes_style: string
 	color_sn: string
 	size_numcode: string
-	factory_code_orders: string
-	factory_name_orders: string
-	factory_code_produce: string
-	factory_name_produce: string
-	remark: string
-	quantity?: number
-	mo_no_actual?: string
-	or_no?: string
-	or_cust_po?: string
-	mo_noseq?: string
-	size_code?: string
-	size_qty?: number
-	mat_code?: string
-	cust_shoes_style?: string
-	color_sn_actual?: string
-	factory_shoes_style_actual?: string
-	size_numcode_actual?: string
+	// factory_code_orders: string
+	// factory_name_orders: string
+	// factory_code_produce: string
+	// factory_name_produce: string
+	// remark: string
 }>
 
-export class UpsertEpcInformationTx extends AggregateRoot {
+export class UpsertEpcInfoTransaction extends AggregateRoot {
 	constructor(
-		public readonly payload: UpsertEpcInformationPayload,
+		public readonly pendingExchangeEpcs: UpsertEpcInformationPayload,
 		public readonly targetMo: {
 			sizes: Array<string>
 			mo_no: string
@@ -40,7 +28,7 @@ export class UpsertEpcInformationTx extends AggregateRoot {
 	}
 
 	public verify() {
-		return this.payload.every((item) => {
+		return this.pendingExchangeEpcs.every((item) => {
 			const isSameSize = this.targetMo.sizes.some((size) =>
 				new SizeNumber(size).isEqual(new SizeNumber(item.size_numcode))
 			)
@@ -49,5 +37,13 @@ export class UpsertEpcInformationTx extends AggregateRoot {
 
 			return isSameSize && isSameShoeStyle && isSameColor
 		})
+	}
+
+	public getPendingExchangeEpcs() {
+		return this.pendingExchangeEpcs.map((item) => item.epc)
+	}
+
+	public getTargetMo() {
+		return this.targetMo.mo_no
 	}
 }

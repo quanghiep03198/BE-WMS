@@ -21,7 +21,12 @@ import { RFIDInboundService } from './application/services/rfid-inbound.service'
 import { RFIDOutboundService } from './application/services/rfid-outbound.service'
 import { RFIDSharedService } from './application/services/rfid-shared.service'
 import { InoutboundEventHandlers } from './domain/events'
-import { IMPORT_DATA_QUEUE, POST_DATA_INBOUND_QUEUE, POST_DATA_OUTBOUND_QUEUE } from './infrastructure/constants/queue'
+import {
+	IMPORT_DATA_QUEUE,
+	POST_DATA_INBOUND_QUEUE,
+	POST_DATA_OUTBOUND_QUEUE,
+	ROLLBACK_EXCHANGE_MO_TX_QUEUE
+} from './infrastructure/constants/queue'
 import { InoutboundMongoRepository } from './infrastructure/persistence/mongodb/repositories/io-mongo.repository'
 import {
 	EPC_INBOUND_COLLECTION,
@@ -56,6 +61,15 @@ import { RFIDListeners } from './presentation/listeners'
 		BullModule.registerQueue({ name: POST_DATA_INBOUND_QUEUE }),
 		BullModule.registerQueue({ name: POST_DATA_OUTBOUND_QUEUE }),
 		BullModule.registerQueue({ name: IMPORT_DATA_QUEUE }),
+		BullModule.registerQueue({
+			name: ROLLBACK_EXCHANGE_MO_TX_QUEUE,
+			defaultJobOptions: {
+				attempts: 5,
+				removeOnComplete: { count: 10 },
+				removeOnFail: { count: 100 },
+				backoff: { type: 'fixed', delay: 3000 }
+			}
+		}),
 		TypeOrmModule.forFeature(
 			[RFIDInventoryEntity, RFIDInventoryBackupEntity, RFIDMatchEntity, RFIDDeviceEntity],
 			DATA_SOURCE_DATA_LAKE
