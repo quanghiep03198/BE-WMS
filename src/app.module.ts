@@ -40,7 +40,12 @@ import { WarehouseModule } from './modules/warehouse/warehouse.module'
 import { RedisModule } from './redis/redis.module'
 // Schedule Tasks
 import { getConnectionToken } from '@nestjs/mongoose'
-import { DATA_SOURCE_DATA_LAKE, DATA_SOURCE_ERP, DATA_SOURCE_SYSCLOUD } from './databases/constants'
+import {
+	DATA_SOURCE_DATA_LAKE,
+	DATA_SOURCE_ERP,
+	DATA_SOURCE_SYSCLOUD,
+	DATA_WAREHOUSE_CONNECTION
+} from './databases/constants'
 import { RFIDDeviceModule } from './modules/rfid-device/rfid-device.module'
 import { ScheduleTasks } from './tasks'
 
@@ -97,8 +102,9 @@ import { ScheduleTasks } from './tasks'
 				}),
 				new ClsPluginTransactional({
 					imports: [DatabaseModule],
+					connectionName: DATA_WAREHOUSE_CONNECTION,
 					adapter: new TransactionalAdapterMongoose({
-						mongooseConnectionToken: getConnectionToken()
+						mongooseConnectionToken: getConnectionToken(DATA_WAREHOUSE_CONNECTION)
 					})
 				})
 			]

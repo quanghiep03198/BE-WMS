@@ -1,3 +1,4 @@
+// #region MSSQL Database Constants
 export const DATABASE_DATA_LAKE = 'DV_DATA_LAKE' as const
 export const DATABASE_SYSCLOUD = 'syscloud_vn' as const
 export const DATABASE_ERP = 'wuerp_vnrd' as const
@@ -20,3 +21,8 @@ export enum LinkedServer {
 	VB2 = 'DV_SERVER202',
 	CA1 = 'DV_SERVER51'
 }
+
+// #endregion
+
+// #region MongoDB Database Constants
+export const DATA_WAREHOUSE_CONNECTION = 'DATA_WAREHOUSE' as const

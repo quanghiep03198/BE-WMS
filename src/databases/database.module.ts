@@ -10,6 +10,7 @@ import {
 	DATA_SOURCE_DATA_LAKE,
 	DATA_SOURCE_ERP,
 	DATA_SOURCE_SYSCLOUD,
+	DATA_WAREHOUSE_CONNECTION,
 	DATABASE_DATA_LAKE,
 	DATABASE_ERP,
 	DATABASE_SYSCLOUD
@@ -52,6 +53,7 @@ import {
 		// * MongoDB
 		MongooseModule.forRootAsync({
 			inject: [ConfigService],
+			connectionName: DATA_WAREHOUSE_CONNECTION,
 			useFactory: (configService: ConfigService) => configService.getOrThrow<MongooseModuleOptions>('mongodb')
 		})
 	]

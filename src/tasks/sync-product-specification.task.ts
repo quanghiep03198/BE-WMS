@@ -1,5 +1,5 @@
 import { SuperJson } from '@/common/utils'
-import { DATA_SOURCE_ERP } from '@/databases/constants'
+import { DATA_SOURCE_ERP, DATA_WAREHOUSE_CONNECTION } from '@/databases/constants'
 import {
 	ProductSpecification,
 	ProductSpecificationDocument
@@ -25,7 +25,7 @@ export class SyncProductSpecificationTask {
 
 	constructor(
 		@InjectDataSource(DATA_SOURCE_ERP) private readonly dataSourceERP: DataSource,
-		@InjectModel(ProductSpecification.name)
+		@InjectModel(ProductSpecification.name, DATA_WAREHOUSE_CONNECTION)
 		private readonly productSpecificationModel: Model<ProductSpecificationDocument>
 	) {}
 

@@ -3,6 +3,7 @@ import { WsExceptionsFilter } from '@/common/filters'
 
 import { WsZodValidationPipe } from '@/common/pipes/ws-validation.pipe'
 import { env } from '@/common/utils'
+import { DATA_WAREHOUSE_CONNECTION } from '@/databases/constants'
 import { FALLBACK_VALUE } from '@/modules/inoutbound/domain/constants'
 import {
 	EpcDocument,
@@ -50,7 +51,7 @@ export class EventGateway implements OnGatewayConnection, OnGatewayDisconnect {
 		private readonly logger: PinoLogger,
 
 		@Optional()
-		@InjectModel(EpcInbound.name)
+		@InjectModel(EpcInbound.name, DATA_WAREHOUSE_CONNECTION)
 		private readonly epcModel: PaginateModel<EpcDocument>,
 
 		@Optional()
