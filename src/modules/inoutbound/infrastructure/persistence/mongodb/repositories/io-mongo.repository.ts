@@ -1,14 +1,17 @@
+import { DATA_WAREHOUSE_CONNECTION } from '@/databases/constants'
 import { IIoMongoRepository } from '@/modules/inoutbound/application/ports/io-mongo.repository.port'
 import { GetScanningEpcsBySizeQuery } from '@/modules/inoutbound/application/queries/get-scanning-epcs-by-size/get-scanning-epcs-by-size.query'
 import { StockMovementDirection } from '@/modules/inoutbound/domain/types'
 import { ElectronicProductCode } from '@/modules/inoutbound/domain/value-objects/epc.vo'
 import { SizeNumber } from '@/modules/inoutbound/domain/value-objects/size-number.vo'
 import { RestoreArchivedEpcsDTO } from '@/modules/inoutbound/presentation/dto/rfid-shared.dto'
+import { InjectTransactionHost, Transactional, TransactionHost } from '@nestjs-cls/transactional'
+import { TransactionalAdapterMongoose } from '@nestjs-cls/transactional-adapter-mongoose'
 import { CACHE_MANAGER } from '@nestjs/cache-manager'
 import { Inject, Injectable } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
 import { Cache } from 'cache-manager'
-import { AnyBulkWriteOperation, FilterQuery } from 'mongoose'
+import { AnyBulkWriteOperation, FilterQuery, MongooseError } from 'mongoose'
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
 import { InventoryEpc, InventoryEpcDocument, InventoryEpcModel } from '../schemas/inventory-epc.schema'
 
@@ -16,8 +19,10 @@ import { InventoryEpc, InventoryEpcDocument, InventoryEpcModel } from '../schema
 export class InoutboundMongoRepository implements IIoMongoRepository {
 	constructor(
 		@InjectPinoLogger(InoutboundMongoRepository.name) private readonly logger: PinoLogger,
-		@InjectModel(InventoryEpc.name) private readonly inventoryEpcModel: InventoryEpcModel,
-		@Inject(CACHE_MANAGER) private readonly cacheManager: Cache
+		@InjectModel(InventoryEpc.name, DATA_WAREHOUSE_CONNECTION) private readonly inventoryEpcModel: InventoryEpcModel,
+		@Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
+		@InjectTransactionHost(DATA_WAREHOUSE_CONNECTION)
+		private readonly txHost: TransactionHost<TransactionalAdapterMongoose>
 	) {}
 
 	public async getPendingInboundEpcs(
@@ -198,17 +203,22 @@ export class InoutboundMongoRepository implements IIoMongoRepository {
 		})
 	}
 
+	@Transactional<TransactionalAdapterMongoose>(DATA_WAREHOUSE_CONNECTION)
 	public async updateInboundTimestamp(scannedEpcs: Array<ElectronicProductCode>): Promise<void> {
 		await this.inventoryEpcModel
 			.updateMany(
 				{ epc: { $in: scannedEpcs.map((epc) => epc.getStockKeepingUnit()) }, inbound_at: null },
 				{ inbound_at: new Date() }
 			)
-			.exec()
+			.session(this.txHost.tx)
 	}
 
+	@Transactional<TransactionalAdapterMongoose>(DATA_WAREHOUSE_CONNECTION)
 	public async exchangeMo(pendingExchangeEpcs: Array<string>, targetMo: string): Promise<void> {
-		await this.inventoryEpcModel.updateMany({ epc: { $in: pendingExchangeEpcs } }, { mo_no: targetMo }).exec()
+		await this.inventoryEpcModel
+			.updateMany({ epc: { $in: pendingExchangeEpcs } }, { mo_no: targetMo })
+			.session(this.txHost.tx)
+		throw new MongooseError('Some error occurred while executing the command')
 	}
 
 	public async restoreArchivedEpcs(action: StockMovementDirection, epcs: RestoreArchivedEpcsDTO): Promise<void> {

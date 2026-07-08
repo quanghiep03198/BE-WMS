@@ -34,22 +34,27 @@ export class StockInHandler implements ICommandHandler<StockInCommand> {
 				command.mo_no,
 				pendingInboundEpcs
 			)
-
+			// * Create a new StockInTransaction instance to handle the stock-in process
 			const inboundTransaction = new StockInTransaction(pendingInboundEpcs, currentInboundProgress)
+			const inboundEpcs = inboundTransaction.verify()
 
-			const inboundEpcs = inboundTransaction.verify(pendingInboundEpcs)
-
+			// * Perform the stock-in operation in the MSSQL repository
 			await this.inoutboundMssqlRepository.stockIn(inboundEpcs, command)
 
+			// * Apply the StockedInEvent to the transaction and commit it
 			inboundTransaction.apply(new StockedInEvent(inboundEpcs))
 			this.eventPublisher.mergeObjectContext(inboundTransaction)
 			inboundTransaction.commit()
 		} catch (error) {
-			if (error instanceof ExcessInboundOrderException)
-				throw new BadRequestException(
-					this.i18nService.t('inoutbound.notification.over_inbound_limit', { lang: I18nContext.current()?.lang }),
-					{ cause: error.cause }
-				)
+			let message: string = this.i18nService.t('inoutbound.notification.stock_in_failed', {
+				lang: I18nContext.current()?.lang
+			})
+			if (error instanceof ExcessInboundOrderException) {
+				message = this.i18nService.t('inoutbound.notification.over_inbound_limit', {
+					lang: I18nContext.current()?.lang
+				})
+				throw new BadRequestException(message, { cause: error.cause })
+			}
 
 			throw error
 		}

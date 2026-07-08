@@ -1,3 +1,4 @@
+import { DATA_WAREHOUSE_CONNECTION } from '@/databases/constants'
 import {
 	InventoryEpc,
 	InventoryEpcModel
@@ -8,7 +9,9 @@ import { GetInternalEpcsExistsQuery } from './get-internal-epcs-exists.query'
 
 @QueryHandler(GetInternalEpcsExistsQuery)
 export class GetInternalEpcsExistsHandler implements IQueryHandler<GetInternalEpcsExistsQuery> {
-	constructor(@InjectModel(InventoryEpc.name) private readonly inventoryEpcModel: InventoryEpcModel) {}
+	constructor(
+		@InjectModel(InventoryEpc.name, DATA_WAREHOUSE_CONNECTION) private readonly inventoryEpcModel: InventoryEpcModel
+	) {}
 
 	public async execute({ params }: GetInternalEpcsExistsQuery) {
 		const existedRecord = await this.inventoryEpcModel

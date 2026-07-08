@@ -1,3 +1,4 @@
+import { DATA_WAREHOUSE_CONNECTION } from '@/databases/constants'
 import {
 	InventoryEpc,
 	InventoryEpcDocument,
@@ -14,7 +15,9 @@ export class CreateEpcChangeStreamHandler implements ICommandHandler<
 	CreateEpcChangeStreamCommand,
 	mongo.ChangeStream<InventoryEpcDocument, mongo.ChangeStreamDocument<InventoryEpcDocument>>
 > {
-	constructor(@InjectModel(InventoryEpc.name) private readonly inventoryEpcModel: InventoryEpcModel) {}
+	constructor(
+		@InjectModel(InventoryEpc.name, DATA_WAREHOUSE_CONNECTION) private readonly inventoryEpcModel: InventoryEpcModel
+	) {}
 
 	public async execute({ filterQuery, onChange }: CreateEpcChangeStreamCommand) {
 		const changeStream = this.inventoryEpcModel.watch<

@@ -9,9 +9,16 @@
 		"truckload_delivery_report": "Báo Cáo Xuất Hàng KTP Theo Xe {factory}"
 	},
 	"notification": {
+		"exchange_mo_success": "Đã đổi thành công các SKU từ chỉ lệnh {sourceMo} sang chỉ lệnh {targetMo}.",
+		"exchange_mo_failed": "Đã xảy ra lỗi khi đổi các SKU từ chỉ lệnh {sourceMo} sang chỉ lệnh {targetMo}.",
 		"over_inbound_limit": "Chỉ lệnh đã nhập kho đủ, bạn không thể nhập thêm nữa. Vui lòng kiểm tra lại lịch sử nhập hàng của chỉ lệnh này.",
 		"over_outbound_limit": "Đơn hàng đã xuất kho đủ, bạn không thể xuất thêm nữa. Vui lòng kiểm tra lại lịch sử xuất hàng của đơn hàng này.",
-		"not_inbound_yet": "Không thể xuất kho, vì phát hiện có tem chưa nhập kho."
+		"not_inbound_yet": "Không thể xuất kho, vì phát hiện có tem chưa nhập kho.",
+		"no_exchangable_sku": "Không có SKU nào có thể đổi được.",
+		"mismatching_mo_specs": "Các SKU được chọn có thông số kỹ thuật không khớp với nhau. Vui lòng kiểm tra lại.",
+		"mismatching_size_number": "Các SKU được chọn có kích thước không khớp với nhau. Vui lòng kiểm tra lại.",
+		"stock_in_success": "Đã nhập kho thành công {quantity} sản phẩm.",
+		"stock_in_failed": "Đã xảy ra lỗi khi nhập kho."
 	},
 	"outbound_purpose": {
 		"SELL": "Bán",

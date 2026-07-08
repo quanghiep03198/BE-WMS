@@ -9,6 +9,6 @@ export class RollbackExchangeMoTransactionHandler implements ICommandHandler<Rol
 	constructor(@InjectQueue(ROLLBACK_EXCHANGE_MO_TX_QUEUE) private readonly rollbackExchangeMoTxQueue: Queue) {}
 
 	public async execute({ exchangedEpcs: exchangeSkus }: RollbackExchangeMoTransactionCommand) {
-		this.rollbackExchangeMoTxQueue.add('ROLLBACK_EXCHANGE_MO_TX_JOB', exchangeSkus)
+		this.rollbackExchangeMoTxQueue.add('ROLLBACK_EXCHANGE_MO_TX', exchangeSkus)
 	}
 }

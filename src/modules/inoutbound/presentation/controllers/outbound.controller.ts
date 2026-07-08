@@ -2,6 +2,7 @@ import { CommonRequestHeader } from '@/common/constants'
 import { HttpMethod, Public, RequestUser, RequireAuthorized, RouteHandler, User } from '@/common/decorators'
 import { AllExceptionsFilter } from '@/common/filters'
 import { ZodValidationPipe } from '@/common/pipes'
+import { DATA_WAREHOUSE_CONNECTION } from '@/databases/constants'
 import { UserRole } from '@/modules/user/constants'
 import { InjectQueue } from '@nestjs/bullmq'
 import { CACHE_MANAGER } from '@nestjs/cache-manager'
@@ -53,7 +54,7 @@ import {
 export class OutboundController {
 	constructor(
 		@InjectQueue(POST_DATA_OUTBOUND_QUEUE) private readonly postOutboundDataQueue: Queue<PostReaderDataDTO>,
-		@InjectModel(EpcOutbound.name) private readonly epcOutboundModel: EpcModel,
+		@InjectModel(EpcOutbound.name, DATA_WAREHOUSE_CONNECTION) private readonly epcOutboundModel: EpcModel,
 		@Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
 		@InjectPinoLogger(OutboundController.name) private readonly logger: PinoLogger,
 		private readonly eventEmitter: EventEmitter2,

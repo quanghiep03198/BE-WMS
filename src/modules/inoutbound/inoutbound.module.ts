@@ -1,4 +1,4 @@
-import { DATA_SOURCE_DATA_LAKE } from '@/databases/constants'
+import { DATA_SOURCE_DATA_LAKE, DATA_WAREHOUSE_CONNECTION } from '@/databases/constants'
 import { BullModule } from '@nestjs/bullmq'
 import { CACHE_MANAGER } from '@nestjs/cache-manager'
 import { Inject, Module, OnModuleInit } from '@nestjs/common'
@@ -25,7 +25,8 @@ import {
 	IMPORT_DATA_QUEUE,
 	POST_DATA_INBOUND_QUEUE,
 	POST_DATA_OUTBOUND_QUEUE,
-	ROLLBACK_EXCHANGE_MO_TX_QUEUE
+	ROLLBACK_EXCHANGE_MO_TX_QUEUE,
+	ROLLBACK_STOCK_TX_QUEUE
 } from './infrastructure/constants/queue'
 import { InoutboundMongoRepository } from './infrastructure/persistence/mongodb/repositories/io-mongo.repository'
 import {
@@ -70,101 +71,113 @@ import { RFIDListeners } from './presentation/listeners'
 				backoff: { type: 'fixed', delay: 3000 }
 			}
 		}),
+		BullModule.registerQueue({
+			name: ROLLBACK_STOCK_TX_QUEUE,
+			defaultJobOptions: {
+				attempts: 5,
+				removeOnComplete: { count: 10 },
+				removeOnFail: { count: 100 },
+				backoff: { type: 'fixed', delay: 3000 }
+			}
+		}),
 		TypeOrmModule.forFeature(
 			[RFIDInventoryEntity, RFIDInventoryBackupEntity, RFIDMatchEntity, RFIDDeviceEntity],
 			DATA_SOURCE_DATA_LAKE
 		),
-		MongooseModule.forFeatureAsync([
-			{
-				name: InventoryEpc.name,
-				collection: INVENTORY_EPC_COLLECTION,
-				useFactory: () => {
-					InventoryEpcSchema.index({ created_at: 1 }, { expires: '365d' })
-					InventoryEpcSchema.index({ epc: 1 }, { unique: true })
-					InventoryEpcSchema.index(
-						{
-							scannable: 1,
-							deleted: 1,
-							inbound_device_sn: 1,
-							inbound_at: 1,
-							last_scanned_at: -1,
-							epc: 1,
-							mo_no: 1
-						},
-						{ name: 'idx_inventory_epc_inbound_scan_page' }
-					)
-					InventoryEpcSchema.index(
-						{
-							scannable: 1,
-							deleted: 1,
-							outbound_device_sn: 1,
-							outbound_at: 1,
-							po: 1,
-							last_scanned_at: -1,
-							epc: 1,
-							mo_no: 1
-						},
-						{ name: 'idx_inventory_epc_outbound_scan_page' }
-					)
-					InventoryEpcSchema.index(
-						{
-							scannable: 1,
-							deleted: 1,
+		MongooseModule.forFeatureAsync(
+			[
+				{
+					name: InventoryEpc.name,
+					collection: INVENTORY_EPC_COLLECTION,
+					useFactory: () => {
+						InventoryEpcSchema.index({ created_at: 1 }, { expires: '365d' })
+						InventoryEpcSchema.index({ epc: 1 }, { unique: true })
+						InventoryEpcSchema.index(
+							{
+								scannable: 1,
+								deleted: 1,
+								inbound_device_sn: 1,
+								inbound_at: 1,
+								last_scanned_at: -1,
+								epc: 1,
+								mo_no: 1
+							},
+							{ name: 'idx_inventory_epc_inbound_scan_page' }
+						)
+						InventoryEpcSchema.index(
+							{
+								scannable: 1,
+								deleted: 1,
+								outbound_device_sn: 1,
+								outbound_at: 1,
+								po: 1,
+								last_scanned_at: -1,
+								epc: 1,
+								mo_no: 1
+							},
+							{ name: 'idx_inventory_epc_outbound_scan_page' }
+						)
+						InventoryEpcSchema.index(
+							{
+								scannable: 1,
+								deleted: 1,
+								mo_no: 1,
+								last_scanned_at: -1,
+								epc: 1
+							},
+							{ name: 'idx_inventory_epc_mo_scan_page' }
+						)
+						InventoryEpcSchema.index({
 							mo_no: 1,
-							last_scanned_at: -1,
-							epc: 1
-						},
-						{ name: 'idx_inventory_epc_mo_scan_page' }
-					)
-					InventoryEpcSchema.index({
-						mo_no: 1,
-						po: 1,
-						size_numcode: 1,
-						factory_shoes_style: 1,
-						color_sn: 1,
-						created_at: -1
-					})
-					InventoryEpcSchema.index({ inbound_device_sn: 1, created_at: -1 })
-					InventoryEpcSchema.index({ outbound_device_sn: 1, created_at: -1 })
-					InventoryEpcSchema.plugin(MongoosePaginatePlugin)
-					InventoryEpcSchema.plugin(MongooseDeletePlugin, {
-						overrideMethods: true,
-						indexFields: ['deleted']
-					})
+							po: 1,
+							size_numcode: 1,
+							factory_shoes_style: 1,
+							color_sn: 1,
+							created_at: -1
+						})
+						InventoryEpcSchema.index({ inbound_device_sn: 1, created_at: -1 })
+						InventoryEpcSchema.index({ outbound_device_sn: 1, created_at: -1 })
+						InventoryEpcSchema.plugin(MongoosePaginatePlugin)
+						InventoryEpcSchema.plugin(MongooseDeletePlugin, {
+							overrideMethods: true,
+							indexFields: ['deleted']
+						})
 
-					return InventoryEpcSchema
+						return InventoryEpcSchema
+					}
+				},
+				{
+					name: EpcInbound.name,
+					collection: EPC_INBOUND_COLLECTION,
+					useFactory: () => {
+						EpcInboundSchema.index({ record_time: 1 }, { expires: '365d' })
+						EpcInboundSchema.index({ mo_no: 1, size_numcode: 1, factory_shoes_style: 1, color_sn: 1 })
+						EpcInboundSchema.plugin(MongoosePaginatePlugin)
+						EpcInboundSchema.plugin(MongooseDeletePlugin, {
+							overrideMethods: true,
+							indexFields: ['deleted']
+						})
+						return EpcInboundSchema
+					}
+				},
+				{
+					name: EpcOutbound.name,
+					collection: EPC_OUTBOUND_COLLECTION,
+					useFactory: () => {
+						EpcOutboundSchema.index({ record_time: 1 }, { expires: '365d' })
+						EpcOutboundSchema.index({ mo_no: 1, size_numcode: 1, factory_shoes_style: 1, color_sn: 1 })
+						EpcOutboundSchema.index({ po: 1 })
+						EpcOutboundSchema.plugin(MongoosePaginatePlugin)
+						EpcOutboundSchema.plugin(MongooseDeletePlugin, {
+							overrideMethods: true,
+							indexFields: ['deleted']
+						})
+						return EpcOutboundSchema
+					}
 				}
-			},
-			{
-				name: EpcInbound.name,
-				collection: EPC_INBOUND_COLLECTION,
-				useFactory: () => {
-					EpcInboundSchema.index({ record_time: 1 }, { expires: '365d' })
-					EpcInboundSchema.index({ mo_no: 1, size_numcode: 1, factory_shoes_style: 1, color_sn: 1 })
-					EpcInboundSchema.plugin(MongoosePaginatePlugin)
-					EpcInboundSchema.plugin(MongooseDeletePlugin, {
-						overrideMethods: true,
-						indexFields: ['deleted']
-					})
-					return EpcInboundSchema
-				}
-			},
-			{
-				name: EpcOutbound.name,
-				collection: EPC_OUTBOUND_COLLECTION,
-				useFactory: () => {
-					EpcOutboundSchema.index({ record_time: 1 }, { expires: '365d' })
-					EpcOutboundSchema.index({ mo_no: 1, size_numcode: 1, factory_shoes_style: 1, color_sn: 1 })
-					EpcOutboundSchema.index({ po: 1 })
-					EpcOutboundSchema.plugin(MongoosePaginatePlugin)
-					EpcOutboundSchema.plugin(MongooseDeletePlugin, {
-						overrideMethods: true,
-						indexFields: ['deleted']
-					})
-					return EpcOutboundSchema
-				}
-			}
-		])
+			],
+			DATA_WAREHOUSE_CONNECTION
+		)
 	],
 	controllers: RFIDControllers,
 	providers: [
@@ -195,7 +208,7 @@ export class InoutboundModule implements OnModuleInit {
 	constructor(
 		private readonly logger: PinoLogger,
 		@Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
-		@InjectModel(InventoryEpc.name) private readonly inventoryEpcModel: InventoryEpcModel
+		@InjectModel(InventoryEpc.name, DATA_WAREHOUSE_CONNECTION) private readonly inventoryEpcModel: InventoryEpcModel
 	) {}
 
 	async onModuleInit() {

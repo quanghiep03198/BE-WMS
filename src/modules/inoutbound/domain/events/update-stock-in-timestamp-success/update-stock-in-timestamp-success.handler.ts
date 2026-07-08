@@ -3,7 +3,7 @@ import { EventsHandler, IEventHandler } from '@nestjs/cqrs'
 import { UpdateStockInTimestampSuccessEvent } from './update-stock-in-timestamp-success.event'
 
 @EventsHandler(UpdateStockInTimestampSuccessEvent)
-export class UpdateStockInTimestampSuccessEventHandler implements IEventHandler<UpdateStockInTimestampSuccessEvent> {
+export class UpdateStockInTimestampSuccessHandler implements IEventHandler<UpdateStockInTimestampSuccessEvent> {
 	constructor(private readonly inoutboundGateway: InoutboundGateway) {}
 
 	public async handle() {

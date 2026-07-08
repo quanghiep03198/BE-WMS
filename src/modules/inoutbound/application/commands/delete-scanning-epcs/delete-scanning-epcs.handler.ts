@@ -1,3 +1,4 @@
+import { DATA_WAREHOUSE_CONNECTION } from '@/databases/constants'
 import {
 	InventoryEpc,
 	InventoryEpcModel
@@ -8,7 +9,9 @@ import { DeleteScanningEpcsCommand } from './delete-scanning-epcs.command'
 
 @CommandHandler(DeleteScanningEpcsCommand)
 export class DeleteScanningEpcsHandler implements ICommandHandler<DeleteScanningEpcsCommand> {
-	constructor(@InjectModel(InventoryEpc.name) private readonly inventoryEpcModel: InventoryEpcModel) {}
+	constructor(
+		@InjectModel(InventoryEpc.name, DATA_WAREHOUSE_CONNECTION) private readonly inventoryEpcModel: InventoryEpcModel
+	) {}
 
 	public async execute({ scanningEpcs, rescannable }: DeleteScanningEpcsCommand) {
 		await this.inventoryEpcModel

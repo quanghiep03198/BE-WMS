@@ -1,6 +1,3 @@
-SET STATISTICS IO ON;
-SET STATISTICS TIME ON;
-
 WITH mo_size_source AS (
 	SELECT
 		t.mo_no,
@@ -13,7 +10,7 @@ WITH mo_size_source AS (
 				' ',
 				''
 		) AS size_numcode
-	FROM ta_manufactursizerun t
+	FROM wuerp_vnrd.dbo.ta_manufactursizerun t
 	CROSS APPLY (
 	VALUES
 		([size_numcode01], [size_qty01]),

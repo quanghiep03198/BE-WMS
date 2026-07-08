@@ -9,9 +9,16 @@
 		"truckload_delivery_report": "Warehouse Truckload Delivery Report - {factory}"
 	},
 	"notification": {
+		"exchange_mo_success": "Successfully exchanged SKUs from manufacturing order {sourceMo} to manufacturing order {targetMo}.",
+		"exchange_mo_failed": "An error occurred while exchanging SKUs from manufacturing order {sourceMo} to manufacturing order {targetMo}.",
 		"over_inbound_limit": "The inbound order has been fully received, you cannot add more. Please check the inbound history of this manufacturing order.",
 		"over_outbound_limit": "The purchase order has been fully shipped, you cannot add more. Please check the outbound history of this purchase order.",
-		"not_inbound_yet": "Cannot proceed with outbound, as there are tags that have not been inbounded yet."
+		"no_exchangable_sku": "There are no SKUs available for exchange.",
+		"not_inbound_yet": "Cannot proceed with outbound, as there are tags that have not been inbounded yet.",
+		"mismatching_mo_specs": "The selected SKUs have mismatching specifications. Please check again.",
+		"mismatching_size_number": "The selected SKUs have mismatching sizes. Please check again.",
+		"stock_in_success": "Successfully stocked in {quantity} products.",
+		"stock_in_failed": "An error occurred while stocking in products."
 	},
 	"outbound_purpose": {
 		"SELL": "Sell",

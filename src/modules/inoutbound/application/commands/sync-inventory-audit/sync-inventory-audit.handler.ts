@@ -13,10 +13,15 @@ export class SyncInventoryAuditHandler implements ICommandHandler<SyncInventoryA
 	) {}
 
 	public async execute({ yearMonth }: SyncInventoryAuditCommand) {
-		return this.syncInventoryAuditQueue.add('sync_inventory_audit_data', yearMonth, {
+		return this.syncInventoryAuditQueue.add('SYNC_INVENTORY_AUDIT', yearMonth, {
 			jobId: format(new Date(yearMonth.year, yearMonth.month - 1), 'yyyy-MM'),
 			removeOnComplete: true,
-			removeOnFail: true
+			removeOnFail: false,
+			attempts: 3,
+			backoff: {
+				type: 'exponential',
+				delay: 1000 * 60 * 5
+			}
 		})
 	}
 }

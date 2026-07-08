@@ -3,6 +3,7 @@ import { WsExceptionsFilter } from '@/common/filters'
 
 import { WsZodValidationPipe } from '@/common/pipes/ws-validation.pipe'
 import { env, SuperJson } from '@/common/utils'
+import { DATA_WAREHOUSE_CONNECTION } from '@/databases/constants'
 import { FALLBACK_VALUE } from '@/modules/inoutbound/domain/constants'
 import {
 	EpcInbound,
@@ -50,7 +51,7 @@ export class InoutboundGateway implements OnGatewayConnection, OnGatewayDisconne
 		@InjectPinoLogger(InoutboundGateway.name)
 		private readonly logger: PinoLogger,
 
-		@InjectModel(EpcInbound.name)
+		@InjectModel(EpcInbound.name, DATA_WAREHOUSE_CONNECTION)
 		private readonly inventoryEpcModel: PaginateModel<InventoryEpcDocument>,
 
 		@InjectQueue(THIRD_PARTY_API_SYNC)

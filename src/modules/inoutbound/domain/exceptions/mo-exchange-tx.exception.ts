@@ -1,5 +1,7 @@
 export class NoExchangableEpcException extends Error {}
 
-export class InconsistentMoSpecsException extends Error {}
+export class NoExchangableMoException extends Error {}
 
-export class InconsistentMoSizesException extends Error {}
+export class MismatchingMoSpecsException extends Error {}
+
+export class MismatchingSizeNumberException extends Error {}

@@ -10,7 +10,6 @@ import { Injectable } from '@nestjs/common'
 import { InjectDataSource } from '@nestjs/typeorm'
 import { format } from 'date-fns'
 import { chunk, omit } from 'lodash'
-import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
 import { readFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { Brackets, DataSource, In } from 'typeorm'
@@ -21,7 +20,6 @@ import { RFIDMatchEntity } from '../entities/rfid-match.entity'
 @Injectable()
 export class InoutboundMssqlRepository implements IIoMssqlRepository {
 	constructor(
-		@InjectPinoLogger(InoutboundMssqlRepository.name) private readonly logger: PinoLogger,
 		@InjectDataSource(DATA_SOURCE_DATA_LAKE) private readonly dataSourceDL: DataSource,
 		@InjectDataSource(DATA_SOURCE_ERP) private readonly dataSourceERP: DataSource,
 		@InjectTransactionHost(DATA_SOURCE_DATA_LAKE)
@@ -108,7 +106,7 @@ export class InoutboundMssqlRepository implements IIoMssqlRepository {
 
 	public async getExchangeTargetMo(
 		targetMo: string,
-		moSeq?: string
+		moSeq: string = '001'
 	): Promise<{
 		mo_no: string
 		mo_noseq: string
@@ -142,15 +140,10 @@ export class InoutboundMssqlRepository implements IIoMssqlRepository {
 			)
 
 		return result
-
-		// return new MoExchangeTransaction(
-		// 	source.map((record) => ({ ...record, sizes: record.sizes.map((size) => new SizeNumber(size)) })),
-		// 	{ ...target, sizes: target.sizes.map((size) => new SizeNumber(size)) }
-		// )
 	}
 
-	@Transactional<TransactionalAdapterTypeOrm>()
-	public async stockIn(epcs: Array<ElectronicProductCode>, stockInDetails: StockInDTO): Promise<void> {
+	@Transactional<TransactionalAdapterTypeOrm>(DATA_SOURCE_DATA_LAKE)
+	public async stockIn(epcs: ReadonlyArray<ElectronicProductCode>, stockInDetails: StockInDTO): Promise<void> {
 		const sql: string = readFileSync(resolve(join(__dirname, '../sql/upsert-inbound.sql')), 'utf-8')
 
 		const upsertPayload = epcs
@@ -174,7 +167,7 @@ export class InoutboundMssqlRepository implements IIoMssqlRepository {
 		)
 	}
 
-	@Transactional<TransactionalAdapterTypeOrm>()
+	@Transactional<TransactionalAdapterTypeOrm>(DATA_SOURCE_DATA_LAKE)
 	public async exchangeManufacturingOrder(exchangeSkus: Array<string>, targetMo: string): Promise<void> {
 		const currentTimestamp = format(new Date(), 'yyyy-MM-dd HH:mm:ss')
 
@@ -192,9 +185,9 @@ export class InoutboundMssqlRepository implements IIoMssqlRepository {
 		)
 	}
 
-	@Transactional<TransactionalAdapterTypeOrm>()
-	public async rollbackInoutboundTransaction(
-		stationNO: 'WH101' | 'WH103',
+	@Transactional<TransactionalAdapterTypeOrm>(DATA_SOURCE_DATA_LAKE)
+	public async rollbackStockTransaction(
+		stationNo: 'WH101' | 'WH103',
 		epcs: Array<ElectronicProductCode>
 	): Promise<void> {
 		await this.txHostDL.tx
@@ -202,7 +195,7 @@ export class InoutboundMssqlRepository implements IIoMssqlRepository {
 			.createQueryBuilder()
 			.delete()
 			.where('epc IN (:...epcs)', { epcs: epcs.map((item) => item.getStockKeepingUnit()) })
-			.andWhere('RIGHT(stationNO, 5) = :station_no', { station_no: stationNO })
+			.andWhere('RIGHT(stationNO, 5) = :station_no', { station_no: stationNo })
 			.andWhere('rfid_status = :rfid_status', { rfid_status: InventoryActions.INBOUND })
 			.andWhere('CAST(record_time AS DATE) = CAST(GETDATE() AS DATE)')
 			.execute()
@@ -212,13 +205,13 @@ export class InoutboundMssqlRepository implements IIoMssqlRepository {
 			.createQueryBuilder()
 			.delete()
 			.where('epc IN (:...epcs)', { epcs: epcs.map((item) => item.getStockKeepingUnit()) })
-			.andWhere('RIGHT(stationNO, 5) = :station_no', { station_no: stationNO })
+			.andWhere('RIGHT(stationNO, 5) = :station_no', { station_no: stationNo })
 			.andWhere('rfid_status = :rfid_status', { rfid_status: InventoryActions.INBOUND })
 			.andWhere('CAST(record_time AS DATE) = CAST(GETDATE() AS DATE)')
 			.execute()
 	}
 
-	@Transactional<TransactionalAdapterTypeOrm>()
+	@Transactional<TransactionalAdapterTypeOrm>(DATA_SOURCE_DATA_LAKE)
 	public async rollbackExchangeMoTransaction(originalSkus: Array<string>): Promise<void> {
 		await Promise.all(
 			chunk(originalSkus, 2000).map(async (skus) => {

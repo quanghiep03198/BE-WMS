@@ -22,7 +22,7 @@ export interface IIoMssqlRepository {
 	>
 
 	stockIn(
-		epcs: Array<ElectronicProductCode>,
+		epcs: ReadonlyArray<ElectronicProductCode>,
 		stockInDetails: {
 			mo_no: string
 			inbound_device_sn: string
@@ -52,7 +52,7 @@ export interface IIoMssqlRepository {
 		sizes: Array<string>
 	}>
 
-	rollbackInoutboundTransaction(stationNO: 'WH101' | 'WH103', epcs: Array<ElectronicProductCode>): Promise<void>
+	rollbackStockTransaction(stationNO: 'WH101' | 'WH103', epcs: Array<ElectronicProductCode>): Promise<void>
 
 	exchangeManufacturingOrder(pendingExchangeEpcs: Array<string>, targetMo: string): Promise<void>
 

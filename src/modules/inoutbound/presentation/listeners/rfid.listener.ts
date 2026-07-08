@@ -1,3 +1,4 @@
+import { DATA_WAREHOUSE_CONNECTION } from '@/databases/constants'
 import { Injectable } from '@nestjs/common'
 import { OnEvent } from '@nestjs/event-emitter'
 import { InjectModel } from '@nestjs/mongoose'
@@ -8,7 +9,7 @@ import { InoutboundGateway } from '../gateways/inoutbound.gateway'
 @Injectable()
 export class RFIDListener {
 	constructor(
-		@InjectModel(InventoryEpc.name) private readonly inventoryEpcModel: InventoryEpcModel,
+		@InjectModel(InventoryEpc.name, DATA_WAREHOUSE_CONNECTION) private readonly inventoryEpcModel: InventoryEpcModel,
 		private readonly eventGateway: InoutboundGateway
 	) {}
 

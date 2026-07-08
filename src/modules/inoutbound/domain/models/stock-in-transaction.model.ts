@@ -9,7 +9,7 @@ export class StockInTransaction extends AggregateRoot {
 	private readonly id: string = randomBytes(8).toString('hex')
 
 	constructor(
-		private readonly pendingInboundProductCodes: Array<ElectronicProductCode> = [],
+		private readonly pendingInboundProductCodes: Array<ElectronicProductCode>,
 		private readonly currentInboundProgress: Array<{
 			size_numcode: SizeNumber
 			size_qty: number
@@ -23,13 +23,13 @@ export class StockInTransaction extends AggregateRoot {
 		return this.id
 	}
 
-	public verify(scannedEpcs: Array<ElectronicProductCode>) {
-		const incommingInboundSizeQuantities = entries(groupBy(scannedEpcs, (epc) => epc.getSize())).map(
-			([size, epcs]) => ({
-				size_numcode: new SizeNumber(size),
-				inbound_qty: epcs.length
-			})
-		)
+	public verify() {
+		const incommingInboundSizeQuantities = entries(
+			groupBy(this.pendingInboundProductCodes, (epc) => epc.getSize())
+		).map(([size, epcs]) => ({
+			size_numcode: new SizeNumber(size),
+			inbound_qty: epcs.length
+		}))
 
 		const pendingInboundOrderProgress = this.currentInboundProgress.map((inboundSizeDetail) => {
 			const incomming = incommingInboundSizeQuantities.find((incoming) =>
@@ -52,14 +52,9 @@ export class StockInTransaction extends AggregateRoot {
 
 		if (isInboundOrderExcessed) throw new ExcessInboundOrderException('', { cause: excessedInboundSizes })
 
-		this.pendingInboundProductCodes.push(
-			...scannedEpcs
-				.filter((epc) => !epc.getIsInternal() && epc.getIsWritable())
-				.map((epc) => {
-					epc.inboundTransactionId = this.id
-					return epc
-				})
-		)
+		this.pendingInboundProductCodes
+			.filter((epc) => !epc.getIsInternal() && epc.getIsWritable())
+			.forEach((epc) => (epc.inboundTransactionId = this.id))
 
 		return this.pendingInboundProductCodes
 	}

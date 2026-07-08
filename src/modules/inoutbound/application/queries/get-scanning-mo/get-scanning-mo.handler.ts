@@ -1,3 +1,4 @@
+import { DATA_WAREHOUSE_CONNECTION } from '@/databases/constants'
 import { ScannedOrderDetail } from '@/modules/inoutbound/domain/types'
 import {
 	InventoryEpc,
@@ -9,7 +10,9 @@ import { GetScanningMosQuery } from './get-scanning-mo.query'
 
 @QueryHandler(GetScanningMosQuery)
 export class GetScanningMosHandler implements IQueryHandler<GetScanningMosQuery> {
-	constructor(@InjectModel(InventoryEpc.name) private readonly inventoryEpcModel: InventoryEpcModel) {}
+	constructor(
+		@InjectModel(InventoryEpc.name, DATA_WAREHOUSE_CONNECTION) private readonly inventoryEpcModel: InventoryEpcModel
+	) {}
 
 	public async execute({ params }: GetScanningMosQuery) {
 		return await this.inventoryEpcModel.aggregate<ScannedOrderDetail>(

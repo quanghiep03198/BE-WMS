@@ -1,5 +1,5 @@
 import { VALID_EPC_PATTERN } from '@/common/constants/regex'
-import { DATA_SOURCE_DATA_LAKE } from '@/databases/constants'
+import { DATA_SOURCE_DATA_LAKE, DATA_WAREHOUSE_CONNECTION } from '@/databases/constants'
 import { StorageFile } from '@blazity/nest-file-fastify'
 import { Processor, WorkerHost } from '@nestjs/bullmq'
 import { InjectModel } from '@nestjs/mongoose'
@@ -13,7 +13,7 @@ import { Readable } from 'node:stream'
 import { DataSource } from 'typeorm'
 import { EXCLUDED_ORDERS } from '../../domain/constants'
 import { IMPORT_DATA_QUEUE } from '../constants/queue'
-import { EpcInbound, EpcModel, EpcOutbound, EpcSchema } from '../persistence/mongodb/schemas/inventory-epc.schema'
+import { EpcInbound, EpcModel, EpcSchema } from '../persistence/mongodb/schemas/inventory-epc.schema'
 import { StoredRFIDReaderItem } from '../types'
 
 @Processor(IMPORT_DATA_QUEUE)
@@ -24,8 +24,8 @@ export class RFIDImportDataConsumer extends WorkerHost {
 	)
 
 	constructor(
-		@InjectModel(EpcInbound.name) private readonly inboundEpcModel: EpcModel,
-		@InjectModel(EpcOutbound.name) private readonly outboundEpcModel: EpcModel,
+		@InjectModel(EpcInbound.name, DATA_WAREHOUSE_CONNECTION) private readonly inboundEpcModel: EpcModel,
+		@InjectModel(EpcInbound.name, DATA_WAREHOUSE_CONNECTION) private readonly outboundEpcModel: EpcModel,
 		@InjectDataSource(DATA_SOURCE_DATA_LAKE) private readonly dataSourceDL: DataSource
 	) {
 		super()

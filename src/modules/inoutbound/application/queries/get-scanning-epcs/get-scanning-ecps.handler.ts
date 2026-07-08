@@ -1,3 +1,4 @@
+import { DATA_WAREHOUSE_CONNECTION } from '@/databases/constants'
 import {
 	InventoryEpc,
 	InventoryEpcDocument,
@@ -10,7 +11,9 @@ import { GetScanningEpcsQuery } from './get-scanning-epcs.query'
 
 @QueryHandler(GetScanningEpcsQuery)
 export class GetScanningEpcsHandler implements IQueryHandler<GetScanningEpcsQuery> {
-	constructor(@InjectModel(InventoryEpc.name) private readonly inventoryEpcModel: InventoryEpcModel) {}
+	constructor(
+		@InjectModel(InventoryEpc.name, DATA_WAREHOUSE_CONNECTION) private readonly inventoryEpcModel: InventoryEpcModel
+	) {}
 
 	public async execute({ params }: GetScanningEpcsQuery) {
 		const manufacturingOrder = params['mo_no.eq']

@@ -1,4 +1,10 @@
 import { AggregateRoot } from '@nestjs/cqrs'
+import {
+	MismatchingMoSpecsException,
+	MismatchingSizeNumberException,
+	NoExchangableEpcException,
+	NoExchangableMoException
+} from '../exceptions/mo-exchange-tx.exception'
 import { SizeNumber } from '../value-objects/size-number.vo'
 
 export type UpsertEpcInformationPayload = Array<{
@@ -28,15 +34,28 @@ export class UpsertEpcInfoTransaction extends AggregateRoot {
 	}
 
 	public verify() {
-		return this.pendingExchangeEpcs.every((item) => {
-			const isSameSize = this.targetMo.sizes.some((size) =>
-				new SizeNumber(size).isEqual(new SizeNumber(item.size_numcode))
-			)
-			const isSameShoeStyle = this.targetMo.factory_shoes_style === item.factory_shoes_style
-			const isSameColor = this.targetMo.color_sn === item.color_sn
+		let isShoeStyleConsistent: boolean = true
+		let isColorConsistent: boolean = true
+		let isSizeNumberConsistent: boolean = true
 
-			return isSameSize && isSameShoeStyle && isSameColor
+		if (!this.targetMo) throw new NoExchangableMoException()
+
+		if (this.pendingExchangeEpcs.length === 0) throw new NoExchangableEpcException()
+
+		const targetShoeStyle = this.getTargetShoeStyle()
+		const targetColor = this.getTargetColor()
+		const targetSizes = this.getTargetSizes()
+
+		this.pendingExchangeEpcs.forEach((item) => {
+			isShoeStyleConsistent = targetShoeStyle === item.factory_shoes_style
+			isColorConsistent = targetColor === item.color_sn
+			isSizeNumberConsistent = targetSizes.some((targetSize) =>
+				targetSize.isEqual(new SizeNumber(item.size_numcode))
+			)
 		})
+
+		if (!isShoeStyleConsistent || !isColorConsistent) throw new MismatchingMoSpecsException()
+		if (!isSizeNumberConsistent) throw new MismatchingSizeNumberException()
 	}
 
 	public getPendingExchangeEpcs() {
@@ -44,6 +63,34 @@ export class UpsertEpcInfoTransaction extends AggregateRoot {
 	}
 
 	public getTargetMo() {
-		return this.targetMo.mo_no
+		console.log(`\n=====================\nTarget MO: ${this.targetMo?.mo_no}\n=====================\n`)
+		return this.targetMo?.mo_no
+	}
+
+	public getTargetShoeStyle() {
+		const value = this.targetMo?.factory_shoes_style
+
+		if (typeof value !== 'string' || typeof value === 'undefined' || (typeof value === 'object' && value === null))
+			throw new MismatchingMoSpecsException()
+
+		return value
+	}
+
+	public getTargetColor() {
+		const value = this.targetMo?.color_sn
+
+		if (typeof value !== 'string' || typeof value === 'undefined' || (typeof value === 'object' && value === null))
+			throw new MismatchingMoSpecsException()
+
+		return value
+	}
+
+	public getTargetSizes() {
+		const value = this.targetMo?.sizes
+
+		if (!Array.isArray(value) || typeof value === 'undefined' || (typeof value === 'object' && value === null))
+			throw new MismatchingSizeNumberException()
+
+		return value.map((size) => new SizeNumber(size))
 	}
 }

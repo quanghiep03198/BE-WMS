@@ -9,7 +9,7 @@ import { RollbackExchangeMoTransactionCommand } from '../commands/rollback-excha
 @Injectable()
 export class ExchangeMoSaga {
 	@Saga()
-	exchangeMoInMssqlSuccessfully(event$: Observable<unknown>): Observable<ICommand> {
+	exchangeMoRmSuccessfully(event$: Observable<unknown>): Observable<ICommand> {
 		return event$.pipe(
 			ofType(ExchangeMoSuccessEvent),
 			map(({ exchangeSkus, targetMo }) => new ExchangeMoWmCommand(exchangeSkus, targetMo))
@@ -17,7 +17,7 @@ export class ExchangeMoSaga {
 	}
 
 	@Saga()
-	exchangeMoInMongoFailed(event$: Observable<unknown>): Observable<ICommand> {
+	exchangeMoWmFailed(event$: Observable<unknown>): Observable<ICommand> {
 		return event$.pipe(
 			ofType(ExchangeMoFailedEvent),
 			map(({ exchangeSkus }) => new RollbackExchangeMoTransactionCommand(exchangeSkus))

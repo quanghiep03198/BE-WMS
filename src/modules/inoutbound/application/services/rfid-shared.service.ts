@@ -1,5 +1,5 @@
 import { VALID_EPC_PATTERN } from '@/common/constants/regex'
-import { DATA_SOURCE_DATA_LAKE } from '@/databases/constants'
+import { DATA_SOURCE_DATA_LAKE, DATA_WAREHOUSE_CONNECTION } from '@/databases/constants'
 import { CACHE_MANAGER } from '@nestjs/cache-manager'
 import { Inject, Injectable } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
@@ -41,9 +41,9 @@ export class RFIDSharedService {
 	constructor(
 		@Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
 		@InjectDataSource(DATA_SOURCE_DATA_LAKE) private readonly dataSourceDL: DataSource,
-		@InjectModel(EpcInbound.name) private readonly epcInboundModel: EpcModel,
-		@InjectModel(EpcOutbound.name) private readonly epcOutboundModel: EpcModel,
-		@InjectModel(InventoryEpc.name) private readonly inventoryEpcModel: InventoryEpcModel
+		@InjectModel(EpcInbound.name, DATA_WAREHOUSE_CONNECTION) private readonly epcInboundModel: EpcModel,
+		@InjectModel(EpcOutbound.name, DATA_WAREHOUSE_CONNECTION) private readonly epcOutboundModel: EpcModel,
+		@InjectModel(InventoryEpc.name, DATA_WAREHOUSE_CONNECTION) private readonly inventoryEpcModel: InventoryEpcModel
 		// private readonly rfidDeviceService: RFIDDeviceService
 	) {}
 

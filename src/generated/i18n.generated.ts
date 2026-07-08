@@ -165,9 +165,16 @@ export type I18nTranslations = {
             "truckload_delivery_report": string;
         };
         "notification": {
+            "exchange_mo_success": string;
+            "exchange_mo_failed": string;
             "over_inbound_limit": string;
             "over_outbound_limit": string;
             "not_inbound_yet": string;
+            "no_exchangable_sku": string;
+            "mismatching_mo_specs": string;
+            "mismatching_size_number": string;
+            "stock_in_success": string;
+            "stock_in_failed": string;
         };
         "outbound_purpose": {
             "SELL": string;

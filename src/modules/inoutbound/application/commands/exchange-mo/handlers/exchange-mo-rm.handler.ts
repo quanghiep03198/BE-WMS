@@ -1,12 +1,15 @@
+import { ExchangeMoSuccessEvent } from '@/modules/inoutbound/domain/events/exchange-mo-success/exchange-mo-success.event'
 import {
-	InconsistentMoSizesException,
-	InconsistentMoSpecsException,
+	MismatchingMoSpecsException,
+	MismatchingSizeNumberException,
 	NoExchangableEpcException
 } from '@/modules/inoutbound/domain/exceptions/mo-exchange-tx.exception'
 import { MoExchangeTransaction } from '@/modules/inoutbound/domain/models/mo-exchange-transaction.model'
 import { SizeNumber } from '@/modules/inoutbound/domain/value-objects/size-number.vo'
+import { InoutboundGateway } from '@/modules/inoutbound/presentation/gateways/inoutbound.gateway'
 import { BadRequestException, Inject, NotFoundException } from '@nestjs/common'
 import { CommandHandler, EventPublisher, ICommandHandler } from '@nestjs/cqrs'
+import { I18nContext, I18nService } from 'nestjs-i18n'
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
 import { IIoMongoRepository, IO_MONGO_REPOSITORY } from '../../../ports/io-mongo.repository.port'
 import { IIoMssqlRepository, IO_MSSQL_REPOSITORY } from '../../../ports/io-mssql.repository.port'
@@ -18,6 +21,8 @@ export class ExchangeMoRmHandler implements ICommandHandler<ExchangeMoRmCommand>
 		@Inject(IO_MONGO_REPOSITORY) private readonly ioMongoRepository: IIoMongoRepository,
 		@Inject(IO_MSSQL_REPOSITORY) private readonly ioMssqlRepository: IIoMssqlRepository,
 		@InjectPinoLogger(ExchangeMoRmHandler.name) private readonly logger: PinoLogger,
+		private readonly inoutboundGateway: InoutboundGateway,
+		private readonly i18nService: I18nService,
 		private readonly publisher: EventPublisher
 	) {}
 
@@ -35,20 +40,35 @@ export class ExchangeMoRmHandler implements ICommandHandler<ExchangeMoRmCommand>
 			moExchangeTransaction.verify()
 			const pendingExchangeSkus = moExchangeTransaction.getPendingExchangeSkus()
 			await this.ioMssqlRepository.exchangeManufacturingOrder(pendingExchangeSkus, targetMo)
+			moExchangeTransaction.apply(new ExchangeMoSuccessEvent(pendingExchangeSkus, targetMo))
 			this.publisher.mergeObjectContext(moExchangeTransaction)
 			moExchangeTransaction.commit()
 		} catch (error) {
-			if (error instanceof NoExchangableEpcException)
-				throw new NotFoundException('No exchangeable EPCs found for the provided source MOs and target MO.')
-			else if (error instanceof InconsistentMoSpecsException)
-				throw new BadRequestException(
-					'Inconsistent MO specifications detected. Please ensure that the source MOs and target MO are compatible for exchange.'
-				)
-			else if (error instanceof InconsistentMoSizesException)
-				throw new BadRequestException(
-					'Inconsistent MO sizes detected. Please ensure that the source MOs and target MO have compatible sizes for exchange.'
-				)
-			else throw error
+			let message: string = this.i18nService.t('inoutbound.notification.exchange_mo_failed', {
+				lang: I18nContext.current()?.lang
+			})
+			this.inoutboundGateway.server.emit('exchange_mo:error', message)
+			if (error instanceof NoExchangableEpcException) {
+				message = this.i18nService.t('inoutbound.notification.no_exchangable_sku', {
+					lang: I18nContext.current()?.lang
+				})
+				throw new NotFoundException(message)
+			} else if (error instanceof MismatchingMoSpecsException) {
+				message = this.i18nService.t('inoutbound.notification.mismatching_mo_specs', {
+					lang: I18nContext.current()?.lang
+				})
+				this.inoutboundGateway.server.emit('exchange_mo:error', message)
+				throw new BadRequestException(message)
+			} else if (error instanceof MismatchingSizeNumberException) {
+				message = this.i18nService.t('inoutbound.notification.mismatching_size', {
+					lang: I18nContext.current()?.lang
+				})
+				this.inoutboundGateway.server.emit('exchange_mo:error', message)
+				throw new BadRequestException(message)
+			} else {
+				this.inoutboundGateway.server.emit('exchange_mo:error', message)
+				throw error
+			}
 		}
 	}
 }

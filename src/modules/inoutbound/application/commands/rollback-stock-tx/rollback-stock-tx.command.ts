@@ -4,7 +4,7 @@ import { Command } from '@nestjs/cqrs'
 export class RollbackStockTransactionCommand extends Command<any> {
 	constructor(
 		public readonly stationNo: 'WH101' | 'WH103',
-		public readonly scannedEpcs: Array<ElectronicProductCode>
+		public readonly movedSkus: Array<ElectronicProductCode>
 	) {
 		super()
 	}

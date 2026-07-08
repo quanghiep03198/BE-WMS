@@ -1,5 +1,6 @@
 import { CommonRequestHeader } from '@/common/constants'
 import { HttpMethod, Public, RequireAuthorized, RouteHandler } from '@/common/decorators'
+import { DATA_WAREHOUSE_CONNECTION } from '@/databases/constants'
 import { InjectQueue } from '@nestjs/bullmq'
 import { Controller, Headers, HttpStatus, Param, Req } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
@@ -17,7 +18,7 @@ import { ThirdPartyApiService } from './third-party-api.service'
 export class ThirdPartyApiController {
 	constructor(
 		@InjectQueue(THIRD_PARTY_API_SYNC) private readonly thirdPartyApiSyncQueue: Queue,
-		@InjectModel(EpcInbound.name) private readonly epcModel: PaginateModel<EpcDocument>,
+		@InjectModel(EpcInbound.name, DATA_WAREHOUSE_CONNECTION) private readonly epcModel: PaginateModel<EpcDocument>,
 		private readonly thirdPartyApiService: ThirdPartyApiService
 	) {}
 

@@ -1,5 +1,5 @@
 import { VALID_EPC_PATTERN } from '@/common/constants/regex'
-import { DATA_SOURCE_DATA_LAKE, DATA_SOURCE_ERP } from '@/databases/constants'
+import { DATA_SOURCE_DATA_LAKE, DATA_SOURCE_ERP, DATA_WAREHOUSE_CONNECTION } from '@/databases/constants'
 import { IUpsertInventoryEventPayload } from '@/modules/inventory/interfaces'
 import { InjectQueue } from '@nestjs/bullmq'
 import { CACHE_MANAGER } from '@nestjs/cache-manager'
@@ -52,7 +52,7 @@ export class RFIDInboundService {
 		@InjectDataSource(DATA_SOURCE_DATA_LAKE) private readonly dataSourceDL: DataSource,
 		@InjectDataSource(DATA_SOURCE_ERP) private readonly dataSourceERP: DataSource,
 		@InjectQueue(POST_DATA_INBOUND_QUEUE) private readonly postDataQueue: Queue<PostReaderDataDTO>,
-		@InjectModel(EpcInbound.name) private readonly epcInboundModel: EpcModel,
+		@InjectModel(EpcInbound.name, DATA_WAREHOUSE_CONNECTION) private readonly epcInboundModel: EpcModel,
 		@Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
 		private readonly i18nService: I18nService,
 		// private readonly inventoryAuditService: InventoryAuditService,

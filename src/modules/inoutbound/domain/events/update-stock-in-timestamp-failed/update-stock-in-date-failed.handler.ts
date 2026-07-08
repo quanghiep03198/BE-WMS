@@ -4,7 +4,7 @@ import { I18nService } from 'nestjs-i18n'
 import { UpdateStockInTimestampFailedEvent } from './update-stock-in-date-failed.event'
 
 @EventsHandler(UpdateStockInTimestampFailedEvent)
-export class UpdateStockInTimestampFailedEventHandler implements IEventHandler<UpdateStockInTimestampFailedEvent> {
+export class UpdateStockInTimestampFailedHandler implements IEventHandler<UpdateStockInTimestampFailedEvent> {
 	constructor(
 		private readonly inoutboundGateway: InoutboundGateway,
 		private readonly i18nService: I18nService

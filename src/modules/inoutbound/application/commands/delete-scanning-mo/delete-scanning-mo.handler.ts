@@ -1,3 +1,4 @@
+import { DATA_WAREHOUSE_CONNECTION } from '@/databases/constants'
 import {
 	InventoryEpc,
 	InventoryEpcDocument,
@@ -10,7 +11,9 @@ import { DeleteScanningMoCommand } from './delete-scanning-mo.command'
 
 @CommandHandler(DeleteScanningMoCommand)
 export class DeleteScanningMoHandler implements ICommandHandler<DeleteScanningMoCommand> {
-	constructor(@InjectModel(InventoryEpc.name) private readonly inventoryEpcModel: InventoryEpcModel) {}
+	constructor(
+		@InjectModel(InventoryEpc.name, DATA_WAREHOUSE_CONNECTION) private readonly inventoryEpcModel: InventoryEpcModel
+	) {}
 
 	public async execute(command: DeleteScanningMoCommand): Promise<void> {
 		const { stockMovementDirection, manufacturingOrder, rescannable, deviceSerialNumber } = command
