@@ -7,7 +7,7 @@ import {
 import { MoExchangeTransaction } from '@/modules/inoutbound/domain/models/mo-exchange-transaction.model'
 import { SizeNumber } from '@/modules/inoutbound/domain/value-objects/size-number.vo'
 import { InoutboundGateway } from '@/modules/inoutbound/presentation/gateways/inoutbound.gateway'
-import { BadRequestException, Inject, NotFoundException } from '@nestjs/common'
+import { HttpException, HttpStatus, Inject } from '@nestjs/common'
 import { CommandHandler, EventPublisher, ICommandHandler } from '@nestjs/cqrs'
 import { I18nContext, I18nService } from 'nestjs-i18n'
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
@@ -30,6 +30,7 @@ export class ExchangeMoRmHandler implements ICommandHandler<ExchangeMoRmCommand>
 		try {
 			const pendingExchangeData = await this.ioMongoRepository.getPendingExchangeMos(deviceSerialNumber, sourceMos)
 			const exchangeTargetMo = await this.ioMssqlRepository.getExchangeTargetMo(targetMo)
+			// * Create a new instance of MoExchangeTransaction with the pending exchange data and target MO information
 			const moExchangeTransaction = new MoExchangeTransaction(
 				pendingExchangeData.map((record) => ({
 					...record,
@@ -37,8 +38,8 @@ export class ExchangeMoRmHandler implements ICommandHandler<ExchangeMoRmCommand>
 				})),
 				{ ...exchangeTargetMo, sizes: exchangeTargetMo.sizes.map((size) => new SizeNumber(size)) }
 			)
-			moExchangeTransaction.verify()
-			const pendingExchangeSkus = moExchangeTransaction.getPendingExchangeSkus()
+			// * Validate the transaction and get the pending exchange SKUs
+			const pendingExchangeSkus = moExchangeTransaction.validate()
 			await this.ioMssqlRepository.exchangeManufacturingOrder(pendingExchangeSkus, targetMo)
 			moExchangeTransaction.apply(new ExchangeMoSuccessEvent(pendingExchangeSkus, targetMo))
 			this.publisher.mergeObjectContext(moExchangeTransaction)
@@ -47,28 +48,41 @@ export class ExchangeMoRmHandler implements ICommandHandler<ExchangeMoRmCommand>
 			let message: string = this.i18nService.t('inoutbound.notification.exchange_mo_failed', {
 				lang: I18nContext.current()?.lang
 			})
-			this.inoutboundGateway.server.emit('exchange_mo:error', message)
-			if (error instanceof NoExchangableEpcException) {
-				message = this.i18nService.t('inoutbound.notification.no_exchangable_sku', {
-					lang: I18nContext.current()?.lang
-				})
-				throw new NotFoundException(message)
-			} else if (error instanceof MismatchingMoSpecsException) {
-				message = this.i18nService.t('inoutbound.notification.mismatching_mo_specs', {
-					lang: I18nContext.current()?.lang
-				})
-				this.inoutboundGateway.server.emit('exchange_mo:error', message)
-				throw new BadRequestException(message)
-			} else if (error instanceof MismatchingSizeNumberException) {
-				message = this.i18nService.t('inoutbound.notification.mismatching_size', {
-					lang: I18nContext.current()?.lang
-				})
-				this.inoutboundGateway.server.emit('exchange_mo:error', message)
-				throw new BadRequestException(message)
-			} else {
+
+			if (error instanceof Error) {
 				this.inoutboundGateway.server.emit('exchange_mo:error', message)
 				throw error
 			}
+			this.inoutboundGateway.server.emit('exchange_mo:error', message)
+
+			let status: HttpStatus
+
+			switch (true) {
+				case error instanceof NoExchangableEpcException: {
+					message = this.i18nService.t('inoutbound.notification.no_exchangable_sku', {
+						lang: I18nContext.current()?.lang
+					})
+					status = HttpStatus.NOT_FOUND
+					break
+				}
+				case error instanceof MismatchingMoSpecsException: {
+					message = this.i18nService.t('inoutbound.notification.mismatching_mo_specs', {
+						lang: I18nContext.current()?.lang
+					})
+					status = HttpStatus.BAD_REQUEST
+					break
+				}
+				case error instanceof MismatchingSizeNumberException: {
+					message = this.i18nService.t('inoutbound.notification.mismatching_size', {
+						lang: I18nContext.current()?.lang
+					})
+					status = HttpStatus.BAD_REQUEST
+					break
+				}
+			}
+
+			this.inoutboundGateway.server.emit('exchange_mo:error', message)
+			throw new HttpException(message, status)
 		}
 	}
 }

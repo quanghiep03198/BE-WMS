@@ -57,7 +57,6 @@ import { GetScanningEpcsBySizeQuery } from '../../application/queries/get-scanni
 import { GetScanningEpcsQuery } from '../../application/queries/get-scanning-epcs/get-scanning-epcs.query'
 import { GetScanningMosQuery } from '../../application/queries/get-scanning-mo/get-scanning-mo.query'
 import { SearchExchangableMoQuery } from '../../application/queries/search-exchangable-mo/search-exchangable-mo.query'
-import { RFIDInboundService } from '../../application/services/rfid-inbound.service'
 import { ScannedOrderDetail } from '../../domain/types'
 import { POST_DATA_INBOUND_QUEUE } from '../../infrastructure/constants/queue'
 import { InventoryEpcDocument } from '../../infrastructure/persistence/mongodb/schemas/inventory-epc.schema'
@@ -70,7 +69,7 @@ export class RFIDInboundController {
 		@InjectQueue(POST_DATA_INBOUND_QUEUE) private readonly postInboundDataQueue: Queue<PostReaderDataDTO>,
 		@Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
 		private readonly redisService: RedisService,
-		private readonly rfidInboundService: RFIDInboundService,
+		// private readonly rfidInboundService: RFIDInboundService,
 		private readonly eventEmitter: EventEmitter2,
 		private readonly queryBus: QueryBus,
 		private readonly commandBus: CommandBus
@@ -254,10 +253,6 @@ export class RFIDInboundController {
 		@Param('commandNumber') commandNumber: string
 	) {
 		return await this.commandBus.execute(new DeleteScanningMoCommand('inbound', commandNumber, rescannable))
-		// return await Promise.all([
-		// 	this.rfidSharedService.cleanupQueue(this.postInboundDataQueue),
-		// 	this.rfidSharedService.deleteScannedOrder(this.epcInboundModel, commandNumber, rescannable)
-		// ])
 	}
 
 	@Public()
@@ -319,6 +314,6 @@ export class RFIDInboundController {
 			(item) => !isNil(item) && !isEmpty(item)
 		) as RFIDSearchParams
 
-		return await this.rfidInboundService.retrieveDeletedEpcs(factoryCode, filterQuery)
+		// return await this.rfidInboundService.retrieveDeletedEpcs(factoryCode, filterQuery)
 	}
 }

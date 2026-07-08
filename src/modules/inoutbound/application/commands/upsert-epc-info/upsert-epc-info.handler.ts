@@ -7,6 +7,7 @@ import {
 import { UpsertEpcInfoTransaction } from '@/modules/inoutbound/domain/models/upsert-epc-info-transaction.model'
 import { BadRequestException, Inject } from '@nestjs/common'
 import { CommandHandler, EventPublisher, ICommandHandler } from '@nestjs/cqrs'
+import { I18nService } from 'nestjs-i18n'
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
 import { IIoMongoRepository, IO_MONGO_REPOSITORY } from '../../ports/io-mongo.repository.port'
 import { IIoMssqlRepository, IO_MSSQL_REPOSITORY } from '../../ports/io-mssql.repository.port'
@@ -20,13 +21,12 @@ export class UpsertEpcInfoHandler implements ICommandHandler<UpsertEpcInfoComman
 		private readonly ioMongoRepository: IIoMongoRepository,
 		@Inject(IO_MSSQL_REPOSITORY)
 		private readonly ioMssqlRepository: IIoMssqlRepository,
-		private readonly eventPublisher: EventPublisher
+		private readonly eventPublisher: EventPublisher,
+		private readonly i18nService: I18nService
 	) {}
 
 	public async execute(command: UpsertEpcInfoCommand): Promise<void> {
 		try {
-			console.log('command', command)
-
 			const pendingExchangeEpcs = await this.ioMongoRepository.getPendingExchangeEpcs({
 				deviceSerialNumber: command.deviceSerialNumber,
 				manufacturingOrder: command.sourceMo,
@@ -38,32 +38,31 @@ export class UpsertEpcInfoHandler implements ICommandHandler<UpsertEpcInfoComman
 
 			const upsertEpcInfoTransaction = new UpsertEpcInfoTransaction(pendingExchangeEpcs, targetExchangeMo)
 
-			upsertEpcInfoTransaction.verify()
+			const result = upsertEpcInfoTransaction.validate()
 
-			this.logger.debug(upsertEpcInfoTransaction.getPendingExchangeEpcs())
-			this.logger.debug(upsertEpcInfoTransaction.getTargetMo())
+			await this.ioMssqlRepository.exchangeManufacturingOrder(result.exchangableEpcs, result.targetMo)
 
-			await this.ioMssqlRepository.exchangeManufacturingOrder(
-				upsertEpcInfoTransaction.getPendingExchangeEpcs(),
-				upsertEpcInfoTransaction.getTargetMo()
-			)
-
-			upsertEpcInfoTransaction.apply(
-				new ExchangeMoSuccessEvent(
-					upsertEpcInfoTransaction.getPendingExchangeEpcs(),
-					upsertEpcInfoTransaction.getTargetMo()
-				)
-			)
+			upsertEpcInfoTransaction.apply(new ExchangeMoSuccessEvent(result.exchangableEpcs, result.targetMo))
 			this.eventPublisher.mergeObjectContext(upsertEpcInfoTransaction)
 			upsertEpcInfoTransaction.commit()
 		} catch (error) {
-			if (error instanceof NoExchangableMoException)
-				throw new BadRequestException('No exchangable manufacturing order found for the provided target MO.')
-			else if (error instanceof MismatchingMoSpecsException)
-				throw new BadRequestException('Inconsistent MO specifications between pending EPCs and target MO.')
-			else if (error instanceof MismatchingSizeNumberException)
-				throw new BadRequestException('Inconsistent MO sizes between pending EPCs and target MO.')
-			else throw error
+			let message: string = this.i18nService.t('inoutbound.notification.exchange_mo_failed')
+
+			if (error instanceof Error) throw error
+
+			switch (true) {
+				case error instanceof NoExchangableMoException:
+					message = this.i18nService.t('inoutbound.notification.no_exchangable_mo')
+					break
+				case error instanceof MismatchingMoSpecsException:
+					message = this.i18nService.t('inoutbound.notification.mismatching_mo_specs')
+					break
+				case error instanceof MismatchingSizeNumberException:
+					message = this.i18nService.t('inoutbound.notification.mismatching_size_number')
+					break
+			}
+
+			throw new BadRequestException(message)
 		}
 	}
 }

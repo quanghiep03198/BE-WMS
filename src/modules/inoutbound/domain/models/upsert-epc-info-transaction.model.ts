@@ -33,7 +33,7 @@ export class UpsertEpcInfoTransaction extends AggregateRoot {
 		super()
 	}
 
-	public verify() {
+	public validate() {
 		let isShoeStyleConsistent: boolean = true
 		let isColorConsistent: boolean = true
 		let isSizeNumberConsistent: boolean = true
@@ -56,6 +56,11 @@ export class UpsertEpcInfoTransaction extends AggregateRoot {
 
 		if (!isShoeStyleConsistent || !isColorConsistent) throw new MismatchingMoSpecsException()
 		if (!isSizeNumberConsistent) throw new MismatchingSizeNumberException()
+
+		return {
+			exchangableEpcs: this.getPendingExchangeEpcs(),
+			targetMo: this.getTargetMo()
+		}
 	}
 
 	public getPendingExchangeEpcs() {
@@ -63,7 +68,6 @@ export class UpsertEpcInfoTransaction extends AggregateRoot {
 	}
 
 	public getTargetMo() {
-		console.log(`\n=====================\nTarget MO: ${this.targetMo?.mo_no}\n=====================\n`)
 		return this.targetMo?.mo_no
 	}
 

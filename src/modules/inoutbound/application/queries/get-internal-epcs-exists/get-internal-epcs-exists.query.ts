@@ -1,10 +1,5 @@
-import { RFIDSearchParams } from '@/modules/inoutbound/infrastructure/types'
 import { IQuery } from '@nestjs/cqrs'
 
 export class GetInternalEpcsExistsQuery implements IQuery {
-	constructor(
-		public readonly params:
-			| Required<Pick<RFIDSearchParams, 'inbound_device_sn.eq'>>
-			| Required<Pick<RFIDSearchParams, 'outbound_device_sn.eq'>>
-	) {}
+	constructor(public readonly params: { 'inbound_device_sn.eq': string } | { 'outbound_device_sn.eq': string }) {}
 }
