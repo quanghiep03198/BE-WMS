@@ -46,7 +46,7 @@ export class InventoryController {
 	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF, UserRole.INDUSTRIAL_ENGINEERING_STAFF)
 	async getMonthlyInventoryReport(
 		@Headers(CommonRequestHeader.FACTORY_CODE) factoryCode: string,
-		@Query('month.eq', new DefaultValuePipe(format(new Date(), 'yyyy-MM'))) month: string
+		@Query('month:eq', new DefaultValuePipe(format(new Date(), 'yyyy-MM'))) month: string
 	) {
 		return await this.inventoryReportService.getMonthlyInventoryAudit(format(new Date(month), 'yyyyMM'), factoryCode)
 	}
@@ -55,7 +55,7 @@ export class InventoryController {
 	@UseFilters(AllExceptionsFilter)
 	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF, UserRole.INDUSTRIAL_ENGINEERING_STAFF)
 	async exportMonthlyInventoryReport(
-		@Query('month.eq', new DefaultValuePipe(format(new Date(), 'yyyy-MM'))) month: string,
+		@Query('month:eq', new DefaultValuePipe(format(new Date(), 'yyyy-MM'))) month: string,
 		@Query('mo_no.in', new DefaultValuePipe([]), ParseArrayPipe) commandNumbers: string[],
 		@Headers(CommonRequestHeader.FACTORY_CODE) factoryCode: string,
 		@Res() reply: FastifyReply

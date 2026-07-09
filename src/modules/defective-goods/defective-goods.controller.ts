@@ -269,7 +269,7 @@ export class DefectiveGoodsController {
 	})
 	@RequireAuthorized(UserRole.MANAGER, UserRole.DG_WAREHOUSE_STAFF, UserRole.INDUSTRIAL_ENGINEERING_STAFF)
 	public async getDailyInboundReport(
-		@Query('date.eq', new ZodValidationPipe(z.coerce.date().transform((value) => format(value, 'yyyy-MM-dd'))))
+		@Query('date:eq', new ZodValidationPipe(z.coerce.date().transform((value) => format(value, 'yyyy-MM-dd'))))
 		date: string
 	) {
 		return await this.defectiveGoodsInboundService.getDailyInboundReport(date)
@@ -282,7 +282,7 @@ export class DefectiveGoodsController {
 	})
 	@RequireAuthorized(UserRole.MANAGER, UserRole.DG_WAREHOUSE_STAFF, UserRole.INDUSTRIAL_ENGINEERING_STAFF)
 	async exportDailyOutboundReport(
-		@Query('date.eq', new ZodValidationPipe(z.coerce.date().transform((value) => format(value, 'yyyy-MM-dd'))))
+		@Query('date:eq', new ZodValidationPipe(z.coerce.date().transform((value) => format(value, 'yyyy-MM-dd'))))
 		date: string,
 		@Headers(CommonRequestHeader.FACTORY_CODE) factoryCode: string,
 		@Res() reply: FastifyReply
@@ -312,7 +312,7 @@ export class DefectiveGoodsController {
 	})
 	@RequireAuthorized(UserRole.MANAGER, UserRole.DG_WAREHOUSE_STAFF, UserRole.INDUSTRIAL_ENGINEERING_STAFF)
 	public async getDailyOutboundReport(
-		@Query('date.eq', new ZodValidationPipe(z.coerce.date().transform((value) => format(value, 'yyyy-MM-dd'))))
+		@Query('date:eq', new ZodValidationPipe(z.coerce.date().transform((value) => format(value, 'yyyy-MM-dd'))))
 		date: string
 	) {
 		return await this.defectiveGoodsOutboundService.getDailyOutboundReport(date)
@@ -325,7 +325,7 @@ export class DefectiveGoodsController {
 	})
 	@RequireAuthorized(UserRole.MANAGER, UserRole.DG_WAREHOUSE_STAFF, UserRole.INDUSTRIAL_ENGINEERING_STAFF)
 	async exportDailyInboundReport(
-		@Query('date.eq', new ZodValidationPipe(z.coerce.date().transform((value) => format(value, 'yyyy-MM-dd'))))
+		@Query('date:eq', new ZodValidationPipe(z.coerce.date().transform((value) => format(value, 'yyyy-MM-dd'))))
 		date: string,
 		@Headers(CommonRequestHeader.FACTORY_CODE) factoryCode: string,
 		@Res() reply: FastifyReply

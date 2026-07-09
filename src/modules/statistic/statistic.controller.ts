@@ -34,7 +34,7 @@ export class StatisticController {
 		UserRole.INDUSTRIAL_ENGINEERING_STAFF
 	)
 	async getAnnualInoutboundOverview(
-		@Query('year.eq', new DefaultValuePipe(new Date().getFullYear()), ParseIntPipe) year: number
+		@Query('year:eq', new DefaultValuePipe(new Date().getFullYear()), ParseIntPipe) year: number
 	) {
 		return await this.statisticService.getAnnuallyInoutboundOverview(year)
 	}

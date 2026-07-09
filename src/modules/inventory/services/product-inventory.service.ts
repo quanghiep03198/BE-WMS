@@ -40,19 +40,19 @@ export class ProductionInventoryService {
 	}> {
 		const [productSizeInventory, inboundInventory, outboundInventory] = await Promise.all([
 			this.dataSourceTNC.getRepository(SizeInventoryEntity).findBy({
-				shoes_style: queries['shoes_style.eq'],
-				color: queries['color.eq'],
-				brand_name: queries['brand_name.eq']
+				shoes_style: queries['shoes_style:eq'],
+				color: queries['color:eq'],
+				brand_name: queries['brand_name:eq']
 			}),
 			this.dataSourceTNC.query(this.productionInboundQuery, [
-				queries['brand_name.eq'],
-				queries['shoes_style.eq'],
-				queries['color.eq']
+				queries['brand_name:eq'],
+				queries['shoes_style:eq'],
+				queries['color:eq']
 			]),
 			this.dataSourceTNC.query(this.productionOutboundQuery, [
-				queries['brand_name.eq'],
-				queries['shoes_style.eq'],
-				queries['color.eq']
+				queries['brand_name:eq'],
+				queries['shoes_style:eq'],
+				queries['color:eq']
 			])
 		])
 

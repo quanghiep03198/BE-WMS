@@ -1,8 +1,8 @@
 import { InventoryType } from '../constants'
 
 export interface IReportSearchParams {
-	['factory_code.eq']: string
-	['date.eq']?: string
+	['factory_code:eq']: string
+	['date:eq']?: string
 }
 
 export interface IReportQueryResult {

@@ -33,7 +33,7 @@ export class ReportController {
 	@RouteHandler({ endpoint: 'daily-inbound', method: HttpMethod.GET })
 	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF, UserRole.INDUSTRIAL_ENGINEERING_STAFF)
 	async getInboundReportByDate(
-		@Query('date.eq', new DefaultValuePipe(format(new Date(), 'yyyy-MM-dd')))
+		@Query('date:eq', new DefaultValuePipe(format(new Date(), 'yyyy-MM-dd')))
 		dateQuery: any
 	) {
 		return await this.inboundReportService.getDailyProductivity(dateQuery)
@@ -50,7 +50,7 @@ export class ReportController {
 	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF, UserRole.INDUSTRIAL_ENGINEERING_STAFF)
 	async exportDailyInboundToExcel(
 		@Param('reportType') reportType: 'daily-productivity' | 'shaping-department-productivity',
-		@Query('date.eq') date: string,
+		@Query('date:eq') date: string,
 		@Res() reply: FastifyReply
 	) {
 		// reply.setHeader('Content-Disposition', 'attachment; filename=report.xlsx')
@@ -70,7 +70,7 @@ export class ReportController {
 	@RouteHandler({ endpoint: 'daily-outbound', method: HttpMethod.GET })
 	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF, UserRole.INDUSTRIAL_ENGINEERING_STAFF)
 	async getOutboundReportByDate(
-		@Query('date.eq', new DefaultValuePipe(format(new Date(), 'yyyy-MM-dd')))
+		@Query('date:eq', new DefaultValuePipe(format(new Date(), 'yyyy-MM-dd')))
 		dateQuery: any
 	) {
 		return await this.outboundReportService.getOutboundReportByDate(dateQuery)
@@ -90,7 +90,7 @@ export class ReportController {
 	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
 	async exportDailyOutboundToExcel(
 		@Headers(CommonRequestHeader.FACTORY_CODE) factoryCode: string,
-		@Query('date.eq') date: string,
+		@Query('date:eq') date: string,
 		@Res() reply: FastifyReply
 	) {
 		const buffer = await this.outboundReportService.exportDailyOutboundToExcel(factoryCode, date)
@@ -104,7 +104,7 @@ export class ReportController {
 	@RouteHandler({ endpoint: 'daily-weighing', method: HttpMethod.GET })
 	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF, UserRole.INDUSTRIAL_ENGINEERING_STAFF)
 	async getDailyPackingReport(
-		@Query('date.eq', new DefaultValuePipe(format(new Date(), 'yyyy-MM-dd'))) date: string,
+		@Query('date:eq', new DefaultValuePipe(format(new Date(), 'yyyy-MM-dd'))) date: string,
 		@Headers(CommonRequestHeader.FACTORY_CODE) factoryCode: string
 	) {
 		return await this.packingWeightReportService.getDailyPackingReport(date, factoryCode)
@@ -114,7 +114,7 @@ export class ReportController {
 	@UseFilters(AllExceptionsFilter)
 	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF, UserRole.INDUSTRIAL_ENGINEERING_STAFF)
 	async exportPackingWeightReport(
-		@Query('date.eq', new DefaultValuePipe(format(new Date(), 'yyyy-MM-dd'))) date: string,
+		@Query('date:eq', new DefaultValuePipe(format(new Date(), 'yyyy-MM-dd'))) date: string,
 		@Headers(CommonRequestHeader.FACTORY_CODE) factoryCode: string,
 		@Res() reply: FastifyReply
 	) {
