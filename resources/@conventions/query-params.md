@@ -7,7 +7,7 @@ Tài liệu này trình bày các quy ước về tham số query string đượ
 Để lọc kết quả, sử dụng các tham số query trùng khớp chính xác với tên trường trong dữ liệu. Ví dụ, để lọc người dùng theo tên:
 
 ```
-GET /users?name.eq=John
+GET /users?name:eq=John
 ```
 
 ## Full text search
