@@ -1,14 +1,11 @@
-import { CommonRequestHeader } from '@/common/constants'
 import { HttpMethod, RequireAuthorized, RouteHandler } from '@/common/decorators'
 import { ZodValidationPipe } from '@/common/pipes'
-import { stringToBoolean } from '@/common/utils'
 import { InjectQueue } from '@nestjs/bullmq'
 import {
 	BadRequestException,
 	Body,
 	Controller,
 	DefaultValuePipe,
-	Headers,
 	HttpStatus,
 	Param,
 	ParseBoolPipe,
@@ -19,19 +16,16 @@ import {
 
 import { FileFieldsInterceptor, StorageFile, UploadedFiles } from '@blazity/nest-file-fastify'
 import { Queue } from 'bullmq'
-import { pickBy } from 'lodash'
-import { mongo } from 'mongoose'
 import { IMPORT_DATA_QUEUE } from '../../infrastructure/constants/queue'
 
 import { UserRole } from '@/modules/user/constants'
-import { CommandBus } from '@nestjs/cqrs'
+import { CommandBus, QueryBus } from '@nestjs/cqrs'
 import { DeleteScanningEpcsCommand } from '../../application/commands/delete-scanning-epcs/delete-scanning-epcs.command'
-import { RFIDInboundService } from '../../application/services/rfid-inbound.service'
-import { RFIDOutboundService } from '../../application/services/rfid-outbound.service'
+import { RestoreDeletedEpcsCommand } from '../../application/commands/restore-deleted-epcs/restore-deleted-epcs.command'
+import { RetriveDeletedEpcsQuery } from '../../application/queries/retrieve-deleted-epcs/retrive-deleted-epcs.query'
 import { RFIDSharedService } from '../../application/services/rfid-shared.service'
 import { CsvFileValidationPipe } from '../../infrastructure/pipes/csv-validation.pipe'
 import { RFIDSearchParams } from '../../infrastructure/types'
-import { generateStation } from '../../infrastructure/utils'
 import {
 	deleteEpcValidator,
 	DeleteScannedEpcDTO,
@@ -45,10 +39,9 @@ import {
 export class RFIDSharedController {
 	constructor(
 		@InjectQueue(IMPORT_DATA_QUEUE) private readonly importDataQueue: Queue,
-		private readonly rfidInboundService: RFIDInboundService,
-		private readonly rfidOutboundService: RFIDOutboundService,
 		private readonly rfidSharedService: RFIDSharedService,
-		private readonly commandBus: CommandBus
+		private readonly commandBus: CommandBus,
+		private readonly queryBus: QueryBus
 	) {}
 
 	@RouteHandler({
@@ -58,50 +51,29 @@ export class RFIDSharedController {
 	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
 	async getArchivedEpcs(
 		@Param('type') type: 'inbound' | 'outbound',
-		@Headers(CommonRequestHeader.FACTORY_CODE) factoryCode: string,
 		@Query('_page', new DefaultValuePipe(1), ParseIntPipe) page: number,
 		@Query('_limit', new DefaultValuePipe(100), ParseIntPipe) limit: number,
-		@Query('q', new DefaultValuePipe('')) search: string,
-		@Query('mo_no.eq', new DefaultValuePipe('')) mo_no: string,
-		@Query('shoes_style.eq', new DefaultValuePipe('')) shoes_style: string,
-		@Query('color_sn.eq', new DefaultValuePipe('')) color_sn: string,
-		@Query('size_numcode.eq', new DefaultValuePipe('')) size_numcode: string,
-		@Query('scannable.eq') scannable: string,
-		@Query('scanned.eq') scanned: string
+		@Query('scannable:eq', new ParseBoolPipe({ optional: true })) scannable: boolean | undefined,
+		@Query('scanned:eq', new ParseBoolPipe({ optional: true })) outboundScanned: boolean | undefined,
+		@Query() filterQuery: Omit<RFIDSearchParams, '_page' | '_limit' | 'scannable:eq' | 'scanned:eq'>
 	) {
-		const baseFilterQuery = {
-			page,
-			limit,
-			q: search,
-			['shoes_style.eq']: shoes_style,
-			['mo_no.eq']: mo_no,
-			['color_sn.eq']: color_sn,
-			['size_numcode.eq']: size_numcode
-		}
+		if (type !== 'inbound' && type !== 'outbound') throw new BadRequestException('Invalid type')
 
-		switch (type) {
-			case 'inbound': {
-				const filterQuery = pickBy(baseFilterQuery, (item) => !!item) as unknown as RFIDSearchParams & {
-					'scanned.eq'?: boolean
+		return await this.queryBus.execute(
+			new RetriveDeletedEpcsQuery(
+				type,
+				{ page, limit },
+				{
+					epc: filterQuery['epc:contains'],
+					mo_no: filterQuery['mo_no:eq'],
+					factory_shoes_style: filterQuery['shoes_style:eq'],
+					color_sn: filterQuery['color_sn:eq'],
+					size_numcode: filterQuery['size_numcode:eq'],
+					scannable: scannable,
+					outbound_device_sn: outboundScanned ? 'any' : 'none'
 				}
-				return await this.rfidInboundService.retrieveDeletedEpcs(factoryCode, {
-					...filterQuery,
-					...(!!scannable && { ['scannable.eq']: stringToBoolean(scannable) })
-				})
-			}
-
-			case 'outbound': {
-				const filterQuery = pickBy(baseFilterQuery, (item) => !!item) as unknown as RFIDSearchParams & {
-					'scanned.eq'?: boolean
-				}
-				return await this.rfidOutboundService.getArchivedEpcs(factoryCode, {
-					...filterQuery,
-					...(!!scanned && { ['scanned.eq']: stringToBoolean(scanned) })
-				})
-			}
-			default:
-				throw new BadRequestException('Invalid type')
-		}
+			)
+		)
 	}
 
 	@RouteHandler({
@@ -114,20 +86,19 @@ export class RFIDSharedController {
 	}
 
 	@RouteHandler({
-		endpoint: 'restore-archived-epcs/:type',
+		endpoint: 'restore-archived-epcs',
 		method: HttpMethod.PATCH,
 		statusCode: HttpStatus.CREATED
 	})
 	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
 	async restoreArchivedEpcs(
-		@Headers(CommonRequestHeader.FACTORY_CODE) factoryCode: string,
-		@Body(new ZodValidationPipe(restoreArchivedEpcValidator)) payload: RestoreArchivedEpcsDTO,
-		@Param('type') type: 'inbound' | 'outbound'
-	): Promise<mongo.BulkWriteResult> {
-		if (type !== 'inbound' && type !== 'outbound') throw new BadRequestException('Invalid type')
-		const station = generateStation(factoryCode, type === 'inbound' ? 'WH101' : 'WH103')
-		const data = payload.map((item) => ({ ...item, station_no: station, factory_code_produce: factoryCode }))
-		return await this.rfidSharedService.restoreArchivedEpcs(type, data as RestoreArchivedEpcsDTO)
+		@Body(new ZodValidationPipe(restoreArchivedEpcValidator)) epcs: RestoreArchivedEpcsDTO
+	): Promise<void> {
+		// if (type !== 'inbound' && type !== 'outbound') throw new BadRequestException('Invalid type')
+		// const station = generateStation(factoryCode, type === 'inbound' ? 'WH101' : 'WH103')
+		// const data = payload.map((item) => ({ ...item, station_no: station, factory_code_produce: factoryCode }))
+		// return await this.rfidSharedService.restoreArchivedEpcs(type, data as RestoreArchivedEpcsDTO)
+		return await this.commandBus.execute(new RestoreDeletedEpcsCommand(epcs))
 	}
 
 	@RouteHandler({

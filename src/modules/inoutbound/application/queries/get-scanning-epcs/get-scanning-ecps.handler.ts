@@ -1,4 +1,5 @@
 import { DATA_WAREHOUSE_CONNECTION } from '@/databases/constants'
+import { InventoryEpcQueryBuilder } from '@/modules/inoutbound/infrastructure/persistence/mongodb/helpers/inventory-epc-query-builder'
 import {
 	InventoryEpc,
 	InventoryEpcDocument,
@@ -15,45 +16,41 @@ export class GetScanningEpcsHandler implements IQueryHandler<GetScanningEpcsQuer
 		@InjectModel(InventoryEpc.name, DATA_WAREHOUSE_CONNECTION) private readonly inventoryEpcModel: InventoryEpcModel
 	) {}
 
-	public async execute({ params }: GetScanningEpcsQuery) {
-		const manufacturingOrder = params['mo_no.eq']
-		const inboundDeviceSerialNumber = params['inbound_device_sn.eq']
-		const outboundDeviceSerialNumber = params['outbound_device_sn.eq']
+	public async execute({ flow, pagination, filterQuery }: GetScanningEpcsQuery) {
+		const queryHint = (() => {
+			let hint: string | undefined = undefined
+			switch (true) {
+				case flow === 'inbound': {
+					hint = 'idx_inventory_epc_inbound_scan_page'
+					break
+				}
+				case flow === 'outbound': {
+					hint = 'idx_inventory_epc_outbound_scan_page'
+					break
+				}
+				case !!filterQuery.mo_no: {
+					hint = 'idx_inventory_epc_mo_scan_page'
+					break
+				}
+			}
+			return hint
+		})()
 
-		const paginationHint = inboundDeviceSerialNumber
-			? 'idx_inventory_epc_inbound_scan_page'
-			: outboundDeviceSerialNumber
-				? 'idx_inventory_epc_outbound_scan_page'
-				: manufacturingOrder
-					? 'idx_inventory_epc_mo_scan_page'
-					: undefined
+		const query: FilterQuery<InventoryEpcDocument> = InventoryEpcQueryBuilder.createQueryBuilder()
+			.withEqual('scannable', true)
+			.withEqual('mo_no', filterQuery.mo_no)
+			.withEqual('inbound_device_sn', filterQuery.inbound_device_sn)
+			.withNull('inbound_at')
+			.build()
 
-		const filterQuery: FilterQuery<InventoryEpcDocument> = {
-			scannable: true,
-			deleted: false,
-			...(manufacturingOrder && {
-				mo_no: manufacturingOrder
-			}),
-			...(inboundDeviceSerialNumber && {
-				inbound_device_sn: inboundDeviceSerialNumber,
-				inbound_at: null
-			}),
-			...(outboundDeviceSerialNumber && {
-				outbound_device_sn: outboundDeviceSerialNumber,
-				outbound_at: null,
-				po: null
-			})
-		}
-
-		const paginateResult = await this.inventoryEpcModel.paginate(filterQuery, {
-			// leanWithId: false,
+		const paginateResult = await this.inventoryEpcModel.paginate(query, {
 			sort: { last_scanned_at: -1, epc: 1, mo_no: 1 },
 			lean: true,
-			page: params.page,
-			limit: params.limit,
+			page: pagination.page,
+			limit: pagination.limit,
 			options: {
 				readPreference: 'nearest',
-				...(paginationHint && { hint: paginationHint })
+				...(queryHint && { hint: queryHint })
 			},
 			customLabels: { docs: 'data' },
 			projection: {

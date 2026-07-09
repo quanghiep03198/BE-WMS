@@ -1,6 +1,5 @@
-import { StockMovementDirection } from '../../domain/types'
+import { StockFlow } from '../../domain/types'
 import { ElectronicProductCode } from '../../domain/value-objects/epc.vo'
-import { RestoreArchivedEpcsDTO } from '../../presentation/dto/rfid-shared.dto'
 import { GetScanningEpcsBySizeQuery } from '../queries/get-scanning-epcs-by-size/get-scanning-epcs-by-size.query'
 
 export interface IIoMongoRepository {
@@ -8,7 +7,7 @@ export interface IIoMongoRepository {
 		action,
 		payload
 	}: {
-		action: StockMovementDirection
+		action: StockFlow
 		payload: { epcs: ElectronicProductCode[]; deviceSerialNumber: string }
 	}): Promise<void>
 
@@ -41,8 +40,6 @@ export interface IIoMongoRepository {
 	updateInboundTimestamp(scannedEpcs: Array<ElectronicProductCode>): Promise<void>
 
 	exchangeMo(pendingExchangeEpcs: Array<string>, targetMo: string): Promise<void>
-
-	restoreArchivedEpcs(action: StockMovementDirection, epcs: RestoreArchivedEpcsDTO): Promise<void>
 }
 
 export const IO_MONGO_REPOSITORY = 'IInoutboundMongoRepository'

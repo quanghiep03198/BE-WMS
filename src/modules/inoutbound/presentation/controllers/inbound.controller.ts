@@ -69,7 +69,6 @@ export class RFIDInboundController {
 		@InjectQueue(POST_DATA_INBOUND_QUEUE) private readonly postInboundDataQueue: Queue<PostReaderDataDTO>,
 		@Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
 		private readonly redisService: RedisService,
-		// private readonly rfidInboundService: RFIDInboundService,
 		private readonly eventEmitter: EventEmitter2,
 		private readonly queryBus: QueryBus,
 		private readonly commandBus: CommandBus
@@ -94,10 +93,10 @@ export class RFIDInboundController {
 		const handleChange = async () => {
 			const [epcs, orders, has_invalid] = await Promise.all([
 				this.queryBus.execute(
-					new GetScanningEpcsQuery({ page: 1, limit: 50, 'inbound_device_sn.eq': deviceSerialNumber })
+					new GetScanningEpcsQuery('inbound', { page: 1, limit: 50 }, { inbound_device_sn: deviceSerialNumber })
 				),
-				this.queryBus.execute(new GetScanningMosQuery({ 'inbound_device_sn.eq': deviceSerialNumber })),
-				this.queryBus.execute(new GetInternalEpcsExistsQuery({ 'inbound_device_sn.eq': deviceSerialNumber }))
+				this.queryBus.execute(new GetScanningMosQuery({ 'inbound_device_sn:eq': deviceSerialNumber })),
+				this.queryBus.execute(new GetInternalEpcsExistsQuery({ 'inbound_device_sn:eq': deviceSerialNumber }))
 			])
 
 			reply.sse({ epcs, orders, has_invalid })
@@ -145,15 +144,20 @@ export class RFIDInboundController {
 	async fetchNextInboundEpc(
 		@Headers(CommonRequestHeader.RFID_READER_ID) deviceSerialNumber: string,
 		@Query('_page', new DefaultValuePipe(1), ParseIntPipe) page: number,
-		@Query('mo_no.eq', new DefaultValuePipe('')) selectedOrder: string
+		@Query('mo_no:eq') selectedOrder: string
 	) {
 		return await this.queryBus.execute(
-			new GetScanningEpcsQuery({
-				page: page,
-				limit: 50,
-				'mo_no.eq': selectedOrder,
-				'inbound_device_sn.eq': deviceSerialNumber
-			})
+			new GetScanningEpcsQuery(
+				'inbound',
+				{
+					page: page,
+					limit: 50
+				},
+				{
+					inbound_device_sn: deviceSerialNumber,
+					mo_no: selectedOrder
+				}
+			)
 		)
 	}
 
@@ -163,7 +167,7 @@ export class RFIDInboundController {
 	})
 	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
 	async getOrderDetails(@Headers(CommonRequestHeader.RFID_READER_ID) deviceSerialNumber: string) {
-		return await this.queryBus.execute(new GetScanningMosQuery({ 'inbound_device_sn.eq': deviceSerialNumber }))
+		return await this.queryBus.execute(new GetScanningMosQuery({ 'inbound_device_sn:eq': deviceSerialNumber }))
 	}
 
 	@RouteHandler({
@@ -175,8 +179,8 @@ export class RFIDInboundController {
 		@Headers(CommonRequestHeader.RFID_READER_ID) deviceSerialNumber: string,
 		@Query(new ZodValidationPipe(findEpcBySizeValidator)) queries: FindEpcBySizeDTO
 	) {
-		const manufacturingOrder = queries['mo_no.eq']
-		const sizeNumber = queries['size_numcode.eq']
+		const manufacturingOrder = queries['mo_no:eq']
+		const sizeNumber = queries['size_numcode:eq']
 		return await this.queryBus.execute(
 			new GetScanningEpcsBySizeQuery('inbound', manufacturingOrder, sizeNumber, deviceSerialNumber)
 		)
@@ -281,7 +285,7 @@ export class RFIDInboundController {
 		@Query(new ZodValidationPipe(searchCustomerValidator))
 		queries: SearchCustOrderParamsDTO
 	) {
-		return await this.queryBus.execute(new SearchExchangableMoQuery(queries.q, factory_code, queries['color_sn.eq']))
+		return await this.queryBus.execute(new SearchExchangableMoQuery(queries.q, factory_code, queries['color_sn:eq']))
 	}
 
 	@RouteHandler({
@@ -294,22 +298,22 @@ export class RFIDInboundController {
 		@Query('_page', new DefaultValuePipe(1), ParseIntPipe) page: number,
 		@Query('_limit', new DefaultValuePipe(10), ParseIntPipe) limit: number,
 		@Query('q', new DefaultValuePipe('')) search: string,
-		@Query('mo_no.eq', new DefaultValuePipe('')) mo_no: string,
-		@Query('shoes_style.eq', new DefaultValuePipe('')) shoes_style: string,
-		@Query('color_sn.eq', new DefaultValuePipe('')) color_sn: string,
-		@Query('size_numcode.eq', new DefaultValuePipe('')) size_numcode: string,
-		@Query('scannable.eq', ParseBoolPipe) scannable: string
+		@Query('mo_no:eq', new DefaultValuePipe('')) mo_no: string,
+		@Query('shoes_style:eq', new DefaultValuePipe('')) shoes_style: string,
+		@Query('color_sn:eq', new DefaultValuePipe('')) color_sn: string,
+		@Query('size_numcode:eq', new DefaultValuePipe('')) size_numcode: string,
+		@Query('scannable:eq', ParseBoolPipe) scannable: string
 	) {
 		const filterQuery = pickBy(
 			{
 				page,
 				limit,
 				q: search,
-				['shoes_style.eq']: shoes_style,
-				['mo_no.eq']: mo_no,
-				['color_sn.eq']: color_sn,
-				['size_numcode.eq']: size_numcode,
-				['scannable.eq']: scannable
+				['shoes_style:eq']: shoes_style,
+				['mo_no:eq']: mo_no,
+				['color_sn:eq']: color_sn,
+				['size_numcode:eq']: size_numcode,
+				['scannable:eq']: scannable
 			},
 			(item) => !isNil(item) && !isEmpty(item)
 		) as RFIDSearchParams

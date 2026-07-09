@@ -311,37 +311,44 @@ export class RFIDInboundService {
 			.addOrderBy('a.created', 'DESC')
 			.setParameters({
 				search: params['q'],
-				factoryCode: params['factory_code.eq'],
-				color: params['color_sn.eq']
+				factoryCode: params['factory_code:eq'],
+				color: params['color_sn:eq']
 			})
 			.getRawMany<{ mo_no: string; created: Date }>()
 	}
 
-	public async retrieveDeletedEpcs(factoryCode: string, args: RFIDSearchParams & { 'scannable.eq'?: boolean }) {
+	public async retrieveDeletedEpcs(factoryCode: string, args: RFIDSearchParams & { 'scannable:eq'?: boolean }) {
 		const filterQuery: FilterQuery<EpcDocument> = {
 			deleted: true,
 			stored_at: null,
 			epc: { $regex: VALID_EPC_PATTERN },
 			factory_code_produce: factoryCode,
-			...(typeof args['scannable.eq'] === 'boolean' && { scannable: args['scannable.eq'] }),
-			...(args.q && { epc: { $regex: args.q, $options: 'i' } }),
-			...(args['mo_no.eq'] && { mo_no: args['mo_no.eq'] }),
-			...(args['size_numcode.eq'] && { size_numcode: args['size_numcode.eq'] }),
-			...(args['shoes_style.eq'] && { factory_shoes_style: args['shoes_style.eq'] }),
-			...(args['color_sn.eq'] && { color_sn: args['color_sn.eq'] })
+			...(typeof args['scannable:eq'] === 'boolean' && { scannable: args['scannable:eq'] }),
+			...(args['epc:contains'] && { epc: { $regex: args['epc:contains'], $options: 'i' } }),
+			...(args['mo_no:eq'] && { mo_no: args['mo_no:eq'] }),
+			...(args['size_numcode:eq'] && { size_numcode: args['size_numcode:eq'] }),
+			...(args['shoes_style:eq'] && { factory_shoes_style: args['shoes_style:eq'] }),
+			...(args['color_sn:eq'] && { color_sn: args['color_sn:eq'] })
 		}
 
 		return await this.epcInboundModel.paginate(filterQuery, {
 			sort: { record_time: -1, epc: 1, mo_no: 1 },
 			lean: true,
-			page: args.page,
-			limit: args.limit,
+			leanWithId: true,
+			page: args._page,
+			limit: args._limit,
 			options: { readPreference: 'nearest' },
 			customLabels: { docs: 'data' },
 			customFind: 'findDeleted',
 			useCustomCountFn: async () => await this.epcInboundModel.countDocumentsDeleted(filterQuery),
 			projection: {
-				_id: 0
+				_id: 0,
+				epc: 1,
+				mo_no: 1,
+				factory_shoes_style: 1,
+				color_sn: 1,
+				size_numcode: 1,
+				scannable: 1
 			}
 		})
 	}

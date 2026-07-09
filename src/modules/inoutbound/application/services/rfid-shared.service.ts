@@ -7,7 +7,7 @@ import { InjectDataSource } from '@nestjs/typeorm'
 import { Queue } from 'bullmq'
 import { Cache } from 'cache-manager'
 import { throttle } from 'lodash'
-import { AnyBulkWriteOperation, FilterQuery, mongo, UpdateWriteOpResult } from 'mongoose'
+import { FilterQuery, UpdateWriteOpResult } from 'mongoose'
 import { readFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { DataSource } from 'typeorm'
@@ -19,13 +19,12 @@ import {
 	EpcInbound,
 	EpcModel,
 	EpcOutbound,
-	EpcSchema,
 	InventoryEpc,
 	InventoryEpcDocument,
 	InventoryEpcModel
 } from '../../infrastructure/persistence/mongodb/schemas/inventory-epc.schema'
 import { RFIDSearchParams } from '../../infrastructure/types'
-import { FindEpcBySizeDTO, RestoreArchivedEpcsDTO } from '../../presentation/dto/rfid-shared.dto'
+import { FindEpcBySizeDTO } from '../../presentation/dto/rfid-shared.dto'
 
 @Injectable()
 export class RFIDSharedService {
@@ -73,18 +72,18 @@ export class RFIDSharedService {
 		const filterQuery: FilterQuery<EpcDocument> = {
 			scannable: true,
 			// station_no: { $regex: new RegExp(factory, 'i') },
-			mo_no: args['mo_no.eq'],
-			...(args['inbound_device_sn.eq'] && { inbound_device_sn: args['inbound_device_sn.eq'] }),
-			...(args['outbound_device_sn.eq'] && { outbound_device_sn: args['outbound_device_sn.eq'] })
+			mo_no: args['mo_no:eq'],
+			...(args['inbound_device_sn:eq'] && { inbound_device_sn: args['inbound_device_sn:eq'] }),
+			...(args['outbound_device_sn:eq'] && { outbound_device_sn: args['outbound_device_sn:eq'] })
 		}
-		if (!args['mo_no.eq']) delete filterQuery.mo_no
+		if (!args['mo_no:eq']) delete filterQuery.mo_no
 
 		return await this.inventoryEpcModel.paginate(filterQuery, {
 			sort: { last_scanned_at: -1, epc: 1, mo_no: 1 },
 			select: ['epc', 'mo_no'],
 			lean: true,
-			page: args.page,
-			limit: args.limit,
+			page: args._page,
+			limit: args._limit,
 			options: { readPreference: 'nearest' },
 			customLabels: { docs: 'data' },
 			projection: {
@@ -96,14 +95,14 @@ export class RFIDSharedService {
 	}
 
 	private async checkInvalidEpcExist(
-		args: Pick<RFIDSearchParams, 'inbound_device_sn.eq' | 'outbound_device_sn.eq'>
+		args: Pick<RFIDSearchParams, 'inbound_device_sn:eq' | 'outbound_device_sn:eq'>
 	): Promise<boolean> {
 		const hasInvalidEpc = await this.inventoryEpcModel
 			.exists({
 				scannable: true,
 				epc: { $regex: /^E28/i },
-				...(args['inbound_device_sn.eq'] && { inbound_device_sn: args['inbound_device_sn.eq'] }),
-				...(args['outbound_device_sn.eq'] && { outbound_device_sn: args['outbound_device_sn.eq'] })
+				...(args['inbound_device_sn:eq'] && { inbound_device_sn: args['inbound_device_sn:eq'] }),
+				...(args['outbound_device_sn:eq'] && { outbound_device_sn: args['outbound_device_sn:eq'] })
 			})
 			.lean(true)
 
@@ -184,8 +183,8 @@ export class RFIDSharedService {
 		return await $model
 			.find({
 				scannable: true,
-				mo_no: queries['mo_no.eq'],
-				size_numcode: queries['size_numcode.eq'],
+				mo_no: queries['mo_no:eq'],
+				size_numcode: queries['size_numcode:eq'],
 				$expr: { $eq: [{ $strLenCP: '$epc' }, VALID_EPC_LENGTH] }
 			})
 			.select('epc')
@@ -297,8 +296,8 @@ export class RFIDSharedService {
 	}
 
 	public async getArchivedEpcFeatures() {
-		return await this.epcInboundModel
-			.aggregateWithDeleted([
+		return await this.inventoryEpcModel
+			.aggregateDeleted([
 				{
 					$match: {
 						epc: { $regex: VALID_EPC_PATTERN },
@@ -364,36 +363,5 @@ export class RFIDSharedService {
 				}
 			])
 			.exec()
-	}
-
-	public async restoreArchivedEpcs(
-		type: 'inbound' | 'outbound',
-		epcs: RestoreArchivedEpcsDTO
-	): Promise<mongo.BulkWriteResult> {
-		const $model = type === 'inbound' ? this.epcInboundModel : this.epcOutboundModel
-
-		const bulkWriteOptions: AnyBulkWriteOperation<EpcSchema>[] = epcs.map((item) => ({
-			updateOne: {
-				filter: {
-					epc: item.epc
-					// ? Temporarily exclude deleted items
-					// stored_at: null
-				},
-				update: {
-					...item,
-					deleted: false,
-					scannable: true,
-					stored_at: null,
-					...(type === 'outbound' && { po: null })
-				},
-				upsert: true
-			}
-		}))
-		return await $model.bulkWrite(bulkWriteOptions, {
-			writeConcern: { w: 'majority' },
-			readPreference: 'nearest',
-			ordered: false,
-			retryWrites: true
-		})
 	}
 }

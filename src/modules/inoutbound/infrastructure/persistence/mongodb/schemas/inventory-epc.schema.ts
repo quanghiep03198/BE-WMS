@@ -127,17 +127,17 @@ export class InventoryEpc {
 	@Prop({ type: Date })
 	last_scanned_at: Date
 
-	@Prop({ type: String })
-	inbound_device_sn?: string
+	@Prop({ type: String, required: true })
+	inbound_device_sn: string
 
-	@Prop({ type: Date })
-	inbound_at?: Date
+	@Prop({ type: Date, default: null })
+	inbound_at: Date | null
 
-	@Prop({ type: String })
-	outbound_device_sn?: string
+	@Prop({ type: String, default: null })
+	outbound_device_sn: string | null
 
-	@Prop({ type: Date })
-	outbound_at?: Date
+	@Prop({ type: Date, default: null })
+	outbound_at: Date | null
 
 	@Prop({ type: Boolean, default: false })
 	is_recalled: boolean
@@ -152,4 +152,4 @@ export type EpcSchema = typeof EpcInboundSchema | typeof EpcOutboundSchema
 
 export const InventoryEpcSchema = SchemaFactory.createForClass(InventoryEpc)
 export type InventoryEpcDocument = HydratedDocument<InventoryEpc> & { record_time: string }
-export type InventoryEpcModel = PaginateModel<InventoryEpcDocument>
+export type InventoryEpcModel = PaginateModel<InventoryEpcDocument> & SoftDeleteModel<InventoryEpcDocument>

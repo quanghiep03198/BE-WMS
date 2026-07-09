@@ -16,18 +16,18 @@ export class DeleteScanningMoHandler implements ICommandHandler<DeleteScanningMo
 	) {}
 
 	public async execute(command: DeleteScanningMoCommand): Promise<void> {
-		const { stockMovementDirection, manufacturingOrder, rescannable, deviceSerialNumber } = command
+		const { stockFlow, manufacturingOrder, rescannable, deviceSerialNumber } = command
 
 		const filterQuery: FilterQuery<InventoryEpcDocument> = {
 			mo_no: manufacturingOrder
 		}
 
-		if (stockMovementDirection === 'inbound' && deviceSerialNumber) {
+		if (stockFlow === 'inbound' && deviceSerialNumber) {
 			filterQuery.inbound_device_sn = { $eq: deviceSerialNumber }
 			filterQuery.inbound_at = { $eq: null }
 		}
 
-		if (stockMovementDirection === 'outbound') {
+		if (stockFlow === 'outbound') {
 			filterQuery.outbound_at = { $eq: null }
 		}
 

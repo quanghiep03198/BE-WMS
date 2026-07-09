@@ -202,21 +202,21 @@ export class RFIDOutboundService {
 		}
 	}
 
-	public async getArchivedEpcs(factoryCode: string, args: RFIDSearchParams & { 'scanned.eq'?: boolean }) {
+	public async getArchivedEpcs(factoryCode: string, args: RFIDSearchParams & { 'scanned:eq'?: boolean }) {
 		const filterQuery: FilterQuery<EpcDocument> = {
 			deleted: true,
 			scannable: true,
 			$and: [
 				{ epc: { $regex: VALID_EPC_PATTERN, $options: 'i' } },
-				...(!!args.q ? [{ epc: { $regex: args.q, $options: 'i' } }] : [])
+				...(!!args['epc:contains'] ? [{ epc: { $regex: args['epc:contains'], $options: 'i' } }] : [])
 			],
 			factory_code_produce: factoryCode,
 			po: null,
 
-			...(args['mo_no.eq'] && { mo_no: args['mo_no.eq'] }),
-			...(args['size_numcode.eq'] && { size_numcode: args['size_numcode.eq'] }),
-			...(args['shoes_style.eq'] && { factory_shoes_style: args['shoes_style.eq'] }),
-			...(args['color_sn.eq'] && { color_sn: args['color_sn.eq'] })
+			...(args['mo_no:eq'] && { mo_no: args['mo_no:eq'] }),
+			...(args['size_numcode:eq'] && { size_numcode: args['size_numcode:eq'] }),
+			...(args['shoes_style:eq'] && { factory_shoes_style: args['shoes_style:eq'] }),
+			...(args['color_sn:eq'] && { color_sn: args['color_sn:eq'] })
 		}
 
 		const [undeletedEpcs, deletedEpcs] = await Promise.all([
@@ -232,16 +232,16 @@ export class RFIDOutboundService {
 		const parameters = [
 			JSON.stringify(undeletedEpcs),
 			JSON.stringify(deletedEpcs),
-			(args['page'] - 1) * args['limit'],
-			args.limit,
-			args.q ?? null,
-			args['shoes_style.eq'] ?? null,
-			args['color_sn.eq'] ?? null,
-			args['size_numcode.eq'] ?? null,
-			args['mo_no.eq'] ?? null,
-			typeof args['scanned.eq'] === 'undefined'
+			(args['_page'] - 1) * args['_limit'],
+			args._limit,
+			args['epc:contains'] ?? null,
+			args['shoes_style:eq'] ?? null,
+			args['color_sn:eq'] ?? null,
+			args['size_numcode:eq'] ?? null,
+			args['mo_no:eq'] ?? null,
+			typeof args['scanned:eq'] === 'undefined'
 				? null
-				: typeof args['scanned.eq'] === 'boolean' && args['scanned.eq']
+				: typeof args['scanned:eq'] === 'boolean' && args['scanned:eq']
 					? 1
 					: 0
 		]
@@ -253,18 +253,18 @@ export class RFIDOutboundService {
 				.then((result) => result[0]?.count ?? 0)
 		])
 
-		const totalPages = Math.ceil(totalDocs / args.limit)
+		const totalPages = Math.ceil(totalDocs / args._limit)
 
 		return {
 			data,
 			totalDocs,
 			totalPages,
-			page: args.page,
-			limit: args.limit,
-			hasNextPage: args.page < totalPages,
-			hasPrevPage: args.page > 1,
-			nextPage: args.page < totalPages ? args.page + 1 : null,
-			prevPage: args.page > 1 ? args.page - 1 : null
+			page: args._page,
+			limit: args._limit,
+			hasNextPage: args._page < totalPages,
+			hasPrevPage: args._page > 1,
+			nextPage: args._page < totalPages ? args._page + 1 : null,
+			prevPage: args._page > 1 ? args._page - 1 : null
 		} satisfies Pagination<EpcInformation>
 	}
 

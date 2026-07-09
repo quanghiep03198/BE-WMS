@@ -11,13 +11,14 @@ export type EpcInformation = {
 export type StoredRFIDReaderItem = EpcInformation & Record<'station_no' | 'factory_code_produce', string>
 
 export type RFIDSearchParams = {
-	page: number
-	limit: number
-	q?: string
-	'inbound_device_sn.eq'?: string
-	'outbound_device_sn.eq'?: string
-	'mo_no.eq'?: string
-	'shoes_style.eq'?: string
-	'color_sn.eq'?: string
-	'size_numcode.eq'?: string
+	_page: number
+	_limit: number
+	'epc:contains'?: string
+	'inbound_device_sn:eq'?: string
+	'outbound_device_sn:eq'?: string
+	'mo_no:eq'?: string
+	'shoes_style:eq'?: string
+	'color_sn:eq'?: string
+	'size_numcode:eq'?: string
+	// 'outbound_device_sn:eq'?: string
 }

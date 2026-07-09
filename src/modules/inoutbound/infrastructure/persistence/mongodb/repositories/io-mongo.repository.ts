@@ -1,10 +1,9 @@
 import { DATA_WAREHOUSE_CONNECTION } from '@/databases/constants'
 import { IIoMongoRepository } from '@/modules/inoutbound/application/ports/io-mongo.repository.port'
 import { GetScanningEpcsBySizeQuery } from '@/modules/inoutbound/application/queries/get-scanning-epcs-by-size/get-scanning-epcs-by-size.query'
-import { StockMovementDirection } from '@/modules/inoutbound/domain/types'
+import { StockFlow } from '@/modules/inoutbound/domain/types'
 import { ElectronicProductCode } from '@/modules/inoutbound/domain/value-objects/epc.vo'
 import { SizeNumber } from '@/modules/inoutbound/domain/value-objects/size-number.vo'
-import { RestoreArchivedEpcsDTO } from '@/modules/inoutbound/presentation/dto/rfid-shared.dto'
 import { InjectTransactionHost, Transactional, TransactionHost } from '@nestjs-cls/transactional'
 import { TransactionalAdapterMongoose } from '@nestjs-cls/transactional-adapter-mongoose'
 import { CACHE_MANAGER } from '@nestjs/cache-manager'
@@ -140,12 +139,12 @@ export class InoutboundMongoRepository implements IIoMongoRepository {
 			size_numcode: query.sizeNumber
 		}
 
-		if (query.stockMovementDirection === 'inbound' && query.inboundDeviceSerialNumber) {
+		if (query.stockFlow === 'inbound' && query.inboundDeviceSerialNumber) {
 			filterQuery.inbound_device_sn = { $eq: query.inboundDeviceSerialNumber }
 			filterQuery.inbound_at = { $eq: null }
 		}
 
-		if (query.stockMovementDirection === 'outbound') {
+		if (query.stockFlow === 'outbound') {
 			filterQuery.outbound_at = { $eq: null }
 			filterQuery.po = { $eq: null }
 		}
@@ -157,7 +156,7 @@ export class InoutboundMongoRepository implements IIoMongoRepository {
 		action,
 		payload
 	}: {
-		action: StockMovementDirection
+		action: StockFlow
 		payload: { epcs: ElectronicProductCode[]; deviceSerialNumber: string }
 	}): Promise<void> {
 		const isDeduplicationEnabled = await this.cacheManager.get<boolean>('cached:rfid:enable_deduplicate_inbound_epc')
@@ -219,29 +218,5 @@ export class InoutboundMongoRepository implements IIoMongoRepository {
 			.updateMany({ epc: { $in: pendingExchangeEpcs } }, { mo_no: targetMo })
 			.session(this.txHost.tx)
 		throw new MongooseError('Some error occurred while executing the command')
-	}
-
-	public async restoreArchivedEpcs(action: StockMovementDirection, epcs: RestoreArchivedEpcsDTO): Promise<void> {
-		const bulkWriteOptions: AnyBulkWriteOperation<InventoryEpcDocument>[] = epcs.map((item) => ({
-			updateOne: {
-				filter: { epc: item.epc },
-				update: {
-					deleted: false,
-					scannable: true,
-					stored_at: null,
-					...item,
-					...(action === 'inbound' && { inbound_at: null }),
-					...(action === 'outbound' && { outbound_at: null, po: null })
-				},
-				upsert: true
-			}
-		}))
-
-		await this.inventoryEpcModel.bulkWrite(bulkWriteOptions, {
-			writeConcern: { w: 'majority' },
-			readPreference: 'nearest',
-			ordered: false,
-			retryWrites: true
-		})
 	}
 }

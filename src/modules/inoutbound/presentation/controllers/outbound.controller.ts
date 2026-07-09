@@ -78,8 +78,8 @@ export class OutboundController {
 	) {
 		const handleChange = async () => {
 			const data = await this.rfidSharedService.fetchLatestData({
-				page: 1,
-				limit: 50
+				_page: 1,
+				_limit: 50
 			})
 			if (data) reply.sse(data)
 		}
@@ -111,7 +111,7 @@ export class OutboundController {
 		@RequestHeaders(CommonRequestHeader.FACTORY_CODE) factory: string,
 		@Query('_page', new DefaultValuePipe(1), ParseIntPipe) page: number
 	) {
-		return await this.rfidSharedService.getIncomingEpc({ page: page, limit: 50 })
+		return await this.rfidSharedService.getIncomingEpc({ _page: page, _limit: 50 })
 	}
 
 	@RouteHandler({
@@ -202,25 +202,25 @@ export class OutboundController {
 		@Query('_page', new DefaultValuePipe(1), ParseIntPipe) page: number,
 		@Query('_limit', new DefaultValuePipe(10), ParseIntPipe) limit: number,
 		@Query('q', new DefaultValuePipe('')) search: string,
-		@Query('mo_no.eq', new DefaultValuePipe('')) mo_no: string,
-		@Query('shoes_style.eq', new DefaultValuePipe('')) shoes_style: string,
-		@Query('color_sn.eq', new DefaultValuePipe('')) color_sn: string,
-		@Query('size_numcode.eq', new DefaultValuePipe('')) size_numcode: string,
-		@Query('scanned.eq', ParseBoolPipe) scanned: string
+		@Query('mo_no:eq', new DefaultValuePipe('')) mo_no: string,
+		@Query('shoes_style:eq', new DefaultValuePipe('')) shoes_style: string,
+		@Query('color_sn:eq', new DefaultValuePipe('')) color_sn: string,
+		@Query('size_numcode:eq', new DefaultValuePipe('')) size_numcode: string,
+		@Query('scanned:eq', ParseBoolPipe) scanned: string
 	) {
 		const filterQuery = pickBy(
 			{
 				page,
 				limit,
 				q: search,
-				['shoes_style.eq']: shoes_style,
-				['mo_no.eq']: mo_no,
-				['color_sn.eq']: color_sn,
-				['size_numcode.eq']: size_numcode,
-				['scanned.eq']: scanned
+				['shoes_style:eq']: shoes_style,
+				['mo_no:eq']: mo_no,
+				['color_sn:eq']: color_sn,
+				['size_numcode:eq']: size_numcode,
+				['scanned:eq']: scanned
 			},
 			(item) => !isNil(item) && !isEmpty(item)
-		) as unknown as RFIDSearchParams & { 'scanned.eq'?: boolean }
+		) as unknown as RFIDSearchParams & { 'scanned:eq'?: boolean }
 
 		return await this.rfidOutboundService.getArchivedEpcs(factoryCode, filterQuery)
 	}

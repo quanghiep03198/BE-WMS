@@ -21,14 +21,14 @@ export class GetScanningMosHandler implements IQueryHandler<GetScanningMosQuery>
 				{
 					$match: {
 						scannable: true,
-						...(params['inbound_device_sn.eq'] && {
-							inbound_device_sn: params['inbound_device_sn.eq'],
+						...(params['inbound_device_sn:eq'] && {
+							inbound_device_sn: params['inbound_device_sn:eq'],
 							inbound_at: null,
 							outbound_at: null,
 							po: null
 						}),
-						...(params['outbound_device_sn.eq'] && {
-							outbound_device_sn: params['outbound_device_sn.eq'],
+						...(params['outbound_device_sn:eq'] && {
+							outbound_device_sn: params['outbound_device_sn:eq'],
 							inbound_at: { $ne: null },
 							outbound_at: null,
 							po: null
