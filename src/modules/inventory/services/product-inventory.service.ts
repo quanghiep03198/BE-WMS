@@ -1,32 +1,27 @@
-import { ExcelColorPalette } from '@/common/constants/excel-color-palette'
-import { type AutoFitColumnOptions, autoFitColumns } from '@/common/helpers'
-import { SuperJson } from '@/common/utils'
-import { FactoryAgencyCode } from '@/modules/department/constants'
-import { TENANCY_DATA_SOURCE } from '@/modules/tenancy/constants'
+import { ExcelColorPalette } from '@common/constants/excel-color-palette'
+import { type AutoFitColumnOptions, autoFitColumns } from '@common/helpers'
+import { SuperJson } from '@common/utils'
+import { FactoryAgencyCode } from '@modules/department/constants'
+import { TENANCY_DATA_SOURCE } from '@modules/tenancy/constants'
 import { Inject, Injectable } from '@nestjs/common'
 import { format } from 'date-fns'
 import { Workbook } from 'exceljs'
 import { I18nContext, I18nService } from 'nestjs-i18n'
-import { readFileSync } from 'node:fs'
-import { join, resolve } from 'node:path'
 import { DataSource } from 'typeorm'
 import { type ProductInventoryReportQueryDTO } from '../dto/inventory-report.dto'
 import { InboundInventoryEntity } from '../entities/inbound-inventory.view.entity'
 import { OutboundEstimationEntity } from '../entities/outbound-inventory.view.entity'
 import { ProductInventoryReportEntity } from '../entities/product-inventory.view.entity'
 import { SizeInventoryEntity } from '../entities/size-inventory.view.entity'
+import productionFeaturesQuery from '../sql/production-features.sql'
+import productionInboundQuery from '../sql/production-inbound.sql'
+import productionOutboundQuery from '../sql/production-outbound.sql'
 
 @Injectable()
 export class ProductionInventoryService {
-	private readonly productionFeaturesQuery: string = readFileSync(
-		resolve(join(__dirname, '../sql/production-features.sql'))
-	).toString('utf-8')
-	private readonly productionInboundQuery: string = readFileSync(
-		resolve(join(__dirname, '../sql/production-inbound.sql'))
-	).toString('utf-8')
-	private readonly productionOutboundQuery: string = readFileSync(
-		resolve(join(__dirname, '../sql/production-outbound.sql'))
-	).toString('utf-8')
+	private readonly productionFeaturesQuery: string = productionFeaturesQuery
+	private readonly productionInboundQuery: string = productionInboundQuery
+	private readonly productionOutboundQuery: string = productionOutboundQuery
 
 	constructor(
 		@Inject(TENANCY_DATA_SOURCE) private readonly dataSourceTNC: DataSource,

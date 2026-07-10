@@ -1,6 +1,6 @@
-import { JwtAuthGuard } from '@/modules/auth/guards/jwt-auth.guard'
-import { RolesGuard } from '@/modules/auth/guards/roles.guard'
-import { UserRole } from '@/modules/user/constants'
+import { JwtAuthGuard } from '@modules/auth/guards/jwt-auth.guard'
+import { RolesGuard } from '@modules/auth/guards/roles.guard'
+import { UserRole } from '@modules/user/constants'
 import { applyDecorators, SetMetadata, UseGuards } from '@nestjs/common'
 
 export const IS_PUBLIC_KEY = Symbol('isPublic')

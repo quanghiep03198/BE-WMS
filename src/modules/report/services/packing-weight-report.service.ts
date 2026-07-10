@@ -1,21 +1,17 @@
-import { ExcelColorPalette } from '@/common/constants/excel-color-palette'
-import { applyCommonStyles, AutoFitColumnOptions, autoFitColumns } from '@/common/helpers'
-import { TENANCY_DATA_SOURCE } from '@/modules/tenancy/constants'
+import { ExcelColorPalette } from '@common/constants/excel-color-palette'
+import { applyCommonStyles, AutoFitColumnOptions, autoFitColumns } from '@common/helpers'
+import { TENANCY_DATA_SOURCE } from '@modules/tenancy/constants'
 import { Inject, Injectable } from '@nestjs/common'
 import { format } from 'date-fns'
 import { Workbook } from 'exceljs'
 import { I18nContext, I18nService } from 'nestjs-i18n'
-import { readFileSync } from 'node:fs'
-import { join } from 'node:path'
 import { DataSource } from 'typeorm'
 import { IDailyPackingReport } from '../interfaces'
+import packingWeightReportQuery from '../sql/packing-report.sql'
 
 @Injectable()
 export class PackingWeightReportService {
-	private readonly packingWeightReportQuery: string = readFileSync(
-		join(__dirname, '../sql/packing-report.sql'),
-		'utf-8'
-	)
+	private readonly packingWeightReportQuery: string = packingWeightReportQuery
 
 	constructor(
 		@Inject(TENANCY_DATA_SOURCE) private readonly dataSource: DataSource,

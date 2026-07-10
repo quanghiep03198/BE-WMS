@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-empty-object-type */
-import { RequestUser } from '@/common/decorators'
+import { RequestUser } from '@common/decorators'
 import { InventoryType } from '../constants'
 
 export interface IInventoryReportQueryResult {

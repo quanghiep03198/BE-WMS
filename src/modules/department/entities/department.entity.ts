@@ -1,5 +1,5 @@
-import { DATABASE_SYSCLOUD } from '@/databases/constants'
-import { BaseAbstractEntity } from '@/modules/_base/base.abstract.entity'
+import { DATABASE_SYSCLOUD } from '@databases/constants'
+import { BaseAbstractEntity } from '@modules/_base/base.abstract.entity'
 import { Column, Entity } from 'typeorm'
 
 @Entity('ts_dept', { database: DATABASE_SYSCLOUD, synchronize: false })

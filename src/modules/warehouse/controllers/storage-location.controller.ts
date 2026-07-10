@@ -1,7 +1,7 @@
-import { CommonRequestHeader } from '@/common/constants'
-import { RequireAuthorized, RouteHandler } from '@/common/decorators'
-import { ZodValidationPipe } from '@/common/pipes'
-import { UserRole } from '@/modules/user/constants'
+import { CommonRequestHeader } from '@common/constants'
+import { RequireAuthorized, RouteHandler } from '@common/decorators'
+import { ZodValidationPipe } from '@common/pipes'
+import { UserRole } from '@modules/user/constants'
 import { BadRequestException, Body, Controller, Headers, HttpStatus, Param } from '@nestjs/common'
 import { HttpMethod } from '../../../common/decorators/route-handler.decorator'
 import {

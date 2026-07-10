@@ -1,11 +1,11 @@
-import { DATA_WAREHOUSE_CONNECTION } from '@/databases/constants'
+import { MongoQueryBuilder } from '@common/helpers/mongo-query-builder'
+import { DATA_WAREHOUSE_CONNECTION } from '@databases/constants'
 import {
 	InventoryEpc,
 	InventoryEpcModel
-} from '@/modules/inoutbound/infrastructure/persistence/mongodb/schemas/inventory-epc.schema'
+} from '@modules/inoutbound/infrastructure/persistence/mongodb/schemas/inventory-epc.schema'
 import { IQueryHandler, QueryHandler } from '@nestjs/cqrs'
 import { InjectModel } from '@nestjs/mongoose'
-import { InventoryEpcQueryBuilder } from '../../../infrastructure/persistence/mongodb/helpers/inventory-epc-query-builder'
 import { RetriveDeletedEpcsQuery } from './retrive-deleted-epcs.query'
 
 @QueryHandler(RetriveDeletedEpcsQuery)
@@ -15,20 +15,25 @@ export class RetriveDeletedEpcsHandler implements IQueryHandler<RetriveDeletedEp
 	) {}
 
 	public async execute({ flow, filterQuery, pagination }: RetriveDeletedEpcsQuery) {
-		const query = InventoryEpcQueryBuilder.createQueryBuilder()
-			.withEqual('scannable', true)
-			.withEqual('mo_no', filterQuery.mo_no)
-			.withEqual('factory_shoes_style', filterQuery.factory_shoes_style)
-			.withEqual('size_numcode', filterQuery.size_numcode)
-			.withLike('epc', filterQuery.epc)
-			.withNull('inbound_at', flow === 'inbound')
-			.withNull('outbound_at', flow === 'outbound')
-			.withNotNull('inbound_at', flow === 'outbound')
-			.withNull('outbound_device_sn', filterQuery.outbound_device_sn === 'none')
-			.withNotNull('outbound_device_sn', filterQuery.outbound_device_sn === 'any')
-			.build()
+		const filterCase = {
+			isInboundFlow: flow === 'inbound',
+			isOutboundFlow: flow === 'outbound',
+			outboundScanDetected: filterQuery.outbound_device_sn === 'dectectable',
+			outboundScanNotDetected: filterQuery.outbound_device_sn === 'undetectable'
+		}
 
-		console.log('GetArchivedEpcsHandler query:', query)
+		const query = MongoQueryBuilder.createQueryBuilder(filterQuery)
+			.withEqualFields('scannable', 'mo_no', 'factory_shoes_style', 'size_numcode')
+			.withMatchRegexBy('epc')
+			.when(filterCase.isInboundFlow, (builder) => builder.withNullBy('inbound_at'))
+			.when(filterCase.isOutboundFlow, (builder) => {
+				return builder
+					.withNotEqualBy('inbound_at')
+					.withNullBy('outbound_at')
+					.when(filterCase.outboundScanDetected, (b) => b.withNotNullBy('outbound_device_sn'))
+					.when(filterCase.outboundScanNotDetected, (b) => b.withNullBy('outbound_device_sn'))
+			})
+			.build()
 
 		return await this.inventoryEpcModel.paginate(query, {
 			page: pagination.page,

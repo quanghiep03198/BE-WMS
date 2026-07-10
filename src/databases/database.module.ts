@@ -1,7 +1,7 @@
 import { DynamicModule, Module, Scope } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { MongooseModule, MongooseModuleOptions } from '@nestjs/mongoose'
-import { TypeOrmModule, TypeOrmModuleAsyncOptions } from '@nestjs/typeorm'
+import { TypeOrmModule } from '@nestjs/typeorm'
 import { join } from 'node:path'
 import { DataSource } from 'typeorm'
 import { SqlServerConnectionOptions } from 'typeorm/driver/sqlserver/SqlServerConnectionOptions'
@@ -25,7 +25,7 @@ import {
 			useFactory: (configService: ConfigService) => {
 				return {
 					database: DATABASE_DATA_LAKE,
-					...configService.getOrThrow<TypeOrmModuleAsyncOptions>('mssql')
+					...configService.getOrThrow<SqlServerConnectionOptions>('mssql')
 				}
 			}
 		}),
@@ -35,7 +35,7 @@ import {
 			useFactory: (configService: ConfigService) => {
 				return {
 					database: DATABASE_SYSCLOUD,
-					...configService.getOrThrow<TypeOrmModuleAsyncOptions>('mssql')
+					...configService.getOrThrow<SqlServerConnectionOptions>('mssql')
 				}
 			}
 		}),
@@ -45,7 +45,7 @@ import {
 			useFactory: (configService: ConfigService) => {
 				return {
 					database: DATABASE_ERP,
-					...configService.getOrThrow<TypeOrmModuleAsyncOptions>('mssql')
+					...configService.getOrThrow<SqlServerConnectionOptions>('mssql')
 				}
 			}
 		}),

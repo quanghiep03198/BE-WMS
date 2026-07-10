@@ -1,5 +1,5 @@
-import { SuperJson } from '@/common/utils'
-import { DATA_SOURCE_DATA_LAKE } from '@/databases/constants'
+import { SuperJson } from '@common/utils'
+import { DATA_SOURCE_DATA_LAKE } from '@databases/constants'
 import { OnQueueEvent, Processor, WorkerHost } from '@nestjs/bullmq'
 import { CACHE_MANAGER } from '@nestjs/cache-manager'
 import { Inject } from '@nestjs/common'

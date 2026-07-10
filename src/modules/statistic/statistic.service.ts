@@ -1,6 +1,4 @@
 import { Inject, Injectable } from '@nestjs/common'
-import { readFileSync } from 'node:fs'
-import { join } from 'node:path'
 import { DataSource, IsNull, Not } from 'typeorm'
 import { DefectiveCategory } from '../defective-goods/constants'
 import { DefectiveGoodsEntity } from '../defective-goods/entities/defective-goods.entity'
@@ -8,19 +6,15 @@ import { InventoryActions } from '../inoutbound/domain/constants'
 // import { RFIDInventoryBackupEntity } from '../rfid/infrastructure/entities/rifd-inventory.entity'
 import { RFIDInventoryBackupEntity } from '../inoutbound/infrastructure/persistence/mssql/entities/rfid-inventory.entity'
 import { TENANCY_DATA_SOURCE } from '../tenancy/constants'
+import annuallyInboundAnalysisQuery from './sql/annually-inoutbound-overview.sql'
+import inventoryComparisonQuery from './sql/monthly-inventory-comparison.sql'
 import { IAnnuallyInOutboundStatistics, IMonthlyInventoryComparison } from './statistic.interface'
 
 @Injectable()
 export class StatisticService {
-	private readonly inventoryComparisonQuery: string = readFileSync(
-		join(__dirname, './sql/monthly-inventory-comparison.sql'),
-		'utf-8'
-	)
+	private readonly inventoryComparisonQuery: string = inventoryComparisonQuery
 
-	private readonly annuallyInboundAnalysisQuery: string = readFileSync(
-		join(__dirname, './sql/annually-inoutbound-overview.sql'),
-		'utf-8'
-	)
+	private readonly annuallyInboundAnalysisQuery: string = annuallyInboundAnalysisQuery
 
 	constructor(@Inject(TENANCY_DATA_SOURCE) private readonly dataSource: DataSource) {}
 

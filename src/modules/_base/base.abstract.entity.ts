@@ -1,5 +1,5 @@
-import { RecordStatus } from '@/databases/constants'
-import { StringToBoolTransformer } from '@/databases/transformers/bool.transformer'
+import { RecordStatus } from '@databases/constants'
+import { StringToBoolTransformer } from '@databases/transformers/bool.transformer'
 import { format } from 'date-fns'
 import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, TableColumnOptions, UpdateDateColumn } from 'typeorm'
 

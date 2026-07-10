@@ -1,4 +1,4 @@
-import { DATA_SOURCE_SYSCLOUD } from '@/databases/constants'
+import { DATA_SOURCE_SYSCLOUD } from '@databases/constants'
 import { Injectable } from '@nestjs/common'
 import { InjectRepository } from '@nestjs/typeorm'
 import { Like, Or, Repository } from 'typeorm'

@@ -1,4 +1,4 @@
-import { FactoryCode } from '@/modules/department/constants'
+import { FactoryCode } from '@modules/department/constants'
 import { z } from 'zod'
 import { UserRole } from '../constants'
 

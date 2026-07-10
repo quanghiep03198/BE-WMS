@@ -1,4 +1,4 @@
-import { SortDirection } from '@/common/constants'
+import { SortDirection } from '@common/constants'
 import { isValid } from 'date-fns'
 import { isNil } from 'lodash'
 import z from 'zod'

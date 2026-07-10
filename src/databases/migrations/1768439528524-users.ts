@@ -1,4 +1,4 @@
-import { BaseAbstractEntity } from '@/modules/_base/base.abstract.entity'
+import { BaseAbstractEntity } from '@modules/_base/base.abstract.entity'
 import { MigrationInterface, QueryRunner, Table } from 'typeorm'
 import { DATABASE_SCHEMA, DATABASE_SYSCLOUD } from '../constants'
 

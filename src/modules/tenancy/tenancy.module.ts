@@ -1,4 +1,4 @@
-import { CommonRequestHeader } from '@/common/constants'
+import { CommonRequestHeader } from '@common/constants'
 import { Module, Scope } from '@nestjs/common'
 import { REQUEST } from '@nestjs/core'
 import { FastifyRequest } from 'fastify'

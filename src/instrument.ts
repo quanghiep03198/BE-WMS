@@ -1,4 +1,4 @@
-import { env } from '@/common/utils'
+import { env } from '@common/utils'
 import * as Sentry from '@sentry/nestjs'
 import { nodeProfilingIntegration } from '@sentry/profiling-node'
 

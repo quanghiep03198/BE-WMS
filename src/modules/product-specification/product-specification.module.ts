@@ -1,4 +1,4 @@
-import { DATA_WAREHOUSE_CONNECTION } from '@/databases/constants'
+import { DATA_WAREHOUSE_CONNECTION } from '@databases/constants'
 import { Module } from '@nestjs/common'
 import { MongooseModule } from '@nestjs/mongoose'
 import { ProductSpecificationController } from './product-specification.controller'

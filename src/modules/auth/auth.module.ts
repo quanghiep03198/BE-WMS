@@ -1,4 +1,4 @@
-import { DATA_SOURCE_SYSCLOUD } from '@/databases/constants'
+import { DATA_SOURCE_SYSCLOUD } from '@databases/constants'
 import { Module } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { JwtModule } from '@nestjs/jwt'
@@ -8,7 +8,6 @@ import { UserModule } from '../user/user.module'
 import { AuthController } from './auth.controller'
 import { AuthService } from './auth.service'
 import { RefreshTokenEntity } from './entities/refresh-token.entity'
-import { AuthJobService } from './jobs/auth.job'
 import { LocalStrategy } from './strategies/local.strategy'
 
 @Module({
@@ -29,6 +28,6 @@ import { LocalStrategy } from './strategies/local.strategy'
 		})
 	],
 	controllers: [AuthController],
-	providers: [AuthService, LocalStrategy, AuthJobService]
+	providers: [AuthService, LocalStrategy]
 })
 export class AuthModule {}

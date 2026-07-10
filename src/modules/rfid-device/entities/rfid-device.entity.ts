@@ -1,4 +1,4 @@
-import { DATABASE_DATA_LAKE, DATABASE_SCHEMA, RecordStatus } from '@/databases/constants'
+import { DATABASE_DATA_LAKE, DATABASE_SCHEMA, RecordStatus } from '@databases/constants'
 import { format } from 'date-fns'
 import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm'
 

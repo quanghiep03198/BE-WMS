@@ -1,5 +1,5 @@
-import { CommonRequestHeader } from '@/common/constants'
-import { Cookies, HttpMethod, RequestUser, RequireAuthenticated, RouteHandler, User } from '@/common/decorators'
+import { CommonRequestHeader } from '@common/constants'
+import { Cookies, HttpMethod, RequestUser, RequireAuthenticated, RouteHandler, User } from '@common/decorators'
 import { CookieSerializeOptions } from '@fastify/cookie'
 import { Controller, Headers, Res, UseGuards } from '@nestjs/common'
 import { FastifyReply } from 'fastify'

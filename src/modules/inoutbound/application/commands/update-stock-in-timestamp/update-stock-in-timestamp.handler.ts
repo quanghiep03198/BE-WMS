@@ -1,10 +1,7 @@
-import {
-	IIoMongoRepository,
-	IO_MONGO_REPOSITORY
-} from '@/modules/inoutbound/application/ports/io-mongo.repository.port'
-import { UpdateStockInTimestampFailedEvent } from '@/modules/inoutbound/domain/events/update-stock-in-timestamp-failed/update-stock-in-date-failed.event'
-import { UpdateStockInTimestampSuccessEvent } from '@/modules/inoutbound/domain/events/update-stock-in-timestamp-success/update-stock-in-timestamp-success.event'
-import { InoutboundGateway } from '@/modules/inoutbound/presentation/gateways/inoutbound.gateway'
+import { IIoMongoRepository, IO_MONGO_REPOSITORY } from '@modules/inoutbound/application/ports/io-mongo.repository.port'
+import { UpdateStockInTimestampFailedEvent } from '@modules/inoutbound/domain/events/update-stock-in-timestamp-failed/update-stock-in-date-failed.event'
+import { UpdateStockInTimestampSuccessEvent } from '@modules/inoutbound/domain/events/update-stock-in-timestamp-success/update-stock-in-timestamp-success.event'
+import { InoutboundGateway } from '@modules/inoutbound/presentation/gateways/inoutbound.gateway'
 import { Inject } from '@nestjs/common'
 import { CommandHandler, EventBus, ICommandHandler } from '@nestjs/cqrs'
 import { I18nContext, I18nService } from 'nestjs-i18n'

@@ -1,5 +1,5 @@
-import { CommonRequestHeader } from '@/common/constants'
-import { HttpMethod, RequireAuthorized, RouteHandler } from '@/common/decorators'
+import { CommonRequestHeader } from '@common/constants'
+import { HttpMethod, RequireAuthorized, RouteHandler } from '@common/decorators'
 import { Controller, DefaultValuePipe, Headers, Param, ParseBoolPipe, Query } from '@nestjs/common'
 import { groupBy } from 'lodash'
 import { UserRole } from '../user/constants'

@@ -1,4 +1,4 @@
-import { StockFlow } from '@/modules/inoutbound/domain/types'
+import { StockFlow } from '@modules/inoutbound/domain/types'
 import { IQuery } from '@nestjs/cqrs'
 
 export class GetScanningEpcsQuery implements IQuery {

@@ -1,21 +1,20 @@
-import { Languages } from '@/common/constants'
-import { ExcelColorPalette } from '@/common/constants/excel-color-palette'
-import { type AutoFitColumnOptions, autoFitColumns, getLastColumnLetter } from '@/common/helpers'
-import { CENTRAL_DATA_SOURCE } from '@/databases/constants'
+import { Languages } from '@common/constants'
+import { ExcelColorPalette } from '@common/constants/excel-color-palette'
+import { type AutoFitColumnOptions, autoFitColumns, getLastColumnLetter } from '@common/helpers'
+import { CENTRAL_DATA_SOURCE } from '@databases/constants'
 import { Inject, Injectable, NotFoundException } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { format } from 'date-fns'
 import { Workbook, Worksheet } from 'exceljs'
 import { I18nContext, I18nService } from 'nestjs-i18n'
-import { readFileSync } from 'node:fs'
-import { join } from 'node:path'
 import { Brackets, DataSource } from 'typeorm'
 import { BulkUpdatePackingWeightDTO, UpdatePackingWeightDTO } from './dto/update-packing.dto'
 import { PackingEntity } from './entities/packing.entity'
+import packingManifestQuery from './sql/packing-manifest.sql'
 
 @Injectable()
 export class PackingService {
-	private readonly packingManifestQuery: string = readFileSync(join(__dirname, './sql/packing-manifest.sql'), 'utf-8')
+	private readonly packingManifestQuery: string = packingManifestQuery
 
 	constructor(
 		@Inject(CENTRAL_DATA_SOURCE) private readonly dataSource: DataSource,

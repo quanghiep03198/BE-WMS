@@ -1,10 +1,10 @@
-import { DATA_WAREHOUSE_CONNECTION } from '@/databases/constants'
-import { InventoryEpcQueryBuilder } from '@/modules/inoutbound/infrastructure/persistence/mongodb/helpers/inventory-epc-query-builder'
+import { MongoQueryBuilder } from '@/common/helpers/mongo-query-builder'
+import { DATA_WAREHOUSE_CONNECTION } from '@databases/constants'
 import {
 	InventoryEpc,
 	InventoryEpcDocument,
 	InventoryEpcModel
-} from '@/modules/inoutbound/infrastructure/persistence/mongodb/schemas/inventory-epc.schema'
+} from '@modules/inoutbound/infrastructure/persistence/mongodb/schemas/inventory-epc.schema'
 import { IQueryHandler, QueryHandler } from '@nestjs/cqrs'
 import { InjectModel } from '@nestjs/mongoose'
 import { FilterQuery } from 'mongoose'
@@ -36,11 +36,15 @@ export class GetScanningEpcsHandler implements IQueryHandler<GetScanningEpcsQuer
 			return hint
 		})()
 
-		const query: FilterQuery<InventoryEpcDocument> = InventoryEpcQueryBuilder.createQueryBuilder()
-			.withEqual('scannable', true)
-			.withEqual('mo_no', filterQuery.mo_no)
-			.withEqual('inbound_device_sn', filterQuery.inbound_device_sn)
-			.withNull('inbound_at')
+		const query: FilterQuery<InventoryEpcDocument> = MongoQueryBuilder.createQueryBuilder({
+			...filterQuery,
+			scannable: true
+		})
+			.withEqualFields('scannable', 'mo_no', 'inbound_device_sn')
+			.withEqualBy('scannable')
+			.withEqualBy('mo_no')
+			.withEqualBy('inbound_device_sn')
+			.withNullBy('inbound_at')
 			.build()
 
 		const paginateResult = await this.inventoryEpcModel.paginate(query, {

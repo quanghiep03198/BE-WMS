@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import { DefectiveGoodsEntity } from '@/modules/defective-goods/entities/defective-goods.entity'
+import { DefectiveGoodsEntity } from '@modules/defective-goods/entities/defective-goods.entity'
 import { DataSource } from 'typeorm'
 import { Seeder, SeederFactoryManager } from 'typeorm-extension'
 

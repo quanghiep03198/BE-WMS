@@ -1,4 +1,4 @@
-import { InoutboundGateway } from '@/modules/inoutbound/presentation/gateways/inoutbound.gateway'
+import { InoutboundGateway } from '@modules/inoutbound/presentation/gateways/inoutbound.gateway'
 import { EventsHandler, IEventHandler } from '@nestjs/cqrs'
 import { I18nService } from 'nestjs-i18n'
 import { UpdateStockInTimestampFailedEvent } from './update-stock-in-date-failed.event'

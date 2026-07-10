@@ -1,12 +1,12 @@
-import { ExchangeMoSuccessEvent } from '@/modules/inoutbound/domain/events/exchange-mo-success/exchange-mo-success.event'
+import { ExchangeMoSuccessEvent } from '@modules/inoutbound/domain/events/exchange-mo-success/exchange-mo-success.event'
 import {
 	MismatchingMoSpecsException,
 	MismatchingSizeNumberException,
 	NoExchangableEpcException
-} from '@/modules/inoutbound/domain/exceptions/mo-exchange-tx.exception'
-import { MoExchangeTransaction } from '@/modules/inoutbound/domain/models/mo-exchange-transaction.model'
-import { SizeNumber } from '@/modules/inoutbound/domain/value-objects/size-number.vo'
-import { InoutboundGateway } from '@/modules/inoutbound/presentation/gateways/inoutbound.gateway'
+} from '@modules/inoutbound/domain/exceptions/mo-exchange-tx.exception'
+import { MoExchangeTransaction } from '@modules/inoutbound/domain/models/mo-exchange-transaction.model'
+import { SizeNumber } from '@modules/inoutbound/domain/value-objects/size-number.vo'
+import { InoutboundGateway } from '@modules/inoutbound/presentation/gateways/inoutbound.gateway'
 import { HttpException, HttpStatus, Inject } from '@nestjs/common'
 import { CommandHandler, EventPublisher, ICommandHandler } from '@nestjs/cqrs'
 import { I18nContext, I18nService } from 'nestjs-i18n'

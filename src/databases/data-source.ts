@@ -1,4 +1,4 @@
-import { env } from '@/common/utils'
+import { env } from '@common/utils'
 import { Logger } from '@nestjs/common'
 import 'dotenv/config'
 import { isIP } from 'node:net'

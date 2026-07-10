@@ -1,4 +1,4 @@
-import { DATA_SOURCE_DATA_LAKE } from '@/databases/constants'
+import { DATA_SOURCE_DATA_LAKE } from '@databases/constants'
 import { Injectable, Logger } from '@nestjs/common'
 import { Cron, CronExpression } from '@nestjs/schedule'
 import { InjectDataSource } from '@nestjs/typeorm'

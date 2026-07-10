@@ -1,6 +1,6 @@
-import { RequestUser } from '@/common/decorators'
-import { ZodValidationPipe } from '@/common/pipes'
-import { DATA_SOURCE_SYSCLOUD } from '@/databases/constants'
+import { RequestUser } from '@common/decorators'
+import { ZodValidationPipe } from '@common/pipes'
+import { DATA_SOURCE_SYSCLOUD } from '@databases/constants'
 import { CACHE_MANAGER } from '@nestjs/cache-manager'
 import {
 	BadRequestException,

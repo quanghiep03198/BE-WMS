@@ -1,5 +1,5 @@
-import { IS_PUBLIC_KEY, IS_STRICT_ROLES_KEY, ROLES_KEY } from '@/common/decorators'
-import { UserRole } from '@/modules/user/constants'
+import { IS_PUBLIC_KEY, IS_STRICT_ROLES_KEY, ROLES_KEY } from '@common/decorators'
+import { UserRole } from '@modules/user/constants'
 import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common'
 import { Reflector } from '@nestjs/core'
 

@@ -1,4 +1,4 @@
-import { DATA_SOURCE_DATA_LAKE, DATA_WAREHOUSE_CONNECTION } from '@/databases/constants'
+import { DATA_SOURCE_DATA_LAKE, DATA_WAREHOUSE_CONNECTION } from '@databases/constants'
 import { BullModule } from '@nestjs/bullmq'
 import { CACHE_MANAGER } from '@nestjs/cache-manager'
 import { Inject, Module, OnModuleInit } from '@nestjs/common'

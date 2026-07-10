@@ -21,16 +21,27 @@
 		"strictNullChecks": false,
 		"noImplicitAny": false,
 		"strictBindCallApply": false,
-		"forceConsistentCasingInFileNames": false,
-		"noFallthroughCasesInSwitch": false,
+		"forceConsistentCasingInFileNames": true,
+		"noFallthroughCasesInSwitch": true,
 		/* Path alias */
+		"sourceRoot": "/",
 		"baseUrl": "./",
+		"rootDirs": ["./src"],
+		"ignoreDeprecations": "6.0",
 		"paths": {
-			"@/*": ["src/*"]
+			"@/*": ["./src/*"],
+			"@common/*": ["./src/common/*"],
+			"@config/*": ["./src/config/*"],
+			"@databases/*": ["./src/databases/*"],
+			"@events/*": ["./src/events/*"],
+			"@generated/*": ["./src/generated/*"],
+			"@modules/*": ["./src/modules/*"],
+			"@redis/*": ["./src/redis/*"],
+			"@tasks/*": ["./src/tasks/*"]
 		},
 		"inlineSources": true,
-		"sourceRoot": "/"
+		"types": ["node", "jest"]
 	},
-	"include": ["src/**/*.ts", "test", "src/instrument.ts"],
-	"exclude": ["node_modules"]
+	"include": ["src", "test", "src/instrument.ts", "global.d.ts"],
+	"exclude": ["node_modules", "dist", ".tmp"]
 }

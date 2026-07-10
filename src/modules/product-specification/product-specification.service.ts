@@ -1,4 +1,4 @@
-import { DATA_WAREHOUSE_CONNECTION } from '@/databases/constants'
+import { DATA_WAREHOUSE_CONNECTION } from '@databases/constants'
 import { Injectable } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
 import { ProductSpecification, ProductSpecificationModel } from './schemas/product-specification.schema'

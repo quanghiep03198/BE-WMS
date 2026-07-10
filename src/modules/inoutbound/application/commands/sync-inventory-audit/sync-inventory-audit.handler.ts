@@ -1,4 +1,4 @@
-import { SYNC_INVENTORY_AUDIT_QUEUE } from '@/modules/inventory/constants'
+import { SYNC_INVENTORY_AUDIT_QUEUE } from '@modules/inventory/constants'
 import { InjectQueue } from '@nestjs/bullmq'
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs'
 import { Queue } from 'bullmq'

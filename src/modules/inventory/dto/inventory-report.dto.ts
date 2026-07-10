@@ -1,4 +1,4 @@
-import { Tenant } from '@/modules/tenancy/constants'
+import { Tenant } from '@modules/tenancy/constants'
 import { z } from 'zod'
 import { InventoryType } from '../constants'
 

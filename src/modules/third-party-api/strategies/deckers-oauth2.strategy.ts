@@ -1,4 +1,4 @@
-import { FactoryCode } from '@/modules/department/constants'
+import { FactoryCode } from '@modules/department/constants'
 import { HttpService } from '@nestjs/axios'
 import { CACHE_MANAGER } from '@nestjs/cache-manager'
 import { Inject, Injectable, NotFoundException } from '@nestjs/common'

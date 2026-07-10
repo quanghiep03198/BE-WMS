@@ -11,7 +11,7 @@
 		"start": "nest start",
 		"start:dev": "nest start -b swc --watch",
 		"start:debug": "nest start -b swc --debug --watch",
-		"start:prod": "node dist/main",
+		"start:prod": "bun dist/main",
 		"compodoc": "npx @compodoc/compodoc -p tsconfig.json -s --port 3003 -d ./.compodoc",
 		"pm2:start": "pm2 start ecosystem.config.js",
 		"lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
@@ -109,7 +109,7 @@
 		"@automock/jest": "^2.1.2",
 		"@commitlint/cli": "^19.8.1",
 		"@commitlint/config-conventional": "^19.8.1",
-		"@compodoc/compodoc": "^1.2.1",
+		"@compodoc/compodoc": "^2.0.0",
 		"@nestjs/cli": "^11.0.21",
 		"@nestjs/schematics": "^11.1.0",
 		"@nestjs/testing": "^11.1.24",
@@ -143,7 +143,7 @@
 		"ts-loader": "^9.6.0",
 		"ts-node": "^10.9.2",
 		"tsconfig-paths": "^4.2.0",
-		"typescript": "^5.9.3"
+		"typescript": "npm:@typescript/typescript6@^6.0.2"
 	},
 	"jest": {
 		"transform": {

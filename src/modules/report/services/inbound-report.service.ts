@@ -1,26 +1,24 @@
-import { ExcelColorPalette } from '@/common/constants/excel-color-palette'
-import { applyCommonStyles, type AutoFitColumnOptions, autoFitColumns } from '@/common/helpers'
-import { SuperJson } from '@/common/utils'
-import { TENANCY_DATA_SOURCE } from '@/modules/tenancy/constants'
+import { ExcelColorPalette } from '@common/constants/excel-color-palette'
+import { applyCommonStyles, type AutoFitColumnOptions, autoFitColumns } from '@common/helpers'
+import { SuperJson } from '@common/utils'
+import { TENANCY_DATA_SOURCE } from '@modules/tenancy/constants'
 import { Inject, Injectable } from '@nestjs/common'
 import { REQUEST } from '@nestjs/core'
 import { format } from 'date-fns'
 import { Workbook } from 'exceljs'
 import { FastifyRequest } from 'fastify'
 import { I18nContext, I18nService } from 'nestjs-i18n'
-import { readFileSync } from 'node:fs'
-import { join } from 'node:path'
 import { DataSource } from 'typeorm'
 import { IInboundHistory, IInboundReportQueryResult, IInboundReportResponse } from '../interfaces'
+import inboundHistoryQuery from '../sql/inbound-history.sql'
+import inboundReportQuery from '../sql/inbound-report.sql'
+import shapingDepartmentProductivityQuery from '../sql/shaping-department-productivity.sql'
 
 @Injectable()
 export class InboundReportService {
-	private readonly inboundReportQuery: string = readFileSync(join(__dirname, '../sql/inbound-report.sql'), 'utf-8')
-	private readonly shapingDepartmentProductivityQuery: string = readFileSync(
-		join(__dirname, '../sql/shaping-department-productivity.sql'),
-		'utf-8'
-	)
-	private readonly inboundHistoryQuery: string = readFileSync(join(__dirname, '../sql/inbound-history.sql'), 'utf-8')
+	private readonly inboundReportQuery: string = inboundReportQuery
+	private readonly shapingDepartmentProductivityQuery: string = shapingDepartmentProductivityQuery
+	private readonly inboundHistoryQuery: string = inboundHistoryQuery
 
 	constructor(
 		@Inject(TENANCY_DATA_SOURCE) private readonly dataSource: DataSource,

@@ -1,7 +1,7 @@
-import { VALID_EPC_PATTERN } from '@/common/constants/regex'
-import { RequestUser } from '@/common/decorators'
-import { DATA_SOURCE_DATA_LAKE, DATA_SOURCE_ERP, DATA_WAREHOUSE_CONNECTION } from '@/databases/constants'
-import { IUpsertInventoryEventPayload } from '@/modules/inventory/interfaces'
+import { VALID_EPC_PATTERN } from '@common/constants/regex'
+import { RequestUser } from '@common/decorators'
+import { DATA_SOURCE_DATA_LAKE, DATA_SOURCE_ERP, DATA_WAREHOUSE_CONNECTION } from '@databases/constants'
+import { IUpsertInventoryEventPayload } from '@modules/inventory/interfaces'
 import { InjectQueue } from '@nestjs/bullmq'
 import { BadRequestException, Injectable, InternalServerErrorException } from '@nestjs/common'
 import { EventEmitter2 } from '@nestjs/event-emitter'
@@ -12,8 +12,6 @@ import { chunk, omit } from 'lodash'
 import { FilterQuery, PipelineStage } from 'mongoose'
 import { I18nContext, I18nService } from 'nestjs-i18n'
 import { PinoLogger } from 'nestjs-pino'
-import { readFileSync } from 'node:fs'
-import { join, resolve } from 'node:path'
 import { DataSource } from 'typeorm'
 import { POST_DATA_OUTBOUND_QUEUE } from '../../infrastructure/constants/queue'
 import {
@@ -21,23 +19,18 @@ import {
 	EpcModel,
 	EpcOutbound
 } from '../../infrastructure/persistence/mongodb/schemas/inventory-epc.schema'
+import archivedOutboundEpcCountQuery from '../../infrastructure/persistence/mssql/sql/archived-outbound-epc-count.sql'
+import archivedOutboundEpcQuery from '../../infrastructure/persistence/mssql/sql/archived-outbound-epc.sql'
+import poOutboundProgessQuery from '../../infrastructure/persistence/mssql/sql/po-outbound-progess.sql'
+import upsertOutboundQuery from '../../infrastructure/persistence/mssql/sql/upsert-outbound.sql'
 import { EpcInformation, RFIDSearchParams } from '../../infrastructure/types'
 import { UpsertStockOutDTO } from '../../presentation/dto/rfid-outbound.dto'
 import { PostReaderDataDTO } from '../../presentation/dto/rfid-shared.dto'
 @Injectable()
 export class RFIDOutboundService {
-	private readonly archivedOutboundEpcQuery: string = readFileSync(
-		resolve(join(__dirname, '../../infrastructure/persistence/mssql/sql/archived-outbound-epc.sql')),
-		'utf-8'
-	)
-	private readonly archivedOutboundEpcCountQuery: string = readFileSync(
-		resolve(join(__dirname, '../../infrastructure/persistence/mssql/sql/archived-outbound-epc-count.sql')),
-		'utf-8'
-	)
-	private readonly missingOutboundQtyQuery: string = readFileSync(
-		resolve(join(__dirname, '../../infrastructure/persistence/mssql/sql/po-outbound-progess.sql')),
-		'utf-8'
-	)
+	private readonly archivedOutboundEpcQuery: string = archivedOutboundEpcQuery
+	private readonly archivedOutboundEpcCountQuery: string = archivedOutboundEpcCountQuery
+	private readonly missingOutboundQtyQuery: string = poOutboundProgessQuery
 
 	constructor(
 		private readonly logger: PinoLogger,
@@ -100,7 +93,7 @@ export class RFIDOutboundService {
 
 		const session = await this.epcOutboundModel.startSession()
 		const queryRunner = this.dataSourceDL.createQueryRunner()
-		const upsertStockoutQuery: string = readFileSync(resolve(join(__dirname, '../sql/upsert-outbound.sql')), 'utf-8')
+		const upsertStockoutQuery: string = upsertOutboundQuery
 
 		const missingOutboundQty = await this.getPurchaseOrderOutboundProgress(payload.po, epcToUpsert)
 

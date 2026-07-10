@@ -1,10 +1,10 @@
-import { ExchangeMoSuccessEvent } from '@/modules/inoutbound/domain/events/exchange-mo-success/exchange-mo-success.event'
+import { ExchangeMoSuccessEvent } from '@modules/inoutbound/domain/events/exchange-mo-success/exchange-mo-success.event'
 import {
 	MismatchingMoSpecsException,
 	MismatchingSizeNumberException,
 	NoExchangableMoException
-} from '@/modules/inoutbound/domain/exceptions/mo-exchange-tx.exception'
-import { UpsertEpcInfoTransaction } from '@/modules/inoutbound/domain/models/upsert-epc-info-transaction.model'
+} from '@modules/inoutbound/domain/exceptions/mo-exchange-tx.exception'
+import { UpsertEpcInfoTransaction } from '@modules/inoutbound/domain/models/upsert-epc-info-transaction.model'
 import { BadRequestException, Inject } from '@nestjs/common'
 import { CommandHandler, EventPublisher, ICommandHandler } from '@nestjs/cqrs'
 import { I18nService } from 'nestjs-i18n'

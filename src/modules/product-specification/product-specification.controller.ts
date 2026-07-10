@@ -1,4 +1,4 @@
-import { HttpMethod, RequireAuthorized, RouteHandler } from '@/common/decorators'
+import { HttpMethod, RequireAuthorized, RouteHandler } from '@common/decorators'
 import { CacheInterceptor, CacheKey, CacheTTL } from '@nestjs/cache-manager'
 import { Controller, HttpStatus, UseInterceptors } from '@nestjs/common'
 import { UserRole } from '../user/constants'

@@ -1,5 +1,5 @@
-import { DATABASE_DATA_LAKE, DATABASE_SCHEMA } from '@/databases/constants'
-import { JsonParserTransformer } from '@/databases/transformers/json-parser.transformer'
+import { DATABASE_DATA_LAKE, DATABASE_SCHEMA } from '@databases/constants'
+import { JsonParserTransformer } from '@databases/transformers/json-parser.transformer'
 import { ViewColumn, ViewEntity } from 'typeorm'
 
 @ViewEntity({

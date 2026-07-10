@@ -1,4 +1,4 @@
-import { DATA_SOURCE_DATA_LAKE } from '@/databases/constants'
+import { DATA_SOURCE_DATA_LAKE } from '@databases/constants'
 import { MiddlewareConsumer, Module, NestModule, RequestMethod } from '@nestjs/common'
 import { TypeOrmModule } from '@nestjs/typeorm'
 import { TenacyMiddleware } from '../tenancy/tenancy.middleware'

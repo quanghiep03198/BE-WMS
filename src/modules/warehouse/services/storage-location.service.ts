@@ -1,5 +1,5 @@
-import { DATA_SOURCE_DATA_LAKE } from '@/databases/constants'
-import { BaseAbstractService } from '@/modules/_base/base.abstract.service'
+import { DATA_SOURCE_DATA_LAKE } from '@databases/constants'
+import { BaseAbstractService } from '@modules/_base/base.abstract.service'
 import { Injectable } from '@nestjs/common'
 import { InjectRepository } from '@nestjs/typeorm'
 import { In, Repository } from 'typeorm'

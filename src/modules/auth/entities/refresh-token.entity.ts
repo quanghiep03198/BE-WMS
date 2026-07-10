@@ -1,4 +1,4 @@
-import { DATABASE_SCHEMA, DATABASE_SYSCLOUD } from '@/databases/constants'
+import { DATABASE_SCHEMA, DATABASE_SYSCLOUD } from '@databases/constants'
 import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm'
 
 @Entity({

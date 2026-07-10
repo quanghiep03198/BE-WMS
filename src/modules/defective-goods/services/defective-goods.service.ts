@@ -1,4 +1,4 @@
-import { DATA_SOURCE_DATA_LAKE } from '@/databases/constants'
+import { DATA_SOURCE_DATA_LAKE } from '@databases/constants'
 import { BadGatewayException, Injectable } from '@nestjs/common'
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm'
 import { chunk, omit } from 'lodash'

@@ -1,21 +1,22 @@
-import { DATA_SOURCE_DATA_LAKE, DATA_SOURCE_ERP } from '@/databases/constants'
-import { IIoMssqlRepository } from '@/modules/inoutbound/application/ports/io-mssql.repository.port'
-import { EXCLUDED_ORDERS, InventoryActions } from '@/modules/inoutbound/domain/constants'
-import { ElectronicProductCode } from '@/modules/inoutbound/domain/value-objects/epc.vo'
-import { SizeNumber } from '@/modules/inoutbound/domain/value-objects/size-number.vo'
-import { StockInDTO } from '@/modules/inoutbound/presentation/dto/rfid-inbound.dto'
+import { DATA_SOURCE_DATA_LAKE, DATA_SOURCE_ERP } from '@databases/constants'
+import { IIoMssqlRepository } from '@modules/inoutbound/application/ports/io-mssql.repository.port'
+import { EXCLUDED_ORDERS, InventoryActions } from '@modules/inoutbound/domain/constants'
+import { ElectronicProductCode } from '@modules/inoutbound/domain/value-objects/epc.vo'
+import { SizeNumber } from '@modules/inoutbound/domain/value-objects/size-number.vo'
+import { StockInDTO } from '@modules/inoutbound/presentation/dto/rfid-inbound.dto'
 import { InjectTransactionHost, Transactional, TransactionHost } from '@nestjs-cls/transactional'
 import { TransactionalAdapterTypeOrm } from '@nestjs-cls/transactional-adapter-typeorm'
 import { Injectable } from '@nestjs/common'
 import { InjectDataSource } from '@nestjs/typeorm'
 import { format } from 'date-fns'
 import { chunk, omit } from 'lodash'
-import { readFileSync } from 'node:fs'
-import { join, resolve } from 'node:path'
 import { Brackets, DataSource, In } from 'typeorm'
 import { generateStation } from '../../../utils'
 import { RFIDInventoryBackupEntity, RFIDInventoryEntity } from '../entities/rfid-inventory.entity'
 import { RFIDMatchEntity } from '../entities/rfid-match.entity'
+import moInboundProgressQuery from '../sql/mo-inbound-progress.sql'
+import moSizeRunQuery from '../sql/mo-size-run.sql'
+import upsertInboundQuery from '../sql/upsert-inbound.sql'
 
 @Injectable()
 export class InoutboundMssqlRepository implements IIoMssqlRepository {
@@ -88,7 +89,7 @@ export class InoutboundMssqlRepository implements IIoMssqlRepository {
 			accumulated_inbound_qty: number
 		}>
 	> {
-		const sql: string = readFileSync(resolve(join(__dirname, '../sql/mo-inbound-progress.sql')), 'utf-8')
+		const sql: string = moInboundProgressQuery
 
 		const queryResult = await this.dataSourceDL.query<
 			Array<{
@@ -117,7 +118,7 @@ export class InoutboundMssqlRepository implements IIoMssqlRepository {
 		color_sn: string
 		sizes: Array<string>
 	}> {
-		const sql: string = readFileSync(resolve(join(__dirname, '../sql/mo-size-run.sql')), 'utf-8')
+		const sql: string = moSizeRunQuery
 
 		const [result] = await this.dataSourceERP
 			.query<
@@ -144,7 +145,7 @@ export class InoutboundMssqlRepository implements IIoMssqlRepository {
 
 	@Transactional<TransactionalAdapterTypeOrm>(DATA_SOURCE_DATA_LAKE)
 	public async stockIn(epcs: ReadonlyArray<ElectronicProductCode>, stockInDetails: StockInDTO): Promise<void> {
-		const sql: string = readFileSync(resolve(join(__dirname, '../sql/upsert-inbound.sql')), 'utf-8')
+		const sql: string = upsertInboundQuery
 
 		const upsertPayload = epcs
 			.filter((item) => item.getIsWritable() && !item.getIsInternal())

@@ -1,6 +1,6 @@
-import { CommonRequestHeader } from '@/common/constants'
-import { HttpMethod, RequestUser, RequireAuthorized, RouteHandler, StrictRoles, User } from '@/common/decorators'
-import { ZodValidationPipe } from '@/common/pipes'
+import { CommonRequestHeader } from '@common/constants'
+import { HttpMethod, RequestUser, RequireAuthorized, RouteHandler, StrictRoles, User } from '@common/decorators'
+import { ZodValidationPipe } from '@common/pipes'
 import {
 	Body,
 	ConflictException,

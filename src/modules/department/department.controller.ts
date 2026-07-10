@@ -1,5 +1,5 @@
-import { CommonRequestHeader } from '@/common/constants'
-import { HttpMethod, RequireAuthorized, RouteHandler } from '@/common/decorators'
+import { CommonRequestHeader } from '@common/constants'
+import { HttpMethod, RequireAuthorized, RouteHandler } from '@common/decorators'
 import { BadRequestException, Controller, Headers, UnprocessableEntityException } from '@nestjs/common'
 import { UserRole } from '../user/constants'
 import { FactoryCode } from './constants'

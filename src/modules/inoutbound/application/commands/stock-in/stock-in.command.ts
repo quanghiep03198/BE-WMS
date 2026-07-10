@@ -1,4 +1,4 @@
-import { InventoryActions, InventoryStorageType } from '@/modules/inoutbound/domain/constants'
+import { InventoryActions, InventoryStorageType } from '@modules/inoutbound/domain/constants'
 import { Command } from '@nestjs/cqrs'
 
 export class StockInCommand extends Command<void> {

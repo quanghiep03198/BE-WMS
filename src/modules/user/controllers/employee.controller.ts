@@ -1,4 +1,4 @@
-import { HttpMethod, RouteHandler } from '@/common/decorators'
+import { HttpMethod, RouteHandler } from '@common/decorators'
 import { Controller, Query } from '@nestjs/common'
 import { EmployeeService } from '../services/employee.service'
 

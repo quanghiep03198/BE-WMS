@@ -1,8 +1,8 @@
-import { DATA_WAREHOUSE_CONNECTION } from '@/databases/constants'
+import { DATA_WAREHOUSE_CONNECTION } from '@databases/constants'
 import {
 	InventoryEpc,
 	InventoryEpcModel
-} from '@/modules/inoutbound/infrastructure/persistence/mongodb/schemas/inventory-epc.schema'
+} from '@modules/inoutbound/infrastructure/persistence/mongodb/schemas/inventory-epc.schema'
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs'
 import { InjectModel } from '@nestjs/mongoose'
 import { RestoreDeletedEpcsCommand } from './restore-deleted-epcs.command'

@@ -1,4 +1,4 @@
-import { InoutboundGateway } from '@/modules/inoutbound/presentation/gateways/inoutbound.gateway'
+import { InoutboundGateway } from '@modules/inoutbound/presentation/gateways/inoutbound.gateway'
 import { EventsHandler, IEventHandler } from '@nestjs/cqrs'
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
 import { ExchangeMoFailedEvent } from './exchange-mo-failed.event'

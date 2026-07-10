@@ -1,11 +1,11 @@
-import { BaseAbstractEntity } from '@/modules/_base/base.abstract.entity'
+import { BaseAbstractEntity } from '@modules/_base/base.abstract.entity'
 import {
 	DefectiveCategory,
 	DefectiveGoodsOutboundPurpose,
 	DefectiveGoodsSource,
 	DefectiveGoodsUnit,
 	DefectiveLocation
-} from '@/modules/defective-goods/constants'
+} from '@modules/defective-goods/constants'
 import { MigrationInterface, QueryRunner, Table } from 'typeorm'
 import { DATABASE_DATA_LAKE, DATABASE_SCHEMA } from '../constants'
 

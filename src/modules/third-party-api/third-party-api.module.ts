@@ -1,4 +1,4 @@
-import { DATA_SOURCE_DATA_LAKE } from '@/databases/constants'
+import { DATA_SOURCE_DATA_LAKE } from '@databases/constants'
 import { HttpModule, HttpService } from '@nestjs/axios'
 import { BullModule } from '@nestjs/bullmq'
 import { forwardRef, MiddlewareConsumer, Module, NestModule, OnModuleInit } from '@nestjs/common'

@@ -1,4 +1,4 @@
-import { SuperJson } from '@/common/utils'
+import { SuperJson } from '@common/utils'
 import { ValueTransformer } from 'typeorm'
 
 export type Bit = 0 | 1

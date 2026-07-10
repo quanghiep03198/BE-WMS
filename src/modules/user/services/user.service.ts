@@ -1,7 +1,7 @@
-import { env } from '@/common/utils'
-import { DATA_SOURCE_SYSCLOUD } from '@/databases/constants'
-import { RefreshTokenEntity } from '@/modules/auth/entities/refresh-token.entity'
-import { FactoryCode } from '@/modules/department/constants'
+import { env } from '@common/utils'
+import { DATA_SOURCE_SYSCLOUD } from '@databases/constants'
+import { RefreshTokenEntity } from '@modules/auth/entities/refresh-token.entity'
+import { FactoryCode } from '@modules/department/constants'
 import { CACHE_MANAGER } from '@nestjs/cache-manager'
 import {
 	BadRequestException,

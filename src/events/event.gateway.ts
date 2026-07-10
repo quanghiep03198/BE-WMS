@@ -1,17 +1,17 @@
-import { UseWebSocketAuthGuard } from '@/common/decorators'
-import { WsExceptionsFilter } from '@/common/filters'
+import { UseWebSocketAuthGuard } from '@common/decorators'
+import { WsExceptionsFilter } from '@common/filters'
 
-import { WsZodValidationPipe } from '@/common/pipes/ws-validation.pipe'
-import { env } from '@/common/utils'
-import { DATA_WAREHOUSE_CONNECTION } from '@/databases/constants'
-import { FALLBACK_VALUE } from '@/modules/inoutbound/domain/constants'
+import { WsZodValidationPipe } from '@common/pipes/ws-validation.pipe'
+import { env } from '@common/utils'
+import { DATA_WAREHOUSE_CONNECTION } from '@databases/constants'
+import { FALLBACK_VALUE } from '@modules/inoutbound/domain/constants'
 import {
 	EpcDocument,
 	EpcInbound
-} from '@/modules/inoutbound/infrastructure/persistence/mongodb/schemas/inventory-epc.schema'
-import { SYNC_INVENTORY_AUDIT_QUEUE } from '@/modules/inventory/constants'
-import { THIRD_PARTY_API_SYNC } from '@/modules/third-party-api/constants'
-import { SyncDataMessageDTO, syncDataMessageValidator } from '@/modules/third-party-api/dto/third-party-api.dto'
+} from '@modules/inoutbound/infrastructure/persistence/mongodb/schemas/inventory-epc.schema'
+import { SYNC_INVENTORY_AUDIT_QUEUE } from '@modules/inventory/constants'
+import { THIRD_PARTY_API_SYNC } from '@modules/third-party-api/constants'
+import { SyncDataMessageDTO, syncDataMessageValidator } from '@modules/third-party-api/dto/third-party-api.dto'
 import { InjectQueue } from '@nestjs/bullmq'
 import { CACHE_MANAGER } from '@nestjs/cache-manager'
 import { Inject, Optional, UseFilters, UsePipes } from '@nestjs/common'

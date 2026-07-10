@@ -1,4 +1,4 @@
-import { ElectronicProductCode } from '@/modules/inoutbound/domain/value-objects/epc.vo'
+import { ElectronicProductCode } from '@modules/inoutbound/domain/value-objects/epc.vo'
 import { Command } from '@nestjs/cqrs'
 
 export class UpdateStockInTimestampCommand extends Command<void> {

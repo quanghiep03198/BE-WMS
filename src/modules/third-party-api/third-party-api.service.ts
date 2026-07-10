@@ -2,22 +2,18 @@ import { HttpService } from '@nestjs/axios'
 import { Inject, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common'
 import { AxiosRequestConfig } from 'axios'
 import { format } from 'date-fns'
-import { readFileSync } from 'fs-extra'
 import { chunk } from 'lodash'
 import { PinoLogger } from 'nestjs-pino'
-import { join, resolve } from 'node:path'
 import { DataSource } from 'typeorm'
 import { RFIDMatchEntity } from '../inoutbound/infrastructure/persistence/mssql/entities/rfid-match.entity'
+import upsertRfidMatchQuery from '../inoutbound/infrastructure/persistence/mssql/sql/upsert-rfid-match.sql'
 import { OrderService } from '../order/order.service'
 import { TENANCY_DATA_SOURCE } from '../tenancy/constants'
 import { ThirdPartyApiResponseData } from './interfaces/third-party-api.interface'
 
 @Injectable()
 export class ThirdPartyApiService {
-	private readonly upsertRfidMatchQuery = readFileSync(
-		resolve(join(__dirname, '../rfid/sql/upsert-rfid-match.sql')),
-		'utf-8'
-	)
+	private readonly upsertRfidMatchQuery: string = upsertRfidMatchQuery
 
 	constructor(
 		private readonly logger: PinoLogger,

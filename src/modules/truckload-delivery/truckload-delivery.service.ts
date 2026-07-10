@@ -1,7 +1,7 @@
-import { ExcelColorPalette } from '@/common/constants/excel-color-palette'
-import { type AutoFitColumnOptions, autoFitColumns } from '@/common/helpers'
-import { SuperJson } from '@/common/utils'
-import { DATA_SOURCE_DATA_LAKE, DATA_SOURCE_ERP, RecordStatus } from '@/databases/constants'
+import { ExcelColorPalette } from '@common/constants/excel-color-palette'
+import { type AutoFitColumnOptions, autoFitColumns } from '@common/helpers'
+import { SuperJson } from '@common/utils'
+import { DATA_SOURCE_DATA_LAKE, DATA_SOURCE_ERP, RecordStatus } from '@databases/constants'
 import { Injectable, NotFoundException } from '@nestjs/common'
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm'
 import { format, isValid } from 'date-fns'
@@ -9,8 +9,6 @@ import { Workbook } from 'exceljs'
 import { omit, padStart, upperCase } from 'lodash'
 import { I18nContext, I18nService } from 'nestjs-i18n'
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
-import { readFileSync } from 'node:fs'
-import { join, resolve } from 'node:path'
 import { DataSource, Repository } from 'typeorm'
 import { BaseAbstractEntity } from '../_base/base.abstract.entity'
 import { BaseAbstractService } from '../_base/base.abstract.service'
@@ -23,6 +21,10 @@ import {
 	UpsertPurchaseOrdersDTO
 } from './dto/truckload-delivery.dto'
 import { TruckloadDeliveryEntity } from './entities/truckload-delivery.entity'
+import dispatchOrdersWithProductAttributesQuery from './sql/dispatch-orders-with-product-attributes.sql'
+import dispatchOrdersQuery from './sql/dispatch-orders.sql'
+import nextSeqNoQuery from './sql/next-seq-no.sql'
+import upsertPurchaseOrdersQuery from './sql/upsert-purchase-orders.sql'
 import { DispatchOrder, ITruckloadDeliveryService } from './truckload-delivery.interface'
 import type { TruckloadDeliveryDispatchOrder } from './types'
 
@@ -42,22 +44,13 @@ export class TruckloadDeliveryService
 		super(deliveryRepository)
 	}
 
-	private readonly upsertPurchaseOrderDeliveryQuery: string = readFileSync(
-		resolve(join(__dirname, './sql/upsert-purchase-orders.sql')),
-		'utf-8'
-	)
+	private readonly upsertPurchaseOrderDeliveryQuery: string = upsertPurchaseOrdersQuery
 
-	private readonly getDispatchOrderQuery: string = readFileSync(
-		resolve(join(__dirname, './sql/dispatch-orders.sql')),
-		'utf-8'
-	)
+	private readonly getDispatchOrderQuery: string = dispatchOrdersQuery
 
-	private readonly getNextSeqNoQuery: string = readFileSync(resolve(join(__dirname, './sql/next-seq-no.sql')), 'utf-8')
+	private readonly getNextSeqNoQuery: string = nextSeqNoQuery
 
-	private readonly getDispatchOrderWithProductAttrQuery: string = readFileSync(
-		resolve(join(__dirname, './sql/dispatch-orders-with-product-attributes.sql')),
-		'utf-8'
-	)
+	private readonly getDispatchOrderWithProductAttrQuery: string = dispatchOrdersWithProductAttributesQuery
 
 	private generateRawWhereClause(queryParams: UnflatedFilterQueryDTO, alias = ''): string {
 		if (!queryParams.where) return ''

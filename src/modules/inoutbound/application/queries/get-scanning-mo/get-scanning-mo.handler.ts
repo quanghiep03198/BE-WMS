@@ -1,9 +1,9 @@
-import { DATA_WAREHOUSE_CONNECTION } from '@/databases/constants'
-import { ScannedOrderDetail } from '@/modules/inoutbound/domain/types'
+import { DATA_WAREHOUSE_CONNECTION } from '@databases/constants'
+import { ScannedOrderDetail } from '@modules/inoutbound/domain/types'
 import {
 	InventoryEpc,
 	InventoryEpcModel
-} from '@/modules/inoutbound/infrastructure/persistence/mongodb/schemas/inventory-epc.schema'
+} from '@modules/inoutbound/infrastructure/persistence/mongodb/schemas/inventory-epc.schema'
 import { IQueryHandler, QueryHandler } from '@nestjs/cqrs'
 import { InjectModel } from '@nestjs/mongoose'
 import { GetScanningMosQuery } from './get-scanning-mo.query'

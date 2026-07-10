@@ -1,4 +1,4 @@
-import { I18nPath } from '@/generated/i18n.generated'
+import { I18nPath } from '@generated/i18n.generated'
 import {
 	applyDecorators,
 	Delete,

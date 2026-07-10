@@ -5,8 +5,8 @@ import {
 	RequireAuthorized,
 	RouteHandler,
 	User
-} from '@/common/decorators'
-import { ZodValidationPipe } from '@/common/pipes'
+} from '@common/decorators'
+import { ZodValidationPipe } from '@common/pipes'
 import { Body, Controller, ForbiddenException, HttpStatus, Param } from '@nestjs/common'
 import { UserRole } from '../constants'
 import {

@@ -1,4 +1,4 @@
-import { StockFlow } from '@/modules/inoutbound/domain/types'
+import { StockFlow } from '@modules/inoutbound/domain/types'
 import { Query } from '@nestjs/cqrs'
 
 export class GetScanningEpcsBySizeQuery extends Query<Record<'epc', string>[]> {

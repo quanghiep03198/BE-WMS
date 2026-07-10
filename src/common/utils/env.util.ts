@@ -6,7 +6,7 @@ export function env<T>(
 ) {
 	const value = process.env[key]
 	if (!value) {
-		if (options?.fallbackValue) return options.fallbackValue
+		if (options?.fallbackValue !== undefined) return options.fallbackValue
 		return null
 	}
 	if (typeof options?.serialize === 'function') {

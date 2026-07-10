@@ -1,5 +1,5 @@
-import { DATA_SOURCE_SYSCLOUD } from '@/databases/constants'
-import { BaseAbstractService } from '@/modules/_base/base.abstract.service'
+import { DATA_SOURCE_SYSCLOUD } from '@databases/constants'
+import { BaseAbstractService } from '@modules/_base/base.abstract.service'
 import { Injectable } from '@nestjs/common'
 import { InjectRepository } from '@nestjs/typeorm'
 import { Like, Repository } from 'typeorm'

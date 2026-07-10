@@ -1,6 +1,6 @@
-import { CommonRequestHeader } from '@/common/constants'
-import { HttpMethod, RequireAuthorized, RouteHandler } from '@/common/decorators'
-import { AllExceptionsFilter } from '@/common/filters'
+import { CommonRequestHeader } from '@common/constants'
+import { HttpMethod, RequireAuthorized, RouteHandler } from '@common/decorators'
+import { AllExceptionsFilter } from '@common/filters'
 import {
 	BadRequestException,
 	Controller,

@@ -1,27 +1,23 @@
-import { VALID_EPC_PATTERN } from '@/common/constants/regex'
-import { DATA_SOURCE_DATA_LAKE, DATA_WAREHOUSE_CONNECTION } from '@/databases/constants'
 import { StorageFile } from '@blazity/nest-file-fastify'
+import { VALID_EPC_PATTERN } from '@common/constants/regex'
+import { DATA_SOURCE_DATA_LAKE, DATA_WAREHOUSE_CONNECTION } from '@databases/constants'
 import { Processor, WorkerHost } from '@nestjs/bullmq'
 import { InjectModel } from '@nestjs/mongoose'
 import { InjectDataSource } from '@nestjs/typeorm'
 import { Job } from 'bullmq'
 import csvParser from 'csv-parser'
 import { AnyBulkWriteOperation } from 'mongoose'
-import { readFileSync } from 'node:fs'
-import { join, resolve } from 'node:path'
 import { Readable } from 'node:stream'
 import { DataSource } from 'typeorm'
 import { EXCLUDED_ORDERS } from '../../domain/constants'
 import { IMPORT_DATA_QUEUE } from '../constants/queue'
 import { EpcInbound, EpcModel, EpcSchema } from '../persistence/mongodb/schemas/inventory-epc.schema'
+import epcInformationQuery from '../persistence/mssql/sql/epc-information.sql'
 import { StoredRFIDReaderItem } from '../types'
 
 @Processor(IMPORT_DATA_QUEUE)
 export class RFIDImportDataConsumer extends WorkerHost {
-	private readonly epcInformationQuery: string = readFileSync(
-		resolve(join(__dirname, '../persistence/mssql/sql/epc-information.sql')),
-		'utf-8'
-	)
+	private readonly epcInformationQuery: string = epcInformationQuery
 
 	constructor(
 		@InjectModel(EpcInbound.name, DATA_WAREHOUSE_CONNECTION) private readonly inboundEpcModel: EpcModel,

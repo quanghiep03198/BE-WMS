@@ -1,4 +1,4 @@
-import { RecordStatus } from '@/databases/constants'
+import { RecordStatus } from '@databases/constants'
 import z from 'zod'
 
 export const createRFIDDeviceDTO = z.object({

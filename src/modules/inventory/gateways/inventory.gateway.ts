@@ -1,8 +1,8 @@
-import { UseWebSocketAuthGuard } from '@/common/decorators'
-import { WsExceptionsFilter } from '@/common/filters'
+import { UseWebSocketAuthGuard } from '@common/decorators'
+import { WsExceptionsFilter } from '@common/filters'
 
-import { env } from '@/common/utils'
-import { SYNC_INVENTORY_AUDIT_QUEUE } from '@/modules/inventory/constants'
+import { env } from '@common/utils'
+import { SYNC_INVENTORY_AUDIT_QUEUE } from '@modules/inventory/constants'
 import { InjectQueue } from '@nestjs/bullmq'
 import { Optional, UseFilters } from '@nestjs/common'
 import { JwtService } from '@nestjs/jwt'

@@ -1,5 +1,5 @@
-import { VALID_EPC_PATTERN } from '@/common/constants/regex'
-import { DATA_SOURCE_DATA_LAKE, DATA_WAREHOUSE_CONNECTION } from '@/databases/constants'
+import { VALID_EPC_PATTERN } from '@common/constants/regex'
+import { DATA_SOURCE_DATA_LAKE, DATA_WAREHOUSE_CONNECTION } from '@databases/constants'
 import { CACHE_MANAGER } from '@nestjs/cache-manager'
 import { Inject, Injectable } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
@@ -8,9 +8,9 @@ import { Queue } from 'bullmq'
 import { Cache } from 'cache-manager'
 import { throttle } from 'lodash'
 import { FilterQuery, UpdateWriteOpResult } from 'mongoose'
-import { readFileSync } from 'node:fs'
-import { join, resolve } from 'node:path'
 import { DataSource } from 'typeorm'
+import deduplicatedEpcInformationQuery from '../../infrastructure/persistence/mssql/sql/deduplicated-epc-information.sql'
+import epcInformationQuery from '../../infrastructure/persistence/mssql/sql/epc-information.sql'
 
 import { FALLBACK_VALUE } from '../../domain/constants'
 import { ScannedOrderDetail } from '../../domain/types'
@@ -28,14 +28,8 @@ import { FindEpcBySizeDTO } from '../../presentation/dto/rfid-shared.dto'
 
 @Injectable()
 export class RFIDSharedService {
-	private readonly epcInformationQuery: string = readFileSync(
-		resolve(join(__dirname, '../../infrastructure/persistence/mssql/sql/epc-information.sql')),
-		'utf-8'
-	)
-	private readonly deduplicatedEpcInformationQuery: string = readFileSync(
-		resolve(join(__dirname, '../../infrastructure/persistence/mssql/sql/deduplicated-epc-information.sql')),
-		'utf-8'
-	)
+	private readonly epcInformationQuery: string = epcInformationQuery
+	private readonly deduplicatedEpcInformationQuery: string = deduplicatedEpcInformationQuery
 
 	constructor(
 		@Inject(CACHE_MANAGER) private readonly cacheManager: Cache,

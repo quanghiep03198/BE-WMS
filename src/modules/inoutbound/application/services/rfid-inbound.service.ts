@@ -1,6 +1,6 @@
-import { VALID_EPC_PATTERN } from '@/common/constants/regex'
-import { DATA_SOURCE_DATA_LAKE, DATA_SOURCE_ERP, DATA_WAREHOUSE_CONNECTION } from '@/databases/constants'
-import { IUpsertInventoryEventPayload } from '@/modules/inventory/interfaces'
+import { VALID_EPC_PATTERN } from '@common/constants/regex'
+import { DATA_SOURCE_DATA_LAKE, DATA_SOURCE_ERP, DATA_WAREHOUSE_CONNECTION } from '@databases/constants'
+import { IUpsertInventoryEventPayload } from '@modules/inventory/interfaces'
 import { InjectQueue } from '@nestjs/bullmq'
 import { CACHE_MANAGER } from '@nestjs/cache-manager'
 import {
@@ -21,8 +21,6 @@ import { chunk, pick } from 'lodash'
 import { AnyBulkWriteOperation, FilterQuery } from 'mongoose'
 import { I18nContext, I18nService } from 'nestjs-i18n'
 import { PinoLogger } from 'nestjs-pino'
-import { readFileSync } from 'node:fs'
-import { join, resolve } from 'node:path'
 import { DataSource, FindOptionsWhere, In } from 'typeorm'
 import { FALLBACK_VALUE } from '../../domain/constants'
 import { ExchangeOrderDTO, StockInDTO, UpsertEpcInformationDTO } from '../../presentation/dto/rfid-inbound.dto'
@@ -37,16 +35,16 @@ import {
 } from '../../infrastructure/persistence/mongodb/schemas/inventory-epc.schema'
 import { RFIDInventoryBackupEntity } from '../../infrastructure/persistence/mssql/entities/rfid-inventory.entity'
 import { RFIDMatchEntity } from '../../infrastructure/persistence/mssql/entities/rfid-match.entity'
+import moInboundProgressQuery from '../../infrastructure/persistence/mssql/sql/mo-inbound-progress.sql'
+import upsertInboundQuery from '../../infrastructure/persistence/mssql/sql/upsert-inbound.sql'
+import upsertRfidMatchQuery from '../../infrastructure/persistence/mssql/sql/upsert-rfid-match.sql'
 import { RFIDSearchParams } from '../../infrastructure/types'
 import { generateStation } from '../../infrastructure/utils'
 import { InoutboundGateway } from '../../presentation/gateways/inoutbound.gateway'
 
 @Injectable({ scope: Scope.REQUEST })
 export class RFIDInboundService {
-	private readonly missingInboundQtyQuery: string = readFileSync(
-		resolve(join(__dirname, '../../infrastructure/persistence/mssql/sql/mo-inbound-progress.sql')),
-		'utf-8'
-	)
+	private readonly missingInboundQtyQuery: string = moInboundProgressQuery
 
 	constructor(
 		@InjectDataSource(DATA_SOURCE_DATA_LAKE) private readonly dataSourceDL: DataSource,
@@ -94,10 +92,7 @@ export class RFIDInboundService {
 			)
 
 		try {
-			const upsertInventoryQuery: string = readFileSync(
-				resolve(join(__dirname, '../sql/upsert-inbound.sql')),
-				'utf-8'
-			)
+			const upsertInventoryQuery: string = upsertInboundQuery
 			await session.startTransaction()
 			await queryRunner.startTransaction()
 
@@ -237,7 +232,7 @@ export class RFIDInboundService {
 		const currentTimestamp = format(new Date(), 'yyyy-MM-dd HH:mm:ss')
 
 		try {
-			const upsertEpcsQuery: string = readFileSync(resolve(join(__dirname, '../sql/upsert-rfid-match.sql')), 'utf-8')
+			const upsertEpcsQuery: string = upsertRfidMatchQuery
 
 			await session.startTransaction()
 			await queryRunner.startTransaction()

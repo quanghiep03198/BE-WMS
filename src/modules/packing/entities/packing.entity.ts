@@ -1,5 +1,5 @@
-import { DATABASE_DATA_LAKE } from '@/databases/constants'
-import { BaseAbstractEntity } from '@/modules/_base/base.abstract.entity'
+import { DATABASE_DATA_LAKE } from '@databases/constants'
+import { BaseAbstractEntity } from '@modules/_base/base.abstract.entity'
 import { Column, Entity } from 'typeorm'
 
 @Entity('PackingPlan', { database: DATABASE_DATA_LAKE })

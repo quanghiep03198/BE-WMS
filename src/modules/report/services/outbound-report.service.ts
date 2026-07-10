@@ -1,8 +1,8 @@
-import { ExcelColorPalette } from '@/common/constants/excel-color-palette'
-import { applyCommonStyles, type AutoFitColumnOptions, autoFitColumns } from '@/common/helpers'
-import { SuperJson } from '@/common/utils'
-import { DATA_SOURCE_DATA_LAKE } from '@/databases/constants'
-import { TENANCY_DATA_SOURCE } from '@/modules/tenancy/constants'
+import { ExcelColorPalette } from '@common/constants/excel-color-palette'
+import { applyCommonStyles, type AutoFitColumnOptions, autoFitColumns } from '@common/helpers'
+import { SuperJson } from '@common/utils'
+import { DATA_SOURCE_DATA_LAKE } from '@databases/constants'
+import { TENANCY_DATA_SOURCE } from '@modules/tenancy/constants'
 import { Inject, Injectable } from '@nestjs/common'
 import { REQUEST } from '@nestjs/core'
 import { InjectDataSource } from '@nestjs/typeorm'
@@ -10,15 +10,15 @@ import { format } from 'date-fns'
 import { Workbook, Worksheet } from 'exceljs'
 import { FastifyRequest } from 'fastify'
 import { I18nContext, I18nService } from 'nestjs-i18n'
-import { readFileSync } from 'node:fs'
-import { join } from 'node:path'
 import { DataSource } from 'typeorm'
 import { IOutboundHistory, IOutboundReportQueryResult, IOutboundReportResponse } from '../interfaces'
+import outboundHistoryQuery from '../sql/outbound-history.sql'
+import outboundReportQuery from '../sql/outbound-report.sql'
 
 @Injectable()
 export class OutboundReportService {
-	private readonly outboundReportQuery: string = readFileSync(join(__dirname, '../sql/outbound-report.sql'), 'utf-8')
-	private readonly outboundHistoryQuery: string = readFileSync(join(__dirname, '../sql/outbound-history.sql'), 'utf-8')
+	private readonly outboundReportQuery: string = outboundReportQuery
+	private readonly outboundHistoryQuery: string = outboundHistoryQuery
 
 	constructor(
 		@Inject(TENANCY_DATA_SOURCE) private readonly dataSource: DataSource,

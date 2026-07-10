@@ -1,4 +1,4 @@
-import { DATA_WAREHOUSE_CONNECTION } from '@/databases/constants'
+import { DATA_WAREHOUSE_CONNECTION } from '@databases/constants'
 import { Injectable } from '@nestjs/common'
 import { OnEvent } from '@nestjs/event-emitter'
 import { InjectModel } from '@nestjs/mongoose'

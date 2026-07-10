@@ -1,4 +1,4 @@
-import { env } from '@/common/utils'
+import { env } from '@common/utils'
 import { Injectable, NotFoundException, OnModuleDestroy } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { omit } from 'lodash'

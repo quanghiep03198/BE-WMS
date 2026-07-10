@@ -1,4 +1,4 @@
-import { HttpMethod, RequireAuthorized, RouteHandler } from '@/common/decorators'
+import { HttpMethod, RequireAuthorized, RouteHandler } from '@common/decorators'
 import { Controller, DefaultValuePipe, HttpStatus, ParseIntPipe, Query } from '@nestjs/common'
 import { UserRole } from '../user/constants'
 import { StatisticService } from './statistic.service'

@@ -1,5 +1,5 @@
-import { BaseAbstractEntity } from '@/modules/_base/base.abstract.entity'
-import { TruckloadDeliveryStatus } from '@/modules/truckload-delivery/constants'
+import { BaseAbstractEntity } from '@modules/_base/base.abstract.entity'
+import { TruckloadDeliveryStatus } from '@modules/truckload-delivery/constants'
 import { MigrationInterface, QueryRunner, Table, TableIndex } from 'typeorm'
 import { DATABASE_DATA_LAKE, DATABASE_SCHEMA } from '../constants'
 

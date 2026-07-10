@@ -1,7 +1,7 @@
-import { CommonRequestHeader } from '@/common/constants'
-import { HttpMethod, Public, RequestUser, RequireAuthorized, RouteHandler, User } from '@/common/decorators'
-import { AllExceptionsFilter } from '@/common/filters'
-import { ZodValidationPipe } from '@/common/pipes'
+import { CommonRequestHeader } from '@common/constants'
+import { HttpMethod, Public, RequestUser, RequireAuthorized, RouteHandler, User } from '@common/decorators'
+import { AllExceptionsFilter } from '@common/filters'
+import { ZodValidationPipe } from '@common/pipes'
 import {
 	ExchangeOrderDTO,
 	exchangeOrderValidator,
@@ -9,17 +9,14 @@ import {
 	stockInValidator,
 	UpsertEpcInformationDTO,
 	upsertEpcInformationSchema
-} from '@/modules/inoutbound/presentation/dto/rfid-inbound.dto'
+} from '@modules/inoutbound/presentation/dto/rfid-inbound.dto'
 import {
-	FindEpcBySizeDTO,
-	findEpcBySizeValidator,
 	PostReaderDataDTO,
 	readerPostDataValidator,
 	searchCustomerValidator,
 	SearchCustOrderParamsDTO
-} from '@/modules/inoutbound/presentation/dto/rfid-shared.dto'
-import { UserRole } from '@/modules/user/constants'
-import { RedisService } from '@/redis/redis.service'
+} from '@modules/inoutbound/presentation/dto/rfid-shared.dto'
+import { UserRole } from '@modules/user/constants'
 import { InjectQueue } from '@nestjs/bullmq'
 import { CACHE_MANAGER } from '@nestjs/cache-manager'
 import {
@@ -31,8 +28,6 @@ import {
 	Headers,
 	HttpStatus,
 	Inject,
-	Param,
-	ParseBoolPipe,
 	ParseIntPipe,
 	Query,
 	Res,
@@ -40,27 +35,24 @@ import {
 } from '@nestjs/common'
 import { CommandBus, QueryBus } from '@nestjs/cqrs'
 import { EventEmitter2 } from '@nestjs/event-emitter'
+import { RedisService } from '@redis/redis.service'
 import { Queue } from 'bullmq'
 import { Cache } from 'cache-manager'
 import { FastifyReply } from 'fastify'
-import { isEmpty, isNil, pickBy } from 'lodash'
 import { PaginateResult } from 'mongoose'
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
 import z from 'zod'
 import { CreateEpcChangeStreamCommand } from '../../application/commands/create-epc-change-stream/create-epc-change-stream.command'
-import { DeleteScanningMoCommand } from '../../application/commands/delete-scanning-mo/delete-scanning-mo.command'
 import { ExchangeMoRmCommand } from '../../application/commands/exchange-mo/impl/exchange-mo-rm.command'
 import { StockInCommand } from '../../application/commands/stock-in/stock-in.command'
 import { UpsertEpcInfoCommand } from '../../application/commands/upsert-epc-info/upsert-epc-info.command'
 import { GetInternalEpcsExistsQuery } from '../../application/queries/get-internal-epcs-exists/get-internal-epcs-exists.query'
-import { GetScanningEpcsBySizeQuery } from '../../application/queries/get-scanning-epcs-by-size/get-scanning-epcs-by-size.query'
 import { GetScanningEpcsQuery } from '../../application/queries/get-scanning-epcs/get-scanning-epcs.query'
 import { GetScanningMosQuery } from '../../application/queries/get-scanning-mo/get-scanning-mo.query'
 import { SearchExchangableMoQuery } from '../../application/queries/search-exchangable-mo/search-exchangable-mo.query'
 import { ScannedOrderDetail } from '../../domain/types'
 import { POST_DATA_INBOUND_QUEUE } from '../../infrastructure/constants/queue'
 import { InventoryEpcDocument } from '../../infrastructure/persistence/mongodb/schemas/inventory-epc.schema'
-import { RFIDSearchParams } from '../../infrastructure/types'
 
 @Controller('rfid/inbound')
 export class RFIDInboundController {
@@ -171,22 +163,6 @@ export class RFIDInboundController {
 	}
 
 	@RouteHandler({
-		endpoint: 'get-epc-by-size',
-		method: HttpMethod.GET
-	})
-	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
-	async getOutboundEpcBySize(
-		@Headers(CommonRequestHeader.RFID_READER_ID) deviceSerialNumber: string,
-		@Query(new ZodValidationPipe(findEpcBySizeValidator)) queries: FindEpcBySizeDTO
-	) {
-		const manufacturingOrder = queries['mo_no:eq']
-		const sizeNumber = queries['size_numcode:eq']
-		return await this.queryBus.execute(
-			new GetScanningEpcsBySizeQuery('inbound', manufacturingOrder, sizeNumber, deviceSerialNumber)
-		)
-	}
-
-	@RouteHandler({
 		endpoint: 'stock-in',
 		method: HttpMethod.PUT,
 		statusCode: HttpStatus.CREATED,
@@ -245,20 +221,6 @@ export class RFIDInboundController {
 		)
 	}
 
-	@RouteHandler({
-		endpoint: 'delete-scanned-order/:commandNumber',
-		method: HttpMethod.DELETE,
-		statusCode: HttpStatus.OK,
-		message: 'common.deleted'
-	})
-	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
-	async deleteScannedOutboundEpc(
-		@Query('rescannable', new DefaultValuePipe(false), ParseBoolPipe) rescannable: boolean,
-		@Param('commandNumber') commandNumber: string
-	) {
-		return await this.commandBus.execute(new DeleteScanningMoCommand('inbound', commandNumber, rescannable))
-	}
-
 	@Public()
 	@RouteHandler({
 		endpoint: 'post-data',
@@ -286,38 +248,5 @@ export class RFIDInboundController {
 		queries: SearchCustOrderParamsDTO
 	) {
 		return await this.queryBus.execute(new SearchExchangableMoQuery(queries.q, factory_code, queries['color_sn:eq']))
-	}
-
-	@RouteHandler({
-		endpoint: '/retrive-deleted-epcs',
-		method: HttpMethod.GET
-	})
-	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
-	async retrieveDeletedEpcs(
-		@Headers(CommonRequestHeader.FACTORY_CODE) factoryCode: string,
-		@Query('_page', new DefaultValuePipe(1), ParseIntPipe) page: number,
-		@Query('_limit', new DefaultValuePipe(10), ParseIntPipe) limit: number,
-		@Query('q', new DefaultValuePipe('')) search: string,
-		@Query('mo_no:eq', new DefaultValuePipe('')) mo_no: string,
-		@Query('shoes_style:eq', new DefaultValuePipe('')) shoes_style: string,
-		@Query('color_sn:eq', new DefaultValuePipe('')) color_sn: string,
-		@Query('size_numcode:eq', new DefaultValuePipe('')) size_numcode: string,
-		@Query('scannable:eq', ParseBoolPipe) scannable: string
-	) {
-		const filterQuery = pickBy(
-			{
-				page,
-				limit,
-				q: search,
-				['shoes_style:eq']: shoes_style,
-				['mo_no:eq']: mo_no,
-				['color_sn:eq']: color_sn,
-				['size_numcode:eq']: size_numcode,
-				['scannable:eq']: scannable
-			},
-			(item) => !isNil(item) && !isEmpty(item)
-		) as RFIDSearchParams
-
-		// return await this.rfidInboundService.retrieveDeletedEpcs(factoryCode, filterQuery)
 	}
 }

@@ -1,4 +1,3 @@
-import { DatabaseModule } from '@/databases'
 import { ClsPluginTransactional } from '@nestjs-cls/transactional'
 import { TransactionalAdapterMongoose } from '@nestjs-cls/transactional-adapter-mongoose'
 import { TransactionalAdapterTypeOrm } from '@nestjs-cls/transactional-adapter-typeorm'
@@ -19,7 +18,7 @@ import { ClsModule } from 'nestjs-cls'
 import { AcceptLanguageResolver, HeaderResolver, I18nModule, QueryResolver } from 'nestjs-i18n'
 import { LoggerModule, Params } from 'nestjs-pino'
 import { AppController } from './app.controller'
-import { appConfigFactory, validateConfig } from './configs'
+import { AppConfig } from './configs/index'
 // Feature modules
 import { EventGateway } from './events/event.gateway'
 import { AuthModule } from './modules/auth/auth.module'
@@ -40,6 +39,7 @@ import { WarehouseModule } from './modules/warehouse/warehouse.module'
 import { RedisModule } from './redis/redis.module'
 // Schedule Tasks
 import { getConnectionToken } from '@nestjs/mongoose'
+import { DatabaseModule } from './databases'
 import {
 	DATA_SOURCE_DATA_LAKE,
 	DATA_SOURCE_ERP,
@@ -69,8 +69,9 @@ import { ScheduleTasks } from './tasks'
 		ConfigModule.forRoot({
 			envFilePath: ['.env'],
 			isGlobal: true,
-			load: [appConfigFactory],
-			validate: validateConfig
+			load: AppConfig.load(),
+			cache: true,
+			validate: AppConfig.validate
 		}),
 		CqrsModule.forRoot(),
 		DatabaseModule.forRootAsync(),

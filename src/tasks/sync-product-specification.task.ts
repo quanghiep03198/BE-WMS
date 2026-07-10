@@ -1,27 +1,20 @@
-import { SuperJson } from '@/common/utils'
-import { DATA_SOURCE_ERP, DATA_WAREHOUSE_CONNECTION } from '@/databases/constants'
+import { SuperJson } from '@common/utils'
+import { DATA_SOURCE_ERP, DATA_WAREHOUSE_CONNECTION } from '@databases/constants'
 import {
 	ProductSpecification,
 	ProductSpecificationDocument
-} from '@/modules/product-specification/schemas/product-specification.schema'
-import { ProductVariant } from '@/modules/product-specification/types'
+} from '@modules/product-specification/schemas/product-specification.schema'
+import productVariantsQuery from '@modules/product-specification/sql/product-variants.sql'
+import { ProductVariant } from '@modules/product-specification/types'
 import { Injectable, Logger } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
 import { Cron, CronExpression } from '@nestjs/schedule'
 import { InjectDataSource } from '@nestjs/typeorm'
 import { AnyBulkWriteOperation, Model } from 'mongoose'
-import { readFileSync } from 'node:fs'
-import { join, resolve } from 'node:path'
 import { DataSource } from 'typeorm'
-
 @Injectable()
 export class SyncProductSpecificationTask {
 	private readonly logger = new Logger(SyncProductSpecificationTask.name)
-
-	private readonly productVariantsQuery: string = readFileSync(
-		resolve(join(__dirname, '../modules/product-specification/sql/product-variants.sql')),
-		'utf-8'
-	)
 
 	constructor(
 		@InjectDataSource(DATA_SOURCE_ERP) private readonly dataSourceERP: DataSource,
@@ -34,7 +27,7 @@ export class SyncProductSpecificationTask {
 	})
 	async handleSyncProductSpecification() {
 		try {
-			const rawData = await this.dataSourceERP.query<ProductSpecification[]>(this.productVariantsQuery)
+			const rawData = await this.dataSourceERP.query<ProductSpecification[]>(productVariantsQuery)
 
 			const data = rawData.map((item) => ({
 				...item,

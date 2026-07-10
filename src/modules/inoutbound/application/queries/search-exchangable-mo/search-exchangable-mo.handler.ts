@@ -1,4 +1,4 @@
-import { DATA_SOURCE_ERP } from '@/databases/constants'
+import { DATA_SOURCE_ERP } from '@databases/constants'
 import { IQueryHandler, QueryHandler } from '@nestjs/cqrs'
 import { InjectDataSource } from '@nestjs/typeorm'
 import { DataSource } from 'typeorm'

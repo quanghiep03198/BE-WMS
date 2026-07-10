@@ -1,10 +1,10 @@
-import { VALID_EPC_PATTERN } from '@/common/constants/regex'
-import { DATA_WAREHOUSE_CONNECTION } from '@/databases/constants'
-import { FALLBACK_VALUE } from '@/modules/inoutbound/domain/constants'
+import { VALID_EPC_PATTERN } from '@common/constants/regex'
+import { DATA_WAREHOUSE_CONNECTION } from '@databases/constants'
+import { FALLBACK_VALUE } from '@modules/inoutbound/domain/constants'
 import {
 	InventoryEpc,
 	InventoryEpcModel
-} from '@/modules/inoutbound/infrastructure/persistence/mongodb/schemas/inventory-epc.schema'
+} from '@modules/inoutbound/infrastructure/persistence/mongodb/schemas/inventory-epc.schema'
 import { IQueryHandler, QueryHandler } from '@nestjs/cqrs'
 import { InjectModel } from '@nestjs/mongoose'
 import { GetDeletedEpcSpecsQuery } from './get-deleted-epc-specs.query'

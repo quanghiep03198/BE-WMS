@@ -1,4 +1,4 @@
-import { StockFlow } from '@/modules/inoutbound/domain/types'
+import { StockFlow } from '@modules/inoutbound/domain/types'
 import { Query } from '@nestjs/cqrs'
 
 export class RetriveDeletedEpcsQuery extends Query<any> {
@@ -16,7 +16,9 @@ export class RetriveDeletedEpcsQuery extends Query<any> {
 			color_sn: string
 			size_numcode: string
 			scannable: boolean
-			outbound_device_sn: 'none' | 'any'
+			inbound_at: never
+			outbound_at: never
+			outbound_device_sn: 'dectectable' | 'undetectable'
 		}>
 	) {
 		super()

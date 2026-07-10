@@ -1,7 +1,7 @@
-import { CommonRequestHeader } from '@/common/constants'
-import { HttpMethod, RequireAuthorized, RouteHandler, User } from '@/common/decorators'
-import { AllExceptionsFilter } from '@/common/filters'
-import { ZodValidationPipe } from '@/common/pipes'
+import { CommonRequestHeader } from '@common/constants'
+import { HttpMethod, RequireAuthorized, RouteHandler, User } from '@common/decorators'
+import { AllExceptionsFilter } from '@common/filters'
+import { ZodValidationPipe } from '@common/pipes'
 import { InjectQueue } from '@nestjs/bullmq'
 import {
 	Body,

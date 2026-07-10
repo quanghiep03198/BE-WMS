@@ -1,5 +1,5 @@
-import { PluralI18nPath } from '@/common/decorators'
-import { I18nPath } from '@/generated/i18n.generated'
+import { PluralI18nPath } from '@common/decorators'
+import { I18nPath } from '@generated/i18n.generated'
 
 export interface OAuth2Credentials {
 	client_id: string

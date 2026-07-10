@@ -1,9 +1,9 @@
-import { ExcelColorPalette } from '@/common/constants/excel-color-palette'
-import { applyCommonStyles, type AutoFitColumnOptions, autoFitColumns } from '@/common/helpers'
-import { SuperJson } from '@/common/utils'
-import { DATA_SOURCE_DATA_LAKE } from '@/databases/constants'
-import { OrderService } from '@/modules/order/order.service'
-import { UserEntity } from '@/modules/user/entities/user.entity'
+import { ExcelColorPalette } from '@common/constants/excel-color-palette'
+import { applyCommonStyles, type AutoFitColumnOptions, autoFitColumns } from '@common/helpers'
+import { SuperJson } from '@common/utils'
+import { DATA_SOURCE_DATA_LAKE } from '@databases/constants'
+import { OrderService } from '@modules/order/order.service'
+import { UserEntity } from '@modules/user/entities/user.entity'
 import { Injectable } from '@nestjs/common'
 import { OnEvent } from '@nestjs/event-emitter'
 import { InjectDataSource } from '@nestjs/typeorm'
@@ -12,22 +12,18 @@ import { Workbook } from 'exceljs'
 import { intersection, isEmpty, isNil } from 'lodash'
 import { I18nContext, I18nService } from 'nestjs-i18n'
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
-import { readFileSync } from 'node:fs'
-import { join } from 'node:path'
 import { Brackets, DataSource, Equal, In, IsNull, Not, UpdateResult } from 'typeorm'
 import { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity'
 import { InventoryType } from '../constants'
 import { UpdateInventoryReportDTO, UpdateInventoryReportQueryDTO } from '../dto/inventory-report.dto'
 import { InventoryAuditEntity } from '../entities/inventory-report.entity'
 import { IInventoryReportQueryResult, IInventoryReportResponse, IUpsertInventoryEventPayload } from '../interfaces'
+import inventoryReportQuery from '../sql/inventory-audit.sql'
+import upsertOutboundInventoryQuery from '../sql/upsert-outbound-inventory-audit.sql'
 
 @Injectable()
 export class InventoryAuditService {
-	private readonly inventoryReportQuery: string = readFileSync(join(__dirname, '../sql/inventory-audit.sql'), 'utf-8')
-	private readonly upsertOutboundInventory: string = readFileSync(
-		join(__dirname, '../sql/upsert-outbound-inventory-audit.sql'),
-		'utf-8'
-	)
+	private readonly upsertOutboundInventory: string = upsertOutboundInventoryQuery
 
 	constructor(
 		@InjectDataSource(DATA_SOURCE_DATA_LAKE) private readonly dataSource: DataSource,
@@ -37,7 +33,7 @@ export class InventoryAuditService {
 	) {}
 
 	public async getMonthlyInventoryAudit(month, factoryCode): Promise<IInventoryReportResponse> {
-		const data = await this.dataSource.query<IInventoryReportQueryResult[]>(this.inventoryReportQuery, [
+		const data = await this.dataSource.query<IInventoryReportQueryResult[]>(inventoryReportQuery, [
 			month,
 			factoryCode
 		])

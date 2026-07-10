@@ -1,5 +1,5 @@
-import { ExchangeMoFailedEvent } from '@/modules/inoutbound/domain/events/exchange-mo-failed/exchange-mo-failed.event'
-import { InoutboundGateway } from '@/modules/inoutbound/presentation/gateways/inoutbound.gateway'
+import { ExchangeMoFailedEvent } from '@modules/inoutbound/domain/events/exchange-mo-failed/exchange-mo-failed.event'
+import { InoutboundGateway } from '@modules/inoutbound/presentation/gateways/inoutbound.gateway'
 import { Inject } from '@nestjs/common'
 import { CommandHandler, EventBus, ICommandHandler } from '@nestjs/cqrs'
 import { I18nContext, I18nService } from 'nestjs-i18n'

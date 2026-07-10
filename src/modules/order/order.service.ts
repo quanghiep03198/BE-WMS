@@ -1,10 +1,10 @@
-import { DATA_SOURCE_ERP, RecordStatus } from '@/databases/constants'
+import { DATA_SOURCE_ERP, RecordStatus } from '@databases/constants'
 import { Inject, Injectable } from '@nestjs/common'
 import { InjectDataSource } from '@nestjs/typeorm'
-import { readFileSync } from 'fs-extra'
-import { join, resolve } from 'node:path'
 import { DataSource } from 'typeorm'
 import { InventoryActions } from '../inoutbound/domain/constants'
+import manfOrderSizeRunQuery from './sql/mo-size-run.sql'
+import purchaseOrderSizeRunQuery from './sql/po-size-run.sql'
 
 import { RFIDMatchEntity } from '../inoutbound/infrastructure/persistence/mssql/entities/rfid-match.entity'
 import { TENANCY_DATA_SOURCE } from '../tenancy/constants'
@@ -12,14 +12,8 @@ import { SizeRun } from './types'
 
 @Injectable()
 export class OrderService {
-	private readonly manfOrderSizeRunQuery: string = readFileSync(
-		resolve(join(__dirname, './sql/mo-size-run.sql')),
-		'utf-8'
-	)
-	private readonly purchaseOrderSizeRunQuery: string = readFileSync(
-		resolve(join(__dirname, './sql/po-size-run.sql')),
-		'utf-8'
-	)
+	private readonly manfOrderSizeRunQuery: string = manfOrderSizeRunQuery
+	private readonly purchaseOrderSizeRunQuery: string = purchaseOrderSizeRunQuery
 
 	constructor(
 		@Inject(TENANCY_DATA_SOURCE) private readonly dataSourceTNC: DataSource,

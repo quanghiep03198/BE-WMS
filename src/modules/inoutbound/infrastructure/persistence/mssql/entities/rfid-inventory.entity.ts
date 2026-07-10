@@ -1,6 +1,6 @@
-import { DATABASE_DATA_LAKE, DATABASE_SCHEMA } from '@/databases/constants'
-import { BaseAbstractEntity } from '@/modules/_base/base.abstract.entity'
-import { InventoryActions, InventoryStorageType } from '@/modules/inoutbound/domain/constants'
+import { DATABASE_DATA_LAKE, DATABASE_SCHEMA } from '@databases/constants'
+import { BaseAbstractEntity } from '@modules/_base/base.abstract.entity'
+import { InventoryActions, InventoryStorageType } from '@modules/inoutbound/domain/constants'
 import { Column, Entity } from 'typeorm'
 
 /**

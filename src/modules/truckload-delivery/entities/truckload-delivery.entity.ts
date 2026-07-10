@@ -1,6 +1,6 @@
-import { DATABASE_DATA_LAKE, DATABASE_SCHEMA } from '@/databases/constants'
-import { BoolBitTransformer } from '@/databases/transformers/bool.transformer'
-import { BaseAbstractEntity } from '@/modules/_base/base.abstract.entity'
+import { DATABASE_DATA_LAKE, DATABASE_SCHEMA } from '@databases/constants'
+import { BoolBitTransformer } from '@databases/transformers/bool.transformer'
+import { BaseAbstractEntity } from '@modules/_base/base.abstract.entity'
 import { BeforeInsert, BeforeUpdate, Column, Entity, Index } from 'typeorm'
 import { TruckloadDeliveryStatus } from '../constants'
 

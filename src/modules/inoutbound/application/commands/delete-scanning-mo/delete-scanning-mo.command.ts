@@ -1,4 +1,4 @@
-import { StockFlow } from '@/modules/inoutbound/domain/types'
+import { StockFlow } from '@modules/inoutbound/domain/types'
 import { Command } from '@nestjs/cqrs'
 
 export class DeleteScanningMoCommand extends Command<void> {

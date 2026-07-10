@@ -1,4 +1,4 @@
-import { DATA_SOURCE_DATA_LAKE } from '@/databases/constants'
+import { DATA_SOURCE_DATA_LAKE } from '@databases/constants'
 import { InjectDataSource } from '@nestjs/typeorm'
 import { DataSource, EntitySubscriberInterface, EventSubscriber, InsertEvent } from 'typeorm'
 import { RFIDMatchEntity } from '../entities/rfid-match.entity'
