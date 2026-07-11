@@ -26,7 +26,6 @@
 		/* Path alias */
 		"sourceRoot": "/",
 		"baseUrl": "./",
-		"rootDirs": ["./src"],
 		"ignoreDeprecations": "6.0",
 		"paths": {
 			"@/*": ["./src/*"],

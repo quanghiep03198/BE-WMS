@@ -6,13 +6,13 @@
 	"private": true,
 	"license": "GreenLand",
 	"scripts": {
-		"build": "nest build && npm run sentry:sourcemaps",
+		"build": "nest build -b swc && pnpm sentry:sourcemaps",
 		"format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
 		"start": "nest start",
 		"start:dev": "nest start -b swc --watch",
 		"start:debug": "nest start -b swc --debug --watch",
-		"start:prod": "bun dist/main",
-		"compodoc": "npx @compodoc/compodoc -p tsconfig.json -s --port 3003 -d ./.compodoc",
+		"start:prod": "node dist/main.js",
+		"compodoc": "pnpm @compodoc/compodoc -p tsconfig.json -s --port 3003 -d ./.compodoc",
 		"pm2:start": "pm2 start ecosystem.config.js",
 		"lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
 		"test": "jest",
@@ -143,6 +143,7 @@
 		"ts-loader": "^9.6.0",
 		"ts-node": "^10.9.2",
 		"tsconfig-paths": "^4.2.0",
+		"@typescript/native": "npm:typescript@^7.0.2",
 		"typescript": "npm:@typescript/typescript6@^6.0.2"
 	},
 	"jest": {

@@ -13,6 +13,7 @@
 		"builder": {
 			"type": "swc",
 			"options": {
+				"stripLeadingPaths": true,
 				"swcrcPath": "infrastructure/.swcrc"
 			}
 		},
