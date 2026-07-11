@@ -8,8 +8,11 @@ import { Queue } from 'bullmq'
 import { FastifyRequest } from 'fastify'
 import { uniqBy } from 'lodash'
 import { PaginateModel } from 'mongoose'
-import { FALLBACK_VALUE } from '../inoutbound/domain/constants'
-import { EpcDocument, EpcInbound } from '../inoutbound/infrastructure/persistence/mongodb/schemas/inventory-epc.schema'
+import { FALLBACK_VALUE } from '../finished-goods/domain/constants'
+import {
+	EpcDocument,
+	EpcInbound
+} from '../finished-goods/infrastructure/persistence/mongodb/schemas/finished-goods-epc.schema'
 import { UserRole } from '../user/constants'
 import { THIRD_PARTY_API_SYNC } from './constants'
 import { ThirdPartyApiService } from './third-party-api.service'

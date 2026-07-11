@@ -1,13 +1,13 @@
-import { Inject, Injectable, OnApplicationShutdown, OnModuleDestroy } from '@nestjs/common'
+import { Injectable, OnApplicationShutdown, OnModuleDestroy } from '@nestjs/common'
 import { Redis } from 'ioredis'
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
-import { REDIS_PUBLISHER, REDIS_SUBSCRIBER } from './constants'
+import { InjectPublisher, InjectSubscriber } from './decorators'
 
 @Injectable()
 export class RedisService implements OnModuleDestroy, OnApplicationShutdown {
 	constructor(
-		@Inject(REDIS_PUBLISHER) private readonly publisher: Redis,
-		@Inject(REDIS_SUBSCRIBER) private readonly subscriber: Redis,
+		@InjectPublisher() private readonly publisher: Redis,
+		@InjectSubscriber() private readonly subscriber: Redis,
 		@InjectPinoLogger(RedisService.name) private readonly logger: PinoLogger
 	) {}
 

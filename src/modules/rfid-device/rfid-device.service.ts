@@ -1,9 +1,9 @@
 import { SuperJson } from '@common/utils'
 import { DATA_SOURCE_DATA_LAKE } from '@databases/constants'
-import { Inject, Injectable } from '@nestjs/common'
+import { Injectable } from '@nestjs/common'
 import { OnEvent } from '@nestjs/event-emitter'
 import { InjectDataSource } from '@nestjs/typeorm'
-import { REDIS_CLIENT } from '@redis/constants'
+import { InjectRedisClient } from '@redis/decorators'
 import Redis from 'ioredis'
 import { isNil } from 'lodash'
 import { PinoLogger } from 'nestjs-pino'
@@ -12,7 +12,7 @@ import {
 	CreateRFIDDeviceDTO,
 	DeleteRFIDDeviceDTO,
 	UpdateRFIDDeviceDTO
-} from '../inoutbound/presentation/dto/rfid-device.dto'
+} from '../finished-goods/presentation/dto/rfid-device.dto'
 import { RFIDDeviceEntity } from './entities/rfid-device.entity'
 import { ExtendedRFIDReaderEntity } from './types'
 
@@ -23,7 +23,7 @@ export class RFIDDeviceService {
 	private readonly CACHE_TTL_MILLISECONDS = this.CACHE_TTL_SECONDS * 1000 // 7 days
 
 	constructor(
-		@Inject(REDIS_CLIENT) private readonly redisClient: Redis,
+		@InjectRedisClient() private readonly redisClient: Redis,
 		@InjectDataSource(DATA_SOURCE_DATA_LAKE) private readonly dataSourceDL: DataSource,
 		private readonly logger: PinoLogger
 	) {}

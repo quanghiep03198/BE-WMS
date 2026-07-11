@@ -24,7 +24,7 @@ import { EventGateway } from './events/event.gateway'
 import { AuthModule } from './modules/auth/auth.module'
 import { DefectiveGoodsModule } from './modules/defective-goods/defective-goods.module'
 import { DepartmentModule } from './modules/department/department.module'
-import { InoutboundModule } from './modules/inoutbound/inoutbound.module'
+import { FinishedGoodsModule } from './modules/finished-goods/finished-goods.module'
 import { InventoryModule } from './modules/inventory/inventory.module'
 import { OrderModule } from './modules/order/order.module'
 import { PackingModule } from './modules/packing/packing.module'
@@ -148,7 +148,7 @@ import { ScheduleTasks } from './tasks'
 		OrderModule,
 		PackingModule,
 		ReportModule,
-		InoutboundModule,
+		FinishedGoodsModule,
 		TenancyModule,
 		ThirdPartyApiModule,
 		InventoryModule,

@@ -4,11 +4,11 @@ import { WsExceptionsFilter } from '@common/filters'
 import { WsZodValidationPipe } from '@common/pipes/ws-validation.pipe'
 import { env } from '@common/utils'
 import { DATA_WAREHOUSE_CONNECTION } from '@databases/constants'
-import { FALLBACK_VALUE } from '@modules/inoutbound/domain/constants'
+import { FALLBACK_VALUE } from '@modules/finished-goods/domain/constants'
 import {
 	EpcDocument,
 	EpcInbound
-} from '@modules/inoutbound/infrastructure/persistence/mongodb/schemas/inventory-epc.schema'
+} from '@modules/finished-goods/infrastructure/persistence/mongodb/schemas/finished-goods-epc.schema'
 import { SYNC_INVENTORY_AUDIT_QUEUE } from '@modules/inventory/constants'
 import { THIRD_PARTY_API_SYNC } from '@modules/third-party-api/constants'
 import { SyncDataMessageDTO, syncDataMessageValidator } from '@modules/third-party-api/dto/third-party-api.dto'

@@ -28,7 +28,7 @@
 		"baseUrl": "./",
 		"ignoreDeprecations": "6.0",
 		"paths": {
-			"@/*": ["./src/*"],
+			// "@/*": ["./src/*"],
 			"@common/*": ["./src/common/*"],
 			"@config/*": ["./src/config/*"],
 			"@databases/*": ["./src/databases/*"],
@@ -42,5 +42,5 @@
 		"types": ["node", "jest"]
 	},
 	"include": ["src", "test", "src/instrument.ts", "global.d.ts"],
-	"exclude": ["node_modules", "dist", ".tmp"]
+	"exclude": ["node_modules", "dist", "deprecated", ".tmp"]
 }
