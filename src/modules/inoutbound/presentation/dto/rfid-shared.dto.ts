@@ -26,7 +26,7 @@ export const readerPostDataValidator = z.object({
 	})
 })
 
-export const findEpcBySizeValidator = z.object({
+export const getEpcBySizeValidator = z.object({
 	'mo_no:eq': z.string(),
 	'size_numcode:eq': z.string()
 })
@@ -66,6 +66,6 @@ export type SearchCustOrderParamsDTO = z.infer<typeof searchCustomerValidator> &
 }
 export type PostReaderDataDTO = z.infer<typeof readerPostDataValidator>
 export type DeleteScannedEpcDTO = z.infer<typeof deleteEpcValidator>
-export type FindEpcBySizeDTO = z.infer<typeof findEpcBySizeValidator>
+export type FindEpcBySizeDTO = z.infer<typeof getEpcBySizeValidator>
 export type UploadDataDTO = z.infer<typeof uploadDataValidator>
 export type RestoreArchivedEpcsDTO = z.infer<typeof restoreArchivedEpcValidator>

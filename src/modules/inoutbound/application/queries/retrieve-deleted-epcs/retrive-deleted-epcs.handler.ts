@@ -22,7 +22,7 @@ export class RetriveDeletedEpcsHandler implements IQueryHandler<RetriveDeletedEp
 			outboundScanNotDetected: filterQuery.outbound_device_sn === 'undetectable'
 		}
 
-		const query = MongoQueryBuilder.createQueryBuilder(filterQuery)
+		const query = MongoQueryBuilder.from(filterQuery)
 			.withEqualFields('scannable', 'mo_no', 'factory_shoes_style', 'size_numcode')
 			.withMatchRegexBy('epc')
 			.when(filterCase.isInboundFlow, (builder) => builder.withNullBy('inbound_at'))

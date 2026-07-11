@@ -71,6 +71,7 @@ export class RFIDInboundController {
 	@UseFilters(AllExceptionsFilter)
 	async streamInboundRFIDData(
 		@Headers(CommonRequestHeader.RFID_READER_ID) deviceSerialNumber: string,
+		@Query('_page', new DefaultValuePipe(1), ParseIntPipe) page: number,
 		@Res()
 		reply: FastifyReply & {
 			sse: (data: {
@@ -82,12 +83,14 @@ export class RFIDInboundController {
 	) {
 		if (!deviceSerialNumber) throw new BadRequestException('Cannot detect RFID device serial number')
 
+		const stockFlow = 'inbound' as const
+
 		const handleChange = async () => {
 			const [epcs, orders, has_invalid] = await Promise.all([
 				this.queryBus.execute(
-					new GetScanningEpcsQuery('inbound', { page: 1, limit: 50 }, { inbound_device_sn: deviceSerialNumber })
+					new GetScanningEpcsQuery(stockFlow, { page: page, limit: 50 }, { inbound_device_sn: deviceSerialNumber })
 				),
-				this.queryBus.execute(new GetScanningMosQuery({ 'inbound_device_sn:eq': deviceSerialNumber })),
+				this.queryBus.execute(new GetScanningMosQuery(stockFlow, deviceSerialNumber)),
 				this.queryBus.execute(new GetInternalEpcsExistsQuery({ 'inbound_device_sn:eq': deviceSerialNumber }))
 			])
 
@@ -105,6 +108,22 @@ export class RFIDInboundController {
 			changeStream.close()
 			reply.raw.end()
 		})
+	}
+
+	@Public()
+	@RouteHandler({
+		endpoint: 'post-data',
+		method: HttpMethod.POST,
+		statusCode: HttpStatus.CREATED,
+		message: 'common.created'
+	})
+	async postInboundData(@Body(new ZodValidationPipe(readerPostDataValidator)) payload: PostReaderDataDTO) {
+		// this.eventEmitter.emitAsync('rfid.reader.post_data', {
+		// 	deviceSeriesNumber: payload.sn,
+		// 	lastUsageTime: format(new Date(), 'yyyy-MM-dd HH:mm:ss.SSS')
+		// })
+		this.eventEmitter.emitAsync('rfid.inbound.check', payload)
+		return await this.postInboundDataQueue.add('BULK_WRITE_SCANNING_INBOUND_DATA', payload, { lifo: true })
 	}
 
 	@Get('enable_deduplicate_inbound_epc')
@@ -129,40 +148,6 @@ export class RFIDInboundController {
 	}
 
 	@RouteHandler({
-		endpoint: 'fetch-epc',
-		method: HttpMethod.GET
-	})
-	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
-	async fetchNextInboundEpc(
-		@Headers(CommonRequestHeader.RFID_READER_ID) deviceSerialNumber: string,
-		@Query('_page', new DefaultValuePipe(1), ParseIntPipe) page: number,
-		@Query('mo_no:eq') selectedOrder: string
-	) {
-		return await this.queryBus.execute(
-			new GetScanningEpcsQuery(
-				'inbound',
-				{
-					page: page,
-					limit: 50
-				},
-				{
-					inbound_device_sn: deviceSerialNumber,
-					mo_no: selectedOrder
-				}
-			)
-		)
-	}
-
-	@RouteHandler({
-		endpoint: 'manufacturing-order-detail',
-		method: HttpMethod.GET
-	})
-	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
-	async getOrderDetails(@Headers(CommonRequestHeader.RFID_READER_ID) deviceSerialNumber: string) {
-		return await this.queryBus.execute(new GetScanningMosQuery({ 'inbound_device_sn:eq': deviceSerialNumber }))
-	}
-
-	@RouteHandler({
 		endpoint: 'stock-in',
 		method: HttpMethod.PUT,
 		statusCode: HttpStatus.CREATED,
@@ -182,6 +167,19 @@ export class RFIDInboundController {
 				display_name: user.display_name
 			})
 		)
+	}
+
+	@RouteHandler({
+		endpoint: 'search-exchangable-order',
+		method: HttpMethod.GET
+	})
+	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
+	async searchExchangableOrder(
+		@Headers(CommonRequestHeader.FACTORY_CODE) factory_code: string,
+		@Query(new ZodValidationPipe(searchCustomerValidator))
+		queries: SearchCustOrderParamsDTO
+	) {
+		return await this.queryBus.execute(new SearchExchangableMoQuery(queries.q, factory_code, queries['color_sn:eq']))
 	}
 
 	@RouteHandler({
@@ -219,34 +217,5 @@ export class RFIDInboundController {
 				payload.quantity
 			)
 		)
-	}
-
-	@Public()
-	@RouteHandler({
-		endpoint: 'post-data',
-		method: HttpMethod.POST,
-		statusCode: HttpStatus.CREATED,
-		message: 'common.created'
-	})
-	async postInboundData(@Body(new ZodValidationPipe(readerPostDataValidator)) payload: PostReaderDataDTO) {
-		// this.eventEmitter.emitAsync('rfid.reader.post_data', {
-		// 	deviceSeriesNumber: payload.sn,
-		// 	lastUsageTime: format(new Date(), 'yyyy-MM-dd HH:mm:ss.SSS')
-		// })
-		this.eventEmitter.emitAsync('rfid.inbound.check', payload)
-		return await this.postInboundDataQueue.add('RFID_INBOUND', payload, { lifo: true })
-	}
-
-	@RouteHandler({
-		endpoint: 'search-exchangable-order',
-		method: HttpMethod.GET
-	})
-	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
-	async searchExchangableOrder(
-		@Headers(CommonRequestHeader.FACTORY_CODE) factory_code: string,
-		@Query(new ZodValidationPipe(searchCustomerValidator))
-		queries: SearchCustOrderParamsDTO
-	) {
-		return await this.queryBus.execute(new SearchExchangableMoQuery(queries.q, factory_code, queries['color_sn:eq']))
 	}
 }

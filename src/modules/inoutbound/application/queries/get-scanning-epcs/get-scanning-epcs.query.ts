@@ -3,7 +3,7 @@ import { IQuery } from '@nestjs/cqrs'
 
 export class GetScanningEpcsQuery implements IQuery {
 	constructor(
-		public readonly flow: StockFlow,
+		public readonly stockFlow: StockFlow,
 		public readonly pagination: {
 			page: number
 			limit: number
@@ -11,6 +11,7 @@ export class GetScanningEpcsQuery implements IQuery {
 		public readonly filterQuery: {
 			mo_no?: string
 			inbound_device_sn?: string
+			outbound_device_sn?: string
 			inbound_at?: null
 			outbound_at?: null
 		}

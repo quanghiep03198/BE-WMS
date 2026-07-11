@@ -1,3 +1,4 @@
+import { MongoQueryBuilder } from '@/common/helpers/mongo-query-builder'
 import { DATA_WAREHOUSE_CONNECTION } from '@databases/constants'
 import { ScannedOrderDetail } from '@modules/inoutbound/domain/types'
 import {
@@ -14,26 +15,26 @@ export class GetScanningMosHandler implements IQueryHandler<GetScanningMosQuery>
 		@InjectModel(InventoryEpc.name, DATA_WAREHOUSE_CONNECTION) private readonly inventoryEpcModel: InventoryEpcModel
 	) {}
 
-	public async execute({ params }: GetScanningMosQuery) {
+	public async execute({ stockFlow, deviceSerialNumber }: GetScanningMosQuery) {
+		const query = MongoQueryBuilder.from({
+			scannable: true,
+			inbound_device_sn: deviceSerialNumber,
+			outbound_device_sn: undefined,
+			inbound_at: undefined,
+			outbound_at: undefined,
+			po: undefined
+		})
+			.withEqualBy('scannable')
+			.when(stockFlow === 'inbound', (builder) =>
+				builder.withEqualBy('inbound_device_sn').withNullishFields('inbound_at', 'outbound_at', 'po')
+			)
+			.when(stockFlow === 'outbound', (builder) => builder.withNonNullableFields('outbound_device_sn', 'inbound_at'))
+
 		return await this.inventoryEpcModel.aggregate<ScannedOrderDetail>(
 			[
 				// * Stage 1: Match documents that are not deleted
 				{
-					$match: {
-						scannable: true,
-						...(params['inbound_device_sn:eq'] && {
-							inbound_device_sn: params['inbound_device_sn:eq'],
-							inbound_at: null,
-							outbound_at: null,
-							po: null
-						}),
-						...(params['outbound_device_sn:eq'] && {
-							outbound_device_sn: params['outbound_device_sn:eq'],
-							inbound_at: { $ne: null },
-							outbound_at: null,
-							po: null
-						})
-					}
+					$match: query
 				},
 				// * Stage 2: Group by mo_no, color_sn, and factory_shoes_style, and aggregate sizes
 				{

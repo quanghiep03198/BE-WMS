@@ -16,15 +16,15 @@ export class GetScanningEpcsHandler implements IQueryHandler<GetScanningEpcsQuer
 		@InjectModel(InventoryEpc.name, DATA_WAREHOUSE_CONNECTION) private readonly inventoryEpcModel: InventoryEpcModel
 	) {}
 
-	public async execute({ flow, pagination, filterQuery }: GetScanningEpcsQuery) {
+	public async execute({ stockFlow, pagination, filterQuery }: GetScanningEpcsQuery) {
 		const queryHint = (() => {
 			let hint: string | undefined = undefined
 			switch (true) {
-				case flow === 'inbound': {
+				case stockFlow === 'inbound': {
 					hint = 'idx_inventory_epc_inbound_scan_page'
 					break
 				}
-				case flow === 'outbound': {
+				case stockFlow === 'outbound': {
 					hint = 'idx_inventory_epc_outbound_scan_page'
 					break
 				}
@@ -36,15 +36,17 @@ export class GetScanningEpcsHandler implements IQueryHandler<GetScanningEpcsQuer
 			return hint
 		})()
 
-		const query: FilterQuery<InventoryEpcDocument> = MongoQueryBuilder.createQueryBuilder({
-			...filterQuery,
-			scannable: true
+		const query: FilterQuery<InventoryEpcDocument> = MongoQueryBuilder.from({
+			scannable: true,
+			...filterQuery
 		})
-			.withEqualFields('scannable', 'mo_no', 'inbound_device_sn')
-			.withEqualBy('scannable')
-			.withEqualBy('mo_no')
-			.withEqualBy('inbound_device_sn')
-			.withNullBy('inbound_at')
+			.withEqualFields('scannable', 'mo_no')
+			.when(stockFlow === 'inbound', (builder) =>
+				builder.withEqualFields('inbound_device_sn').withNullishFields('inbound_at', 'outbound_at')
+			)
+			.when(stockFlow === 'outbound', (builder) =>
+				builder.withNonNullableFields('inbound_at', 'outbound_device_sn').withNullishFields('outbound_at')
+			)
 			.build()
 
 		const paginateResult = await this.inventoryEpcModel.paginate(query, {

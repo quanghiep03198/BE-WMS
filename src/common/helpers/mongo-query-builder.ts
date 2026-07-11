@@ -7,7 +7,7 @@ export class MongoQueryBuilder<T extends Record<string, unknown>> {
 
 	protected constructor(protected readonly entry: T) {}
 
-	public static createQueryBuilder<T extends Record<string, unknown>>(entry: T): MongoQueryBuilder<T> {
+	public static from<T extends Record<string, unknown>>(entry: T): MongoQueryBuilder<T> {
 		return new MongoQueryBuilder<T>(entry)
 	}
 
