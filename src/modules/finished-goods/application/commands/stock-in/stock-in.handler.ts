@@ -38,7 +38,7 @@ export class StockInHandler implements ICommandHandler<StockInCommand> {
 			const inboundTransaction = new StockTransaction('inbound', pendingInboundEpcs, currentInboundProgress)
 			const inboundEpcs = inboundTransaction.verify()
 
-			// * Perform the stock-in operation in the MSSQL repository
+			// * Perform the stock-in operation in the Single Source of Truth (MSSQL) database
 			await this.inoutboundMssqlRepository.stockIn(inboundEpcs, command)
 
 			// * Apply the StockedInEvent to the transaction and commit it

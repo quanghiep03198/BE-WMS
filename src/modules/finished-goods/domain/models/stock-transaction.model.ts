@@ -10,7 +10,7 @@ export class StockTransaction extends AggregateRoot {
 	private readonly id: string = randomBytes(8).toString('hex')
 
 	constructor(
-		private readonly stocckFlow: StockFlow,
+		private readonly stockFlow: StockFlow,
 		private readonly pendingInboundProductCodes: Array<ElectronicProductCode>,
 		private readonly currentProgress: Array<{
 			size_numcode: SizeNumber
