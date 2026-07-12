@@ -96,7 +96,7 @@ export class RFIDSharedController {
 
 	@Public()
 	@RouteHandler({
-		endpoint: 'post-data',
+		endpoint: 'outbound/post-data',
 		method: HttpMethod.POST,
 		statusCode: HttpStatus.CREATED,
 		message: 'common.created'
@@ -122,7 +122,7 @@ export class RFIDSharedController {
 	}
 
 	@RouteHandler({
-		endpoint: ':stockFlow/scanning-mos',
+		endpoint: ':stockFlow/scanning-manufacturing-orders',
 		method: HttpMethod.GET
 	})
 	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
@@ -231,7 +231,7 @@ export class RFIDSharedController {
 	}
 
 	@RouteHandler({
-		endpoint: '/:stockFlow/delete-scanning-mo/:manufacturingOrder',
+		endpoint: '/:stockFlow/scanning-manufacturing-orders/delete/:manufacturingOrder',
 		method: HttpMethod.DELETE,
 		statusCode: HttpStatus.OK,
 		message: 'common.deleted'
@@ -246,7 +246,7 @@ export class RFIDSharedController {
 	}
 
 	@RouteHandler({
-		endpoint: 'delete-scanning-epcs',
+		endpoint: 'scanning-epcs/delete',
 		method: HttpMethod.POST,
 		statusCode: HttpStatus.OK,
 		message: 'common.deleted'

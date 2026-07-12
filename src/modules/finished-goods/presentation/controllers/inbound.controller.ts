@@ -146,7 +146,7 @@ export class RFIDInboundController {
 	}
 
 	@RouteHandler({
-		endpoint: 'exchange-epc',
+		endpoint: 'exchange-manufacturing-order',
 		method: HttpMethod.PATCH,
 		statusCode: HttpStatus.CREATED,
 		message: 'common.updated'
