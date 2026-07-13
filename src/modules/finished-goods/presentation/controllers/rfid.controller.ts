@@ -29,6 +29,9 @@ import {
 
 import { CommonRequestHeader } from '@common/constants'
 import { AllExceptionsFilter } from '@common/filters'
+import { CreateEpcChangeStreamCommand } from '@modules/finished-goods/application/commands/create-epc-change-stream/create-epc-change-stream.command'
+import { GetInternalEpcsExistsQuery } from '@modules/finished-goods/application/queries/get-internal-epcs-exists/get-internal-epcs-exists.query'
+import { FinishedGoodsEpcDocument } from '@modules/finished-goods/infrastructure/persistence/mongodb/schemas/finished-goods-epc.schema'
 import { UserRole } from '@modules/user/constants'
 import { CACHE_MANAGER } from '@nestjs/cache-manager'
 import { CommandBus, QueryBus } from '@nestjs/cqrs'
@@ -37,6 +40,7 @@ import { RedisService } from '@redis/redis.service'
 import { Cache } from 'cache-manager'
 import { format } from 'date-fns'
 import { FastifyReply } from 'fastify'
+import { PaginateResult } from 'mongoose'
 import { DeleteScanningEpcsCommand } from '../../application/commands/delete-scanning-epcs/delete-scanning-epcs.command'
 import { DeleteScanningMoCommand } from '../../application/commands/delete-scanning-mo/delete-scanning-mo.command'
 import { RestoreDeletedEpcsCommand } from '../../application/commands/restore-deleted-epcs/restore-deleted-epcs.command'
@@ -45,7 +49,7 @@ import { GetScanningEpcsBySizeQuery } from '../../application/queries/get-scanni
 import { GetScanningEpcsQuery } from '../../application/queries/get-scanning-epcs/get-scanning-epcs.query'
 import { GetScanningMosQuery } from '../../application/queries/get-scanning-mo/get-scanning-mo.query'
 import { RetriveDeletedEpcsQuery } from '../../application/queries/retrieve-deleted-epcs/retrive-deleted-epcs.query'
-import { StockFlow } from '../../domain/types'
+import { ScannedOrderDetail, StockFlow } from '../../domain/types'
 import { CsvFileValidationPipe } from '../../infrastructure/pipes/csv-validation.pipe'
 import { RFIDSearchParams } from '../../infrastructure/types'
 import {
@@ -73,6 +77,87 @@ export class RFIDSharedController {
 		private readonly commandBus: CommandBus,
 		private readonly queryBus: QueryBus
 	) {}
+
+	@Get('inbound/sse')
+	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
+	@UseFilters(AllExceptionsFilter)
+	async streamInboundRFIDData(
+		@Headers(CommonRequestHeader.RFID_READER_ID) deviceSerialNumber: string,
+		@Query('_page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+		@Res()
+		reply: FastifyReply & {
+			sse: (data: {
+				epcs: PaginateResult<FinishedGoodsEpcDocument>
+				orders: ScannedOrderDetail[]
+				has_invalid: boolean
+			}) => void
+		}
+	) {
+		if (!deviceSerialNumber) throw new BadRequestException('Cannot detect RFID device serial number')
+
+		const stockFlow = 'inbound' as const
+
+		const handleChange = async () => {
+			const [epcs, orders, has_invalid] = await Promise.all([
+				this.queryBus.execute(
+					new GetScanningEpcsQuery(stockFlow, { page: page, limit: 50 }, { inbound_device_sn: deviceSerialNumber })
+				),
+				this.queryBus.execute(new GetScanningMosQuery(stockFlow, deviceSerialNumber)),
+				this.queryBus.execute(new GetInternalEpcsExistsQuery({ 'inbound_device_sn:eq': deviceSerialNumber }))
+			])
+
+			reply.sse({ epcs, orders, has_invalid })
+		}
+
+		await handleChange()
+
+		const changeStream = await this.commandBus.execute(
+			new CreateEpcChangeStreamCommand({ 'fullDocument.inbound_device_sn': deviceSerialNumber }, handleChange)
+		)
+
+		reply.raw.on('close', async () => {
+			changeStream.removeListener('change', handleChange)
+			changeStream.close()
+			reply.raw.end()
+		})
+	}
+
+	@Get('outbound/sse')
+	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
+	@UseFilters(AllExceptionsFilter)
+	async streamOutboundRFIDData(
+		@Res()
+		reply: FastifyReply & {
+			sse: (data: {
+				epcs: PaginateResult<FinishedGoodsEpcDocument>
+				orders: ScannedOrderDetail[]
+				// has_invalid: boolean
+			}) => void
+		}
+	) {
+		const stockFlow: StockFlow = 'outbound'
+
+		const handleChange = async () => {
+			const [epcs, orders] = await Promise.all([
+				this.queryBus.execute(new GetScanningEpcsQuery(stockFlow, { page: 1, limit: 50 }, {})),
+				this.queryBus.execute(new GetScanningMosQuery(stockFlow))
+				// this.queryBus.execute(new GetInternalEpcsExistsQuery())
+			])
+
+			reply.sse({ epcs, orders })
+		}
+		await handleChange()
+		const changeStream = await this.commandBus.execute(
+			new CreateEpcChangeStreamCommand({ 'fullDocument.outbound_device_sn': { $ne: null } }, handleChange)
+		)
+
+		reply.raw.on('close', async () => {
+			changeStream.removeListener('change', handleChange)
+			await changeStream.close()
+
+			reply.raw.end()
+		})
+	}
 
 	@Public()
 	@RouteHandler({

@@ -9,9 +9,8 @@ import { CACHE_MANAGER } from '@nestjs/cache-manager'
 import { Inject, Injectable } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
 import { Cache } from 'cache-manager'
-import { AnyBulkWriteOperation, FilterQuery, MongooseError } from 'mongoose'
+import { AnyBulkWriteOperation, FilterQuery, MongooseError, type PipelineStage } from 'mongoose'
 import { FinishedGoodsEpc, FinishedGoodsEpcDocument, FinishedGoodsEpcModel } from '../schemas/finished-goods-epc.schema'
-
 @Injectable()
 export class InoutboundMongoRepository implements IIoMongoRepository {
 	constructor(
@@ -45,8 +44,73 @@ export class InoutboundMongoRepository implements IIoMongoRepository {
 		).filter((item) => item.getIsWritable())
 	}
 
-	public async getPendingOutboundEpcs() {
-		throw new Error('Method not implemented.')
+	public async getPendingOutboundEpcs(
+		manufacturingOrders: string | Array<string>,
+		outboundSizeQuantities?: Array<{ size_numcode: string; qty: number }>
+	): Promise<ElectronicProductCode[]> {
+		const baseFilterQuery: FilterQuery<FinishedGoodsEpcDocument> = {
+			$or: [{ deleted: false }, { deleted: null }],
+			scannable: true
+		}
+
+		if (typeof manufacturingOrders === 'string' && !Array.isArray(outboundSizeQuantities)) {
+			const pendingOutboundEpcs = await this.finishedGoodsEpcModel
+				.find({ ...baseFilterQuery, mo_no: manufacturingOrders })
+				.lean(true)
+
+			return ElectronicProductCode.createFactory(
+				pendingOutboundEpcs.map((item) => ({
+					sku: item.epc,
+					attributes: {
+						mo_no: item.mo_no,
+						factory_shoes_style: item.factory_shoes_style,
+						color_sn: item.color_sn,
+						size_numcode: item.size_numcode,
+						factory_code_produce: item.factory_code_produce,
+						po: item.po
+					}
+				}))
+			)
+		}
+
+		const facetPipeline = outboundSizeQuantities.reduce<PipelineStage.Facet['$facet']>((acc, curr) => {
+			return {
+				...acc,
+				[curr.size_numcode.replace('.', '')]: [
+					{ $match: { ...baseFilterQuery, mo_no: manufacturingOrders, size_numcode: curr.size_numcode } },
+					{
+						$project: {
+							_id: 0,
+							epc: 1,
+							mo_no: 1,
+							size_numcode: 1,
+							station_no: 1,
+							factory_code_produce: 1
+						}
+					},
+					{ $limit: curr.qty }
+				]
+			}
+		}, {})
+		const aggregatedEpcData = await this.finishedGoodsEpcModel.aggregateWithDeleted([{ $facet: facetPipeline }])
+		const extractedValues = Object.values<Partial<FinishedGoodsEpcDocument>[]>(aggregatedEpcData[0])
+		const pendingOutboundEpcs = extractedValues.every((facetGroup) => Array.isArray(facetGroup))
+			? extractedValues.flat()
+			: []
+
+		return ElectronicProductCode.createFactory(
+			pendingOutboundEpcs.map((item) => ({
+				sku: item.epc,
+				attributes: {
+					mo_no: item.mo_no,
+					factory_shoes_style: item.factory_shoes_style,
+					color_sn: item.color_sn,
+					size_numcode: item.size_numcode,
+					factory_code_produce: item.factory_code_produce,
+					po: item.po
+				}
+			}))
+		)
 	}
 
 	public async getPendingExchangeEpcs(query: {

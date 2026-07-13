@@ -16,6 +16,7 @@ import { RFIDInventoryBackupEntity, RFIDInventoryEntity } from '../entities/rfid
 import { RFIDMatchEntity } from '../entities/rfid-match.entity'
 import moInboundProgressQuery from '../sql/mo-inbound-progress.sql'
 import moSizeRunQuery from '../sql/mo-size-run.sql'
+import poOutboundProgressQuery from '../sql/po-outbound-progess.sql'
 import upsertInboundQuery from '../sql/upsert-inbound.sql'
 
 @Injectable()
@@ -79,27 +80,31 @@ export class InoutboundMssqlRepository implements IIoMssqlRepository {
 		)
 	}
 
-	public async getMoInboundProgress(
-		manufacturingOrder: string,
-		pendingInboundEpcs: ElectronicProductCode[]
-	): Promise<
-		Array<{
-			size_numcode: SizeNumber
-			size_qty: number
-			accumulated_inbound_qty: number
-		}>
-	> {
-		const sql: string = moInboundProgressQuery
-
+	public async getMoInboundProgress(manufacturingOrder: string, pendingInboundEpcs: ElectronicProductCode[]) {
 		const queryResult = await this.dataSourceDL.query<
 			Array<{
 				size_numcode: string
 				size_qty: number
-				accumulated_inbound_qty: number
+				accumulated_qty: number
 			}>
-		>(sql, [
+		>(moInboundProgressQuery, [
 			manufacturingOrder,
 			JSON.stringify(pendingInboundEpcs.map((e) => ({ epc: e.getStockKeepingUnit(), size_numcode: e.getSize() })))
+		])
+
+		return queryResult.map((record) => ({ ...record, size_numcode: new SizeNumber(record.size_numcode) }))
+	}
+
+	public async getPoOutboundProgress(purchaseOrder: string, pendingOutboundEpcs: ElectronicProductCode[]) {
+		const queryResult = await this.dataSourceDL.query<
+			Array<{
+				size_numcode: string
+				size_qty: number
+				accumulated_qty: number
+			}>
+		>(poOutboundProgressQuery, [
+			purchaseOrder,
+			JSON.stringify(pendingOutboundEpcs.map((e) => ({ epc: e.getStockKeepingUnit(), size_numcode: e.getSize() })))
 		])
 
 		return queryResult.map((record) => ({ ...record, size_numcode: new SizeNumber(record.size_numcode) }))
@@ -145,8 +150,6 @@ export class InoutboundMssqlRepository implements IIoMssqlRepository {
 
 	@Transactional<TransactionalAdapterTypeOrm>(DATA_SOURCE_DATA_LAKE)
 	public async stockIn(epcs: ReadonlyArray<ElectronicProductCode>, stockInDetails: StockInDTO): Promise<void> {
-		const sql: string = upsertInboundQuery
-
 		const upsertPayload = epcs
 			.filter((item) => item.getIsWritable() && !item.getIsInternal())
 			.map((item) => {
@@ -163,7 +166,7 @@ export class InoutboundMssqlRepository implements IIoMssqlRepository {
 
 		await Promise.all(
 			chunk(upsertPayload, 100).map(async (item) => {
-				return await this.txHostDL.tx.query(sql, [JSON.stringify(item)])
+				return await this.txHostDL.tx.query(upsertInboundQuery, [JSON.stringify(item)])
 			})
 		)
 	}

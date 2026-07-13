@@ -1,4 +1,5 @@
 import { AggregateRoot } from '@nestjs/cqrs'
+import { ExchangeMoSuccessEvent } from '../events/exchange-mo-success/exchange-mo-success.event'
 import {
 	MismatchingMoSpecsException,
 	MismatchingSizeNumberException,
@@ -25,7 +26,7 @@ export class MoExchangeTransaction extends AggregateRoot {
 		super()
 	}
 
-	public validate() {
+	public startTransaction() {
 		const pendingExchangeSkus = this.getPendingExchangeSkus()
 
 		if (pendingExchangeSkus.length === 0) throw new NoExchangableEpcException()
@@ -49,6 +50,8 @@ export class MoExchangeTransaction extends AggregateRoot {
 		if (!isSizeNumberMatching) {
 			throw new MismatchingSizeNumberException()
 		}
+
+		this.apply(new ExchangeMoSuccessEvent(pendingExchangeSkus, this.getTargetMo()))
 
 		return pendingExchangeSkus
 	}

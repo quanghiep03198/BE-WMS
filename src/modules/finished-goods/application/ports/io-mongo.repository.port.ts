@@ -12,7 +12,10 @@ export interface IIoMongoRepository {
 	}): Promise<void>
 
 	getPendingInboundEpcs(deviceSerialNumber: string, manufacturingOrder: string): Promise<ElectronicProductCode[]>
-	getPendingOutboundEpcs(manufacturingOrder: string): Promise<ElectronicProductCode[]>
+	getPendingOutboundEpcs(
+		manufacturingOrder: string | Array<string>,
+		pendingOutboundSizeQuantities: Array<{ size_numcode: string; qty: number }>
+	): Promise<ElectronicProductCode[]>
 
 	getPendingExchangeMos(
 		deviceSerialNumber: string,

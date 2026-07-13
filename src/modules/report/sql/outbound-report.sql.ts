@@ -27,7 +27,7 @@ WITH base_data AS (
       i.isactive = 'Y'
       AND i.rfid_status = 'B'
       AND RIGHT(i.stationNO, 5) = 'WH103'
-      AND i.FC_server_code = @0
+      -- AND i.FC_server_code = @0
       AND i.po IS NOT NULL
       AND i.mo_no NOT IN ('13D05B006', '13A08C003')
       AND i.EPC_Code NOT LIKE '303429%'
@@ -38,6 +38,7 @@ WITH base_data AS (
       i.EPC_Code, 
       i.po, 
       i.mo_no, 
+      -- i.size_code,
       CASE 
          WHEN LEFT(CAST(i.size_code AS NVARCHAR(10)), 1) = '0' THEN i.size_code
          WHEN ISNUMERIC(i.size_code) = 1 
@@ -59,7 +60,7 @@ WITH base_data AS (
       i.isactive = 'Y'
       AND i.rfid_status = 'B'
       AND RIGHT(i.stationNO, 5) = 'WH103'
-      AND i.FC_server_code = @0
+      -- AND i.FC_server_code = @0
       AND i.po IS NOT NULL
       AND i.mo_no NOT IN ('13D05B006', '13A08C003')
       AND i.EPC_Code NOT LIKE '303429%'
@@ -247,7 +248,6 @@ GROUP BY dd.po, dd.shoestyle_codefactory, dd.color_sn, pi.po_qty, paoq.po_acc_ou
 ORDER BY dd.po ASC
 OPTION (
 	OPTIMIZE FOR UNKNOWN,                           -- * Avoid "Paramenter Sniffing" issues
-	USE HINT('ENABLE_PARALLEL_PLAN_PREFERENCE'),    -- * Prioritize parallel plan
-   RECOMPILE
+   KEEPFIXED PLAN
 );
 `

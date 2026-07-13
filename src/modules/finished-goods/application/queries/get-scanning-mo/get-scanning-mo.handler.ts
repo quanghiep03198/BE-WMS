@@ -7,11 +7,13 @@ import {
 } from '@modules/finished-goods/infrastructure/persistence/mongodb/schemas/finished-goods-epc.schema'
 import { IQueryHandler, QueryHandler } from '@nestjs/cqrs'
 import { InjectModel } from '@nestjs/mongoose'
+import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
 import { GetScanningMosQuery } from './get-scanning-mo.query'
 
 @QueryHandler(GetScanningMosQuery)
 export class GetScanningMosHandler implements IQueryHandler<GetScanningMosQuery> {
 	constructor(
+		@InjectPinoLogger(GetScanningMosHandler.name) private readonly logger: PinoLogger,
 		@InjectModel(FinishedGoodsEpc.name, DATA_WAREHOUSE_CONNECTION)
 		private readonly finishedGoodsEpcModel: FinishedGoodsEpcModel
 	) {}
@@ -30,6 +32,9 @@ export class GetScanningMosHandler implements IQueryHandler<GetScanningMosQuery>
 				builder.withEqualBy('inbound_device_sn').withNullishFields('inbound_at', 'outbound_at', 'po')
 			)
 			.when(stockFlow === 'outbound', (builder) => builder.withNonNullableFields('outbound_device_sn', 'inbound_at'))
+			.build()
+
+		this.logger.debug(query)
 
 		return await this.finishedGoodsEpcModel.aggregate<ScannedOrderDetail>(
 			[

@@ -1,10 +1,15 @@
 ﻿export default /* SQL */ `
 WITH mo_size_qty AS (
 	SELECT
-		REPLACE(CASE 
-			WHEN ISNUMERIC(b.size_numcode) = 1 THEN CAST(b.size_numcode AS FLOAT) 
-			WHEN LEFT(b.size_numcode, 1) IN ('T', 'K') THEN CAST(SUBSTRING(b.size_numcode, 2, LEN(b.size_numcode)) AS FLOAT)
-		END) AS size_numcode, 
+		REPLACE(
+			TRANSLATE(
+				UPPER(b.size_numcode), 
+				'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 
+				'                          '
+			),
+				' ',
+				''
+		) AS size_numcode,
 		SUM(CAST(b.size_qty AS INT)) AS size_qty
 	FROM wuerp_vnrd.dbo.ta_ordersizerun a
 	LEFT JOIN wuerp_vnrd.dbo.ta_ordermst or1 ON or1.or_no = a.or_no
@@ -57,7 +62,7 @@ WITH mo_size_qty AS (
 	WHERE b.size_qty <> 0
 	AND a.isactive = 'Y'
 	AND a1.mo_no = @0
-	GROUP BY a.size_code, b.size_numcode
+	GROUP BY b.size_numcode
 ),
 incomming_inbound_epcs AS (
 	SELECT JSON_VALUE(value, '$.epc') AS EPC_Code

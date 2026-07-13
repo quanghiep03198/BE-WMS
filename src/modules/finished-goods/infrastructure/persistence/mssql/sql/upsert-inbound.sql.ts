@@ -1,25 +1,23 @@
 ﻿export default /* SQL */ `
 DECLARE @JsonData NVARCHAR(MAX) = @0;
 
-WITH CTE AS (
-   SELECT 
-      JSON_VALUE(value, '$.epc') EPC_Code,
-      JSON_VALUE(value, '$.mo_no') mo_no,
-      JSON_VALUE(value, '$.size_numcode') size_code,
-      JSON_VALUE(value, '$.rfid_status') rfid_status,
-      JSON_VALUE(value, '$.rfid_use') rfid_use,
-      JSON_VALUE(value, '$.station_no') stationNO,
-      JSON_VALUE(value, '$.quantity') quantity,
-      JSON_VALUE(value, '$.storage') storage,
-      JSON_VALUE(value, '$.factory_code') FC_server_code,
-      JSON_VALUE(value, '$.dept_code') dept_code,
-      JSON_VALUE(value, '$.dept_name') dept_name
+WITH source_data AS (
+   SELECT
+      JSON_VALUE(value, '$.epc') AS EPC_Code,
+      JSON_VALUE(value, '$.mo_no') AS mo_no,
+      JSON_VALUE(value, '$.size_numcode') AS size_code,
+      JSON_VALUE(value, '$.rfid_status') AS rfid_status,
+      JSON_VALUE(value, '$.rfid_use') AS rfid_use,
+      JSON_VALUE(value, '$.station_no') AS stationNO,
+      TRY_CONVERT(INT, JSON_VALUE(value, '$.quantity')) AS quantity,
+      JSON_VALUE(value, '$.storage') AS storage,
+      JSON_VALUE(value, '$.factory_code') AS FC_server_code,
+      JSON_VALUE(value, '$.dept_code') AS dept_code,
+      JSON_VALUE(value, '$.dept_name') AS dept_name
    FROM OPENJSON(@JsonData)
 )
 MERGE INTO DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet AS target
-USING (
-   SELECT * FROM CTE
-) AS source
+USING source_data AS source
 ON target.EPC_Code = source.EPC_Code 
    AND target.mo_no = source.mo_no
    AND target.stationNO = source.stationNO
@@ -47,6 +45,6 @@ WHEN NOT MATCHED THEN
    VALUES (
       source.EPC_Code, source.mo_no, source.size_code, source.rfid_status, source.rfid_use, GETDATE(), source.stationNO,
       source.quantity, source.storage, source.FC_server_code, source.dept_code, source.dept_name
-   );
-
+   )
+;
 `
