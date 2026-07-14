@@ -20,13 +20,6 @@ import {
 } from '@nestjs/common'
 
 import { FileFieldsInterceptor, StorageFile, UploadedFiles } from '@blazity/nest-file-fastify'
-import { Queue } from 'bullmq'
-import {
-	IMPORT_DATA_QUEUE,
-	POST_DATA_INBOUND_QUEUE,
-	POST_DATA_OUTBOUND_QUEUE
-} from '../../infrastructure/constants/queue'
-
 import { CommonRequestHeader } from '@common/constants'
 import { AllExceptionsFilter } from '@common/filters'
 import { CreateEpcChangeStreamCommand } from '@modules/finished-goods/application/commands/create-epc-change-stream/create-epc-change-stream.command'
@@ -37,10 +30,12 @@ import { CACHE_MANAGER } from '@nestjs/cache-manager'
 import { CommandBus, QueryBus } from '@nestjs/cqrs'
 import { EventEmitter2 } from '@nestjs/event-emitter'
 import { RedisService } from '@redis/redis.service'
+import { Queue } from 'bullmq'
 import { Cache } from 'cache-manager'
 import { format } from 'date-fns'
 import { FastifyReply } from 'fastify'
 import { PaginateResult } from 'mongoose'
+import { z } from 'zod'
 import { DeleteScanningEpcsCommand } from '../../application/commands/delete-scanning-epcs/delete-scanning-epcs.command'
 import { DeleteScanningMoCommand } from '../../application/commands/delete-scanning-mo/delete-scanning-mo.command'
 import { RestoreDeletedEpcsCommand } from '../../application/commands/restore-deleted-epcs/restore-deleted-epcs.command'
@@ -50,6 +45,11 @@ import { GetScanningEpcsQuery } from '../../application/queries/get-scanning-epc
 import { GetScanningMosQuery } from '../../application/queries/get-scanning-mo/get-scanning-mo.query'
 import { RetriveDeletedEpcsQuery } from '../../application/queries/retrieve-deleted-epcs/retrive-deleted-epcs.query'
 import { ScannedOrderDetail, StockFlow } from '../../domain/types'
+import {
+	IMPORT_DATA_QUEUE,
+	POST_DATA_INBOUND_QUEUE,
+	POST_DATA_OUTBOUND_QUEUE
+} from '../../infrastructure/constants/queue'
 import { CsvFileValidationPipe } from '../../infrastructure/pipes/csv-validation.pipe'
 import { RFIDSearchParams } from '../../infrastructure/types'
 import {
@@ -66,7 +66,7 @@ import {
 } from '../dto/rfid-shared.dto'
 
 @Controller('rfid')
-export class RFIDSharedController {
+export class RFIDController {
 	constructor(
 		@InjectQueue(POST_DATA_INBOUND_QUEUE) private readonly postInboundDataQueue: Queue<PostReaderDataDTO>,
 		@InjectQueue(POST_DATA_OUTBOUND_QUEUE) private readonly postOutboundDataQueue: Queue<PostReaderDataDTO>,
@@ -95,7 +95,7 @@ export class RFIDSharedController {
 	) {
 		if (!deviceSerialNumber) throw new BadRequestException('Cannot detect RFID device serial number')
 
-		const stockFlow = 'inbound' as const
+		const stockFlow: StockFlow = 'inbound'
 
 		const handleChange = async () => {
 			const [epcs, orders, has_invalid] = await Promise.all([
@@ -195,7 +195,7 @@ export class RFIDSharedController {
 		return await this.postOutboundDataQueue.add('BULK_WRITE_SCANNING_OUTBOUND_DATA', payload)
 	}
 
-	@Get('enable_deduplicate_inbound_epc')
+	@Get('enable-deduplicate-inbound')
 	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
 	@UseFilters(AllExceptionsFilter)
 	async getIsDeduplicationEnabled(@Res() reply: FastifyReply & { sse: (data: { enabled: boolean }) => void }) {
@@ -204,6 +204,16 @@ export class RFIDSharedController {
 		this.redisService.subscribe('enable_deduplicate_inbound_epc', (message) => {
 			reply.sse({ enabled: JSON.parse(message) })
 		})
+	}
+
+	@RouteHandler({ endpoint: 'enable-deduplicate-inbound', method: HttpMethod.PUT })
+	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
+	@UseFilters(AllExceptionsFilter)
+	async enableDeduplication(
+		@Body(new ZodValidationPipe(z.object({ enabled: z.boolean() }))) payload: { enabled: boolean }
+	) {
+		await this.cacheManager.set<boolean>('cached:rfid:enable_deduplicate_inbound_epc', payload.enabled)
+		return await this.redisService.publish('enable_deduplicate_inbound_epc', JSON.stringify(payload.enabled))
 	}
 
 	@RouteHandler({
@@ -316,7 +326,7 @@ export class RFIDSharedController {
 	}
 
 	@RouteHandler({
-		endpoint: '/:stockFlow/scanning-manufacturing-orders/delete/:manufacturingOrder',
+		endpoint: ':stockFlow/scanning-manufacturing-orders/delete/:manufacturingOrder',
 		method: HttpMethod.DELETE,
 		statusCode: HttpStatus.OK,
 		message: 'common.deleted'

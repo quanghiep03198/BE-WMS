@@ -50,8 +50,8 @@ import { InoutboundMssqlRepository } from './infrastructure/persistence/mssql/re
 import { RFIDInventoryEntitySubscriber } from './infrastructure/persistence/mssql/subscribers/rfid-inventory.entity.subscriber'
 import { RFIDCustomerEntitySubscriber } from './infrastructure/persistence/mssql/subscribers/rfid-match.entity.subscriber'
 import { RFIDConsumers } from './infrastructure/queues'
-import { RFIDControllers } from './presentation/controllers'
-import { InoutboundGateway } from './presentation/gateways/inoutbound.gateway'
+import { FinishedGoodsControllers } from './presentation/controllers'
+import { FinishedGoodsGateway } from './presentation/gateways/inoutbound.gateway'
 import { RFIDListeners } from './presentation/listeners'
 
 @Module({
@@ -179,7 +179,7 @@ import { RFIDListeners } from './presentation/listeners'
 			DATA_WAREHOUSE_CONNECTION
 		)
 	],
-	controllers: RFIDControllers,
+	controllers: FinishedGoodsControllers,
 	providers: [
 		RFIDSharedService,
 		RFIDInboundService,
@@ -198,11 +198,11 @@ import { RFIDListeners } from './presentation/listeners'
 		...InoutboundCommandHandlers,
 		...InoutboundEventHandlers,
 		...InoutboundSagas,
-		InoutboundGateway,
+		FinishedGoodsGateway,
 		RFIDCustomerEntitySubscriber,
 		RFIDInventoryEntitySubscriber
 	],
-	exports: [MongooseModule, RFIDInboundService, InoutboundGateway]
+	exports: [MongooseModule, RFIDInboundService, FinishedGoodsGateway]
 })
 export class FinishedGoodsModule implements OnModuleInit {
 	constructor(

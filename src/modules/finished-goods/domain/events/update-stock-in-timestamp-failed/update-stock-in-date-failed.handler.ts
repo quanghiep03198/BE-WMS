@@ -1,4 +1,4 @@
-import { InoutboundGateway } from '@modules/finished-goods/presentation/gateways/inoutbound.gateway'
+import { FinishedGoodsGateway } from '@modules/finished-goods/presentation/gateways/inoutbound.gateway'
 import { EventsHandler, IEventHandler } from '@nestjs/cqrs'
 import { I18nService } from 'nestjs-i18n'
 import { UpdateStockInTimestampFailedEvent } from './update-stock-in-date-failed.event'
@@ -6,14 +6,14 @@ import { UpdateStockInTimestampFailedEvent } from './update-stock-in-date-failed
 @EventsHandler(UpdateStockInTimestampFailedEvent)
 export class UpdateStockInTimestampFailedHandler implements IEventHandler<UpdateStockInTimestampFailedEvent> {
 	constructor(
-		private readonly inoutboundGateway: InoutboundGateway,
+		private readonly finishedGoodsGateway: FinishedGoodsGateway,
 		private readonly i18nService: I18nService
 	) {
 		void this.i18nService
 	}
 
 	public async handle() {
-		this.inoutboundGateway.server.emit(
+		this.finishedGoodsGateway.server.emit(
 			'inbound.update_stock_in_date_failed',
 			'Failed to save stock in date. Please try again later.'
 		)

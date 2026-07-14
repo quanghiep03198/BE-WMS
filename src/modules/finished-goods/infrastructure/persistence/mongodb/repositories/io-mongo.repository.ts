@@ -226,6 +226,7 @@ export class InoutboundMongoRepository implements IIoMongoRepository {
 		payload: { epcs: ElectronicProductCode[]; deviceSerialNumber: string }
 	}): Promise<void> {
 		const isDeduplicationEnabled = await this.cacheManager.get<boolean>('cached:rfid:enable_deduplicate_inbound_epc')
+
 		const bulkWriteOptions: AnyBulkWriteOperation<FinishedGoodsEpcDocument>[] = payload.epcs.map((item) => {
 			const operation: AnyBulkWriteOperation<FinishedGoodsEpcDocument> = {
 				updateOne: {
@@ -252,6 +253,7 @@ export class InoutboundMongoRepository implements IIoMongoRepository {
 							outbound_at: null
 						})
 					},
+					setDefaultsOnInsert: false,
 					upsert: true,
 					...(action === 'inbound' && isDeduplicationEnabled && { overwriteImmutable: true })
 				}

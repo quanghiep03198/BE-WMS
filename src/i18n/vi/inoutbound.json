@@ -9,8 +9,8 @@
 		"truckload_delivery_report": "Báo Cáo Xuất Hàng KTP Theo Xe {factory}"
 	},
 	"notification": {
-		"exchange_mo_success": "Đã đổi thành công các SKU từ chỉ lệnh {sourceMo} sang chỉ lệnh {targetMo}.",
-		"exchange_mo_failed": "Đã xảy ra lỗi khi đổi các SKU từ chỉ lệnh {sourceMo} sang chỉ lệnh {targetMo}.",
+		"exchange_mo_success": "Đã đổi thành công các SKU sang chỉ lệnh mới.",
+		"exchange_mo_failed": "Đã xảy ra lỗi khi đổi các SKU sang chỉ lệnh mới.",
 		"over_inbound_limit": "Chỉ lệnh đã nhập kho đủ, bạn không thể nhập thêm nữa. Vui lòng kiểm tra lại lịch sử nhập hàng của chỉ lệnh này.",
 		"over_outbound_limit": "Đơn hàng đã xuất kho đủ, bạn không thể xuất thêm nữa. Vui lòng kiểm tra lại lịch sử xuất hàng của đơn hàng này.",
 		"not_inbound_yet": "Không thể xuất kho, vì phát hiện có tem chưa nhập kho.",

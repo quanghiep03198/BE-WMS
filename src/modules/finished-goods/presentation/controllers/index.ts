@@ -1,5 +1,5 @@
-import { RFIDInboundController } from './inbound.controller'
-import { OutboundController } from './outbound.controller'
-import { RFIDSharedController } from './rfid.controller'
+import { MoExchangeController } from './mo-exchange.controller'
+import { RFIDController } from './rfid.controller'
+import { StockController } from './stock.controller'
 
-export const RFIDControllers = [RFIDInboundController, OutboundController, RFIDSharedController]
+export const FinishedGoodsControllers = [StockController, RFIDController, MoExchangeController]

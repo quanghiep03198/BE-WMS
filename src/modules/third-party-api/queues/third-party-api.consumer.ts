@@ -13,7 +13,7 @@ import { RFIDInboundService } from '../../finished-goods/application/services/rf
 import { OrderService } from '../../order/order.service'
 // import { RFIDMatchCustomerEntity } from '../../rfid/infrastructure/entities/rfid-customer-match.entity'
 import { RFIDMatchEntity } from '@modules/finished-goods/infrastructure/persistence/mssql/entities/rfid-match.entity'
-import { InoutboundGateway } from '@modules/finished-goods/presentation/gateways/inoutbound.gateway'
+import { FinishedGoodsGateway } from '@modules/finished-goods/presentation/gateways/inoutbound.gateway'
 import { THIRD_PARTY_API_SYNC } from '../constants'
 import { SyncProcessState } from '../interfaces/third-party-api.interface'
 import { DeckersOAuth2Strategy } from '../strategies/deckers-oauth2.strategy'
@@ -30,7 +30,7 @@ export class ThirdPartyApiConsumer extends WorkerHost {
 		private readonly thirdPartyApiOAuth2Service: DeckersOAuth2Strategy,
 		private readonly rfidInboundService: RFIDInboundService,
 		private readonly orderService: OrderService,
-		private readonly eventGateway: InoutboundGateway
+		private readonly eventGateway: FinishedGoodsGateway
 	) {
 		super()
 		this.initializeProcessState()

@@ -14,7 +14,7 @@ import {
 	FinishedGoodsEpcModel
 } from '../../infrastructure/persistence/mongodb/schemas/finished-goods-epc.schema'
 import { PostReaderDataDTO } from '../dto/rfid-shared.dto'
-import { InoutboundGateway } from '../gateways/inoutbound.gateway'
+import { FinishedGoodsGateway } from '../gateways/inoutbound.gateway'
 
 @Injectable()
 export class RFIDListener {
@@ -24,7 +24,7 @@ export class RFIDListener {
 		@InjectPinoLogger(RFIDListener.name) private readonly logger: PinoLogger,
 		@InjectRedisClient() private readonly redisClient: Redis,
 
-		private readonly eventGateway: InoutboundGateway
+		private readonly eventGateway: FinishedGoodsGateway
 	) {}
 
 	@OnEvent('rfid.inbound.check', { async: true })

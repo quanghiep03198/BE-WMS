@@ -40,7 +40,7 @@ import upsertInboundQuery from '../../infrastructure/persistence/mssql/sql/upser
 import upsertRfidMatchQuery from '../../infrastructure/persistence/mssql/sql/upsert-rfid-match.sql'
 import { RFIDSearchParams } from '../../infrastructure/types'
 import { generateStation } from '../../infrastructure/utils'
-import { InoutboundGateway } from '../../presentation/gateways/inoutbound.gateway'
+import { FinishedGoodsGateway } from '../../presentation/gateways/inoutbound.gateway'
 
 @Injectable({ scope: Scope.REQUEST })
 export class RFIDInboundService {
@@ -55,7 +55,7 @@ export class RFIDInboundService {
 		private readonly i18nService: I18nService,
 		// private readonly inventoryAuditService: InventoryAuditService,
 		private readonly eventEmitter: EventEmitter2,
-		private readonly eventGateway: InoutboundGateway,
+		private readonly eventGateway: FinishedGoodsGateway,
 		private readonly logger: PinoLogger
 	) {}
 

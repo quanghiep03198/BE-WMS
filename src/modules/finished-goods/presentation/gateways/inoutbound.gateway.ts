@@ -34,21 +34,21 @@ import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
 import { Server, Socket } from 'socket.io'
 
 @WebSocketGateway({
-	namespace: 'rfid',
+	namespace: 'finished-goods',
 	cors: {
 		origin: env<string>('CORS_ORIGINS').split(','),
 		credentials: true
 	},
 	httpCompression: true
 })
-export class InoutboundGateway implements OnGatewayConnection, OnGatewayDisconnect {
+export class FinishedGoodsGateway implements OnGatewayConnection, OnGatewayDisconnect {
 	@WebSocketServer()
 	server: Server
 
 	constructor(
 		protected readonly jwtService: JwtService,
 
-		@InjectPinoLogger(InoutboundGateway.name)
+		@InjectPinoLogger(FinishedGoodsGateway.name)
 		private readonly logger: PinoLogger,
 
 		@InjectModel(EpcInbound.name, DATA_WAREHOUSE_CONNECTION)
