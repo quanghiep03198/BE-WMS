@@ -4,7 +4,7 @@ import { Query } from '@nestjs/cqrs'
 export class RetriveDeletedEpcsQuery extends Query<any> {
 	// Array<{ epc: string; mo_no: string; factory_shoes_style: string; color_sn: string; size_numcode: string }>
 	constructor(
-		public readonly flow: StockFlow,
+		public readonly stockFlow: StockFlow,
 		public readonly pagination: {
 			page: number
 			limit: number
