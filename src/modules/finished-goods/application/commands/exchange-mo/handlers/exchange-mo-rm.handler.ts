@@ -2,7 +2,6 @@ import { MoExchangeTransaction } from '@modules/finished-goods/domain/models/mo-
 import { SizeNumber } from '@modules/finished-goods/domain/value-objects/size-number.vo'
 import { Inject } from '@nestjs/common'
 import { CommandHandler, EventPublisher, ICommandHandler } from '@nestjs/cqrs'
-import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
 import { IIoMongoRepository, IO_MONGO_REPOSITORY } from '../../../ports/io-mongo.repository.port'
 import { IIoMssqlRepository, IO_MSSQL_REPOSITORY } from '../../../ports/io-mssql.repository.port'
 import { ExchangeMoRmCommand } from '../impl/exchange-mo-rm.command'
@@ -12,7 +11,6 @@ export class ExchangeMoRmHandler implements ICommandHandler<ExchangeMoRmCommand>
 	constructor(
 		@Inject(IO_MONGO_REPOSITORY) private readonly ioMongoRepository: IIoMongoRepository,
 		@Inject(IO_MSSQL_REPOSITORY) private readonly ioMssqlRepository: IIoMssqlRepository,
-		@InjectPinoLogger(ExchangeMoRmHandler.name) private readonly logger: PinoLogger,
 		private readonly publisher: EventPublisher
 	) {}
 

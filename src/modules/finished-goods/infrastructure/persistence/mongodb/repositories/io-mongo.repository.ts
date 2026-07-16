@@ -9,7 +9,7 @@ import { CACHE_MANAGER } from '@nestjs/cache-manager'
 import { Inject, Injectable } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
 import { Cache } from 'cache-manager'
-import { AnyBulkWriteOperation, FilterQuery, MongooseError, type PipelineStage } from 'mongoose'
+import { AnyBulkWriteOperation, FilterQuery, type PipelineStage } from 'mongoose'
 import { FinishedGoodsEpc, FinishedGoodsEpcDocument, FinishedGoodsEpcModel } from '../schemas/finished-goods-epc.schema'
 @Injectable()
 export class InoutboundMongoRepository implements IIoMongoRepository {
@@ -285,6 +285,5 @@ export class InoutboundMongoRepository implements IIoMongoRepository {
 		await this.finishedGoodsEpcModel
 			.updateMany({ epc: { $in: pendingExchangeEpcs } }, { mo_no: targetMo })
 			.session(this.txHost.tx)
-		throw new MongooseError('Some error occurred while executing the command')
 	}
 }

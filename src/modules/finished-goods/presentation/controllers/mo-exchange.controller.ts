@@ -79,7 +79,7 @@ export class MoExchangeController {
 					break
 				}
 				case error instanceof MismatchingSizeNumberException: {
-					message = i18n.t('inoutbound.notification.mismatching_size', { lang: i18n.lang })
+					message = i18n.t('inoutbound.notification.mismatching_size_number', { lang: i18n.lang })
 					status = HttpStatus.BAD_REQUEST
 					break
 				}

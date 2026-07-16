@@ -31,10 +31,10 @@ export class MoExchangeTransaction extends AggregateRoot {
 
 		if (pendingExchangeSkus.length === 0) throw new NoExchangableEpcException()
 
-		const isMoSpecsMatching = this.sourceMos.some((sourceMo) => {
+		const isMoSpecsMatching = this.sourceMos.every((sourceMo) => {
 			return (
-				sourceMo.factory_shoes_style !== this.targetMo.factory_shoes_style ||
-				sourceMo.color_sn !== this.targetMo.color_sn
+				sourceMo.factory_shoes_style === this.targetMo.factory_shoes_style &&
+				sourceMo.color_sn === this.targetMo.color_sn
 			)
 		})
 		if (!isMoSpecsMatching) {
