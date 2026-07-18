@@ -49,10 +49,10 @@ import { RFIDMatchEntity } from './infrastructure/persistence/mssql/entities/rfi
 import { InoutboundMssqlRepository } from './infrastructure/persistence/mssql/repositories/io-mssql.repository'
 import { RFIDInventoryEntitySubscriber } from './infrastructure/persistence/mssql/subscribers/rfid-inventory.entity.subscriber'
 import { RFIDCustomerEntitySubscriber } from './infrastructure/persistence/mssql/subscribers/rfid-match.entity.subscriber'
-import { RFIDConsumers } from './infrastructure/queues'
+import { FinishedGoodsConsumers } from './infrastructure/queues'
 import { FinishedGoodsControllers } from './presentation/controllers'
 import { FinishedGoodsGateway } from './presentation/gateways/inoutbound.gateway'
-import { RFIDListeners } from './presentation/listeners'
+import { FinishedGoodsListeners } from './presentation/listeners'
 
 @Module({
 	imports: [
@@ -90,57 +90,46 @@ import { RFIDListeners } from './presentation/listeners'
 					name: FinishedGoodsEpc.name,
 					collection: FINISHED_GOODS_EPCS,
 					useFactory: () => {
-						FinishedGoodsEpcSchema.index({ created_at: 1 }, { expires: '365d' })
-						FinishedGoodsEpcSchema.index({ epc: 1 }, { unique: true })
+						FinishedGoodsEpcSchema.index({ created_at: 1 }, { expires: '365d', name: 'idx_created_at' })
+
+						FinishedGoodsEpcSchema.index({ epc: 1 }, { unique: true, name: 'idx_epc' })
+
 						FinishedGoodsEpcSchema.index(
-							{
-								scannable: 1,
-								deleted: 1,
-								inbound_device_sn: 1,
-								inbound_at: 1,
-								last_scanned_at: -1,
-								epc: 1,
-								mo_no: 1
-							},
-							{ name: 'idx_inventory_epc_inbound_scan_page' }
+							{ scannable: 1, deleted: 1, inbound_device_sn: 1, inbound_at: 1 },
+							{ name: 'idx_inbound_active' }
 						)
+
 						FinishedGoodsEpcSchema.index(
+							{ scannable: 1, deleted: 1, outbound_at: 1, outbound_device_sn: 1, inbound_at: 1 },
 							{
-								scannable: 1,
-								deleted: 1,
-								outbound_device_sn: 1,
-								outbound_at: 1,
-								po: 1,
-								last_scanned_at: -1,
-								epc: 1,
-								mo_no: 1
-							},
-							{ name: 'idx_inventory_epc_outbound_scan_page' }
+								name: 'idx_outbound_active'
+							}
 						)
+
 						FinishedGoodsEpcSchema.index(
-							{
-								scannable: 1,
-								deleted: 1,
-								mo_no: 1,
-								last_scanned_at: -1,
-								epc: 1
-							},
-							{ name: 'idx_inventory_epc_mo_scan_page' }
+							{ scannable: 1, deleted: 1, mo_no: 1, factory_shoes_style: 1, size_numcode: 1 },
+							{ name: 'idx_group_mo_style_size' }
 						)
-						FinishedGoodsEpcSchema.index({
-							mo_no: 1,
-							po: 1,
-							size_numcode: 1,
-							factory_shoes_style: 1,
-							color_sn: 1,
-							created_at: -1
-						})
-						FinishedGoodsEpcSchema.index({ inbound_device_sn: 1, created_at: -1 })
-						FinishedGoodsEpcSchema.index({ outbound_device_sn: 1, created_at: -1 })
+
+						FinishedGoodsEpcSchema.index(
+							{ scannable: 1, deleted: 1, mo_no: 1, factory_shoes_style: 1, color_sn: 1, size_numcode: 1 },
+							{ name: 'idx_specs_inbound', partialFilterExpression: { inbound_at: null } }
+						)
+
+						FinishedGoodsEpcSchema.index(
+							{ scannable: 1, deleted: 1, mo_no: 1, factory_shoes_style: 1, color_sn: 1, size_numcode: 1 },
+							{
+								name: 'idx_specs_outbound',
+								partialFilterExpression: {
+									inbound_at: { $gt: new Date(2024, 0, 1) },
+									outbound_at: null
+								}
+							}
+						)
+
 						FinishedGoodsEpcSchema.plugin(MongoosePaginatePlugin)
 						FinishedGoodsEpcSchema.plugin(MongooseDeletePlugin, {
-							overrideMethods: true,
-							indexFields: ['deleted']
+							overrideMethods: true
 						})
 
 						return FinishedGoodsEpcSchema
@@ -192,8 +181,8 @@ import { RFIDListeners } from './presentation/listeners'
 			provide: IO_MONGO_REPOSITORY,
 			useClass: InoutboundMongoRepository
 		},
-		...RFIDConsumers,
-		...RFIDListeners,
+		...FinishedGoodsConsumers,
+		...FinishedGoodsListeners,
 		...InoutboundQueryHandlers,
 		...InoutboundCommandHandlers,
 		...InoutboundEventHandlers,

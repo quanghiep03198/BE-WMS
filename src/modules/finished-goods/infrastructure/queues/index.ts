@@ -4,7 +4,7 @@ import { RFIDOutboundConsumer } from './rfid-outbound.consumer'
 import { RollbackExchangeMoTransactionConsumer } from './rollback-exchange-mo-tx.consumer'
 import { RollbackStockInTransactionConsumer } from './rollback-stock-tx.consumer'
 
-export const RFIDConsumers = [
+export const FinishedGoodsConsumers = [
 	RFIDInboundConsumer,
 	RFIDOutboundConsumer,
 	RFIDImportDataConsumer,

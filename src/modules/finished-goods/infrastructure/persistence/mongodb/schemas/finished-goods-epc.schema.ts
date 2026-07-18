@@ -141,6 +141,9 @@ export class FinishedGoodsEpc {
 
 	@Prop({ type: Boolean, default: false })
 	is_recalled: boolean
+
+	@Prop({ type: Boolean, default: false })
+	deleted: boolean
 }
 
 export const EpcInboundSchema = SchemaFactory.createForClass(EpcInbound)

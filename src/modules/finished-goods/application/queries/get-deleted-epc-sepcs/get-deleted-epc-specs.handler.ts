@@ -1,4 +1,3 @@
-import { VALID_EPC_PATTERN } from '@common/constants/regex'
 import { DATA_WAREHOUSE_CONNECTION } from '@databases/constants'
 import { FALLBACK_VALUE } from '@modules/finished-goods/domain/constants'
 import {
@@ -27,11 +26,12 @@ export class GetDeletedEpcSpecsHandler implements IQueryHandler<GetDeletedEpcSpe
 			}>([
 				{
 					$match: {
-						epc: { $regex: VALID_EPC_PATTERN },
+						scannable: { $ne: null },
+						deleted: true,
 						mo_no: { $ne: FALLBACK_VALUE },
-						size_numcode: { $ne: FALLBACK_VALUE },
 						factory_shoes_style: { $ne: FALLBACK_VALUE },
-						color_sn: { $ne: FALLBACK_VALUE }
+						size_numcode: { $ne: FALLBACK_VALUE }
+						// epc: { $regex: VALID_EPC_PATTERN }
 					}
 				},
 				{
@@ -89,6 +89,7 @@ export class GetDeletedEpcSpecsHandler implements IQueryHandler<GetDeletedEpcSpe
 					}
 				}
 			])
+			.hint('idx_group_mo_style_size')
 			.exec()
 	}
 }

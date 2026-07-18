@@ -9,7 +9,7 @@ import { CACHE_MANAGER } from '@nestjs/cache-manager'
 import { Inject, Injectable } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
 import { Cache } from 'cache-manager'
-import { AnyBulkWriteOperation, FilterQuery, type PipelineStage } from 'mongoose'
+import { AnyBulkWriteOperation, FilterQuery, mongo, type PipelineStage } from 'mongoose'
 import { FinishedGoodsEpc, FinishedGoodsEpcDocument, FinishedGoodsEpcModel } from '../schemas/finished-goods-epc.schema'
 @Injectable()
 export class InoutboundMongoRepository implements IIoMongoRepository {
@@ -199,6 +199,11 @@ export class InoutboundMongoRepository implements IIoMongoRepository {
 	}
 
 	public async getScanningEpcsBySize(query: GetScanningEpcsBySizeQuery): Promise<Array<{ epc: string }>> {
+		const queryHint: Record<StockFlow, mongo.Hint> = {
+			inbound: 'idx_inbound_active',
+			outbound: 'idx_outbound_active'
+		}
+
 		const filterQuery: FilterQuery<FinishedGoodsEpcDocument> = {
 			scannable: true,
 			mo_no: query.manufacturingOrder,
@@ -215,7 +220,9 @@ export class InoutboundMongoRepository implements IIoMongoRepository {
 			filterQuery.po = { $eq: null }
 		}
 
-		return await this.finishedGoodsEpcModel.find(filterQuery, { _id: 0, epc: 1 }, { lean: true, limit: query.limit })
+		return await this.finishedGoodsEpcModel
+			.find(filterQuery, { _id: 0, epc: 1 }, { lean: true, limit: query.limit })
+			.hint(queryHint[query.stockFlow])
 	}
 
 	public async bulkWriteInventoryEpcs({

@@ -14,14 +14,14 @@ export class GetInternalEpcsExistsHandler implements IQueryHandler<GetInternalEp
 		private readonly finishedGoodsEpcModel: FinishedGoodsEpcModel
 	) {}
 
-	public async execute({ params }: GetInternalEpcsExistsQuery) {
+	public async execute({ deviceSerialNumber }: GetInternalEpcsExistsQuery) {
 		const existedRecord = await this.finishedGoodsEpcModel
 			.exists({
 				scannable: true,
-				epc: { $regex: /^E28/i },
-				...(params['inbound_device_sn:eq'] && { inbound_device_sn: params['inbound_device_sn:eq'] }),
-				...(params['outbound_device_sn:eq'] && { outbound_device_sn: params['outbound_device_sn:eq'] })
+				inbound_device_sn: deviceSerialNumber,
+				epc: { $regex: /^E28/ }
 			})
+			.hint('idx_inbound_active')
 			.lean(true)
 
 		return Boolean(existedRecord)

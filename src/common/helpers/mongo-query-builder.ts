@@ -72,7 +72,7 @@ export class MongoQueryBuilder<T extends Record<string, unknown>> {
 			return this
 		if (!pattern) return this
 
-		this.query[field] = { $regex: pattern, $options: 'i' } as FilterQuery<T>[K]
+		this.query[field] = { $regex: `^${pattern}`, $options: 'g' } as FilterQuery<T>[K]
 
 		return this
 	}

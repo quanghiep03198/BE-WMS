@@ -103,7 +103,7 @@ export class RFIDController {
 					new GetScanningEpcsQuery(stockFlow, { page: page, limit: 50 }, { inbound_device_sn: deviceSerialNumber })
 				),
 				this.queryBus.execute(new GetScanningMosQuery(stockFlow, deviceSerialNumber)),
-				this.queryBus.execute(new GetInternalEpcsExistsQuery({ 'inbound_device_sn:eq': deviceSerialNumber }))
+				this.queryBus.execute(new GetInternalEpcsExistsQuery(deviceSerialNumber))
 			])
 
 			reply.sse({ epcs, orders, has_invalid })
@@ -141,7 +141,6 @@ export class RFIDController {
 			const [epcs, orders] = await Promise.all([
 				this.queryBus.execute(new GetScanningEpcsQuery(stockFlow, { page: 1, limit: 50 }, {})),
 				this.queryBus.execute(new GetScanningMosQuery(stockFlow))
-				// this.queryBus.execute(new GetInternalEpcsExistsQuery())
 			])
 
 			reply.sse({ epcs, orders })
@@ -281,11 +280,16 @@ export class RFIDController {
 		@Param('stockFlow') stockFlow: 'inbound' | 'outbound',
 		@Query('_page', new DefaultValuePipe(1), ParseIntPipe) page: number,
 		@Query('_limit', new DefaultValuePipe(100), ParseIntPipe) limit: number,
-		@Query('scannable:eq', new ParseBoolPipe({ optional: true })) scannable: boolean | undefined,
-		@Query('scanned:eq', new ParseBoolPipe({ optional: true })) outboundScanned: boolean | undefined,
+		@Query('scannable:eq', new ParseBoolPipe({ optional: true })) scannable: boolean,
+		@Query('scanned:eq', new DefaultValuePipe('scanned')) outboundScanned: 'scanned' | 'unscanned',
 		@Query() filterQuery: Omit<RFIDSearchParams, '_page' | '_limit' | 'scannable:eq' | 'scanned:eq'>
 	) {
 		if (stockFlow !== 'inbound' && stockFlow !== 'outbound') throw new BadRequestException('Invalid type')
+
+		const outboundScannedStatus: Readonly<{ scanned: 'dectectable'; unscanned: 'undetectable' }> = {
+			scanned: 'dectectable',
+			unscanned: 'undetectable'
+		}
 
 		return await this.queryBus.execute(
 			new RetriveDeletedEpcsQuery(
@@ -298,7 +302,7 @@ export class RFIDController {
 					color_sn: filterQuery['color_sn:eq'],
 					size_numcode: filterQuery['size_numcode:eq'],
 					scannable: scannable,
-					outbound_device_sn: outboundScanned ? 'dectectable' : 'undetectable'
+					outbound_device_sn: outboundScannedStatus[outboundScanned]
 				}
 			)
 		)

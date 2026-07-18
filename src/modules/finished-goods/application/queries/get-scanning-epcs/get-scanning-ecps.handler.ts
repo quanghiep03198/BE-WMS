@@ -1,5 +1,6 @@
 import { MongoQueryBuilder } from '@common/helpers/mongo-query-builder'
 import { DATA_WAREHOUSE_CONNECTION } from '@databases/constants'
+import { StockFlow } from '@modules/finished-goods/domain/types'
 import {
 	FinishedGoodsEpc,
 	FinishedGoodsEpcDocument,
@@ -7,7 +8,7 @@ import {
 } from '@modules/finished-goods/infrastructure/persistence/mongodb/schemas/finished-goods-epc.schema'
 import { IQueryHandler, QueryHandler } from '@nestjs/cqrs'
 import { InjectModel } from '@nestjs/mongoose'
-import { FilterQuery } from 'mongoose'
+import { FilterQuery, mongo } from 'mongoose'
 import { GetScanningEpcsQuery } from './get-scanning-epcs.query'
 
 @QueryHandler(GetScanningEpcsQuery)
@@ -18,35 +19,22 @@ export class GetScanningEpcsHandler implements IQueryHandler<GetScanningEpcsQuer
 	) {}
 
 	public async execute({ stockFlow, pagination, filterQuery }: GetScanningEpcsQuery) {
-		const queryHint = (() => {
-			let hint: string | undefined = undefined
-			switch (true) {
-				case stockFlow === 'inbound': {
-					hint = 'idx_inventory_epc_inbound_scan_page'
-					break
-				}
-				case stockFlow === 'outbound': {
-					hint = 'idx_inventory_epc_outbound_scan_page'
-					break
-				}
-				case !!filterQuery.mo_no: {
-					hint = 'idx_inventory_epc_mo_scan_page'
-					break
-				}
-			}
-			return hint
-		})()
+		const queryHint: Record<StockFlow, mongo.Hint> = {
+			inbound: 'idx_inbound_active',
+			outbound: 'idx_outbound_active'
+		}
 
 		const query: FilterQuery<FinishedGoodsEpcDocument> = MongoQueryBuilder.from({
 			scannable: true,
+			deleted: false,
 			...filterQuery
 		})
-			.withEqualFields('scannable', 'mo_no')
+			.withEqualFields('scannable', 'deleted', 'mo_no')
 			.when(stockFlow === 'inbound', (builder) =>
 				builder.withEqualFields('inbound_device_sn').withNullishFields('inbound_at', 'outbound_at')
 			)
 			.when(stockFlow === 'outbound', (builder) =>
-				builder.withNonNullableFields('inbound_at', 'outbound_device_sn').withNullishFields('outbound_at')
+				builder.withNullishFields('outbound_at').withNonNullableFields('outbound_device_sn', 'inbound_at')
 			)
 			.build()
 
@@ -55,15 +43,15 @@ export class GetScanningEpcsHandler implements IQueryHandler<GetScanningEpcsQuer
 			lean: true,
 			page: pagination.page,
 			limit: pagination.limit,
-			options: {
-				readPreference: 'nearest',
-				...(queryHint && { hint: queryHint })
-			},
 			customLabels: { docs: 'data' },
 			projection: {
 				_id: 0,
 				epc: 1,
 				mo_no: 1
+			},
+			options: {
+				readPreference: 'nearest',
+				hint: queryHint[stockFlow]
 			}
 		})
 
