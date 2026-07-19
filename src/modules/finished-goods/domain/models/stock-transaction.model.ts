@@ -2,6 +2,7 @@ import { AggregateRoot } from '@nestjs/cqrs'
 import { entries, groupBy } from 'lodash'
 import { randomBytes } from 'node:crypto'
 import { StockedInEvent } from '../events/stocked-in/stocked-in.event'
+import { StockedOutEvent } from '../events/stocked-out/stocked-out.event'
 import { ExcessInboundOrderException } from '../exceptions/excess-order.exception'
 import { StockFlow } from '../types'
 import { ElectronicProductCode } from '../value-objects/epc.vo'
@@ -60,8 +61,11 @@ export class StockTransaction extends AggregateRoot {
 
 		if (isOrderExcessed) throw new ExcessInboundOrderException('', { cause: excessedOrderSizes })
 
-		this.apply(new StockedInEvent(this.pendingStockMoveEpcs))
+		const domainEvent: Readonly<{ inbound: StockedInEvent; outbound: StockedOutEvent }> = {
+			inbound: new StockedInEvent(this.stockInTxId, this.pendingStockMoveEpcs),
+			outbound: new StockedOutEvent(this.stockOutTxId, this.pendingStockMoveEpcs)
+		}
 
-		return this.stockFlow === 'inbound' ? this.stockInTxId : this.stockOutTxId
+		this.apply(domainEvent[this.stockFlow])
 	}
 }

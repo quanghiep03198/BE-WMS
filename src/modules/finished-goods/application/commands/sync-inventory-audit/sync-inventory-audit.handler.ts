@@ -18,6 +18,7 @@ export class SyncInventoryAuditHandler implements ICommandHandler<SyncInventoryA
 			removeOnComplete: true,
 			removeOnFail: false,
 			attempts: 3,
+			delay: 1000 * 60 * 5,
 			backoff: {
 				type: 'exponential',
 				delay: 1000 * 60 * 5

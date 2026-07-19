@@ -75,6 +75,10 @@ export class ElectronicProductCode {
 		return this.attributes?.color_sn ?? FALLBACK_VALUE
 	}
 
+	public getPurchaseOrder() {
+		return this.attributes?.po ?? FALLBACK_VALUE
+	}
+
 	public getSize(options?: Partial<{ normalize: boolean }>) {
 		if (!this.attributes?.size_numcode) return FALLBACK_VALUE
 		return this.attributes.size_numcode.getValue(options)

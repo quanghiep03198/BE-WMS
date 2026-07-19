@@ -28,22 +28,11 @@ export class CreateEpcChangeStreamHandler implements ICommandHandler<
 			[
 				{
 					$match: {
-						$or: [
-							{
-								operationType: { $in: ['insert', 'update'] },
-								...filterQuery
-							},
-							{
-								operationType: 'delete'
-							}
-						]
+						$or: [{ operationType: { $in: ['insert', 'update'] }, ...filterQuery }, { operationType: 'delete' }]
 					}
 				}
 			],
-			{
-				fullDocument: 'updateLookup',
-				readPreference: 'nearest'
-			}
+			{ fullDocument: 'updateLookup', readPreference: 'nearest' }
 		)
 
 		changeStream.on(

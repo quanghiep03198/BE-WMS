@@ -22,7 +22,7 @@ export interface IIoMssqlRepository {
 	>
 
 	getPoOutboundProgress(
-		manufacturingOrder: string,
+		purchaseOrder: string,
 		pendingInboundEpcs: ElectronicProductCode[]
 	): Promise<
 		Array<{
@@ -48,6 +48,8 @@ export interface IIoMssqlRepository {
 			display_name: string
 		}
 	): Promise<void>
+
+	stockOut(epcs: Array<ElectronicProductCode>): Promise<void>
 
 	getExchangeTargetMo(
 		targetMo: string,

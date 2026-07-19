@@ -39,36 +39,12 @@ export class RetriveDeletedEpcsHandler implements IQueryHandler<RetriveDeletedEp
 			.when(filterCase.isInboundFlow, (builder) => builder.withNullBy('inbound_at'))
 			.when(filterCase.isOutboundFlow, (builder) => {
 				return builder
-					.withNotEqualBy('inbound_at')
+					.withNotNullBy('inbound_at')
 					.withNullBy('outbound_at')
 					.when(filterCase.outboundScanDetected, (b) => b.withNotNullBy('outbound_device_sn'))
 					.when(filterCase.outboundScanNotDetected, (b) => b.withNullBy('outbound_device_sn'))
 			})
 			.build()
-
-		// const data = await this.finishedGoodsEpcModel.findDeleted(
-		// 	query,
-		// 	{ _id: 0, epc: 1, mo_no: 1, factory_shoes_style: 1, color_sn: 1, size_numcode: 1, scannable: 1 },
-		// 	{ lean: true, hint: queryHint[stockFlow], limit: pagination.limit }
-		// )
-
-		// return {
-		// 	page: 1,
-		// 	limit: pagination.limit,
-		// 	data,
-		// 	totalDocs: data.length,
-		// 	hasNextPage: false,
-		// 	hasPrevPage: false,
-		// 	nextPage: null,
-		// 	prevPage: null,
-		// 	totalPages: 1
-		// } satisfies Pagination<{
-		// 	epc: string
-		// 	mo_no: string
-		// 	factory_shoes_style: string
-		// 	color_sn: string
-		// 	size_numcode: string
-		// }>
 
 		return await this.finishedGoodsEpcModel.paginate(query, {
 			page: pagination.page,

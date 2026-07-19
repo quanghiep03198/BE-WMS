@@ -13,6 +13,7 @@ export interface IIoMongoRepository {
 
 	getPendingInboundEpcs(deviceSerialNumber: string, manufacturingOrder: string): Promise<ElectronicProductCode[]>
 	getPendingOutboundEpcs(
+		purchaseOrder: string,
 		manufacturingOrder: string | Array<string>,
 		pendingOutboundSizeQuantities: Array<{ size_numcode: string; qty: number }>
 	): Promise<ElectronicProductCode[]>
@@ -41,7 +42,9 @@ export interface IIoMongoRepository {
 		Array<{ epc: string; mo_no: string; factory_shoes_style: string; color_sn: string; size_numcode: string }>
 	>
 
-	updateInboundTimestamp(scannedEpcs: Array<ElectronicProductCode>): Promise<void>
+	commitStockIn(scannedEpcs: Array<ElectronicProductCode>): Promise<void>
+
+	commitStockOut(scannedEpcs: Array<ElectronicProductCode>): Promise<void>
 
 	exchangeMo(pendingExchangeEpcs: Array<string>, targetMo: string): Promise<void>
 }

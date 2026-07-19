@@ -18,6 +18,7 @@ import moInboundProgressQuery from '../sql/mo-inbound-progress.sql'
 import moSizeRunQuery from '../sql/mo-size-run.sql'
 import poOutboundProgressQuery from '../sql/po-outbound-progess.sql'
 import upsertInboundQuery from '../sql/upsert-inbound.sql'
+import upsertOutboundQuery from '../sql/upsert-outbound.sql'
 
 @Injectable()
 export class InoutboundMssqlRepository implements IIoMssqlRepository {
@@ -150,23 +151,42 @@ export class InoutboundMssqlRepository implements IIoMssqlRepository {
 
 	@Transactional<TransactionalAdapterTypeOrm>(DATA_SOURCE_DATA_LAKE)
 	public async stockIn(epcs: ReadonlyArray<ElectronicProductCode>, stockInDetails: StockInDTO): Promise<void> {
-		const upsertPayload = epcs
-			.filter((item) => item.getIsWritable() && !item.getIsInternal())
-			.map((item) => {
-				return {
-					...omit(stockInDetails, ['mo_no', 'inbound_device_sn']),
-					epc: item.getStockKeepingUnit(),
-					mo_no: item.getManufacturingOrder(),
-					size_numcode: item.getSize(),
-					factory_code: item.getFactoryProduce(),
-					station_no: generateStation(item.getFactoryProduce(), 'WH101'),
-					record_time: format(new Date(), 'yyyy-MM-dd HH:mm:ss')
-				}
-			})
-
 		await Promise.all(
-			chunk(upsertPayload, 100).map(async (item) => {
-				return await this.txHostDL.tx.query(upsertInboundQuery, [JSON.stringify(item)])
+			chunk(epcs, 100).map(async (ck) => {
+				const payload = ck
+					.filter((item) => item.getIsWritable() && !item.getIsInternal())
+					.map((item) => {
+						return {
+							...omit(stockInDetails, ['mo_no', 'inbound_device_sn']),
+							epc: item.getStockKeepingUnit(),
+							mo_no: item.getManufacturingOrder(),
+							size_numcode: item.getSize(),
+							factory_code: item.getFactoryProduce(),
+							station_no: generateStation(item.getFactoryProduce(), 'WH101')
+						}
+					})
+
+				return await this.txHostDL.tx.query(upsertInboundQuery, [JSON.stringify(payload)])
+			})
+		)
+	}
+
+	@Transactional<TransactionalAdapterTypeOrm>(DATA_SOURCE_DATA_LAKE)
+	public async stockOut(epcs: ReadonlyArray<ElectronicProductCode>): Promise<void> {
+		await Promise.all(
+			chunk(epcs, 100).map(async (ck) => {
+				const payload = ck
+					.filter((epc) => epc.getIsWritable() && !epc.getIsInternal())
+					.map((epc) => ({
+						epc: epc.getStockKeepingUnit(),
+						po: epc.getPurchaseOrder(),
+						mo_no: epc.getManufacturingOrder(),
+						size_numcode: epc.getSize(),
+						station_no: generateStation(epc.getFactoryProduce(), 'WH103'),
+						factory_code: epc.getFactoryProduce()
+					}))
+
+				return await this.txHostDL.tx.query(upsertOutboundQuery, [JSON.stringify(payload)])
 			})
 		)
 	}

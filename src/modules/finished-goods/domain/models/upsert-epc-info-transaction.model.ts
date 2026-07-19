@@ -1,4 +1,5 @@
 import { AggregateRoot } from '@nestjs/cqrs'
+import { ExchangeMoSuccessEvent } from '../events/exchange-mo-success/exchange-mo-success.event'
 import {
 	MismatchingMoSpecsException,
 	MismatchingSizeNumberException,
@@ -13,11 +14,6 @@ export type UpsertEpcInformationPayload = Array<{
 	factory_shoes_style: string
 	color_sn: string
 	size_numcode: string
-	// factory_code_orders: string
-	// factory_name_orders: string
-	// factory_code_produce: string
-	// factory_name_produce: string
-	// remark: string
 }>
 
 export class UpsertEpcInfoTransaction extends AggregateRoot {
@@ -33,7 +29,7 @@ export class UpsertEpcInfoTransaction extends AggregateRoot {
 		super()
 	}
 
-	public validate() {
+	public startTransaction() {
 		let isShoeStyleConsistent: boolean = true
 		let isColorConsistent: boolean = true
 		let isSizeNumberConsistent: boolean = true
@@ -56,6 +52,8 @@ export class UpsertEpcInfoTransaction extends AggregateRoot {
 
 		if (!isShoeStyleConsistent || !isColorConsistent) throw new MismatchingMoSpecsException()
 		if (!isSizeNumberConsistent) throw new MismatchingSizeNumberException()
+
+		this.apply(new ExchangeMoSuccessEvent(this.getPendingExchangeEpcs(), this.getTargetMo()))
 
 		return {
 			exchangableEpcs: this.getPendingExchangeEpcs(),

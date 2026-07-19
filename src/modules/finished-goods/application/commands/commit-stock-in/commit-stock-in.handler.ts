@@ -9,26 +9,26 @@ import { Inject } from '@nestjs/common'
 import { CommandHandler, EventBus, ICommandHandler } from '@nestjs/cqrs'
 import { I18nContext, I18nService } from 'nestjs-i18n'
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
-import { UpdateStockInTimestampCommand } from './update-stock-in-timestamp.command'
+import { CommitStockInCommand } from './commit-stock-in.command'
 
-@CommandHandler(UpdateStockInTimestampCommand)
-export class UpdateStockInTimestampHandler implements ICommandHandler<UpdateStockInTimestampCommand> {
+@CommandHandler(CommitStockInCommand)
+export class CommitStockInHandler implements ICommandHandler<CommitStockInCommand> {
 	constructor(
-		@InjectPinoLogger(UpdateStockInTimestampHandler.name) private readonly logger: PinoLogger,
+		@InjectPinoLogger(CommitStockInHandler.name) private readonly logger: PinoLogger,
 		@Inject(IO_MONGO_REPOSITORY) private readonly inoutboundMongoRepository: IIoMongoRepository,
 		private readonly eventBus: EventBus,
 		private readonly i18nService: I18nService,
 		private readonly finishedGoodsGateway: FinishedGoodsGateway
 	) {}
 
-	public async execute({ scannedEpcs }: UpdateStockInTimestampCommand): Promise<void> {
+	public async execute({ scannedEpcs }: CommitStockInCommand): Promise<void> {
 		try {
-			await this.inoutboundMongoRepository.updateInboundTimestamp(scannedEpcs)
+			await this.inoutboundMongoRepository.commitStockIn(scannedEpcs)
 			this.eventBus.publish(
 				new UpdateStockInTimestampSuccessEvent({ year: new Date().getFullYear(), month: new Date().getMonth() + 1 })
 			)
 			this.finishedGoodsGateway.server.emit(
-				'inbound:success',
+				'finished_goods:inbound:success',
 				this.i18nService.t('inoutbound.notification.stock_in_success', {
 					args: { quantity: scannedEpcs.length },
 					lang: I18nContext.current()?.lang
@@ -38,7 +38,7 @@ export class UpdateStockInTimestampHandler implements ICommandHandler<UpdateStoc
 			this.logger.error(error)
 			this.eventBus.publish(new UpdateStockInTimestampFailedEvent('WH101', scannedEpcs))
 			this.finishedGoodsGateway.server.emit(
-				'inbound:error',
+				'finished_goods:inbound:error',
 				this.i18nService.t('inoutbound.notification.stock_in_failed', {
 					lang: I18nContext.current()?.lang
 				})

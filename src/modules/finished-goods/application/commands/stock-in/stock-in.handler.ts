@@ -24,18 +24,14 @@ export class StockInHandler implements ICommandHandler<StockInCommand> {
 			command.inbound_device_sn,
 			command.mo_no
 		)
-
 		const currentInboundProgress = await this.inoutboundMssqlRepository.getMoInboundProgress(
 			command.mo_no,
 			pendingInboundEpcs
 		)
-
 		// * Start Unit of Work transaction for inbound stock-in process
 		const inboundTransaction = new StockTransaction('inbound', pendingInboundEpcs, currentInboundProgress)
-		const transactionId = inboundTransaction.startTransaction()
-
+		inboundTransaction.startTransaction()
 		await this.inoutboundMssqlRepository.stockIn(pendingInboundEpcs, command)
-
 		this.eventPublisher.mergeObjectContext(inboundTransaction)
 		inboundTransaction.commit()
 	}

@@ -45,6 +45,7 @@ export class InoutboundMongoRepository implements IIoMongoRepository {
 	}
 
 	public async getPendingOutboundEpcs(
+		purchaseOrder: string,
 		manufacturingOrders: string | Array<string>,
 		outboundSizeQuantities?: Array<{ size_numcode: string; qty: number }>
 	): Promise<ElectronicProductCode[]> {
@@ -67,7 +68,7 @@ export class InoutboundMongoRepository implements IIoMongoRepository {
 						color_sn: item.color_sn,
 						size_numcode: item.size_numcode,
 						factory_code_produce: item.factory_code_produce,
-						po: item.po
+						po: purchaseOrder
 					}
 				}))
 			)
@@ -173,31 +174,6 @@ export class InoutboundMongoRepository implements IIoMongoRepository {
 		return result
 	}
 
-	/**
-	 * @deprecated
-	 * @param params
-	 * @returns
-	 */
-	public async getScanningEpcs(params: {
-		mo_no: string
-		color_sn: string
-		factory_shoes_style: string
-		inbound_device_sn: string
-	}): Promise<string[]> {
-		return await this.finishedGoodsEpcModel.distinct(
-			'epc',
-			{
-				deleted: false,
-				scannable: true,
-				mo_no: { $in: params.mo_no.split(',').map((m) => m.trim()) },
-				color_sn: params.color_sn,
-				factory_shoes_style: params.factory_shoes_style,
-				inbound_device_sn: params.inbound_device_sn
-			},
-			{ lean: true }
-		)
-	}
-
 	public async getScanningEpcsBySize(query: GetScanningEpcsBySizeQuery): Promise<Array<{ epc: string }>> {
 		const queryHint: Record<StockFlow, mongo.Hint> = {
 			inbound: 'idx_inbound_active',
@@ -255,7 +231,7 @@ export class InoutboundMongoRepository implements IIoMongoRepository {
 								inbound_at: null
 							}),
 						...(action === 'outbound' && {
-							inbound_device_sn: payload.deviceSerialNumber,
+							outbound_device_sn: payload.deviceSerialNumber,
 							po: null,
 							outbound_at: null
 						})
@@ -278,13 +254,34 @@ export class InoutboundMongoRepository implements IIoMongoRepository {
 	}
 
 	@Transactional<TransactionalAdapterMongoose>(DATA_WAREHOUSE_CONNECTION)
-	public async updateInboundTimestamp(scannedEpcs: Array<ElectronicProductCode>): Promise<void> {
+	public async commitStockIn(scannedEpcs: Array<ElectronicProductCode>): Promise<void> {
 		await this.finishedGoodsEpcModel
 			.updateMany(
 				{ epc: { $in: scannedEpcs.map((epc) => epc.getStockKeepingUnit()) }, inbound_at: null },
 				{ inbound_at: new Date() }
 			)
 			.session(this.txHost.tx)
+	}
+
+	@Transactional<TransactionalAdapterMongoose>(DATA_WAREHOUSE_CONNECTION)
+	public async commitStockOut(scannedEpcs: Array<ElectronicProductCode>): Promise<void> {
+		const bulkWriteOperations: AnyBulkWriteOperation<FinishedGoodsEpcDocument>[] = scannedEpcs.map((epc) => ({
+			updateOne: {
+				filter: { epc: epc.getStockKeepingUnit(), outbound_at: null },
+				update: {
+					outbound_at: new Date(),
+					po: epc.getPurchaseOrder()
+				}
+			}
+		}))
+
+		await this.finishedGoodsEpcModel.bulkWrite(bulkWriteOperations, {
+			session: this.txHost.tx,
+			writeConcern: { w: 'majority' },
+			ordered: false,
+			retryWrites: true,
+			timestamps: true
+		})
 	}
 
 	@Transactional<TransactionalAdapterMongoose>(DATA_WAREHOUSE_CONNECTION)
