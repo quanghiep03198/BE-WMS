@@ -1,7 +1,7 @@
 import { DATA_WAREHOUSE_CONNECTION } from '@databases/constants'
 import { IIoMongoRepository } from '@modules/finished-goods/application/ports/io-mongo.repository.port'
 import { GetScanningEpcsBySizeQuery } from '@modules/finished-goods/application/queries/get-scanning-epcs-by-size/get-scanning-epcs-by-size.query'
-import { StockFlow } from '@modules/finished-goods/domain/types'
+import { StockFlow, UpsertEpcsMatchData } from '@modules/finished-goods/domain/types'
 import { ElectronicProductCode } from '@modules/finished-goods/domain/value-objects/epc.vo'
 import { InjectTransactionHost, Transactional, TransactionHost } from '@nestjs-cls/transactional'
 import { TransactionalAdapterMongoose } from '@nestjs-cls/transactional-adapter-mongoose'
@@ -306,5 +306,29 @@ export class InoutboundMongoRepository implements IIoMongoRepository {
 		await this.finishedGoodsEpcModel
 			.updateMany({ epc: { $in: pendingExchangeEpcs } }, { mo_no: targetMo })
 			.session(this.txHost.tx)
+	}
+
+	@Transactional<TransactionalAdapterMongoose>(DATA_WAREHOUSE_CONNECTION)
+	public async updateScanningEpcsMatch(data: UpsertEpcsMatchData): Promise<void> {
+		const bulkWriteOperations: AnyBulkWriteOperation<FinishedGoodsEpcDocument>[] = data.map((item) => ({
+			updateOne: {
+				filter: { epc: item.epc },
+				update: {
+					mo_no: item.mo_no,
+					factory_shoes_style: item.factory_shoes_style,
+					color_sn: item.color_sn,
+					size_numcode: item.size_numcode,
+					factory_code_produce: item.factory_code_produce
+				}
+			}
+		}))
+
+		await this.finishedGoodsEpcModel.bulkWrite(bulkWriteOperations, {
+			session: this.txHost.tx,
+			writeConcern: { w: 'majority' },
+			ordered: false,
+			retryWrites: true,
+			timestamps: true
+		})
 	}
 }

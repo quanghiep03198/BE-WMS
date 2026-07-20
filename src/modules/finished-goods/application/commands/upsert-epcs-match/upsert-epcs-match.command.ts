@@ -1,6 +1,6 @@
 import { Command } from '@nestjs/cqrs'
 
-export class UpsertScanningEpcsInfoCommand extends Command<void> {
+export class UpsertEpcsMatchCommand extends Command<void> {
 	constructor(
 		public readonly deviceSerialNumber: string,
 		public readonly sourceMo: string,

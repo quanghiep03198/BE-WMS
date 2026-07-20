@@ -1,4 +1,4 @@
-import { StockFlow } from '../../domain/types'
+import { StockFlow, UpsertEpcsMatchData } from '../../domain/types'
 import { ElectronicProductCode } from '../../domain/value-objects/epc.vo'
 import { GetScanningEpcsBySizeQuery } from '../queries/get-scanning-epcs-by-size/get-scanning-epcs-by-size.query'
 
@@ -53,6 +53,8 @@ export interface IIoMongoRepository {
 	commitStockOut(scannedEpcs: Array<ElectronicProductCode>): Promise<void>
 
 	exchangeMo(pendingExchangeEpcs: Array<string>, targetMo: string): Promise<void>
+
+	updateScanningEpcsMatch(data: UpsertEpcsMatchData): Promise<void>
 }
 
 export const IO_MONGO_REPOSITORY = 'IInoutboundMongoRepository'

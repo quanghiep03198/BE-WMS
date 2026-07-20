@@ -7,8 +7,7 @@ export type ScannedOrderDetail = {
 	sizes: Array<{ size_numcode: string; count: number }>
 }
 
-export type UpsertEpcsMatchPayload = Array<{
-	epc: string
+export type TManufacturingOrder = {
 	mo_no: string
 	brand_name: string
 	mat_code: string
@@ -17,12 +16,22 @@ export type UpsertEpcsMatchPayload = Array<{
 	or_cust_po: string
 	factory_shoes_style: string
 	cust_shoes_style: string
+	color_sn: string
 	size_numcode: string
 	size_code: string
-	size_sumqty: string
-	factory_code_orders: string
-	factory_name_orders: string
+	size_sumqty: number
 	factory_code_produce: string
-	factory_name_produce: string
-	remark: string
-}>
+	sizes: Array<{ size_numcode: string; size_qty: number }>
+}
+
+export type UpsertEpcsMatchData = Array<
+	Omit<TManufacturingOrder, 'factory_code_produce' | 'sizes'> & {
+		epc: string
+		size_qty: number
+		factory_code_orders: string
+		factory_name_orders: string
+		factory_code_produce: string
+		factory_name_produce: string
+		remark: string
+	}
+>

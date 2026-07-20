@@ -106,16 +106,16 @@ export class FinishedGoodsEpc {
 	@Prop({ type: Boolean, required: true, default: true })
 	scannable: boolean
 
-	@Prop({ type: String, required: true, uppercase: true })
+	@Prop({ type: String, required: true })
 	mo_no: string
 
 	@Prop({ type: String })
 	po: string
 
-	@Prop({ type: String, required: true, uppercase: true })
+	@Prop({ type: String, required: true })
 	factory_code_produce: string
 
-	@Prop({ type: String, required: true, uppercase: true })
+	@Prop({ type: String, required: true })
 	color_sn: string
 
 	@Prop({ type: String, required: true })

@@ -12,7 +12,8 @@ WITH mo_size_source AS (
 			),
 				' ',
 				''
-		) AS size_numcode
+		) AS size_numcode,
+      msr.size_qty
 	FROM wuerp_vnrd.dbo.ta_manufactursizerun t
 	CROSS APPLY (
 	VALUES
@@ -64,27 +65,31 @@ WITH mo_size_source AS (
 , mo_size_json AS (
 	SELECT
 		d.mo_no,
-
+      d.size_code,
+      d.size_sumqty,
 		CONCAT(
 			'[',
 			STRING_AGG(
-				CONCAT('"', STRING_ESCAPE(CAST(d.size_numcode AS NVARCHAR(50)), 'json'), '"'),
+				CONCAT('{',  
+               '"size_numcode":', '"',  STRING_ESCAPE(CAST(d.size_numcode AS NVARCHAR(5)), 'json'),  '"',  
+               ',', 
+               '"size_qty":' , CAST(d.size_qty AS INT),  '}'),
 				','
 			) WITHIN GROUP (ORDER BY TRY_CAST(d.size_numcode AS FLOAT) ASC, d.size_numcode ASC),
 			']'
 		) AS mo_size_run
 	FROM (
-		SELECT DISTINCT mo_no, size_numcode
+		SELECT mo_no, size_code, size_numcode, size_qty, size_sumqty
 		FROM mo_size_source
 	) d
-	GROUP BY d.mo_no
+	GROUP BY d.mo_no, d.size_code, d.size_sumqty
 )
 SELECT 
 	a.mo_no AS mo_no,
 	aa.mo_noseq AS mo_noseq,
 	a.cofactory_code AS factory_code_produce,
 	aa.or_no AS or_no,
-	e.or_custpo AS or_custpo,
+	e.or_custpo AS or_cust_po,
 	d.brand_name AS brand_name,
 	c.shoestyle_codefactory AS factory_shoes_style,
 	CONCAT(c.shoestyle_codecust, '/', c.shoestyle_namecust) AS cust_shoes_style,
@@ -105,5 +110,4 @@ WHERE
 	AND aa.mo_noseq = ISNULL(@1, '001')
 	AND a.isactive = 'Y'
 ORDER BY aa.mo_noseq;
-
 `

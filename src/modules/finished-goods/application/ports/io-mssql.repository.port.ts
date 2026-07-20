@@ -1,4 +1,4 @@
-import { UpsertEpcsMatchPayload } from '@modules/finished-goods/domain/types'
+import { TManufacturingOrder, UpsertEpcsMatchData } from '@modules/finished-goods/domain/types'
 import { InventoryActions, InventoryStorageType } from '../../domain/constants'
 import { ElectronicProductCode } from '../../domain/value-objects/epc.vo'
 import { SizeNumber } from '../../domain/value-objects/size-number.vo'
@@ -52,7 +52,7 @@ export interface IIoMssqlRepository {
 
 	stockOut(epcs: Array<ElectronicProductCode>): Promise<void>
 
-	getExchangeTargetMo(targetMo: string, moSeq?: string): Promise<UpsertEpcsMatchPayload & { sizes: Array<string> }>
+	getExchangeTargetMo(targetMo: string, moSeq?: string): Promise<TManufacturingOrder>
 
 	rollbackStockTransaction(stationNO: 'WH101' | 'WH103', epcs: Array<ElectronicProductCode>): Promise<void>
 
@@ -60,7 +60,7 @@ export interface IIoMssqlRepository {
 
 	rollbackExchangeMoTransaction(exchangedEpcs: Array<string>): void
 
-	upsertEpcsMatch(payload: UpsertEpcsMatchPayload): Promise<void>
+	upsertEpcsMatch(payload: UpsertEpcsMatchData): Promise<void>
 }
 
 export const IO_MSSQL_REPOSITORY = 'IInoutboundMssqlRepository'

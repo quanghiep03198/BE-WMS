@@ -21,8 +21,9 @@ import { UserRole } from '@modules/user/constants'
 import { Body, Controller, Headers, HttpException, HttpStatus, Query } from '@nestjs/common'
 import { CommandBus, QueryBus } from '@nestjs/cqrs'
 import { I18n, I18nContext } from 'nestjs-i18n'
+import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
 import { ExchangeMoRmCommand } from '../../application/commands/exchange-mo/impl/exchange-mo-rm.command'
-import { UpsertScanningEpcsInfoCommand } from '../../application/commands/upsert-scanning-epcs-specs/upsert-scanning-epcs-info.command'
+import { UpsertEpcsMatchCommand } from '../../application/commands/upsert-epcs-match/upsert-epcs-match.command'
 import { SearchExchangableMoQuery } from '../../application/queries/search-exchangable-mo/search-exchangable-mo.query'
 import { FinishedGoodsGateway } from '../gateways/inoutbound.gateway'
 
@@ -31,7 +32,8 @@ export class MoExchangeController {
 	constructor(
 		private readonly queryBus: QueryBus,
 		private readonly commandBus: CommandBus,
-		private readonly finishedGoodsGateway: FinishedGoodsGateway
+		private readonly finishedGoodsGateway: FinishedGoodsGateway,
+		@InjectPinoLogger(MoExchangeController.name) private readonly logger: PinoLogger
 	) {}
 
 	@RouteHandler({
@@ -97,7 +99,7 @@ export class MoExchangeController {
 
 	@RouteHandler({
 		method: HttpMethod.PUT,
-		endpoint: 'upsert-epc-information'
+		endpoint: 'upsert-epcs-match'
 	})
 	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
 	async upsertEpcInformation(
@@ -107,12 +109,12 @@ export class MoExchangeController {
 	) {
 		try {
 			return await this.commandBus.execute(
-				new UpsertScanningEpcsInfoCommand(
+				new UpsertEpcsMatchCommand(
 					deviceSerialNumber,
 					payload.mo_no,
 					payload.mo_no_actual,
 					payload.mo_noseq,
-					payload.size_numcode,
+					payload.size_numcode_actual,
 					payload.quantity
 				)
 			)
@@ -137,6 +139,7 @@ export class MoExchangeController {
 					break
 				}
 				default: {
+					this.logger.error(error)
 					message = i18n.t('inoutbound.notification.upsert_epc_info_failed', { lang: i18n.lang })
 					status = HttpStatus.INTERNAL_SERVER_ERROR
 					break

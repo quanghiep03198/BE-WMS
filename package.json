@@ -155,8 +155,8 @@
 	},
 	"lint-staged": {
 		"*.ts": [
-			"npm run lint",
-			"npm run format",
+			"pnpm lint",
+			"pnpm format",
 			"git add ."
 		]
 	}

@@ -1,6 +1,6 @@
 import { IEvent } from '@nestjs/cqrs'
-import { UpsertEpcsMatchPayload } from '../../types'
+import { UpsertEpcsMatchData } from '../../types'
 
 export class UpsertedEpcsMatchEvent implements IEvent {
-	constructor(public readonly data: UpsertEpcsMatchPayload) {}
+	constructor(public readonly data: UpsertEpcsMatchData) {}
 }

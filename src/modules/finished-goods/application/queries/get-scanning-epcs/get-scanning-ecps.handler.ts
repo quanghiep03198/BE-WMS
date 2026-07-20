@@ -9,16 +9,13 @@ import {
 import { IQueryHandler, QueryHandler } from '@nestjs/cqrs'
 import { InjectModel } from '@nestjs/mongoose'
 import { FilterQuery, mongo } from 'mongoose'
-import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
 import { GetScanningEpcsQuery } from './get-scanning-epcs.query'
 
 @QueryHandler(GetScanningEpcsQuery)
 export class GetScanningEpcsHandler implements IQueryHandler<GetScanningEpcsQuery> {
 	constructor(
 		@InjectModel(FinishedGoodsEpc.name, DATA_WAREHOUSE_CONNECTION)
-		private readonly finishedGoodsEpcModel: FinishedGoodsEpcModel,
-		@InjectPinoLogger(GetScanningEpcsHandler.name)
-		private readonly logger: PinoLogger
+		private readonly finishedGoodsEpcModel: FinishedGoodsEpcModel
 	) {}
 
 	public async execute({ stockFlow, pagination, filterQuery }: GetScanningEpcsQuery) {
@@ -42,8 +39,6 @@ export class GetScanningEpcsHandler implements IQueryHandler<GetScanningEpcsQuer
 				builder.withNullishFields('outbound_at').withNonNullableFields('outbound_device_sn', 'inbound_at')
 			)
 			.build()
-
-		this.logger.debug(query)
 
 		const paginateResult = await this.finishedGoodsEpcModel.paginate(query, {
 			sort: { last_scanned_at: -1, epc: 1, mo_no: 1 },

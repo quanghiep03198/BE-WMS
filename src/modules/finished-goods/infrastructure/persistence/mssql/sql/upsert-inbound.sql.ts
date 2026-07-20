@@ -21,7 +21,6 @@ USING source_data AS source
 ON target.EPC_Code = source.EPC_Code 
    AND target.mo_no = source.mo_no
    AND target.stationNO = source.stationNO
-   AND target.rfid_status = 'A'
 WHEN MATCHED THEN
    UPDATE SET 
       isactive = 'Y',

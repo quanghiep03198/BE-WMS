@@ -12,7 +12,8 @@ import { RollbackStockTransactionHandler } from './rollback-stock-tx/rollback-st
 import { StockInHandler } from './stock-in/stock-in.handler'
 import { StockOutHandler } from './stock-out/stock-out.handler'
 import { SyncInventoryAuditHandler } from './sync-inventory-audit/sync-inventory-audit.handler'
-import { UpsertScanningEpcsInfoHandler } from './upsert-scanning-epcs-specs/upsert-scanning-epcs-info.handler'
+import { UpdateScanningEpcsMatchHandler } from './update-scanning-epcs-match/update-scanning-epcs-match.handler'
+import { UpsertEpcsMatchHandler } from './upsert-epcs-match/upsert-epcs-match.handler'
 
 export const InoutboundCommandHandlers = [
 	BulkWriteInventoryHandler,
@@ -30,5 +31,6 @@ export const InoutboundCommandHandlers = [
 	StockInHandler,
 	StockOutHandler,
 	SyncInventoryAuditHandler,
-	UpsertScanningEpcsInfoHandler
+	UpsertEpcsMatchHandler,
+	UpdateScanningEpcsMatchHandler
 ]

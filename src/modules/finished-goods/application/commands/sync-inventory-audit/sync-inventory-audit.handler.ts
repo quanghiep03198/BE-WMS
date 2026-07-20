@@ -5,6 +5,9 @@ import { Queue } from 'bullmq'
 import { format } from 'date-fns'
 import { SyncInventoryAuditCommand } from './sync-inventory-audit.command'
 
+/**
+ * @deprecated Due to the large volume of data, this command is now handled asynchronously through a queue system. The synchronous approach has been deprecated to improve performance and reliability.
+ */
 @CommandHandler(SyncInventoryAuditCommand)
 export class SyncInventoryAuditHandler implements ICommandHandler<SyncInventoryAuditCommand> {
 	constructor(

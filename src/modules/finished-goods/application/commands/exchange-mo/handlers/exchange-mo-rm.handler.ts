@@ -24,7 +24,7 @@ export class ExchangeMoRmHandler implements ICommandHandler<ExchangeMoRmCommand>
 				...record,
 				sizes: record.sizes.map((size) => new SizeNumber(size))
 			})),
-			{ ...exchangeTargetMo, sizes: exchangeTargetMo.sizes.map((size) => new SizeNumber(size)) }
+			{ ...exchangeTargetMo, sizes: exchangeTargetMo.sizes.map(({ size_numcode }) => new SizeNumber(size_numcode)) }
 		)
 		// * Validate the transaction and get the pending exchange SKUs
 		const pendingExchangeSkus = moExchangeTransaction.startTransaction()
