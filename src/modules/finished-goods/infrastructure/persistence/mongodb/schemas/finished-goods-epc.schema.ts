@@ -130,6 +130,12 @@ export class FinishedGoodsEpc {
 	@Prop({ type: String, required: true })
 	inbound_device_sn: string
 
+	@Prop({ type: String })
+	assembly_line: string
+
+	@Prop({ type: String })
+	storage_location: string
+
 	@Prop({ type: Date, default: null })
 	inbound_at: Date | null
 
@@ -139,8 +145,8 @@ export class FinishedGoodsEpc {
 	@Prop({ type: Date, default: null })
 	outbound_at: Date | null
 
-	@Prop({ type: Boolean, default: false })
-	is_recalled: boolean
+	@Prop({ type: String, default: null, enum: ['recall', 'shipping'] })
+	outbound_type: boolean
 
 	@Prop({ type: Boolean, default: false })
 	deleted: boolean

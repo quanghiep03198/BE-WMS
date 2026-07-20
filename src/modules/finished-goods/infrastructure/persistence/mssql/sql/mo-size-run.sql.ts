@@ -2,6 +2,8 @@
 WITH mo_size_source AS (
 	SELECT
 		t.mo_no,
+		t.size_code,
+		t.size_sumqty,
 		REPLACE(
 			TRANSLATE(
 				UPPER(msr.size_numcode), 
@@ -62,6 +64,7 @@ WITH mo_size_source AS (
 , mo_size_json AS (
 	SELECT
 		d.mo_no,
+
 		CONCAT(
 			'[',
 			STRING_AGG(
@@ -79,6 +82,7 @@ WITH mo_size_source AS (
 SELECT 
 	a.mo_no AS mo_no,
 	aa.mo_noseq AS mo_noseq,
+	a.cofactory_code AS factory_code_produce,
 	aa.or_no AS or_no,
 	e.or_custpo AS or_custpo,
 	d.brand_name AS brand_name,
@@ -86,6 +90,8 @@ SELECT
 	CONCAT(c.shoestyle_codecust, '/', c.shoestyle_namecust) AS cust_shoes_style,
 	b.mat_code AS mat_code,
 	b.color_sn AS color_sn,
+	msj.size_code AS size_code,
+	msj.size_sumqty AS size_sumqty,
    ISNULL(msj.mo_size_run, '[]') AS sizes
 FROM wuerp_vnrd.dbo.ta_manufacturmst a
 LEFT JOIN wuerp_vnrd.dbo.ta_manufacturdet aa ON aa.mo_no = a.mo_no AND aa.isactive = 'Y'

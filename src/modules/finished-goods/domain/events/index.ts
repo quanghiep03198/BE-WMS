@@ -1,13 +1,23 @@
+import { CommitStockInFailureHandler } from './commit-stock-in-failure/commit-stock-in-failure.handler'
+import { CommitStockOutFailureHandler } from './commit-stock-out-failure/commit-stock-out.handler'
+import { CommitedStockInHandler } from './committed-stock-in/commited-stock-in.handler'
+import { CommittedStockOutHandler } from './committed-stock-out/commited-stock-out.handler'
 import { ExchangeMoFailedHandler } from './exchange-mo-failed/exchange-mo-failed.handler'
 import { ExchangeMoSuccessHandler } from './exchange-mo-success/exchange-mo-success.handler'
 import { StockedInHandler } from './stocked-in/stocked-in.handler'
-import { UpdateStockInTimestampFailedHandler } from './update-stock-in-timestamp-failed/update-stock-in-date-failed.handler'
-import { UpdateStockInTimestampSuccessHandler } from './update-stock-in-timestamp-success/update-stock-in-timestamp-success.handler'
+import { StockedOutHandler } from './stocked-out/stocked-out.handler'
+import { UpsertEpcsMatchFailureHandler } from './upsert-epcs-match-failure/upsert-epcs-match.handler'
+import { UpsertedEpcsMatchHandler } from './upserted-epcs-match/upserted-epcs-match.handler'
 
 export const InoutboundEventHandlers = [
-	StockedInHandler,
-	UpdateStockInTimestampSuccessHandler,
-	UpdateStockInTimestampFailedHandler,
+	CommitStockInFailureHandler,
+	CommitStockOutFailureHandler,
+	CommitedStockInHandler,
+	CommittedStockOutHandler,
+	ExchangeMoFailedHandler,
 	ExchangeMoSuccessHandler,
-	ExchangeMoFailedHandler
+	StockedInHandler,
+	StockedOutHandler,
+	UpsertEpcsMatchFailureHandler,
+	UpsertedEpcsMatchHandler
 ]

@@ -32,13 +32,18 @@ export class GetScanningMosHandler implements IQueryHandler<GetScanningMosQuery>
 			outbound_device_sn: undefined,
 			inbound_at: undefined,
 			outbound_at: undefined,
+			storage_location: undefined,
 			po: undefined
 		})
 			.withEqualFields('scannable', 'deleted')
 			.when(stockFlow === 'inbound', (builder) =>
-				builder.withEqualBy('inbound_device_sn').withNullishFields('inbound_at', 'outbound_at', 'po')
+				builder
+					.withEqualBy('inbound_device_sn')
+					.withNullishFields('inbound_at', 'storage_location', 'outbound_at', 'po')
 			)
-			.when(stockFlow === 'outbound', (builder) => builder.withNonNullableFields('outbound_device_sn', 'inbound_at'))
+			.when(stockFlow === 'outbound', (builder) =>
+				builder.withNonNullableFields('outbound_device_sn', 'storage_location', 'inbound_at')
+			)
 			.build()
 
 		return await this.finishedGoodsEpcModel

@@ -9,11 +9,11 @@ import { Cache } from 'cache-manager'
 import { format } from 'date-fns'
 import { groupBy } from 'lodash'
 import { PinoLogger } from 'nestjs-pino'
-import { RFIDInboundService } from '../../finished-goods/application/services/rfid-inbound.service'
 import { OrderService } from '../../order/order.service'
 // import { RFIDMatchCustomerEntity } from '../../rfid/infrastructure/entities/rfid-customer-match.entity'
 import { RFIDMatchEntity } from '@modules/finished-goods/infrastructure/persistence/mssql/entities/rfid-match.entity'
 import { FinishedGoodsGateway } from '@modules/finished-goods/presentation/gateways/inoutbound.gateway'
+import { CommandBus } from '@nestjs/cqrs'
 import { THIRD_PARTY_API_SYNC } from '../constants'
 import { SyncProcessState } from '../interfaces/third-party-api.interface'
 import { DeckersOAuth2Strategy } from '../strategies/deckers-oauth2.strategy'
@@ -26,9 +26,10 @@ export class ThirdPartyApiConsumer extends WorkerHost {
 	constructor(
 		@Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
 		private readonly logger: PinoLogger,
+		private readonly commandBus: CommandBus,
 		private readonly thirdPartyApiService: ThirdPartyApiService,
 		private readonly thirdPartyApiOAuth2Service: DeckersOAuth2Strategy,
-		private readonly rfidInboundService: RFIDInboundService,
+		// private readonly rfidInboundService: RFIDInboundService,
 		private readonly orderService: OrderService,
 		private readonly eventGateway: FinishedGoodsGateway
 	) {
@@ -179,7 +180,7 @@ export class ThirdPartyApiConsumer extends WorkerHost {
 			factory_name_produce: factoryCode,
 			remark: `[${currentTimestamp}] Info: Synchronized from Deckers API with command number "${item.commandNumber}"`
 		}))
-		await this.rfidInboundService.bulkUpsertRFIDRecords(payload)
+		// await this.rfidInboundService.bulkUpsertRFIDRecords(payload)
 	}
 
 	private async executeSync(data: string[], factoryCode: string, accessToken: string) {

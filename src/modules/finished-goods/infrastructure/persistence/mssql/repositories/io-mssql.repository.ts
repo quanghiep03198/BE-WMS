@@ -1,6 +1,7 @@
 import { DATA_SOURCE_DATA_LAKE, DATA_SOURCE_ERP } from '@databases/constants'
 import { IIoMssqlRepository } from '@modules/finished-goods/application/ports/io-mssql.repository.port'
 import { EXCLUDED_ORDERS, InventoryActions } from '@modules/finished-goods/domain/constants'
+import { UpsertEpcsMatchPayload } from '@modules/finished-goods/domain/types'
 import { ElectronicProductCode } from '@modules/finished-goods/domain/value-objects/epc.vo'
 import { SizeNumber } from '@modules/finished-goods/domain/value-objects/size-number.vo'
 import { StockInDTO } from '@modules/finished-goods/presentation/dto/rfid-inbound.dto'
@@ -17,6 +18,7 @@ import { RFIDMatchEntity } from '../entities/rfid-match.entity'
 import moInboundProgressQuery from '../sql/mo-inbound-progress.sql'
 import moSizeRunQuery from '../sql/mo-size-run.sql'
 import poOutboundProgressQuery from '../sql/po-outbound-progess.sql'
+import upsertEpcsMatchQuery from '../sql/upsert-epcs-match.sql'
 import upsertInboundQuery from '../sql/upsert-inbound.sql'
 import upsertOutboundQuery from '../sql/upsert-outbound.sql'
 
@@ -114,31 +116,13 @@ export class InoutboundMssqlRepository implements IIoMssqlRepository {
 	public async getExchangeTargetMo(
 		targetMo: string,
 		moSeq: string = '001'
-	): Promise<{
-		mo_no: string
-		mo_noseq: string
-		or_custpo: string
-		factory_shoes_style: string
-		cust_shoes_style: string
-		mat_code: string
-		color_sn: string
-		sizes: Array<string>
-	}> {
-		const sql: string = moSizeRunQuery
-
+	): Promise<
+		UpsertEpcsMatchPayload & {
+			sizes: Array<string>
+		}
+	> {
 		const [result] = await this.dataSourceERP
-			.query<
-				Array<{
-					mo_no: string
-					mo_noseq: string
-					or_custpo: string
-					factory_shoes_style: string
-					cust_shoes_style: string
-					mat_code: string
-					color_sn: string
-					sizes: string
-				}>
-			>(sql, [targetMo, moSeq])
+			.query<Array<UpsertEpcsMatchPayload & { sizes: string }>>(moSizeRunQuery, [targetMo, moSeq])
 			.then((records) =>
 				records.map((record) => ({
 					...record,
@@ -207,6 +191,23 @@ export class InoutboundMssqlRepository implements IIoMssqlRepository {
 				)
 			})
 		)
+	}
+
+	@Transactional<TransactionalAdapterTypeOrm>(DATA_SOURCE_DATA_LAKE)
+	public async upsertEpcsMatch(payload: UpsertEpcsMatchPayload): Promise<void> {
+		await Promise.all(
+			chunk(payload, 100).map(async (data) => {
+				const upsertSourceData = data.map((item) => ({
+					...item,
+					cust_shoes_style: item.cust_shoes_style?.replace('/', '\/'),
+					size_qty: item.size_sumqty ?? 1
+				}))
+
+				await this.txHostDL.tx.query(upsertEpcsMatchQuery, [JSON.stringify(upsertSourceData)])
+			})
+		)
+
+		// this.eventBus.publish(new UpsertedEpcsMatchEvent(payload))
 	}
 
 	@Transactional<TransactionalAdapterTypeOrm>(DATA_SOURCE_DATA_LAKE)

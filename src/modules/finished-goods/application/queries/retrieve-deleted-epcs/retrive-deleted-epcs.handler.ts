@@ -36,10 +36,10 @@ export class RetriveDeletedEpcsHandler implements IQueryHandler<RetriveDeletedEp
 		const query = MongoQueryBuilder.from(omitBy(filterQuery, (value) => value === ''))
 			.withEqualFields('scannable', 'deleted', 'mo_no', 'factory_shoes_style', 'size_numcode')
 			.withMatchRegexBy('epc')
-			.when(filterCase.isInboundFlow, (builder) => builder.withNullBy('inbound_at'))
+			.when(filterCase.isInboundFlow, (builder) => builder.withNullishFields('inbound_at', 'storage_location'))
 			.when(filterCase.isOutboundFlow, (builder) => {
 				return builder
-					.withNotNullBy('inbound_at')
+					.withNonNullableFields('inbound_at', 'storage_location')
 					.withNullBy('outbound_at')
 					.when(filterCase.outboundScanDetected, (b) => b.withNotNullBy('outbound_device_sn'))
 					.when(filterCase.outboundScanNotDetected, (b) => b.withNullBy('outbound_device_sn'))
@@ -62,10 +62,15 @@ export class RetriveDeletedEpcsHandler implements IQueryHandler<RetriveDeletedEp
 				scannable: true,
 				factory_shoes_style: 1,
 				color_sn: 1,
-				size_numcode: 1
+				size_numcode: 1,
+				...(filterCase.isOutboundFlow && {
+					scanned: {
+						$ne: ['$outbound_device_sn', null]
+					}
+				})
 			},
 			options: {
-				readPreference: 'nearest',
+				readPreference: 'secondaryPreferred' satisfies mongo.ReadPreferenceMode,
 				hint: queryHint[stockFlow]
 			}
 		})

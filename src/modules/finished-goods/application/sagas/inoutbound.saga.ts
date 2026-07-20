@@ -3,9 +3,9 @@ import { Injectable } from '@nestjs/common'
 import { ICommand, ofType, Saga } from '@nestjs/cqrs'
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
 import { map, Observable } from 'rxjs'
+import { CommitStockInFailureEvent } from '../../domain/events/commit-stock-in-failure/commit-stock-in-failure.event'
+import { CommitedStockIn } from '../../domain/events/committed-stock-in/commited-stock-in.event'
 import { StockedInEvent } from '../../domain/events/stocked-in/stocked-in.event'
-import { UpdateStockInTimestampFailedEvent } from '../../domain/events/update-stock-in-timestamp-failed/update-stock-in-date-failed.event'
-import { UpdateStockInTimestampSuccessEvent } from '../../domain/events/update-stock-in-timestamp-success/update-stock-in-timestamp-success.event'
 import { CommitStockInCommand } from '../commands/commit-stock-in/commit-stock-in.command'
 import { CommitStockOutCommand } from '../commands/commit-stock-out/commit-stock-out.command'
 import { RollbackStockTransactionCommand } from '../commands/rollback-stock-tx/rollback-stock-tx.command'
@@ -32,17 +32,17 @@ export class InoutboundSaga {
 	}
 
 	@Saga()
-	updatedInboundTimestampSuccess(events$: Observable<unknown>): Observable<ICommand> {
+	committedStockIn(events$: Observable<unknown>): Observable<ICommand> {
 		return events$.pipe(
-			ofType(UpdateStockInTimestampSuccessEvent),
+			ofType(CommitedStockIn),
 			map(() => new SyncInventoryAuditCommand({ year: new Date().getFullYear(), month: new Date().getMonth() + 1 }))
 		)
 	}
 
 	@Saga()
-	updateInboundTimestampFailed(events$: Observable<unknown>): Observable<ICommand> {
+	commitStockInFailure(events$: Observable<unknown>): Observable<ICommand> {
 		return events$.pipe(
-			ofType(UpdateStockInTimestampFailedEvent),
+			ofType(CommitStockInFailureEvent),
 			map(({ stationNo, scannedEpcs }) => new RollbackStockTransactionCommand(stationNo, scannedEpcs))
 		)
 	}

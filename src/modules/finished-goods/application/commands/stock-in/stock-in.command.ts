@@ -13,6 +13,7 @@ export class StockInCommand extends Command<void> {
 			storage: string
 			quantity: number
 			factory_code_produce: string
+			assembly_line: string
 			username: string
 			display_name: string
 		}

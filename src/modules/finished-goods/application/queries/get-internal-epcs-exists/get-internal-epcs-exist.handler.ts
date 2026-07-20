@@ -18,6 +18,7 @@ export class GetInternalEpcsExistsHandler implements IQueryHandler<GetInternalEp
 		const existedRecord = await this.finishedGoodsEpcModel
 			.exists({
 				scannable: true,
+				deleted: false,
 				inbound_device_sn: deviceSerialNumber,
 				epc: { $regex: /^E28/ }
 			})

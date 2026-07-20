@@ -18,8 +18,6 @@ import { IO_MSSQL_REPOSITORY } from './application/ports/io-mssql.repository.por
 import { InoutboundQueryHandlers } from './application/queries'
 import { InoutboundSagas } from './application/sagas'
 import { RFIDInboundService } from './application/services/rfid-inbound.service'
-import { RFIDOutboundService } from './application/services/rfid-outbound.service'
-import { RFIDSharedService } from './application/services/rfid-shared.service'
 import { InoutboundEventHandlers } from './domain/events'
 import {
 	IMPORT_DATA_QUEUE,
@@ -90,17 +88,24 @@ import { FinishedGoodsListeners } from './presentation/listeners'
 					name: FinishedGoodsEpc.name,
 					collection: FINISHED_GOODS_EPCS,
 					useFactory: () => {
-						FinishedGoodsEpcSchema.index({ created_at: 1 }, { expires: '365d', name: 'idx_created_at' })
+						FinishedGoodsEpcSchema.index({ outbound_at: 1 }, { expires: '60d', name: 'idx_outbound_at' })
 
 						FinishedGoodsEpcSchema.index({ epc: 1 }, { unique: true, name: 'idx_epc' })
 
 						FinishedGoodsEpcSchema.index(
-							{ scannable: 1, deleted: 1, inbound_device_sn: 1, inbound_at: 1 },
+							{ scannable: 1, deleted: 1, inbound_device_sn: 1, inbound_at: 1, storage_location: 1 },
 							{ name: 'idx_inbound_active' }
 						)
 
 						FinishedGoodsEpcSchema.index(
-							{ scannable: 1, deleted: 1, outbound_at: 1, outbound_device_sn: 1, inbound_at: 1 },
+							{
+								scannable: 1,
+								deleted: 1,
+								outbound_at: 1,
+								outbound_device_sn: 1,
+								inbound_at: 1,
+								storage_location: 1
+							},
 							{
 								name: 'idx_outbound_active'
 							}
@@ -170,9 +175,9 @@ import { FinishedGoodsListeners } from './presentation/listeners'
 	],
 	controllers: FinishedGoodsControllers,
 	providers: [
-		RFIDSharedService,
 		RFIDInboundService,
-		RFIDOutboundService,
+		// RFIDSharedService,
+		// RFIDOutboundService,
 		{
 			provide: IO_MSSQL_REPOSITORY,
 			useClass: InoutboundMssqlRepository
@@ -191,7 +196,7 @@ import { FinishedGoodsListeners } from './presentation/listeners'
 		RFIDCustomerEntitySubscriber,
 		RFIDInventoryEntitySubscriber
 	],
-	exports: [MongooseModule, RFIDInboundService, FinishedGoodsGateway]
+	exports: [MongooseModule, FinishedGoodsGateway]
 })
 export class FinishedGoodsModule implements OnModuleInit {
 	constructor(

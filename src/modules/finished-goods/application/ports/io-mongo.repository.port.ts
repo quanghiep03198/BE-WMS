@@ -11,7 +11,13 @@ export interface IIoMongoRepository {
 		payload: { epcs: ElectronicProductCode[]; deviceSerialNumber: string }
 	}): Promise<void>
 
-	getPendingInboundEpcs(deviceSerialNumber: string, manufacturingOrder: string): Promise<ElectronicProductCode[]>
+	getPendingInboundEpcs(
+		deviceSerialNumber: string,
+		manufacturingOrder: string,
+		assemblyLine: string,
+		storageLocation: string
+	): Promise<ElectronicProductCode[]>
+
 	getPendingOutboundEpcs(
 		purchaseOrder: string,
 		manufacturingOrder: string | Array<string>,
@@ -36,7 +42,7 @@ export interface IIoMongoRepository {
 	getPendingExchangeEpcs(query: {
 		deviceSerialNumber: string
 		manufacturingOrder: string
-		sizeNumber: string
+		// sizeNumber: string
 		quantity: number
 	}): Promise<
 		Array<{ epc: string; mo_no: string; factory_shoes_style: string; color_sn: string; size_numcode: string }>

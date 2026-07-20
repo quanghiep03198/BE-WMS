@@ -6,3 +6,23 @@ export type ScannedOrderDetail = {
 	factory_shoes_style
 	sizes: Array<{ size_numcode: string; count: number }>
 }
+
+export type UpsertEpcsMatchPayload = Array<{
+	epc: string
+	mo_no: string
+	brand_name: string
+	mat_code: string
+	mo_noseq: string
+	or_no: string
+	or_cust_po: string
+	factory_shoes_style: string
+	cust_shoes_style: string
+	size_numcode: string
+	size_code: string
+	size_sumqty: string
+	factory_code_orders: string
+	factory_name_orders: string
+	factory_code_produce: string
+	factory_name_produce: string
+	remark: string
+}>

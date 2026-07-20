@@ -13,6 +13,8 @@ export class ElectronicProductCode {
 			color_sn: string
 			size_numcode: SizeNumber
 			factory_code_produce: string
+			assembly_line?: string
+			storage_location?: string
 			po?: string
 		}
 		// private readonly scannable?: boolean,
@@ -77,6 +79,14 @@ export class ElectronicProductCode {
 
 	public getPurchaseOrder() {
 		return this.attributes?.po ?? FALLBACK_VALUE
+	}
+
+	public getAssemblyLine() {
+		return this.attributes?.assembly_line ?? FALLBACK_VALUE
+	}
+
+	public getStorageLocation() {
+		return this.attributes?.storage_location ?? FALLBACK_VALUE
 	}
 
 	public getSize(options?: Partial<{ normalize: boolean }>) {

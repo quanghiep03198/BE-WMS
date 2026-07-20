@@ -9,13 +9,16 @@ import {
 import { IQueryHandler, QueryHandler } from '@nestjs/cqrs'
 import { InjectModel } from '@nestjs/mongoose'
 import { FilterQuery, mongo } from 'mongoose'
+import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
 import { GetScanningEpcsQuery } from './get-scanning-epcs.query'
 
 @QueryHandler(GetScanningEpcsQuery)
 export class GetScanningEpcsHandler implements IQueryHandler<GetScanningEpcsQuery> {
 	constructor(
 		@InjectModel(FinishedGoodsEpc.name, DATA_WAREHOUSE_CONNECTION)
-		private readonly finishedGoodsEpcModel: FinishedGoodsEpcModel
+		private readonly finishedGoodsEpcModel: FinishedGoodsEpcModel,
+		@InjectPinoLogger(GetScanningEpcsHandler.name)
+		private readonly logger: PinoLogger
 	) {}
 
 	public async execute({ stockFlow, pagination, filterQuery }: GetScanningEpcsQuery) {
@@ -31,12 +34,16 @@ export class GetScanningEpcsHandler implements IQueryHandler<GetScanningEpcsQuer
 		})
 			.withEqualFields('scannable', 'deleted', 'mo_no')
 			.when(stockFlow === 'inbound', (builder) =>
-				builder.withEqualFields('inbound_device_sn').withNullishFields('inbound_at', 'outbound_at')
+				builder
+					.withEqualFields('inbound_device_sn')
+					.withNullishFields('inbound_at', 'storage_location', 'outbound_at')
 			)
 			.when(stockFlow === 'outbound', (builder) =>
 				builder.withNullishFields('outbound_at').withNonNullableFields('outbound_device_sn', 'inbound_at')
 			)
 			.build()
+
+		this.logger.debug(query)
 
 		const paginateResult = await this.finishedGoodsEpcModel.paginate(query, {
 			sort: { last_scanned_at: -1, epc: 1, mo_no: 1 },
@@ -50,7 +57,7 @@ export class GetScanningEpcsHandler implements IQueryHandler<GetScanningEpcsQuer
 				mo_no: 1
 			},
 			options: {
-				readPreference: 'nearest',
+				readPreference: 'nearest' satisfies mongo.ReadPreferenceMode,
 				hint: queryHint[stockFlow]
 			}
 		})

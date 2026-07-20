@@ -12,6 +12,7 @@ export class GetScanningEpcsQuery implements IQuery {
 			mo_no?: string
 			inbound_device_sn?: string
 			outbound_device_sn?: string
+			storage_location?: string
 			inbound_at?: null
 			outbound_at?: null
 		}

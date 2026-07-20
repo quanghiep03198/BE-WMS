@@ -22,7 +22,9 @@ export class StockInHandler implements ICommandHandler<StockInCommand> {
 	public async execute({ command }: StockInCommand): Promise<void> {
 		const pendingInboundEpcs = await this.inoutboundMongoRepository.getPendingInboundEpcs(
 			command.inbound_device_sn,
-			command.mo_no
+			command.mo_no,
+			command.storage,
+			command.dept_code
 		)
 		const currentInboundProgress = await this.inoutboundMssqlRepository.getMoInboundProgress(
 			command.mo_no,

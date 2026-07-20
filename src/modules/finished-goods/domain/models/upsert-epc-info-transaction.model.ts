@@ -1,4 +1,5 @@
 import { AggregateRoot } from '@nestjs/cqrs'
+import { FALLBACK_VALUE } from '../constants'
 import { ExchangeMoSuccessEvent } from '../events/exchange-mo-success/exchange-mo-success.event'
 import {
 	MismatchingMoSpecsException,
@@ -6,6 +7,7 @@ import {
 	NoExchangableEpcException,
 	NoExchangableMoException
 } from '../exceptions/mo-exchange-tx.exception'
+import { UpsertEpcsMatchPayload } from '../types'
 import { SizeNumber } from '../value-objects/size-number.vo'
 
 export type UpsertEpcInformationPayload = Array<{
@@ -16,15 +18,13 @@ export type UpsertEpcInformationPayload = Array<{
 	size_numcode: string
 }>
 
-export class UpsertEpcInfoTransaction extends AggregateRoot {
+export class UpsertEpcsMatchTransaction extends AggregateRoot {
 	constructor(
 		public readonly pendingExchangeEpcs: UpsertEpcInformationPayload,
-		public readonly targetMo: {
+		public readonly targetMo: UpsertEpcsMatchPayload & {
 			sizes: Array<string>
-			mo_no: string
-			factory_shoes_style: string
-			color_sn: string
-		}
+		},
+		public readonly targetSizeNumber: string
 	) {
 		super()
 	}
@@ -38,16 +38,25 @@ export class UpsertEpcInfoTransaction extends AggregateRoot {
 
 		if (this.pendingExchangeEpcs.length === 0) throw new NoExchangableEpcException()
 
+		const targetMo = this.getTargetMo()
 		const targetShoeStyle = this.getTargetShoeStyle()
 		const targetColor = this.getTargetColor()
 		const targetSizes = this.getTargetSizes()
+		const targetFactoryProduce = this.getFactoryProduce()
+		const targetSizeNumber = this.getTargetSizeNumber()
+
+		// if(new SizeNumber(this.targetSizeNumber).isEqual())
+		isSizeNumberConsistent = targetSizes.some((targetSize) =>
+			targetSize.isEqual(new SizeNumber(this.targetSizeNumber))
+		)
 
 		this.pendingExchangeEpcs.forEach((item) => {
-			isShoeStyleConsistent = targetShoeStyle === item.factory_shoes_style
-			isColorConsistent = targetColor === item.color_sn
-			isSizeNumberConsistent = targetSizes.some((targetSize) =>
-				targetSize.isEqual(new SizeNumber(item.size_numcode))
-			)
+			isShoeStyleConsistent =
+				item.factory_shoes_style === FALLBACK_VALUE || targetShoeStyle === item.factory_shoes_style
+			isColorConsistent = item.color_sn === FALLBACK_VALUE || targetColor === item.color_sn
+			isSizeNumberConsistent = targetSizes.some((targetSize) => {
+				return item.size_numcode === FALLBACK_VALUE || targetSize.isEqual(new SizeNumber(item.size_numcode))
+			})
 		})
 
 		if (!isShoeStyleConsistent || !isColorConsistent) throw new MismatchingMoSpecsException()
@@ -56,10 +65,30 @@ export class UpsertEpcInfoTransaction extends AggregateRoot {
 		this.apply(new ExchangeMoSuccessEvent(this.getPendingExchangeEpcs(), this.getTargetMo()))
 
 		return {
-			exchangableEpcs: this.getPendingExchangeEpcs(),
-			targetMo: this.getTargetMo()
+			toDataArray: (): UpsertEpcsMatchPayload => {
+				return this.pendingExchangeEpcs.map((item) => ({
+					epc: item.epc,
+					mo_no: targetMo,
+					factory_shoes_style: targetShoeStyle,
+					color_sn: targetColor,
+					factory_code_produce: targetFactoryProduce,
+					size_numcode: targetSizeNumber,
+					brand_name: targetBrandName,
+					mat_code
+				}))
+			}
 		}
 	}
+
+	// public toDataArray() {
+	// 	return this.pendingExchangeEpcs.map((item) => ({
+	// 		epc: item.epc,
+	// 		mo_no: this.getTargetMo(),
+	// 		factory_shoes_style: this.getTargetShoeStyle(),
+	// 		color_sn: this.getTargetColor(),
+	// 		size_numcode: this.targetSizeNumber
+	// 	}))
+	// }
 
 	public getPendingExchangeEpcs() {
 		return this.pendingExchangeEpcs.map((item) => item.epc)
@@ -87,6 +116,10 @@ export class UpsertEpcInfoTransaction extends AggregateRoot {
 		return value
 	}
 
+	public getTargetSizeNumber() {
+		return this.targetSizeNumber
+	}
+
 	public getTargetSizes() {
 		const value = this.targetMo?.sizes
 
@@ -94,5 +127,12 @@ export class UpsertEpcInfoTransaction extends AggregateRoot {
 			throw new MismatchingSizeNumberException()
 
 		return value.map((size) => new SizeNumber(size))
+	}
+
+	public getFactoryProduce() {
+		const value = this.targetMo?.factory_code_produce
+
+		if (typeof value !== 'string' || typeof value === 'undefined' || (typeof value === 'object' && value === null))
+			throw new MismatchingMoSpecsException()
 	}
 }

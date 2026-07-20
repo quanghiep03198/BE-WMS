@@ -23,7 +23,9 @@ export class InoutboundMongoRepository implements IIoMongoRepository {
 
 	public async getPendingInboundEpcs(
 		deviceSerialNumber: string,
-		manufacturingOrder: string
+		manufacturingOrder: string,
+		assemblyLine: string,
+		storageLocation: string
 	): Promise<ElectronicProductCode[]> {
 		const rawData = await this.finishedGoodsEpcModel
 			.find({ scannable: true, inbound_device_sn: deviceSerialNumber, mo_no: manufacturingOrder })
@@ -38,6 +40,8 @@ export class InoutboundMongoRepository implements IIoMongoRepository {
 					color_sn: item.color_sn,
 					size_numcode: item.size_numcode,
 					factory_code_produce: item.factory_code_produce,
+					assembly_line: assemblyLine,
+					storage_location: storageLocation,
 					po: item.po
 				}
 			}))
@@ -117,7 +121,7 @@ export class InoutboundMongoRepository implements IIoMongoRepository {
 	public async getPendingExchangeEpcs(query: {
 		deviceSerialNumber: string
 		manufacturingOrder: string
-		sizeNumber: string
+		// sizeNumber: string
 		quantity: number
 	}): Promise<
 		Array<{ epc: string; mo_no: string; factory_shoes_style: string; color_sn: string; size_numcode: string }>
@@ -125,7 +129,7 @@ export class InoutboundMongoRepository implements IIoMongoRepository {
 		return await this.finishedGoodsEpcModel.find(
 			{
 				mo_no: query.manufacturingOrder,
-				size_numcode: query.sizeNumber,
+				// size_numcode: query.sizeNumber,
 				inbound_device_sn: query.deviceSerialNumber,
 				deleted: false,
 				scannable: true
@@ -223,17 +227,12 @@ export class InoutboundMongoRepository implements IIoMongoRepository {
 						last_scanned_at: new Date(),
 						factory_code_produce: item.getFactoryProduce(),
 						...(action === 'inbound' && {
-							inbound_device_sn: payload.deviceSerialNumber
+							inbound_device_sn: payload.deviceSerialNumber,
+							storage_location: null,
+							...(!isDeduplicationEnabled && { deleted: false })
 						}),
-						...(action === 'inbound' &&
-							!isDeduplicationEnabled && {
-								deleted: false,
-								inbound_at: null
-							}),
 						...(action === 'outbound' && {
-							outbound_device_sn: payload.deviceSerialNumber,
-							po: null,
-							outbound_at: null
+							outbound_device_sn: payload.deviceSerialNumber
 						})
 					},
 					setDefaultsOnInsert: false,
@@ -255,12 +254,30 @@ export class InoutboundMongoRepository implements IIoMongoRepository {
 
 	@Transactional<TransactionalAdapterMongoose>(DATA_WAREHOUSE_CONNECTION)
 	public async commitStockIn(scannedEpcs: Array<ElectronicProductCode>): Promise<void> {
-		await this.finishedGoodsEpcModel
-			.updateMany(
-				{ epc: { $in: scannedEpcs.map((epc) => epc.getStockKeepingUnit()) }, inbound_at: null },
-				{ inbound_at: new Date() }
-			)
-			.session(this.txHost.tx)
+		const bulkWriteOperations: AnyBulkWriteOperation<FinishedGoodsEpcDocument>[] = scannedEpcs.map((epc) => ({
+			updateOne: {
+				filter: { epc: epc.getStockKeepingUnit(), storage_location: null },
+				update: {
+					inbound_at: new Date(),
+					assembly_line: epc.getAssemblyLine(),
+					storage_location: epc.getStorageLocation()
+				}
+			}
+		}))
+
+		await this.finishedGoodsEpcModel.bulkWrite(bulkWriteOperations, {
+			session: this.txHost.tx,
+			writeConcern: { w: 'majority' },
+			ordered: false,
+			retryWrites: true,
+			timestamps: true
+		})
+		// await this.finishedGoodsEpcModel
+		// 	.updateMany(
+		// 		{ epc: { $in: scannedEpcs.map((epc) => epc.getStockKeepingUnit()) }, inbound_at: null },
+		// 		{ inbound_at: new Date(), assembly_line: assemblyLine, storage_location: storageLocation }
+		// 	)
+		// 	.session(this.txHost.tx)
 	}
 
 	@Transactional<TransactionalAdapterMongoose>(DATA_WAREHOUSE_CONNECTION)

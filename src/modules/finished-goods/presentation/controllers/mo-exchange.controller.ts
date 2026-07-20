@@ -22,7 +22,7 @@ import { Body, Controller, Headers, HttpException, HttpStatus, Query } from '@ne
 import { CommandBus, QueryBus } from '@nestjs/cqrs'
 import { I18n, I18nContext } from 'nestjs-i18n'
 import { ExchangeMoRmCommand } from '../../application/commands/exchange-mo/impl/exchange-mo-rm.command'
-import { UpsertEpcInfoCommand } from '../../application/commands/upsert-epc-info/upsert-epc-info.command'
+import { UpsertScanningEpcsInfoCommand } from '../../application/commands/upsert-scanning-epcs-specs/upsert-scanning-epcs-info.command'
 import { SearchExchangableMoQuery } from '../../application/queries/search-exchangable-mo/search-exchangable-mo.query'
 import { FinishedGoodsGateway } from '../gateways/inoutbound.gateway'
 
@@ -107,7 +107,7 @@ export class MoExchangeController {
 	) {
 		try {
 			return await this.commandBus.execute(
-				new UpsertEpcInfoCommand(
+				new UpsertScanningEpcsInfoCommand(
 					deviceSerialNumber,
 					payload.mo_no,
 					payload.mo_no_actual,
