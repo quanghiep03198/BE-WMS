@@ -9,13 +9,16 @@ import { Cache } from 'cache-manager'
 import { format } from 'date-fns'
 import { groupBy } from 'lodash'
 import { PinoLogger } from 'nestjs-pino'
-import { OrderService } from '../../order/order.service'
 // import { RFIDMatchCustomerEntity } from '../../rfid/infrastructure/entities/rfid-customer-match.entity'
-import { RFIDMatchEntity } from '@modules/finished-goods/infrastructure/persistence/mssql/entities/rfid-match.entity'
+import {
+	IIoMssqlRepository,
+	IO_MSSQL_REPOSITORY
+} from '@modules/finished-goods/application/ports/io-mssql.repository.port'
+import { TManufacturingOrder, UpsertEpcsMatchData } from '@modules/finished-goods/domain/types'
+import { SizeNumber } from '@modules/finished-goods/domain/value-objects/size-number.vo'
 import { FinishedGoodsGateway } from '@modules/finished-goods/presentation/gateways/inoutbound.gateway'
-import { CommandBus } from '@nestjs/cqrs'
 import { THIRD_PARTY_API_SYNC } from '../constants'
-import { SyncProcessState } from '../interfaces/third-party-api.interface'
+import { SyncProcessState, ThirdPartyApiResponseData } from '../interfaces/third-party-api.interface'
 import { DeckersOAuth2Strategy } from '../strategies/deckers-oauth2.strategy'
 import { ThirdPartyApiService } from '../third-party-api.service'
 
@@ -25,12 +28,10 @@ export class ThirdPartyApiConsumer extends WorkerHost {
 
 	constructor(
 		@Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
+		@Inject(IO_MSSQL_REPOSITORY) private readonly ioMssqlRepository: IIoMssqlRepository,
 		private readonly logger: PinoLogger,
-		private readonly commandBus: CommandBus,
 		private readonly thirdPartyApiService: ThirdPartyApiService,
 		private readonly thirdPartyApiOAuth2Service: DeckersOAuth2Strategy,
-		// private readonly rfidInboundService: RFIDInboundService,
-		private readonly orderService: OrderService,
 		private readonly eventGateway: FinishedGoodsGateway
 	) {
 		super()
@@ -48,7 +49,7 @@ export class ThirdPartyApiConsumer extends WorkerHost {
 		await this.broadcastStateChange()
 		try {
 			const accessToken = await this.authenticate(factoryCode)
-			await this.executeSync(data, factoryCode, accessToken)
+			await this.executeSync(data, accessToken)
 		} catch (error) {
 			this.cancelRemainingSteps()
 			await this.broadcastStateChange()
@@ -132,7 +133,10 @@ export class ThirdPartyApiConsumer extends WorkerHost {
 	}
 
 	// * Step 2.2: Fetch EPCs by command numbers
-	private async fetchEpcsByCommandNumbers(commandNumbers: string[], accessToken: string): Promise<any[]> {
+	private async fetchEpcsByCommandNumbers(
+		commandNumbers: string[],
+		accessToken: string
+	): Promise<ThirdPartyApiResponseData[]> {
 		try {
 			const epcs = await Promise.all(
 				commandNumbers.map(async (commandNumber) => {
@@ -149,14 +153,17 @@ export class ThirdPartyApiConsumer extends WorkerHost {
 	}
 
 	// * Step 2.2.1: Extract command numbers from EPCs
-	private extractCommandNumbers(epcs: any[]): string[] {
+	private extractCommandNumbers(epcs: Array<ThirdPartyApiResponseData>): string[] {
 		return [...new Set(Object.keys(groupBy(epcs, 'commandNumber')).map((item) => item.slice(0, 9)))]
 	}
 
 	// * Step 2.2.2: Get order information from ERP
-	private async getOrderInformation(commandNumbers: string[]) {
+	private async getManufacturingOrdersInfo(manufacturingOrders: string[]) {
 		try {
-			const data = await this.orderService.getCustOrderDetails(commandNumbers)
+			// const data = await this.orderService.getCustOrderDetails(manufacturingOrders)
+			const data = await Promise.all(
+				manufacturingOrders.map(async (mo) => await this.ioMssqlRepository.getManufacturingOrder(mo))
+			)
 			this.updateProcessState(2, 'processing')
 			await this.broadcastStateChange()
 			return data
@@ -168,22 +175,37 @@ export class ThirdPartyApiConsumer extends WorkerHost {
 	}
 
 	// * Step 3: Upsert data to database
-	private async upsertData(epcs: any[], orderInformation: any[], factoryCode: string) {
+	private async upsertData(epcs: Array<ThirdPartyApiResponseData>, manufacturingOrders: Array<TManufacturingOrder>) {
 		const currentTimestamp = format(new Date(), 'yyyy-MM-dd HH:mm:ss')
-		const payload: Partial<RFIDMatchEntity>[] = epcs.map((item) => ({
-			...orderInformation.find((data) => data.mo_no === item.commandNumber.slice(0, 9)),
-			epc: item.epc,
-			size_numcode: item.sizeNumber,
-			factory_code_orders: factoryCode,
-			factory_name_orders: factoryCode,
-			factory_code_produce: factoryCode,
-			factory_name_produce: factoryCode,
-			remark: `[${currentTimestamp}] Info: Synchronized from Deckers API with command number "${item.commandNumber}"`
-		}))
-		// await this.rfidInboundService.bulkUpsertRFIDRecords(payload)
+		const payload: UpsertEpcsMatchData = epcs.map((item) => {
+			const matchSpecs = manufacturingOrders.find((data) => data.mo_no === item.commandNumber.slice(0, 9))
+
+			const uniqSizeNumbers = item.sizeNumber.split('/').map((size) => size.trim())
+
+			const sizeNumber = matchSpecs.sizes.find((size) => {
+				return uniqSizeNumbers.some((uniqSizeNumber) =>
+					new SizeNumber(size.size_numcode).isEqual(new SizeNumber(uniqSizeNumber))
+				)
+			})?.size_numcode
+
+			const sizeQuantity =
+				matchSpecs.sizes.find((size) => {
+					if (!sizeNumber) return false
+					return new SizeNumber(sizeNumber).isEqual(new SizeNumber(size.size_numcode))
+				})?.size_qty ?? 1
+
+			return {
+				...matchSpecs,
+				epc: item.epc,
+				size_numcode: new SizeNumber(sizeNumber).normalize('padleft'),
+				size_qty: sizeQuantity ?? 1,
+				remark: `[${currentTimestamp}] Info: Synchronized from Deckers API with command number "${item.commandNumber}"`
+			}
+		})
+		await this.ioMssqlRepository.upsertEpcsMatch(payload)
 	}
 
-	private async executeSync(data: string[], factoryCode: string, accessToken: string) {
+	private async executeSync(data: string[], accessToken: string) {
 		this.updateProcessState(1, 'processing')
 		await this.broadcastStateChange()
 		const commandNumbers = await this.fetchCommandNumbers(data, accessToken)
@@ -197,11 +219,11 @@ export class ThirdPartyApiConsumer extends WorkerHost {
 		}
 		const epcs = await this.fetchEpcsByCommandNumbers(commandNumbers, accessToken)
 		const availableCommandNumbers = this.extractCommandNumbers(epcs)
-		const orderInformation = await this.getOrderInformation(availableCommandNumbers)
+		const manufacturingOrders = await this.getManufacturingOrdersInfo(availableCommandNumbers)
 		this.updateProcessState(1, 'completed')
 		this.updateProcessState(2, 'processing')
 		await this.broadcastStateChange()
-		await this.upsertData(epcs, orderInformation, factoryCode)
+		await this.upsertData(epcs, manufacturingOrders)
 		this.updateProcessState(2, 'completed')
 		this.updateProcessState(3, 'completed')
 		await this.broadcastStateChange()

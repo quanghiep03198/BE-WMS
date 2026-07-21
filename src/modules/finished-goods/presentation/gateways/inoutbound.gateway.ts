@@ -6,7 +6,7 @@ import { env, SuperJson } from '@common/utils'
 import { DATA_WAREHOUSE_CONNECTION } from '@databases/constants'
 import { FALLBACK_VALUE } from '@modules/finished-goods/domain/constants'
 import {
-	EpcInbound,
+	FinishedGoodsEpc,
 	FinishedGoodsEpcDocument
 } from '@modules/finished-goods/infrastructure/persistence/mongodb/schemas/finished-goods-epc.schema'
 import { SyncStatePayload } from '@modules/inventory/queues/inventory-audit.consumer'
@@ -51,7 +51,7 @@ export class FinishedGoodsGateway implements OnGatewayConnection, OnGatewayDisco
 		@InjectPinoLogger(FinishedGoodsGateway.name)
 		private readonly logger: PinoLogger,
 
-		@InjectModel(EpcInbound.name, DATA_WAREHOUSE_CONNECTION)
+		@InjectModel(FinishedGoodsEpc.name, DATA_WAREHOUSE_CONNECTION)
 		private readonly finishedGoodsEpcModel: PaginateModel<FinishedGoodsEpcDocument>,
 
 		@InjectQueue(THIRD_PARTY_API_SYNC)
@@ -83,15 +83,21 @@ export class FinishedGoodsGateway implements OnGatewayConnection, OnGatewayDisco
 	@UseFilters(new WsExceptionsFilter())
 	@UsePipes(new WsZodValidationPipe(syncDataMessageValidator))
 	protected async handleSyncDeckersData(@MessageBody() payload: SyncDataMessageDTO) {
-		if (!this.syncThirdPartyApiDataQueue) return
 		const validUnknownEpcs = await this.finishedGoodsEpcModel
 			.distinct('epc', {
 				scannable: true,
+				deleted: false,
 				mo_no: FALLBACK_VALUE,
 				epc: { $regex: /^3034(?!29)/ }
 			})
 			.lean(true)
-		const jobData = uniqBy(validUnknownEpcs, (item) => item.substring(0, 22))
+
+		this.logger.debug(validUnknownEpcs)
+
+		const UNIQUE_VALUE_RANGE = [0, 22] as const
+
+		const jobData = uniqBy(validUnknownEpcs, (item) => item.substring(...UNIQUE_VALUE_RANGE))
+
 		this.syncThirdPartyApiDataQueue.add('sync_deckers_data', jobData, {
 			jobId: payload.factory,
 			removeOnComplete: true,

@@ -52,7 +52,7 @@ export interface IIoMssqlRepository {
 
 	stockOut(epcs: Array<ElectronicProductCode>): Promise<void>
 
-	getExchangeTargetMo(targetMo: string, moSeq?: string): Promise<TManufacturingOrder>
+	getManufacturingOrder(targetMo: string, moSeq?: string): Promise<TManufacturingOrder>
 
 	rollbackStockTransaction(stationNO: 'WH101' | 'WH103', epcs: Array<ElectronicProductCode>): Promise<void>
 

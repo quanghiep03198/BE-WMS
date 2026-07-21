@@ -196,7 +196,7 @@ import { FinishedGoodsListeners } from './presentation/listeners'
 		RFIDCustomerEntitySubscriber,
 		RFIDInventoryEntitySubscriber
 	],
-	exports: [MongooseModule, FinishedGoodsGateway]
+	exports: [MongooseModule, FinishedGoodsGateway, IO_MSSQL_REPOSITORY]
 })
 export class FinishedGoodsModule implements OnModuleInit {
 	constructor(

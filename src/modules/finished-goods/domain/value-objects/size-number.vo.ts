@@ -7,8 +7,10 @@ export class SizeNumber {
 		return value
 	}
 
-	public normalize(): string {
-		return Number.parseFloat(String(this.size).replaceAll(/[^0-9.\-]/g, '')).toString()
+	public normalize(format: 'padleft' | 'float' = 'float'): string {
+		const normalizedValue = Number.parseFloat(String(this.size).replaceAll(/[^0-9.\-]/g, '')).toString()
+		if (format === 'float') return normalizedValue
+		else return Number.parseFloat(normalizedValue) < 10 ? `0${normalizedValue}` : normalizedValue
 	}
 
 	public isEqual(otherSize: SizeNumber): boolean {

@@ -1,25 +1,25 @@
+import {
+	IIoMssqlRepository,
+	IO_MSSQL_REPOSITORY
+} from '@modules/finished-goods/application/ports/io-mssql.repository.port'
+import { UpsertEpcsMatchData } from '@modules/finished-goods/domain/types'
+import { SizeNumber } from '@modules/finished-goods/domain/value-objects/size-number.vo'
 import { HttpService } from '@nestjs/axios'
-import { Inject, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common'
+import { Inject, Injectable, NotFoundException } from '@nestjs/common'
 import { AxiosRequestConfig } from 'axios'
 import { format } from 'date-fns'
-import { chunk } from 'lodash'
-import { PinoLogger } from 'nestjs-pino'
-import { DataSource } from 'typeorm'
-import { RFIDMatchEntity } from '../finished-goods/infrastructure/persistence/mssql/entities/rfid-match.entity'
-import upsertRfidMatchQuery from '../finished-goods/infrastructure/persistence/mssql/sql/upsert-epcs-match.sql'
-import { OrderService } from '../order/order.service'
-import { TENANCY_DATA_SOURCE } from '../tenancy/constants'
+import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
 import { ThirdPartyApiResponseData } from './interfaces/third-party-api.interface'
 
 @Injectable()
 export class ThirdPartyApiService {
-	private readonly upsertRfidMatchQuery: string = upsertRfidMatchQuery
-
 	constructor(
+		@InjectPinoLogger(ThirdPartyApiService.name)
 		private readonly logger: PinoLogger,
-		@Inject(TENANCY_DATA_SOURCE) private readonly dataSource: DataSource,
-		private readonly httpService: HttpService,
-		private readonly orderService: OrderService
+
+		@Inject(IO_MSSQL_REPOSITORY) private readonly ioMssqlRepository: IIoMssqlRepository,
+
+		private readonly httpService: HttpService
 	) {}
 
 	public async fetchOneEpc({
@@ -51,97 +51,85 @@ export class ThirdPartyApiService {
 			params: { commandNumber: commandNumber }
 		})
 
+		this.logger.debug(data)
+
 		if (!Array.isArray(data) || data.length === 0) {
 			throw new NotFoundException('No data fetched from the customer')
 		}
 
-		const orderInformation = await this.orderService
-			.getCustOrderByCommandNumber(commandNumber.slice(0, 9))
-			.then((data) => data?.at(0))
+		const manufacturingOrders = await this.ioMssqlRepository.getManufacturingOrder(commandNumber.slice(0, 9))
 
-		if (!orderInformation) {
+		if (!manufacturingOrders) {
 			throw new NotFoundException(`Order information could not be found`)
 		}
 
-		const queryRunner = this.dataSource.createQueryRunner()
+		const sourceData: UpsertEpcsMatchData = data.map((item) => {
+			const uniqSizeNumbers = item.sizeNumber.split('/').map((size) => size.trim())
 
-		const sourceData = data.map((item) => ({
-			epc: item.epc,
-			mo_no: orderInformation.mo_no,
-			mat_code: orderInformation.mat_code,
-			mo_noseq: orderInformation.mo_noseq,
-			or_no: orderInformation.or_no,
-			or_custpo: orderInformation.or_cust_po,
-			shoestyle_codefactory: orderInformation.factory_shoes_style,
-			cust_shoestyle: orderInformation.cust_shoes_style?.replace('/', '\/'),
-			size_code: orderInformation.size_code,
-			size_numcode: item.sizeNumber,
-			factory_code_orders: factoryCode,
-			factory_name_orders: factoryCode,
-			factory_code_produce: factoryCode,
-			factory_name_produce: factoryCode,
-			size_qty: orderInformation.size_sumqty || 1,
-			remark: ''
-		}))
+			const sizeNumber = manufacturingOrders.sizes.find((size) => {
+				return uniqSizeNumbers.some((uniqSizeNumber) =>
+					new SizeNumber(size.size_numcode).isEqual(new SizeNumber(uniqSizeNumber))
+				)
+			})?.size_numcode
 
-		const chunkPayload = chunk(sourceData, 2000)
+			const sizeQuantity =
+				manufacturingOrders.sizes.find((size) => {
+					if (!sizeNumber) return false
+					return new SizeNumber(sizeNumber).isEqual(new SizeNumber(size.size_numcode))
+				})?.size_qty ?? 1
 
-		await queryRunner.connect()
-
-		try {
-			await queryRunner.startTransaction()
-
-			for (const payload of chunkPayload) {
-				await queryRunner.manager.query(this.upsertRfidMatchQuery, [JSON.stringify(payload)])
+			return {
+				...manufacturingOrders,
+				epc: item.epc,
+				cust_shoestyle: manufacturingOrders.cust_shoes_style?.replace('/', '\/'),
+				size_numcode: new SizeNumber(sizeNumber).normalize('padleft'),
+				size_qty: sizeQuantity,
+				remark: ''
 			}
-			await queryRunner.commitTransaction()
-			return { affected: sourceData.length }
-		} catch (error) {
-			this.logger.error(error)
-			await queryRunner.rollbackTransaction()
-			throw new InternalServerErrorException(error)
-		} finally {
-			if (!queryRunner.isReleased) await queryRunner.release()
-		}
+		})
+
+		await this.ioMssqlRepository.upsertEpcsMatch(sourceData)
 	}
 
-	public async upsertByEpc(accessToken: string, factoryCode: string, epc: string) {
+	public async upsertByEpc(accessToken: string, epc: string) {
 		const data = await this.fetchOneEpc({
 			headers: { ['Authorization']: `Bearer ${accessToken}` },
 			param: epc
 		})
 
-		if (!data) {
-			throw new NotFoundException('No data fetched from the customer')
-		}
+		if (!data) throw new NotFoundException('No data fetched from the customer')
 
-		const orderInformation = await this.orderService
-			.getCustOrderByCommandNumber(data.commandNumber)
-			.then((data) => data?.at(0))
+		const manufacturingOrder = await this.ioMssqlRepository.getManufacturingOrder(data.commandNumber)
 
-		if (!orderInformation) {
+		if (!manufacturingOrder) {
 			throw new NotFoundException(`Order information could not be found`)
 		}
 
-		const queryRunner = this.dataSource.createQueryRunner()
-		await queryRunner.connect()
-
 		const currentTimestamp = format(new Date(), 'yyyy-MM-dd HH:mm:ss')
 
-		const upsertPayload: Partial<RFIDMatchEntity> = {
-			...orderInformation,
+		const uniqSizeNumbers = data.sizeNumber.split('/').map((size) => size.trim())
+
+		const sizeNumber = manufacturingOrder.sizes.find((size) => {
+			return uniqSizeNumbers.some((uniqSizeNumber) =>
+				new SizeNumber(size.size_numcode).isEqual(new SizeNumber(uniqSizeNumber))
+			)
+		})?.size_numcode
+
+		const sizeQuantity =
+			manufacturingOrder.sizes.find((size) => {
+				if (!sizeNumber) return false
+				return new SizeNumber(sizeNumber).isEqual(new SizeNumber(size.size_numcode))
+			})?.size_qty ?? 1
+
+		const upsertPayload: UpsertEpcsMatchData[number] = {
+			...manufacturingOrder,
 			epc: data.epc,
-			cust_shoes_style: orderInformation.cust_shoes_style?.replace('/', '\/'),
-			size_numcode: data.sizeNumber,
-			factory_code_orders: factoryCode,
-			factory_name_orders: factoryCode,
-			factory_code_produce: factoryCode,
-			factory_name_produce: factoryCode,
+			cust_shoes_style: manufacturingOrder.cust_shoes_style?.replace('/', '\/'),
+			size_numcode: new SizeNumber(sizeNumber).normalize('padleft'),
+			size_qty: sizeQuantity,
 			remark: `[${currentTimestamp}] Info: Synchronized from Deckers API with command number "${data.commandNumber}"`
 		}
 
-		await queryRunner.manager.query(this.upsertRfidMatchQuery, [JSON.stringify([upsertPayload])])
-
-		return { affected: 1 }
+		await this.ioMssqlRepository.upsertEpcsMatch([upsertPayload])
 	}
 }

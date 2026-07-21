@@ -25,13 +25,13 @@ export type TManufacturingOrder = {
 }
 
 export type UpsertEpcsMatchData = Array<
-	Omit<TManufacturingOrder, 'factory_code_produce' | 'sizes'> & {
+	Omit<TManufacturingOrder, 'sizes'> & {
 		epc: string
 		size_qty: number
-		factory_code_orders: string
-		factory_name_orders: string
-		factory_code_produce: string
-		factory_name_produce: string
+		// factory_code_orders: string
+		// factory_name_orders: string
+		// factory_code_produce: string
+		// factory_name_produce: string
 		remark: string
 	}
 >

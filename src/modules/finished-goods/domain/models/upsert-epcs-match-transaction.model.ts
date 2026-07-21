@@ -81,9 +81,6 @@ export class UpsertEpcsMatchTransaction extends AggregateRoot {
 			cust_shoes_style: this.getTargetCustomerShoeStyle(),
 			size_code: this.getTargetSizeCode(),
 			or_cust_po: this.getTargetOrCustPo(),
-			factory_code_orders: this.getFactoryProduce(),
-			factory_name_orders: this.getFactoryProduce(),
-			factory_name_produce: this.getFactoryProduce(),
 			remark:
 				item.mo_no === FALLBACK_VALUE
 					? `[${timestamp}] Info: Combined from WMS`

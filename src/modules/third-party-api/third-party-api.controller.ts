@@ -71,10 +71,6 @@ export class ThirdPartyApiController {
 	})
 	@Public()
 	async upsertByEpc(@Param('epc') epc: string, @Req() request: FastifyRequest) {
-		return await this.thirdPartyApiService.upsertByEpc(
-			request.raw[CommonRequestHeader.ACCESS_TOKEN] as string,
-			request.raw[CommonRequestHeader.FACTORY_CODE] as string,
-			epc
-		)
+		return await this.thirdPartyApiService.upsertByEpc(request.raw[CommonRequestHeader.ACCESS_TOKEN] as string, epc)
 	}
 }

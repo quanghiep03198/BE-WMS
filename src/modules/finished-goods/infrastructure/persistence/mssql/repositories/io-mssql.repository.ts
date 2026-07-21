@@ -113,7 +113,7 @@ export class InoutboundMssqlRepository implements IIoMssqlRepository {
 		return queryResult.map((record) => ({ ...record, size_numcode: new SizeNumber(record.size_numcode) }))
 	}
 
-	public async getExchangeTargetMo(targetMo: string, moSeq: string = '001'): Promise<TManufacturingOrder> {
+	public async getManufacturingOrder(targetMo: string, moSeq: string = '001'): Promise<TManufacturingOrder> {
 		const [result] = await this.dataSourceERP
 			.query<Array<TManufacturingOrder & { sizes: string }>>(moSizeRunQuery, [targetMo, moSeq])
 			.then((records) =>
@@ -192,7 +192,11 @@ export class InoutboundMssqlRepository implements IIoMssqlRepository {
 			chunk(payload, 100).map(async (data) => {
 				const upsertSourceData = data.map((item) => ({
 					...item,
-					cust_shoes_style: item.cust_shoes_style?.replace('/', '\/')
+					cust_shoes_style: item.cust_shoes_style?.replace('/', '\/'),
+					factory_code_orders: item.factory_code_produce,
+					factory_name_orders: item.factory_code_produce,
+					factory_code_produce: item.factory_code_produce,
+					factory_name_produce: item.factory_code_produce
 				}))
 
 				await this.txHostDL.tx.query(upsertEpcsMatchQuery, [JSON.stringify(upsertSourceData)])
