@@ -1,5 +1,7 @@
 import { MoExchangeTransaction } from '@modules/finished-goods/domain/models/mo-exchange-transaction.model'
 import { SizeNumber } from '@modules/finished-goods/domain/value-objects/size-number.vo'
+import { ORDER_REPOSITORY } from '@modules/order/order.constant'
+import { IOrderRepository } from '@modules/order/order.repository.interface'
 import { Inject } from '@nestjs/common'
 import { CommandHandler, EventPublisher, ICommandHandler } from '@nestjs/cqrs'
 import { IIoMongoRepository, IO_MONGO_REPOSITORY } from '../../../ports/io-mongo.repository.port'
@@ -11,12 +13,13 @@ export class ExchangeMoRmHandler implements ICommandHandler<ExchangeMoRmCommand>
 	constructor(
 		@Inject(IO_MONGO_REPOSITORY) private readonly ioMongoRepository: IIoMongoRepository,
 		@Inject(IO_MSSQL_REPOSITORY) private readonly ioMssqlRepository: IIoMssqlRepository,
+		@Inject(ORDER_REPOSITORY) private readonly orderRepository: IOrderRepository,
 		private readonly publisher: EventPublisher
 	) {}
 
 	public async execute({ deviceSerialNumber, sourceMos, targetMo }: ExchangeMoRmCommand): Promise<void> {
 		const pendingExchangeData = await this.ioMongoRepository.getPendingExchangeMos(deviceSerialNumber, sourceMos)
-		const exchangeTargetMo = await this.ioMssqlRepository.getManufacturingOrder(targetMo)
+		const exchangeTargetMo = await this.orderRepository.getManufacturingOrder(targetMo)
 
 		// * Create a new instance of MoExchangeTransaction with the pending exchange data and target MO information
 		const moExchangeTransaction = new MoExchangeTransaction(

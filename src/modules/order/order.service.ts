@@ -1,26 +1,25 @@
-import { DATA_SOURCE_ERP, RecordStatus } from '@databases/constants'
+import { DATA_SOURCE_ERP } from '@databases/constants'
 import { Inject, Injectable } from '@nestjs/common'
 import { InjectDataSource } from '@nestjs/typeorm'
 import { DataSource } from 'typeorm'
 import { InventoryActions } from '../finished-goods/domain/constants'
-import manfOrderSizeRunQuery from './sql/mo-size-run.sql'
 import purchaseOrderSizeRunQuery from './sql/po-size-run.sql'
 
-import { RFIDMatchEntity } from '../finished-goods/infrastructure/persistence/mssql/entities/rfid-match.entity'
 import { TENANCY_DATA_SOURCE } from '../tenancy/constants'
-import { SizeRun } from './types'
+import { ORDER_REPOSITORY } from './order.constant'
+import { IOrderRepository } from './order.repository.interface'
 
 @Injectable()
 export class OrderService {
-	private readonly manfOrderSizeRunQuery: string = manfOrderSizeRunQuery
 	private readonly purchaseOrderSizeRunQuery: string = purchaseOrderSizeRunQuery
 
 	constructor(
 		@Inject(TENANCY_DATA_SOURCE) private readonly dataSourceTNC: DataSource,
-		@InjectDataSource(DATA_SOURCE_ERP) private readonly dataSourceERP: DataSource
+		@InjectDataSource(DATA_SOURCE_ERP) private readonly dataSourceERP: DataSource,
+		@Inject(ORDER_REPOSITORY) private readonly orderRepository: IOrderRepository
 	) {}
 
-	async searchCommandNumber(factoryCode: string, searchTerm: string) {
+	async searchManufacturingOrder(factoryCode: string, searchTerm: string) {
 		return await this.dataSourceTNC
 			.createQueryBuilder()
 			.select(/* SQL */ `DISTINCT TOP 5 manu.mo_no`, 'mo_no')
@@ -185,68 +184,7 @@ export class OrderService {
 			)
 	}
 
-	async getCustOrderDetails(commandNumbers: Array<string>) {
-		let orderInformation: Array<
-			Partial<RFIDMatchEntity> & {
-				size_sumqty: number
-			}
-		> = []
-		for (const commandNumber of commandNumbers) {
-			const orderInfo = await this.getCustOrderByCommandNumber(commandNumber)
-			if (orderInfo?.length === 0) continue
-			orderInformation = [...orderInformation, ...orderInfo.slice(0)]
-		}
-		return orderInformation
-	}
-
-	async getCustOrderByCommandNumber(
-		commandNumber: string
-	): Promise<Array<Partial<RFIDMatchEntity> & { size_sumqty: number }>> {
-		return await this.dataSourceERP
-			.createQueryBuilder()
-			.select('a.mo_no', 'mo_no')
-			.addSelect('i.brand_name', 'brand_name')
-			.addSelect('a.mat_code', 'mat_code')
-			.addSelect('b.mo_noseq', 'mo_noseq')
-			.addSelect('b.or_no', 'or_no')
-			.addSelect(`IIF(ISNULL(c.or_custpoone,'') = '',c.or_custpo,c.or_custpoone)`, 'or_cust_po')
-			.addSelect('d.color_sn', 'color_sn')
-			.addSelect('e.shoestyle_codefactory', 'factory_shoes_style')
-			.addSelect(
-				`CAST(ISNULL(g.shoestyle_codecust, '') + '/' + ISNULL(g.shoestyle_namecust, '') AS NVARCHAR(255))`,
-				'cust_shoes_style'
-			)
-			.addSelect('h.size_code', 'size_code')
-			.addSelect('h.size_sumqty', 'size_sumqty')
-			.from('ta_manufacturmst', 'a')
-			.leftJoin('ta_manufacturdet', 'b', 'a.mo_no = b.mo_no AND b.isactive = :recordStatus')
-			.leftJoin('ta_ordermst', 'c', 'c.or_no = b.or_no AND c.isactive = :recordStatus')
-			.leftJoin('ta_productmst', 'd', 'd.mat_code = a.mat_code AND d.isactive = :recordStatus')
-			.leftJoin(
-				'ta_shoefactorymst',
-				'e',
-				'e.shoestyle_systemcodefty = d.shoestyle_systemcodefty AND e.isactive = :recordStatus'
-			)
-			.leftJoin('ta_ordersizerun', 'f', 'f.or_no = b.or_no AND f.isactive = :recordStatus')
-			.leftJoin(
-				'ta_shoestylecolor',
-				'g',
-				'g.shoestyle_templink = d.shoestyle_templink AND g.isactive = :recordStatus'
-			)
-			.leftJoin('ta_ordersizerun', 'h', 'h.or_no = c.or_no AND h.isactive = :recordStatus')
-			.leftJoin('ta_brand', 'i', 'i.custbrand_id = d.custbrand_id')
-			.where('a.mo_no = :commandNumber')
-			.andWhere('a.isactive = :recordStatus')
-			.andWhere('a.created >= CAST(DATEADD(YEAR, -2, GETDATE()) AS DATE)')
-			.orderBy('a.mo_no', 'DESC')
-			.orderBy('b.mo_noseq', 'ASC')
-			.addOrderBy('a.created', 'DESC')
-			.limit(1)
-			.setParameters({ commandNumber, recordStatus: RecordStatus.ACTIVE })
-			.getRawMany<Partial<RFIDMatchEntity> & { size_sumqty: number }>()
-	}
-
-	async getSizeRunByCommandNumber(commandNumber: string) {
-		return await this.dataSourceERP.query<Array<SizeRun>>(this.manfOrderSizeRunQuery, [commandNumber])
+	async getManufacturingOrderSizeRun(manufacturingOrder: string, moSeq: string = '001') {
+		return await this.orderRepository.getManufacturingOrder(manufacturingOrder, moSeq)
 	}
 }

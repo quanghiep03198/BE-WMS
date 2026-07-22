@@ -66,7 +66,7 @@ WITH mo_size_source AS (
 	SELECT
 		d.mo_no,
       d.size_code,
-      d.size_sumqty,
+      MAX(d.size_sumqty) AS size_sumqty,
 		CONCAT(
 			'[',
 			STRING_AGG(
@@ -82,7 +82,7 @@ WITH mo_size_source AS (
 		SELECT mo_no, size_code, size_numcode, size_qty, size_sumqty
 		FROM mo_size_source
 	) d
-	GROUP BY d.mo_no, d.size_code, d.size_sumqty
+	GROUP BY d.mo_no, d.size_code
 )
 SELECT 
 	a.mo_no AS mo_no,
@@ -96,8 +96,8 @@ SELECT
 	b.mat_code AS mat_code,
 	b.color_sn AS color_sn,
 	msj.size_code AS size_code,
-	msj.size_sumqty AS size_sumqty,
-   ISNULL(msj.mo_size_run, '[]') AS sizes
+	ISNULL(msj.size_sumqty, 0) AS size_sumqty,
+	ISNULL(msj.mo_size_run, '[]') AS sizes
 FROM wuerp_vnrd.dbo.ta_manufacturmst a
 LEFT JOIN wuerp_vnrd.dbo.ta_manufacturdet aa ON aa.mo_no = a.mo_no AND aa.isactive = 'Y'
 LEFT JOIN wuerp_vnrd.dbo.ta_productmst b ON b.mat_code= a.mat_code AND b.isactive= 'Y'

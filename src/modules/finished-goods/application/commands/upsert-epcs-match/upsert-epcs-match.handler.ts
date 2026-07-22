@@ -1,7 +1,8 @@
 import { UpsertEpcsMatchTransaction } from '@modules/finished-goods/domain/models/upsert-epcs-match-transaction.model'
+import { ORDER_REPOSITORY } from '@modules/order/order.constant'
+import { IOrderRepository } from '@modules/order/order.repository.interface'
 import { Inject } from '@nestjs/common'
 import { CommandHandler, EventPublisher, ICommandHandler } from '@nestjs/cqrs'
-import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
 import { IIoMongoRepository, IO_MONGO_REPOSITORY } from '../../ports/io-mongo.repository.port'
 import { IIoMssqlRepository, IO_MSSQL_REPOSITORY } from '../../ports/io-mssql.repository.port'
 import { UpsertEpcsMatchCommand } from './upsert-epcs-match.command'
@@ -17,7 +18,8 @@ export class UpsertEpcsMatchHandler implements ICommandHandler<UpsertEpcsMatchCo
 		@Inject(IO_MSSQL_REPOSITORY)
 		private readonly ioMssqlRepository: IIoMssqlRepository,
 		private readonly eventPublisher: EventPublisher,
-		@InjectPinoLogger(UpsertEpcsMatchHandler.name) private readonly logger: PinoLogger
+		// @InjectPinoLogger(UpsertEpcsMatchHandler.name) private readonly logger: PinoLogger
+		@Inject(ORDER_REPOSITORY) private readonly orderRepository: IOrderRepository
 	) {}
 
 	public async execute(command: UpsertEpcsMatchCommand): Promise<void> {
@@ -28,7 +30,7 @@ export class UpsertEpcsMatchHandler implements ICommandHandler<UpsertEpcsMatchCo
 			manufacturingOrder: sourceMo,
 			quantity
 		})
-		const targetExchangeMo = await this.ioMssqlRepository.getManufacturingOrder(targetMo, subMo)
+		const targetExchangeMo = await this.orderRepository.getManufacturingOrder(targetMo, subMo)
 		const upsertEpcInfoTransaction = new UpsertEpcsMatchTransaction(pendingExchangeEpcs, targetExchangeMo, sizeNumber)
 		const tx = upsertEpcInfoTransaction.startTransaction()
 

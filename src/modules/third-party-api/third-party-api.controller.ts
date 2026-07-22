@@ -10,8 +10,8 @@ import { uniqBy } from 'lodash'
 import { PaginateModel } from 'mongoose'
 import { FALLBACK_VALUE } from '../finished-goods/domain/constants'
 import {
-	EpcDocument,
-	EpcInbound
+	FinishedGoodsEpc,
+	FinishedGoodsEpcDocument
 } from '../finished-goods/infrastructure/persistence/mongodb/schemas/finished-goods-epc.schema'
 import { UserRole } from '../user/constants'
 import { THIRD_PARTY_API_SYNC } from './constants'
@@ -21,7 +21,8 @@ import { ThirdPartyApiService } from './third-party-api.service'
 export class ThirdPartyApiController {
 	constructor(
 		@InjectQueue(THIRD_PARTY_API_SYNC) private readonly thirdPartyApiSyncQueue: Queue,
-		@InjectModel(EpcInbound.name, DATA_WAREHOUSE_CONNECTION) private readonly epcModel: PaginateModel<EpcDocument>,
+		@InjectModel(FinishedGoodsEpc.name, DATA_WAREHOUSE_CONNECTION)
+		private readonly finishedGoodsEpcModel: PaginateModel<FinishedGoodsEpcDocument>,
 		private readonly thirdPartyApiService: ThirdPartyApiService
 	) {}
 
@@ -33,7 +34,7 @@ export class ThirdPartyApiController {
 	})
 	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
 	async syncDeckerData(@Headers(CommonRequestHeader.FACTORY_CODE) factoryCode: string) {
-		const validUnknownEpcs = await this.epcModel
+		const validUnknownEpcs = await this.finishedGoodsEpcModel
 			.distinct('epc', {
 				mo_no: FALLBACK_VALUE,
 				epc: { $regex: /^(?!E28|303429)/ }
@@ -59,7 +60,6 @@ export class ThirdPartyApiController {
 	async upsertByCommandNumber(@Param('commandNumber') commandNumber: string, @Req() request: FastifyRequest) {
 		return await this.thirdPartyApiService.upsertByCommandNumber(
 			request.raw[CommonRequestHeader.ACCESS_TOKEN] as string,
-			request.raw[CommonRequestHeader.FACTORY_CODE] as string,
 			commandNumber
 		)
 	}

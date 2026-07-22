@@ -1,7 +1,7 @@
 import { DATA_SOURCE_DATA_LAKE, DATA_SOURCE_ERP } from '@databases/constants'
 import { IIoMssqlRepository } from '@modules/finished-goods/application/ports/io-mssql.repository.port'
 import { EXCLUDED_ORDERS, InventoryActions } from '@modules/finished-goods/domain/constants'
-import { TManufacturingOrder, UpsertEpcsMatchData } from '@modules/finished-goods/domain/types'
+import { UpsertEpcsMatchData } from '@modules/finished-goods/domain/types'
 import { ElectronicProductCode } from '@modules/finished-goods/domain/value-objects/epc.vo'
 import { SizeNumber } from '@modules/finished-goods/domain/value-objects/size-number.vo'
 import { StockInDTO } from '@modules/finished-goods/presentation/dto/rfid-inbound.dto'
@@ -16,7 +16,6 @@ import { generateStation } from '../../../utils'
 import { RFIDInventoryBackupEntity, RFIDInventoryEntity } from '../entities/rfid-inventory.entity'
 import { RFIDMatchEntity } from '../entities/rfid-match.entity'
 import moInboundProgressQuery from '../sql/mo-inbound-progress.sql'
-import moSizeRunQuery from '../sql/mo-size-run.sql'
 import poOutboundProgressQuery from '../sql/po-outbound-progess.sql'
 import upsertEpcsMatchQuery from '../sql/upsert-epcs-match.sql'
 import upsertInboundQuery from '../sql/upsert-inbound.sql'
@@ -113,18 +112,18 @@ export class InoutboundMssqlRepository implements IIoMssqlRepository {
 		return queryResult.map((record) => ({ ...record, size_numcode: new SizeNumber(record.size_numcode) }))
 	}
 
-	public async getManufacturingOrder(targetMo: string, moSeq: string = '001'): Promise<TManufacturingOrder> {
-		const [result] = await this.dataSourceERP
-			.query<Array<TManufacturingOrder & { sizes: string }>>(moSizeRunQuery, [targetMo, moSeq])
-			.then((records) =>
-				records.map((record) => ({
-					...record,
-					sizes: JSON.parse(record.sizes) as Array<{ size_numcode: string; size_qty: number }>
-				}))
-			)
+	// public async getManufacturingOrder(targetMo: string, moSeq: string = '001'): Promise<TManufacturingOrder> {
+	// 	const [result] = await this.dataSourceERP
+	// 		.query<Array<TManufacturingOrder & { mo_noseq: string; sizes: string }>>(moSizeRunQuery, [targetMo, moSeq])
+	// 		.then((records) =>
+	// 			records.map((record) => ({
+	// 				...record,
+	// 				sizes: JSON.parse(record.sizes) as Array<{ size_numcode: string; size_qty: number }>
+	// 			}))
+	// 		)
 
-		return result
-	}
+	// 	return result
+	// }
 
 	@Transactional<TransactionalAdapterTypeOrm>(DATA_SOURCE_DATA_LAKE)
 	public async stockIn(epcs: ReadonlyArray<ElectronicProductCode>, stockInDetails: StockInDTO): Promise<void> {

@@ -14,9 +14,12 @@ import {
 	IIoMssqlRepository,
 	IO_MSSQL_REPOSITORY
 } from '@modules/finished-goods/application/ports/io-mssql.repository.port'
-import { TManufacturingOrder, UpsertEpcsMatchData } from '@modules/finished-goods/domain/types'
+import { UpsertEpcsMatchData } from '@modules/finished-goods/domain/types'
 import { SizeNumber } from '@modules/finished-goods/domain/value-objects/size-number.vo'
 import { FinishedGoodsGateway } from '@modules/finished-goods/presentation/gateways/inoutbound.gateway'
+import { ORDER_REPOSITORY } from '@modules/order/order.constant'
+import { IOrderRepository } from '@modules/order/order.repository.interface'
+import { TManufacturingOrder } from '@modules/order/types'
 import { THIRD_PARTY_API_SYNC } from '../constants'
 import { SyncProcessState, ThirdPartyApiResponseData } from '../interfaces/third-party-api.interface'
 import { DeckersOAuth2Strategy } from '../strategies/deckers-oauth2.strategy'
@@ -29,6 +32,7 @@ export class ThirdPartyApiConsumer extends WorkerHost {
 	constructor(
 		@Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
 		@Inject(IO_MSSQL_REPOSITORY) private readonly ioMssqlRepository: IIoMssqlRepository,
+		@Inject(ORDER_REPOSITORY) private readonly orderRepository: IOrderRepository,
 		private readonly logger: PinoLogger,
 		private readonly thirdPartyApiService: ThirdPartyApiService,
 		private readonly thirdPartyApiOAuth2Service: DeckersOAuth2Strategy,
@@ -160,9 +164,8 @@ export class ThirdPartyApiConsumer extends WorkerHost {
 	// * Step 2.2.2: Get order information from ERP
 	private async getManufacturingOrdersInfo(manufacturingOrders: string[]) {
 		try {
-			// const data = await this.orderService.getCustOrderDetails(manufacturingOrders)
 			const data = await Promise.all(
-				manufacturingOrders.map(async (mo) => await this.ioMssqlRepository.getManufacturingOrder(mo))
+				manufacturingOrders.map(async (mo) => await this.orderRepository.getManufacturingOrder(mo))
 			)
 			this.updateProcessState(2, 'processing')
 			await this.broadcastStateChange()

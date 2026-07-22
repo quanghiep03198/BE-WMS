@@ -1,3 +1,4 @@
+import { TManufacturingOrder } from '@modules/order/types'
 import { AggregateRoot } from '@nestjs/cqrs'
 import { format } from 'date-fns'
 import { FALLBACK_VALUE } from '../constants'
@@ -8,7 +9,7 @@ import {
 	NoExchangableEpcException,
 	NoExchangableMoException
 } from '../exceptions/mo-exchange-tx.exception'
-import { TManufacturingOrder, UpsertEpcsMatchData } from '../types'
+import { UpsertEpcsMatchData } from '../types'
 import { SizeNumber } from '../value-objects/size-number.vo'
 
 export type UpsertEpcInformationPayload = Array<{

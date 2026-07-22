@@ -1,7 +1,6 @@
 import { CommonRequestHeader } from '@common/constants'
 import { HttpMethod, RequireAuthorized, RouteHandler } from '@common/decorators'
 import { Controller, DefaultValuePipe, Headers, Param, ParseBoolPipe, Query } from '@nestjs/common'
-import { groupBy } from 'lodash'
 import { UserRole } from '../user/constants'
 import { OrderService } from './order.service'
 
@@ -23,7 +22,7 @@ export class OrderController {
 		@Headers(CommonRequestHeader.FACTORY_CODE) factoryCode: string,
 		@Query('q', new DefaultValuePipe('')) searchTerm: string
 	) {
-		return await this.orderService.searchCommandNumber(factoryCode, searchTerm)
+		return await this.orderService.searchManufacturingOrder(factoryCode, searchTerm)
 	}
 
 	@RouteHandler({
@@ -85,17 +84,20 @@ export class OrderController {
 		UserRole.INDUSTRIAL_ENGINEERING_STAFF
 	)
 	async getOrderDetail(@Param('commandNumber') commandNumber: string) {
-		const [orders, sizes] = await Promise.all([
-			this.orderService.getCustOrderByCommandNumber(commandNumber),
-			this.orderService.getSizeRunByCommandNumber(commandNumber)
-		])
-		if (orders.length === 0) {
-			return { orders: [], sizes: [] }
-		}
-		const groupedOrders = groupBy(orders, 'mo_no')
-		return {
-			orders: groupedOrders[commandNumber],
-			sizes: sizes
-		}
+		const { sizes, ...order } = await this.orderService.getManufacturingOrderSizeRun(commandNumber)
+		return { orders: order, sizes }
+
+		// const [orders, sizes] = await Promise.all([
+		// 	this.orderService.getCustOrderByCommandNumber(commandNumber),
+		// 	this.orderService.getSizeRunByCommandNumber(commandNumber)
+		// ])
+		// if (orders.length === 0) {
+		// 	return { orders: [], sizes: [] }
+		// }
+		// const groupedOrders = groupBy(orders, 'mo_no')
+		// return {
+		// 	orders: groupedOrders[commandNumber],
+		// 	sizes: sizes
+		// }
 	}
 }

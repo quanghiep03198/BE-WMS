@@ -4,6 +4,8 @@ import {
 } from '@modules/finished-goods/application/ports/io-mssql.repository.port'
 import { UpsertEpcsMatchData } from '@modules/finished-goods/domain/types'
 import { SizeNumber } from '@modules/finished-goods/domain/value-objects/size-number.vo'
+import { ORDER_REPOSITORY } from '@modules/order/order.constant'
+import { IOrderRepository } from '@modules/order/order.repository.interface'
 import { HttpService } from '@nestjs/axios'
 import { Inject, Injectable, NotFoundException } from '@nestjs/common'
 import { AxiosRequestConfig } from 'axios'
@@ -16,9 +18,8 @@ export class ThirdPartyApiService {
 	constructor(
 		@InjectPinoLogger(ThirdPartyApiService.name)
 		private readonly logger: PinoLogger,
-
+		@Inject(ORDER_REPOSITORY) private readonly orderRepository: IOrderRepository,
 		@Inject(IO_MSSQL_REPOSITORY) private readonly ioMssqlRepository: IIoMssqlRepository,
-
 		private readonly httpService: HttpService
 	) {}
 
@@ -45,7 +46,7 @@ export class ThirdPartyApiService {
 		})
 	}
 
-	public async upsertByCommandNumber(accessToken: string, factoryCode: string, commandNumber: string) {
+	public async upsertByCommandNumber(accessToken: string, commandNumber: string) {
 		const data = await this.getEpcByCommandNumber({
 			headers: { ['Authorization']: `Bearer ${accessToken}` },
 			params: { commandNumber: commandNumber }
@@ -57,7 +58,7 @@ export class ThirdPartyApiService {
 			throw new NotFoundException('No data fetched from the customer')
 		}
 
-		const manufacturingOrders = await this.ioMssqlRepository.getManufacturingOrder(commandNumber.slice(0, 9))
+		const manufacturingOrders = await this.orderRepository.getManufacturingOrder(commandNumber.slice(0, 9))
 
 		if (!manufacturingOrders) {
 			throw new NotFoundException(`Order information could not be found`)
@@ -99,7 +100,7 @@ export class ThirdPartyApiService {
 
 		if (!data) throw new NotFoundException('No data fetched from the customer')
 
-		const manufacturingOrder = await this.ioMssqlRepository.getManufacturingOrder(data.commandNumber)
+		const manufacturingOrder = await this.orderRepository.getManufacturingOrder(data.commandNumber)
 
 		if (!manufacturingOrder) {
 			throw new NotFoundException(`Order information could not be found`)

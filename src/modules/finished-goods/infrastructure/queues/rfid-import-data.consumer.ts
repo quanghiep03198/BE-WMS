@@ -11,17 +11,20 @@ import { Readable } from 'node:stream'
 import { DataSource } from 'typeorm'
 import { EXCLUDED_ORDERS } from '../../domain/constants'
 import { IMPORT_DATA_QUEUE } from '../constants/queue'
-import { EpcInbound, EpcModel, EpcSchema } from '../persistence/mongodb/schemas/finished-goods-epc.schema'
+import { FinishedGoodsEpc, FinishedGoodsEpcModel } from '../persistence/mongodb/schemas/finished-goods-epc.schema'
 import epcInformationQuery from '../persistence/mssql/sql/epc-information.sql'
 import { StoredRFIDReaderItem } from '../types'
+import { FinishedGoodsEpcDocument } from './../persistence/mongodb/schemas/finished-goods-epc.schema'
 
 @Processor(IMPORT_DATA_QUEUE)
 export class RFIDImportDataConsumer extends WorkerHost {
 	private readonly epcInformationQuery: string = epcInformationQuery
 
 	constructor(
-		@InjectModel(EpcInbound.name, DATA_WAREHOUSE_CONNECTION) private readonly inboundEpcModel: EpcModel,
-		@InjectModel(EpcInbound.name, DATA_WAREHOUSE_CONNECTION) private readonly outboundEpcModel: EpcModel,
+		// @InjectModel(EpcInbound.name, DATA_WAREHOUSE_CONNECTION) private readonly inboundEpcModel: EpcModel,
+		// @InjectModel(EpcInbound.name, DATA_WAREHOUSE_CONNECTION) private readonly outboundEpcModel: EpcModel,
+		@InjectModel(FinishedGoodsEpc.name, DATA_WAREHOUSE_CONNECTION)
+		private readonly finishedGoodsEpcModel: FinishedGoodsEpcModel,
 		@InjectDataSource(DATA_SOURCE_DATA_LAKE) private readonly dataSourceDL: DataSource
 	) {
 		super()
@@ -75,8 +78,10 @@ export class RFIDImportDataConsumer extends WorkerHost {
 
 		if (incommingEpcs.length === 0) return
 
+		// TODO: fix import base on station number
+
 		const bulkWriteOptions = incommingEpcs.map((item) => {
-			const options: AnyBulkWriteOperation<EpcSchema> = {
+			const options: AnyBulkWriteOperation<FinishedGoodsEpcDocument> = {
 				updateOne: {
 					filter: { epc: item.epc, scannable: true },
 					update: { ...item, station_no: station },
@@ -85,15 +90,13 @@ export class RFIDImportDataConsumer extends WorkerHost {
 			}
 			if (station.endsWith('103')) {
 				options.updateOne.filter['po'] = null
-				options.updateOne.update['deleted'] = false
+				// options.updateOne.update['deleted'] = false
 				return options
 			}
 			return options
 		})
 
-		const $model = station.endsWith('101') ? this.inboundEpcModel : this.outboundEpcModel
-
-		await $model.bulkWrite(bulkWriteOptions, {
+		await this.finishedGoodsEpcModel.bulkWrite(bulkWriteOptions, {
 			writeConcern: { w: 'majority' },
 			ordered: false,
 			retryWrites: true,

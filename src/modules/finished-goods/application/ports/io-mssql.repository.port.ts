@@ -1,4 +1,4 @@
-import { TManufacturingOrder, UpsertEpcsMatchData } from '@modules/finished-goods/domain/types'
+import { UpsertEpcsMatchData } from '@modules/finished-goods/domain/types'
 import { InventoryActions, InventoryStorageType } from '../../domain/constants'
 import { ElectronicProductCode } from '../../domain/value-objects/epc.vo'
 import { SizeNumber } from '../../domain/value-objects/size-number.vo'
@@ -51,8 +51,6 @@ export interface IIoMssqlRepository {
 	): Promise<void>
 
 	stockOut(epcs: Array<ElectronicProductCode>): Promise<void>
-
-	getManufacturingOrder(targetMo: string, moSeq?: string): Promise<TManufacturingOrder>
 
 	rollbackStockTransaction(stationNO: 'WH101' | 'WH103', epcs: Array<ElectronicProductCode>): Promise<void>
 

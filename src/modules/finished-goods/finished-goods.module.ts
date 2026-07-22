@@ -1,4 +1,5 @@
 import { DATA_SOURCE_DATA_LAKE, DATA_WAREHOUSE_CONNECTION } from '@databases/constants'
+import { OrderModule } from '@modules/order/order.module'
 import { BullModule } from '@nestjs/bullmq'
 import { Module, OnModuleInit } from '@nestjs/common'
 import { InjectModel, MongooseModule } from '@nestjs/mongoose'
@@ -17,7 +18,6 @@ import { IO_MONGO_REPOSITORY } from './application/ports/io-mongo.repository.por
 import { IO_MSSQL_REPOSITORY } from './application/ports/io-mssql.repository.port'
 import { InoutboundQueryHandlers } from './application/queries'
 import { InoutboundSagas } from './application/sagas'
-import { RFIDInboundService } from './application/services/rfid-inbound.service'
 import { InoutboundEventHandlers } from './domain/events'
 import {
 	IMPORT_DATA_QUEUE,
@@ -28,17 +28,20 @@ import {
 } from './infrastructure/constants/queue'
 import { InoutboundMongoRepository } from './infrastructure/persistence/mongodb/repositories/io-mongo.repository'
 import {
-	EPC_INBOUND_COLLECTION,
-	EPC_OUTBOUND_COLLECTION,
-	EpcInbound,
-	EpcInboundSchema,
-	EpcOutbound,
-	EpcOutboundSchema,
-	FINISHED_GOODS_EPCS,
+	DAILY_MO_INVENTORY_VARIATION_COLLECTION,
+	DailyMoInventoryVariation
+} from './infrastructure/persistence/mongodb/schemas/daily-mo-inventory-variation.schema'
+import {
+	FINISHED_GOODS_EPCS_COLLECTION,
 	FinishedGoodsEpc,
 	FinishedGoodsEpcModel,
 	FinishedGoodsEpcSchema
 } from './infrastructure/persistence/mongodb/schemas/finished-goods-epc.schema'
+import {
+	MO_INVENTORY_VARIATION_COLLECTION,
+	MoInventoryVariation,
+	MoInventoryVariationSchema
+} from './infrastructure/persistence/mongodb/schemas/mo-inventory-variation.schema'
 import {
 	RFIDInventoryBackupEntity,
 	RFIDInventoryEntity
@@ -57,6 +60,7 @@ import { FinishedGoodsListeners } from './presentation/listeners'
 		TenancyModule,
 		ThirdPartyApiModule,
 		InventoryModule,
+		OrderModule,
 		BullModule.registerQueue({ name: POST_DATA_INBOUND_QUEUE }),
 		BullModule.registerQueue({ name: POST_DATA_OUTBOUND_QUEUE }),
 		BullModule.registerQueue({ name: IMPORT_DATA_QUEUE }),
@@ -86,17 +90,15 @@ import { FinishedGoodsListeners } from './presentation/listeners'
 			[
 				{
 					name: FinishedGoodsEpc.name,
-					collection: FINISHED_GOODS_EPCS,
+					collection: FINISHED_GOODS_EPCS_COLLECTION,
 					useFactory: () => {
-						FinishedGoodsEpcSchema.index({ outbound_at: 1 }, { expires: '60d', name: 'idx_outbound_at' })
-
+						// FinishedGoodsEpcSchema.index({ outbound_at: 1 }, { expires: '60d', name: 'idx_outbound_at' })
+						// * Indexes
 						FinishedGoodsEpcSchema.index({ epc: 1 }, { unique: true, name: 'idx_epc' })
-
 						FinishedGoodsEpcSchema.index(
 							{ scannable: 1, deleted: 1, inbound_device_sn: 1, inbound_at: 1, storage_location: 1 },
 							{ name: 'idx_inbound_active' }
 						)
-
 						FinishedGoodsEpcSchema.index(
 							{
 								scannable: 1,
@@ -110,17 +112,14 @@ import { FinishedGoodsListeners } from './presentation/listeners'
 								name: 'idx_outbound_active'
 							}
 						)
-
 						FinishedGoodsEpcSchema.index(
 							{ scannable: 1, deleted: 1, mo_no: 1, factory_shoes_style: 1, size_numcode: 1 },
 							{ name: 'idx_group_mo_style_size' }
 						)
-
 						FinishedGoodsEpcSchema.index(
 							{ scannable: 1, deleted: 1, mo_no: 1, factory_shoes_style: 1, color_sn: 1, size_numcode: 1 },
 							{ name: 'idx_specs_inbound', partialFilterExpression: { inbound_at: null } }
 						)
-
 						FinishedGoodsEpcSchema.index(
 							{ scannable: 1, deleted: 1, mo_no: 1, factory_shoes_style: 1, color_sn: 1, size_numcode: 1 },
 							{
@@ -132,7 +131,9 @@ import { FinishedGoodsListeners } from './presentation/listeners'
 							}
 						)
 
+						// * Addon plugins
 						FinishedGoodsEpcSchema.plugin(MongoosePaginatePlugin)
+
 						FinishedGoodsEpcSchema.plugin(MongooseDeletePlugin, {
 							overrideMethods: true
 						})
@@ -141,32 +142,19 @@ import { FinishedGoodsListeners } from './presentation/listeners'
 					}
 				},
 				{
-					name: EpcInbound.name,
-					collection: EPC_INBOUND_COLLECTION,
+					name: MoInventoryVariation.name,
+					collection: MO_INVENTORY_VARIATION_COLLECTION,
 					useFactory: () => {
-						EpcInboundSchema.index({ record_time: 1 }, { expires: '365d' })
-						EpcInboundSchema.index({ mo_no: 1, size_numcode: 1, factory_shoes_style: 1, color_sn: 1 })
-						EpcInboundSchema.plugin(MongoosePaginatePlugin)
-						EpcInboundSchema.plugin(MongooseDeletePlugin, {
-							overrideMethods: true,
-							indexFields: ['deleted']
-						})
-						return EpcInboundSchema
+						MoInventoryVariationSchema.index({ mo_no: 1 }, { name: 'idx_mo', unique: true })
+						return MoInventoryVariationSchema
 					}
 				},
 				{
-					name: EpcOutbound.name,
-					collection: EPC_OUTBOUND_COLLECTION,
+					name: DailyMoInventoryVariation.name,
+					collection: DAILY_MO_INVENTORY_VARIATION_COLLECTION,
 					useFactory: () => {
-						EpcOutboundSchema.index({ record_time: 1 }, { expires: '365d' })
-						EpcOutboundSchema.index({ mo_no: 1, size_numcode: 1, factory_shoes_style: 1, color_sn: 1 })
-						EpcOutboundSchema.index({ po: 1 })
-						EpcOutboundSchema.plugin(MongoosePaginatePlugin)
-						EpcOutboundSchema.plugin(MongooseDeletePlugin, {
-							overrideMethods: true,
-							indexFields: ['deleted']
-						})
-						return EpcOutboundSchema
+						MoInventoryVariationSchema.index({ date: 1, mo_no: 1 }, { name: 'idx_date_mo', unique: true })
+						return MoInventoryVariationSchema
 					}
 				}
 			],
@@ -175,9 +163,6 @@ import { FinishedGoodsListeners } from './presentation/listeners'
 	],
 	controllers: FinishedGoodsControllers,
 	providers: [
-		RFIDInboundService,
-		// RFIDSharedService,
-		// RFIDOutboundService,
 		{
 			provide: IO_MSSQL_REPOSITORY,
 			useClass: InoutboundMssqlRepository

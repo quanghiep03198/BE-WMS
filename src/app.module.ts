@@ -20,7 +20,6 @@ import { LoggerModule, Params } from 'nestjs-pino'
 import { AppController } from './app.controller'
 import { AppConfig } from './configs/index'
 // Feature modules
-import { EventGateway } from './events/event.gateway'
 import { AuthModule } from './modules/auth/auth.module'
 import { DefectiveGoodsModule } from './modules/defective-goods/defective-goods.module'
 import { DepartmentModule } from './modules/department/department.module'
@@ -163,7 +162,6 @@ import { ScheduleTasks } from './tasks'
 	controllers: [AppController],
 	providers: [
 		...ScheduleTasks,
-		EventGateway,
 		{
 			provide: APP_FILTER,
 			useClass: SentryGlobalFilter

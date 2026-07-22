@@ -1,17 +1,21 @@
 ﻿export default /* SQL */ `
-WITH CTE AS (
+WITH mo_size_source AS (
 	SELECT
-		CASE 
-			WHEN ISNUMERIC(b.size_numcode) = 1 THEN CAST(b.size_numcode AS FLOAT) 
-			WHEN LEFT(b.size_numcode, 1) IN ('T', 'K') THEN CAST(SUBSTRING(b.size_numcode, 2, LEN(b.size_numcode)) AS FLOAT)
-		END AS [size_numcode], 
-		SUM(CAST(b.size_qty AS INT)) AS size_qty
-	FROM wuerp_vnrd.dbo.ta_ordersizerun a
-	LEFT JOIN wuerp_vnrd.dbo.ta_ordermst or1 ON or1.or_no = a.or_no
-		AND or1.isactive = 'Y'
-	LEFT JOIN wuerp_vnrd.dbo.ta_manufacturdet a1 ON or1.or_no = a1.or_no
-		AND a1.isactive = 'Y'
-	OUTER APPLY (
+		t.mo_no,
+		t.size_code,
+		t.size_sumqty,
+		REPLACE(
+			TRANSLATE(
+				UPPER(msr.size_numcode), 
+				'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 
+				'                          '
+			),
+				' ',
+				''
+		) AS size_numcode,
+      msr.size_qty
+	FROM wuerp_vnrd.dbo.ta_manufactursizerun t
+	CROSS APPLY (
 	VALUES
 		([size_numcode01], [size_qty01]),
 		([size_numcode02], [size_qty02]),
@@ -53,18 +57,57 @@ WITH CTE AS (
 		([size_numcode38], [size_qty38]),
 		([size_numcode39], [size_qty39]),
 		([size_numcode40], [size_qty40])
-	) b ([size_numcode],[size_qty])
-	WHERE b.size_qty <> 0
-	AND a.isactive = 'Y'
-	AND a1.mo_no = @0
-	GROUP BY a.size_code, b.size_numcode
+	) msr ([size_numcode], [size_qty])
+	WHERE t.mo_no = @0
+		AND msr.size_qty > 0
+		AND msr.size_numcode IS NOT NULL
+)
+, mo_size_json AS (
+	SELECT
+		d.mo_no,
+      d.size_code,
+      MAX(d.size_sumqty) AS size_sumqty,
+		CONCAT(
+			'[',
+			STRING_AGG(
+				CONCAT('{',  
+               '"size_numcode":', '"',  STRING_ESCAPE(CAST(d.size_numcode AS NVARCHAR(5)), 'json'),  '"',  
+               ',', 
+               '"size_qty":' , CAST(d.size_qty AS INT),  '}'),
+				','
+			) WITHIN GROUP (ORDER BY TRY_CAST(d.size_numcode AS FLOAT) ASC, d.size_numcode ASC),
+			']'
+		) AS mo_size_run
+	FROM (
+		SELECT mo_no, size_code, size_numcode, size_qty, size_sumqty
+		FROM mo_size_source
+	) d
+	GROUP BY d.mo_no, d.size_code
 )
 SELECT 
-	CASE 
-		WHEN CAST(size_numcode AS FLOAT) < 10 THEN CONCAT('0', size_numcode)
-		ELSE CAST(size_numcode AS NVARCHAR) 
-	END AS size_numcode,
-	size_qty
-FROM CTE
-ORDER BY size_numcode ASC;
+	a.mo_no AS mo_no,
+	aa.mo_noseq AS mo_noseq,
+	a.cofactory_code AS factory_code_produce,
+	aa.or_no AS or_no,
+	e.or_custpo AS or_cust_po,
+	d.brand_name AS brand_name,
+	c.shoestyle_codefactory AS factory_shoes_style,
+	CONCAT(c.shoestyle_codecust, '/', c.shoestyle_namecust) AS cust_shoes_style,
+	b.mat_code AS mat_code,
+	b.color_sn AS color_sn,
+	msj.size_code AS size_code,
+	ISNULL(msj.size_sumqty, 0) AS size_sumqty,
+	ISNULL(msj.mo_size_run, '[]') AS sizes
+FROM wuerp_vnrd.dbo.ta_manufacturmst a
+LEFT JOIN wuerp_vnrd.dbo.ta_manufacturdet aa ON aa.mo_no = a.mo_no AND aa.isactive = 'Y'
+LEFT JOIN wuerp_vnrd.dbo.ta_productmst b ON b.mat_code= a.mat_code AND b.isactive= 'Y'
+LEFT JOIN wuerp_vnrd.dbo.ta_shoefactorymst c ON c.shoestyle_systemcodefty = b.shoestyle_systemcodefty AND c.isactive = 'Y'
+LEFT JOIN wuerp_vnrd.dbo.ta_brand d ON d.custbrand_id = b.custbrand_id
+LEFT JOIN wuerp_vnrd.dbo.ta_ordermst e ON e.or_no = aa.or_no AND e.isactive = 'Y'
+LEFT JOIN mo_size_json msj ON msj.mo_no = a.mo_no
+WHERE
+	a.mo_no = @0
+	AND aa.mo_noseq = ISNULL(@1, '001')
+	AND a.isactive = 'Y'
+ORDER BY aa.mo_noseq;
 `

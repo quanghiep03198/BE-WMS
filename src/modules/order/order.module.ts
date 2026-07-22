@@ -1,14 +1,16 @@
 import { MiddlewareConsumer, Module, RequestMethod } from '@nestjs/common'
 import { TenacyMiddleware } from '../tenancy/tenancy.middleware'
 import { TenancyModule } from '../tenancy/tenancy.module'
+import { ORDER_REPOSITORY } from './order.constant'
 import { OrderController } from './order.controller'
+import { OrderRepository } from './order.repository'
 import { OrderService } from './order.service'
 
 @Module({
 	imports: [TenancyModule],
 	controllers: [OrderController],
-	providers: [OrderService],
-	exports: [OrderService]
+	providers: [OrderService, { provide: ORDER_REPOSITORY, useClass: OrderRepository }],
+	exports: [OrderService, ORDER_REPOSITORY]
 })
 export class OrderModule {
 	configure(consumer: MiddlewareConsumer) {
