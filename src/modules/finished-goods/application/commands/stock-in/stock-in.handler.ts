@@ -23,8 +23,8 @@ export class StockInHandler implements ICommandHandler<StockInCommand> {
 		const pendingInboundEpcs = await this.inoutboundMongoRepository.getPendingInboundEpcs(
 			command.inbound_device_sn,
 			command.mo_no,
-			command.storage,
-			command.dept_code
+			`${command.dept_code}/${command.dept_name}`,
+			command.storage
 		)
 		const currentInboundProgress = await this.inoutboundMssqlRepository.getMoInboundProgress(
 			command.mo_no,
@@ -33,7 +33,9 @@ export class StockInHandler implements ICommandHandler<StockInCommand> {
 		// * Start Unit of Work transaction for inbound stock-in process
 		const inboundTransaction = new StockTransaction('inbound', pendingInboundEpcs, currentInboundProgress)
 		inboundTransaction.startTransaction()
-		await this.inoutboundMssqlRepository.stockIn(pendingInboundEpcs, command)
+
+		await this.inoutboundMongoRepository.commitStockIn(pendingInboundEpcs)
+
 		this.eventPublisher.mergeObjectContext(inboundTransaction)
 		inboundTransaction.commit()
 	}

@@ -1,7 +1,7 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose'
 import { HydratedDocument, Model } from 'mongoose'
 
-export const MO_INVENTORY_VARIATION_COLLECTION = 'mo_progress'
+export const MO_INVENTORY_VARIATION_COLLECTION = 'mo_inventory_variation'
 
 @Schema({
 	collection: MO_INVENTORY_VARIATION_COLLECTION,
@@ -42,7 +42,7 @@ export class MoInventoryVariation {
 export const MoInventoryVariationSchema = SchemaFactory.createForClass(MoInventoryVariation)
 
 export type MoInventoryVariationDocument = HydratedDocument<MoInventoryVariation> & { record_time: string }
-export type MoIventoryVariationModel = Model<MoInventoryVariationDocument>
+export type MoInventoryVariationModel = Model<MoInventoryVariationDocument>
 
 /**
  * @example

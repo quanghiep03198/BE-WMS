@@ -4,13 +4,12 @@ import { EXCLUDED_ORDERS, InventoryActions } from '@modules/finished-goods/domai
 import { UpsertEpcsMatchData } from '@modules/finished-goods/domain/types'
 import { ElectronicProductCode } from '@modules/finished-goods/domain/value-objects/epc.vo'
 import { SizeNumber } from '@modules/finished-goods/domain/value-objects/size-number.vo'
-import { StockInDTO } from '@modules/finished-goods/presentation/dto/rfid-inbound.dto'
 import { InjectTransactionHost, Transactional, TransactionHost } from '@nestjs-cls/transactional'
 import { TransactionalAdapterTypeOrm } from '@nestjs-cls/transactional-adapter-typeorm'
 import { Injectable } from '@nestjs/common'
 import { InjectDataSource } from '@nestjs/typeorm'
 import { format } from 'date-fns'
-import { chunk, omit } from 'lodash'
+import { chunk } from 'lodash'
 import { Brackets, DataSource, In } from 'typeorm'
 import { generateStation } from '../../../utils'
 import { RFIDInventoryBackupEntity, RFIDInventoryEntity } from '../entities/rfid-inventory.entity'
@@ -126,18 +125,23 @@ export class InoutboundMssqlRepository implements IIoMssqlRepository {
 	// }
 
 	@Transactional<TransactionalAdapterTypeOrm>(DATA_SOURCE_DATA_LAKE)
-	public async stockIn(epcs: ReadonlyArray<ElectronicProductCode>, stockInDetails: StockInDTO): Promise<void> {
+	public async stockIn(
+		epcs: ReadonlyArray<ElectronicProductCode>
+		// stockInDetails: StockInDTO
+	): Promise<void> {
 		await Promise.all(
 			chunk(epcs, 100).map(async (ck) => {
 				const payload = ck
 					.filter((item) => item.getIsWritable() && !item.getIsInternal())
 					.map((item) => {
 						return {
-							...omit(stockInDetails, ['mo_no', 'inbound_device_sn']),
+							// ...omit(stockInDetails, ['mo_no', 'inbound_device_sn']),
 							epc: item.getStockKeepingUnit(),
 							mo_no: item.getManufacturingOrder(),
 							size_numcode: item.getSize(),
 							factory_code: item.getFactoryProduce(),
+							dept_code: item.getAssemblyLine('code'),
+							dept_name: item.getAssemblyLine('name'),
 							station_no: generateStation(item.getFactoryProduce(), 'WH101')
 						}
 					})

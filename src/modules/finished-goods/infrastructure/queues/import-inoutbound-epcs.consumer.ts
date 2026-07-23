@@ -10,14 +10,17 @@ import { AnyBulkWriteOperation } from 'mongoose'
 import { Readable } from 'node:stream'
 import { DataSource } from 'typeorm'
 import { EXCLUDED_ORDERS } from '../../domain/constants'
-import { IMPORT_DATA_QUEUE } from '../constants/queue'
-import { FinishedGoodsEpc, FinishedGoodsEpcModel } from '../persistence/mongodb/schemas/finished-goods-epc.schema'
+import { IMPORT_INOUTBOUND_EPCS_QUEUE } from '../constants/queue'
+import {
+	FinishedGoodsEpc,
+	FinishedGoodsEpcDocument,
+	FinishedGoodsEpcModel
+} from '../persistence/mongodb/schemas/finished-goods-epc.schema'
 import epcInformationQuery from '../persistence/mssql/sql/epc-information.sql'
 import { StoredRFIDReaderItem } from '../types'
-import { FinishedGoodsEpcDocument } from './../persistence/mongodb/schemas/finished-goods-epc.schema'
 
-@Processor(IMPORT_DATA_QUEUE)
-export class RFIDImportDataConsumer extends WorkerHost {
+@Processor(IMPORT_INOUTBOUND_EPCS_QUEUE)
+export class ImportInoutboundEpcsConsumer extends WorkerHost {
 	private readonly epcInformationQuery: string = epcInformationQuery
 
 	constructor(

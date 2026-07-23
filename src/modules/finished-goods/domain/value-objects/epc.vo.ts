@@ -13,9 +13,10 @@ export class ElectronicProductCode {
 			color_sn: string
 			size_numcode: SizeNumber
 			factory_code_produce: string
-			assembly_line?: string
+			assembly_line?: `${string}/${string}`
 			storage_location?: string
 			po?: string
+			outbound_type?: 'recall' | 'shipping'
 		}
 		// private readonly scannable?: boolean,
 		// private readonly manufacturingOrder?: string,
@@ -81,8 +82,16 @@ export class ElectronicProductCode {
 		return this.attributes?.po ?? FALLBACK_VALUE
 	}
 
-	public getAssemblyLine() {
-		return this.attributes?.assembly_line ?? FALLBACK_VALUE
+	public getAssemblyLine(prop: 'code' | 'name') {
+		const value = this.attributes?.assembly_line ?? FALLBACK_VALUE
+		if (!value.includes('/')) return FALLBACK_VALUE
+		const [assemblyLineCode, assemblyLineName] = value.split('/')
+		// return { dept_code, dept_name }
+		const assemblyLine = {
+			code: assemblyLineCode,
+			name: assemblyLineName
+		}
+		return assemblyLine[prop]
 	}
 
 	public getStorageLocation() {
@@ -100,5 +109,9 @@ export class ElectronicProductCode {
 
 	public getIsInternal() {
 		return this.sku.startsWith(INTERNAL_EPC_PREFIX)
+	}
+
+	public getOutboundType() {
+		return this.attributes?.outbound_type
 	}
 }

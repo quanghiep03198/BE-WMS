@@ -1,5 +1,4 @@
 import { UpsertEpcsMatchData } from '@modules/finished-goods/domain/types'
-import { InventoryActions, InventoryStorageType } from '../../domain/constants'
 import { ElectronicProductCode } from '../../domain/value-objects/epc.vo'
 import { SizeNumber } from '../../domain/value-objects/size-number.vo'
 
@@ -34,20 +33,20 @@ export interface IIoMssqlRepository {
 	>
 
 	stockIn(
-		epcs: ReadonlyArray<ElectronicProductCode>,
-		stockInDetails: {
-			mo_no: string
-			inbound_device_sn: string
-			rfid_status: InventoryActions
-			rfid_use: InventoryStorageType
-			dept_code: string
-			dept_name: string
-			storage: string
-			quantity: number
-			factory_code_produce: string
-			username: string
-			display_name: string
-		}
+		epcs: ReadonlyArray<ElectronicProductCode>
+		// stockInDetails: {
+		// 	mo_no: string
+		// 	inbound_device_sn: string
+		// 	rfid_status: InventoryActions
+		// 	rfid_use: InventoryStorageType
+		// 	dept_code: string
+		// 	dept_name: string
+		// 	storage: string
+		// 	quantity: number
+		// 	factory_code_produce: string
+		// 	username: string
+		// 	display_name: string
+		// }
 	): Promise<void>
 
 	stockOut(epcs: Array<ElectronicProductCode>): Promise<void>

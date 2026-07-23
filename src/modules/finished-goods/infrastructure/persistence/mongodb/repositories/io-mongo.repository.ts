@@ -24,8 +24,9 @@ export class InoutboundMongoRepository implements IIoMongoRepository {
 	public async getPendingInboundEpcs(
 		deviceSerialNumber: string,
 		manufacturingOrder: string,
-		assemblyLine: string,
-		storageLocation: string
+		assemblyLine: `${string}/${string}`,
+		storageLocation: string,
+		isRecalled?: boolean
 	): Promise<ElectronicProductCode[]> {
 		const rawData = await this.finishedGoodsEpcModel
 			.find({ scannable: true, inbound_device_sn: deviceSerialNumber, mo_no: manufacturingOrder })
@@ -42,7 +43,8 @@ export class InoutboundMongoRepository implements IIoMongoRepository {
 					factory_code_produce: item.factory_code_produce,
 					assembly_line: assemblyLine,
 					storage_location: storageLocation,
-					po: item.po
+					po: item.po,
+					...(isRecalled && { outbound_type: 'recall' })
 				}
 			}))
 		).filter((item) => item.getIsWritable())
@@ -259,7 +261,7 @@ export class InoutboundMongoRepository implements IIoMongoRepository {
 				filter: { epc: epc.getStockKeepingUnit(), storage_location: null },
 				update: {
 					inbound_at: new Date(),
-					assembly_line: epc.getAssemblyLine(),
+					assembly_line: epc.getAssemblyLine('code'),
 					storage_location: epc.getStorageLocation()
 				}
 			}

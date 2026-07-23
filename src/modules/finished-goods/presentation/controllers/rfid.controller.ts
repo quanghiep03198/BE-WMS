@@ -46,9 +46,9 @@ import { GetScanningMosQuery } from '../../application/queries/get-scanning-mo/g
 import { RetriveDeletedEpcsQuery } from '../../application/queries/retrieve-deleted-epcs/retrive-deleted-epcs.query'
 import { ScannedOrderDetail, StockFlow } from '../../domain/types'
 import {
-	IMPORT_DATA_QUEUE,
-	POST_DATA_INBOUND_QUEUE,
-	POST_DATA_OUTBOUND_QUEUE
+	BULK_WRITE_INBOUND_EPCS_QUEUE,
+	BULK_WRITE_OUTBOUND_EPCS_QUEUE,
+	IMPORT_INOUTBOUND_EPCS_QUEUE
 } from '../../infrastructure/constants/queue'
 import { CsvFileValidationPipe } from '../../infrastructure/pipes/csv-validation.pipe'
 import { RFIDSearchParams } from '../../infrastructure/types'
@@ -68,9 +68,9 @@ import {
 @Controller('rfid')
 export class RFIDController {
 	constructor(
-		@InjectQueue(POST_DATA_INBOUND_QUEUE) private readonly postInboundDataQueue: Queue<PostReaderDataDTO>,
-		@InjectQueue(POST_DATA_OUTBOUND_QUEUE) private readonly postOutboundDataQueue: Queue<PostReaderDataDTO>,
-		@InjectQueue(IMPORT_DATA_QUEUE) private readonly importDataQueue: Queue,
+		@InjectQueue(BULK_WRITE_INBOUND_EPCS_QUEUE) private readonly postInboundDataQueue: Queue<PostReaderDataDTO>,
+		@InjectQueue(BULK_WRITE_OUTBOUND_EPCS_QUEUE) private readonly postOutboundDataQueue: Queue<PostReaderDataDTO>,
+		@InjectQueue(IMPORT_INOUTBOUND_EPCS_QUEUE) private readonly importDataQueue: Queue,
 		@Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
 		private readonly eventEmitter: EventEmitter2,
 		private readonly redisService: RedisService,

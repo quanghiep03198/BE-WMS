@@ -15,8 +15,12 @@ import { SyncInventoryAuditCommand } from '../commands/sync-inventory-audit/sync
 export class InoutboundSaga {
 	constructor(@InjectPinoLogger(InoutboundSaga.name) private readonly logger: PinoLogger) {}
 
+	/**
+	 * TODO: add execution of CommitStockInCommand to BullMQ
+	 * TODO: execute calculate manufacturing order inventory variantion and upsert to 2 collections in MongoDB, one for `mo_inventory_variation and one` for `daily_mo_inventory_variation`
+	 */
 	@Saga()
-	insertedInboundDataToMssq(events$: Observable<unknown>): Observable<ICommand> {
+	insertedInboundDataToMongo(events$: Observable<unknown>): Observable<ICommand> {
 		return events$.pipe(
 			ofType(StockedInEvent),
 			map(({ scannedEpcs }) => new CommitStockInCommand(scannedEpcs))
@@ -27,7 +31,7 @@ export class InoutboundSaga {
 	insertedOutboundDataToMssq(events$: Observable<unknown>): Observable<ICommand> {
 		return events$.pipe(
 			ofType(StockedOutEvent),
-			map(({ scannedEpcs }) => new CommitStockOutCommand(scannedEpcs))
+			map(({ scannedEpcs }) => new CommitStockOutCommand(scannedEpcs)) // TODO: add execution of CommitStockInCommand to BullMQ
 		)
 	}
 

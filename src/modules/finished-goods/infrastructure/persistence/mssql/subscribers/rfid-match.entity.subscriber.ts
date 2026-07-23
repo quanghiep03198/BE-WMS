@@ -4,7 +4,7 @@ import { DataSource, EntitySubscriberInterface, EventSubscriber, InsertEvent } f
 import { RFIDMatchEntity } from '../entities/rfid-match.entity'
 
 @EventSubscriber()
-export class RFIDCustomerEntitySubscriber implements EntitySubscriberInterface<RFIDMatchEntity> {
+export class RFIDMatchEntitySubscriber implements EntitySubscriberInterface<RFIDMatchEntity> {
 	constructor(@InjectDataSource(DATA_SOURCE_DATA_LAKE) dataSource: DataSource) {
 		dataSource.subscribers.push(this)
 	}

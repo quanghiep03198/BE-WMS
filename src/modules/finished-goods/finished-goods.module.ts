@@ -20,16 +20,18 @@ import { InoutboundQueryHandlers } from './application/queries'
 import { InoutboundSagas } from './application/sagas'
 import { InoutboundEventHandlers } from './domain/events'
 import {
-	IMPORT_DATA_QUEUE,
-	POST_DATA_INBOUND_QUEUE,
-	POST_DATA_OUTBOUND_QUEUE,
+	BULK_WRITE_INBOUND_EPCS_QUEUE,
+	BULK_WRITE_OUTBOUND_EPCS_QUEUE,
+	IMPORT_INOUTBOUND_EPCS_QUEUE,
 	ROLLBACK_EXCHANGE_MO_TX_QUEUE,
-	ROLLBACK_STOCK_TX_QUEUE
+	ROLLBACK_STOCK_TX_QUEUE,
+	STOCK_IN_QUEUE
 } from './infrastructure/constants/queue'
 import { InoutboundMongoRepository } from './infrastructure/persistence/mongodb/repositories/io-mongo.repository'
 import {
 	DAILY_MO_INVENTORY_VARIATION_COLLECTION,
-	DailyMoInventoryVariation
+	DailyMoInventoryVariation,
+	DailyMoInventoryVariationModel
 } from './infrastructure/persistence/mongodb/schemas/daily-mo-inventory-variation.schema'
 import {
 	FINISHED_GOODS_EPCS_COLLECTION,
@@ -40,6 +42,7 @@ import {
 import {
 	MO_INVENTORY_VARIATION_COLLECTION,
 	MoInventoryVariation,
+	MoInventoryVariationModel,
 	MoInventoryVariationSchema
 } from './infrastructure/persistence/mongodb/schemas/mo-inventory-variation.schema'
 import {
@@ -48,8 +51,7 @@ import {
 } from './infrastructure/persistence/mssql/entities/rfid-inventory.entity'
 import { RFIDMatchEntity } from './infrastructure/persistence/mssql/entities/rfid-match.entity'
 import { InoutboundMssqlRepository } from './infrastructure/persistence/mssql/repositories/io-mssql.repository'
-import { RFIDInventoryEntitySubscriber } from './infrastructure/persistence/mssql/subscribers/rfid-inventory.entity.subscriber'
-import { RFIDCustomerEntitySubscriber } from './infrastructure/persistence/mssql/subscribers/rfid-match.entity.subscriber'
+import { FinishedGoodsEntitySubscribers } from './infrastructure/persistence/mssql/subscribers'
 import { FinishedGoodsConsumers } from './infrastructure/queues'
 import { FinishedGoodsControllers } from './presentation/controllers'
 import { FinishedGoodsGateway } from './presentation/gateways/inoutbound.gateway'
@@ -61,9 +63,18 @@ import { FinishedGoodsListeners } from './presentation/listeners'
 		ThirdPartyApiModule,
 		InventoryModule,
 		OrderModule,
-		BullModule.registerQueue({ name: POST_DATA_INBOUND_QUEUE }),
-		BullModule.registerQueue({ name: POST_DATA_OUTBOUND_QUEUE }),
-		BullModule.registerQueue({ name: IMPORT_DATA_QUEUE }),
+		BullModule.registerQueue({ name: BULK_WRITE_INBOUND_EPCS_QUEUE }),
+		BullModule.registerQueue({ name: BULK_WRITE_OUTBOUND_EPCS_QUEUE }),
+		BullModule.registerQueue({ name: IMPORT_INOUTBOUND_EPCS_QUEUE }),
+		BullModule.registerQueue({
+			name: STOCK_IN_QUEUE,
+			defaultJobOptions: {
+				attempts: 10,
+				removeOnComplete: { count: 10 },
+				removeOnFail: { count: 100 },
+				backoff: { type: 'fixed', delay: 10_000 }
+			}
+		}),
 		BullModule.registerQueue({
 			name: ROLLBACK_EXCHANGE_MO_TX_QUEUE,
 			defaultJobOptions: {
@@ -163,6 +174,14 @@ import { FinishedGoodsListeners } from './presentation/listeners'
 	],
 	controllers: FinishedGoodsControllers,
 	providers: [
+		...FinishedGoodsConsumers,
+		...FinishedGoodsListeners,
+		...InoutboundQueryHandlers,
+		...InoutboundCommandHandlers,
+		...InoutboundEventHandlers,
+		...InoutboundSagas,
+		...FinishedGoodsEntitySubscribers,
+		FinishedGoodsGateway,
 		{
 			provide: IO_MSSQL_REPOSITORY,
 			useClass: InoutboundMssqlRepository
@@ -170,16 +189,7 @@ import { FinishedGoodsListeners } from './presentation/listeners'
 		{
 			provide: IO_MONGO_REPOSITORY,
 			useClass: InoutboundMongoRepository
-		},
-		...FinishedGoodsConsumers,
-		...FinishedGoodsListeners,
-		...InoutboundQueryHandlers,
-		...InoutboundCommandHandlers,
-		...InoutboundEventHandlers,
-		...InoutboundSagas,
-		FinishedGoodsGateway,
-		RFIDCustomerEntitySubscriber,
-		RFIDInventoryEntitySubscriber
+		}
 	],
 	exports: [MongooseModule, FinishedGoodsGateway, IO_MSSQL_REPOSITORY]
 })
@@ -188,12 +198,18 @@ export class FinishedGoodsModule implements OnModuleInit {
 		private readonly logger: PinoLogger,
 		@InjectRedisClient() private readonly redisClient: Redis,
 		@InjectModel(FinishedGoodsEpc.name, DATA_WAREHOUSE_CONNECTION)
-		private readonly finishedGoodsEpcModel: FinishedGoodsEpcModel
+		private readonly finishedGoodsEpcModel: FinishedGoodsEpcModel,
+		@InjectModel(MoInventoryVariation.name, DATA_WAREHOUSE_CONNECTION)
+		private readonly moInventoryVariation: MoInventoryVariationModel,
+		@InjectModel(DailyMoInventoryVariation.name, DATA_WAREHOUSE_CONNECTION)
+		private readonly dailyMoInventoryVariation: DailyMoInventoryVariationModel
 	) {}
 
 	async onModuleInit() {
 		try {
 			await this.finishedGoodsEpcModel.syncIndexes()
+			await this.moInventoryVariation.syncIndexes()
+			await this.dailyMoInventoryVariation.syncIndexes()
 			this.redisClient.setnx('cached:rfid:enable_deduplicate_inbound_epc', JSON.stringify({ value: true }))
 		} catch (error) {
 			this.logger.error(error)
