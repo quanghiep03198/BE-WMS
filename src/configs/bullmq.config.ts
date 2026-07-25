@@ -12,11 +12,11 @@ export default registerAs(
 			db: env('REDIS_DB', { fallbackValue: 0, serialize: (value): number => Number.parseInt(value) })
 		},
 		defaultJobOptions: {
-			removeOnFail: true,
+			removeOnFail: false,
 			removeOnComplete: true,
 			attempts: 3,
 			backoff: {
-				type: 'exponential',
+				type: 'fixed',
 				delay: 3000
 			}
 		}
