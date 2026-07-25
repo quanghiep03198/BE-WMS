@@ -1,7 +1,10 @@
-import { Prop, Schema } from '@nestjs/mongoose'
+import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose'
+import { HydratedDocument, Model } from 'mongoose'
+
+export const MANUFACTURING_ORDER_COLLECTION = 'manufacturing_orders'
 
 @Schema({
-	collection: 'manufacturing_orders',
+	collection: MANUFACTURING_ORDER_COLLECTION,
 	timestamps: {
 		createdAt: 'created_at',
 		updatedAt: 'updated_at'
@@ -17,6 +20,9 @@ export class ManufacturingOrder {
 	@Prop({ type: String, required: true })
 	mo_no: string
 
+	@Prop({ type: Number, required: true })
+	mo_total_qty: number
+
 	@Prop({ type: String, required: true })
 	brand_name: string
 
@@ -26,10 +32,17 @@ export class ManufacturingOrder {
 	@Prop({ type: String, required: true })
 	color_sn: string
 
+	@Prop({ type: String, required: true })
+	factory_code_produce: string
+
 	@Prop({
-		type: Array,
+		type: Object,
 		required: true,
-		default: []
+		default: {}
 	})
-	sizes: Array<{ size_numcode: string; size_qty: number }>
+	sizes: { [key: string]: number }
 }
+
+export const ManufacturingOrderSchema = SchemaFactory.createForClass(ManufacturingOrder)
+export type ManufacturingOrderDocument = HydratedDocument<ManufacturingOrder>
+export type ManufacturingOrderModel = Model<ManufacturingOrderDocument>

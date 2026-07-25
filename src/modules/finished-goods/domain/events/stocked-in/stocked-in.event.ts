@@ -4,6 +4,6 @@ import { ElectronicProductCode } from '../../value-objects/epc.vo'
 export class StockedInEvent implements IEvent {
 	constructor(
 		public readonly transactionId: string,
-		public readonly scannedEpcs: Array<ElectronicProductCode>
+		public readonly stockedInEpcs: Array<ElectronicProductCode>
 	) {}
 }

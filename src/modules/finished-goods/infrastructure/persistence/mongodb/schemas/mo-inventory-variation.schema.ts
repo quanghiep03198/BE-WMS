@@ -36,7 +36,16 @@ export class MoInventoryVariation {
 	total_target_qty: number
 
 	@Prop({ type: Object, requried: true })
-	inventory_variation: Record<string, { inbound_qty: number; outbound_qty: number; inventory: number }>
+	inventory_variation: Record<
+		string,
+		{
+			target_qty: number
+			stocked_in_qty: number
+			recalled_qty: number
+			returned_qty: number
+			shipped_out_qty: number
+		}
+	>
 }
 
 export const MoInventoryVariationSchema = SchemaFactory.createForClass(MoInventoryVariation)

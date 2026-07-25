@@ -6,7 +6,7 @@ import { StockedInEvent } from './stocked-in.event'
 export class StockedInHandler implements IEventHandler<StockedInEvent> {
 	constructor(@InjectPinoLogger(StockedInHandler.name) private readonly logger: PinoLogger) {}
 
-	async handle({ scannedEpcs }: StockedInEvent) {
-		this.logger.info(`Upserted ${scannedEpcs.length} EPCs to MSSQL database successfully.`)
+	async handle({ stockedInEpcs }: StockedInEvent) {
+		this.logger.info(`Upserted ${stockedInEpcs.length} EPCs to MSSQL database successfully.`)
 	}
 }

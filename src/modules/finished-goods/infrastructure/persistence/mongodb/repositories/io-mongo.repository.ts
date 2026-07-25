@@ -21,7 +21,7 @@ export class InoutboundMongoRepository implements IIoMongoRepository {
 		private readonly txHost: TransactionHost<TransactionalAdapterMongoose>
 	) {}
 
-	public async getPendingInboundEpcs(
+	public async getPendingInboundOrRecallEpcs(
 		deviceSerialNumber: string,
 		manufacturingOrder: string,
 		assemblyLine: `${string}/${string}`,
@@ -44,7 +44,7 @@ export class InoutboundMongoRepository implements IIoMongoRepository {
 					assembly_line: assemblyLine,
 					storage_location: storageLocation,
 					po: item.po,
-					...(isRecalled && { outbound_type: 'recall' })
+					...(isRecalled && { recall_at: null })
 				}
 			}))
 		).filter((item) => item.getIsWritable())

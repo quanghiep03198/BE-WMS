@@ -66,8 +66,11 @@ export class FinishedGoodsEpc {
 	@Prop({ type: Date, default: null })
 	outbound_at: Date | null
 
-	@Prop({ type: String, default: null, enum: ['recall', 'shipping'] })
-	outbound_type: boolean
+	@Prop({ type: Date, default: null })
+	recalled_at: Date | null
+
+	@Prop({ type: Date, default: null })
+	returned_at: Date | null
 
 	@Prop({ type: Boolean, default: false })
 	deleted: boolean

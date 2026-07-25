@@ -11,7 +11,7 @@ export interface IIoMongoRepository {
 		payload: { epcs: ElectronicProductCode[]; deviceSerialNumber: string }
 	}): Promise<void>
 
-	getPendingInboundEpcs(
+	getPendingInboundOrRecallEpcs(
 		deviceSerialNumber: string,
 		manufacturingOrder: string,
 		assemblyLine: string,

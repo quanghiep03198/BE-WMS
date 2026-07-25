@@ -20,7 +20,7 @@ export class StockInHandler implements ICommandHandler<StockInCommand> {
 	) {}
 
 	public async execute({ command }: StockInCommand): Promise<void> {
-		const pendingInboundEpcs = await this.inoutboundMongoRepository.getPendingInboundEpcs(
+		const pendingInboundEpcs = await this.inoutboundMongoRepository.getPendingInboundOrRecallEpcs(
 			command.inbound_device_sn,
 			command.mo_no,
 			`${command.dept_code}/${command.dept_name}`,
