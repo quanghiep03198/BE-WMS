@@ -10,12 +10,17 @@ import { Inject, Injectable } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
 import { Cache } from 'cache-manager'
 import { AnyBulkWriteOperation, FilterQuery, mongo, type PipelineStage } from 'mongoose'
+import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
 import { FinishedGoodsEpc, FinishedGoodsEpcDocument, FinishedGoodsEpcModel } from '../schemas/finished-goods-epc.schema'
+import { MoInventoryVariationModel } from '../schemas/mo-inventory-variation.schema'
 @Injectable()
 export class InoutboundMongoRepository implements IIoMongoRepository {
 	constructor(
+		@InjectPinoLogger(InoutboundMongoRepository.name) private readonly logger: PinoLogger,
 		@InjectModel(FinishedGoodsEpc.name, DATA_WAREHOUSE_CONNECTION)
 		private readonly finishedGoodsEpcModel: FinishedGoodsEpcModel,
+		@InjectModel(FinishedGoodsEpc.name, DATA_WAREHOUSE_CONNECTION)
+		private readonly moInventoryVariationModel: MoInventoryVariationModel,
 		@Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
 		@InjectTransactionHost(DATA_WAREHOUSE_CONNECTION)
 		private readonly txHost: TransactionHost<TransactionalAdapterMongoose>
@@ -255,35 +260,333 @@ export class InoutboundMongoRepository implements IIoMongoRepository {
 	}
 
 	@Transactional<TransactionalAdapterMongoose>(DATA_WAREHOUSE_CONNECTION)
-	public async commitStockIn(scannedEpcs: Array<ElectronicProductCode>): Promise<void> {
-		const bulkWriteOperations: AnyBulkWriteOperation<FinishedGoodsEpcDocument>[] = scannedEpcs.map((epc) => ({
-			updateOne: {
-				filter: { epc: epc.getStockKeepingUnit(), storage_location: null },
-				update: {
-					inbound_at: new Date(),
-					assembly_line: epc.getAssemblyLine('code'),
-					storage_location: epc.getStorageLocation()
+	public async getInventoryVariation(scannedEpcs: Array<ElectronicProductCode>): Promise<
+		Array<{
+			mo_no: string
+			factory_code_produce: string
+			factory_shoes_style: string
+			color_sn: string
+			inventory_variation: Record<
+				string,
+				{ stocked_in_qty: number; recalled_qty: number; returned_qty: number; shipped_out_qty: number }
+			>
+		}>
+	> {
+		const aggregateQuery = this.finishedGoodsEpcModel
+			.aggregate<{
+				mo_no: string
+				factory_code_produce: string
+				factory_shoes_style: string
+				color_sn: string
+				inventory_variation: Record<
+					string,
+					{ stocked_in_qty: number; recalled_qty: number; returned_qty: number; shipped_out_qty: number }
+				>
+			}>(
+				[
+					{
+						$match: {
+							epc: { $in: scannedEpcs.map((epc) => epc.getStockKeepingUnit()) }
+						}
+					},
+					{
+						$addFields: {
+							is_inbound: {
+								$cond: [
+									{
+										$and: [
+											{
+												$eq: [{ $type: '$inbound_at' }, 'date']
+											},
+											{
+												$ne: [{ $type: '$returned_at' }, 'date']
+											}
+										]
+									},
+									1,
+									0
+								]
+							},
+							is_recall: {
+								$cond: [
+									{
+										$and: [
+											{
+												$eq: [{ $type: '$recalled_at' }, 'date']
+											},
+											{
+												$ne: [{ $type: '$returned_at' }, 'date']
+											}
+										]
+									},
+									1,
+									0
+								]
+							},
+							is_return: {
+								$cond: [{ $eq: [{ $type: '$returned_at' }, 'date'] }, 1, 0]
+							},
+							is_shipped_out: {
+								$cond: [{ $eq: [{ $type: '$outbound_at' }, 'date'] }, 1, 0]
+							}
+						}
+					},
+					{
+						$group: {
+							_id: {
+								mo_no: '$mo_no',
+								factory_shoes_style: '$factory_shoes_style',
+								color_sn: '$color_sn',
+								factory_code_produce: '$factory_code_produce'
+							},
+							sizes: {
+								$push: {
+									size_numcode: '$size_numcode',
+									stocked_in_qty: '$is_inbound',
+									recalled_qty: '$is_recall',
+									returned_qty: '$is_return',
+									shipped_out_qty: '$is_shipped_out'
+								}
+							},
+							total_qty: { $sum: 1 }
+						}
+					},
+					{
+						$lookup: {
+							from: 'mo_inventory_variation',
+							let: {
+								mo_no: '$_id.mo_no',
+								factory_code_produce: '$_id.factory_code_produce',
+								factory_shoes_style: '$_id.factory_shoes_style',
+								color_sn: '$_id.color_sn'
+							},
+							pipeline: [
+								{
+									$match: {
+										$expr: {
+											$and: [
+												{ $eq: ['$mo_no', '$$mo_no'] },
+												{ $eq: ['$factory_code_produce', '$$factory_code_produce'] },
+												{ $eq: ['$factory_shoes_style', '$$factory_shoes_style'] },
+												{ $eq: ['$color_sn', '$$color_sn'] }
+											]
+										}
+									}
+								},
+								{
+									$project: {
+										_id: 0,
+										mo_total_qty: 1,
+										sizes: 1
+									}
+								}
+							],
+							as: 'mo_info'
+						}
+					},
+					{
+						$addFields: {
+							mo_info: {
+								$arrayElemAt: ['$mo_info', 0]
+							}
+						}
+					},
+					{
+						$project: {
+							_id: 0,
+							mo_no: '$_id.mo_no',
+							factory_code_produce: '$_id.factory_code_produce',
+							factory_shoes_style: '$_id.factory_shoes_style',
+							color_sn: '$_id.color_sn',
+							mo_total_qty: '$mo_info.mo_total_qty',
+							inventory_variation: {
+								$let: {
+									vars: {
+										sizeGroups: {
+											$map: {
+												input: {
+													$setUnion: [
+														{
+															$map: {
+																input: '$sizes',
+																as: 's',
+																in: '$$s.size_numcode'
+															}
+														},
+														[]
+													]
+												},
+												as: 'size',
+												in: {
+													k: '$$size',
+													v: {
+														target_qty: {
+															$getField: {
+																field: '$$size',
+																input: '$mo_info.sizes'
+															}
+														},
+														stocked_in_qty: {
+															$sum: {
+																$map: {
+																	input: {
+																		$filter: {
+																			input: '$sizes',
+																			as: 's',
+																			cond: { $eq: ['$$s.size_numcode', '$$size'] }
+																		}
+																	},
+																	as: 'x',
+																	in: '$$x.stocked_in_qty'
+																}
+															}
+														},
+														recalled_qty: {
+															$sum: {
+																$map: {
+																	input: {
+																		$filter: {
+																			input: '$sizes',
+																			as: 's',
+																			cond: { $eq: ['$$s.size_numcode', '$$size'] }
+																		}
+																	},
+																	as: 'x',
+																	in: '$$x.recalled_qty'
+																}
+															}
+														},
+														returned_qty: {
+															$sum: {
+																$map: {
+																	input: {
+																		$filter: {
+																			input: '$sizes',
+																			as: 's',
+																			cond: { $eq: ['$$s.size_numcode', '$$size'] }
+																		}
+																	},
+																	as: 'x',
+																	in: '$$x.returned_qty'
+																}
+															}
+														},
+														shipped_out_qty: {
+															$sum: {
+																$map: {
+																	input: {
+																		$filter: {
+																			input: '$sizes',
+																			as: 's',
+																			cond: { $eq: ['$$s.size_numcode', '$$size'] }
+																		}
+																	},
+																	as: 'x',
+																	in: '$$x.shipped_out_qty'
+																}
+															}
+														}
+													}
+												}
+											}
+										}
+									},
+									in: {
+										$arrayToObject: '$$sizeGroups'
+									}
+								}
+							}
+						}
+					}
+				],
+				{
+					readConcern: { level: 'majority' },
+					readPreference: 'primary'
 				}
+			)
+			.session(this.txHost.tx)
+
+		return await aggregateQuery
+	}
+
+	@Transactional<TransactionalAdapterMongoose>(DATA_WAREHOUSE_CONNECTION)
+	public async stockIn(scannedEpcs: Array<ElectronicProductCode>): Promise<void> {
+		const epcBulkUpdateRequests: AnyBulkWriteOperation<FinishedGoodsEpcDocument>[] = scannedEpcs.map((epc) => ({
+			updateOne: {
+				filter: { epc: epc.getStockKeepingUnit() },
+				update: [
+					{
+						$set: {
+							returned_at: {
+								$cond: [{ $eq: [{ $type: '$inbound_at' }, 'date'] }, '$$NOW', '$returned_at']
+							},
+							inbound_at: {
+								$cond: [{ $eq: [{ $type: '$inbound_at' }, 'date'] }, '$inbound_at', '$$NOW']
+							},
+							assembly_line: epc.getAssemblyLine('code'),
+							storage_location: epc.getStorageLocation()
+						}
+					}
+				]
 			}
 		}))
 
-		await this.finishedGoodsEpcModel.bulkWrite(bulkWriteOperations, {
+		await this.finishedGoodsEpcModel.bulkWrite(epcBulkUpdateRequests, {
 			session: this.txHost.tx,
 			writeConcern: { w: 'majority' },
 			ordered: false,
 			retryWrites: true,
 			timestamps: true
 		})
-		// await this.finishedGoodsEpcModel
-		// 	.updateMany(
-		// 		{ epc: { $in: scannedEpcs.map((epc) => epc.getStockKeepingUnit()) }, inbound_at: null },
-		// 		{ inbound_at: new Date(), assembly_line: assemblyLine, storage_location: storageLocation }
-		// 	)
-		// 	.session(this.txHost.tx)
+
+		// const moInventoryVariationBulkUpdateRequests: AnyBulkWriteOperation<MoInventoryVariationDocument>[] = []
+
+		const pendingInventoryVariation = await this.getInventoryVariation(scannedEpcs)
+
+		const toNumericAdd = (path: string, increment: number) => ({
+			$add: [
+				{
+					$cond: [{ $in: [{ $type: path }, ['int', 'long', 'double', 'decimal']] }, path, 0]
+				},
+				increment
+			]
+		})
+		for (const mo of pendingInventoryVariation) {
+			const setUpdate: Record<string, unknown> = {}
+			for (const [size, value] of Object.entries(mo.inventory_variation)) {
+				setUpdate[`inventory_variation.${size}.stocked_in_qty`] = toNumericAdd(
+					`$inventory_variation.${size}.stocked_in_qty`,
+					value.stocked_in_qty ?? 0
+				)
+				setUpdate[`inventory_variation.${size}.recalled_qty`] = toNumericAdd(
+					`$inventory_variation.${size}.recalled_qty`,
+					value.recalled_qty ?? 0
+				)
+				setUpdate[`inventory_variation.${size}.returned_qty`] = toNumericAdd(
+					`$inventory_variation.${size}.returned_qty`,
+					value.returned_qty ?? 0
+				)
+				setUpdate[`inventory_variation.${size}.shipped_out_qty`] = toNumericAdd(
+					`$inventory_variation.${size}.shipped_out_qty`,
+					value.shipped_out_qty ?? 0
+				)
+			}
+
+			await this.moInventoryVariationModel.updateOne(
+				{
+					mo_no: mo.mo_no,
+					factory_code_produce: mo.factory_code_produce,
+					factory_shoes_style: mo.factory_shoes_style,
+					color_sn: mo.color_sn
+				},
+				{ $set: setUpdate },
+				{ session: this.txHost.tx }
+			)
+		}
 	}
 
 	@Transactional<TransactionalAdapterMongoose>(DATA_WAREHOUSE_CONNECTION)
-	public async commitStockOut(scannedEpcs: Array<ElectronicProductCode>): Promise<void> {
+	public async stockOut(scannedEpcs: Array<ElectronicProductCode>): Promise<void> {
 		const bulkWriteOperations: AnyBulkWriteOperation<FinishedGoodsEpcDocument>[] = scannedEpcs.map((epc) => ({
 			updateOne: {
 				filter: { epc: epc.getStockKeepingUnit(), outbound_at: null },

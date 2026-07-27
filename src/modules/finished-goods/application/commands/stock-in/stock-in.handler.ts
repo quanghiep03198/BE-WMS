@@ -34,7 +34,7 @@ export class StockInHandler implements ICommandHandler<StockInCommand> {
 		const inboundTransaction = new StockTransaction('inbound', pendingInboundEpcs, currentInboundProgress)
 		inboundTransaction.startTransaction()
 
-		await this.inoutboundMongoRepository.commitStockIn(pendingInboundEpcs)
+		await this.inoutboundMongoRepository.stockIn(pendingInboundEpcs)
 
 		this.eventPublisher.mergeObjectContext(inboundTransaction)
 		inboundTransaction.commit()

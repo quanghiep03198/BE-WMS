@@ -23,7 +23,7 @@ export class CommitStockOutHandler implements ICommandHandler<CommitStockOutComm
 
 	public async execute({ scannedEpcs }: CommitStockOutCommand): Promise<void> {
 		try {
-			await this.inoutboundMongoRepository.commitStockOut(scannedEpcs)
+			await this.inoutboundMongoRepository.stockOut(scannedEpcs)
 			this.eventBus.publish(new CommittedStockOutEvent(scannedEpcs.length))
 		} catch (error) {
 			this.logger.error(error)

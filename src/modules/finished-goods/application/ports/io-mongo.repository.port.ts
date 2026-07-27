@@ -48,13 +48,23 @@ export interface IIoMongoRepository {
 		Array<{ epc: string; mo_no: string; factory_shoes_style: string; color_sn: string; size_numcode: string }>
 	>
 
-	commitStockIn(scannedEpcs: Array<ElectronicProductCode>): Promise<void>
+	stockIn(scannedEpcs: Array<ElectronicProductCode>): Promise<void>
 
-	commitStockOut(scannedEpcs: Array<ElectronicProductCode>): Promise<void>
+	stockOut(scannedEpcs: Array<ElectronicProductCode>): Promise<void>
 
 	exchangeMo(pendingExchangeEpcs: Array<string>, targetMo: string): Promise<void>
 
 	updateScanningEpcsMatch(data: UpsertEpcsMatchData): Promise<void>
+
+	getInventoryVariation(stockedInEpcs: Array<ElectronicProductCode>): Promise<
+		Array<{
+			mo_no: string
+			inventory_variation: Record<
+				string,
+				{ stocked_in_qty: number; recalled_qty: number; returned_qty: number; shipped_out_qty: number }
+			>
+		}>
+	>
 }
 
 export const IO_MONGO_REPOSITORY = 'IInoutboundMongoRepository'
