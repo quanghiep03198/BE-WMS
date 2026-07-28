@@ -24,7 +24,7 @@ export class DailyMoInventoryVariation {
 	mo_no: string
 
 	@Prop({ type: Object, required: true })
-	inventory_variation: Record<string, { inbound_qty: number; outbound_qty: number }>
+	inventory_variation: Record<string, { stocked_in_qty: number; shipped_out_qty: number }>
 }
 
 export const DailyMoInventoryVariationSchema = SchemaFactory.createForClass(DailyMoInventoryVariation)
@@ -37,20 +37,28 @@ export type DailyMoInventoryVariationModel = Model<DailyMoInventoryVariationDocu
 // 		mo_no: '15A07C038',
 // 		inventory_variation: {
 // 			'05': {
-// 				inbound_qty: 15,
-// 				outbound_qty: 0
+// 				stocked_in_qty: 15,
+// 				recalled_qty: 0,
+// 				returned_qty: 0,
+// 				shipped_out_qty: 0
 // 			},
 // 			'06': {
-// 				inbound_qty: 5,
-// 				outbound_qty: 0
+// 				stocked_in_qty: 5,
+// 				recalled_qty: 0,
+// 				returned_qty: 0,
+// 				shipped_out_qty: 0
 // 			},
 // 			'07': {
-// 				inbound_qty: 79,
-// 				outbound_qty: 1
+// 				stocked_in_qty: 79,
+// 				recalled_qty: 0,
+// 				returned_qty: 0,
+// 				shipped_out_qty: 1
 // 			},
 // 			'08': {
-// 				inbound_qty: 109,
-// 				outbound_qty: 0
+// 				stocked_in_qty: 109,
+// 				recalled_qty: 0,
+// 				returned_qty: 0,
+// 				shipped_out_qty: 0
 // 			}
 // 		}
 

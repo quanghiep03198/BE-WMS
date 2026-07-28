@@ -1,11 +1,11 @@
 import { OnWorkerEvent, Processor, WorkerHost } from '@nestjs/bullmq'
 import { Job } from 'bullmq'
 import { PinoLogger } from 'nestjs-pino'
-import { BULK_WRITE_OUTBOUND_EPCS_QUEUE } from '../constants/queue'
+import { BULK_WRITE_OUTBOUND_EPCS_QUEUE } from '../constants'
 
+import { BulkWriteInventoryCommand } from '@modules/finished-goods/application/commands/bulk-write-inventory/bulk-write-inventory.command'
+import { PostReaderDataDTO } from '@modules/finished-goods/presentation/dto/rfid-shared.dto'
 import { CommandBus } from '@nestjs/cqrs'
-import { BulkWriteInventoryCommand } from '../../application/commands/bulk-write-inventory/bulk-write-inventory.command'
-import { PostReaderDataDTO } from '../../presentation/dto/rfid-shared.dto'
 
 @Processor(BULK_WRITE_OUTBOUND_EPCS_QUEUE, { concurrency: 2 })
 export class BulkWriteOutboundEpcsConsumer extends WorkerHost {

@@ -1,3 +1,4 @@
+import { FinishedGoodsEpcStatus } from '@modules/finished-goods/domain/constants'
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose'
 import mongoose, { HydratedDocument, PaginateModel } from 'mongoose'
 import { SoftDeleteModel } from 'mongoose-delete'
@@ -74,6 +75,12 @@ export class FinishedGoodsEpc {
 
 	@Prop({ type: Boolean, default: false })
 	deleted: boolean
+
+	@Prop({ type: Boolean, default: 0 })
+	inbound_times: boolean
+
+	@Prop({ type: String, enum: Object.values(FinishedGoodsEpcStatus), default: FinishedGoodsEpcStatus.SCANNING })
+	status: FinishedGoodsEpcStatus
 }
 
 export const FinishedGoodsEpcSchema = SchemaFactory.createForClass(FinishedGoodsEpc)

@@ -1,4 +1,4 @@
-import { ROLLBACK_EXCHANGE_MO_TX_QUEUE } from '@modules/finished-goods/infrastructure/constants/queue'
+import { ROLLBACK_EXCHANGE_MO_TX_QUEUE } from '@modules/finished-goods/infrastructure/queues/constants'
 import { InjectQueue } from '@nestjs/bullmq'
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs'
 import { Queue } from 'bullmq'

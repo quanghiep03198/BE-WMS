@@ -2,6 +2,8 @@ import { TManufacturingOrder } from '@modules/order/types'
 
 export type StockFlow = 'inbound' | 'outbound'
 
+export type EpcStatus = 'instock' | 'shipped' | 'recalled' | 'returned' | 'scanning'
+
 export type ScannedOrderDetail = {
 	mo_no
 	color_sn

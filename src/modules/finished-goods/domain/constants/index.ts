@@ -16,6 +16,13 @@ export enum ProducingProcessSuffix {
 	SHAPING = 'DH'
 }
 
+export enum FinishedGoodsEpcStatus {
+	SCANNING = 'scanning',
+	IN_STOCK = 'instock',
+	SHIPPED = 'shipped',
+	RECALLED = 'recalled'
+}
+
 export const EXCLUDED_ORDERS: Array<string> = ['13D05B006', '13A08C003']
 export const EXCLUDED_EPC_PATTERN: string = '303429%'
 export const EXCLUDED_EPC_PREFIX: string = '303429'

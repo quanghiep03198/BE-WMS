@@ -1,10 +1,13 @@
+import {
+	IIoMssqlRepository,
+	IO_MSSQL_REPOSITORY
+} from '@modules/finished-goods/application/ports/io-mssql.repository.port'
+import { ElectronicProductCode } from '@modules/finished-goods/domain/value-objects/epc.vo'
 import { Processor, WorkerHost } from '@nestjs/bullmq'
 import { Inject } from '@nestjs/common'
 import { Job } from 'bullmq'
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
-import { IIoMssqlRepository, IO_MSSQL_REPOSITORY } from '../../application/ports/io-mssql.repository.port'
-import { ElectronicProductCode } from '../../domain/value-objects/epc.vo'
-import { ROLLBACK_STOCK_TX_QUEUE } from '../constants/queue'
+import { ROLLBACK_STOCK_TX_QUEUE } from '../constants'
 
 @Processor(ROLLBACK_STOCK_TX_QUEUE)
 export class RollbackStockInTransactionConsumer extends WorkerHost {

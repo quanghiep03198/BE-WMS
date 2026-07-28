@@ -60,4 +60,4 @@ export interface IIoMssqlRepository {
 	upsertEpcsMatch(payload: UpsertEpcsMatchData): Promise<void>
 }
 
-export const IO_MSSQL_REPOSITORY = 'IInoutboundMssqlRepository'
+export const IO_MSSQL_REPOSITORY = Symbol('IInoutboundMssqlRepository')

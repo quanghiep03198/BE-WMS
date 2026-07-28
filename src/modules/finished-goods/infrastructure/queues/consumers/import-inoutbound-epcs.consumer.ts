@@ -1,6 +1,14 @@
 import { StorageFile } from '@blazity/nest-file-fastify'
 import { VALID_EPC_PATTERN } from '@common/constants/regex'
 import { DATA_SOURCE_DATA_LAKE, DATA_WAREHOUSE_CONNECTION } from '@databases/constants'
+import { EXCLUDED_ORDERS } from '@modules/finished-goods/domain/constants'
+import {
+	FinishedGoodsEpc,
+	FinishedGoodsEpcDocument,
+	FinishedGoodsEpcModel
+} from '@modules/finished-goods/infrastructure/persistence/mongodb/schemas/finished-goods-epc.schema'
+import epcInformationQuery from '@modules/finished-goods/infrastructure/persistence/mssql/sql/epc-information.sql'
+import { IMPORT_INOUTBOUND_EPCS_QUEUE } from '@modules/finished-goods/infrastructure/queues/constants'
 import { Processor, WorkerHost } from '@nestjs/bullmq'
 import { InjectModel } from '@nestjs/mongoose'
 import { InjectDataSource } from '@nestjs/typeorm'
@@ -9,15 +17,7 @@ import csvParser from 'csv-parser'
 import { AnyBulkWriteOperation } from 'mongoose'
 import { Readable } from 'node:stream'
 import { DataSource } from 'typeorm'
-import { EXCLUDED_ORDERS } from '../../domain/constants'
-import { IMPORT_INOUTBOUND_EPCS_QUEUE } from '../constants/queue'
-import {
-	FinishedGoodsEpc,
-	FinishedGoodsEpcDocument,
-	FinishedGoodsEpcModel
-} from '../persistence/mongodb/schemas/finished-goods-epc.schema'
-import epcInformationQuery from '../persistence/mssql/sql/epc-information.sql'
-import { StoredRFIDReaderItem } from '../types'
+import { StoredRFIDReaderItem } from '../../types'
 
 @Processor(IMPORT_INOUTBOUND_EPCS_QUEUE)
 export class ImportInoutboundEpcsConsumer extends WorkerHost {

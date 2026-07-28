@@ -2,9 +2,9 @@ import { Processor, WorkerHost } from '@nestjs/bullmq'
 import { CommandBus } from '@nestjs/cqrs'
 import { Job } from 'bullmq'
 import { PinoLogger } from 'nestjs-pino'
-import { BulkWriteInventoryCommand } from '../../application/commands/bulk-write-inventory/bulk-write-inventory.command'
-import { PostReaderDataDTO } from '../../presentation/dto/rfid-shared.dto'
-import { BULK_WRITE_INBOUND_EPCS_QUEUE } from '../constants/queue'
+import { BulkWriteInventoryCommand } from '../../../application/commands/bulk-write-inventory/bulk-write-inventory.command'
+import { PostReaderDataDTO } from '../../../presentation/dto/rfid-shared.dto'
+import { BULK_WRITE_INBOUND_EPCS_QUEUE } from '../constants'
 
 @Processor(BULK_WRITE_INBOUND_EPCS_QUEUE, { concurrency: 2 })
 export class BulkWriteInboundEpcsConsumer extends WorkerHost {

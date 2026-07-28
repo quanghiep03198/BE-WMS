@@ -19,14 +19,6 @@ import { IO_MSSQL_REPOSITORY } from './application/ports/io-mssql.repository.por
 import { InoutboundQueryHandlers } from './application/queries'
 import { InoutboundSagas } from './application/sagas'
 import { InoutboundEventHandlers } from './domain/events'
-import {
-	BULK_WRITE_INBOUND_EPCS_QUEUE,
-	BULK_WRITE_OUTBOUND_EPCS_QUEUE,
-	IMPORT_INOUTBOUND_EPCS_QUEUE,
-	ROLLBACK_EXCHANGE_MO_TX_QUEUE,
-	ROLLBACK_STOCK_TX_QUEUE,
-	STOCK_IN_QUEUE
-} from './infrastructure/constants/queue'
 import { InoutboundMongoRepository } from './infrastructure/persistence/mongodb/repositories/io-mongo.repository'
 import {
 	DAILY_MO_INVENTORY_VARIATION_COLLECTION,
@@ -53,6 +45,15 @@ import { RFIDMatchEntity } from './infrastructure/persistence/mssql/entities/rfi
 import { InoutboundMssqlRepository } from './infrastructure/persistence/mssql/repositories/io-mssql.repository'
 import { FinishedGoodsEntitySubscribers } from './infrastructure/persistence/mssql/subscribers'
 import { FinishedGoodsConsumers } from './infrastructure/queues'
+import {
+	BULK_WRITE_INBOUND_EPCS_QUEUE,
+	BULK_WRITE_OUTBOUND_EPCS_QUEUE,
+	IMPORT_INOUTBOUND_EPCS_QUEUE,
+	ROLLBACK_EXCHANGE_MO_TX_QUEUE,
+	ROLLBACK_STOCK_TX_QUEUE,
+	STOCK_IN_QUEUE
+} from './infrastructure/queues/constants'
+import { FinsishedGoodsQueueEvents } from './infrastructure/queues/events'
 import { FinishedGoodsControllers } from './presentation/controllers'
 import { FinishedGoodsGateway } from './presentation/gateways/inoutbound.gateway'
 import { FinishedGoodsListeners } from './presentation/listeners'
@@ -181,6 +182,7 @@ import { FinishedGoodsListeners } from './presentation/listeners'
 		...InoutboundEventHandlers,
 		...InoutboundSagas,
 		...FinishedGoodsEntitySubscribers,
+		...FinsishedGoodsQueueEvents,
 		FinishedGoodsGateway,
 		{
 			provide: IO_MSSQL_REPOSITORY,

@@ -41,8 +41,8 @@ export class MoInventoryVariation {
 		{
 			target_qty: number
 			stocked_in_qty: number
-			recalled_qty: number
-			returned_qty: number
+			total_recall_tx: number
+			total_return_tx: number
 			shipped_out_qty: number
 		}
 	>

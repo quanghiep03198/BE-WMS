@@ -37,9 +37,7 @@ export class GetScanningMosHandler implements IQueryHandler<GetScanningMosQuery>
 		})
 			.withEqualFields('scannable', 'deleted')
 			.when(stockFlow === 'inbound', (builder) =>
-				builder
-					.withEqualBy('inbound_device_sn')
-					.withNullishFields('inbound_at', 'storage_location', 'outbound_at', 'po')
+				builder.withEqualBy('inbound_device_sn').withNullishFields('storage_location', 'outbound_at', 'po')
 			)
 			.when(stockFlow === 'outbound', (builder) =>
 				builder.withNonNullableFields('outbound_device_sn', 'storage_location', 'inbound_at')

@@ -11,7 +11,7 @@ export interface IIoMongoRepository {
 		payload: { epcs: ElectronicProductCode[]; deviceSerialNumber: string }
 	}): Promise<void>
 
-	getPendingInboundOrRecallEpcs(
+	getPendingInboundEpcs(
 		deviceSerialNumber: string,
 		manufacturingOrder: string,
 		assemblyLine: string,
@@ -56,15 +56,15 @@ export interface IIoMongoRepository {
 
 	updateScanningEpcsMatch(data: UpsertEpcsMatchData): Promise<void>
 
-	getInventoryVariation(stockedInEpcs: Array<ElectronicProductCode>): Promise<
+	getPendingInventoryVariation(stockedInEpcs: Array<ElectronicProductCode>): Promise<
 		Array<{
 			mo_no: string
 			inventory_variation: Record<
 				string,
-				{ stocked_in_qty: number; recalled_qty: number; returned_qty: number; shipped_out_qty: number }
+				{ stocked_in_qty: number; total_recall_tx: number; total_return_tx: number; shipped_out_qty: number }
 			>
 		}>
 	>
 }
 
-export const IO_MONGO_REPOSITORY = 'IInoutboundMongoRepository'
+export const IO_MONGO_REPOSITORY = Symbol('IInoutboundMongoRepository')

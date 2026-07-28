@@ -29,6 +29,7 @@ import { UserRole } from '@modules/user/constants'
 import { CACHE_MANAGER } from '@nestjs/cache-manager'
 import { CommandBus, QueryBus } from '@nestjs/cqrs'
 import { EventEmitter2 } from '@nestjs/event-emitter'
+import { Throttle } from '@nestjs/throttler'
 import { RedisService } from '@redis/redis.service'
 import { Queue } from 'bullmq'
 import { Cache } from 'cache-manager'
@@ -45,12 +46,12 @@ import { GetScanningEpcsQuery } from '../../application/queries/get-scanning-epc
 import { GetScanningMosQuery } from '../../application/queries/get-scanning-mo/get-scanning-mo.query'
 import { RetriveDeletedEpcsQuery } from '../../application/queries/retrieve-deleted-epcs/retrive-deleted-epcs.query'
 import { ScannedOrderDetail, StockFlow } from '../../domain/types'
+import { CsvFileValidationPipe } from '../../infrastructure/pipes/csv-validation.pipe'
 import {
 	BULK_WRITE_INBOUND_EPCS_QUEUE,
 	BULK_WRITE_OUTBOUND_EPCS_QUEUE,
 	IMPORT_INOUTBOUND_EPCS_QUEUE
-} from '../../infrastructure/constants/queue'
-import { CsvFileValidationPipe } from '../../infrastructure/pipes/csv-validation.pipe'
+} from '../../infrastructure/queues/constants'
 import { RFIDSearchParams } from '../../infrastructure/types'
 import {
 	deleteEpcValidator,
@@ -159,6 +160,7 @@ export class RFIDController {
 	}
 
 	@Public()
+	@Throttle({ default: { limit: 60, ttl: 60_000 } })
 	@RouteHandler({
 		endpoint: 'inbound/post-data',
 		method: HttpMethod.POST,
@@ -166,7 +168,7 @@ export class RFIDController {
 		message: 'common.created'
 	})
 	async postInboundData(@Body(new ZodValidationPipe(readerPostDataValidator)) payload: PostReaderDataDTO) {
-		const job = await this.postInboundDataQueue.add('BULK_WRITE_SCANNING_INBOUND_DATA', payload, { lifo: true })
+		const job = await this.postInboundDataQueue.add('BULK_WRITE_INBOUND_DATA', payload, { lifo: true })
 		await Promise.all([
 			this.eventEmitter.emitAsync('rfid.reader.post_data', {
 				deviceSeriesNumber: payload.sn,
@@ -179,6 +181,7 @@ export class RFIDController {
 	}
 
 	@Public()
+	@Throttle({ default: { limit: 60, ttl: 60_000 } })
 	@RouteHandler({
 		endpoint: 'outbound/post-data',
 		method: HttpMethod.POST,
@@ -191,7 +194,7 @@ export class RFIDController {
 			lastUsageTime: format(new Date(), 'yyyy-MM-dd HH:mm:ss.SSS')
 		})
 
-		return await this.postOutboundDataQueue.add('BULK_WRITE_SCANNING_OUTBOUND_DATA', payload)
+		return await this.postOutboundDataQueue.add('BULK_WRITE_OUTBOUND_DATA', payload)
 	}
 
 	@Get('enable-deduplicate-inbound')

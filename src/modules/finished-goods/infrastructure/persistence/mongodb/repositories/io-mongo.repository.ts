@@ -1,6 +1,7 @@
 import { DATA_WAREHOUSE_CONNECTION } from '@databases/constants'
 import { IIoMongoRepository } from '@modules/finished-goods/application/ports/io-mongo.repository.port'
 import { GetScanningEpcsBySizeQuery } from '@modules/finished-goods/application/queries/get-scanning-epcs-by-size/get-scanning-epcs-by-size.query'
+import { FinishedGoodsEpcStatus } from '@modules/finished-goods/domain/constants'
 import { StockFlow, UpsertEpcsMatchData } from '@modules/finished-goods/domain/types'
 import { ElectronicProductCode } from '@modules/finished-goods/domain/value-objects/epc.vo'
 import { InjectTransactionHost, Transactional, TransactionHost } from '@nestjs-cls/transactional'
@@ -9,24 +10,26 @@ import { CACHE_MANAGER } from '@nestjs/cache-manager'
 import { Inject, Injectable } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
 import { Cache } from 'cache-manager'
+import { flatten } from 'flat'
+import { pick } from 'lodash'
 import { AnyBulkWriteOperation, FilterQuery, mongo, type PipelineStage } from 'mongoose'
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
 import { FinishedGoodsEpc, FinishedGoodsEpcDocument, FinishedGoodsEpcModel } from '../schemas/finished-goods-epc.schema'
-import { MoInventoryVariationModel } from '../schemas/mo-inventory-variation.schema'
+import { MoInventoryVariation, MoInventoryVariationModel } from '../schemas/mo-inventory-variation.schema'
 @Injectable()
 export class InoutboundMongoRepository implements IIoMongoRepository {
 	constructor(
 		@InjectPinoLogger(InoutboundMongoRepository.name) private readonly logger: PinoLogger,
 		@InjectModel(FinishedGoodsEpc.name, DATA_WAREHOUSE_CONNECTION)
 		private readonly finishedGoodsEpcModel: FinishedGoodsEpcModel,
-		@InjectModel(FinishedGoodsEpc.name, DATA_WAREHOUSE_CONNECTION)
+		@InjectModel(MoInventoryVariation.name, DATA_WAREHOUSE_CONNECTION)
 		private readonly moInventoryVariationModel: MoInventoryVariationModel,
 		@Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
 		@InjectTransactionHost(DATA_WAREHOUSE_CONNECTION)
 		private readonly txHost: TransactionHost<TransactionalAdapterMongoose>
 	) {}
 
-	public async getPendingInboundOrRecallEpcs(
+	public async getPendingInboundEpcs(
 		deviceSerialNumber: string,
 		manufacturingOrder: string,
 		assemblyLine: `${string}/${string}`,
@@ -34,7 +37,12 @@ export class InoutboundMongoRepository implements IIoMongoRepository {
 		isRecalled?: boolean
 	): Promise<ElectronicProductCode[]> {
 		const rawData = await this.finishedGoodsEpcModel
-			.find({ scannable: true, inbound_device_sn: deviceSerialNumber, mo_no: manufacturingOrder })
+			.find({
+				scannable: true,
+				inbound_device_sn: deviceSerialNumber,
+				mo_no: manufacturingOrder,
+				storage_location: null
+			})
 			.lean()
 		return ElectronicProductCode.createFactory(
 			rawData.map((item) => ({
@@ -199,7 +207,7 @@ export class InoutboundMongoRepository implements IIoMongoRepository {
 
 		if (query.stockFlow === 'inbound' && query.inboundDeviceSerialNumber) {
 			filterQuery.inbound_device_sn = { $eq: query.inboundDeviceSerialNumber }
-			filterQuery.inbound_at = { $eq: null }
+			filterQuery.storage_location = { $eq: null }
 		}
 
 		if (query.stockFlow === 'outbound') {
@@ -233,6 +241,7 @@ export class InoutboundMongoRepository implements IIoMongoRepository {
 						size_numcode: item.getSize(),
 						last_scanned_at: new Date(),
 						factory_code_produce: item.getFactoryProduce(),
+						status: FinishedGoodsEpcStatus.SCANNING,
 						...(action === 'inbound' && {
 							inbound_device_sn: payload.deviceSerialNumber,
 							storage_location: null,
@@ -260,7 +269,7 @@ export class InoutboundMongoRepository implements IIoMongoRepository {
 	}
 
 	@Transactional<TransactionalAdapterMongoose>(DATA_WAREHOUSE_CONNECTION)
-	public async getInventoryVariation(scannedEpcs: Array<ElectronicProductCode>): Promise<
+	public async getPendingInventoryVariation(scannedEpcs: Array<ElectronicProductCode>): Promise<
 		Array<{
 			mo_no: string
 			factory_code_produce: string
@@ -268,7 +277,7 @@ export class InoutboundMongoRepository implements IIoMongoRepository {
 			color_sn: string
 			inventory_variation: Record<
 				string,
-				{ stocked_in_qty: number; recalled_qty: number; returned_qty: number; shipped_out_qty: number }
+				{ stocked_in_qty: number; total_recall_tx: number; total_return_tx: number; shipped_out_qty: number }
 			>
 		}>
 	> {
@@ -280,7 +289,12 @@ export class InoutboundMongoRepository implements IIoMongoRepository {
 				color_sn: string
 				inventory_variation: Record<
 					string,
-					{ stocked_in_qty: number; recalled_qty: number; returned_qty: number; shipped_out_qty: number }
+					{
+						stocked_in_qty: number
+						total_recall_tx: number
+						total_return_tx: number
+						shipped_out_qty: number
+					}
 				>
 			}>(
 				[
@@ -292,42 +306,16 @@ export class InoutboundMongoRepository implements IIoMongoRepository {
 					{
 						$addFields: {
 							is_inbound: {
-								$cond: [
-									{
-										$and: [
-											{
-												$eq: [{ $type: '$inbound_at' }, 'date']
-											},
-											{
-												$ne: [{ $type: '$returned_at' }, 'date']
-											}
-										]
-									},
-									1,
-									0
-								]
+								$cond: [{ $eq: ['$status', FinishedGoodsEpcStatus.IN_STOCK] }, 1, 0]
 							},
 							is_recall: {
-								$cond: [
-									{
-										$and: [
-											{
-												$eq: [{ $type: '$recalled_at' }, 'date']
-											},
-											{
-												$ne: [{ $type: '$returned_at' }, 'date']
-											}
-										]
-									},
-									1,
-									0
-								]
+								$cond: [{ $eq: ['$status', FinishedGoodsEpcStatus.RECALLED] }, 1, 0]
 							},
 							is_return: {
-								$cond: [{ $eq: [{ $type: '$returned_at' }, 'date'] }, 1, 0]
+								$cond: [{ $gt: ['$inbound_times', 1] }, 1, 0]
 							},
 							is_shipped_out: {
-								$cond: [{ $eq: [{ $type: '$outbound_at' }, 'date'] }, 1, 0]
+								$cond: [{ $eq: ['$status', FinishedGoodsEpcStatus.SHIPPED] }, 1, 0]
 							}
 						}
 					},
@@ -343,8 +331,8 @@ export class InoutboundMongoRepository implements IIoMongoRepository {
 								$push: {
 									size_numcode: '$size_numcode',
 									stocked_in_qty: '$is_inbound',
-									recalled_qty: '$is_recall',
-									returned_qty: '$is_return',
+									total_recall_tx: '$is_recall',
+									total_return_tx: '$is_return',
 									shipped_out_qty: '$is_shipped_out'
 								}
 							},
@@ -441,7 +429,7 @@ export class InoutboundMongoRepository implements IIoMongoRepository {
 																}
 															}
 														},
-														recalled_qty: {
+														total_recall_tx: {
 															$sum: {
 																$map: {
 																	input: {
@@ -452,11 +440,11 @@ export class InoutboundMongoRepository implements IIoMongoRepository {
 																		}
 																	},
 																	as: 'x',
-																	in: '$$x.recalled_qty'
+																	in: '$$x.total_recall_tx'
 																}
 															}
 														},
-														returned_qty: {
+														total_return_tx: {
 															$sum: {
 																$map: {
 																	input: {
@@ -467,7 +455,7 @@ export class InoutboundMongoRepository implements IIoMongoRepository {
 																		}
 																	},
 																	as: 'x',
-																	in: '$$x.returned_qty'
+																	in: '$$x.total_return_tx'
 																}
 															}
 														},
@@ -515,16 +503,60 @@ export class InoutboundMongoRepository implements IIoMongoRepository {
 			updateOne: {
 				filter: { epc: epc.getStockKeepingUnit() },
 				update: [
+					// * Stage 1: Cập nhật trạng thái status dựa trên status
 					{
 						$set: {
-							returned_at: {
-								$cond: [{ $eq: [{ $type: '$inbound_at' }, 'date'] }, '$$NOW', '$returned_at']
+							status: {
+								$cond: [
+									{ $in: ['$status', [FinishedGoodsEpcStatus.SCANNING, FinishedGoodsEpcStatus.RECALLED]] },
+									FinishedGoodsEpcStatus.IN_STOCK,
+									'$status'
+								]
 							},
+							inbound_times: { $add: [{ $ifNull: ['$inbound_times', 0] }, 1] } // * Tăng số lần nhập kho (inbound_times) lên 1 mỗi khi `stockIn` được gọi
+						}
+					},
+					{
+						$set: {
 							inbound_at: {
-								$cond: [{ $eq: [{ $type: '$inbound_at' }, 'date'] }, '$inbound_at', '$$NOW']
+								$cond: [{ $eq: ['$status', FinishedGoodsEpcStatus.SCANNING] }, '$inbound_at', '$$NOW'] // *  đã nhập, thì giữ nguyên ngày nhập, chưa nhập thì update ngày nhập = ngày hiện tại
 							},
 							assembly_line: epc.getAssemblyLine('code'),
 							storage_location: epc.getStorageLocation()
+						}
+					},
+					{
+						$set: {
+							returned_at: {
+								$cond: [
+									{
+										$and: [
+											{ $eq: ['$status', FinishedGoodsEpcStatus.IN_STOCK] },
+											{ $gt: ['$inbound_times', 1] }
+										]
+									},
+									'$$NOW',
+									'$returned_at'
+								]
+							}
+						}
+					},
+					{
+						$set: {
+							recalled_at: {
+								$cond: [
+									{
+										// * nếu đã trả (status = returned) nhưng không có ngày thu hồi (recalled_at)
+										$and: [
+											{ $eq: ['$status', FinishedGoodsEpcStatus.IN_STOCK] },
+											{ $gt: ['$inbound_times', 1] },
+											{ $in: [{ $type: '$recalled_at' }, ['null', 'undefined', 'missing']] }
+										]
+									},
+									'$$NOW',
+									'$recalled_at'
+								]
+							}
 						}
 					}
 				]
@@ -539,39 +571,9 @@ export class InoutboundMongoRepository implements IIoMongoRepository {
 			timestamps: true
 		})
 
-		// const moInventoryVariationBulkUpdateRequests: AnyBulkWriteOperation<MoInventoryVariationDocument>[] = []
+		const pendingInventoryVariation = await this.getPendingInventoryVariation(scannedEpcs)
 
-		const pendingInventoryVariation = await this.getInventoryVariation(scannedEpcs)
-
-		const toNumericAdd = (path: string, increment: number) => ({
-			$add: [
-				{
-					$cond: [{ $in: [{ $type: path }, ['int', 'long', 'double', 'decimal']] }, path, 0]
-				},
-				increment
-			]
-		})
 		for (const mo of pendingInventoryVariation) {
-			const setUpdate: Record<string, unknown> = {}
-			for (const [size, value] of Object.entries(mo.inventory_variation)) {
-				setUpdate[`inventory_variation.${size}.stocked_in_qty`] = toNumericAdd(
-					`$inventory_variation.${size}.stocked_in_qty`,
-					value.stocked_in_qty ?? 0
-				)
-				setUpdate[`inventory_variation.${size}.recalled_qty`] = toNumericAdd(
-					`$inventory_variation.${size}.recalled_qty`,
-					value.recalled_qty ?? 0
-				)
-				setUpdate[`inventory_variation.${size}.returned_qty`] = toNumericAdd(
-					`$inventory_variation.${size}.returned_qty`,
-					value.returned_qty ?? 0
-				)
-				setUpdate[`inventory_variation.${size}.shipped_out_qty`] = toNumericAdd(
-					`$inventory_variation.${size}.shipped_out_qty`,
-					value.shipped_out_qty ?? 0
-				)
-			}
-
 			await this.moInventoryVariationModel.updateOne(
 				{
 					mo_no: mo.mo_no,
@@ -579,7 +581,7 @@ export class InoutboundMongoRepository implements IIoMongoRepository {
 					factory_shoes_style: mo.factory_shoes_style,
 					color_sn: mo.color_sn
 				},
-				{ $set: setUpdate },
+				{ $inc: flatten(pick(mo, 'inventory_variation')) },
 				{ session: this.txHost.tx }
 			)
 		}

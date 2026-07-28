@@ -1,6 +1,6 @@
 import { CommitStockInFailureEvent } from '@modules/finished-goods/domain/events/commit-stock-in-failure/commit-stock-in-failure.event'
 import { CommitedStockIn } from '@modules/finished-goods/domain/events/committed-stock-in/commited-stock-in.event'
-import { STOCK_IN_QUEUE } from '@modules/finished-goods/infrastructure/constants/queue'
+import { STOCK_IN_QUEUE } from '@modules/finished-goods/infrastructure/queues/constants'
 import { InjectQueue } from '@nestjs/bullmq'
 import { CommandHandler, EventBus, ICommandHandler } from '@nestjs/cqrs'
 import { Queue } from 'bullmq'
