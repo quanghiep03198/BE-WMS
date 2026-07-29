@@ -31,7 +31,7 @@ export class GetScanningEpcsHandler implements IQueryHandler<GetScanningEpcsQuer
 			status: FinishedGoodsEpcStatus.SCANNING,
 			...filterQuery
 		})
-			.withEqualFields('scannable', 'deleted', 'mo_no')
+			.withEqualFields('scannable', 'deleted', 'mo_no', 'status')
 			.when(stockFlow === 'inbound', (builder) =>
 				builder.withEqualFields('inbound_device_sn').withNullishFields('storage_location', 'outbound_at')
 			)

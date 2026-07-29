@@ -51,7 +51,7 @@ import {
 	BULK_WRITE_INBOUND_EPCS_QUEUE,
 	BULK_WRITE_OUTBOUND_EPCS_QUEUE,
 	IMPORT_INOUTBOUND_EPCS_QUEUE
-} from '../../infrastructure/queues/constants'
+} from '../../infrastructure/queues'
 import { RFIDSearchParams } from '../../infrastructure/types'
 import {
 	deleteEpcValidator,

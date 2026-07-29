@@ -1,5 +1,6 @@
 import { MongoQueryBuilder } from '@common/helpers/mongo-query-builder'
 import { DATA_WAREHOUSE_CONNECTION } from '@databases/constants'
+import { FinishedGoodsEpcStatus } from '@modules/finished-goods/domain/constants'
 import { ScannedOrderDetail, StockFlow } from '@modules/finished-goods/domain/types'
 import {
 	FinishedGoodsEpc,
@@ -29,13 +30,14 @@ export class GetScanningMosHandler implements IQueryHandler<GetScanningMosQuery>
 			scannable: true,
 			deleted: false,
 			inbound_device_sn: deviceSerialNumber,
+			status: FinishedGoodsEpcStatus.SCANNING,
 			outbound_device_sn: undefined,
 			inbound_at: undefined,
 			outbound_at: undefined,
 			storage_location: undefined,
 			po: undefined
 		})
-			.withEqualFields('scannable', 'deleted')
+			.withEqualFields('scannable', 'status', 'deleted')
 			.when(stockFlow === 'inbound', (builder) =>
 				builder.withEqualBy('inbound_device_sn').withNullishFields('storage_location', 'outbound_at', 'po')
 			)

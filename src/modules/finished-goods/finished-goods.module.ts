@@ -13,12 +13,12 @@ import { InventoryModule } from '../inventory/inventory.module'
 import { RFIDDeviceEntity } from '../rfid-device/entities/rfid-device.entity'
 import { TenancyModule } from '../tenancy/tenancy.module'
 import { ThirdPartyApiModule } from '../third-party-api/third-party-api.module'
-import { InoutboundCommandHandlers } from './application/commands'
+import { FinishedGoodsCommandHandlers } from './application/commands'
 import { IO_MONGO_REPOSITORY } from './application/ports/io-mongo.repository.port'
 import { IO_MSSQL_REPOSITORY } from './application/ports/io-mssql.repository.port'
-import { InoutboundQueryHandlers } from './application/queries'
-import { InoutboundSagas } from './application/sagas'
-import { InoutboundEventHandlers } from './domain/events'
+import { FinishedGoodsQueryHandlers } from './application/queries'
+import { FinishedGoodsSagas } from './application/sagas'
+import { FinishedGoodsEventHandlers } from './domain/events'
 import { InoutboundMongoRepository } from './infrastructure/persistence/mongodb/repositories/io-mongo.repository'
 import {
 	DAILY_MO_INVENTORY_VARIATION_COLLECTION,
@@ -44,15 +44,15 @@ import {
 import { RFIDMatchEntity } from './infrastructure/persistence/mssql/entities/rfid-match.entity'
 import { InoutboundMssqlRepository } from './infrastructure/persistence/mssql/repositories/io-mssql.repository'
 import { FinishedGoodsEntitySubscribers } from './infrastructure/persistence/mssql/subscribers'
-import { FinishedGoodsConsumers } from './infrastructure/queues'
 import {
 	BULK_WRITE_INBOUND_EPCS_QUEUE,
 	BULK_WRITE_OUTBOUND_EPCS_QUEUE,
+	COMMIT_STOCK_VARIATION_QUEUE,
 	IMPORT_INOUTBOUND_EPCS_QUEUE,
 	ROLLBACK_EXCHANGE_MO_TX_QUEUE,
-	ROLLBACK_STOCK_TX_QUEUE,
-	STOCK_IN_QUEUE
-} from './infrastructure/queues/constants'
+	ROLLBACK_STOCK_TX_QUEUE
+} from './infrastructure/queues'
+import { FinishedGoodsConsumers } from './infrastructure/queues/consumers'
 import { FinsishedGoodsQueueEvents } from './infrastructure/queues/events'
 import { FinishedGoodsControllers } from './presentation/controllers'
 import { FinishedGoodsGateway } from './presentation/gateways/inoutbound.gateway'
@@ -68,7 +68,7 @@ import { FinishedGoodsListeners } from './presentation/listeners'
 		BullModule.registerQueue({ name: BULK_WRITE_OUTBOUND_EPCS_QUEUE }),
 		BullModule.registerQueue({ name: IMPORT_INOUTBOUND_EPCS_QUEUE }),
 		BullModule.registerQueue({
-			name: STOCK_IN_QUEUE,
+			name: COMMIT_STOCK_VARIATION_QUEUE,
 			defaultJobOptions: {
 				attempts: 10,
 				removeOnComplete: { count: 10 },
@@ -108,18 +108,11 @@ import { FinishedGoodsListeners } from './presentation/listeners'
 						// * Indexes
 						FinishedGoodsEpcSchema.index({ epc: 1 }, { unique: true, name: 'idx_epc' })
 						FinishedGoodsEpcSchema.index(
-							{ scannable: 1, deleted: 1, inbound_device_sn: 1, inbound_at: 1, storage_location: 1 },
+							{ scannable: 1, deleted: 1, status: 1, inbound_device_sn: 1, storage_location: 1 },
 							{ name: 'idx_inbound_active' }
 						)
 						FinishedGoodsEpcSchema.index(
-							{
-								scannable: 1,
-								deleted: 1,
-								outbound_at: 1,
-								outbound_device_sn: 1,
-								inbound_at: 1,
-								storage_location: 1
-							},
+							{ scannable: 1, deleted: 1, status: 1, outbound_device_sn: 1, storage_location: 1 },
 							{
 								name: 'idx_outbound_active'
 							}
@@ -177,10 +170,10 @@ import { FinishedGoodsListeners } from './presentation/listeners'
 	providers: [
 		...FinishedGoodsConsumers,
 		...FinishedGoodsListeners,
-		...InoutboundQueryHandlers,
-		...InoutboundCommandHandlers,
-		...InoutboundEventHandlers,
-		...InoutboundSagas,
+		...FinishedGoodsQueryHandlers,
+		...FinishedGoodsCommandHandlers,
+		...FinishedGoodsEventHandlers,
+		...FinishedGoodsSagas,
 		...FinishedGoodsEntitySubscribers,
 		...FinsishedGoodsQueueEvents,
 		FinishedGoodsGateway,

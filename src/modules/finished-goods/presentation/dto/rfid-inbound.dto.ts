@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import { InventoryActions, InventoryStorageType } from '../../domain/constants'
 
-export const stockInValidator = z
+export const stockVariationValidator = z
 	.object({
 		mo_no: z.string(),
 		inbound_device_sn: z.string(),
@@ -70,6 +70,6 @@ export const upsertEpcInformationSchema = z.object({
 	size_qty: z.number({ required_error: 'ns_validation:required' }).default(0)
 })
 
-export type StockInDTO = Required<z.infer<typeof stockInValidator>>
+export type StockVariationDTO = Required<z.infer<typeof stockVariationValidator>>
 export type ExchangeOrderDTO = z.infer<typeof exchangeOrderValidator>
 export type UpsertEpcInformationDTO = z.infer<typeof upsertEpcInformationSchema>

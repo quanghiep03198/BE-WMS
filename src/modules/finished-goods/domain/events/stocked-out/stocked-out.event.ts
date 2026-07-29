@@ -5,5 +5,6 @@ export class StockedOutEvent implements IEvent {
 	constructor(
 		public readonly transactionId: string,
 		public readonly scannedEpcs: Array<ElectronicProductCode>
+		// public readonly implementor: string
 	) {}
 }

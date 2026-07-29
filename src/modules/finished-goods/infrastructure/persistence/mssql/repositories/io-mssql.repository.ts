@@ -11,7 +11,7 @@ import { InjectDataSource } from '@nestjs/typeorm'
 import { format } from 'date-fns'
 import { chunk } from 'lodash'
 import { Brackets, DataSource, In } from 'typeorm'
-import { generateStation } from '../../../utils'
+import { generateStation, StationNO } from '../../../../domain/utils'
 import { RFIDInventoryBackupEntity, RFIDInventoryEntity } from '../entities/rfid-inventory.entity'
 import { RFIDMatchEntity } from '../entities/rfid-match.entity'
 import moInboundProgressQuery from '../sql/mo-inbound-progress.sql'
@@ -111,43 +111,23 @@ export class InoutboundMssqlRepository implements IIoMssqlRepository {
 		return queryResult.map((record) => ({ ...record, size_numcode: new SizeNumber(record.size_numcode) }))
 	}
 
-	// public async getManufacturingOrder(targetMo: string, moSeq: string = '001'): Promise<TManufacturingOrder> {
-	// 	const [result] = await this.dataSourceERP
-	// 		.query<Array<TManufacturingOrder & { mo_noseq: string; sizes: string }>>(moSizeRunQuery, [targetMo, moSeq])
-	// 		.then((records) =>
-	// 			records.map((record) => ({
-	// 				...record,
-	// 				sizes: JSON.parse(record.sizes) as Array<{ size_numcode: string; size_qty: number }>
-	// 			}))
-	// 		)
-
-	// 	return result
-	// }
-
 	@Transactional<TransactionalAdapterTypeOrm>(DATA_SOURCE_DATA_LAKE)
-	public async stockIn(
-		epcs: ReadonlyArray<ElectronicProductCode>
-		// stockInDetails: StockInDTO
+	public async commitStockVariation(
+		data: Array<
+			Array<{
+				epc: string
+				mo_no: string
+				size_numcode: string
+				factory_code: string
+				dept_code: string
+				dept_name: string
+				storage: string
+				station_no: StationNO
+			}>
+		>
 	): Promise<void> {
 		await Promise.all(
-			chunk(epcs, 100).map(async (ck) => {
-				const payload = ck
-					.filter((item) => item.getIsWritable() && !item.getIsInternal())
-					.map((item) => {
-						return {
-							// ...omit(stockInDetails, ['mo_no', 'inbound_device_sn']),
-							epc: item.getStockKeepingUnit(),
-							mo_no: item.getManufacturingOrder(),
-							size_numcode: item.getSize(),
-							factory_code: item.getFactoryProduce(),
-							dept_code: item.getAssemblyLine('code'),
-							dept_name: item.getAssemblyLine('name'),
-							station_no: generateStation(item.getFactoryProduce(), 'WH101')
-						}
-					})
-
-				return await this.txHostDL.tx.query(upsertInboundQuery, [JSON.stringify(payload)])
-			})
+			data.map(async (payload) => await this.txHostDL.tx.query(upsertInboundQuery, [JSON.stringify(payload)]))
 		)
 	}
 

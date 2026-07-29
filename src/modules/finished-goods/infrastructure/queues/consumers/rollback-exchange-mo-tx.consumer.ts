@@ -6,7 +6,7 @@ import { Processor, WorkerHost } from '@nestjs/bullmq'
 import { Inject } from '@nestjs/common'
 import { Job } from 'bullmq'
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
-import { ROLLBACK_EXCHANGE_MO_TX_QUEUE } from '../constants'
+import { ROLLBACK_EXCHANGE_MO_TX_QUEUE } from '..'
 
 @Processor(ROLLBACK_EXCHANGE_MO_TX_QUEUE)
 export class RollbackExchangeMoTransactionConsumer extends WorkerHost {

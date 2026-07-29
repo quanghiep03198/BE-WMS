@@ -6,7 +6,7 @@ import { GetScanningMosHandler } from './get-scanning-mo/get-scanning-mo.handler
 import { RetriveDeletedEpcsHandler } from './retrieve-deleted-epcs/retrive-deleted-epcs.handler'
 import { SearchExchangableMoHandler } from './search-exchangable-mo/search-exchangable-mo.handler'
 
-export const InoutboundQueryHandlers = [
+export const FinishedGoodsQueryHandlers = [
 	GetDeletedEpcSpecsHandler,
 	GetInternalEpcsExistsHandler,
 	GetScanningEpcsHandler,

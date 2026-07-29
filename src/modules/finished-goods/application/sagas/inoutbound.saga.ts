@@ -1,3 +1,4 @@
+import { RecalledFromStockEvent } from '@modules/finished-goods/domain/events/recalled-from-stock/recalled-from-stock.event'
 import { StockedOutEvent } from '@modules/finished-goods/domain/events/stocked-out/stocked-out.event'
 import { Injectable } from '@nestjs/common'
 import { ICommand, ofType, Saga } from '@nestjs/cqrs'
@@ -5,8 +6,8 @@ import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
 import { map, Observable } from 'rxjs'
 import { CommitStockInFailureEvent } from '../../domain/events/commit-stock-in-failure/commit-stock-in-failure.event'
 import { StockedInEvent } from '../../domain/events/stocked-in/stocked-in.event'
-import { CommitStockInCommand } from '../commands/commit-stock-in/commit-stock-in.command'
 import { CommitStockOutCommand } from '../commands/commit-stock-out/commit-stock-out.command'
+import { CommitStockVariationCommand } from '../commands/commit-stock-variation/commit-stock-variation.command'
 import { RollbackStockTransactionCommand } from '../commands/rollback-stock-tx/rollback-stock-tx.command'
 
 @Injectable()
@@ -21,7 +22,15 @@ export class InoutboundSaga {
 	stockedIn(events$: Observable<unknown>): Observable<ICommand> {
 		return events$.pipe(
 			ofType(StockedInEvent),
-			map(({ stockedInEpcs }) => new CommitStockInCommand(stockedInEpcs))
+			map(({ stockedInEpcs }) => new CommitStockVariationCommand(stockedInEpcs, 'inbound'))
+		)
+	}
+
+	@Saga()
+	recalledFromStock(events$: Observable<unknown>): Observable<ICommand> {
+		return events$.pipe(
+			ofType(RecalledFromStockEvent),
+			map(({ recalledEpcs }) => new CommitStockVariationCommand(recalledEpcs, 'outbound'))
 		)
 	}
 

@@ -8,7 +8,7 @@ import {
 	FinishedGoodsEpcModel
 } from '@modules/finished-goods/infrastructure/persistence/mongodb/schemas/finished-goods-epc.schema'
 import epcInformationQuery from '@modules/finished-goods/infrastructure/persistence/mssql/sql/epc-information.sql'
-import { IMPORT_INOUTBOUND_EPCS_QUEUE } from '@modules/finished-goods/infrastructure/queues/constants'
+import { IMPORT_INOUTBOUND_EPCS_QUEUE } from '@modules/finished-goods/infrastructure/queues'
 import { Processor, WorkerHost } from '@nestjs/bullmq'
 import { InjectModel } from '@nestjs/mongoose'
 import { InjectDataSource } from '@nestjs/typeorm'

@@ -1,3 +1,4 @@
+import { SizeNumber } from '@modules/finished-goods/domain/value-objects/size-number.vo'
 import { StockFlow, UpsertEpcsMatchData } from '../../domain/types'
 import { ElectronicProductCode } from '../../domain/value-objects/epc.vo'
 import { GetScanningEpcsBySizeQuery } from '../queries/get-scanning-epcs-by-size/get-scanning-epcs-by-size.query'
@@ -11,14 +12,14 @@ export interface IIoMongoRepository {
 		payload: { epcs: ElectronicProductCode[]; deviceSerialNumber: string }
 	}): Promise<void>
 
-	getPendingInboundEpcs(
+	getPendingStockMoveEpcs(
 		deviceSerialNumber: string,
 		manufacturingOrder: string,
-		assemblyLine: string,
-		storageLocation: string
+		assemblyLine?: string,
+		storageLocation?: string
 	): Promise<ElectronicProductCode[]>
 
-	getPendingOutboundEpcs(
+	getPendingShipOutEpcs(
 		purchaseOrder: string,
 		manufacturingOrder: string | Array<string>,
 		pendingOutboundSizeQuantities: Array<{ size_numcode: string; qty: number }>
@@ -37,6 +38,14 @@ export interface IIoMongoRepository {
 		}>
 	>
 
+	getMoInventory(manufacturingOrder: string): Promise<
+		Array<{
+			size_numcode: SizeNumber
+			size_qty: number
+			accumulated_qty: number
+		}>
+	>
+
 	getScanningEpcsBySize(query: GetScanningEpcsBySizeQuery): Promise<Array<{ epc: string }>>
 
 	getPendingExchangeEpcs(query: {
@@ -48,9 +57,11 @@ export interface IIoMongoRepository {
 		Array<{ epc: string; mo_no: string; factory_shoes_style: string; color_sn: string; size_numcode: string }>
 	>
 
-	stockIn(scannedEpcs: Array<ElectronicProductCode>): Promise<void>
+	stockIn(pendingStockInEpcs: Array<ElectronicProductCode>): Promise<void>
 
-	stockOut(scannedEpcs: Array<ElectronicProductCode>): Promise<void>
+	stockOut(pendingShipOutEpcs: Array<ElectronicProductCode>): Promise<void>
+
+	recallFromStock(pendingRecallEpcs: Array<ElectronicProductCode>): Promise<void>
 
 	exchangeMo(pendingExchangeEpcs: Array<string>, targetMo: string): Promise<void>
 

@@ -1,13 +1,7 @@
-import { BulkWriteInboundEpcsConsumer } from './consumers/bulk-write-inbound-epcs.consumer'
-import { BulkWriteOutboundEpcsConsumer } from './consumers/bulk-write-outbound-epcs.consumer'
-import { ImportInoutboundEpcsConsumer } from './consumers/import-inoutbound-epcs.consumer'
-import { RollbackExchangeMoTransactionConsumer } from './consumers/rollback-exchange-mo-tx.consumer'
-import { RollbackStockInTransactionConsumer } from './consumers/rollback-stock-tx.consumer'
-
-export const FinishedGoodsConsumers = [
-	BulkWriteInboundEpcsConsumer,
-	BulkWriteOutboundEpcsConsumer,
-	ImportInoutboundEpcsConsumer,
-	RollbackStockInTransactionConsumer,
-	RollbackExchangeMoTransactionConsumer
-]
+export const BULK_WRITE_INBOUND_EPCS_QUEUE = 'BULK_WRITE_INBOUND_EPCS_QUEUE'
+export const BULK_WRITE_OUTBOUND_EPCS_QUEUE = 'BULK_WRITE_OUTBOUND_EPCS_QUEUE'
+export const IMPORT_INOUTBOUND_EPCS_QUEUE = 'IMPORT_INOUTBOUND_EPCS_QUEUE'
+export const ROLLBACK_STOCK_TX_QUEUE = 'ROLLBACK_STOCK_TX_QUEUE'
+export const ROLLBACK_EXCHANGE_MO_TX_QUEUE = 'ROLLBACK_EXCHANGE_MO_TX_QUEUE'
+export const COMMIT_STOCK_VARIATION_QUEUE = 'COMMIT_STOCK_VARIATION_QUEUE'
+export const STOCK_OUT_QUEUE = 'STOCK_OUT_QUEUE'

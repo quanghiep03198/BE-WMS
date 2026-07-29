@@ -15,6 +15,7 @@ export class ElectronicProductCode {
 			factory_code_produce: string
 			assembly_line?: `${string}/${string}`
 			storage_location?: string
+			implementor?: string
 			po?: string
 			outbound_type?: 'recall' | 'shipping'
 		}
@@ -35,6 +36,7 @@ export class ElectronicProductCode {
 				color_sn: string
 				size_numcode: string
 				factory_code_produce: string
+				implementor?: string
 				po: string | undefined
 			} | null
 		}>
@@ -113,5 +115,9 @@ export class ElectronicProductCode {
 
 	public getOutboundType() {
 		return this.attributes?.outbound_type
+	}
+
+	public getImplementor() {
+		return this.attributes?.implementor ?? 'sa'
 	}
 }

@@ -24,7 +24,15 @@ export class DailyMoInventoryVariation {
 	mo_no: string
 
 	@Prop({ type: Object, required: true })
-	inventory_variation: Record<string, { stocked_in_qty: number; shipped_out_qty: number }>
+	inventory_variation: Record<
+		string,
+		{
+			stocked_in_qty: number
+			total_recall_tx: number
+			total_return_tx: number
+			shipped_out_qty: number
+		}
+	>
 }
 
 export const DailyMoInventoryVariationSchema = SchemaFactory.createForClass(DailyMoInventoryVariation)

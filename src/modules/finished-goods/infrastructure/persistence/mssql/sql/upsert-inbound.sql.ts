@@ -6,14 +6,14 @@ WITH source_data AS (
       JSON_VALUE(value, '$.epc') AS EPC_Code,
       JSON_VALUE(value, '$.mo_no') AS mo_no,
       JSON_VALUE(value, '$.size_numcode') AS size_code,
-      JSON_VALUE(value, '$.rfid_status') AS rfid_status,
-      JSON_VALUE(value, '$.rfid_use') AS rfid_use,
+      JSON_VALUE(value, '$.status') AS rfid_status,
+      JSON_VALUE(value, '$.inventory_variation_type') AS rfid_use,
       JSON_VALUE(value, '$.station_no') AS stationNO,
-      TRY_CONVERT(INT, JSON_VALUE(value, '$.quantity')) AS quantity,
       JSON_VALUE(value, '$.storage') AS storage,
       JSON_VALUE(value, '$.factory_code') AS FC_server_code,
       JSON_VALUE(value, '$.dept_code') AS dept_code,
-      JSON_VALUE(value, '$.dept_name') AS dept_name
+      JSON_VALUE(value, '$.dept_name') AS dept_name,
+      CASE WHEN JSON_VALUE(value, '$.status') = 'A' THEN 1 ELSE -1 END AS quantity
    FROM OPENJSON(@JsonData)
 )
 MERGE INTO DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet AS target

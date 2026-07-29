@@ -4,18 +4,28 @@ import { GetScanningEpcsBySizeQuery } from '@modules/finished-goods/application/
 import { FinishedGoodsEpcStatus } from '@modules/finished-goods/domain/constants'
 import { StockFlow, UpsertEpcsMatchData } from '@modules/finished-goods/domain/types'
 import { ElectronicProductCode } from '@modules/finished-goods/domain/value-objects/epc.vo'
+import { SizeNumber } from '@modules/finished-goods/domain/value-objects/size-number.vo'
 import { InjectTransactionHost, Transactional, TransactionHost } from '@nestjs-cls/transactional'
 import { TransactionalAdapterMongoose } from '@nestjs-cls/transactional-adapter-mongoose'
 import { CACHE_MANAGER } from '@nestjs/cache-manager'
 import { Inject, Injectable } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
 import { Cache } from 'cache-manager'
+import { format } from 'date-fns'
 import { flatten } from 'flat'
 import { pick } from 'lodash'
 import { AnyBulkWriteOperation, FilterQuery, mongo, type PipelineStage } from 'mongoose'
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
+import {
+	DailyMoInventoryVariation,
+	DailyMoInventoryVariationModel
+} from '../schemas/daily-mo-inventory-variation.schema'
 import { FinishedGoodsEpc, FinishedGoodsEpcDocument, FinishedGoodsEpcModel } from '../schemas/finished-goods-epc.schema'
-import { MoInventoryVariation, MoInventoryVariationModel } from '../schemas/mo-inventory-variation.schema'
+import {
+	MoInventoryVariation,
+	MoInventoryVariationDocument,
+	MoInventoryVariationModel
+} from '../schemas/mo-inventory-variation.schema'
 @Injectable()
 export class InoutboundMongoRepository implements IIoMongoRepository {
 	constructor(
@@ -24,17 +34,19 @@ export class InoutboundMongoRepository implements IIoMongoRepository {
 		private readonly finishedGoodsEpcModel: FinishedGoodsEpcModel,
 		@InjectModel(MoInventoryVariation.name, DATA_WAREHOUSE_CONNECTION)
 		private readonly moInventoryVariationModel: MoInventoryVariationModel,
+		@InjectModel(DailyMoInventoryVariation.name, DATA_WAREHOUSE_CONNECTION)
+		private readonly dailyMoInventoryVariationModel: DailyMoInventoryVariationModel,
 		@Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
 		@InjectTransactionHost(DATA_WAREHOUSE_CONNECTION)
 		private readonly txHost: TransactionHost<TransactionalAdapterMongoose>
 	) {}
 
-	public async getPendingInboundEpcs(
+	public async getPendingStockMoveEpcs(
 		deviceSerialNumber: string,
 		manufacturingOrder: string,
-		assemblyLine: `${string}/${string}`,
-		storageLocation: string,
-		isRecalled?: boolean
+		implementor: string,
+		assemblyLine?: `${string}/${string}`,
+		storageLocation?: string
 	): Promise<ElectronicProductCode[]> {
 		const rawData = await this.finishedGoodsEpcModel
 			.find({
@@ -56,14 +68,14 @@ export class InoutboundMongoRepository implements IIoMongoRepository {
 					factory_code_produce: item.factory_code_produce,
 					assembly_line: assemblyLine,
 					storage_location: storageLocation,
-					po: item.po,
-					...(isRecalled && { recall_at: null })
+					implementor,
+					po: item.po
 				}
 			}))
 		).filter((item) => item.getIsWritable())
 	}
 
-	public async getPendingOutboundEpcs(
+	public async getPendingShipOutEpcs(
 		purchaseOrder: string,
 		manufacturingOrders: string | Array<string>,
 		outboundSizeQuantities?: Array<{ size_numcode: string; qty: number }>
@@ -193,6 +205,26 @@ export class InoutboundMongoRepository implements IIoMongoRepository {
 		return result
 	}
 
+	public async getMoInventory(
+		manufacturingOrder: string
+	): Promise<Array<{ size_numcode: SizeNumber; size_qty: number; accumulated_qty: number }>> {
+		const moInventoryVariation = await this.moInventoryVariationModel
+			.findOne({ mo_no: manufacturingOrder })
+			.lean(true)
+
+		if (!moInventoryVariation) return []
+
+		return Object.entries(moInventoryVariation.inventory_variation).map(([size, variation]) => {
+			const { target_qty, stocked_in_qty, total_recall_tx, total_return_tx, shipped_out_qty } = variation
+
+			return {
+				size_numcode: new SizeNumber(size),
+				size_qty: target_qty,
+				accumulated_qty: stocked_in_qty - total_recall_tx + total_return_tx - shipped_out_qty
+			}
+		})
+	}
+
 	public async getScanningEpcsBySize(query: GetScanningEpcsBySizeQuery): Promise<Array<{ epc: string }>> {
 		const queryHint: Record<StockFlow, mongo.Hint> = {
 			inbound: 'idx_inbound_active',
@@ -306,7 +338,16 @@ export class InoutboundMongoRepository implements IIoMongoRepository {
 					{
 						$addFields: {
 							is_inbound: {
-								$cond: [{ $eq: ['$status', FinishedGoodsEpcStatus.IN_STOCK] }, 1, 0]
+								$cond: [
+									{
+										$and: [
+											{ $eq: ['$status', FinishedGoodsEpcStatus.IN_STOCK] },
+											{ $eq: ['$inbound_times', 1] }
+										]
+									},
+									1,
+									0
+								]
 							},
 							is_recall: {
 								$cond: [{ $eq: ['$status', FinishedGoodsEpcStatus.RECALLED] }, 1, 0]
@@ -498,70 +539,72 @@ export class InoutboundMongoRepository implements IIoMongoRepository {
 	}
 
 	@Transactional<TransactionalAdapterMongoose>(DATA_WAREHOUSE_CONNECTION)
-	public async stockIn(scannedEpcs: Array<ElectronicProductCode>): Promise<void> {
-		const epcBulkUpdateRequests: AnyBulkWriteOperation<FinishedGoodsEpcDocument>[] = scannedEpcs.map((epc) => ({
-			updateOne: {
-				filter: { epc: epc.getStockKeepingUnit() },
-				update: [
-					// * Stage 1: Cập nhật trạng thái status dựa trên status
-					{
-						$set: {
-							status: {
-								$cond: [
-									{ $in: ['$status', [FinishedGoodsEpcStatus.SCANNING, FinishedGoodsEpcStatus.RECALLED]] },
-									FinishedGoodsEpcStatus.IN_STOCK,
-									'$status'
-								]
-							},
-							inbound_times: { $add: [{ $ifNull: ['$inbound_times', 0] }, 1] } // * Tăng số lần nhập kho (inbound_times) lên 1 mỗi khi `stockIn` được gọi
-						}
-					},
-					{
-						$set: {
-							inbound_at: {
-								$cond: [{ $eq: ['$status', FinishedGoodsEpcStatus.SCANNING] }, '$inbound_at', '$$NOW'] // *  đã nhập, thì giữ nguyên ngày nhập, chưa nhập thì update ngày nhập = ngày hiện tại
-							},
-							assembly_line: epc.getAssemblyLine('code'),
-							storage_location: epc.getStorageLocation()
-						}
-					},
-					{
-						$set: {
-							returned_at: {
-								$cond: [
-									{
-										$and: [
-											{ $eq: ['$status', FinishedGoodsEpcStatus.IN_STOCK] },
-											{ $gt: ['$inbound_times', 1] }
-										]
-									},
-									'$$NOW',
-									'$returned_at'
-								]
+	public async stockIn(pendingStockInEpcs: Array<ElectronicProductCode>): Promise<void> {
+		const epcBulkUpdateRequests: AnyBulkWriteOperation<FinishedGoodsEpcDocument>[] = pendingStockInEpcs.map(
+			(epc) => ({
+				updateOne: {
+					filter: { epc: epc.getStockKeepingUnit() },
+					update: [
+						// * Stage 1: Cập nhật trạng thái status dựa trên status
+						{
+							$set: {
+								status: {
+									$cond: [
+										{ $in: ['$status', [FinishedGoodsEpcStatus.SCANNING, FinishedGoodsEpcStatus.RECALLED]] },
+										FinishedGoodsEpcStatus.IN_STOCK,
+										'$status'
+									]
+								},
+								inbound_times: { $add: [{ $ifNull: ['$inbound_times', 0] }, 1] } // * Tăng số lần nhập kho (inbound_times) lên 1 mỗi khi `stockIn` được gọi
+							}
+						},
+						{
+							$set: {
+								inbound_at: {
+									$cond: [{ $eq: ['$status', FinishedGoodsEpcStatus.SCANNING] }, '$inbound_at', '$$NOW'] // *  đã nhập, thì giữ nguyên ngày nhập, chưa nhập thì update ngày nhập = ngày hiện tại
+								},
+								assembly_line: epc.getAssemblyLine('code'),
+								storage_location: epc.getStorageLocation()
+							}
+						},
+						{
+							$set: {
+								returned_at: {
+									$cond: [
+										{
+											$and: [
+												{ $eq: ['$status', FinishedGoodsEpcStatus.IN_STOCK] },
+												{ $gt: ['$inbound_times', 1] }
+											]
+										},
+										'$$NOW',
+										'$returned_at'
+									]
+								}
+							}
+						},
+						{
+							$set: {
+								recalled_at: {
+									$cond: [
+										{
+											// * nếu đã trả (status = returned) nhưng không có ngày thu hồi (recalled_at)
+											$and: [
+												{ $eq: ['$status', FinishedGoodsEpcStatus.IN_STOCK] },
+												{ $gt: ['$inbound_times', 1] },
+												{ $in: [{ $type: '$recalled_at' }, ['null', 'undefined', 'missing']] }
+											]
+										},
+										'$$NOW',
+										'$recalled_at'
+									]
+								}
 							}
 						}
-					},
-					{
-						$set: {
-							recalled_at: {
-								$cond: [
-									{
-										// * nếu đã trả (status = returned) nhưng không có ngày thu hồi (recalled_at)
-										$and: [
-											{ $eq: ['$status', FinishedGoodsEpcStatus.IN_STOCK] },
-											{ $gt: ['$inbound_times', 1] },
-											{ $in: [{ $type: '$recalled_at' }, ['null', 'undefined', 'missing']] }
-										]
-									},
-									'$$NOW',
-									'$recalled_at'
-								]
-							}
-						}
-					}
-				]
-			}
-		}))
+					]
+				}
+			})
+		)
 
 		await this.finishedGoodsEpcModel.bulkWrite(epcBulkUpdateRequests, {
 			session: this.txHost.tx,
@@ -571,25 +614,37 @@ export class InoutboundMongoRepository implements IIoMongoRepository {
 			timestamps: true
 		})
 
-		const pendingInventoryVariation = await this.getPendingInventoryVariation(scannedEpcs)
+		const pendingInventoryVariation = await this.getPendingInventoryVariation(pendingStockInEpcs)
 
 		for (const mo of pendingInventoryVariation) {
-			await this.moInventoryVariationModel.updateOne(
-				{
-					mo_no: mo.mo_no,
-					factory_code_produce: mo.factory_code_produce,
-					factory_shoes_style: mo.factory_shoes_style,
-					color_sn: mo.color_sn
-				},
-				{ $inc: flatten(pick(mo, 'inventory_variation')) },
-				{ session: this.txHost.tx }
-			)
+			await Promise.all([
+				// * Cập nhật giao dịch tồn kho (inventory variation) cho từng Chỉ lệnh dựa trên các EPC đã nhập kho trong ngày hôm hiện tại
+				this.dailyMoInventoryVariationModel.findOneAndUpdate(
+					{
+						mo_no: mo.mo_no,
+						date: format(new Date(), 'yyyy-MM-dd')
+					},
+					{ $inc: flatten(pick(mo, 'inventory_variation')) },
+					{ upsert: true, session: this.txHost.tx }
+				),
+				// * Cập nhật giao dịch tồn kho (inventory variation) cho từng Chỉ lệnh dựa trên các EPC đã nhập kho
+				this.moInventoryVariationModel.updateOne(
+					{
+						mo_no: mo.mo_no,
+						factory_code_produce: mo.factory_code_produce,
+						factory_shoes_style: mo.factory_shoes_style,
+						color_sn: mo.color_sn
+					},
+					{ $inc: flatten(pick(mo, 'inventory_variation')) },
+					{ session: this.txHost.tx }
+				)
+			])
 		}
 	}
 
 	@Transactional<TransactionalAdapterMongoose>(DATA_WAREHOUSE_CONNECTION)
-	public async stockOut(scannedEpcs: Array<ElectronicProductCode>): Promise<void> {
-		const bulkWriteOperations: AnyBulkWriteOperation<FinishedGoodsEpcDocument>[] = scannedEpcs.map((epc) => ({
+	public async stockOut(pendingShipOutEpcs: Array<ElectronicProductCode>): Promise<void> {
+		const bulkWriteOperations: AnyBulkWriteOperation<FinishedGoodsEpcDocument>[] = pendingShipOutEpcs.map((epc) => ({
 			updateOne: {
 				filter: { epc: epc.getStockKeepingUnit(), outbound_at: null },
 				update: {
@@ -606,6 +661,56 @@ export class InoutboundMongoRepository implements IIoMongoRepository {
 			retryWrites: true,
 			timestamps: true
 		})
+	}
+
+	@Transactional<TransactionalAdapterMongoose>(DATA_WAREHOUSE_CONNECTION)
+	public async recallFromStock(pendingRecallEpcs: Array<ElectronicProductCode>): Promise<void> {
+		await this.finishedGoodsEpcModel.updateMany(
+			{ epc: { $in: pendingRecallEpcs.map((e) => e.getStockKeepingUnit()) } },
+			{
+				recalled_at: new Date(),
+				status: FinishedGoodsEpcStatus.RECALLED,
+				storage_location: null
+			},
+			{ session: this.txHost.tx }
+		)
+
+		const pendingInventoryVariation = await this.getPendingInventoryVariation(pendingRecallEpcs)
+
+		const bulkWriteMoInventoryVariationOps: AnyBulkWriteOperation<MoInventoryVariationDocument>[] =
+			pendingInventoryVariation.map((mo) => ({
+				updateOne: {
+					filter: {
+						mo_no: mo.mo_no,
+						factory_code_produce: mo.factory_code_produce,
+						factory_shoes_style: mo.factory_shoes_style,
+						color_sn: mo.color_sn
+					},
+					update: { $inc: flatten(pick(mo, 'inventory_variation')) },
+					upsert: true
+				}
+			}))
+
+		await this.moInventoryVariationModel.bulkWrite(bulkWriteMoInventoryVariationOps, {
+			session: this.txHost.tx,
+			writeConcern: { w: 'majority' },
+			ordered: false,
+			retryWrites: true,
+			timestamps: true
+		})
+
+		// for (const mo of pendingInventoryVariation) {
+		// 	await this.moInventoryVariationModel.updateOne(
+		// 		{
+		// 			mo_no: mo.mo_no,
+		// 			factory_code_produce: mo.factory_code_produce,
+		// 			factory_shoes_style: mo.factory_shoes_style,
+		// 			color_sn: mo.color_sn
+		// 		},
+		// 		{ $inc: flatten(pick(mo, 'inventory_variation')) },
+		// 		{ session: this.txHost.tx }
+		// 	)
+		// }
 	}
 
 	@Transactional<TransactionalAdapterMongoose>(DATA_WAREHOUSE_CONNECTION)

@@ -18,9 +18,6 @@ export const MO_INVENTORY_VARIATION_COLLECTION = 'mo_inventory_variation'
 })
 export class MoInventoryVariation {
 	@Prop({ type: String, requried: true })
-	date: string
-
-	@Prop({ type: String, requried: true })
 	mo_no: string
 
 	@Prop({ type: String, requried: true })

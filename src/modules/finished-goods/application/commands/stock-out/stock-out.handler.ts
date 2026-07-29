@@ -14,7 +14,7 @@ export class StockOutHandler implements ICommandHandler<StockOutCommand> {
 	) {}
 
 	public async execute({ manufacturingOrders, purchaseOrder, sizes }: StockOutCommand): Promise<void> {
-		const pendingOutboundEpcs = await this.ioMongoRepository.getPendingOutboundEpcs(
+		const pendingOutboundEpcs = await this.ioMongoRepository.getPendingShipOutEpcs(
 			purchaseOrder,
 			manufacturingOrders,
 			sizes

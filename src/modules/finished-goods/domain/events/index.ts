@@ -8,7 +8,7 @@ import { StockedInHandler } from './stocked-in/stocked-in.handler'
 import { StockedOutHandler } from './stocked-out/stocked-out.handler'
 import { UpsertedEpcsMatchHandler } from './upserted-epcs-match/upserted-epcs-match.handler'
 
-export const InoutboundEventHandlers = [
+export const FinishedGoodsEventHandlers = [
 	CommitStockInFailureHandler,
 	CommitStockOutFailureHandler,
 	CommitedStockInHandler,
