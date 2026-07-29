@@ -52,8 +52,6 @@ export class ThirdPartyApiService {
 			params: { commandNumber: commandNumber }
 		})
 
-		this.logger.debug(data)
-
 		if (!Array.isArray(data) || data.length === 0) {
 			throw new NotFoundException('No data fetched from the customer')
 		}
