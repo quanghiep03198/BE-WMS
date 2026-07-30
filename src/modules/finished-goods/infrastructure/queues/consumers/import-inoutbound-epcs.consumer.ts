@@ -24,8 +24,6 @@ export class ImportInoutboundEpcsConsumer extends WorkerHost {
 	private readonly epcInformationQuery: string = epcInformationQuery
 
 	constructor(
-		// @InjectModel(EpcInbound.name, DATA_WAREHOUSE_CONNECTION) private readonly inboundEpcModel: EpcModel,
-		// @InjectModel(EpcInbound.name, DATA_WAREHOUSE_CONNECTION) private readonly outboundEpcModel: EpcModel,
 		@InjectModel(FinishedGoodsEpc.name, DATA_WAREHOUSE_CONNECTION)
 		private readonly finishedGoodsEpcModel: FinishedGoodsEpcModel,
 		@InjectDataSource(DATA_SOURCE_DATA_LAKE) private readonly dataSourceDL: DataSource

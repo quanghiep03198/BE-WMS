@@ -13,8 +13,6 @@ export class RecalledFromStockHandler implements IEventHandler<RecalledFromStock
 	) {}
 
 	public handle(event: RecalledFromStockEvent): void {
-		this.logger.debug(`RecalledFromStockEvent handled with ${event.recalledEpcs.length} recalled EPCs`)
-
 		// TODO: Add declaration for the translation key in the i18n files
 		this.finishedGoodsGateway.server.emit(
 			'recalled',

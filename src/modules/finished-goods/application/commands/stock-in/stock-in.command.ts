@@ -10,7 +10,8 @@ export class StockInCommand extends Command<void> {
 			rfid_use: InventoryStorageType
 			dept_code: string
 			dept_name: string
-			storage: string
+			storage_num: string
+			storage_name: string
 			quantity: number
 			factory_code_produce: string
 			username: string

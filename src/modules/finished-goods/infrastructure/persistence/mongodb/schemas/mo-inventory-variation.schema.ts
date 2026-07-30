@@ -47,6 +47,8 @@ export class MoInventoryVariation {
 
 export const MoInventoryVariationSchema = SchemaFactory.createForClass(MoInventoryVariation)
 
+MoInventoryVariationSchema.index({ mo_no: 1 }, { name: 'idx_mo', unique: true })
+
 export type MoInventoryVariationDocument = HydratedDocument<MoInventoryVariation> & { record_time: string }
 export type MoInventoryVariationModel = Model<MoInventoryVariationDocument>
 

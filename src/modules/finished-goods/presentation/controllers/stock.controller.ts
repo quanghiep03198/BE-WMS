@@ -82,7 +82,7 @@ export class StockController {
 		try {
 			return await this.commandBus.execute(
 				new RecallFromStockCommand({
-					...omit(payload, ['dept_code', 'dept_name', 'storage']),
+					...omit(payload, ['dept_code', 'dept_name', 'storage_num', 'storage_name']),
 					factory_code_produce: factoryCode,
 					username: user.username,
 					display_name: user.display_name

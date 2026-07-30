@@ -20,14 +20,12 @@ export class StockInHandler implements ICommandHandler<StockInCommand> {
 		const pendingInboundEpcs = await this.inoutboundMongoRepository.getPendingStockMoveEpcs(
 			command.inbound_device_sn,
 			command.mo_no,
-			command.username,
 			`${command.dept_code}/${command.dept_name}`,
-			command.storage
+			`${command.storage_num}/${command.storage_name}`
 		)
 
 		const currentInboundProgress = await this.inoutboundMongoRepository.getMoInventory(command.mo_no)
 
-		this.logger.debug(currentInboundProgress)
 		// * Start Unit of Work transaction for inbound stock-in process
 		const inboundTransaction = new StockTransaction('inbound', pendingInboundEpcs, currentInboundProgress)
 		inboundTransaction.startTransaction()

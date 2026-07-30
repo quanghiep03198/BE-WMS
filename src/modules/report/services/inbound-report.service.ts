@@ -1,9 +1,15 @@
 import { ExcelColorPalette } from '@common/constants/excel-color-palette'
 import { applyCommonStyles, type AutoFitColumnOptions, autoFitColumns } from '@common/helpers'
 import { SuperJson } from '@common/utils'
+import { DATA_WAREHOUSE_CONNECTION } from '@databases/constants'
+import {
+	DailyMoInventoryVariation,
+	DailyMoInventoryVariationModel
+} from '@modules/finished-goods/infrastructure/persistence/mongodb/schemas/daily-mo-inventory-variation.schema'
 import { TENANCY_DATA_SOURCE } from '@modules/tenancy/constants'
 import { Inject, Injectable } from '@nestjs/common'
 import { REQUEST } from '@nestjs/core'
+import { InjectModel } from '@nestjs/mongoose'
 import { format } from 'date-fns'
 import { Workbook } from 'exceljs'
 import { FastifyRequest } from 'fastify'
@@ -16,18 +22,25 @@ import shapingDepartmentProductivityQuery from '../sql/shaping-department-produc
 
 @Injectable()
 export class InboundReportService {
-	private readonly inboundReportQuery: string = inboundReportQuery
+	// private readonly inboundReportQuery: string = inboundReportQuery
 	private readonly shapingDepartmentProductivityQuery: string = shapingDepartmentProductivityQuery
 	private readonly inboundHistoryQuery: string = inboundHistoryQuery
 
 	constructor(
 		@Inject(TENANCY_DATA_SOURCE) private readonly dataSource: DataSource,
 		@Inject(REQUEST) private readonly request: FastifyRequest,
-		private readonly i18nService: I18nService
+		private readonly i18nService: I18nService,
+		@InjectModel(DailyMoInventoryVariation.name, DATA_WAREHOUSE_CONNECTION)
+		private readonly dailyMoInventoryVariationModel: DailyMoInventoryVariationModel
 	) {}
 
+	/**
+	 * @deprecated This method is deprecated and will be removed in future versions. Please use getDailyInventoryVariation instead.
+	 * @param date
+	 * @returns
+	 */
 	public async getDailyProductivity(date: string): Promise<IInboundReportResponse> {
-		const data = await this.dataSource.query<IInboundReportQueryResult[]>(this.inboundReportQuery, [
+		const data = await this.dataSource.query<IInboundReportQueryResult[]>(inboundReportQuery, [
 			this.request.headers['x-user-factory'],
 			date
 		])
@@ -35,6 +48,43 @@ export class InboundReportService {
 			...item,
 			size_data: JSON.parse(item.size_data)
 		}))
+	}
+
+	public async getDailyInventoryVariation(date: string) {
+		const docs = await this.dailyMoInventoryVariationModel
+			.find({ date: date })
+			.populate('mo_attrs', 'factory_shoes_style color_sn factory_code_produce mo_total_qty inventory_variation')
+			.exec()
+
+		return docs.map((doc) => {
+			const accumulatedQty = Object.values(doc.mo_attrs.inventory_variation).reduce(
+				(acc, variation) => acc + variation.stocked_in_qty - variation.total_recall_tx + variation.total_return_tx,
+				0
+			)
+			const totalDailyInboundQty = Object.values(doc.inventory_variation).reduce(
+				(acc, variation) => acc + variation.stocked_in_qty - variation.total_recall_tx + variation.total_return_tx,
+				0
+			)
+
+			return {
+				mo_no: doc.mo_no,
+				factory_code: doc.mo_attrs.factory_code_produce,
+				factory_shoes_style: doc.mo_attrs.factory_shoes_style,
+				color_sn: doc.mo_attrs.color_sn,
+				assembly_lines: doc.assembly_lines,
+				storage_locations: doc.storage_locations,
+				order_qty: doc.mo_attrs.mo_total_qty,
+				daily_inbound_qty: totalDailyInboundQty,
+				accumulated_qty: accumulatedQty,
+				missing_qty: doc.mo_attrs.mo_total_qty - accumulatedQty,
+				variation_details: Object.entries(doc.inventory_variation).map(([size, variation]) => {
+					return {
+						size_numcode: size,
+						qty: variation.stocked_in_qty - variation.total_recall_tx + variation.total_return_tx
+					}
+				})
+			}
+		})
 	}
 
 	public async getDailyShapingDepartmentProductivity(date: string): Promise<IInboundReportResponse> {

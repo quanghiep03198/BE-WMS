@@ -1,3 +1,4 @@
+import { FinishedGoodsModule } from '@modules/finished-goods/finished-goods.module'
 import { MiddlewareConsumer, Module } from '@nestjs/common'
 import { TenacyMiddleware } from '../tenancy/tenancy.middleware'
 import { TenancyModule } from './../tenancy/tenancy.module'
@@ -7,7 +8,7 @@ import { OutboundReportService } from './services/outbound-report.service'
 import { PackingWeightReportService } from './services/packing-weight-report.service'
 
 @Module({
-	imports: [TenancyModule],
+	imports: [TenancyModule, FinishedGoodsModule],
 	controllers: [ReportController],
 	providers: [InboundReportService, OutboundReportService, PackingWeightReportService]
 })

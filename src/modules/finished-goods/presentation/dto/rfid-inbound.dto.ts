@@ -9,7 +9,8 @@ export const stockVariationValidator = z
 		rfid_use: z.nativeEnum(InventoryStorageType, { required_error: 'Required' }),
 		dept_code: z.string().optional(),
 		dept_name: z.string().optional(),
-		storage: z.string().optional(),
+		storage_num: z.string().optional(),
+		storage_name: z.string().optional(),
 		quantity: z.number().optional()
 	})
 	.superRefine((values, ctx) => {
@@ -20,7 +21,7 @@ export const stockVariationValidator = z
 			if (!values.dept_name) {
 				ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['dept_name'], message: 'Required' })
 			}
-			if (!values.storage) {
+			if (!values.storage_name) {
 				ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['storage'], message: 'Required' })
 			}
 		} else {

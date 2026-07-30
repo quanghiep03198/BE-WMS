@@ -10,7 +10,8 @@ import {
 	Param,
 	Query,
 	Res,
-	UseFilters
+	UseFilters,
+	Version
 } from '@nestjs/common'
 import { format } from 'date-fns'
 import { FastifyReply } from 'fastify'
@@ -31,12 +32,23 @@ export class ReportController {
 	// #region Inbound report
 
 	@RouteHandler({ endpoint: 'daily-inbound', method: HttpMethod.GET })
+	@Version('1')
 	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF, UserRole.INDUSTRIAL_ENGINEERING_STAFF)
 	async getInboundReportByDate(
 		@Query('date:eq', new DefaultValuePipe(format(new Date(), 'yyyy-MM-dd')))
 		dateQuery: any
 	) {
 		return await this.inboundReportService.getDailyProductivity(dateQuery)
+	}
+
+	@RouteHandler({ endpoint: 'daily-inbound', method: HttpMethod.GET })
+	@Version('2')
+	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF, UserRole.INDUSTRIAL_ENGINEERING_STAFF)
+	async getInboundReportByDateV2(
+		@Query('date:eq', new DefaultValuePipe(format(new Date(), 'yyyy-MM-dd')))
+		dateQuery: any
+	) {
+		return await this.inboundReportService.getDailyInventoryVariation(dateQuery)
 	}
 
 	@RouteHandler({ endpoint: 'inbound-history/:commandNumber', method: HttpMethod.GET })

@@ -68,7 +68,7 @@ export class CommitStockVariationHandler implements ICommandHandler<CommitStockV
 							factory_code: item.getFactoryProduce(),
 							dept_code: item.getAssemblyLine('code'),
 							dept_name: item.getAssemblyLine('name'),
-							storage: item.getStorageLocation(),
+							storage: item.getStorageLocation('code'),
 							station_no: generateStation(item.getFactoryProduce(), 'WH101'),
 							...variationFlow.get(stockFlow)
 						}

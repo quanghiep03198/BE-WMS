@@ -23,6 +23,12 @@ export class DailyMoInventoryVariation {
 	@Prop({ type: String, required: true })
 	mo_no: string
 
+	@Prop({ type: Array, default: [] })
+	assembly_lines: Array<string>
+
+	@Prop({ type: Array, default: [] })
+	storage_locations: Array<string>
+
 	@Prop({ type: Object, required: true })
 	inventory_variation: Record<
 		string,
@@ -36,40 +42,36 @@ export class DailyMoInventoryVariation {
 }
 
 export const DailyMoInventoryVariationSchema = SchemaFactory.createForClass(DailyMoInventoryVariation)
-export type DailyMoInventoryVariationDocument = HydratedDocument<DailyMoInventoryVariation> & { record_time: string }
+
+DailyMoInventoryVariationSchema.index({ date: 1, mo_no: 1 }, { name: 'idx_date_mo', unique: true })
+
+DailyMoInventoryVariationSchema.virtual('mo_attrs', {
+	ref: 'MoInventoryVariation',
+	localField: 'mo_no',
+	foreignField: 'mo_no',
+	justOne: true
+})
+
+DailyMoInventoryVariationSchema.set('toObject', { virtuals: true })
+DailyMoInventoryVariationSchema.set('toJSON', { virtuals: true })
+
+export type DailyMoInventoryVariationDocument = HydratedDocument<DailyMoInventoryVariation> & {
+	record_time: string
+	mo_attrs: {
+		factory_shoes_style: string
+		color_sn: string
+		factory_code_produce: string
+		mo_total_qty: number
+		inventory_variation: Record<
+			string,
+			{
+				target_qty: number
+				stocked_in_qty: number
+				total_recall_tx: number
+				total_return_tx: number
+				shipped_out_qty: number
+			}
+		>
+	}
+}
 export type DailyMoInventoryVariationModel = Model<DailyMoInventoryVariationDocument>
-
-// const DailyInboundReport = [
-// 	{
-// 		report_date: '2026-07-22',
-// 		mo_no: '15A07C038',
-// 		inventory_variation: {
-// 			'05': {
-// 				stocked_in_qty: 15,
-// 				recalled_qty: 0,
-// 				returned_qty: 0,
-// 				shipped_out_qty: 0
-// 			},
-// 			'06': {
-// 				stocked_in_qty: 5,
-// 				recalled_qty: 0,
-// 				returned_qty: 0,
-// 				shipped_out_qty: 0
-// 			},
-// 			'07': {
-// 				stocked_in_qty: 79,
-// 				recalled_qty: 0,
-// 				returned_qty: 0,
-// 				shipped_out_qty: 1
-// 			},
-// 			'08': {
-// 				stocked_in_qty: 109,
-// 				recalled_qty: 0,
-// 				returned_qty: 0,
-// 				shipped_out_qty: 0
-// 			}
-// 		}
-
-// 		// ... 90+ more records
-// 	}
-// ]

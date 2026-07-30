@@ -11,7 +11,8 @@ export class StockInQueueEvent extends QueueEventsHost {
 
 	@OnQueueEvent('completed')
 	onQueueCompleted(job: { data: Array<ElectronicProductCode> }) {
-		this.logger.debug(job.data.map((epc) => epc.getStockKeepingUnit()))
+		const stockedInQty = job.data.length
+		this.logger.debug(`Completed with ${stockedInQty} EPCs stocked in`)
 	}
 
 	@OnQueueEvent('failed')

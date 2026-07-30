@@ -6,8 +6,6 @@ import { InjectModel, MongooseModule } from '@nestjs/mongoose'
 import { TypeOrmModule } from '@nestjs/typeorm'
 import { InjectRedisClient } from '@redis/decorators'
 import Redis from 'ioredis'
-import MongooseDeletePlugin from 'mongoose-delete'
-import MongoosePaginatePlugin from 'mongoose-paginate-v2'
 import { PinoLogger } from 'nestjs-pino'
 import { InventoryModule } from '../inventory/inventory.module'
 import { RFIDDeviceEntity } from '../rfid-device/entities/rfid-device.entity'
@@ -23,7 +21,8 @@ import { InoutboundMongoRepository } from './infrastructure/persistence/mongodb/
 import {
 	DAILY_MO_INVENTORY_VARIATION_COLLECTION,
 	DailyMoInventoryVariation,
-	DailyMoInventoryVariationModel
+	DailyMoInventoryVariationModel,
+	DailyMoInventoryVariationSchema
 } from './infrastructure/persistence/mongodb/schemas/daily-mo-inventory-variation.schema'
 import {
 	FINISHED_GOODS_EPCS_COLLECTION,
@@ -98,69 +97,22 @@ import { FinishedGoodsListeners } from './presentation/listeners'
 			[RFIDInventoryEntity, RFIDInventoryBackupEntity, RFIDMatchEntity, RFIDDeviceEntity],
 			DATA_SOURCE_DATA_LAKE
 		),
-		MongooseModule.forFeatureAsync(
+		MongooseModule.forFeature(
 			[
 				{
 					name: FinishedGoodsEpc.name,
 					collection: FINISHED_GOODS_EPCS_COLLECTION,
-					useFactory: () => {
-						// FinishedGoodsEpcSchema.index({ outbound_at: 1 }, { expires: '60d', name: 'idx_outbound_at' })
-						// * Indexes
-						FinishedGoodsEpcSchema.index({ epc: 1 }, { unique: true, name: 'idx_epc' })
-						FinishedGoodsEpcSchema.index(
-							{ scannable: 1, deleted: 1, status: 1, inbound_device_sn: 1, storage_location: 1 },
-							{ name: 'idx_inbound_active' }
-						)
-						FinishedGoodsEpcSchema.index(
-							{ scannable: 1, deleted: 1, status: 1, outbound_device_sn: 1, storage_location: 1 },
-							{
-								name: 'idx_outbound_active'
-							}
-						)
-						FinishedGoodsEpcSchema.index(
-							{ scannable: 1, deleted: 1, mo_no: 1, factory_shoes_style: 1, size_numcode: 1 },
-							{ name: 'idx_group_mo_style_size' }
-						)
-						FinishedGoodsEpcSchema.index(
-							{ scannable: 1, deleted: 1, mo_no: 1, factory_shoes_style: 1, color_sn: 1, size_numcode: 1 },
-							{ name: 'idx_specs_inbound', partialFilterExpression: { inbound_at: null } }
-						)
-						FinishedGoodsEpcSchema.index(
-							{ scannable: 1, deleted: 1, mo_no: 1, factory_shoes_style: 1, color_sn: 1, size_numcode: 1 },
-							{
-								name: 'idx_specs_outbound',
-								partialFilterExpression: {
-									inbound_at: { $gt: new Date(2024, 0, 1) },
-									outbound_at: null
-								}
-							}
-						)
-
-						// * Addon plugins
-						FinishedGoodsEpcSchema.plugin(MongoosePaginatePlugin)
-
-						FinishedGoodsEpcSchema.plugin(MongooseDeletePlugin, {
-							overrideMethods: true
-						})
-
-						return FinishedGoodsEpcSchema
-					}
+					schema: FinishedGoodsEpcSchema
 				},
 				{
 					name: MoInventoryVariation.name,
 					collection: MO_INVENTORY_VARIATION_COLLECTION,
-					useFactory: () => {
-						MoInventoryVariationSchema.index({ mo_no: 1 }, { name: 'idx_mo', unique: true })
-						return MoInventoryVariationSchema
-					}
+					schema: MoInventoryVariationSchema
 				},
 				{
 					name: DailyMoInventoryVariation.name,
 					collection: DAILY_MO_INVENTORY_VARIATION_COLLECTION,
-					useFactory: () => {
-						MoInventoryVariationSchema.index({ date: 1, mo_no: 1 }, { name: 'idx_date_mo', unique: true })
-						return MoInventoryVariationSchema
-					}
+					schema: DailyMoInventoryVariationSchema
 				}
 			],
 			DATA_WAREHOUSE_CONNECTION

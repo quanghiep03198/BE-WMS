@@ -7,7 +7,7 @@ export interface IReportSearchParams {
 
 export interface IReportQueryResult {
 	mo_no: string
-	mat_code: string
+	// mat_code: string
 	color_sn: string
 	factory_shoes_style: string
 	shaping_dept_name: string
