@@ -52,9 +52,17 @@ export class ReportController {
 	}
 
 	@RouteHandler({ endpoint: 'inbound-history/:commandNumber', method: HttpMethod.GET })
+	@Version('1')
 	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF, UserRole.INDUSTRIAL_ENGINEERING_STAFF)
 	async getInboundHistory(@Param('commandNumber') commandNumber: string) {
 		return await this.inboundReportService.getInboundHistory(commandNumber)
+	}
+
+	@RouteHandler({ endpoint: 'inbound-history/:mo', method: HttpMethod.GET })
+	@Version('2')
+	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF, UserRole.INDUSTRIAL_ENGINEERING_STAFF)
+	async getInboundHistoryV2(@Param('mo') manufacturingOrder: string) {
+		return await this.inboundReportService.getInboundHistoryReport(manufacturingOrder)
 	}
 
 	@Get('daily-inbound/export/:reportType')

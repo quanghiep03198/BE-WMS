@@ -2,10 +2,11 @@ import { ExcelColorPalette } from '@common/constants/excel-color-palette'
 import { applyCommonStyles, type AutoFitColumnOptions, autoFitColumns } from '@common/helpers'
 import { SuperJson } from '@common/utils'
 import { DATA_WAREHOUSE_CONNECTION } from '@databases/constants'
+import { DailyMoInventoryVariationModel } from '@modules/finished-goods/infrastructure/persistence/mongodb/schemas/daily-mo-inventory-variation.schema'
 import {
-	DailyMoInventoryVariation,
-	DailyMoInventoryVariationModel
-} from '@modules/finished-goods/infrastructure/persistence/mongodb/schemas/daily-mo-inventory-variation.schema'
+	MoInventoryVariation,
+	MoInventoryVariationModel
+} from '@modules/finished-goods/infrastructure/persistence/mongodb/schemas/mo-inventory-variation.schema'
 import { TENANCY_DATA_SOURCE } from '@modules/tenancy/constants'
 import { Inject, Injectable } from '@nestjs/common'
 import { REQUEST } from '@nestjs/core'
@@ -14,11 +15,13 @@ import { format } from 'date-fns'
 import { Workbook } from 'exceljs'
 import { FastifyRequest } from 'fastify'
 import { I18nContext, I18nService } from 'nestjs-i18n'
+import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
 import { DataSource } from 'typeorm'
 import { IInboundHistory, IInboundReportQueryResult, IInboundReportResponse } from '../interfaces'
 import inboundHistoryQuery from '../sql/inbound-history.sql'
 import inboundReportQuery from '../sql/inbound-report.sql'
 import shapingDepartmentProductivityQuery from '../sql/shaping-department-productivity.sql'
+import { DailyMoInventoryVariation } from './../../finished-goods/infrastructure/persistence/mongodb/schemas/daily-mo-inventory-variation.schema'
 
 @Injectable()
 export class InboundReportService {
@@ -27,11 +30,14 @@ export class InboundReportService {
 	private readonly inboundHistoryQuery: string = inboundHistoryQuery
 
 	constructor(
+		@InjectPinoLogger(InboundReportService.name) private readonly logger: PinoLogger,
 		@Inject(TENANCY_DATA_SOURCE) private readonly dataSource: DataSource,
 		@Inject(REQUEST) private readonly request: FastifyRequest,
 		private readonly i18nService: I18nService,
 		@InjectModel(DailyMoInventoryVariation.name, DATA_WAREHOUSE_CONNECTION)
-		private readonly dailyMoInventoryVariationModel: DailyMoInventoryVariationModel
+		private readonly dailyMoInventoryVariationModel: DailyMoInventoryVariationModel,
+		@InjectModel(MoInventoryVariation.name, DATA_WAREHOUSE_CONNECTION)
+		private readonly moInventoryVariationModel: MoInventoryVariationModel
 	) {}
 
 	/**
@@ -53,8 +59,11 @@ export class InboundReportService {
 	public async getDailyInventoryVariation(date: string) {
 		const docs = await this.dailyMoInventoryVariationModel
 			.find({ date: date })
+			.lean({ virtuals: true })
 			.populate('mo_attrs', 'factory_shoes_style color_sn factory_code_produce mo_total_qty inventory_variation')
 			.exec()
+
+		this.logger.debug(docs)
 
 		return docs.map((doc) => {
 			const accumulatedQty = Object.values(doc.mo_attrs.inventory_variation).reduce(
@@ -71,8 +80,8 @@ export class InboundReportService {
 				factory_code: doc.mo_attrs.factory_code_produce,
 				factory_shoes_style: doc.mo_attrs.factory_shoes_style,
 				color_sn: doc.mo_attrs.color_sn,
-				assembly_lines: doc.assembly_lines,
-				storage_locations: doc.storage_locations,
+				assembly_lines: doc.assembly_lines.sort((a, b) => a.localeCompare(b)),
+				storage_locations: doc.storage_locations.sort((a, b) => a.localeCompare(b)),
 				order_qty: doc.mo_attrs.mo_total_qty,
 				daily_inbound_qty: totalDailyInboundQty,
 				accumulated_qty: accumulatedQty,
@@ -120,6 +129,34 @@ export class InboundReportService {
 						result.inbound_history_by_size,
 						1
 					)
+				}
+			})
+	}
+
+	public async getInboundHistoryReport(manufacturingOrder: string) {
+		return await this.moInventoryVariationModel
+			.findOne({ mo_no: manufacturingOrder })
+			.populate({
+				path: 'daily_inbound_history',
+				select: 'date mo_no inventory_variation'
+			})
+			.exec()
+			.then((doc) => {
+				if (!doc) return null
+				const normalizedDoc = doc.toObject()
+				this.logger.debug(normalizedDoc)
+
+				const accumulatedInboundQty = Object.values(normalizedDoc.inventory_variation).reduce(
+					(acc, curr) => acc + curr.stocked_in_qty - curr.total_recall_tx + curr.total_return_tx,
+					0
+				)
+				const missingQty = normalizedDoc.mo_total_qty - accumulatedInboundQty
+
+				return {
+					...normalizedDoc,
+					accumulated_inbound_qty: accumulatedInboundQty,
+					missing_qty: missingQty,
+					progress: ((accumulatedInboundQty / normalizedDoc.mo_total_qty) * 100).toFixed(2) + '%'
 				}
 			})
 	}
