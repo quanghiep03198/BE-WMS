@@ -37,7 +37,7 @@ export default registerAs(
 							destination: 'logs/debug.log',
 							colorize: false,
 							append: true,
-							ignore: 'req,res,context,responseTime,pid,hostname'
+							ignore: 'req,res,context,responseTime,pid,hostname,err'
 						}
 					},
 					{
