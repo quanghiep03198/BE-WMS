@@ -30,7 +30,7 @@ export class MoInventoryVariation {
 	color_sn: string
 
 	@Prop({ type: Number, requried: true })
-	total_target_qty: number
+	mo_total_qty: number
 
 	@Prop({ type: Object, requried: true })
 	inventory_variation: Record<
@@ -48,6 +48,15 @@ export class MoInventoryVariation {
 export const MoInventoryVariationSchema = SchemaFactory.createForClass(MoInventoryVariation)
 
 MoInventoryVariationSchema.index({ mo_no: 1 }, { name: 'idx_mo', unique: true })
+
+MoInventoryVariationSchema.virtual('daily_inbound_history', {
+	ref: 'DailyMoInventoryVariation',
+	localField: 'mo_no',
+	foreignField: 'mo_no'
+})
+
+MoInventoryVariationSchema.set('toObject', { virtuals: true })
+MoInventoryVariationSchema.set('toJSON', { virtuals: true })
 
 export type MoInventoryVariationDocument = HydratedDocument<MoInventoryVariation> & { record_time: string }
 export type MoInventoryVariationModel = Model<MoInventoryVariationDocument>

@@ -42,6 +42,10 @@ export class InoutboundMongoRepository implements IIoMongoRepository {
 		private readonly txHost: TransactionHost<TransactionalAdapterMongoose>
 	) {}
 
+	private createIncrementExpression(obj: Object): Record<string, mongo.NumericType> {
+		return flatten(pick(obj, 'inventory_variation'))
+	}
+
 	public async getPendingStockMoveEpcs(
 		deviceSerialNumber: string,
 		manufacturingOrder: string,
@@ -312,231 +316,79 @@ export class InoutboundMongoRepository implements IIoMongoRepository {
 			>
 		}>
 	> {
-		const aggregateQuery = this.finishedGoodsEpcModel
-			.aggregate<{
+		const pendingStockMoveEpcs = await this.finishedGoodsEpcModel
+			.find({
+				epc: { $in: scannedEpcs.map((epc) => epc.getStockKeepingUnit()) }
+			})
+			.read('primary')
+			.session(this.txHost.tx)
+			.lean(true)
+
+		return pendingStockMoveEpcs.reduce<
+			Array<{
 				mo_no: string
 				factory_code_produce: string
 				factory_shoes_style: string
 				color_sn: string
 				inventory_variation: Record<
 					string,
-					{
-						stocked_in_qty: number
-						total_recall_tx: number
-						total_return_tx: number
-						shipped_out_qty: number
-					}
+					{ stocked_in_qty: number; total_recall_tx: number; total_return_tx: number; shipped_out_qty: number }
 				>
-			}>(
-				[
-					{
-						$match: {
-							epc: { $in: scannedEpcs.map((epc) => epc.getStockKeepingUnit()) }
-						}
-					},
-					{
-						$addFields: {
-							is_inbound: {
-								$cond: [
-									{
-										$and: [
-											{ $eq: ['$status', FinishedGoodsEpcStatus.IN_STOCK] },
-											{ $eq: ['$inbound_times', 1] }
-										]
-									},
-									1,
-									0
-								]
-							},
-							is_recall: {
-								$cond: [{ $eq: ['$status', FinishedGoodsEpcStatus.RECALLED] }, 1, 0]
-							},
-							is_return: {
-								$cond: [{ $gt: ['$inbound_times', 1] }, 1, 0]
-							},
-							is_shipped_out: {
-								$cond: [{ $eq: ['$status', FinishedGoodsEpcStatus.SHIPPED] }, 1, 0]
-							}
-						}
-					},
-					{
-						$group: {
-							_id: {
-								mo_no: '$mo_no',
-								factory_shoes_style: '$factory_shoes_style',
-								color_sn: '$color_sn',
-								factory_code_produce: '$factory_code_produce'
-							},
-							sizes: {
-								$push: {
-									size_numcode: '$size_numcode',
-									stocked_in_qty: '$is_inbound',
-									total_recall_tx: '$is_recall',
-									total_return_tx: '$is_return',
-									shipped_out_qty: '$is_shipped_out'
-								}
-							},
-							total_qty: { $sum: 1 }
-						}
-					},
-					{
-						$lookup: {
-							from: 'mo_inventory_variation',
-							let: {
-								mo_no: '$_id.mo_no',
-								factory_code_produce: '$_id.factory_code_produce',
-								factory_shoes_style: '$_id.factory_shoes_style',
-								color_sn: '$_id.color_sn'
-							},
-							pipeline: [
-								{
-									$match: {
-										$expr: {
-											$and: [
-												{ $eq: ['$mo_no', '$$mo_no'] },
-												{ $eq: ['$factory_code_produce', '$$factory_code_produce'] },
-												{ $eq: ['$factory_shoes_style', '$$factory_shoes_style'] },
-												{ $eq: ['$color_sn', '$$color_sn'] }
-											]
-										}
-									}
-								},
-								{
-									$project: {
-										_id: 0,
-										mo_total_qty: 1,
-										sizes: 1
-									}
-								}
-							],
-							as: 'mo_info'
-						}
-					},
-					{
-						$addFields: {
-							mo_info: {
-								$arrayElemAt: ['$mo_info', 0]
-							}
-						}
-					},
-					{
-						$project: {
-							_id: 0,
-							mo_no: '$_id.mo_no',
-							factory_code_produce: '$_id.factory_code_produce',
-							factory_shoes_style: '$_id.factory_shoes_style',
-							color_sn: '$_id.color_sn',
-							mo_total_qty: '$mo_info.mo_total_qty',
-							inventory_variation: {
-								$let: {
-									vars: {
-										sizeGroups: {
-											$map: {
-												input: {
-													$setUnion: [
-														{
-															$map: {
-																input: '$sizes',
-																as: 's',
-																in: '$$s.size_numcode'
-															}
-														},
-														[]
-													]
-												},
-												as: 'size',
-												in: {
-													k: '$$size',
-													v: {
-														target_qty: {
-															$getField: {
-																field: '$$size',
-																input: '$mo_info.sizes'
-															}
-														},
-														stocked_in_qty: {
-															$sum: {
-																$map: {
-																	input: {
-																		$filter: {
-																			input: '$sizes',
-																			as: 's',
-																			cond: { $eq: ['$$s.size_numcode', '$$size'] }
-																		}
-																	},
-																	as: 'x',
-																	in: '$$x.stocked_in_qty'
-																}
-															}
-														},
-														total_recall_tx: {
-															$sum: {
-																$map: {
-																	input: {
-																		$filter: {
-																			input: '$sizes',
-																			as: 's',
-																			cond: { $eq: ['$$s.size_numcode', '$$size'] }
-																		}
-																	},
-																	as: 'x',
-																	in: '$$x.total_recall_tx'
-																}
-															}
-														},
-														total_return_tx: {
-															$sum: {
-																$map: {
-																	input: {
-																		$filter: {
-																			input: '$sizes',
-																			as: 's',
-																			cond: { $eq: ['$$s.size_numcode', '$$size'] }
-																		}
-																	},
-																	as: 'x',
-																	in: '$$x.total_return_tx'
-																}
-															}
-														},
-														shipped_out_qty: {
-															$sum: {
-																$map: {
-																	input: {
-																		$filter: {
-																			input: '$sizes',
-																			as: 's',
-																			cond: { $eq: ['$$s.size_numcode', '$$size'] }
-																		}
-																	},
-																	as: 'x',
-																	in: '$$x.shipped_out_qty'
-																}
-															}
-														}
-													}
-												}
-											}
-										}
-									},
-									in: {
-										$arrayToObject: '$$sizeGroups'
-									}
-								}
-							}
-						}
-					}
-				],
-				{
-					readConcern: { level: 'majority' },
-					readPreference: 'primary'
-				}
+			}>
+		>((acc, curr) => {
+			const currentMoIndex = acc.findIndex(
+				(item) =>
+					item.mo_no === curr.mo_no &&
+					item.factory_code_produce === curr.factory_code_produce &&
+					item.factory_shoes_style === curr.factory_shoes_style &&
+					item.color_sn === curr.color_sn
 			)
-			.session(this.txHost.tx)
 
-		return await aggregateQuery
+			const pendingSizeVariation = {
+				stocked_in_qty: curr.status === FinishedGoodsEpcStatus.IN_STOCK && curr.inbound_times === 1 ? 1 : 0,
+				total_recall_tx: curr.status === FinishedGoodsEpcStatus.RECALLED ? 1 : 0,
+				total_return_tx: curr.status === FinishedGoodsEpcStatus.IN_STOCK && curr.inbound_times > 1 ? 1 : 0,
+				shipped_out_qty: curr.status === FinishedGoodsEpcStatus.SHIPPED ? 1 : 0
+			}
+
+			if (currentMoIndex === -1) {
+				acc.push({
+					mo_no: curr.mo_no,
+					factory_code_produce: curr.factory_code_produce,
+					factory_shoes_style: curr.factory_shoes_style,
+					color_sn: curr.color_sn,
+					inventory_variation: {
+						[curr.size_numcode]: pendingSizeVariation
+					}
+				})
+			} else {
+				const currSizeVariation = acc[currentMoIndex].inventory_variation[curr.size_numcode]
+				if (!currSizeVariation) {
+					acc[currentMoIndex].inventory_variation[curr.size_numcode] = pendingSizeVariation
+				} else {
+					acc[currentMoIndex].inventory_variation[curr.size_numcode] = {
+						stocked_in_qty: currSizeVariation.stocked_in_qty + pendingSizeVariation.stocked_in_qty,
+						total_recall_tx: currSizeVariation.total_recall_tx + pendingSizeVariation.total_recall_tx,
+						total_return_tx: currSizeVariation.total_return_tx + pendingSizeVariation.total_return_tx,
+						shipped_out_qty: currSizeVariation.shipped_out_qty + pendingSizeVariation.shipped_out_qty
+					}
+				}
+			}
+
+			return acc
+		}, [])
 	}
 
+	/**
+	 * @param pendingStockInEpcs
+	 * * Cập nhật trạng thái của các EPC trong danh sách `pendingStockInEpcs` khi chúng được nhập kho (stock in).
+	 * * Cần 4 round trips:
+	 * 	1. Cập nhật trạng thái của các EPC trong collection `FinishedGoodsEpc`.
+	 * 	2. Lấy số lượng biến động tồn kho (inventory variation) từ các EPC đã nhập kho.
+	 * 	3. Cập nhật số lượng tồn kho trong collection `MoInventoryVariation` dựa trên các EPC đã nhập kho.
+	 * 	4. Cập nhật biến động tồn kho hàng ngày trong collection `DailyMoInventoryVariation` dựa trên các EPC đã nhập kho.
+	 * @return {void}
+	 */
 	@Transactional<TransactionalAdapterMongoose>(DATA_WAREHOUSE_CONNECTION)
 	public async stockIn(pendingStockInEpcs: Array<ElectronicProductCode>): Promise<void> {
 		const epcBulkUpdateRequests: AnyBulkWriteOperation<FinishedGoodsEpcDocument>[] = pendingStockInEpcs.map(
@@ -615,10 +467,6 @@ export class InoutboundMongoRepository implements IIoMongoRepository {
 
 		const pendingInventoryVariation = await this.getPendingInventoryVariation(pendingStockInEpcs)
 
-		const createIncrementExpression = (obj: Object): Record<string, mongo.NumericType> => {
-			return flatten(pick(obj, 'inventory_variation'))
-		}
-
 		const bulkWriteMasterVariationOperator: AnyBulkWriteOperation<MoInventoryVariationDocument>[] =
 			pendingInventoryVariation.map((mo) => ({
 				updateOne: {
@@ -628,7 +476,7 @@ export class InoutboundMongoRepository implements IIoMongoRepository {
 						factory_shoes_style: mo.factory_shoes_style,
 						color_sn: mo.color_sn
 					},
-					update: { $inc: createIncrementExpression(mo) },
+					update: { $inc: this.createIncrementExpression(mo) },
 					upsert: true
 				}
 			}))
@@ -652,7 +500,7 @@ export class InoutboundMongoRepository implements IIoMongoRepository {
 								factory_shoes_style,
 								color_sn
 							},
-							$inc: createIncrementExpression(mo),
+							$inc: this.createIncrementExpression(mo),
 							$addToSet: {
 								storage_locations: { $each: storageLocations },
 								assembly_lines: { $each: assemblyLines }
@@ -663,7 +511,7 @@ export class InoutboundMongoRepository implements IIoMongoRepository {
 				}
 			})
 
-		const result = await this.dailyMoInventoryVariationModel.bulkWrite(bulkWriteDailyVariationOperator, {
+		await this.dailyMoInventoryVariationModel.bulkWrite(bulkWriteDailyVariationOperator, {
 			session: this.txHost.tx,
 			writeConcern: { w: 'majority' },
 			ordered: false,
@@ -701,6 +549,16 @@ export class InoutboundMongoRepository implements IIoMongoRepository {
 		})
 	}
 
+	/**
+	 * @param pendingStockInEpcs
+	 * * Cập nhật trạng thái của các EPC trong danh sách `pendingRecallEpcs` khi chúng được thu hồi (recall).
+	 * * Cần 4 round trips:
+	 * 	1. Cập nhật trạng thái của các EPC trong collection `FinishedGoodsEpc`.
+	 * 	2. Lấy số lượng biến động tồn kho (inventory variation) từ các EPC đã nhập kho.
+	 * 	3. Cập nhật số lượng tồn kho trong collection `MoInventoryVariation` dựa trên các EPC đã nhập kho.
+	 * 	4. Cập nhật biến động tồn kho hàng ngày trong collection `DailyMoInventoryVariation` dựa trên các EPC đã nhập kho.
+	 * @return {void}
+	 */
 	@Transactional<TransactionalAdapterMongoose>(DATA_WAREHOUSE_CONNECTION)
 	public async recallFromStock(pendingRecallEpcs: Array<ElectronicProductCode>): Promise<void> {
 		await this.finishedGoodsEpcModel.updateMany(

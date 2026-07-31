@@ -84,8 +84,8 @@ export class FinishedGoodsEpc {
 	@Prop({ type: Boolean, default: false })
 	deleted: boolean
 
-	@Prop({ type: Boolean, default: 0 })
-	inbound_times: boolean
+	@Prop({ type: Number, default: 0 })
+	inbound_times: number
 
 	@Prop({ type: String, enum: Object.values(FinishedGoodsEpcStatus), default: FinishedGoodsEpcStatus.SCANNING })
 	status: FinishedGoodsEpcStatus
