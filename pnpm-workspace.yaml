@@ -13,6 +13,7 @@ allowBuilds:
   bcrypt: true
   msgpackr-extract: true
   nestjs-pino: set this to true or false
+  '@sentry/node-cpu-profiler': true
 
 onlyBuiltDependencies:
   - '@compodoc/compodoc'
