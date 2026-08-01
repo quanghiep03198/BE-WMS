@@ -15,7 +15,7 @@ export class RFIDInventoryEntitySubscriber implements EntitySubscriberInterface<
 	}
 
 	beforeInsert(event: InsertEvent<BaseRFIDInventoryEntity>) {
-		if (!!event.entity.rfid_status) {
+		if (event.entity.rfid_status) {
 			event.entity.quantity = event.entity.rfid_status === InventoryActions.INBOUND ? 1 : -1
 		}
 	}

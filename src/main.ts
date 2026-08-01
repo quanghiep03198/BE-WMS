@@ -101,19 +101,24 @@ async function bootstrap() {
 			preflightContinue: true,
 			credentials: true
 		})
-		await Promise.all([
-			app.register(import('@fastify/multipart'), {
-				limits: { files: 500, fieldSize: 1024 * 1024, fileSize: 10 * 1024 * 1024 }
-			}),
-			app.register(import('@fastify/helmet'), { global: true }),
-			app.register(import('@fastify/compress'), {
-				global: true,
-				encodings: ['gzip', 'deflate'],
-				threshold: 10 * 1024
-			}),
-			app.register(import('fastify-sse')),
-			app.register(import('@fastify/cookie'), { secret: configService.get<string>('COOKIE_SECRET') })
-		])
+
+		await app.register(import('@fastify/multipart'), {
+			limits: { files: 500, fieldSize: 1024 * 1024, fileSize: 10 * 1024 * 1024 }
+		})
+		await app.register(import('@fastify/helmet'), { global: true })
+		await app.register(import('@fastify/compress'), {
+			global: true,
+			encodings: ['gzip', 'deflate'],
+			threshold: 10 * 1024
+		})
+		await app.register(import('@fastify/sse'), {
+			// Optional: heartbeat interval in milliseconds (default: 30000)
+			heartbeatInterval: 30000,
+
+			// Optional: default serializer (default: JSON.stringify)
+			serializer: (data) => JSON.stringify(data)
+		})
+		await app.register(import('@fastify/cookie'), { secret: configService.get<string>('COOKIE_SECRET') })
 
 		await app.listen(+configService.get('PORT'), configService.get('HOST'), async () => {
 			const url = await app.getUrl()

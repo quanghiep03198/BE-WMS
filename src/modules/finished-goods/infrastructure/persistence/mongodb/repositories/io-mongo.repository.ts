@@ -42,7 +42,7 @@ export class InoutboundMongoRepository implements IIoMongoRepository {
 		private readonly txHost: TransactionHost<TransactionalAdapterMongoose>
 	) {}
 
-	private createIncrementExpression(obj: Object): Record<string, mongo.NumericType> {
+	private createIncrementExpression(obj: object): Record<string, mongo.NumericType> {
 		return flatten(pick(obj, 'inventory_variation'))
 	}
 
@@ -575,7 +575,7 @@ export class InoutboundMongoRepository implements IIoMongoRepository {
 
 		const pendingInventoryVariation = await this.getPendingInventoryVariation(pendingRecallEpcs)
 
-		const createIncrementExpression = (obj: Object): Record<string, mongo.NumericType> => {
+		const createIncrementExpression = (obj: object): Record<string, mongo.NumericType> => {
 			return flatten(pick(obj, 'inventory_variation'))
 		}
 

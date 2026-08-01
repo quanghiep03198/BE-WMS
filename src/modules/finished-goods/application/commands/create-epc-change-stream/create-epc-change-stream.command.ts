@@ -7,8 +7,7 @@ export class CreateEpcChangeStreamCommand extends Command<
 > {
 	constructor(
 		public readonly filterQuery:
-			| { 'fullDocument.inbound_device_sn': string }
-			| { 'fullDocument.outbound_device_sn': { $ne: null } },
+			{ 'fullDocument.inbound_device_sn': string } | { 'fullDocument.outbound_device_sn': { $ne: null } },
 
 		public readonly onChange: (change: mongo.ChangeStreamDocument<FinishedGoodsEpcDocument>) => void
 	) {
