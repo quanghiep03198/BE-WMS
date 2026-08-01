@@ -56,7 +56,6 @@ DailyMoInventoryVariationSchema.virtual('mo_attrs', {
 
 DailyMoInventoryVariationSchema.set('toObject', { virtuals: true })
 DailyMoInventoryVariationSchema.set('toJSON', { virtuals: true })
-DailyMoInventoryVariationSchema
 
 export type DailyMoInventoryVariationDocument = HydratedDocument<DailyMoInventoryVariation> & {
 	mo_attrs: {
