@@ -1,19 +1,7 @@
-packages:
-  - packages/*
-  - .
-
 allowBuilds:
   '@automock/adapters.nestjs': true
-  '@compodoc/compodoc': true
-  '@nestjs/core': true
   '@sentry/cli': true
-  '@sentry-internal/node-cpu-profiler': true
-  '@sentry/profiling-node': true
+  '@sentry/node-cpu-profiler': true
   '@swc/core': true
   bcrypt: true
   msgpackr-extract: true
-  nestjs-pino: set this to true or false
-  '@sentry/node-cpu-profiler': true
-
-onlyBuiltDependencies:
-  - '@compodoc/compodoc'
