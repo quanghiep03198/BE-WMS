@@ -1,6 +1,6 @@
 import { CommonRequestHeader } from '@common/constants'
 import { HttpMethod, RequestUser, RequireAuthorized, RouteHandler, StrictRoles, User } from '@common/decorators'
-import { AllExceptionsFilter } from '@common/filters'
+import { HttpExceptionFilter } from '@common/filters'
 import { ZodValidationPipe } from '@common/pipes'
 import {
 	Body,
@@ -244,7 +244,7 @@ export class TruckloadDeliveryController {
 	}
 
 	@Get('export')
-	@UseFilters(AllExceptionsFilter)
+	@UseFilters(HttpExceptionFilter)
 	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF, UserRole.IE_STAFF, UserRole.SECURITY_GUARD)
 	async exportPackingWeightReport(
 		@Query(new ZodValidationPipe(filterQueryDTO)) filterQueryDTO: FilterQueryDTO,

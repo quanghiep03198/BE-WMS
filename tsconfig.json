@@ -1,9 +1,10 @@
 {
 	"compilerOptions": {
-		"module": "NodeNext",
+		"module": "nodenext",
 		"moduleResolution": "nodenext",
 		"declaration": true,
 		"removeComments": true,
+
 		"emitDecoratorMetadata": true,
 		"experimentalDecorators": true,
 		"allowSyntheticDefaultImports": true,
@@ -42,5 +43,5 @@
 		"types": ["node", "jest"]
 	},
 	"include": ["src", "test", "src/instrument.ts", "global.d.ts"],
-	"exclude": ["node_modules", "dist", "deprecated", ".tmp"]
+	"exclude": ["node_modules", "dist", ".tmp/deprecated", ".tmp"]
 }

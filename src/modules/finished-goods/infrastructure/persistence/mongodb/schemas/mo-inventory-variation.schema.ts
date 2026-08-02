@@ -27,6 +27,9 @@ export class MoInventoryVariation {
 	factory_shoes_style: string
 
 	@Prop({ type: String, requried: true })
+	cust_shoes_style: string
+
+	@Prop({ type: String, requried: true })
 	color_sn: string
 
 	@Prop({ type: Number, requried: true })

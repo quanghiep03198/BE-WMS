@@ -17,6 +17,8 @@ import { IO_MSSQL_REPOSITORY } from './application/ports/io-mssql.repository.por
 import { FinishedGoodsQueryHandlers } from './application/queries'
 import { FinishedGoodsSagas } from './application/sagas'
 import { FinishedGoodsEventHandlers } from './domain/events'
+import { MONGO_EPC_CHANGE_STREAM_FACTORY } from './domain/interfaces/epc-change-stream.factory.interface'
+import { MongoEpcChangeStreamFactory } from './infrastructure/persistence/mongodb/epc-change-stream.factory'
 import { InoutboundMongoRepository } from './infrastructure/persistence/mongodb/repositories/io-mongo.repository'
 import {
 	DAILY_MO_INVENTORY_VARIATION_COLLECTION,
@@ -129,6 +131,10 @@ import { FinishedGoodsListeners } from './presentation/listeners'
 		...FinishedGoodsEntitySubscribers,
 		...FinsishedGoodsQueueEvents,
 		FinishedGoodsGateway,
+		{
+			provide: MONGO_EPC_CHANGE_STREAM_FACTORY,
+			useClass: MongoEpcChangeStreamFactory
+		},
 		{
 			provide: IO_MSSQL_REPOSITORY,
 			useClass: InoutboundMssqlRepository

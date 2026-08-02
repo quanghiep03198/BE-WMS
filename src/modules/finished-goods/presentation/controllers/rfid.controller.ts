@@ -6,7 +6,6 @@ import {
 	Body,
 	Controller,
 	DefaultValuePipe,
-	Get,
 	Headers,
 	HttpStatus,
 	Inject,
@@ -14,16 +13,17 @@ import {
 	ParseBoolPipe,
 	ParseIntPipe,
 	Query,
-	Res,
+	Sse,
 	UseFilters,
 	UseInterceptors
 } from '@nestjs/common'
 
 import { FileFieldsInterceptor, StorageFile, UploadedFiles } from '@blazity/nest-file-fastify'
 import { CommonRequestHeader } from '@common/constants'
-import { AllExceptionsFilter } from '@common/filters'
+import { HttpExceptionFilter } from '@common/filters'
 import { CreateEpcChangeStreamCommand } from '@modules/finished-goods/application/commands/create-epc-change-stream/create-epc-change-stream.command'
 import { GetInternalEpcsExistsQuery } from '@modules/finished-goods/application/queries/get-internal-epcs-exists/get-internal-epcs-exists.query'
+import { IEpcChangeStream } from '@modules/finished-goods/domain/interfaces/epc-change-stream.interface'
 import { UserRole } from '@modules/user/constants'
 import { CACHE_MANAGER } from '@nestjs/cache-manager'
 import { CommandBus, QueryBus } from '@nestjs/cqrs'
@@ -33,7 +33,8 @@ import { RedisService } from '@redis/redis.service'
 import { Queue } from 'bullmq'
 import { Cache } from 'cache-manager'
 import { format } from 'date-fns'
-import { FastifyReply } from 'fastify'
+import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
+import { Observable } from 'rxjs'
 import { z } from 'zod'
 import { DeleteScanningEpcsCommand } from '../../application/commands/delete-scanning-epcs/delete-scanning-epcs.command'
 import { DeleteScanningMoCommand } from '../../application/commands/delete-scanning-mo/delete-scanning-mo.command'
@@ -70,6 +71,7 @@ export class RFIDController {
 		@InjectQueue(BULK_WRITE_INBOUND_EPCS_QUEUE) private readonly postInboundDataQueue: Queue<PostReaderDataDTO>,
 		@InjectQueue(BULK_WRITE_OUTBOUND_EPCS_QUEUE) private readonly postOutboundDataQueue: Queue<PostReaderDataDTO>,
 		@InjectQueue(IMPORT_INOUTBOUND_EPCS_QUEUE) private readonly importDataQueue: Queue,
+		@InjectPinoLogger(RFIDController.name) private readonly logger: PinoLogger,
 		@Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
 		private readonly eventEmitter: EventEmitter2,
 		private readonly redisService: RedisService,
@@ -77,71 +79,167 @@ export class RFIDController {
 		private readonly queryBus: QueryBus
 	) {}
 
-	@Get('inbound/sse')
+	@Sse('inbound/sse')
 	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
-	@UseFilters(AllExceptionsFilter)
-	async streamInboundRFIDData(
+	@UseFilters(HttpExceptionFilter)
+	streamInboundRFIDData(
 		@Headers(CommonRequestHeader.RFID_READER_ID) deviceSerialNumber: string,
-		@Query('_page', new DefaultValuePipe(1), ParseIntPipe) page: number,
-		@Res()
-		reply: FastifyReply
-	) {
+		@Query('_page', new DefaultValuePipe(1), ParseIntPipe) page: number
+	): Observable<any> {
 		if (!deviceSerialNumber) throw new BadRequestException('Cannot detect RFID device serial number')
 
 		const stockFlow: StockFlow = 'inbound'
 
-		const handleChange = async () => {
-			const [epcs, orders, has_invalid] = await Promise.all([
-				this.queryBus.execute(
-					new GetScanningEpcsQuery(stockFlow, { page: page, limit: 50 }, { inbound_device_sn: deviceSerialNumber })
-				),
-				this.queryBus.execute(new GetScanningMosQuery(stockFlow, deviceSerialNumber)),
-				this.queryBus.execute(new GetInternalEpcsExistsQuery(deviceSerialNumber))
-			])
+		return new Observable((subscriber) => {
+			let changeStream: IEpcChangeStream | undefined
 
-			reply.sse({ data: { epcs, orders, has_invalid } })
-		}
+			const handleChange = async () => {
+				try {
+					const [epcs, orders, has_invalid] = await Promise.all([
+						this.queryBus.execute(
+							new GetScanningEpcsQuery(
+								stockFlow,
+								{ page: page, limit: 50 },
+								{ inbound_device_sn: deviceSerialNumber }
+							)
+						),
+						this.queryBus.execute(new GetScanningMosQuery(stockFlow, deviceSerialNumber)),
+						this.queryBus.execute(new GetInternalEpcsExistsQuery(deviceSerialNumber))
+					])
 
-		await handleChange()
+					if (!subscriber.closed) {
+						subscriber.next({ data: { epcs, orders, has_invalid } })
+					}
+				} catch (error) {
+					this.logger.error(`Error in inbound RFID stream: ${error}`)
+					if (!subscriber.closed) {
+						subscriber.error(error)
+					}
+				}
+			}
 
-		const changeStream = await this.commandBus.execute(
-			new CreateEpcChangeStreamCommand({ 'fullDocument.inbound_device_sn': deviceSerialNumber }, handleChange)
-		)
+			const setup = async () => {
+				try {
+					await handleChange()
+					changeStream = await this.commandBus.execute(
+						new CreateEpcChangeStreamCommand(
+							{ 'fullDocument.inbound_device_sn': deviceSerialNumber },
+							handleChange
+						)
+					)
+				} catch (error) {
+					this.logger.error(`Error setting up inbound RFID stream: ${error}`)
+					if (!subscriber.closed) {
+						subscriber.error(error)
+					}
+				}
+			}
 
-		reply.raw.on('close', async () => {
-			changeStream.removeListener('change', handleChange)
-			changeStream.close()
-			reply.raw.end()
+			void setup()
+
+			return () => {
+				this.logger.debug(`Cleaning up inbound RFID stream for device ${deviceSerialNumber}`)
+				if (changeStream) {
+					void changeStream.close()
+				}
+				subscriber.complete()
+			}
 		})
 	}
 
-	@Get('outbound/sse')
+	@Sse('outbound/sse')
 	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
-	@UseFilters(AllExceptionsFilter)
-	async streamOutboundRFIDData(
-		@Res()
-		reply: FastifyReply
-	) {
+	@UseFilters(HttpExceptionFilter)
+	streamOutboundRFIDData(): Observable<any> {
 		const stockFlow: StockFlow = 'outbound'
 
-		const handleChange = async () => {
-			const [epcs, orders] = await Promise.all([
-				this.queryBus.execute(new GetScanningEpcsQuery(stockFlow, { page: 1, limit: 50 }, {})),
-				this.queryBus.execute(new GetScanningMosQuery(stockFlow))
-			])
+		return new Observable((subscriber) => {
+			let changeStream: IEpcChangeStream | undefined
 
-			reply.sse.send({ data: { epcs, orders } })
-		}
-		await handleChange()
-		const changeStream = await this.commandBus.execute(
-			new CreateEpcChangeStreamCommand({ 'fullDocument.outbound_device_sn': { $ne: null } }, handleChange)
-		)
+			const handleChange = async () => {
+				try {
+					const [epcs, orders] = await Promise.all([
+						this.queryBus.execute(new GetScanningEpcsQuery(stockFlow, { page: 1, limit: 50 }, {})),
+						this.queryBus.execute(new GetScanningMosQuery(stockFlow))
+					])
 
-		reply.raw.on('close', async () => {
-			changeStream.removeListener('change', handleChange)
-			await changeStream.close()
+					if (!subscriber.closed) {
+						subscriber.next({ data: { epcs, orders } })
+					}
+				} catch (error) {
+					this.logger.error(`Error in outbound RFID stream: ${error}`)
+					if (!subscriber.closed) {
+						subscriber.error(error)
+					}
+				}
+			}
 
-			reply.raw.end()
+			const setup = async () => {
+				try {
+					await handleChange()
+					changeStream = await this.commandBus.execute(
+						new CreateEpcChangeStreamCommand({ 'fullDocument.outbound_device_sn': { $ne: null } }, handleChange)
+					)
+				} catch (error) {
+					this.logger.error(`Error setting up outbound RFID stream: ${error}`)
+					if (!subscriber.closed) {
+						subscriber.error(error)
+					}
+				}
+			}
+
+			void setup()
+
+			return () => {
+				this.logger.debug('Cleaning up outbound RFID stream')
+				if (changeStream) {
+					void changeStream.close()
+				}
+				subscriber.complete()
+			}
+		})
+	}
+
+	@Sse('enable-deduplicate-inbound')
+	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
+	@UseFilters(HttpExceptionFilter)
+	getIsDeduplicationEnabled(): Observable<any> {
+		return new Observable((subscriber) => {
+			const sendStatus = (enabled: boolean | undefined) => {
+				if (!subscriber.closed) {
+					subscriber.next({ data: { enabled } })
+				}
+			}
+
+			const handleMessage = (message: string) => {
+				try {
+					const enabled = JSON.parse(message)
+					sendStatus(enabled)
+				} catch (error) {
+					this.logger.error(`Error parsing deduplication status message: ${error}`)
+				}
+			}
+
+			const setup = async () => {
+				try {
+					const enabled = await this.cacheManager.get<boolean>('cached:rfid:enable_deduplicate_inbound_epc')
+					sendStatus(enabled)
+					await this.redisService.subscribe('enable_deduplicate_inbound_epc', handleMessage)
+				} catch (error) {
+					this.logger.error(`Error setting up deduplication status stream: ${error}`)
+					if (!subscriber.closed) {
+						subscriber.error(error)
+					}
+				}
+			}
+
+			void setup()
+
+			return () => {
+				this.logger.debug('Cleaning up deduplication status stream')
+				void this.redisService.unsubscribe('enable_deduplicate_inbound_epc')
+				subscriber.complete()
+			}
 		})
 	}
 
@@ -183,20 +281,9 @@ export class RFIDController {
 		return await this.postOutboundDataQueue.add('BULK_WRITE_OUTBOUND_DATA', payload)
 	}
 
-	@Get('enable-deduplicate-inbound')
-	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
-	@UseFilters(AllExceptionsFilter)
-	async getIsDeduplicationEnabled(@Res() reply: FastifyReply) {
-		const isDeduplicationEnabled = await this.cacheManager.get<boolean>('cached:rfid:enable_deduplicate_inbound_epc')
-		reply.sse.send({ data: { enabled: isDeduplicationEnabled } })
-		this.redisService.subscribe('enable_deduplicate_inbound_epc', (message) => {
-			reply.sse.send({ data: { enabled: JSON.parse(message) } })
-		})
-	}
-
 	@RouteHandler({ endpoint: 'enable-deduplicate-inbound', method: HttpMethod.PUT })
 	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
-	@UseFilters(AllExceptionsFilter)
+	@UseFilters(HttpExceptionFilter)
 	async enableDeduplication(
 		@Body(new ZodValidationPipe(z.object({ enabled: z.boolean() }))) payload: { enabled: boolean }
 	) {

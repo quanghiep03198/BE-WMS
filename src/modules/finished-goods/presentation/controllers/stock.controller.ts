@@ -40,10 +40,8 @@ export class StockController {
 				})
 			)
 		} catch (error) {
-			let message: string = i18n.t('inoutbound.notification.stock_in_failed', { lang: i18n.lang })
-
 			if (error instanceof ExcessInboundOrderException) {
-				message = i18n.t('inoutbound.notification.over_inbound_limit', { lang: i18n.lang })
+				const message = i18n.t('inoutbound.notification.over_inbound_limit', { lang: i18n.lang })
 				throw new BadRequestException(message, { cause: error.cause })
 			}
 

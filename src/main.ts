@@ -7,7 +7,9 @@ import { FastifyRequest } from 'fastify/types/request'
 import { Logger } from 'nestjs-pino'
 import { AppModule } from './app.module'
 import { env, stringToBoolean } from './common/utils'
-import './instrument'
+// import './instrument'
+
+declare const module: any
 
 async function bootstrap() {
 	try {
@@ -111,19 +113,17 @@ async function bootstrap() {
 			encodings: ['gzip', 'deflate'],
 			threshold: 10 * 1024
 		})
-		await app.register(import('@fastify/sse'), {
-			// Optional: heartbeat interval in milliseconds (default: 30000)
-			heartbeatInterval: 30000,
-
-			// Optional: default serializer (default: JSON.stringify)
-			serializer: (data) => JSON.stringify(data)
-		})
 		await app.register(import('@fastify/cookie'), { secret: configService.get<string>('COOKIE_SECRET') })
 
 		await app.listen(+configService.get('PORT'), configService.get('HOST'), async () => {
 			const url = await app.getUrl()
 			logger.log(`Server listening at ${url}`)
 		})
+
+		if (module.hot) {
+			module.hot.accept()
+			module.hot.dispose(() => app.close())
+		}
 	} catch (error) {
 		console.error(error)
 	}

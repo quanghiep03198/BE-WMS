@@ -33,4 +33,6 @@ export type ProductSpecificationDocument = HydratedDocument<ProductSpecification
 
 export const ProductSpecificationSchema = SchemaFactory.createForClass(ProductSpecification)
 
+ProductSpecificationSchema.index({ brand_name: 1, factory_shoes_style: 1, cust_shoes_style: 1 }, { unique: true })
+
 export type ProductSpecificationModel = Model<ProductSpecificationDocument>

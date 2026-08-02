@@ -10,14 +10,9 @@
 			}
 		],
 		"deleteOutDir": true,
-		"builder": {
-			"type": "swc",
-			"options": {
-				"stripLeadingPaths": true,
-				"swcrcPath": "infrastructure/.swcrc"
-			}
-		},
-		"typeCheck": true,
+		"webpack": true,
+		"webpackConfigPath": "webpack.config.js",
+		"typeCheck": false,
 		"tsConfigPath": "tsconfig.build.json"
 	}
 }

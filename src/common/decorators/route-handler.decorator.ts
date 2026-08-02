@@ -13,7 +13,7 @@ import {
 	UseFilters,
 	UseInterceptors
 } from '@nestjs/common'
-import { AllExceptionsFilter } from '../filters/exceptions.filter'
+import { HttpExceptionFilter } from '../filters/http-exception.filter'
 import { TransformInterceptor } from '../interceptors/transform.interceptor'
 import { PluralI18nPath, ResponseMessage } from './response-message.decorator'
 
@@ -65,7 +65,7 @@ export const RouteHandler = (options: ApiOptions) => {
 
 	return applyDecorators(
 		HttpRequest(endpoint),
-		UseFilters(AllExceptionsFilter),
+		UseFilters(HttpExceptionFilter),
 		UseInterceptors(TransformInterceptor),
 		HttpCode(statusCode),
 		ResponseMessage(message)

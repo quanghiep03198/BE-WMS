@@ -1,8 +1,12 @@
 import { env } from '@common/utils'
 import { DATABASE_SCHEMA } from '@databases/constants'
+import { InvDefectiveGoods1757390824605 } from '@databases/migrations/1757390824605-inv_defective_goods'
+import { TruckloadDelivery1762756390180 } from '@databases/migrations/1762756390180-truckload-delivery'
+import { Users1768439528524 } from '@databases/migrations/1768439528524-users'
+import { RefreshTokens1769534028893 } from '@databases/migrations/1769534028893-refresh-tokens'
+
 import { registerAs } from '@nestjs/config'
 import { type TypeOrmModuleOptions } from '@nestjs/typeorm'
-import path from 'node:path'
 
 export default registerAs('mssql', (): TypeOrmModuleOptions => ({
 	type: 'mssql',
@@ -11,8 +15,15 @@ export default registerAs('mssql', (): TypeOrmModuleOptions => ({
 	username: env('DB_USERNAME'),
 	password: env('DB_PASSWORD'),
 	schema: DATABASE_SCHEMA,
-	entities: [path.join(__dirname, '..', '**', '*.entity.{ts,js}')],
-	migrations: [path.join(__dirname, '..', 'databases', 'migrations', '**', '*.{ts,js}')],
+	// entities: [path.join(__dirname, '..', '**', '*.entity.{ts,js}')],
+
+	// migrations: [path.join(__dirname, '..', 'databases', 'migrations', '**', '*.{ts,js}')],
+	migrations: [
+		InvDefectiveGoods1757390824605,
+		TruckloadDelivery1762756390180,
+		Users1768439528524,
+		RefreshTokens1769534028893
+	],
 	autoLoadEntities: true,
 	synchronize: false,
 	logging: ['error'],

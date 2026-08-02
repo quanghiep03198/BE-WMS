@@ -11,18 +11,12 @@ import {
 
 @Module({
 	imports: [
-		MongooseModule.forFeatureAsync(
+		MongooseModule.forFeature(
 			[
 				{
 					name: ProductSpecification.name,
 					collection: PRODUCT_SPECIFICATION_COLLECTION,
-					useFactory: () => {
-						ProductSpecificationSchema.index(
-							{ brand_name: 1, factory_shoes_style: 1, cust_shoes_style: 1 },
-							{ unique: true }
-						)
-						return ProductSpecificationSchema
-					}
+					schema: ProductSpecificationSchema
 				}
 			],
 			DATA_WAREHOUSE_CONNECTION

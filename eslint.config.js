@@ -11,6 +11,8 @@ module.exports = tseslint.config(
 			'src/generated/i18n.generated.ts',
 			'deprecated/**',
 			'.tmp/**',
+			'hmr.config.js',
+			'webpack.config.js',
 			'eslint.config.js'
 		]
 	},

@@ -1,6 +1,6 @@
 import { CommonRequestHeader } from '@common/constants'
 import { HttpMethod, RequireAuthorized, RouteHandler } from '@common/decorators'
-import { AllExceptionsFilter } from '@common/filters'
+import { HttpExceptionFilter } from '@common/filters'
 import {
 	BadRequestException,
 	Controller,
@@ -66,7 +66,7 @@ export class ReportController {
 	}
 
 	@Get('daily-inbound/export/:reportType')
-	@UseFilters(AllExceptionsFilter)
+	@UseFilters(HttpExceptionFilter)
 	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF, UserRole.INDUSTRIAL_ENGINEERING_STAFF)
 	async exportDailyInboundToExcel(
 		@Param('reportType') reportType: 'daily-productivity' | 'shaping-department-productivity',
@@ -106,7 +106,7 @@ export class ReportController {
 	}
 
 	@Get('daily-outbound/export')
-	@UseFilters(AllExceptionsFilter)
+	@UseFilters(HttpExceptionFilter)
 	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
 	async exportDailyOutboundToExcel(
 		@Headers(CommonRequestHeader.FACTORY_CODE) factoryCode: string,
@@ -131,7 +131,7 @@ export class ReportController {
 	}
 
 	@Get('daily-weighing/export')
-	@UseFilters(AllExceptionsFilter)
+	@UseFilters(HttpExceptionFilter)
 	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF, UserRole.INDUSTRIAL_ENGINEERING_STAFF)
 	async exportPackingWeightReport(
 		@Query('date:eq', new DefaultValuePipe(format(new Date(), 'yyyy-MM-dd'))) date: string,

@@ -27,13 +27,13 @@ export function generateEPC(options: EPCGeneratorOptions = {}): string {
 	const suffixLength = totalLength - prefix.length
 
 	// Tạo suffix từ nhiều nguồn random để đảm bảo unique
-	let suffix = ''
+
 	const timestamp = Date.now().toString(16) // Timestamp hex
 	const random = crypto.getRandomValues(new Uint8Array(Math.ceil(suffixLength / 2)))
 	const randomHex = Array.from(random, (b) => b.toString(16).padStart(2, '0')).join('')
 
 	// Kết hợp timestamp và random
-	suffix = (timestamp + randomHex).slice(0, suffixLength)
+	const suffix = (timestamp + randomHex).slice(0, suffixLength)
 
 	const epc = `${prefix}${suffix}`
 

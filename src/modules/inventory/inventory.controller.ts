@@ -1,6 +1,6 @@
 import { CommonRequestHeader } from '@common/constants'
 import { HttpMethod, RequireAuthorized, RouteHandler, User } from '@common/decorators'
-import { AllExceptionsFilter } from '@common/filters'
+import { HttpExceptionFilter } from '@common/filters'
 import { ZodValidationPipe } from '@common/pipes'
 import { InjectQueue } from '@nestjs/bullmq'
 import {
@@ -52,7 +52,7 @@ export class InventoryController {
 	}
 
 	@Get('audit/export')
-	@UseFilters(AllExceptionsFilter)
+	@UseFilters(HttpExceptionFilter)
 	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF, UserRole.INDUSTRIAL_ENGINEERING_STAFF)
 	async exportMonthlyInventoryReport(
 		@Query('month:eq', new DefaultValuePipe(format(new Date(), 'yyyy-MM'))) month: string,
@@ -97,7 +97,7 @@ export class InventoryController {
 	}
 
 	@Get('summary/export')
-	@UseFilters(AllExceptionsFilter)
+	@UseFilters(HttpExceptionFilter)
 	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF, UserRole.INDUSTRIAL_ENGINEERING_STAFF)
 	async exportInventorySummary(
 		@Headers(CommonRequestHeader.FACTORY_CODE) factory: string,

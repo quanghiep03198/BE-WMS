@@ -3,7 +3,7 @@ import { TransactionalAdapterMongoose } from '@nestjs-cls/transactional-adapter-
 import { TransactionalAdapterTypeOrm } from '@nestjs-cls/transactional-adapter-typeorm'
 import { BullModule } from '@nestjs/bullmq'
 import { CacheModule } from '@nestjs/cache-manager'
-import { Module, type OnApplicationBootstrap, type OnApplicationShutdown } from '@nestjs/common'
+import { Module } from '@nestjs/common'
 import { ConfigModule, ConfigService } from '@nestjs/config'
 import { APP_FILTER } from '@nestjs/core'
 import { CqrsModule } from '@nestjs/cqrs'
@@ -11,8 +11,6 @@ import { EventEmitterModule } from '@nestjs/event-emitter'
 import { ScheduleModule } from '@nestjs/schedule'
 import { ThrottlerModule } from '@nestjs/throttler'
 import { getDataSourceToken } from '@nestjs/typeorm'
-import * as Sentry from '@sentry/nestjs'
-import { SentryGlobalFilter, SentryModule } from '@sentry/nestjs/setup'
 import { PrometheusModule } from '@willsoto/nestjs-prometheus'
 import { ClsModule } from 'nestjs-cls'
 import { AcceptLanguageResolver, HeaderResolver, I18nModule, QueryResolver } from 'nestjs-i18n'
@@ -37,6 +35,7 @@ import { UserModule } from './modules/user/user.module'
 import { WarehouseModule } from './modules/warehouse/warehouse.module'
 import { RedisModule } from './redis/redis.module'
 // Schedule Tasks
+import { AllExceptionsFilter } from '@common/filters'
 import { getConnectionToken } from '@nestjs/mongoose'
 import { DatabaseModule } from './databases'
 import {
@@ -73,9 +72,10 @@ import { ScheduleTasks } from './tasks'
 			validate: AppConfig.validate
 		}),
 		CqrsModule.forRoot(),
-		DatabaseModule.forRootAsync(),
+		// DatabaseModule.forRootAsync(),
+		DatabaseModule,
 		RedisModule.forRoot(),
-		SentryModule.forRoot(),
+		// SentryModule.forRoot(),
 		ScheduleModule.forRoot(),
 		ClsModule.forRoot({
 			plugins: [
@@ -164,15 +164,8 @@ import { ScheduleTasks } from './tasks'
 		...ScheduleTasks,
 		{
 			provide: APP_FILTER,
-			useClass: SentryGlobalFilter
+			useClass: AllExceptionsFilter
 		}
 	]
 })
-export class AppModule implements OnApplicationBootstrap, OnApplicationShutdown {
-	onApplicationBootstrap() {
-		Sentry.profiler.startProfiler()
-	}
-	onApplicationShutdown() {
-		Sentry.profiler.stopProfiler()
-	}
-}
+export class AppModule {}

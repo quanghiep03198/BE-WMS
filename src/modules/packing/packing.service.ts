@@ -1,13 +1,14 @@
 import { Languages } from '@common/constants'
 import { ExcelColorPalette } from '@common/constants/excel-color-palette'
 import { type AutoFitColumnOptions, autoFitColumns, getLastColumnLetter } from '@common/helpers'
-import { CENTRAL_DATA_SOURCE } from '@databases/constants'
-import { Inject, Injectable, NotFoundException } from '@nestjs/common'
+import { DATA_SOURCE_DATA_LAKE_CENTRAL } from '@databases/constants'
+import { Injectable, NotFoundException } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
+import { InjectRepository } from '@nestjs/typeorm'
 import { format } from 'date-fns'
 import { Workbook, Worksheet } from 'exceljs'
 import { I18nContext, I18nService } from 'nestjs-i18n'
-import { Brackets, DataSource } from 'typeorm'
+import { Brackets, Repository } from 'typeorm'
 import { BulkUpdatePackingWeightDTO, UpdatePackingWeightDTO } from './dto/update-packing.dto'
 import { PackingEntity } from './entities/packing.entity'
 import packingManifestQuery from './sql/packing-manifest.sql'
@@ -17,7 +18,8 @@ export class PackingService {
 	private readonly packingManifestQuery: string = packingManifestQuery
 
 	constructor(
-		@Inject(CENTRAL_DATA_SOURCE) private readonly dataSource: DataSource,
+		@InjectRepository(PackingEntity, DATA_SOURCE_DATA_LAKE_CENTRAL)
+		private readonly packingRepository: Repository<PackingEntity>,
 		private readonly i18nService: I18nService,
 		private readonly configService: ConfigService
 	) {}
@@ -27,8 +29,8 @@ export class PackingService {
 	}
 
 	async getPackingWeightList(scanId?: string) {
-		return await this.dataSource
-			.getRepository(PackingEntity)
+		return await this.packingRepository
+
 			.createQueryBuilder('p')
 			.select('p.Scan_id', 'scan_id')
 			.addSelect('p.Weight', 'weight')
@@ -43,20 +45,16 @@ export class PackingService {
 	}
 
 	async getOneByScanId(scanId: string) {
-		const data = await this.dataSource
-			.getRepository(PackingEntity)
-			.findOneBy({ series_number: this.extractSeriesNumber(scanId) })
+		const data = await this.packingRepository.findOneBy({ series_number: this.extractSeriesNumber(scanId) })
 		if (!data) throw new NotFoundException('Packing item not found')
 		return data
 	}
 
 	async updatePackingWeight(seriesNumber: string, payload: UpdatePackingWeightDTO) {
-		return await this.dataSource
-			.getRepository(PackingEntity)
-			.update(
-				{ series_number: this.extractSeriesNumber(seriesNumber) },
-				{ actual_weight_in: payload.Actual_weight_in, weighing_time: new Date() }
-			)
+		return await this.packingRepository.update(
+			{ series_number: this.extractSeriesNumber(seriesNumber) },
+			{ actual_weight_in: payload.Actual_weight_in, weighing_time: new Date() }
+		)
 	}
 
 	async bulkUpdatePackingWeight({
@@ -66,7 +64,7 @@ export class PackingService {
 		user_name_updated,
 		user_code_updated
 	}: BulkUpdatePackingWeightDTO & Pick<PackingEntity, 'user_name_updated' | 'user_code_updated'>) {
-		return await this.dataSource.getRepository(PackingEntity).update(
+		return await this.packingRepository.update(
 			{ po, size },
 			{
 				actual_weight_in,
@@ -79,7 +77,7 @@ export class PackingService {
 	}
 
 	async getPackingManifest(factoryCode: string) {
-		return await this.dataSource.query<
+		return await this.packingRepository.query<
 			Array<{
 				po: string
 				brand_name: string
