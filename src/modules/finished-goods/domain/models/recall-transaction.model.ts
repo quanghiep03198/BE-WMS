@@ -10,7 +10,7 @@ export class RecallFromStockTransaction extends AggregateRoot {
 		public readonly pendingRecallEpcs: Array<ElectronicProductCode>,
 		public readonly moInventory: Array<{
 			size_numcode: SizeNumber
-			size_qty: number
+			order_qty: number
 			accumulated_qty: number
 		}> = []
 	) {

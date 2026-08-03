@@ -27,6 +27,9 @@ export class FinishedGoodsEpcMatch {
 	factory_shoes_style: string
 
 	@Prop({ type: String, required: true })
+	cust_shoes_style: string
+
+	@Prop({ type: String, required: true })
 	color_sn: string
 
 	@Prop({ type: String, required: true })
@@ -42,4 +45,4 @@ FinishedGoodsEpcMatchSchema.index({ epc: 1 }, { name: 'idx_epc', unique: true })
 
 export type FinishedGoodsEpcMatchDocument = HydratedDocument<FinishedGoodsEpcMatch>
 
-export type FinisedGoodsEpcMatchModel = Model<FinishedGoodsEpcMatchDocument>
+export type FinishedGoodsEpcMatchModel = Model<FinishedGoodsEpcMatchDocument>

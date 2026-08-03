@@ -17,7 +17,7 @@ export class StockTransaction extends AggregateRoot {
 		private readonly pendingStockMoveEpcs: Array<ElectronicProductCode>,
 		private readonly currentProgress: Array<{
 			size_numcode: SizeNumber
-			size_qty: number
+			order_qty: number
 			accumulated_qty: number
 		}> = []
 	) {
@@ -47,11 +47,11 @@ export class StockTransaction extends AggregateRoot {
 			if (!incomming)
 				return {
 					size_numcode: inboundSizeDetail.size_numcode.getValue(),
-					missing_qty: inboundSizeDetail.size_qty - inboundSizeDetail.accumulated_qty
+					missing_qty: inboundSizeDetail.order_qty - inboundSizeDetail.accumulated_qty
 				}
 			return {
 				size_numcode: inboundSizeDetail.size_numcode.getValue(),
-				missing_qty: inboundSizeDetail.size_qty - inboundSizeDetail.accumulated_qty - incomming.inbound_qty
+				missing_qty: inboundSizeDetail.order_qty - inboundSizeDetail.accumulated_qty - incomming.inbound_qty
 			}
 		})
 

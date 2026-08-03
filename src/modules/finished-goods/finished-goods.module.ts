@@ -27,6 +27,12 @@ import {
 	DailyMoInventoryVariationSchema
 } from './infrastructure/persistence/mongodb/schemas/daily-mo-inventory-variation.schema'
 import {
+	FINISHED_GOODS_EPCS_MATCH_COLLECTION,
+	FinishedGoodsEpcMatch,
+	FinishedGoodsEpcMatchModel,
+	FinishedGoodsEpcMatchSchema
+} from './infrastructure/persistence/mongodb/schemas/epc-match.schema'
+import {
 	FINISHED_GOODS_EPCS_COLLECTION,
 	FinishedGoodsEpc,
 	FinishedGoodsEpcModel,
@@ -107,6 +113,11 @@ import { FinishedGoodsListeners } from './presentation/listeners'
 					schema: FinishedGoodsEpcSchema
 				},
 				{
+					name: FinishedGoodsEpcMatch.name,
+					collection: FINISHED_GOODS_EPCS_MATCH_COLLECTION,
+					schema: FinishedGoodsEpcMatchSchema
+				},
+				{
 					name: MoInventoryVariation.name,
 					collection: MO_INVENTORY_VARIATION_COLLECTION,
 					schema: MoInventoryVariationSchema
@@ -153,16 +164,19 @@ export class FinishedGoodsModule implements OnModuleInit {
 		@InjectModel(FinishedGoodsEpc.name, DATA_WAREHOUSE_CONNECTION)
 		private readonly finishedGoodsEpcModel: FinishedGoodsEpcModel,
 		@InjectModel(MoInventoryVariation.name, DATA_WAREHOUSE_CONNECTION)
-		private readonly moInventoryVariation: MoInventoryVariationModel,
+		private readonly moInventoryVariationModel: MoInventoryVariationModel,
 		@InjectModel(DailyMoInventoryVariation.name, DATA_WAREHOUSE_CONNECTION)
-		private readonly dailyMoInventoryVariation: DailyMoInventoryVariationModel
+		private readonly dailyMoInventoryVariationModel: DailyMoInventoryVariationModel,
+		@InjectModel(FinishedGoodsEpcMatch.name, DATA_WAREHOUSE_CONNECTION)
+		private readonly finishedGoodsEpcMatchModel: FinishedGoodsEpcMatchModel
 	) {}
 
 	async onModuleInit() {
 		try {
 			await this.finishedGoodsEpcModel.syncIndexes()
-			await this.moInventoryVariation.syncIndexes()
-			await this.dailyMoInventoryVariation.syncIndexes()
+			await this.finishedGoodsEpcMatchModel.syncIndexes()
+			await this.moInventoryVariationModel.syncIndexes()
+			await this.dailyMoInventoryVariationModel.syncIndexes()
 			this.redisClient.setnx('cached:rfid:enable_deduplicate_inbound_epc', JSON.stringify({ value: true }))
 		} catch (error) {
 			this.logger.error(error)

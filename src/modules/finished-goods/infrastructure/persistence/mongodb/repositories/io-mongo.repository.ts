@@ -21,6 +21,7 @@ import {
 	DailyMoInventoryVariationDocument,
 	DailyMoInventoryVariationModel
 } from '../schemas/daily-mo-inventory-variation.schema'
+import { FinishedGoodsEpcMatch, FinishedGoodsEpcMatchModel } from '../schemas/epc-match.schema'
 import { FinishedGoodsEpc, FinishedGoodsEpcDocument, FinishedGoodsEpcModel } from '../schemas/finished-goods-epc.schema'
 import {
 	MoInventoryVariation,
@@ -33,6 +34,8 @@ export class InoutboundMongoRepository implements IIoMongoRepository {
 		@InjectPinoLogger(InoutboundMongoRepository.name) private readonly logger: PinoLogger,
 		@InjectModel(FinishedGoodsEpc.name, DATA_WAREHOUSE_CONNECTION)
 		private readonly finishedGoodsEpcModel: FinishedGoodsEpcModel,
+		@InjectModel(FinishedGoodsEpcMatch.name, DATA_WAREHOUSE_CONNECTION)
+		private readonly finishedGoodsEpcMatchModel: FinishedGoodsEpcMatchModel,
 		@InjectModel(MoInventoryVariation.name, DATA_WAREHOUSE_CONNECTION)
 		private readonly moInventoryVariationModel: MoInventoryVariationModel,
 		@InjectModel(DailyMoInventoryVariation.name, DATA_WAREHOUSE_CONNECTION)
@@ -44,6 +47,24 @@ export class InoutboundMongoRepository implements IIoMongoRepository {
 
 	private createIncrementExpression(obj: object): Record<string, mongo.NumericType> {
 		return flatten(pick(obj, 'inventory_variation'))
+	}
+
+	public async getEpcsInformation(epcs: Array<string>): Promise<ElectronicProductCode[]> {
+		const matchedFinishedGoodsEpcs = await this.finishedGoodsEpcMatchModel.find({ epc: { $in: epcs } }).lean(true)
+
+		return ElectronicProductCode.createFactory(
+			matchedFinishedGoodsEpcs.map((item) => ({
+				sku: item.epc,
+				attributes: {
+					mo_no: item.mo_no,
+					factory_shoes_style: item.factory_shoes_style,
+					color_sn: item.color_sn,
+					size_numcode: item.size_numcode,
+					factory_code_produce: item.factory_code_produce,
+					po: undefined
+				}
+			}))
+		)
 	}
 
 	public async getPendingStockMoveEpcs(
@@ -210,7 +231,7 @@ export class InoutboundMongoRepository implements IIoMongoRepository {
 
 	public async getMoInventory(
 		manufacturingOrder: string
-	): Promise<Array<{ size_numcode: SizeNumber; size_qty: number; accumulated_qty: number }>> {
+	): Promise<Array<{ size_numcode: SizeNumber; order_qty: number; accumulated_qty: number }>> {
 		const moInventoryVariation = await this.moInventoryVariationModel
 			.findOne({ mo_no: manufacturingOrder })
 			.lean(true)
@@ -218,11 +239,11 @@ export class InoutboundMongoRepository implements IIoMongoRepository {
 		if (!moInventoryVariation) return []
 
 		return Object.entries(moInventoryVariation.inventory_variation).map(([size, variation]) => {
-			const { target_qty, stocked_in_qty, total_recall_tx, total_return_tx, shipped_out_qty } = variation
+			const { order_qty, stocked_in_qty, total_recall_tx, total_return_tx, shipped_out_qty } = variation
 
 			return {
 				size_numcode: new SizeNumber(size),
-				size_qty: target_qty,
+				order_qty,
 				accumulated_qty: stocked_in_qty - total_recall_tx + total_return_tx - shipped_out_qty
 			}
 		})

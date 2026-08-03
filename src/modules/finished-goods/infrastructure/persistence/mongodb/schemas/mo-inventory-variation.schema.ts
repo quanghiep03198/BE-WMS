@@ -33,13 +33,13 @@ export class MoInventoryVariation {
 	color_sn: string
 
 	@Prop({ type: Number, requried: true })
-	mo_total_qty: number
+	order_qty: number
 
 	@Prop({ type: Object, requried: true })
 	inventory_variation: Record<
 		string,
 		{
-			target_qty: number
+			order_qty: number
 			stocked_in_qty: number
 			total_recall_tx: number
 			total_return_tx: number

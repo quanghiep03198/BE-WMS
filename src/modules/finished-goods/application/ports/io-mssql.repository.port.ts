@@ -28,7 +28,7 @@ export interface IIoMssqlRepository {
 	): Promise<
 		Array<{
 			size_numcode: SizeNumber
-			size_qty: number
+			order_qty: number
 			accumulated_qty: number
 		}>
 	>

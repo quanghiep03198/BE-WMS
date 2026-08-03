@@ -62,7 +62,7 @@ export type DailyMoInventoryVariationDocument = HydratedDocument<DailyMoInventor
 		factory_shoes_style: string
 		color_sn: string
 		factory_code_produce: string
-		mo_total_qty: number
+		order_qty: number
 		inventory_variation: Record<
 			string,
 			{

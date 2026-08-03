@@ -19,6 +19,8 @@ export interface IIoMongoRepository {
 		storageLocation?: string
 	): Promise<ElectronicProductCode[]>
 
+	getEpcsInformation(epcs: Array<string>): Promise<ElectronicProductCode[]>
+
 	getPendingShipOutEpcs(
 		purchaseOrder: string,
 		manufacturingOrder: string | Array<string>,
@@ -41,7 +43,7 @@ export interface IIoMongoRepository {
 	getMoInventory(manufacturingOrder: string): Promise<
 		Array<{
 			size_numcode: SizeNumber
-			size_qty: number
+			order_qty: number
 			accumulated_qty: number
 		}>
 	>

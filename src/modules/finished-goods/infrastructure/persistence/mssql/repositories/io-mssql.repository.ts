@@ -100,7 +100,7 @@ export class InoutboundMssqlRepository implements IIoMssqlRepository {
 		const queryResult = await this.dataSourceDL.query<
 			Array<{
 				size_numcode: string
-				size_qty: number
+				order_qty: number
 				accumulated_qty: number
 			}>
 		>(poOutboundProgressQuery, [

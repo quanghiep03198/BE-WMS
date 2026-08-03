@@ -2,35 +2,25 @@ import {
 	IIoMongoRepository,
 	IO_MONGO_REPOSITORY
 } from '@modules/finished-goods/application/ports/io-mongo.repository.port'
-import {
-	IIoMssqlRepository,
-	IO_MSSQL_REPOSITORY
-} from '@modules/finished-goods/application/ports/io-mssql.repository.port'
-import { ElectronicProductCode } from '@modules/finished-goods/domain/value-objects/epc.vo'
 import { Inject } from '@nestjs/common'
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs'
 import { BulkWriteInventoryCommand } from './bulk-write-inventory.command'
 
 @CommandHandler(BulkWriteInventoryCommand)
 export class BulkWriteInventoryHandler implements ICommandHandler<BulkWriteInventoryCommand, void> {
-	constructor(
-		@Inject(IO_MSSQL_REPOSITORY) private readonly ioMssqlRepository: IIoMssqlRepository,
-		@Inject(IO_MONGO_REPOSITORY) private readonly ioMongoRepository: IIoMongoRepository
-	) {}
+	constructor(@Inject(IO_MONGO_REPOSITORY) private readonly ioMongoRepository: IIoMongoRepository) {}
 
 	public async execute({ command }: BulkWriteInventoryCommand) {
 		const { data, sn } = command.payload
 
-		const epcs = ElectronicProductCode.createFactory(data.tagList.map((tag) => ({ sku: tag.epc, attributes: null })))
+		const scanningEpcs = await this.ioMongoRepository.getEpcsInformation(data.tagList.map((tag) => tag.epc))
 
-		const scannedEpcs = await this.ioMssqlRepository.getEpcsInformation(epcs)
-
-		if (scannedEpcs.length === 0) return
+		if (scanningEpcs.length === 0) return
 
 		await this.ioMongoRepository.bulkWriteInventoryEpcs({
 			action: command.action,
 			payload: {
-				epcs: scannedEpcs,
+				epcs: scanningEpcs,
 				deviceSerialNumber: sn
 			}
 		})
