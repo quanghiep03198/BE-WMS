@@ -26,7 +26,6 @@
 		"noFallthroughCasesInSwitch": true,
 		/* Path alias */
 		"sourceRoot": "/",
-		"baseUrl": "./",
 		"ignoreDeprecations": "6.0",
 		"paths": {
 			// "@/*": ["./src/*"],
