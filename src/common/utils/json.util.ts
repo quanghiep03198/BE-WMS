@@ -1,5 +1,8 @@
-import { isNil } from 'lodash'
 import { isPrimitive } from './common.util'
+
+function isNil(value: any): boolean {
+	return value === null || value === undefined
+}
 
 /**
  * Simple and focused JSON handler - Only 4 core methods (isValid, hasNestedJson, parse and stringify)
@@ -9,7 +12,7 @@ export class SuperJson {
 	/**
 	 * 1. Check if value is valid JSON
 	 * @param value - Value to check
-	 * @returns true if valid JSON string or already an object
+	 * @returns true if valid JSON string (object/array container) or already an object
 	 */
 	public static isValid(value: any): boolean {
 		if (isNil(value)) return false
@@ -24,9 +27,20 @@ export class SuperJson {
 			return false
 		}
 
+		// Only treat as JSON when it actually LOOKS like an object/array container.
+		// This is what prevents primitive-looking strings such as "10", "true", "null",
+		// or even '"abc"' from being mistaken for JSON and silently converted to
+		// number/boolean/null/string when parsed.
+		const trimmed = value.trim()
+		if (!(trimmed.startsWith('{') || trimmed.startsWith('['))) {
+			return false
+		}
+
 		try {
-			JSON.parse(value)
-			return true
+			const parsed = JSON.parse(value)
+			// Guard against JSON.parse('null') -> null, and make sure the result
+			// really is an object or array, not a primitive.
+			return parsed !== null && typeof parsed === 'object'
 		} catch {
 			return false
 		}
