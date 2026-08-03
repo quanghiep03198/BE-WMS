@@ -60,7 +60,7 @@ export class InboundReportService {
 		const docs = await this.dailyMoInventoryVariationModel
 			.find({ date: date })
 			.lean({ virtuals: true })
-			.populate('mo_attrs', 'factory_shoes_style color_sn factory_code_produce mo_total_qty inventory_variation')
+			.populate('mo_attrs', 'factory_shoes_style color_sn factory_code_produce order_qty inventory_variation')
 			.exec()
 
 		this.logger.debug(docs)
@@ -82,10 +82,10 @@ export class InboundReportService {
 				color_sn: doc.mo_attrs.color_sn,
 				assembly_lines: doc.assembly_lines.sort((a, b) => a.localeCompare(b)),
 				storage_locations: doc.storage_locations.sort((a, b) => a.localeCompare(b)),
-				order_qty: doc.mo_attrs.mo_total_qty,
+				order_qty: doc.mo_attrs.order_qty,
 				daily_inbound_qty: totalDailyInboundQty,
 				accumulated_qty: accumulatedQty,
-				missing_qty: doc.mo_attrs.mo_total_qty - accumulatedQty,
+				missing_qty: doc.mo_attrs.order_qty - accumulatedQty,
 				variation_details: Object.entries(doc.inventory_variation).map(([size, variation]) => {
 					return {
 						size_numcode: size,
@@ -150,13 +150,13 @@ export class InboundReportService {
 					(acc, curr) => acc + curr.stocked_in_qty - curr.total_recall_tx + curr.total_return_tx,
 					0
 				)
-				const missingQty = normalizedDoc.mo_total_qty - accumulatedInboundQty
+				const missingQty = normalizedDoc.order_qty - accumulatedInboundQty
 
 				return {
 					...normalizedDoc,
 					accumulated_inbound_qty: accumulatedInboundQty,
 					missing_qty: missingQty,
-					progress: ((accumulatedInboundQty / normalizedDoc.mo_total_qty) * 100).toFixed(2) + '%'
+					progress: ((accumulatedInboundQty / normalizedDoc.order_qty) * 100).toFixed(2) + '%'
 				}
 			})
 	}
