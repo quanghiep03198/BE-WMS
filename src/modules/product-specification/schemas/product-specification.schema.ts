@@ -29,9 +29,9 @@ export class ProductSpecification {
 	product_variants: Array<ProductVariant>
 }
 
-export type ProductSpecificationDocument = HydratedDocument<ProductSpecification>
-
 export const ProductSpecificationSchema = SchemaFactory.createForClass(ProductSpecification)
+
+export type ProductSpecificationDocument = HydratedDocument<ProductSpecification>
 
 ProductSpecificationSchema.index({ brand_name: 1, factory_shoes_style: 1, cust_shoes_style: 1 }, { unique: true })
 
