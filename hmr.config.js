@@ -15,7 +15,11 @@ module.exports = function (options, webpack) {
 					exclude: /node_modules/,
 					use: {
 						loader: 'swc-loader',
-						options: swcDefaultConfig
+						options: {
+							...swcDefaultConfig,
+							swcrc: true,
+							configFile: path.resolve(__dirname, 'infrastructure', '.swcrc')
+						}
 					}
 				}
 			]
