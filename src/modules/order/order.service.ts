@@ -11,8 +11,6 @@ import { IOrderRepository } from './order.repository.interface'
 
 @Injectable()
 export class OrderService {
-	private readonly purchaseOrderSizeRunQuery: string = purchaseOrderSizeRunQuery
-
 	constructor(
 		@Inject(TENANCY_DATA_SOURCE) private readonly dataSourceTNC: DataSource,
 		@InjectDataSource(DATA_SOURCE_ERP) private readonly dataSourceERP: DataSource,
@@ -175,7 +173,7 @@ export class OrderService {
 					size_numcode: string
 					qty: number
 				}>
-			>(this.purchaseOrderSizeRunQuery, [purchaseOrder])
+			>(purchaseOrderSizeRunQuery, [purchaseOrder])
 			.then((result) =>
 				result.map((item) => ({
 					...item,
