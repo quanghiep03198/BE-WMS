@@ -156,6 +156,7 @@ export type I18nTranslations = {
     };
     "inoutbound": {
         "titles": {
+            "daily_assembly_productivity_report": string;
             "daily_inbound_report": string;
             "daily_outbound_report": string;
             "daily_defective_gooods_inbound_report": string;

@@ -1,5 +1,6 @@
 {
 	"titles": {
+		"daily_assembly_productivity_report": "{factory}成型产量报表 - {date}",
 		"daily_inbound_report": "{factory}成品倉入庫報表 - {date}",
 		"daily_outbound_report": "{factory}成品倉出庫報表 - {date}",
 		"daily_defective_gooods_inbound_report": "{factory}二級品每日入庫報表 - {date}",

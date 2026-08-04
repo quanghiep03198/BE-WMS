@@ -1,5 +1,6 @@
 {
 	"titles": {
+		"daily_assembly_productivity_report": "Báo biểu sản lượng thành hình {factory} - {date}",
 		"daily_inbound_report": "Báo biểu nhập kho thành phẩm {factory} - {date}",
 		"daily_outbound_report": "Báo biểu xuất kho thành phẩm {factory} - {date}",
 		"daily_defective_gooods_inbound_report": "Báo biểu nhập kho hàng loại 2 {factory} - {date}",
