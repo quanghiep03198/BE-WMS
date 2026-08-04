@@ -7,18 +7,17 @@ export interface IReportSearchParams {
 
 export interface IReportQueryResult {
 	mo_no: string
-	// mat_code: string
 	color_sn: string
 	factory_shoes_style: string
-	shaping_dept_name: string
+	assembly_lines: Array<string>
 	order_qty: number
-	factory_code: string
+	factory_code_produce: string
 }
 
 export interface IInboundReportQueryResult extends IReportQueryResult {
-	size_data: string
+	// sizvảt_data: string
 	daily_inbound_qty: number
-	storage: string
+	storage_locations: Array<string>
 }
 
 export interface IOutboundReportQueryResult extends IReportQueryResult {
@@ -29,7 +28,7 @@ export interface IOutboundReportQueryResult extends IReportQueryResult {
 
 export type IInboundReportResponse = Array<
 	IInboundReportQueryResult & {
-		size_data: Array<{ size_numcode: string; qty: number }>
+		variation_details: Array<{ size_numcode: string; qty: number }>
 	}
 >
 

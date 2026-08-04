@@ -1,26 +1,27 @@
 import { ExcelColorPalette } from '@common/constants/excel-color-palette'
 import { applyCommonStyles, type AutoFitColumnOptions, autoFitColumns } from '@common/helpers'
 import { SuperJson } from '@common/utils'
-import { DATA_WAREHOUSE_CONNECTION } from '@databases/constants'
+import { DATA_SOURCE_DATA_LAKE, DATA_WAREHOUSE_CONNECTION } from '@databases/constants'
 import { DailyMoInventoryVariationModel } from '@modules/finished-goods/infrastructure/persistence/mongodb/schemas/daily-mo-inventory-variation.schema'
+import {
+	FinishedGoodsEpc,
+	FinishedGoodsEpcModel
+} from '@modules/finished-goods/infrastructure/persistence/mongodb/schemas/finished-goods-epc.schema'
 import {
 	MoInventoryVariation,
 	MoInventoryVariationModel
 } from '@modules/finished-goods/infrastructure/persistence/mongodb/schemas/mo-inventory-variation.schema'
-import { TENANCY_DATA_SOURCE } from '@modules/tenancy/constants'
-import { Inject, Injectable } from '@nestjs/common'
-import { REQUEST } from '@nestjs/core'
+import { Injectable } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
+import { InjectDataSource } from '@nestjs/typeorm'
 import { format } from 'date-fns'
 import { Workbook } from 'exceljs'
-import { FastifyRequest } from 'fastify'
 import { I18nContext, I18nService } from 'nestjs-i18n'
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
 import { DataSource } from 'typeorm'
-import { IInboundHistory, IInboundReportQueryResult, IInboundReportResponse } from '../interfaces'
+import { IInboundHistory, IInboundReportResponse } from '../interfaces'
+import shapingDepartmentProductivityQuery from '../sql/assembly-productivity.sql'
 import inboundHistoryQuery from '../sql/inbound-history.sql'
-import inboundReportQuery from '../sql/inbound-report.sql'
-import shapingDepartmentProductivityQuery from '../sql/shaping-department-productivity.sql'
 import { DailyMoInventoryVariation } from './../../finished-goods/infrastructure/persistence/mongodb/schemas/daily-mo-inventory-variation.schema'
 
 @Injectable()
@@ -30,40 +31,23 @@ export class InboundReportService {
 	private readonly inboundHistoryQuery: string = inboundHistoryQuery
 
 	constructor(
+		@InjectDataSource(DATA_SOURCE_DATA_LAKE) private readonly dataSource: DataSource,
 		@InjectPinoLogger(InboundReportService.name) private readonly logger: PinoLogger,
-		@Inject(TENANCY_DATA_SOURCE) private readonly dataSource: DataSource,
-		@Inject(REQUEST) private readonly request: FastifyRequest,
-		private readonly i18nService: I18nService,
 		@InjectModel(DailyMoInventoryVariation.name, DATA_WAREHOUSE_CONNECTION)
 		private readonly dailyMoInventoryVariationModel: DailyMoInventoryVariationModel,
 		@InjectModel(MoInventoryVariation.name, DATA_WAREHOUSE_CONNECTION)
-		private readonly moInventoryVariationModel: MoInventoryVariationModel
+		private readonly moInventoryVariationModel: MoInventoryVariationModel,
+		@InjectModel(FinishedGoodsEpc.name, DATA_WAREHOUSE_CONNECTION)
+		private readonly finishedGoodsEpcModel: FinishedGoodsEpcModel,
+		private readonly i18nService: I18nService
 	) {}
 
-	/**
-	 * @deprecated This method is deprecated and will be removed in future versions. Please use getDailyInventoryVariation instead.
-	 * @param date
-	 * @returns
-	 */
-	public async getDailyProductivity(date: string): Promise<IInboundReportResponse> {
-		const data = await this.dataSource.query<IInboundReportQueryResult[]>(inboundReportQuery, [
-			this.request.headers['x-user-factory'],
-			date
-		])
-		return data.map((item) => ({
-			...item,
-			size_data: JSON.parse(item.size_data)
-		}))
-	}
-
-	public async getDailyInventoryVariation(date: string) {
+	public async getDailyInventoryVariation(date: string): Promise<IInboundReportResponse> {
 		const docs = await this.dailyMoInventoryVariationModel
 			.find({ date: date })
 			.lean({ virtuals: true })
 			.populate('mo_attrs', 'factory_shoes_style color_sn factory_code_produce order_qty inventory_variation')
 			.exec()
-
-		this.logger.debug(docs)
 
 		return docs.map((doc) => {
 			const accumulatedQty = Object.values(doc.mo_attrs.inventory_variation).reduce(
@@ -77,7 +61,7 @@ export class InboundReportService {
 
 			return {
 				mo_no: doc.mo_no,
-				factory_code: doc.mo_attrs.factory_code_produce,
+				factory_code_produce: doc.mo_attrs.factory_code_produce,
 				factory_shoes_style: doc.mo_attrs.factory_shoes_style,
 				color_sn: doc.mo_attrs.color_sn,
 				assembly_lines: doc.assembly_lines.sort((a, b) => a.localeCompare(b)),
@@ -96,15 +80,135 @@ export class InboundReportService {
 		})
 	}
 
-	public async getDailyShapingDepartmentProductivity(date: string): Promise<IInboundReportResponse> {
-		const data = await this.dataSource.query<IInboundReportQueryResult[]>(this.shapingDepartmentProductivityQuery, [
-			this.request.headers['x-user-factory'],
-			date
+	public async getDailyAssemblyProductivity(date: string): Promise<IInboundReportResponse> {
+		const start = performance.now()
+		const result = await this.finishedGoodsEpcModel.aggregate([
+			{
+				$match: {
+					status: 'instock',
+					$expr: { $eq: [{ $dateToString: { format: '%Y-%m-%d', date: '$inbound_at' } }, date] }
+				}
+			},
+			{
+				$group: {
+					_id: {
+						assembly_line: '$assembly_line.name',
+						mo_no: '$mo_no',
+						factory_code_produce: '$factory_code_produce',
+						factory_shoes_style: '$factory_shoes_style',
+						color_sn: '$color_sn',
+						size_numcode: '$size_numcode'
+					},
+					qty: { $sum: 1 },
+					storage_locations: { $addToSet: '$storage_location.name' }
+				}
+			},
+			{
+				$group: {
+					_id: {
+						assembly_line: '$_id.assembly_line',
+						mo_no: '$_id.mo_no',
+						factory_code_produce: '$_id.factory_code_produce',
+						factory_shoes_style: '$_id.factory_shoes_style',
+						color_sn: '$_id.color_sn'
+					},
+					daily_inbound_qty: { $sum: '$qty' },
+					variation_details: {
+						$push: {
+							size_numcode: '$_id.size_numcode',
+							qty: '$qty'
+						}
+					},
+					storage_locations: {
+						$push: '$storage_locations'
+					}
+				}
+			},
+			{
+				$set: {
+					storage_locations: {
+						$reduce: {
+							input: '$storage_locations',
+							initialValue: [],
+							in: { $setUnion: ['$$value', '$$this'] }
+						}
+					}
+				}
+			},
+			{
+				$lookup: {
+					from: 'mo_inventory_variation',
+					localField: '_id.mo_no',
+					foreignField: 'mo_no',
+					as: 'mo_inventory_variation'
+				}
+			},
+			{
+				$unwind: '$mo_inventory_variation'
+			},
+			{
+				$project: {
+					_id: 0,
+					assembly_line: '$_id.assembly_line',
+					mo_no: '$_id.mo_no',
+					factory_code_produce: '$_id.factory_code_produce',
+					factory_shoes_style: '$_id.factory_shoes_style',
+					color_sn: '$_id.color_sn',
+					order_qty: '$mo_inventory_variation.order_qty',
+					accumulated_qty: {
+						$reduce: {
+							input: {
+								$objectToArray: '$mo_inventory_variation.inventory_variation'
+							},
+							initialValue: 0,
+							in: {
+								$add: [
+									'$$value',
+									{
+										$subtract: [
+											{
+												$add: ['$$this.v.stocked_in_qty', '$$this.v.total_return_tx']
+											},
+											'$$this.v.total_recall_tx'
+										]
+									}
+								]
+							}
+						}
+					},
+					daily_inbound_qty: 1,
+					variation_details: 1,
+					storage_locations: 1
+				}
+			},
+			{
+				$project: {
+					mo_no: 1,
+					assembly_lines: 1,
+					factory_code_produce: 1,
+					factory_shoes_style: 1,
+					color_sn: 1,
+					order_qty: 1,
+					accumulated_qty: 1,
+					missing_qty: { $subtract: ['$order_qty', '$accumulated_qty'] },
+					daily_inbound_qty: 1,
+					variation_details: 1,
+					storage_locations: 1
+				}
+			},
+			{
+				$sort: {
+					assembly_line: 1,
+					mo_no: 1,
+					factory_code_produce: 1,
+					factory_shoes_style: 1,
+					color_sn: 1
+				}
+			}
 		])
-		return data.map((item) => ({
-			...item,
-			size_data: JSON.parse(item.size_data)
-		}))
+		const end = performance.now()
+		this.logger.debug(`getDailyAssemblyProductivity took ${end - start} milliseconds`)
+		return result
 	}
 
 	public async getInboundHistory(commandNumber: string) {
@@ -161,9 +265,12 @@ export class InboundReportService {
 			})
 	}
 
-	async exportDailyInboundToExcel(reportType: 'daily-productivity' | 'shaping-department-productivity', date: string) {
+	async exportDailyInboundToExcel(
+		factoryCode: string,
+		reportType: 'daily-productivity' | 'assembly-productivity',
+		date: string
+	) {
 		const currentLanguage = I18nContext.current()?.lang
-		const factoryCode = this.request.headers['x-user-factory']
 		const workbook = new Workbook()
 		const worksheet = workbook.addWorksheet(
 			this.i18nService.t(`factory.${factoryCode}`, { lang: currentLanguage }) +
@@ -173,7 +280,7 @@ export class InboundReportService {
 		worksheet.columns = [
 			{
 				header: this.i18nService.t('factory.factory', { lang: currentLanguage }),
-				key: 'factory_code'
+				key: 'factory_code_produce'
 			},
 			{
 				header: this.i18nService.t('erp.fields.mo_no', { lang: currentLanguage }),
@@ -189,11 +296,11 @@ export class InboundReportService {
 			},
 			{
 				header: this.i18nService.t('erp.fields.shaping_dept_name', { lang: currentLanguage }),
-				key: 'shaping_dept_name'
+				key: reportType === 'daily-productivity' ? 'assembly_lines' : 'assembly_line'
 			},
 			{
 				header: this.i18nService.t('warehouse.fields.storage_name', { lang: currentLanguage }),
-				key: 'storage'
+				key: 'storage_locations'
 			},
 			{
 				header: this.i18nService.t('erp.fields.order_qty', { lang: currentLanguage }),
@@ -212,15 +319,38 @@ export class InboundReportService {
 				key: 'missing_qty'
 			}
 		].map((item) => ({ ...item, alignment: { vertical: 'middle', horizontal: 'center' } }))
-		const data =
-			reportType === 'daily-productivity'
-				? await this.getDailyProductivity(date)
-				: await this.getDailyShapingDepartmentProductivity(date)
+
+		const getReportQueryMap = new Map<
+			'daily-productivity' | 'assembly-productivity',
+			{ i18nKey: string; handler: (date: string) => Promise<IInboundReportResponse> }
+		>([
+			[
+				'daily-productivity',
+				{
+					i18nKey: 'daily_inbound_report',
+					handler: (reportDate) => this.getDailyInventoryVariation(reportDate)
+				}
+			],
+			[
+				'assembly-productivity',
+				{
+					i18nKey: 'daily_assembly_productivity_report',
+					handler: (reportDate) => this.getDailyAssemblyProductivity(reportDate)
+				}
+			]
+		])
+		const getDataQuery = getReportQueryMap.get(reportType)
+
+		if (typeof getDataQuery?.handler !== 'function') throw new Error(`Invalid report type: ${reportType}`)
+
+		const data = await getDataQuery.handler(date)
 
 		for (const record of data) {
 			const row = worksheet.addRow({
 				...record,
-				factory_code: this.i18nService.t(`factory.${record.factory_code}`, { lang: currentLanguage })
+				...(Array.isArray(record.assembly_lines) && { assembly_lines: record.assembly_lines.join(',') }),
+				storage_locations: record.storage_locations.join(','),
+				factory_code: this.i18nService.t(`factory.${record.factory_code_produce}`, { lang: currentLanguage })
 			})
 			row.height = 20
 			row.alignment = { vertical: 'middle', horizontal: 'center' }
@@ -231,7 +361,7 @@ export class InboundReportService {
 					fgColor: { argb: ExcelColorPalette.BG_LIGHT_BLUE }
 				}
 			}
-			for (const subRecord of record.size_data) {
+			for (const subRecord of record.variation_details) {
 				const row = worksheet.addRow([])
 				row.alignment = { vertical: 'middle', horizontal: 'center' }
 				row.getCell(2).value = subRecord.size_numcode + '#'
@@ -248,7 +378,7 @@ export class InboundReportService {
 		// * Auto fit columns
 		autoFitColumns.call(worksheet, {
 			minWidth: 20,
-			excludeColumns: ['shaping_dept_name', 'storage']
+			excludeColumns: ['assembly_lines', 'storage_location']
 		} satisfies AutoFitColumnOptions)
 
 		// * Add title
@@ -265,7 +395,7 @@ export class InboundReportService {
 			fgColor: { argb: ExcelColorPalette.BG_LIGHT_NEUTRAL }
 		}
 		worksheet.getCell('A1').font = { bold: true, size: 16 }
-		worksheet.getCell('A1').value = this.i18nService.t('inoutbound.titles.daily_inbound_report', {
+		worksheet.getCell('A1').value = this.i18nService.t(`inoutbound.titles.${getDataQuery.i18nKey}`, {
 			args: {
 				factory: this.i18nService.t(`factory.${factoryCode}`, { lang: currentLanguage }),
 				date: format(new Date(date), 'yyyy-MM-dd')

@@ -9,7 +9,6 @@ WITH rfid_inbound_cte AS (
 		isactive = 'Y'
 		AND rfid_status = 'A'
 		AND stationNO LIKE 'CUS%WH10[12]'
-		AND FC_server_code = @0
 		AND mo_no NOT IN ('13D05B006', '13A08C003')
 		AND EPC_Code NOT LIKE '303429%'
 		AND EPC_Code NOT LIKE 'E28%'
@@ -21,7 +20,6 @@ WITH rfid_inbound_cte AS (
 		isactive = 'Y'
 		AND rfid_status = 'A'
 		AND stationNO LIKE 'CUS%WH10[12]'
-		AND FC_server_code = @0
 		AND mo_no NOT IN ('13D05B006', '13A08C003')
 		AND EPC_Code NOT LIKE '303429%'
 		AND EPC_Code NOT LIKE 'E28%'
@@ -34,7 +32,7 @@ inbound_detail_cte AS (
 	WHERE 
 	storage IS NOT NULL 
 	AND dept_name IS NOT NULL
-	AND CAST(record_time AS DATE) = @1
+	AND CAST(record_time AS DATE) = @0
 ),
 
 -- * Department list of each command number
@@ -77,7 +75,7 @@ SELECT
 	(
 		SELECT size_numcode, COUNT(DISTINCT EPC_Code) AS qty
 		FROM rfid_inbound_cte d 
-		WHERE d.mo_no = ric.mo_no AND CAST(d.record_time AS DATE) = @1
+		WHERE d.mo_no = ric.mo_no AND CAST(d.record_time AS DATE) = @0
 		GROUP BY size_numcode
 		FOR JSON PATH
 	) AS size_data
@@ -94,7 +92,7 @@ LEFT JOIN department_list_cte dlc
 	ON dlc.mo_no = ric.mo_no AND dlc.factory_code = ric.factory_code
 LEFT JOIN accumulated_cte ac 
 	ON ac.mo_no = ric.mo_no
-WHERE CAST(ric.record_time AS DATE) = @1
+WHERE CAST(ric.record_time AS DATE) = @0
 GROUP BY 
 	ric.factory_code, ric.mo_no, rmc.shoestyle_codefactory, 
 	prod.color_sn, manf.mo_totalqty, ac.accumulated_qty,

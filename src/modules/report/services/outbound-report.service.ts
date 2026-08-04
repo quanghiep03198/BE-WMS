@@ -2,7 +2,6 @@ import { ExcelColorPalette } from '@common/constants/excel-color-palette'
 import { applyCommonStyles, type AutoFitColumnOptions, autoFitColumns } from '@common/helpers'
 import { SuperJson } from '@common/utils'
 import { DATA_SOURCE_DATA_LAKE } from '@databases/constants'
-import { TENANCY_DATA_SOURCE } from '@modules/tenancy/constants'
 import { Inject, Injectable } from '@nestjs/common'
 import { REQUEST } from '@nestjs/core'
 import { InjectDataSource } from '@nestjs/typeorm'
@@ -21,8 +20,8 @@ export class OutboundReportService {
 	private readonly outboundHistoryQuery: string = outboundHistoryQuery
 
 	constructor(
-		@Inject(TENANCY_DATA_SOURCE) private readonly dataSource: DataSource,
-		@InjectDataSource(DATA_SOURCE_DATA_LAKE) private readonly dataSourcedl: DataSource,
+		// @Inject(TENANCY_DATA_SOURCE) private readonly dataSource: DataSource,
+		@InjectDataSource(DATA_SOURCE_DATA_LAKE) private readonly dataSource: DataSource,
 		@Inject(REQUEST) private readonly request: FastifyRequest,
 		private readonly i18nService: I18nService
 	) {}

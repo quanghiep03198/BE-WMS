@@ -1,7 +1,8 @@
 import { ExcelColorPalette } from '@common/constants/excel-color-palette'
 import { applyCommonStyles, AutoFitColumnOptions, autoFitColumns } from '@common/helpers'
-import { TENANCY_DATA_SOURCE } from '@modules/tenancy/constants'
-import { Inject, Injectable } from '@nestjs/common'
+import { DATA_SOURCE_DATA_LAKE } from '@databases/constants'
+import { Injectable } from '@nestjs/common'
+import { InjectDataSource } from '@nestjs/typeorm'
 import { format } from 'date-fns'
 import { Workbook } from 'exceljs'
 import { I18nContext, I18nService } from 'nestjs-i18n'
@@ -14,7 +15,7 @@ export class PackingWeightReportService {
 	private readonly packingWeightReportQuery: string = packingWeightReportQuery
 
 	constructor(
-		@Inject(TENANCY_DATA_SOURCE) private readonly dataSource: DataSource,
+		@InjectDataSource(DATA_SOURCE_DATA_LAKE) private readonly dataSource: DataSource,
 		private readonly i18nService: I18nService
 	) {}
 

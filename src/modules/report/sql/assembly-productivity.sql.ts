@@ -8,8 +8,7 @@ WITH rfid_inbound_cte AS (
 	WHERE 
 		isactive = 'Y' 
 		AND rfid_status = 'A'
-		AND stationNO LIKE 'CUS%WH10[12]'
-		AND FC_server_code = @0
+		AND station_suffix IN ('101', '102')
 		AND mo_no NOT IN ('13D05B006', '13A08C003')
 		AND EPC_Code NOT LIKE '303429%'
 		AND EPC_Code NOT LIKE 'E28%'
@@ -20,8 +19,7 @@ WITH rfid_inbound_cte AS (
 	WHERE 
 		isactive = 'Y' 
 		AND rfid_status = 'A'
-		AND stationNO LIKE 'CUS%WH10[12]'
-		AND FC_server_code = @0
+		AND station_suffix IN ('101', '102')
 		AND mo_no NOT IN ('13D05B006', '13A08C003')
 		AND EPC_Code NOT LIKE '303429%'
 		AND EPC_Code NOT LIKE 'E28%'
@@ -33,7 +31,7 @@ inbound_detail_cte AS (
 	SELECT DISTINCT mo_no, storage, dept_name, factory_code  FROM rfid_inbound_cte
 	WHERE storage IS NOT NULL 
 	AND dept_name IS NOT NULL
-	AND CAST(record_time AS DATE) = @1
+	AND CAST(record_time AS DATE) = @0
 ),
 
 -- * Storage list of each command number
@@ -69,7 +67,7 @@ SELECT
 		SELECT size_numcode, COUNT(DISTINCT EPC_Code) AS qty
 		FROM rfid_inbound_cte d 
 		WHERE 
-			CAST(d.record_time AS DATE) = @1 
+			CAST(d.record_time AS DATE) = @0 
 			AND d.mo_no = ric.mo_no 
 			AND d.dept_name = ric.dept_name
 		GROUP BY d.size_numcode
@@ -86,7 +84,7 @@ LEFT JOIN storage_list_cte slc
 	ON slc.mo_no = ric.mo_no AND slc.factory_code = ric.factory_code
 LEFT JOIN accumulated_cte ac 
 	ON ac.mo_no = ric.mo_no
-WHERE CAST(ric.record_time AS DATE) = @1
+WHERE CAST(ric.record_time AS DATE) = @0
 GROUP BY 
 	ric.factory_code, ric.mo_no, rmc.shoestyle_codefactory, 
 	prod.color_sn, manf.mo_totalqty, ac.accumulated_qty,
