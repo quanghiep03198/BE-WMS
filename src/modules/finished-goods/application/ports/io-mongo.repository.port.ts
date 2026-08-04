@@ -48,6 +48,14 @@ export interface IIoMongoRepository {
 		}>
 	>
 
+	getPoOutboundProgress(purchaseOrder: string): Promise<
+		Array<{
+			size_numcode: SizeNumber
+			order_qty: number
+			accumulated_qty: number
+		}>
+	>
+
 	getScanningEpcsBySize(query: GetScanningEpcsBySizeQuery): Promise<Array<{ epc: string }>>
 
 	getPendingExchangeEpcs(query: {
