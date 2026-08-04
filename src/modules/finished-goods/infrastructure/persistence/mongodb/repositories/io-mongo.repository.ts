@@ -258,7 +258,8 @@ export class InoutboundMongoRepository implements IIoMongoRepository {
 		const filterQuery: FilterQuery<FinishedGoodsEpcDocument> = {
 			scannable: true,
 			mo_no: query.manufacturingOrder,
-			size_numcode: query.sizeNumber
+			size_numcode: query.sizeNumber,
+			status: FinishedGoodsEpcStatus.SCANNING
 		}
 
 		if (query.stockFlow === 'inbound' && query.inboundDeviceSerialNumber) {
@@ -435,8 +436,11 @@ export class InoutboundMongoRepository implements IIoMongoRepository {
 								inbound_at: {
 									$cond: [{ $eq: ['$status', FinishedGoodsEpcStatus.SCANNING] }, '$inbound_at', '$$NOW'] // *  đã nhập, thì giữ nguyên ngày nhập, chưa nhập thì update ngày nhập = ngày hiện tại
 								},
-								assembly_line: epc.getAssemblyLine('code'),
-								storage_location: epc.getStorageLocation('code')
+								assembly_line: {
+									code: epc.getAssemblyLine('code'),
+									name: epc.getAssemblyLine('name', 'sanitized')
+								},
+								storage_location: { code: epc.getStorageLocation('code'), name: epc.getStorageLocation('name') }
 							}
 						},
 						{

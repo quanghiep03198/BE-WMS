@@ -139,9 +139,7 @@ export class RFIDController {
 
 			return () => {
 				this.logger.debug(`Cleaning up inbound RFID stream for device ${deviceSerialNumber}`)
-				if (changeStream) {
-					void changeStream.close()
-				}
+				if (changeStream) void changeStream.close()
 				subscriber.complete()
 			}
 		})

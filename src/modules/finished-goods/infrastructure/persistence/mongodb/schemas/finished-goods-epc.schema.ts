@@ -60,11 +60,11 @@ export class FinishedGoodsEpc {
 	@Prop({ type: String, required: true })
 	inbound_device_sn: string
 
-	@Prop({ type: String })
-	assembly_line: string
+	@Prop({ type: Object })
+	assembly_line: { code: string; name: string }
 
-	@Prop({ type: String })
-	storage_location: string
+	@Prop({ type: Object })
+	storage_location: { code: string; name: string }
 
 	@Prop({ type: Date, default: null })
 	inbound_at: Date | null

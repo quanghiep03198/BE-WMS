@@ -45,6 +45,12 @@ import {
 	MoInventoryVariationSchema
 } from './infrastructure/persistence/mongodb/schemas/mo-inventory-variation.schema'
 import {
+	PO_SHIPPING_PROGRESS_COLLECTION,
+	PoShippingProgress,
+	PoShippingProgressModel,
+	PoShippingProgressSchema
+} from './infrastructure/persistence/mongodb/schemas/po-shipping-progress.schema'
+import {
 	RFIDInventoryBackupEntity,
 	RFIDInventoryEntity
 } from './infrastructure/persistence/mssql/entities/rfid-inventory.entity'
@@ -126,6 +132,11 @@ import { FinishedGoodsListeners } from './presentation/listeners'
 					name: DailyMoInventoryVariation.name,
 					collection: DAILY_MO_INVENTORY_VARIATION_COLLECTION,
 					schema: DailyMoInventoryVariationSchema
+				},
+				{
+					name: PoShippingProgress.name,
+					collection: PO_SHIPPING_PROGRESS_COLLECTION,
+					schema: PoShippingProgressSchema
 				}
 			],
 			DATA_WAREHOUSE_CONNECTION
@@ -168,7 +179,9 @@ export class FinishedGoodsModule implements OnModuleInit {
 		@InjectModel(DailyMoInventoryVariation.name, DATA_WAREHOUSE_CONNECTION)
 		private readonly dailyMoInventoryVariationModel: DailyMoInventoryVariationModel,
 		@InjectModel(FinishedGoodsEpcMatch.name, DATA_WAREHOUSE_CONNECTION)
-		private readonly finishedGoodsEpcMatchModel: FinishedGoodsEpcMatchModel
+		private readonly finishedGoodsEpcMatchModel: FinishedGoodsEpcMatchModel,
+		@InjectModel(PoShippingProgress.name, DATA_WAREHOUSE_CONNECTION)
+		private readonly poShippingProgressModel: PoShippingProgressModel
 	) {}
 
 	async onModuleInit() {
@@ -177,6 +190,7 @@ export class FinishedGoodsModule implements OnModuleInit {
 			await this.finishedGoodsEpcMatchModel.syncIndexes()
 			await this.moInventoryVariationModel.syncIndexes()
 			await this.dailyMoInventoryVariationModel.syncIndexes()
+			await this.poShippingProgressModel.syncIndexes()
 			this.redisClient.setnx('cached:rfid:enable_deduplicate_inbound_epc', JSON.stringify({ value: true }))
 		} catch (error) {
 			this.logger.error(error)
