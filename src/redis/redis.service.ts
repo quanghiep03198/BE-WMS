@@ -14,11 +14,13 @@ export class RedisService implements OnModuleDestroy, OnApplicationShutdown {
 	onModuleDestroy() {
 		this.publisher.quit()
 		this.subscriber.quit()
+		this.publisher.disconnect()
 	}
 
 	onApplicationShutdown() {
 		this.publisher.quit()
 		this.subscriber.quit()
+		this.publisher.disconnect()
 	}
 
 	async publish(channel: string, message: string): Promise<number> {
