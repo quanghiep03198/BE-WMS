@@ -26,7 +26,8 @@ export class MongoEpcChangeStreamFactory implements IEpcChangeStreamFactory {
 			[
 				{
 					$match: {
-						$or: [{ operationType: { $in: ['insert', 'update'] }, ...filterQuery }, { operationType: 'delete' }]
+						$or: [{ operationType: { $in: ['insert', 'update'] } }, { operationType: 'delete' }],
+						...filterQuery
 					}
 				}
 			],

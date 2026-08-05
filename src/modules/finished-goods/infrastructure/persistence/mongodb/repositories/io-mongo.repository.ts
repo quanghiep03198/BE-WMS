@@ -14,13 +14,18 @@ import { Cache } from 'cache-manager'
 import { format } from 'date-fns'
 import { flatten } from 'flat'
 import { pick, uniq } from 'lodash'
-import { AnyBulkWriteOperation, FilterQuery, mongo, type PipelineStage } from 'mongoose'
+import { AnyBulkWriteOperation, FilterQuery, mongo, type MongooseBulkWriteOptions, type PipelineStage } from 'mongoose'
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
 import {
 	DailyMoInventoryVariation,
 	DailyMoInventoryVariationDocument,
 	DailyMoInventoryVariationModel
 } from '../schemas/daily-mo-inventory-variation.schema'
+import {
+	DailyPoShippingProgress,
+	DailyPoShippingProgressDocument,
+	DailyPoShippingProgressModel
+} from '../schemas/daily-po-shipping-progress.schema'
 import { FinishedGoodsEpcMatch, FinishedGoodsEpcMatchModel } from '../schemas/epc-match.schema'
 import { FinishedGoodsEpc, FinishedGoodsEpcDocument, FinishedGoodsEpcModel } from '../schemas/finished-goods-epc.schema'
 import {
@@ -33,6 +38,14 @@ import {
 	PoShippingProgressDocument,
 	PoShippingProgressModel
 } from '../schemas/po-shipping-progress.schema'
+
+type InventoryVariationIncrementKey =
+	`inventory_variation.${string}.${'stocked_in_qty' | 'total_recall_tx' | 'total_return_tx' | 'shipped_out_qty'}`
+
+type ShippingProgressIncrementKey = `shipping_progress.${string}.shipped_out_qty`
+
+type InventoryVariationAsync = Awaited<ReturnType<IIoMongoRepository['getPendingInventoryVariation']>>[number]
+
 @Injectable()
 export class InoutboundMongoRepository implements IIoMongoRepository {
 	constructor(
@@ -47,20 +60,30 @@ export class InoutboundMongoRepository implements IIoMongoRepository {
 		private readonly poShippingProgress: PoShippingProgressModel,
 		@InjectModel(DailyMoInventoryVariation.name, DATA_WAREHOUSE_CONNECTION)
 		private readonly dailyMoInventoryVariationModel: DailyMoInventoryVariationModel,
+		@InjectModel(DailyPoShippingProgress.name, DATA_WAREHOUSE_CONNECTION)
+		private readonly dailyPoShippingProgressModel: DailyPoShippingProgressModel,
 		@Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
 		@InjectTransactionHost(DATA_WAREHOUSE_CONNECTION)
 		private readonly txHost: TransactionHost<TransactionalAdapterMongoose>
 	) {}
 
-	private createIncrementExpression<
-		T extends {
-			inventory_variation: Record<
-				string,
-				{ stocked_in_qty: number; total_recall_tx: number; total_return_tx: number; shipped_out_qty: number }
-			>
-		}
-	>(obj: T): Record<string, mongo.NumericType> {
-		return flatten(pick(obj, 'inventory_variation'))
+	private createInventoryIncrementExpression(
+		change: InventoryVariationAsync
+	): Record<InventoryVariationIncrementKey, mongo.NumericType> {
+		return flatten(pick(change, 'inventory_variation'))
+	}
+
+	private createShippingProgressIncrementExpression(
+		change: InventoryVariationAsync
+	): Record<ShippingProgressIncrementKey, mongo.NumericType> {
+		return Object.entries(change.inventory_variation).reduce<
+			Record<`shipping_progress.${string}.shipped_out_qty`, mongo.NumericType>
+		>((acc, [size, variation]) => {
+			return {
+				...acc,
+				[`shipping_progress.${size}.shipped_out_qty`]: variation.shipped_out_qty
+			}
+		}, {})
 	}
 
 	public async getEpcsInformation(epcs: Array<string>): Promise<ElectronicProductCode[]> {
@@ -123,9 +146,14 @@ export class InoutboundMongoRepository implements IIoMongoRepository {
 			scannable: true
 		}
 
-		if (typeof manufacturingOrders === 'string' && !Array.isArray(outboundSizeQuantities)) {
+		if (!Array.isArray(outboundSizeQuantities)) {
 			const pendingOutboundEpcs = await this.finishedGoodsEpcModel
-				.find({ ...baseFilterQuery, mo_no: manufacturingOrders })
+				.find({
+					...baseFilterQuery,
+					mo_no: {
+						...(Array.isArray(manufacturingOrders) ? { $in: manufacturingOrders } : { $eq: manufacturingOrders })
+					}
+				})
 				.lean(true)
 
 			return ElectronicProductCode.createFactory(
@@ -143,6 +171,7 @@ export class InoutboundMongoRepository implements IIoMongoRepository {
 			)
 		}
 
+		this.logger.debug(outboundSizeQuantities)
 		const facetPipeline = outboundSizeQuantities.reduce<PipelineStage.Facet['$facet']>((acc, curr) => {
 			return {
 				...acc,
@@ -245,7 +274,7 @@ export class InoutboundMongoRepository implements IIoMongoRepository {
 
 	public async getMoInventory(
 		manufacturingOrder: string
-	): Promise<Array<{ size_numcode: SizeNumber; order_qty: number; accumulated_qty: number }>> {
+	): Promise<Array<{ mo_no: string; size_numcode: SizeNumber; order_qty: number; accumulated_qty: number }>> {
 		const moInventoryVariation = await this.moInventoryVariationModel
 			.findOne({ mo_no: manufacturingOrder })
 			.lean(true)
@@ -256,6 +285,7 @@ export class InoutboundMongoRepository implements IIoMongoRepository {
 			const { order_qty, stocked_in_qty, total_recall_tx, total_return_tx, shipped_out_qty } = variation
 
 			return {
+				mo_no: moInventoryVariation.mo_no,
 				size_numcode: new SizeNumber(size),
 				order_qty,
 				accumulated_qty: stocked_in_qty - total_recall_tx + total_return_tx - shipped_out_qty
@@ -266,11 +296,11 @@ export class InoutboundMongoRepository implements IIoMongoRepository {
 	public async getPoOutboundProgress(
 		purchaseOrder: string
 	): Promise<Array<{ size_numcode: SizeNumber; order_qty: number; accumulated_qty: number }>> {
-		const moInventoryVariation = await this.poShippingProgress.findOne({ po: purchaseOrder }).lean(true)
+		const poShippingProgress = await this.poShippingProgress.findOne({ po: purchaseOrder }).lean(true)
 
-		if (!moInventoryVariation) return []
+		if (!poShippingProgress) return []
 
-		return Object.entries(moInventoryVariation.shipping_progress).map(([size, variation]) => {
+		return Object.entries(poShippingProgress.shipping_progress).map(([size, variation]) => {
 			const { order_qty, shipped_out_qty } = variation
 
 			return {
@@ -448,7 +478,7 @@ export class InoutboundMongoRepository implements IIoMongoRepository {
 	 */
 	@Transactional<TransactionalAdapterMongoose>(DATA_WAREHOUSE_CONNECTION)
 	public async stockIn(pendingStockInEpcs: Array<ElectronicProductCode>): Promise<void> {
-		const epcBulkUpdateRequests: AnyBulkWriteOperation<FinishedGoodsEpcDocument>[] = pendingStockInEpcs.map(
+		const bulkUpdateEpcOperators: AnyBulkWriteOperation<FinishedGoodsEpcDocument>[] = pendingStockInEpcs.map(
 			(epc) => ({
 				updateOne: {
 					filter: { epc: epc.getStockKeepingUnit() },
@@ -517,13 +547,15 @@ export class InoutboundMongoRepository implements IIoMongoRepository {
 			})
 		)
 
-		await this.finishedGoodsEpcModel.bulkWrite(epcBulkUpdateRequests, {
+		const bulkWriteConcernSettings: mongo.BulkWriteOptions & MongooseBulkWriteOptions = {
 			session: this.txHost.tx,
 			writeConcern: { w: 'majority' },
 			ordered: false,
 			retryWrites: true,
 			timestamps: true
-		})
+		}
+
+		await this.finishedGoodsEpcModel.bulkWrite(bulkUpdateEpcOperators, bulkWriteConcernSettings)
 
 		const pendingInventoryVariation = await this.getPendingInventoryVariation(pendingStockInEpcs)
 
@@ -536,7 +568,7 @@ export class InoutboundMongoRepository implements IIoMongoRepository {
 						factory_shoes_style: mo.factory_shoes_style,
 						color_sn: mo.color_sn
 					},
-					update: { $inc: this.createIncrementExpression(mo) },
+					update: { $inc: this.createInventoryIncrementExpression(mo) },
 					upsert: true
 				}
 			}))
@@ -546,21 +578,22 @@ export class InoutboundMongoRepository implements IIoMongoRepository {
 		const storageLocations = uniq(pendingStockInEpcs.map((epc) => epc.getStorageLocation('name')))
 		const assemblyLines = uniq(pendingStockInEpcs.map((epc) => epc.getAssemblyLine('name', 'sanitized')))
 
+		// * Cập nhật biến động tồn kho hàng ngày trong collection `DailyMoInventoryVariation` dựa trên các EPC đã nhập kho
 		const bulkWriteDailyVariationOperator: AnyBulkWriteOperation<DailyMoInventoryVariationDocument>[] =
 			pendingInventoryVariation.map((mo) => {
-				const { mo_no, factory_code_produce, factory_shoes_style, color_sn } = mo
+				const { mo_no } = mo
+				const incrementExpression = this.createInventoryIncrementExpression(mo)
+
+				for (const key in incrementExpression) {
+					if (key.split('.').includes('stocked_in_qty')) delete incrementExpression[key]
+				}
+
 				return {
 					updateOne: {
 						filter: { mo_no, date },
 						update: {
-							$setOnInsert: {
-								date,
-								mo_no,
-								factory_code_produce,
-								factory_shoes_style,
-								color_sn
-							},
-							$inc: this.createIncrementExpression(mo),
+							$setOnInsert: { date, mo_no },
+							$inc: incrementExpression,
 							$addToSet: {
 								storage_locations: { $each: storageLocations },
 								assembly_lines: { $each: assemblyLines }
@@ -571,27 +604,16 @@ export class InoutboundMongoRepository implements IIoMongoRepository {
 				}
 			})
 
-		await this.dailyMoInventoryVariationModel.bulkWrite(bulkWriteDailyVariationOperator, {
-			session: this.txHost.tx,
-			writeConcern: { w: 'majority' },
-			ordered: false,
-			retryWrites: true,
-			timestamps: true
-		})
+		await this.dailyMoInventoryVariationModel.bulkWrite(bulkWriteDailyVariationOperator, bulkWriteConcernSettings)
 
-		await this.moInventoryVariationModel.bulkWrite(bulkWriteMasterVariationOperator, {
-			session: this.txHost.tx,
-			writeConcern: { w: 'majority' },
-			ordered: false,
-			retryWrites: true,
-			timestamps: true
-		})
+		await this.moInventoryVariationModel.bulkWrite(bulkWriteMasterVariationOperator, bulkWriteConcernSettings)
 	}
 
 	/**
 	 * @param pendingShipOutEpcs
 	 * @description Cập nhật trạng thái của các EPC trong danh sách `pendingShipOutEpcs` khi chúng được xuất kho (stock out).
-	 * * Các bước thực hiện:
+	 * @tutorial {ShippingWorkflow} Cần 6 round trips:
+	 *
 	 * 	1. Cập nhật trạng thái của các EPC trong collection `FinishedGoodsEpc`.
 	 * 	2. Lấy số lượng biến động tồn kho (inventory variation) từ các EPC đã xuất kho.
 	 * 	3. Cập nhật số lượng tồn kho trong collection `MoInventoryVariation` dựa trên các EPC đã xuất kho.
@@ -615,64 +637,90 @@ export class InoutboundMongoRepository implements IIoMongoRepository {
 			}
 		}))
 
-		await this.finishedGoodsEpcModel.bulkWrite(bulkWriteOperations, {
+		const bulkWriteConcernSettings: mongo.BulkWriteOptions & MongooseBulkWriteOptions = {
 			session: this.txHost.tx,
 			writeConcern: { w: 'majority' },
 			ordered: false,
 			retryWrites: true,
 			timestamps: true
-		})
+		}
+
+		await this.finishedGoodsEpcModel.bulkWrite(bulkWriteOperations, bulkWriteConcernSettings)
 
 		// * Lấy số lượng biến động tồn kho (inventory variation) từ các EPC đã xuất kho
 		const pendingInventoryVariation = await this.getPendingInventoryVariation(pendingShipOutEpcs)
 
 		// * Cập nhật số lượng xuất kho cho từng chỉ lệnh (MO) trong collection `MoInventoryVariation` dựa trên các EPC đã xuất kho
 		const bulkWriteMasterVariationOperator: AnyBulkWriteOperation<MoInventoryVariationDocument>[] =
-			pendingInventoryVariation.map((mo) => ({
-				updateOne: {
-					filter: {
-						mo_no: mo.mo_no,
-						factory_code_produce: mo.factory_code_produce,
-						factory_shoes_style: mo.factory_shoes_style,
-						color_sn: mo.color_sn
-					},
-					update: { $inc: this.createIncrementExpression(mo) },
-					upsert: true
-				}
-			}))
-
-		await this.moInventoryVariationModel.bulkWrite(bulkWriteMasterVariationOperator, {
-			session: this.txHost.tx,
-			writeConcern: { w: 'majority' },
-			ordered: false,
-			retryWrites: true,
-			timestamps: true
-		})
-
-		// * Cập nhật lại tiến độ xuất kho (outbound progress) cho từng size trong collection `PoShippingProgress` dựa trên các EPC đã xuất kho
-		const poShippingProgressBulkWriteOperator: AnyBulkWriteOperation<PoShippingProgressDocument>[] =
 			pendingInventoryVariation.map((mo) => {
-				const increments = {}
-				for (const [size, variation] of Object.entries(mo.inventory_variation)) {
-					increments[`shipping_progress.${size}.shipped_out_qty`] = variation.shipped_out_qty
+				const incrementExpression = this.createInventoryIncrementExpression(mo)
+
+				for (const key in incrementExpression) {
+					if (!key.split('.').includes('stocked_out_qty')) delete incrementExpression[key]
 				}
+
 				return {
 					updateOne: {
-						filter: { po: mo.po },
-						update: { $inc: flatten({ shipping_progress: increments }) }
+						filter: {
+							mo_no: mo.mo_no,
+							factory_code_produce: mo.factory_code_produce,
+							factory_shoes_style: mo.factory_shoes_style,
+							color_sn: mo.color_sn
+						},
+						update: { $inc: incrementExpression },
+						upsert: true
 					}
 				}
 			})
 
-		await this.poShippingProgress.bulkWrite(poShippingProgressBulkWriteOperator, {
-			session: this.txHost.tx,
-			writeConcern: { w: 'majority' },
-			ordered: false,
-			retryWrites: true,
-			timestamps: true
-		})
+		await this.moInventoryVariationModel.bulkWrite(bulkWriteMasterVariationOperator, bulkWriteConcernSettings)
 
-		// TODO: Cập nhật số lượng xuất kho trong ngày (daily shipped out quantity) cho từng size trong collection `DailyPoShippingProgress` dựa trên các EPC đã xuất kho
+		// * Cập nhật lại tiến độ xuất kho (outbound progress) cho từng size trong collection `PoShippingProgress` dựa trên các EPC đã xuất kho
+
+		const poShippingProgressBulkWriteOperator: AnyBulkWriteOperation<PoShippingProgressDocument>[] =
+			pendingInventoryVariation.map((change) => {
+				const increments = {}
+				for (const [size, variation] of Object.entries(change.inventory_variation)) {
+					increments[`shipping_progress.${size}.shipped_out_qty`] = variation.shipped_out_qty
+				}
+
+				return {
+					updateOne: {
+						filter: { po: change.po },
+						update: { $inc: this.createShippingProgressIncrementExpression(change) }
+					}
+				}
+			})
+
+		await this.poShippingProgress.bulkWrite(poShippingProgressBulkWriteOperator, bulkWriteConcernSettings)
+
+		const date = format(new Date(), 'yyyy-MM-dd')
+
+		// * Cập nhật số lượng xuất trong ngày theo đặt đơn khách hàng (PO)
+		const dailyShippingBulkWriteOperator: AnyBulkWriteOperation<DailyPoShippingProgressDocument>[] =
+			pendingInventoryVariation.map((change) => {
+				const { po } = change
+
+				const incrementExpression = Object.entries(change.inventory_variation).reduce((acc, [size, variation]) => {
+					return {
+						...acc,
+						[`shipping_progress.${change.mo_no}.${size}`]: variation.shipped_out_qty
+					}
+				}, {})
+
+				return {
+					updateOne: {
+						filter: { po, date },
+						update: {
+							$setOnInsert: { po, date },
+							$inc: incrementExpression
+						},
+						upsert: true
+					}
+				}
+			})
+
+		await this.dailyPoShippingProgressModel.bulkWrite(dailyShippingBulkWriteOperator, bulkWriteConcernSettings)
 	}
 
 	/**
@@ -752,7 +800,11 @@ export class InoutboundMongoRepository implements IIoMongoRepository {
 	}
 
 	@Transactional<TransactionalAdapterMongoose>(DATA_WAREHOUSE_CONNECTION)
-	public async exchangeMo(pendingExchangeEpcs: Array<string>, targetMo: string): Promise<void> {
+	public async exchangeManufacturingOrder(pendingExchangeEpcs: Array<string>, targetMo: string): Promise<void> {
+		await this.finishedGoodsEpcMatchModel
+			.updateMany({ epc: { $in: pendingExchangeEpcs } }, { mo_no: targetMo })
+			.session(this.txHost.tx)
+
 		await this.finishedGoodsEpcModel
 			.updateMany({ epc: { $in: pendingExchangeEpcs } }, { mo_no: targetMo })
 			.session(this.txHost.tx)

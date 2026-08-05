@@ -11,7 +11,7 @@ import { InjectDataSource } from '@nestjs/typeorm'
 import { format } from 'date-fns'
 import { chunk } from 'lodash'
 import { Brackets, DataSource, In } from 'typeorm'
-import { generateStation, StationNO } from '../../../../domain/utils'
+import { StationNO } from '../../../../domain/utils'
 import { RFIDInventoryBackupEntity, RFIDInventoryEntity } from '../entities/rfid-inventory.entity'
 import { RFIDMatchEntity } from '../entities/rfid-match.entity'
 import moInboundProgressQuery from '../sql/mo-inbound-progress.sql'
@@ -132,22 +132,21 @@ export class InoutboundMssqlRepository implements IIoMssqlRepository {
 	}
 
 	@Transactional<TransactionalAdapterTypeOrm>(DATA_SOURCE_DATA_LAKE)
-	public async stockOut(epcs: ReadonlyArray<ElectronicProductCode>): Promise<void> {
+	public async commitStockOut(
+		data: Array<
+			Array<{
+				epc: string
+				mo_no: string
+				size_numcode: string
+				factory_code: string
+				status: string
+				inventory_variation_type: string
+				station_no: StationNO
+			}>
+		>
+	): Promise<void> {
 		await Promise.all(
-			chunk(epcs, 100).map(async (ck) => {
-				const payload = ck
-					.filter((epc) => epc.getIsWritable() && !epc.getIsInternal())
-					.map((epc) => ({
-						epc: epc.getStockKeepingUnit(),
-						po: epc.getPurchaseOrder(),
-						mo_no: epc.getManufacturingOrder(),
-						size_numcode: epc.getSize(),
-						station_no: generateStation(epc.getFactoryProduce(), 'WH103'),
-						factory_code: epc.getFactoryProduce()
-					}))
-
-				return await this.txHostDL.tx.query(upsertOutboundQuery, [JSON.stringify(payload)])
-			})
+			data.map(async (payload) => await this.txHostDL.tx.query(upsertOutboundQuery, [JSON.stringify(payload)]))
 		)
 	}
 

@@ -2,7 +2,7 @@ import { ElectronicProductCode } from '@modules/finished-goods/domain/value-obje
 import { Command } from '@nestjs/cqrs'
 
 export class CommitStockOutCommand extends Command<void> {
-	constructor(public readonly scannedEpcs: Array<ElectronicProductCode>) {
+	constructor(public readonly pendingStockOutEpcs: Array<ElectronicProductCode>) {
 		super()
 	}
 }

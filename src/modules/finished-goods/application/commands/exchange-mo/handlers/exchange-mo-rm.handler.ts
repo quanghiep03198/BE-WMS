@@ -3,7 +3,7 @@ import { SizeNumber } from '@modules/finished-goods/domain/value-objects/size-nu
 import { ORDER_REPOSITORY } from '@modules/order/order.constant'
 import { IOrderRepository } from '@modules/order/order.repository.interface'
 import { Inject } from '@nestjs/common'
-import { CommandHandler, EventPublisher, ICommandHandler } from '@nestjs/cqrs'
+import { CommandHandler, EventBus, EventPublisher, ICommandHandler } from '@nestjs/cqrs'
 import { IIoMongoRepository, IO_MONGO_REPOSITORY } from '../../../ports/io-mongo.repository.port'
 import { IIoMssqlRepository, IO_MSSQL_REPOSITORY } from '../../../ports/io-mssql.repository.port'
 import { ExchangeMoRmCommand } from '../impl/exchange-mo-rm.command'
@@ -14,7 +14,8 @@ export class ExchangeMoRmHandler implements ICommandHandler<ExchangeMoRmCommand>
 		@Inject(IO_MONGO_REPOSITORY) private readonly ioMongoRepository: IIoMongoRepository,
 		@Inject(IO_MSSQL_REPOSITORY) private readonly ioMssqlRepository: IIoMssqlRepository,
 		@Inject(ORDER_REPOSITORY) private readonly orderRepository: IOrderRepository,
-		private readonly publisher: EventPublisher
+		private readonly eventPublisher: EventPublisher,
+		private readonly eventBus: EventBus
 	) {}
 
 	public async execute({ deviceSerialNumber, sourceMos, targetMo }: ExchangeMoRmCommand): Promise<void> {
@@ -31,9 +32,9 @@ export class ExchangeMoRmHandler implements ICommandHandler<ExchangeMoRmCommand>
 		)
 		// * Validate the transaction and get the pending exchange SKUs
 		const pendingExchangeSkus = moExchangeTransaction.startTransaction()
-		await this.ioMssqlRepository.exchangeManufacturingOrder(pendingExchangeSkus, targetMo)
+		await this.ioMongoRepository.exchangeManufacturingOrder(pendingExchangeSkus, targetMo)
 
-		this.publisher.mergeObjectContext(moExchangeTransaction)
+		this.eventPublisher.mergeObjectContext(moExchangeTransaction)
 		moExchangeTransaction.commit()
 	}
 }

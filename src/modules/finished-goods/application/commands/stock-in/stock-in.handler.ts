@@ -2,7 +2,7 @@ import {
 	IIoMongoRepository,
 	IO_MONGO_REPOSITORY
 } from '@modules/finished-goods/application/ports/io-mongo.repository.port'
-import { StockTransaction } from '@modules/finished-goods/domain/models/stock-transaction.model'
+import { StockInTransaction } from '@modules/finished-goods/domain/models/stock-in-transaction.model'
 import { Inject } from '@nestjs/common'
 import { CommandHandler, EventPublisher, ICommandHandler } from '@nestjs/cqrs'
 import { InjectPinoLogger } from 'nestjs-pino'
@@ -27,7 +27,7 @@ export class StockInHandler implements ICommandHandler<StockInCommand> {
 		const currentInboundProgress = await this.inoutboundMongoRepository.getMoInventory(command.mo_no)
 
 		// * Start Unit of Work transaction for inbound stock-in process
-		const inboundTransaction = new StockTransaction('inbound', pendingInboundEpcs, currentInboundProgress)
+		const inboundTransaction = new StockInTransaction(pendingInboundEpcs, currentInboundProgress)
 		inboundTransaction.startTransaction()
 
 		await this.inoutboundMongoRepository.stockIn(pendingInboundEpcs)

@@ -66,6 +66,7 @@ import { FinishedGoodsEntitySubscribers } from './infrastructure/persistence/mss
 import {
 	BULK_WRITE_INBOUND_EPCS_QUEUE,
 	BULK_WRITE_OUTBOUND_EPCS_QUEUE,
+	COMMIT_STOCK_OUT_QUEUE,
 	COMMIT_STOCK_VARIATION_QUEUE,
 	IMPORT_INOUTBOUND_EPCS_QUEUE,
 	ROLLBACK_EXCHANGE_MO_TX_QUEUE,
@@ -88,6 +89,15 @@ import { FinishedGoodsListeners } from './presentation/listeners'
 		BullModule.registerQueue({ name: IMPORT_INOUTBOUND_EPCS_QUEUE }),
 		BullModule.registerQueue({
 			name: COMMIT_STOCK_VARIATION_QUEUE,
+			defaultJobOptions: {
+				attempts: 10,
+				removeOnComplete: { count: 10 },
+				removeOnFail: { count: 100 },
+				backoff: { type: 'fixed', delay: 10_000 }
+			}
+		}),
+		BullModule.registerQueue({
+			name: COMMIT_STOCK_OUT_QUEUE,
 			defaultJobOptions: {
 				attempts: 10,
 				removeOnComplete: { count: 10 },
@@ -199,12 +209,14 @@ export class FinishedGoodsModule implements OnModuleInit {
 
 	async onModuleInit() {
 		try {
-			await this.finishedGoodsEpcModel.syncIndexes()
-			await this.finishedGoodsEpcMatchModel.syncIndexes()
-			await this.moInventoryVariationModel.syncIndexes()
-			await this.dailyMoInventoryVariationModel.syncIndexes()
-			await this.poShippingProgressModel.syncIndexes()
-			await this.dailyPoShippingProgressModel.syncIndexes()
+			await Promise.all([
+				this.finishedGoodsEpcModel.syncIndexes(),
+				this.finishedGoodsEpcMatchModel.syncIndexes(),
+				this.moInventoryVariationModel.syncIndexes(),
+				this.dailyMoInventoryVariationModel.syncIndexes(),
+				this.poShippingProgressModel.syncIndexes(),
+				this.dailyPoShippingProgressModel.syncIndexes()
+			])
 			this.redisClient.setnx('cached:rfid:enable_deduplicate_inbound_epc', JSON.stringify({ value: true }))
 		} catch (error) {
 			this.logger.error(error)

@@ -50,7 +50,19 @@ export interface IIoMssqlRepository {
 		>
 	): Promise<void>
 
-	stockOut(epcs: Array<ElectronicProductCode>): Promise<void>
+	commitStockOut(
+		epcs: Array<
+			Array<{
+				epc: string
+				mo_no: string
+				size_numcode: string
+				factory_code: string
+				status: string
+				inventory_variation_type: string
+				station_no: StationNO
+			}>
+		>
+	): Promise<void>
 
 	rollbackStockTransaction(stationNO: 'WH101' | 'WH103', epcs: Array<ElectronicProductCode>): Promise<void>
 

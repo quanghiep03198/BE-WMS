@@ -168,6 +168,7 @@ export type I18nTranslations = {
         "notification": {
             "exchange_mo_success": string;
             "exchange_mo_failed": string;
+            "insufficient_inventory": string;
             "over_inbound_limit": string;
             "over_outbound_limit": string;
             "not_inbound_yet": string;

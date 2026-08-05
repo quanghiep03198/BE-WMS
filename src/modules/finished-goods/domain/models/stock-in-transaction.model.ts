@@ -2,20 +2,17 @@ import { AggregateRoot } from '@nestjs/cqrs'
 import { entries, groupBy } from 'lodash'
 import { randomBytes } from 'node:crypto'
 import { StockedInEvent } from '../events/stocked-in/stocked-in.event'
-import { StockedOutEvent } from '../events/stocked-out/stocked-out.event'
 import { ExcessInboundOrderException } from '../exceptions/excess-order.exception'
-import { StockFlow } from '../types'
 import { ElectronicProductCode } from '../value-objects/epc.vo'
 import { SizeNumber } from '../value-objects/size-number.vo'
 
-export class StockTransaction extends AggregateRoot {
+export class StockInTransaction extends AggregateRoot {
 	private readonly stockInTxId: string = randomBytes(8).toString('hex')
-	private readonly stockOutTxId: string = randomBytes(8).toString('hex')
 
 	constructor(
-		private readonly stockFlow: StockFlow,
-		private readonly pendingStockMoveEpcs: Array<ElectronicProductCode>,
-		private readonly currentProgress: Array<{
+		// private readonly stockFlow: StockFlow,
+		private readonly pendingInStockEpcs: Array<ElectronicProductCode>,
+		private readonly moInventory: Array<{
 			size_numcode: SizeNumber
 			order_qty: number
 			accumulated_qty: number
@@ -28,30 +25,26 @@ export class StockTransaction extends AggregateRoot {
 		return this.stockInTxId
 	}
 
-	public get stockOutTransactionId() {
-		return this.stockOutTxId
-	}
-
 	public startTransaction() {
-		const transactionalSizeQty = entries(groupBy(this.pendingStockMoveEpcs, (epc) => epc.getSize())).map(
+		const transactionalSizeQty = entries(groupBy(this.pendingInStockEpcs, (epc) => epc.getSize())).map(
 			([size, epcs]) => ({
 				size_numcode: new SizeNumber(size),
 				inbound_qty: epcs.length
 			})
 		)
 
-		const outstandingOrderQty = this.currentProgress.map((inboundSizeDetail) => {
-			const incomming = transactionalSizeQty.find((incoming) =>
+		const outstandingOrderQty = this.moInventory.map((inboundSizeDetail) => {
+			const tx = transactionalSizeQty.find((incoming) =>
 				inboundSizeDetail.size_numcode.isEqual(incoming.size_numcode)
 			)
-			if (!incomming)
+			if (!tx)
 				return {
 					size_numcode: inboundSizeDetail.size_numcode.getValue(),
 					missing_qty: inboundSizeDetail.order_qty - inboundSizeDetail.accumulated_qty
 				}
 			return {
 				size_numcode: inboundSizeDetail.size_numcode.getValue(),
-				missing_qty: inboundSizeDetail.order_qty - inboundSizeDetail.accumulated_qty - incomming.inbound_qty
+				missing_qty: inboundSizeDetail.order_qty - inboundSizeDetail.accumulated_qty - tx.inbound_qty
 			}
 		})
 
@@ -61,11 +54,6 @@ export class StockTransaction extends AggregateRoot {
 
 		if (isOrderExcessed) throw new ExcessInboundOrderException('', { cause: excessedOrderSizes })
 
-		const domainEvent: Readonly<{ inbound: StockedInEvent; outbound: StockedOutEvent }> = {
-			inbound: new StockedInEvent(this.stockInTxId, this.pendingStockMoveEpcs),
-			outbound: new StockedOutEvent(this.stockOutTxId, this.pendingStockMoveEpcs)
-		}
-
-		this.apply(domainEvent[this.stockFlow])
+		this.apply(new StockedInEvent(this.stockInTxId, this.pendingInStockEpcs))
 	}
 }

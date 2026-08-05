@@ -1,24 +1,23 @@
-import { DATA_SOURCE_ERP } from '@databases/constants'
+import { DATA_SOURCE_DATA_LAKE, DATA_SOURCE_ERP } from '@databases/constants'
 import { Inject, Injectable } from '@nestjs/common'
 import { InjectDataSource } from '@nestjs/typeorm'
 import { DataSource } from 'typeorm'
 import { InventoryActions } from '../finished-goods/domain/constants'
 import purchaseOrderSizeRunQuery from './sql/po-size-run.sql'
 
-import { TENANCY_DATA_SOURCE } from '../tenancy/constants'
 import { ORDER_REPOSITORY } from './order.constant'
 import { IOrderRepository } from './order.repository.interface'
 
 @Injectable()
 export class OrderService {
 	constructor(
-		@Inject(TENANCY_DATA_SOURCE) private readonly dataSourceTNC: DataSource,
 		@InjectDataSource(DATA_SOURCE_ERP) private readonly dataSourceERP: DataSource,
+		@InjectDataSource(DATA_SOURCE_DATA_LAKE) private readonly dataSourceDL: DataSource,
 		@Inject(ORDER_REPOSITORY) private readonly orderRepository: IOrderRepository
 	) {}
 
 	async searchManufacturingOrder(factoryCode: string, searchTerm: string) {
-		return await this.dataSourceTNC
+		return await this.dataSourceERP
 			.createQueryBuilder()
 			.select(/* SQL */ `DISTINCT TOP 5 manu.mo_no`, 'mo_no')
 			.addSelect(/* SQL */ `manu.created`, 'created')
@@ -43,7 +42,7 @@ export class OrderService {
 		searchTerm: string,
 		shouldFilterAllBrands?: boolean
 	): Promise<Array<{ po: string; is_completed: boolean }>> {
-		const outboundQtyCte = this.dataSourceTNC
+		const outboundQtyCte = this.dataSourceDL
 			.createQueryBuilder()
 			.select([/* SQL */ `DISTINCT po AS po`, /* SQL */ `COUNT(DISTINCT EPC_Code) AS accumulated_outbound_qty`])
 			.from('DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet_backup_Daily', 'b')
@@ -52,7 +51,7 @@ export class OrderService {
 			.andWhere(/* SQL */ `po LIKE '%${searchTerm}%'`)
 			.groupBy('po')
 
-		const queryBuilder = this.dataSourceTNC
+		const queryBuilder = this.dataSourceERP
 			.createQueryBuilder()
 			.addCommonTableExpression(outboundQtyCte.getQuery(), 'outbound_cte')
 			.select(/* SQL */ `TOP 5 IIF(ISNULL(a.or_custpoone, '') = '', a.or_custpo, a.or_custpoone)`, 'po')

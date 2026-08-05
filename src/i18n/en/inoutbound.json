@@ -12,6 +12,7 @@
 	"notification": {
 		"exchange_mo_success": "Successfully exchanged SKUs from manufacturing order {sourceMo} to manufacturing order {targetMo}.",
 		"exchange_mo_failed": "An error occurred while exchanging SKUs from manufacturing order {sourceMo} to manufacturing order {targetMo}.",
+		"insufficient_inventory": "Insufficient inventory to perform this operation.",
 		"over_inbound_limit": "The inbound order has been fully received, you cannot add more. Please check the inbound history of this manufacturing order.",
 		"over_outbound_limit": "The purchase order has been fully shipped, you cannot add more. Please check the outbound history of this purchase order.",
 		"no_exchangable_sku": "There are no SKUs available for exchange.",

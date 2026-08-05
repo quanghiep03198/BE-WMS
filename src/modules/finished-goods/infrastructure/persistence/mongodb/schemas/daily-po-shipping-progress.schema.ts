@@ -28,7 +28,7 @@ export class DailyPoShippingProgress {
 	@Prop({ type: String, required: true })
 	po: string
 
-	@Prop({ type: Object, defautl: {} })
+	@Prop({ type: Object, default: {} })
 	shipping_progress: Record<
 		string,
 		{

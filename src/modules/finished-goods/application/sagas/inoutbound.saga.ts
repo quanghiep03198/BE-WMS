@@ -42,14 +42,6 @@ export class InoutboundSaga {
 		)
 	}
 
-	// @Saga()
-	// committedStockIn(events$: Observable<unknown>): Observable<ICommand> {
-	// 	return events$.pipe(
-	// 		ofType(CommitedStockIn),
-	// 		map(() => new SyncInventoryAuditCommand({ year: new Date().getFullYear(), month: new Date().getMonth() + 1 }))
-	// 	)
-	// }
-
 	@Saga()
 	commitStockInFailure(events$: Observable<unknown>): Observable<ICommand> {
 		return events$.pipe(

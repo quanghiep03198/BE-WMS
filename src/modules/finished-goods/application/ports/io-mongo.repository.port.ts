@@ -42,6 +42,7 @@ export interface IIoMongoRepository {
 
 	getMoInventory(manufacturingOrder: string): Promise<
 		Array<{
+			mo_no: string
 			size_numcode: SizeNumber
 			order_qty: number
 			accumulated_qty: number
@@ -73,7 +74,7 @@ export interface IIoMongoRepository {
 
 	recallFromStock(pendingRecallEpcs: Array<ElectronicProductCode>): Promise<void>
 
-	exchangeMo(pendingExchangeEpcs: Array<string>, targetMo: string): Promise<void>
+	exchangeManufacturingOrder(pendingExchangeEpcs: Array<string>, targetMo: string): Promise<void>
 
 	updateScanningEpcsMatch(data: UpsertEpcsMatchData): Promise<void>
 
