@@ -1,57 +1,132 @@
 import { ExcelColorPalette } from '@common/constants/excel-color-palette'
 import { applyCommonStyles, type AutoFitColumnOptions, autoFitColumns } from '@common/helpers'
-import { SuperJson } from '@common/utils'
-import { DATA_SOURCE_DATA_LAKE } from '@databases/constants'
-import { Inject, Injectable } from '@nestjs/common'
-import { REQUEST } from '@nestjs/core'
+import { DATA_SOURCE_DATA_LAKE, DATA_WAREHOUSE_CONNECTION } from '@databases/constants'
+import {
+	DailyPoShippingProgress,
+	DailyPoShippingProgressModel
+} from '@modules/finished-goods/infrastructure/persistence/mongodb/schemas/daily-po-shipping-progress.schema'
+import {
+	PoShippingProgress,
+	PoShippingProgressModel
+} from '@modules/finished-goods/infrastructure/persistence/mongodb/schemas/po-shipping-progress.schema'
+import { Injectable } from '@nestjs/common'
+import { InjectModel } from '@nestjs/mongoose'
 import { InjectDataSource } from '@nestjs/typeorm'
 import { format } from 'date-fns'
 import { Workbook, Worksheet } from 'exceljs'
-import { FastifyRequest } from 'fastify'
+import { groupBy } from 'lodash'
 import { I18nContext, I18nService } from 'nestjs-i18n'
+import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
 import { DataSource } from 'typeorm'
-import { IOutboundHistory, IOutboundReportQueryResult, IOutboundReportResponse } from '../interfaces'
-import outboundHistoryQuery from '../sql/outbound-history.sql'
-import outboundReportQuery from '../sql/outbound-report.sql'
 
 @Injectable()
 export class OutboundReportService {
-	private readonly outboundReportQuery: string = outboundReportQuery
-	private readonly outboundHistoryQuery: string = outboundHistoryQuery
-
 	constructor(
-		// @Inject(TENANCY_DATA_SOURCE) private readonly dataSource: DataSource,
+		@InjectPinoLogger(OutboundReportService.name) private readonly logger: PinoLogger,
+		@InjectModel(DailyPoShippingProgress.name, DATA_WAREHOUSE_CONNECTION)
+		private readonly dailyPoShippingProgressModel: DailyPoShippingProgressModel,
+		@InjectModel(PoShippingProgress.name, DATA_WAREHOUSE_CONNECTION)
+		private readonly poShippingProgressModel: PoShippingProgressModel,
 		@InjectDataSource(DATA_SOURCE_DATA_LAKE) private readonly dataSource: DataSource,
-		@Inject(REQUEST) private readonly request: FastifyRequest,
 		private readonly i18nService: I18nService
 	) {}
 
-	public async getOutboundReportByDate(date: string): Promise<IOutboundReportResponse> {
-		const data = await this.dataSource.query<IOutboundReportQueryResult[]>(this.outboundReportQuery, [
-			this.request.headers['x-user-factory'],
-			date
-		])
-		return data.map((item) => ({
-			...item,
-			detail: SuperJson.parse<IOutboundReportResponse[number]['detail']>(item.detail),
-			overall: SuperJson.parse<IOutboundReportResponse[number]['overall']>(item.overall)
-		}))
+	public async getOutboundReportByDate(date: string): Promise<any> {
+		const data = await this.dailyPoShippingProgressModel
+			.find({ date })
+			.lean({ virtuals: true, autopopulate: true })
+			.populate('po_attrs', 'order_qty factory_shoes_style cust_shoes_style color_sn shipping_progress')
+			.exec()
+
+		return data.map((item) => {
+			const accumulated_qty: number = Object.values(item.po_attrs.shipping_progress).reduce(
+				(acc, curr) => acc + curr.shipped_out_qty,
+				0
+			)
+
+			const detail = Object.entries(item.shipping_progress).map(([mo_no, sizes]) => ({
+				mo_no,
+				sizes: Object.entries(sizes).map(([size_numcode, qty]) => ({
+					size_numcode,
+					qty
+				}))
+			}))
+
+			return {
+				po: item.po,
+				factory_shoes_style: item.po_attrs.factory_shoes_style,
+				cust_shoes_style: item.po_attrs.cust_shoes_style,
+				color_sn: item.po_attrs.color_sn,
+				order_qty: item.po_attrs.order_qty,
+				accumulated_qty: accumulated_qty,
+				missing_qty: item.po_attrs.order_qty - accumulated_qty,
+				daily_outbound_qty: detail.reduce(
+					(acc, curr) => acc + curr.sizes.reduce((_acc, _curr) => _acc + _curr.qty, 0),
+					0
+				),
+				detail: detail,
+				overall: Object.entries(item.po_attrs.shipping_progress).map(
+					([size_numcode, { order_qty, shipped_out_qty }]) => {
+						return {
+							size_numcode,
+							order_qty,
+							daily_qty: detail.reduce((acc, curr) => {
+								return acc + (curr.sizes.find((sz) => sz.size_numcode === size_numcode)?.qty ?? 0)
+							}, 0),
+							missing_qty: order_qty - shipped_out_qty
+						}
+					}
+				)
+			}
+		})
 	}
-	public async getOutboundHistory(factoryCode: string, po: string) {
-		return await this.dataSource
-			.query<IOutboundHistory[]>(this.outboundHistoryQuery, [factoryCode, po])
-			.then(([result]) => {
-				if (!result) return null
+	public async getOutboundHistory(po: string): Promise<any> {
+		const data = await this.poShippingProgressModel
+			.findOne({ po })
+			.populate('outbound_history', 'date shipping_progress')
+			.exec()
+
+		if (!data) return null
+
+		const totalShippedOutQty = Object.values(data?.shipping_progress).reduce(
+			(acc, curr) => acc + curr.shipped_out_qty,
+			0
+		)
+
+		const result = {
+			...data.toObject(),
+			total_shipped_out_qty: totalShippedOutQty,
+			missing_qty: data.order_qty - totalShippedOutQty,
+			outbound_history: Object.entries(groupBy(data.outbound_history, (item) => item.date)).map(([date, items]) => {
 				return {
-					...result,
-					outbound_history: SuperJson.parse<Exclude<IOutboundHistory['outbound_history'], string>>(
-						result?.outbound_history,
-						3
-					),
-					overall: SuperJson.parse<Exclude<IOutboundHistory['overall'], string>>(result.overall, 3),
-					progress: ((result.accumulated_outbound_qty / result.po_qty) * 100).toFixed(2) + '%'
+					date,
+					data: items.flatMap((i) =>
+						Object.entries(i.shipping_progress).map(([mo_no, sizes]) => ({
+							mo_no,
+							shipping_details: Object.entries(sizes)
+								.sort(([size1], [size2]) => Number.parseFloat(size1) - Number.parseFloat(size2))
+								.map(([size_numcode, shipped_out_qty]) => ({
+									size_numcode,
+									shipped_out_qty
+								}))
+						}))
+					)
 				}
-			})
+			}),
+			overall: Object.entries(data.shipping_progress)
+				.sort(([size1], [size2]) => Number.parseFloat(size1) - Number.parseFloat(size2))
+				.map(([size_numcode, { order_qty, shipped_out_qty }]) => ({
+					size_numcode,
+					order_qty,
+					shipped_out_qty,
+					missing_qty: order_qty - shipped_out_qty
+				})),
+			progress: ((totalShippedOutQty / data.order_qty) * 100).toFixed(2) + '%'
+		}
+
+		this.logger.debug(result)
+
+		return result
 	}
 
 	// #region Outbound report Excel

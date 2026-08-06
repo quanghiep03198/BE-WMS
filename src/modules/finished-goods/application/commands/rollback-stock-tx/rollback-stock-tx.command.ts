@@ -1,6 +1,9 @@
 import { ElectronicProductCode } from '@modules/finished-goods/domain/value-objects/epc.vo'
 import { Command } from '@nestjs/cqrs'
 
+/**
+ * @deprecated
+ */
 export class RollbackStockTransactionCommand extends Command<any> {
 	constructor(
 		public readonly stationNo: 'WH101' | 'WH103',

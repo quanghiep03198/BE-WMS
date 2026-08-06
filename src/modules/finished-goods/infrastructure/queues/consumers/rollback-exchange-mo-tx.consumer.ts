@@ -8,6 +8,9 @@ import { Job } from 'bullmq'
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
 import { ROLLBACK_EXCHANGE_MO_TX_QUEUE } from '..'
 
+/**
+ * @deprecated
+ */
 @Processor(ROLLBACK_EXCHANGE_MO_TX_QUEUE)
 export class RollbackExchangeMoTransactionConsumer extends WorkerHost {
 	constructor(

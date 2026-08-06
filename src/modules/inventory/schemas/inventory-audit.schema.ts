@@ -38,24 +38,22 @@ export class MoInventoryAudit {
 	@Prop({ type: Array, required: true, default: [] })
 	storage_locations: Array<string>
 
-	@Prop({ type: Number, required: true })
-	total_storages: number
+	// @Prop({ type: Number, required: true })
+	// total_storages: number
 
-	@Prop({ type: Number, required: true })
-	total_storage_capacity: number
+	// @Prop({ type: Number, required: true })
+	// total_storage_capacity: number
 
 	@Prop({ type: Object, required: true, default: {} })
 	inventory_varation: Record<
 		string,
 		{
-			target_qty: number
-			initial_stock_qty: number
+			order_qty: number
+			beginning_inventory_qty: number
 			stocked_in_qty: number
-			shipped_out_qty: number
-			total_recall_tx: number
-			total_return_tx: number
-			supplemental_instock_qty: number
-			supplemental_outstock_qty: number
+			recalled_qty: number
+			supplemental_stocked_in_qty: number
+			supplemental_shipped_out_qty: number
 		}
 	>
 }

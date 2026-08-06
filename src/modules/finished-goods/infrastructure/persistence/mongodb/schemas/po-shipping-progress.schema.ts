@@ -52,6 +52,20 @@ export const PoShippingProgressSchema = SchemaFactory.createForClass(PoShippingP
 
 PoShippingProgressSchema.index({ po: 1 }, { unique: true, name: 'po_idx' })
 
-export type PoShippingProgressDocument = HydratedDocument<PoShippingProgress>
+PoShippingProgressSchema.virtual('outbound_history', {
+	ref: 'DailyPoShippingProgress',
+	localField: 'po',
+	foreignField: 'po'
+})
+
+PoShippingProgressSchema.set('toObject', { virtuals: true })
+PoShippingProgressSchema.set('toJSON', { virtuals: true })
+
+export type PoShippingProgressDocument = HydratedDocument<PoShippingProgress> & {
+	outbound_history: Array<{
+		date: string
+		shipping_progress: Record<string, Record<string, number>>
+	}>
+}
 
 export type PoShippingProgressModel = Model<PoShippingProgressDocument>

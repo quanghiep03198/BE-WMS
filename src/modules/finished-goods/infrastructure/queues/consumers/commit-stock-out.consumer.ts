@@ -2,6 +2,7 @@ import {
 	IIoMssqlRepository,
 	IO_MSSQL_REPOSITORY
 } from '@modules/finished-goods/application/ports/io-mssql.repository.port'
+import { InventoryStorageType } from '@modules/finished-goods/domain/constants'
 import { Processor, WorkerHost } from '@nestjs/bullmq'
 import { Inject } from '@nestjs/common'
 import { Job } from 'bullmq'
@@ -20,10 +21,11 @@ export class CommitStockOutConsumer extends WorkerHost {
 				Array<{
 					epc: string
 					mo_no: string
+					po: string
 					size_numcode: string
 					factory_code: string
 					status: string
-					inventory_variation_type: string
+					inventory_variation_type: InventoryStorageType
 					station_no: StationNO
 				}>
 			>,

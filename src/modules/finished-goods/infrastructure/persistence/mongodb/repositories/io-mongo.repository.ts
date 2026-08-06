@@ -13,7 +13,8 @@ import { InjectModel } from '@nestjs/mongoose'
 import { Cache } from 'cache-manager'
 import { format } from 'date-fns'
 import { flatten } from 'flat'
-import { pick, uniq } from 'lodash'
+import { omitBy, pick, pickBy, uniq } from 'lodash'
+
 import { AnyBulkWriteOperation, FilterQuery, mongo, type MongooseBulkWriteOptions, type PipelineStage } from 'mongoose'
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
 import {
@@ -582,11 +583,9 @@ export class InoutboundMongoRepository implements IIoMongoRepository {
 		const bulkWriteDailyVariationOperator: AnyBulkWriteOperation<DailyMoInventoryVariationDocument>[] =
 			pendingInventoryVariation.map((mo) => {
 				const { mo_no } = mo
-				const incrementExpression = this.createInventoryIncrementExpression(mo)
-
-				for (const key in incrementExpression) {
-					if (key.split('.').includes('stocked_in_qty')) delete incrementExpression[key]
-				}
+				const incrementExpression = omitBy(this.createInventoryIncrementExpression(mo), (_, key) =>
+					key.endsWith('shipped_out_qty')
+				)
 
 				return {
 					updateOne: {
@@ -653,11 +652,9 @@ export class InoutboundMongoRepository implements IIoMongoRepository {
 		// * Cập nhật số lượng xuất kho cho từng chỉ lệnh (MO) trong collection `MoInventoryVariation` dựa trên các EPC đã xuất kho
 		const bulkWriteMasterVariationOperator: AnyBulkWriteOperation<MoInventoryVariationDocument>[] =
 			pendingInventoryVariation.map((mo) => {
-				const incrementExpression = this.createInventoryIncrementExpression(mo)
-
-				for (const key in incrementExpression) {
-					if (!key.split('.').includes('stocked_out_qty')) delete incrementExpression[key]
-				}
+				const incrementExpression = pickBy(this.createInventoryIncrementExpression(mo), (_, key) =>
+					key.endsWith('shipped_out_qty')
+				)
 
 				return {
 					updateOne: {

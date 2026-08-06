@@ -29,19 +29,39 @@ export class DailyPoShippingProgress {
 	po: string
 
 	@Prop({ type: Object, default: {} })
-	shipping_progress: Record<
-		string,
-		{
-			order_qty: number
-			shipped_out_qty: number
-		}
-	>
+	shipping_progress: Record<string, Record<string, number>>
 }
 
 export const DailyPoShippingProgressSchema = SchemaFactory.createForClass(DailyPoShippingProgress)
 
 DailyPoShippingProgressSchema.index({ date: 1, po: 1 }, { unique: true, name: 'idx_date_po' })
 
-export type DailyPoShippingProgressDocument = HydratedDocument<DailyPoShippingProgress>
+DailyPoShippingProgressSchema.virtual('po_attrs', {
+	ref: 'PoShippingProgress',
+	localField: 'po',
+	foreignField: 'po',
+	justOne: true
+})
+
+DailyPoShippingProgressSchema.set('toObject', { virtuals: true })
+DailyPoShippingProgressSchema.set('toJSON', { virtuals: true })
+
+export type DailyPoShippingProgressDocument = HydratedDocument<DailyPoShippingProgress> & {
+	po_attrs: {
+		factory_shoes_style: string
+		cust_shoes_style: string
+		color_sn: string
+		order_qty: number
+		shipping_type: string
+		shipping_destination: string
+		shipping_progress: Record<
+			`0${number}` | `${number}`,
+			{
+				order_qty: number
+				shipped_out_qty: number
+			}
+		>
+	}
+}
 
 export type DailyPoShippingProgressModel = Model<DailyPoShippingProgressDocument>

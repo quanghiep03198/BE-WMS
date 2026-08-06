@@ -8,6 +8,7 @@ export interface IInventoryReportQueryResult {
 	order_qty: number
 	or_no: string
 	inv_type: InventoryType
+	storage: string
 	factory_shoes_style: string | null
 	total_storage_capacity: number
 	total_number_of_storage: number
@@ -17,6 +18,7 @@ export interface IInventoryReportQueryResult {
 	actual_inv_qty: number
 	final_inv_qty: number
 	detail: string
+	inv_year_month: string
 }
 
 export type IInventoryReportResponse = Array<

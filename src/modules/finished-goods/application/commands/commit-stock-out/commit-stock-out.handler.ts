@@ -25,7 +25,7 @@ export class CommitStockOutHandler implements ICommandHandler<CommitStockOutComm
 					size_numcode: string
 					factory_code: string
 					status: string
-					inventory_variation_type: string
+					inventory_variation_type: InventoryStorageType
 					station_no: StationNO
 				}>
 			>
@@ -42,12 +42,12 @@ export class CommitStockOutHandler implements ICommandHandler<CommitStockOutComm
 						return {
 							epc: item.getStockKeepingUnit(),
 							mo_no: item.getManufacturingOrder(),
+							po: item.getPurchaseOrder(),
 							size_numcode: item.getSize(),
 							factory_code: item.getFactoryProduce(),
-							station_no: generateStation(item.getFactoryProduce(), 'WH103'),
 							status: InventoryActions.OUTBOUND,
+							station_no: generateStation(item.getFactoryProduce(), 'WH103'),
 							inventory_variation_type: InventoryStorageType.NORMAL_EXPORT
-							// ...variationFlow.get(stockFlow)
 						}
 					})
 			})
@@ -57,7 +57,7 @@ export class CommitStockOutHandler implements ICommandHandler<CommitStockOutComm
 				attempts: 10,
 				backoff: { type: 'fixed', delay: 10_000 }
 			})
-			// await this.ioMssqlRepository.stockOut(pendingStockOutEpcs)
+
 			this.eventBus.publish(new CommittedStockOutEvent(pendingStockOutEpcs.length))
 		} catch (error) {
 			this.logger.error(error)
