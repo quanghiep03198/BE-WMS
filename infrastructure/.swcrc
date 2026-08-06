@@ -1,6 +1,6 @@
 {
 	"$schema": "https://swc.rs/schema.json",
-	"sourceMaps": true,
+	"sourceMaps": false,
 	"jsc": {
 		"parser": {
 			"syntax": "typescript",
@@ -16,5 +16,5 @@
 			"decoratorMetadata": true
 		}
 	},
-	"minify": false
+	"minify": true
 }

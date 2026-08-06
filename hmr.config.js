@@ -33,7 +33,7 @@ module.exports = function (options, webpack) {
 			...options.plugins,
 			new webpack.HotModuleReplacementPlugin(),
 			new webpack.WatchIgnorePlugin({ paths: [/\.js$/, /\.d\.ts$/] }),
-			new RunScriptWebpackPlugin({ name: options.output.filename, autoRestart: false }),
+			new RunScriptWebpackPlugin({ name: options.output.filename, autoRestart: true }),
 			new CopyPlugin({
 				patterns: [
 					{
