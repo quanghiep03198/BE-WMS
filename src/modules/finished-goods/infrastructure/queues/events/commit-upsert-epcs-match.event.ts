@@ -1,24 +1,25 @@
 import { OnQueueEvent, QueueEventsHost, QueueEventsListener } from '@nestjs/bullmq'
-import { Job } from 'bullmq'
+// Aliased because `QueueEventsListener` from '@nestjs/bullmq' is the decorator
+import { CompletedEventArgs, ErrorEventArgs } from 'bullmq'
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
-import { COMMIT_STOCK_VARIATION_QUEUE } from '..'
+import { COMMIT_UPSERT_EPC_MATCH_QUEUE } from '..'
 
-@QueueEventsListener(COMMIT_STOCK_VARIATION_QUEUE)
+// Use the generic to type the event payload with your job's return value
+
+@QueueEventsListener(COMMIT_UPSERT_EPC_MATCH_QUEUE)
 export class CommitUpsertEpcsMatchQueueEvent extends QueueEventsHost {
 	constructor(@InjectPinoLogger(CommitUpsertEpcsMatchQueueEvent.name) private readonly logger: PinoLogger) {
 		super()
 	}
 
 	@OnQueueEvent('completed')
-	onQueueCompleted(job: Job<{ pendingExchangeEpcs: string[]; targetMo: string }>) {
-		const { pendingExchangeEpcs, targetMo } = job.data
-		this.logger.debug(
-			`Job "${job.name}" completed successfully with ${pendingExchangeEpcs.length} upserted EPCs for target MO "${targetMo}"`
-		)
+	onCompleted({ jobId }: CompletedEventArgs, data) {
+		this.logger.debug(data)
+		this.logger.debug(`Job "${jobId}" completed successfully`)
 	}
 
-	@OnQueueEvent('failed')
-	onQueueFailed(job) {
-		this.logger.debug(`Job "${job.name}" failed`)
+	@OnQueueEvent('error')
+	onError(error: ErrorEventArgs) {
+		this.logger.error(error)
 	}
 }

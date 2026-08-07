@@ -70,7 +70,7 @@ export interface IIoMssqlRepository {
 
 	rollbackExchangeMoTransaction(exchangedEpcs: Array<string>): void
 
-	upsertEpcsMatch(payload: UpsertEpcsMatchData): Promise<void>
+	upsertEpcsMatch(payload: UpsertEpcsMatchData, insertOnly?: boolean): Promise<void>
 }
 
 export const IO_MSSQL_REPOSITORY = Symbol('IInoutboundMssqlRepository')

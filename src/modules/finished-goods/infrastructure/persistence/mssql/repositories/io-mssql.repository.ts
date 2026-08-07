@@ -169,7 +169,7 @@ export class InoutboundMssqlRepository implements IIoMssqlRepository {
 	}
 
 	@Transactional<TransactionalAdapterTypeOrm>(DATA_SOURCE_DATA_LAKE)
-	public async upsertEpcsMatch(payload: UpsertEpcsMatchData): Promise<void> {
+	public async upsertEpcsMatch(payload: UpsertEpcsMatchData, insertOnly: boolean = true): Promise<void> {
 		await Promise.all(
 			chunk(payload, 100).map(async (data) => {
 				const upsertSourceData = data.map((item) => ({
@@ -181,7 +181,7 @@ export class InoutboundMssqlRepository implements IIoMssqlRepository {
 					factory_name_produce: item.factory_code_produce
 				}))
 
-				await this.txHostDL.tx.query(upsertEpcsMatchQuery, [JSON.stringify(upsertSourceData)])
+				await this.txHostDL.tx.query(upsertEpcsMatchQuery, [JSON.stringify(upsertSourceData), insertOnly ? 1 : 0])
 			})
 		)
 

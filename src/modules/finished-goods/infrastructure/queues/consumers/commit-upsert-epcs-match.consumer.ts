@@ -15,6 +15,6 @@ export class CommitUpsertEpcsMatchConsumer extends WorkerHost {
 	}
 
 	public async process(job: Job<UpsertEpcsMatchData>): Promise<void> {
-		await this.ioMssqlRepository.upsertEpcsMatch(job.data)
+		await this.ioMssqlRepository.upsertEpcsMatch(job.data, false)
 	}
 }

@@ -21,6 +21,11 @@ USING (
    FROM OPENJSON(@0)
 ) AS source
 ON target.EPC_Code = source.EPC_Code
+WHEN MATCHED AND @1 = 0 THEN 
+   UPDATE SET
+   target.mo_no_actual = target.mo_no,
+      target.mo_no = source.mo_no, 
+      target.remark = source.remark
 WHEN NOT MATCHED THEN
    INSERT (
       EPC_Code, mo_no, mat_code, mo_noseq, or_no, or_custpo, 

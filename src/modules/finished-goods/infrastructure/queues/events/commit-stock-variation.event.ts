@@ -1,6 +1,5 @@
-import { StationNO } from '@modules/finished-goods/domain/utils'
 import { OnQueueEvent, QueueEventsHost, QueueEventsListener } from '@nestjs/bullmq'
-import { Job } from 'bullmq'
+import type { CompletedEventArgs, ErrorEventArgs } from 'bullmq'
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
 import { COMMIT_STOCK_VARIATION_QUEUE } from '..'
 
@@ -11,31 +10,12 @@ export class CommitStockVariationQueueEvent extends QueueEventsHost {
 	}
 
 	@OnQueueEvent('completed')
-	onQueueCompleted(
-		job: Job<
-			Array<
-				Array<{
-					epc: string
-					mo_no: string
-					size_numcode: string
-					factory_code: string
-					status: string
-					inventory_variation_type: string
-					dept_code: string
-					dept_name: string
-					storage: string
-					station_no: StationNO
-				}>
-			>,
-			void
-		>
-	) {
-		const stockedInQty = job.data.flat().length
-		this.logger.debug(`Completed with ${stockedInQty} EPCs stocked in`)
+	onCompleted({ jobId }: CompletedEventArgs) {
+		this.logger.debug(`Job "${jobId}" completed successfully`)
 	}
 
-	@OnQueueEvent('failed')
-	onQueueFailed(job) {
-		this.logger.debug(`Job "${job.name}" failed`)
+	@OnQueueEvent('error')
+	onFailed(error: ErrorEventArgs) {
+		this.logger.error(error)
 	}
 }

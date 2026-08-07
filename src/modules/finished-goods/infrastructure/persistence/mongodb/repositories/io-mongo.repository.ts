@@ -87,22 +87,22 @@ export class InoutboundMongoRepository implements IIoMongoRepository {
 		}, {})
 	}
 
-	public async getEpcsInformation(epcs: Array<string>): Promise<ElectronicProductCode[]> {
-		const matchedFinishedGoodsEpcs = await this.finishedGoodsEpcMatchModel.find({ epc: { $in: epcs } }).lean(true)
-
-		return ElectronicProductCode.createFactory(
-			matchedFinishedGoodsEpcs.map((item) => ({
-				sku: item.epc,
-				attributes: {
-					mo_no: item.mo_no,
-					factory_shoes_style: item.factory_shoes_style,
-					color_sn: item.color_sn,
-					size_numcode: item.size_numcode,
-					factory_code_produce: item.factory_code_produce,
-					po: undefined
-				}
-			}))
-		)
+	public async getEpcsInformation(epcs: Array<string>): Promise<
+		Array<{
+			epc: string
+			mo_no: string
+			factory_shoes_style: string
+			color_sn: string
+			size_numcode: string
+			factory_code_produce: string
+		}>
+	> {
+		return await this.finishedGoodsEpcMatchModel
+			.find(
+				{ epc: { $in: epcs } },
+				{ epc: 1, mo_no: 1, factory_code_produce: 1, factory_shoes_style: 1, color_sn: 1, size_numcode: 1 }
+			)
+			.lean(true)
 	}
 
 	public async getPendingStockMoveEpcs(
@@ -345,22 +345,32 @@ export class InoutboundMongoRepository implements IIoMongoRepository {
 		payload
 	}: {
 		action: StockFlow
-		payload: { epcs: ElectronicProductCode[]; deviceSerialNumber: string }
+		payload: {
+			epcs: Array<{
+				epc: string
+				mo_no: string
+				factory_shoes_style: string
+				color_sn: string
+				size_numcode: string
+				factory_code_produce: string
+			}>
+			deviceSerialNumber: string
+		}
 	}): Promise<void> {
 		const isDeduplicationEnabled = await this.cacheManager.get<boolean>('cached:rfid:enable_deduplicate_inbound_epc')
 
 		const bulkWriteOptions: AnyBulkWriteOperation<FinishedGoodsEpcDocument>[] = payload.epcs.map((item) => {
 			const operation: AnyBulkWriteOperation<FinishedGoodsEpcDocument> = {
 				updateOne: {
-					filter: { epc: item.getStockKeepingUnit(), scannable: true },
+					filter: { epc: item.epc, scannable: true },
 					update: {
-						epc: item.getStockKeepingUnit(),
-						mo_no: item.getManufacturingOrder(),
-						factory_shoes_style: item.getShoeStyle(),
-						color_sn: item.getColor(),
-						size_numcode: item.getSize(),
+						epc: item.epc,
+						mo_no: item.mo_no,
+						factory_shoes_style: item.factory_shoes_style,
+						color_sn: item.color_sn,
+						size_numcode: item.size_numcode,
 						last_scanned_at: new Date(),
-						factory_code_produce: item.getFactoryProduce(),
+						factory_code_produce: item.factory_code_produce,
 						status: FinishedGoodsEpcStatus.SCANNING,
 						...(action === 'inbound' && {
 							inbound_device_sn: payload.deviceSerialNumber,

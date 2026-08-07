@@ -9,7 +9,17 @@ export interface IIoMongoRepository {
 		payload
 	}: {
 		action: StockFlow
-		payload: { epcs: ElectronicProductCode[]; deviceSerialNumber: string }
+		payload: {
+			epcs: Array<{
+				epc: string
+				mo_no: string
+				factory_shoes_style: string
+				color_sn: string
+				size_numcode: string
+				factory_code_produce: string
+			}>
+			deviceSerialNumber: string
+		}
 	}): Promise<void>
 
 	getPendingStockMoveEpcs(
@@ -19,7 +29,16 @@ export interface IIoMongoRepository {
 		storageLocation?: string
 	): Promise<ElectronicProductCode[]>
 
-	getEpcsInformation(epcs: Array<string>): Promise<ElectronicProductCode[]>
+	getEpcsInformation(epcs: Array<string>): Promise<
+		Array<{
+			epc: string
+			mo_no: string
+			factory_shoes_style: string
+			color_sn: string
+			size_numcode: string
+			factory_code_produce: string
+		}>
+	>
 
 	getPendingShipOutEpcs(
 		purchaseOrder: string,

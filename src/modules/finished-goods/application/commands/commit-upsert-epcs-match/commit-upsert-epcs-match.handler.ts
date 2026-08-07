@@ -21,6 +21,5 @@ export class CommitUpsertEpcsMatchHandler implements ICommandHandler<CommitUpser
 			const err = error as Error
 			this.logger.error(`Failed to add job to queue: ${err.message}`, err.stack)
 		}
-		// await this.ioMssqlRepository.upsertEpcsMatch(data)
 	}
 }
