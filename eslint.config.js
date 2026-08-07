@@ -4,13 +4,14 @@ const prettierRecommended = require('eslint-plugin-prettier/recommended')
 const unusedImports = require('eslint-plugin-unused-imports')
 const globals = require('globals')
 
-module.exports = tseslint.config(
+module.exports = tseslint.defineConfig(
 	{
 		ignores: [
 			'ecosystem.config.js',
 			'src/generated/i18n.generated.ts',
 			'deprecated/**',
 			'.tmp/**',
+			'src/**/.tmp/*',
 			'hmr.config.js',
 			'webpack.config.js',
 			'eslint.config.js'
