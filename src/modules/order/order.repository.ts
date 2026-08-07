@@ -1,4 +1,6 @@
+import { SuperJson } from '@common/utils'
 import { DATA_SOURCE_ERP } from '@databases/constants'
+import { SizeNumber } from '@modules/finished-goods/domain/value-objects/size-number.vo'
 import { Injectable } from '@nestjs/common'
 import { InjectDataSource } from '@nestjs/typeorm'
 import { DataSource } from 'typeorm'
@@ -16,7 +18,10 @@ export class OrderRepository implements IOrderRepository {
 			.then((records) =>
 				records.map((record) => ({
 					...record,
-					sizes: JSON.parse(record.sizes) as Array<SizeRun>
+					sizes: SuperJson.parse<Array<SizeRun>>(record.sizes).map((size) => ({
+						size_numcode: new SizeNumber(size.size_numcode).normalize('padleft'),
+						size_qty: size.size_qty
+					}))
 				}))
 			)
 

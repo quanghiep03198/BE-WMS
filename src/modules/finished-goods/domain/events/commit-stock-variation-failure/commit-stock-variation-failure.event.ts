@@ -1,9 +1,13 @@
 import { IEvent } from '@nestjs/cqrs'
+import { StockFlow } from '../../types'
 import { ElectronicProductCode } from '../../value-objects/epc.vo'
 
-export class CommitStockInFailureEvent implements IEvent {
+/**
+ * @deprecated
+ */
+export class CommitStockVariationFailureEvent implements IEvent {
 	constructor(
-		public readonly stationNo: 'WH101' | 'WH103',
+		public readonly stockFlow: StockFlow,
 		public readonly scannedEpcs: Array<ElectronicProductCode>
 	) {}
 }

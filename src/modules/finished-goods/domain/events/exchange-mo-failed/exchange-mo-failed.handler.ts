@@ -1,4 +1,4 @@
-import { FinishedGoodsGateway } from '@modules/finished-goods/presentation/gateways/inoutbound.gateway'
+import { FinishedGoodsGateway } from '@modules/finished-goods/presentation/gateways/finished-goods.gateway'
 import { EventsHandler, IEventHandler } from '@nestjs/cqrs'
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
 import { ExchangeMoFailedEvent } from './exchange-mo-failed.event'

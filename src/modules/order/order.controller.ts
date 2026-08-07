@@ -74,7 +74,7 @@ export class OrderController {
 	}
 
 	@RouteHandler({
-		endpoint: '/command-number/:commandNumber',
+		endpoint: '/manufacturing-order/:mo',
 		method: HttpMethod.GET
 	})
 	@RequireAuthorized(
@@ -83,9 +83,8 @@ export class OrderController {
 		UserRole.DG_WAREHOUSE_STAFF,
 		UserRole.INDUSTRIAL_ENGINEERING_STAFF
 	)
-	async getOrderDetail(@Param('commandNumber') commandNumber: string) {
-		const { sizes, ...order } = await this.orderService.getManufacturingOrderSizeRun(commandNumber)
-		return { orders: order, sizes }
+	async getOrderDetail(@Param('mo') mo: string) {
+		return await this.orderService.getManufacturingOrderSizeRun(mo)
 
 		// const [orders, sizes] = await Promise.all([
 		// 	this.orderService.getCustOrderByCommandNumber(commandNumber),

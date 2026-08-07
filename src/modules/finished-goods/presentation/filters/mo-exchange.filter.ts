@@ -7,12 +7,14 @@ import {
 import { ArgumentsHost, Catch, ExceptionFilter, HttpException, HttpStatus } from '@nestjs/common'
 import { I18nContext } from 'nestjs-i18n'
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
+import { FinishedGoodsGateway } from '../gateways/finished-goods.gateway'
 
 @Catch()
 export class MoExchageExceptionFilter implements ExceptionFilter {
 	constructor(
 		@InjectPinoLogger(MoExchageExceptionFilter.name)
-		private readonly logger: PinoLogger
+		private readonly logger: PinoLogger,
+		private readonly finishedGoodsGateway: FinishedGoodsGateway
 	) {}
 
 	catch(exception: unknown, host: ArgumentsHost) {
@@ -44,6 +46,8 @@ export class MoExchageExceptionFilter implements ExceptionFilter {
 				break
 			}
 		}
+
+		this.finishedGoodsGateway.server.emit('finished_goods:upserted_epcs_match:failed', message)
 
 		throw new HttpException(message, status)
 	}

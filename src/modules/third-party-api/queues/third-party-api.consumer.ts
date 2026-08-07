@@ -16,7 +16,7 @@ import {
 } from '@modules/finished-goods/application/ports/io-mssql.repository.port'
 import { UpsertEpcsMatchData } from '@modules/finished-goods/domain/types'
 import { SizeNumber } from '@modules/finished-goods/domain/value-objects/size-number.vo'
-import { FinishedGoodsGateway } from '@modules/finished-goods/presentation/gateways/inoutbound.gateway'
+import { FinishedGoodsGateway } from '@modules/finished-goods/presentation/gateways/finished-goods.gateway'
 import { ORDER_REPOSITORY } from '@modules/order/order.constant'
 import { IOrderRepository } from '@modules/order/order.repository.interface'
 import { TManufacturingOrder } from '@modules/order/types'

@@ -9,7 +9,7 @@ import { Job } from 'bullmq'
 import { COMMIT_STOCK_OUT_QUEUE } from '..'
 import { StationNO } from '../../../domain/utils'
 
-@Processor(COMMIT_STOCK_OUT_QUEUE, { concurrency: 5 })
+@Processor(COMMIT_STOCK_OUT_QUEUE)
 export class CommitStockOutConsumer extends WorkerHost {
 	constructor(@Inject(IO_MSSQL_REPOSITORY) private readonly ioMssqlRepository: IIoMssqlRepository) {
 		super()

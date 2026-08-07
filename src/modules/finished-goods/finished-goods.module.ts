@@ -66,16 +66,16 @@ import { FinishedGoodsEntitySubscribers } from './infrastructure/persistence/mss
 import {
 	BULK_WRITE_INBOUND_EPCS_QUEUE,
 	BULK_WRITE_OUTBOUND_EPCS_QUEUE,
+	COMMIT_EXCHANGE_MO_QUEUE,
 	COMMIT_STOCK_OUT_QUEUE,
 	COMMIT_STOCK_VARIATION_QUEUE,
-	IMPORT_INOUTBOUND_EPCS_QUEUE,
-	ROLLBACK_EXCHANGE_MO_TX_QUEUE,
-	ROLLBACK_STOCK_TX_QUEUE
+	COMMIT_UPSERT_EPC_MATCH_QUEUE,
+	IMPORT_INOUTBOUND_EPCS_QUEUE
 } from './infrastructure/queues'
 import { FinishedGoodsConsumers } from './infrastructure/queues/consumers'
 import { FinsishedGoodsQueueEvents } from './infrastructure/queues/events'
 import { FinishedGoodsControllers } from './presentation/controllers'
-import { FinishedGoodsGateway } from './presentation/gateways/inoutbound.gateway'
+import { FinishedGoodsGateway } from './presentation/gateways/finished-goods.gateway'
 import { FinishedGoodsListeners } from './presentation/listeners'
 
 @Module({
@@ -106,18 +106,18 @@ import { FinishedGoodsListeners } from './presentation/listeners'
 			}
 		}),
 		BullModule.registerQueue({
-			name: ROLLBACK_EXCHANGE_MO_TX_QUEUE,
+			name: COMMIT_EXCHANGE_MO_QUEUE,
 			defaultJobOptions: {
-				attempts: 5,
+				attempts: 10,
 				removeOnComplete: { count: 10 },
 				removeOnFail: { count: 100 },
 				backoff: { type: 'fixed', delay: 3000 }
 			}
 		}),
 		BullModule.registerQueue({
-			name: ROLLBACK_STOCK_TX_QUEUE,
+			name: COMMIT_UPSERT_EPC_MATCH_QUEUE,
 			defaultJobOptions: {
-				attempts: 5,
+				attempts: 10,
 				removeOnComplete: { count: 10 },
 				removeOnFail: { count: 100 },
 				backoff: { type: 'fixed', delay: 3000 }

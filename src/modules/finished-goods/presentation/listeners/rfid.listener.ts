@@ -14,7 +14,7 @@ import {
 	FinishedGoodsEpcModel
 } from '../../infrastructure/persistence/mongodb/schemas/finished-goods-epc.schema'
 import { PostReaderDataDTO } from '../dto/rfid-shared.dto'
-import { FinishedGoodsGateway } from '../gateways/inoutbound.gateway'
+import { FinishedGoodsGateway } from '../gateways/finished-goods.gateway'
 
 @Injectable()
 export class RFIDListener {

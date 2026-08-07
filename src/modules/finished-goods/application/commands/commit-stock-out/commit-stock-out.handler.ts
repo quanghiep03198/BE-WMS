@@ -1,7 +1,5 @@
 // import { IIoMongoRepository as IIoMssqlRepository } from '@modules/finished-goods/application/ports/io-mongo.repository.port'
 import { InventoryActions, InventoryStorageType } from '@modules/finished-goods/domain/constants'
-import { CommitStockInFailureEvent } from '@modules/finished-goods/domain/events/commit-stock-in-failure/commit-stock-in-failure.event'
-import { CommittedStockOutEvent } from '@modules/finished-goods/domain/events/committed-stock-out/committed-stock-out.event'
 import { generateStation, StationNO } from '@modules/finished-goods/domain/utils'
 import { CommandHandler, EventBus, ICommandHandler } from '@nestjs/cqrs'
 import { chunk } from 'lodash'
@@ -57,12 +55,8 @@ export class CommitStockOutHandler implements ICommandHandler<CommitStockOutComm
 				attempts: 10,
 				backoff: { type: 'fixed', delay: 10_000 }
 			})
-
-			this.eventBus.publish(new CommittedStockOutEvent(pendingStockOutEpcs.length))
 		} catch (error) {
 			this.logger.error(error)
-			this.eventBus.publish(new CommitStockInFailureEvent('WH103', pendingStockOutEpcs))
-
 			throw error
 		}
 	}

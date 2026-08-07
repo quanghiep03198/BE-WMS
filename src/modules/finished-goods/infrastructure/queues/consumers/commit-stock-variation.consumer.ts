@@ -8,7 +8,7 @@ import { Job } from 'bullmq'
 import { COMMIT_STOCK_VARIATION_QUEUE } from '..'
 import { StationNO } from '../../../domain/utils'
 
-@Processor(COMMIT_STOCK_VARIATION_QUEUE, { concurrency: 5 })
+@Processor(COMMIT_STOCK_VARIATION_QUEUE)
 export class CommitStockVariationConsumer extends WorkerHost {
 	constructor(@Inject(IO_MSSQL_REPOSITORY) private readonly inoutboundMssqlRepository: IIoMssqlRepository) {
 		super()

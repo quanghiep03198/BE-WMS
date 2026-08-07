@@ -1,8 +1,11 @@
-import { FinishedGoodsGateway } from '@modules/finished-goods/presentation/gateways/inoutbound.gateway'
+import { FinishedGoodsGateway } from '@modules/finished-goods/presentation/gateways/finished-goods.gateway'
 import { EventsHandler, IEventHandler } from '@nestjs/cqrs'
 import { I18nContext, I18nService } from 'nestjs-i18n'
 import { CommittedStockOutEvent } from './committed-stock-out.event'
 
+/**
+ * @deprecated
+ */
 @EventsHandler(CommittedStockOutEvent)
 export class CommittedStockOutHandler implements IEventHandler<CommittedStockOutEvent> {
 	constructor(

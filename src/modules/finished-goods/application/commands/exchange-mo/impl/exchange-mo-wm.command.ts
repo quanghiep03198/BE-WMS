@@ -7,7 +7,7 @@ import { Command } from '@nestjs/cqrs'
  */
 export class ExchangeMoWmCommand extends Command<void> {
 	constructor(
-		public readonly pendingExchangeSkus: Array<string>,
+		public readonly pendingExchangeEpcs: Array<string>,
 		public readonly targetMo: string
 	) {
 		super()

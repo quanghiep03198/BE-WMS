@@ -12,12 +12,14 @@ import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
 import { StockInCommand } from '../../application/commands/stock-in/stock-in.command'
 import { UpsertStockOutDTO, upsertStockOutValidator } from '../dto/rfid-outbound.dto'
 import { StockExceptionFilter } from '../filters/stock-exception.filter'
+import { FinishedGoodsGateway } from '../gateways/finished-goods.gateway'
 
 @Controller('finished-goods')
 export class StockController {
 	constructor(
 		@InjectPinoLogger(StockController.name) private readonly logger: PinoLogger,
-		private readonly commandBus: CommandBus
+		private readonly commandBus: CommandBus,
+		private readonly finishedGoodsGateway: FinishedGoodsGateway
 	) {}
 
 	@RouteHandler({

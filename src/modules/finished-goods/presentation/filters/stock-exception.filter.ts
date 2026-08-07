@@ -7,12 +7,14 @@ import { InsufficientInventoryException } from '@modules/finished-goods/domain/e
 import { ArgumentsHost, Catch, ExceptionFilter, HttpException, HttpStatus } from '@nestjs/common'
 import { I18nContext } from 'nestjs-i18n'
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
+import { FinishedGoodsGateway } from '../gateways/finished-goods.gateway'
 
 @Catch()
 export class StockExceptionFilter implements ExceptionFilter {
 	constructor(
 		@InjectPinoLogger(StockExceptionFilter.name)
-		private readonly logger: PinoLogger
+		private readonly logger: PinoLogger,
+		private readonly finishedGoodsGateway: FinishedGoodsGateway
 	) {}
 
 	catch(exception: unknown, host: ArgumentsHost) {
@@ -45,6 +47,7 @@ export class StockExceptionFilter implements ExceptionFilter {
 			default:
 				break
 		}
+		this.finishedGoodsGateway.server.emit('stock:update-variation:failed', message)
 		throw new HttpException(message, status, { cause })
 	}
 }

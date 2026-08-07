@@ -1,7 +1,7 @@
 import { EventsHandler, IEventHandler } from '@nestjs/cqrs'
 import { I18nService } from 'nestjs-i18n'
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
-import { FinishedGoodsGateway } from './../../../presentation/gateways/inoutbound.gateway'
+import { FinishedGoodsGateway } from '../../../presentation/gateways/finished-goods.gateway'
 import { RecalledFromStockEvent } from './recalled-from-stock.event'
 
 @EventsHandler(RecalledFromStockEvent)

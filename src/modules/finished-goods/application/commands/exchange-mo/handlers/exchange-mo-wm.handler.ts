@@ -1,37 +1,24 @@
-import { IO_MSSQL_REPOSITORY } from '@modules/finished-goods/application/ports/io-mssql.repository.port'
-import { ExchangeMoFailedEvent } from '@modules/finished-goods/domain/events/exchange-mo-failed/exchange-mo-failed.event'
-import { FinishedGoodsGateway } from '@modules/finished-goods/presentation/gateways/inoutbound.gateway'
-import { Inject } from '@nestjs/common'
-import { CommandHandler, EventBus, ICommandHandler } from '@nestjs/cqrs'
-import { I18nContext, I18nService } from 'nestjs-i18n'
+import { COMMIT_EXCHANGE_MO_QUEUE } from '@modules/finished-goods/infrastructure/queues'
+import { InjectQueue } from '@nestjs/bullmq'
+import { CommandHandler, ICommandHandler } from '@nestjs/cqrs'
+import { Queue } from 'bullmq'
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
-import { IIoMongoRepository as IIoMssqlRepository } from '../../../ports/io-mongo.repository.port'
 import { ExchangeMoWmCommand } from '../impl/exchange-mo-wm.command'
 
 @CommandHandler(ExchangeMoWmCommand)
 export class ExchangeMoWmHandler implements ICommandHandler<ExchangeMoWmCommand> {
 	constructor(
 		@InjectPinoLogger(ExchangeMoWmHandler.name) private readonly logger: PinoLogger,
-		@Inject(IO_MSSQL_REPOSITORY) private readonly ioMssqlRepository: IIoMssqlRepository,
-		private readonly i18nService: I18nService,
-		private readonly finishedGoodsGateway: FinishedGoodsGateway,
-		private readonly eventBus: EventBus
+		@InjectQueue(COMMIT_EXCHANGE_MO_QUEUE)
+		private readonly commitExchangeMoQueue: Queue<{ pendingExchangeEpcs: string[]; targetMo: string }>
 	) {}
 
 	public async execute(command: ExchangeMoWmCommand): Promise<void> {
 		try {
-			await this.ioMssqlRepository.exchangeManufacturingOrder(command.pendingExchangeSkus, command.targetMo)
-			this.finishedGoodsGateway.server.emit(
-				'exchange_mo:success',
-				this.i18nService.t('inoutbound.notification.exchange_mo_success', { lang: I18nContext.current()?.lang })
-			)
+			// TODO: add to bullMQ to handle the exchange manufacturing order process in the background
+			await this.commitExchangeMoQueue.add(`EXCHANGE_MO:${command.targetMo}`, command)
 		} catch (error) {
 			this.logger.error(error)
-			this.finishedGoodsGateway.server.emit(
-				'exchange_mo:error',
-				this.i18nService.t('inoutbound.notification.exchange_mo_failed', { lang: I18nContext.current()?.lang })
-			)
-			this.eventBus.publish(new ExchangeMoFailedEvent(command.pendingExchangeSkus, command.targetMo))
 		}
 	}
 }

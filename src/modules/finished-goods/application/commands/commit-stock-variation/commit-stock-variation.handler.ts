@@ -1,6 +1,4 @@
 import { InventoryActions, InventoryStorageType } from '@modules/finished-goods/domain/constants'
-import { CommitStockInFailureEvent } from '@modules/finished-goods/domain/events/commit-stock-in-failure/commit-stock-in-failure.event'
-import { CommitedStockIn } from '@modules/finished-goods/domain/events/committed-stock-in/commited-stock-in.event'
 import { StockFlow } from '@modules/finished-goods/domain/types'
 import { generateStation, StationNO } from '@modules/finished-goods/domain/utils'
 import { COMMIT_STOCK_VARIATION_QUEUE } from '@modules/finished-goods/infrastructure/queues'
@@ -86,10 +84,8 @@ export class CommitStockVariationHandler implements ICommandHandler<CommitStockV
 				attempts: 10,
 				backoff: { type: 'fixed', delay: 10_000 }
 			})
-			this.eventBus.publish(new CommitedStockIn(pendingInboundEpcs.length))
 		} catch (error) {
 			this.logger.error(error)
-			this.eventBus.publish(new CommitStockInFailureEvent('WH101', pendingInboundEpcs))
 		}
 	}
 }

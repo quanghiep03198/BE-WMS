@@ -1,5 +1,5 @@
-import { CommitStockInFailureHandler } from './commit-stock-in-failure/commit-stock-in-failure.handler'
 import { CommitStockOutFailureHandler } from './commit-stock-out-failure/commit-stock-out.handler'
+import { CommitStockVariationFailureHandler } from './commit-stock-variation-failure/commit-stock-variation-failure.handler'
 import { CommitedStockInHandler } from './committed-stock-in/commited-stock-in.handler'
 import { CommittedStockOutHandler } from './committed-stock-out/commited-stock-out.handler'
 import { ExchangeMoFailedHandler } from './exchange-mo-failed/exchange-mo-failed.handler'
@@ -9,7 +9,7 @@ import { StockedOutHandler } from './stocked-out/stocked-out.handler'
 import { UpsertedEpcsMatchHandler } from './upserted-epcs-match/upserted-epcs-match.handler'
 
 export const FinishedGoodsEventHandlers = [
-	CommitStockInFailureHandler,
+	CommitStockVariationFailureHandler,
 	CommitStockOutFailureHandler,
 	CommitedStockInHandler,
 	CommittedStockOutHandler,

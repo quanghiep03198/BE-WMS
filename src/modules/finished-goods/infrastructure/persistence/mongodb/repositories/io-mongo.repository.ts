@@ -809,25 +809,49 @@ export class InoutboundMongoRepository implements IIoMongoRepository {
 
 	@Transactional<TransactionalAdapterMongoose>(DATA_WAREHOUSE_CONNECTION)
 	public async updateScanningEpcsMatch(data: UpsertEpcsMatchData): Promise<void> {
-		const bulkWriteOperations: AnyBulkWriteOperation<FinishedGoodsEpcDocument>[] = data.map((item) => ({
-			updateOne: {
-				filter: { epc: item.epc },
-				update: {
-					mo_no: item.mo_no,
-					factory_shoes_style: item.factory_shoes_style,
-					color_sn: item.color_sn,
-					size_numcode: item.size_numcode,
-					factory_code_produce: item.factory_code_produce
+		await this.finishedGoodsEpcMatchModel.bulkWrite(
+			data.map((item) => ({
+				updateOne: {
+					filter: { epc: item.epc },
+					update: [
+						{
+							$set: { old_mo_no: '$mo_no' }
+						},
+						{
+							$set: {
+								mo_no: item.mo_no,
+								factory_code_produce: item.factory_code_produce,
+								cust_shoes_style: item.cust_shoes_style,
+								factory_shoes_style: item.factory_shoes_style,
+								color_sn: item.color_sn,
+								size_numcode: item.size_numcode
+							}
+						}
+					]
 				}
-			}
-		}))
+			}))
+		)
 
-		await this.finishedGoodsEpcModel.bulkWrite(bulkWriteOperations, {
-			session: this.txHost.tx,
-			writeConcern: { w: 'majority' },
-			ordered: false,
-			retryWrites: true,
-			timestamps: true
-		})
+		await this.finishedGoodsEpcModel.bulkWrite(
+			data.map((item) => ({
+				updateOne: {
+					filter: { epc: item.epc },
+					update: {
+						mo_no: item.mo_no,
+						factory_shoes_style: item.factory_shoes_style,
+						color_sn: item.color_sn,
+						size_numcode: item.size_numcode,
+						factory_code_produce: item.factory_code_produce
+					}
+				}
+			})),
+			{
+				session: this.txHost.tx,
+				writeConcern: { w: 'majority' },
+				ordered: false,
+				retryWrites: true,
+				timestamps: true
+			}
+		)
 	}
 }

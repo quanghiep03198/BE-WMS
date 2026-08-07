@@ -14,20 +14,16 @@ import {
 import { UserRole } from '@modules/user/constants'
 import { Body, Controller, Headers, HttpStatus, Query, UseFilters } from '@nestjs/common'
 import { CommandBus, QueryBus } from '@nestjs/cqrs'
-import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
 import { ExchangeMoRmCommand } from '../../application/commands/exchange-mo/impl/exchange-mo-rm.command'
 import { UpsertEpcsMatchCommand } from '../../application/commands/upsert-epcs-match/upsert-epcs-match.command'
 import { SearchExchangableMoQuery } from '../../application/queries/search-exchangable-mo/search-exchangable-mo.query'
 import { MoExchageExceptionFilter } from '../filters/mo-exchange.filter'
-import { FinishedGoodsGateway } from '../gateways/inoutbound.gateway'
 
 @Controller('finished-goods')
 export class MoExchangeController {
 	constructor(
 		private readonly queryBus: QueryBus,
-		private readonly commandBus: CommandBus,
-		private readonly finishedGoodsGateway: FinishedGoodsGateway,
-		@InjectPinoLogger(MoExchangeController.name) private readonly logger: PinoLogger
+		private readonly commandBus: CommandBus
 	) {}
 
 	@RouteHandler({
