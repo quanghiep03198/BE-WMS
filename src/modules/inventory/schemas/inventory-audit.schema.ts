@@ -24,34 +24,19 @@ export class MoInventoryAudit {
 	year_month: string
 
 	@Prop({ type: String, required: true })
-	factory_code_produce: string
-
-	@Prop({ type: String, required: true })
-	factory_shoes_style: string
-
-	@Prop({ type: String, required: true })
-	cust_shoes_style: string
-
-	@Prop({ type: String, required: true })
-	color_sn: string
+	inventory_closure_status: 'completed' | 'pending'
 
 	@Prop({ type: Array, required: true, default: [] })
 	storage_locations: Array<string>
 
-	// @Prop({ type: Number, required: true })
-	// total_storages: number
-
-	// @Prop({ type: Number, required: true })
-	// total_storage_capacity: number
-
 	@Prop({ type: Object, required: true, default: {} })
-	inventory_varation: Record<
+	inventory_variation: Record<
 		string,
 		{
 			order_qty: number
 			beginning_inventory_qty: number
 			stocked_in_qty: number
-			recalled_qty: number
+			shipped_out_qty: number
 			supplemental_stocked_in_qty: number
 			supplemental_shipped_out_qty: number
 		}
@@ -62,6 +47,32 @@ export const MoInventoryAuditSchema = SchemaFactory.createForClass(MoInventoryAu
 
 MoInventoryAuditSchema.index({ mo_no: 1, year_month: 1 }, { unique: true })
 
-export type MoInventoryAuditDocument = HydratedDocument<MoInventoryAudit>
+MoInventoryAuditSchema.virtual('mo_attrs', {
+	ref: 'MoInventoryVariation',
+	localField: 'mo_no',
+	foreignField: 'mo_no',
+	justOne: true
+})
+
+export type MoInventoryAuditDocument = HydratedDocument<MoInventoryAudit> & {
+	mo_attrs: {
+		mo_no: string
+		order_qty: number
+		brand_name: string
+		cust_shoes_style: string
+		factory_shoes_style: string
+		color_sn: string
+		inventory_variation: Record<
+			string,
+			{
+				order_qty: number
+				stocked_in_qty: number
+				total_recall_tx: number
+				total_return_tx: number
+				shipped_out_qty: number
+			}
+		>
+	}
+}
 
 export type MoInventoryAuditModel = Model<MoInventoryAuditDocument>

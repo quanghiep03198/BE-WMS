@@ -1,6 +1,7 @@
 import { OnQueueEvent, QueueEventsHost, QueueEventsListener } from '@nestjs/bullmq'
 // Aliased because `QueueEventsListener` from '@nestjs/bullmq' is the decorator
-import { CompletedEventArgs, ErrorEventArgs } from 'bullmq'
+
+import type { QueueEventsListener as IQueueEventsListener } from 'bullmq'
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
 import { COMMIT_UPSERT_EPC_MATCH_QUEUE } from '..'
 
@@ -13,13 +14,17 @@ export class CommitUpsertEpcsMatchQueueEvent extends QueueEventsHost {
 	}
 
 	@OnQueueEvent('completed')
-	onCompleted({ jobId }: CompletedEventArgs, data) {
-		this.logger.debug(data)
+	onCompleted({ jobId }: FirstParameter<IQueueEventsListener['completed']>) {
 		this.logger.debug(`Job "${jobId}" completed successfully`)
 	}
 
 	@OnQueueEvent('error')
-	onError(error: ErrorEventArgs) {
+	onError(error: FirstParameter<IQueueEventsListener['error']>) {
 		this.logger.error(error)
+	}
+
+	@OnQueueEvent('failed')
+	onFailed({ jobId, failedReason }: FirstParameter<IQueueEventsListener['failed']>) {
+		this.logger.error(`Job "${jobId}" failed with reason: ${failedReason}`)
 	}
 }

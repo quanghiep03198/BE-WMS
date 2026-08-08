@@ -2,14 +2,10 @@ import { Processor, WorkerHost } from '@nestjs/bullmq'
 // import { Logger } from '@nestjs/common'
 import { SuperJson } from '@common/utils'
 import { FactoryCode } from '@modules/department/constants'
-import { CACHE_MANAGER } from '@nestjs/cache-manager'
-import { Inject } from '@nestjs/common'
-import { Job } from 'bullmq'
-import { Cache } from 'cache-manager'
-import { format } from 'date-fns'
-import { groupBy } from 'lodash'
-import { PinoLogger } from 'nestjs-pino'
-// import { RFIDMatchCustomerEntity } from '../../rfid/infrastructure/entities/rfid-customer-match.entity'
+import {
+	IIoMongoRepository,
+	IO_MONGO_REPOSITORY
+} from '@modules/finished-goods/application/ports/io-mongo.repository.port'
 import {
 	IIoMssqlRepository,
 	IO_MSSQL_REPOSITORY
@@ -20,6 +16,13 @@ import { FinishedGoodsGateway } from '@modules/finished-goods/presentation/gatew
 import { ORDER_REPOSITORY } from '@modules/order/order.constant'
 import { IOrderRepository } from '@modules/order/order.repository.interface'
 import { TManufacturingOrder } from '@modules/order/types'
+import { CACHE_MANAGER } from '@nestjs/cache-manager'
+import { Inject } from '@nestjs/common'
+import { Job } from 'bullmq'
+import { Cache } from 'cache-manager'
+import { format } from 'date-fns'
+import { groupBy } from 'lodash'
+import { PinoLogger } from 'nestjs-pino'
 import { THIRD_PARTY_API_SYNC } from '../constants'
 import { SyncProcessState, ThirdPartyApiResponseData } from '../interfaces/third-party-api.interface'
 import { DeckersOAuth2Strategy } from '../strategies/deckers-oauth2.strategy'
@@ -31,6 +34,7 @@ export class ThirdPartyApiConsumer extends WorkerHost {
 
 	constructor(
 		@Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
+		@Inject(IO_MONGO_REPOSITORY) private readonly ioMongoRepository: IIoMongoRepository,
 		@Inject(IO_MSSQL_REPOSITORY) private readonly ioMssqlRepository: IIoMssqlRepository,
 		@Inject(ORDER_REPOSITORY) private readonly orderRepository: IOrderRepository,
 		private readonly logger: PinoLogger,
@@ -205,7 +209,8 @@ export class ThirdPartyApiConsumer extends WorkerHost {
 				remark: `[${currentTimestamp}] Info: Synchronized from Deckers API with command number "${item.commandNumber}"`
 			}
 		})
-		await this.ioMssqlRepository.upsertEpcsMatch(payload)
+		await this.ioMongoRepository.upsertEpcsMatch(payload, true)
+		await this.ioMssqlRepository.upsertEpcsMatch(payload, true)
 	}
 
 	private async executeSync(data: string[], accessToken: string) {

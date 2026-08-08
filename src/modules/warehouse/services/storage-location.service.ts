@@ -18,6 +18,16 @@ export class StorageLocationService extends BaseAbstractService<StorageLocationE
 		return await this.storageLocationRepository.findBy({ warehouse_num: warehouseCode, cofactory_code: factoryCode })
 	}
 
+	async getStorageSummary() {
+		return await this.storageLocationRepository
+			.createQueryBuilder()
+			.select([
+				/* SQL */ `SUM(storage_capacity) AS total_storage_capacity`,
+				/* SQL */ `COUNT(DISTINCT storage_num) AS total_number_of_storage`
+			])
+			.getRawOne()
+	}
+
 	async deleteMany(id: Array<number>) {
 		return await this.storageLocationRepository.delete({ id: In(id) })
 	}

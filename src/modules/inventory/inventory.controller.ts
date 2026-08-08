@@ -1,5 +1,5 @@
 import { CommonRequestHeader } from '@common/constants'
-import { HttpMethod, RequireAuthorized, RouteHandler, User } from '@common/decorators'
+import { HttpMethod, RequireAuthorized, RouteHandler } from '@common/decorators'
 import { HttpExceptionFilter } from '@common/filters'
 import { ZodValidationPipe } from '@common/pipes'
 import { InjectQueue } from '@nestjs/bullmq'
@@ -45,10 +45,9 @@ export class InventoryController {
 	@RouteHandler({ endpoint: 'audit', method: HttpMethod.GET })
 	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF, UserRole.INDUSTRIAL_ENGINEERING_STAFF)
 	async getMonthlyInventoryReport(
-		@Headers(CommonRequestHeader.FACTORY_CODE) factoryCode: string,
 		@Query('month:eq', new DefaultValuePipe(format(new Date(), 'yyyy-MM'))) month: string
 	) {
-		return await this.inventoryReportService.getMonthlyInventoryAudit(format(new Date(month), 'yyyyMM'), factoryCode)
+		return await this.inventoryReportService.getMonthlyInventoryAudit(month)
 	}
 
 	@Get('audit/export')
@@ -67,14 +66,10 @@ export class InventoryController {
 	@RouteHandler({ endpoint: 'audit/update', method: HttpMethod.PATCH, statusCode: HttpStatus.CREATED })
 	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
 	async updateInventoryReport(
-		@Query(new ZodValidationPipe(updateInventoryReportQuery)) queries: UpdateInventoryReportQueryDTO,
-		@Body(new ZodValidationPipe(updateInventoryReportPayload)) payload: UpdateInventoryReportDTO,
-		@User('username') username: string
+		@Query(new ZodValidationPipe(updateInventoryReportQuery)) filterQuery: UpdateInventoryReportQueryDTO,
+		@Body(new ZodValidationPipe(updateInventoryReportPayload)) update: UpdateInventoryReportDTO
 	) {
-		return await this.inventoryReportService.bulkUpdateInventoryAudit(
-			queries,
-			payload.map((item) => ({ ...item, user_code_updated: username, user_name_updated: username }))
-		)
+		return await this.inventoryReportService.updateInventoryAudit(filterQuery, update)
 	}
 
 	@RouteHandler({ endpoint: 'audit/sync', method: HttpMethod.POST, statusCode: HttpStatus.CREATED })

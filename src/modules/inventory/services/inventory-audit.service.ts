@@ -1,24 +1,21 @@
 import { ExcelColorPalette } from '@common/constants/excel-color-palette'
 import { applyCommonStyles, type AutoFitColumnOptions, autoFitColumns } from '@common/helpers'
-import { SuperJson } from '@common/utils'
-import { DATA_SOURCE_DATA_LAKE } from '@databases/constants'
+import { DATA_SOURCE_DATA_LAKE, DATA_WAREHOUSE_CONNECTION } from '@databases/constants'
 import { OrderService } from '@modules/order/order.service'
-import { UserEntity } from '@modules/user/entities/user.entity'
+import { Transactional } from '@nestjs-cls/transactional'
+import { TransactionalAdapterMongoose } from '@nestjs-cls/transactional-adapter-mongoose'
 import { Injectable } from '@nestjs/common'
-import { OnEvent } from '@nestjs/event-emitter'
+import { InjectModel } from '@nestjs/mongoose'
 import { InjectDataSource } from '@nestjs/typeorm'
-import { addMonths, format } from 'date-fns'
+import { format } from 'date-fns'
 import { Workbook } from 'exceljs'
-import { intersection, isEmpty, isNil } from 'lodash'
 import { I18nContext, I18nService } from 'nestjs-i18n'
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
-import { Brackets, DataSource, Equal, In, IsNull, Not, UpdateResult } from 'typeorm'
-import { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity'
-import { InventoryType } from '../constants'
+import { DataSource } from 'typeorm'
 import { UpdateInventoryReportDTO, UpdateInventoryReportQueryDTO } from '../dto/inventory-report.dto'
 import { InventoryAuditEntity } from '../entities/inventory-report.entity'
-import { IInventoryReportQueryResult, IInventoryReportResponse, IUpsertInventoryEventPayload } from '../interfaces'
-import inventoryReportQuery from '../sql/inventory-audit.sql'
+import { IInventoryReportResponse } from '../interfaces'
+import { MoInventoryAudit, MoInventoryAuditModel } from '../schemas/inventory-audit.schema'
 import upsertOutboundInventoryQuery from '../sql/upsert-outbound-inventory-audit.sql'
 
 @Injectable()
@@ -27,242 +24,106 @@ export class InventoryAuditService {
 
 	constructor(
 		@InjectDataSource(DATA_SOURCE_DATA_LAKE) private readonly dataSource: DataSource,
+		@InjectModel(MoInventoryAudit.name, DATA_WAREHOUSE_CONNECTION)
+		private readonly moInventoryAuditModel: MoInventoryAuditModel,
 		@InjectPinoLogger(InventoryAuditEntity.name) private readonly logger: PinoLogger,
 		private readonly orderService: OrderService,
 		private readonly i18nService: I18nService
 	) {}
 
-	public async getMonthlyInventoryAudit(month, factoryCode): Promise<IInventoryReportResponse> {
-		const data = await this.dataSource.query<IInventoryReportQueryResult[]>(inventoryReportQuery, [
-			month,
-			factoryCode
-		])
+	public async getMonthlyInventoryAudit(month): Promise<IInventoryReportResponse> {
+		const data = await this.moInventoryAuditModel
+			.find({ year_month: month })
+			.lean({ virtuals: true })
+			.populate(
+				'mo_attrs',
+				'brand_name factory_code_produce factory_shoes_style cust_shoes_style color_sn order_qty'
+			)
+			.exec()
+
 		return data.map((item) => {
+			const inventoryVariation = Object.entries(item.inventory_variation)
+				.sort(([size1], [size2]) => Number.parseFloat(size1) - Number.parseFloat(size2))
+				.map(([size, variation]) => {
+					return {
+						size_numcode: size,
+						order_qty: variation.order_qty,
+						beginning_inventory_qty: variation.beginning_inventory_qty,
+						stocked_in_qty: variation.stocked_in_qty,
+						shipped_out_qty: variation.shipped_out_qty,
+						supplemental_stocked_in_qty: variation.supplemental_stocked_in_qty,
+						supplemental_shipped_out_qty: variation.supplemental_shipped_out_qty,
+						final_inventory_qty:
+							variation.beginning_inventory_qty +
+							variation.stocked_in_qty +
+							variation.supplemental_stocked_in_qty -
+							variation.shipped_out_qty -
+							variation.supplemental_shipped_out_qty
+					}
+				})
+
+			const totalBeginningInventoryQty = inventoryVariation.reduce(
+				(acc, curr) => acc + curr.beginning_inventory_qty,
+				0
+			)
+			const totalStockedInQty = inventoryVariation.reduce((acc, curr) => acc + curr.stocked_in_qty, 0)
+			const totalShippedOutQty = inventoryVariation.reduce((acc, curr) => acc + curr.shipped_out_qty, 0)
+			const totalSupplementalStockedInQty = inventoryVariation.reduce(
+				(acc, curr) => acc + curr.supplemental_stocked_in_qty - curr.supplemental_shipped_out_qty,
+				0
+			)
+
 			return {
-				...item,
-				detail: SuperJson.parse<IInventoryReportResponse[number]['detail']>(item.detail, 1)
+				mo_no: item.mo_no,
+				order_qty: item.mo_attrs.order_qty,
+				brand_name: item.mo_attrs.brand_name,
+				factory_shoes_style: item.mo_attrs.factory_shoes_style,
+				cust_shoes_style: item.mo_attrs.cust_shoes_style,
+				color_sn: item.mo_attrs.color_sn,
+				inventory_closure_status: item.inventory_closure_status,
+				beginning_inventory_qty: totalBeginningInventoryQty,
+				total_stocked_in_qty: totalStockedInQty,
+				total_shipped_out_qty: totalShippedOutQty,
+				total_supplemental_qty: totalSupplementalStockedInQty,
+				storage_locations: item.storage_locations,
+				final_inventory_qty:
+					totalBeginningInventoryQty + totalStockedInQty - totalShippedOutQty + totalSupplementalStockedInQty,
+				inventory_variation: inventoryVariation
 			}
 		})
 	}
 
-	@OnEvent('inventory.inbound')
-	public async updateInboundInventory({
-		mo_no,
-		sizes,
-		username,
-		display_name
-	}: Omit<IUpsertInventoryEventPayload, 'po'>) {
-		return await Array.fromAsync(sizes, async (size_numcode) => {
-			const monthlyInboundQty = await this.getMonthlyInboundQty(mo_no, size_numcode)
-			return await this.updateOneInventoryRecord(
+	public async updateInventoryAudit(
+		filterQuery: UpdateInventoryReportQueryDTO,
+		update: UpdateInventoryReportDTO
+	): Promise<void> {
+		const updateOperation = update.reduce((acc, curr) => {
+			return {
+				...acc,
+				[`inventory_variation.${curr.size_numcode}.supplemental_stocked_in_qty`]: curr.supplemental_stocked_in_qty,
+				[`inventory_variation.${curr.size_numcode}.supplemental_shipped_out_qty`]: curr.supplemental_shipped_out_qty
+			}
+		}, {})
+
+		await this.moInventoryAuditModel
+			.updateOne({ ...filterQuery, inventory_closure_status: 'pending' }, { $set: updateOperation })
+			.exec()
+	}
+
+	@Transactional<TransactionalAdapterMongoose>(DATA_WAREHOUSE_CONNECTION)
+	public async processInventoryAuditCheckout(month: string) {
+		await this.moInventoryAuditModel
+			.updateMany(
+				{ month, inventory_closure_status: 'pending' },
 				{
-					mo_no,
-					size_numcode,
-					inv_type: InventoryType.FINISHED_GOOD,
-					inv_year_month: format(new Date(), 'yyyyMM')
-				},
-				{
-					user_code_updated: username,
-					user_name_updated: display_name,
-					instock_qty: monthlyInboundQty ?? 0,
-					final_stock_qty: () =>
-						/* SQL */ `inv_initialqty + inv_manualqty + ${monthlyInboundQty} - inv_ostotalqty - inv_manualqtyout`,
-					remark: 'Automatically update from WMS'
-				},
-				{ exactMatch: false }
-			)
-		})
-	}
-
-	@OnEvent('inventory.outbound')
-	public async updateOutboundInventory({
-		po,
-		mo_no,
-		sizes,
-		username,
-		display_name
-	}: Required<IUpsertInventoryEventPayload>) {
-		const payload = await this.getOutboundInventoryPayload(po, mo_no, sizes)
-
-		return await Array.fromAsync(payload.sizes, async (size_numcode) => {
-			return await this.dataSource
-				.query(this.upsertOutboundInventory, [payload.po, payload.mo_no, size_numcode, username, display_name])
-				.catch((e) => this.logger.error(e))
-		})
-	}
-
-	private async getOutboundInventoryPayload(po: string, commandNumber: string, sizes: string[]) {
-		const purchaseOrderInfo = await this.orderService.getPurchaseOrderSizeRun(po)
-
-		const matchOrder = purchaseOrderInfo.filter(
-			(item) => item.po === po && item.mo_no.split('-').at(0).trim() === commandNumber
-		)
-
-		if (matchOrder.length === 0) return
-
-		const matchSizes = intersection(
-			matchOrder.map((item) => item.size_numcode),
-			sizes
-		)
-
-		if (matchSizes.length === 0) return
-
-		return {
-			po,
-			mo_no: commandNumber,
-			sizes: matchSizes
-		}
-	}
-
-	public async bulkUpdateInventoryAudit(
-		queries: UpdateInventoryReportQueryDTO,
-		payload: Array<UpdateInventoryReportDTO[number] & Pick<UserEntity, 'user_code_updated' | 'user_name_updated'>>
-	) {
-		const queryRunner = this.dataSource.createQueryRunner()
-
-		const nextYearMonth = addMonths(new Date(queries.inv_year_month), 1)
-		await queryRunner.startTransaction()
-		try {
-			const updateResults = Array.fromAsync(payload, (data) => {
-				return this.updateManyInventoryRecord({ ...queries, inv_next_month: nextYearMonth }, data)
-			})
-			await queryRunner.commitTransaction()
-			return updateResults
-		} catch (error) {
-			await queryRunner.rollbackTransaction()
-			throw error
-		}
-	}
-
-	private async getFinalInventoryQuantity(
-		queries: UpdateInventoryReportQueryDTO & { size_numcode: string }
-	): Promise<number | null> {
-		const result: Awaited<Promise<{ final_qty: number }>> = await this.dataSource
-			.getRepository(InventoryAuditEntity)
-			.createQueryBuilder()
-			.select(
-				/* SQL */ `COALESCE(inv_initialqty, 0) + COALESCE(inv_istotalqty, 0) - COALESCE(inv_ostotalqty, 0)`,
-				'final_qty'
-			)
-			.where({
-				size_numcode: queries.size_numcode,
-				inv_type: queries.inv_type,
-				mo_no: queries.mo_no,
-				inv_year_month: format(new Date(queries.inv_year_month), 'yyyyMM')
-			})
-			.andWhere(
-				new Brackets((qb) => {
-					if (isEmpty(queries.po)) return qb.andWhere({ po: IsNull() })
-					return qb.andWhere({ po: queries.po })
-				})
-			)
-			.getRawOne()
-
-		if (isNil(result)) return null
-		return result.final_qty
-	}
-
-	private async updateManyInventoryRecord(
-		queries: UpdateInventoryReportQueryDTO & { inv_next_month?: Date },
-		data: UpdateInventoryReportDTO[number] & Pick<UserEntity, 'user_code_updated' | 'user_name_updated'>
-	): Promise<UpdateResult[]> {
-		const currFinalQty: Awaited<Promise<number | null>> = await this.getFinalInventoryQuantity({
-			...queries,
-			size_numcode: data.size_numcode
-		})
-		if (isNil(currFinalQty)) {
-			return Array.from({ length: 2 }, () => ({
-				generatedMaps: [],
-				affected: 0,
-				raw: undefined
-			})) satisfies UpdateResult[]
-		}
-		const updateQuantity = currFinalQty + data.mn_ist_qty - data.mn_ost_qty
-		return await Promise.all([
-			this.updateOneInventoryRecord(
-				{ ...queries, size_numcode: data.size_numcode, inv_year_month: format(queries.inv_year_month, 'yyyyMM') },
-				{
-					user_code_updated: data.user_code_updated,
-					user_name_updated: data.user_name_updated,
-					actual_instock_qty: data.mn_ist_qty,
-					actual_outstock_qty: data.mn_ost_qty,
-					final_stock_qty: updateQuantity
-				}
-			),
-			this.updateOneInventoryRecord(
-				{ ...queries, size_numcode: data.size_numcode, inv_year_month: format(queries.inv_next_month, 'yyyyMM') },
-				{
-					initial_stock_qty: updateQuantity,
-					final_stock_qty: () => {
-						return /* SQL */ `${updateQuantity} + inv_istotalqty + inv_manualqty - inv_ostotalqty - inv_manualqtyout`
+					$set: {
+						inventory_closure_status: 'completed'
 					}
 				}
 			)
-		])
-	}
+			.exec()
 
-	private async updateOneInventoryRecord(
-		queries: UpdateInventoryReportQueryDTO & { size_numcode: string },
-		update: QueryDeepPartialEntity<InventoryAuditEntity>,
-		options: { exactMatch?: boolean } = { exactMatch: true }
-	) {
-		const POSSIBLE_SIZE_PREFIXES = ['', '0', 'K', 'T']
-		const sizeVariants = POSSIBLE_SIZE_PREFIXES.map((prefix) => `${prefix}${queries.size_numcode.replace(/^0/, '')}`)
-
-		return await this.dataSource
-			.getRepository(InventoryAuditEntity)
-			.createQueryBuilder()
-			.update()
-			.set(update)
-			.where({
-				mo_no: queries.mo_no,
-				inv_type: InventoryType.FINISHED_GOOD,
-				inv_year_month: queries.inv_year_month,
-				size_numcode: options.exactMatch ? queries.size_numcode : In(sizeVariants)
-			})
-			.andWhere(
-				new Brackets((qb) => {
-					if (isEmpty(queries.po) || isNil(queries.po)) return qb.andWhere({ po: IsNull() })
-					return qb.andWhere({
-						po: queries.po,
-						outstock_qty: Not(Equal(0))
-					})
-				})
-			)
-			.execute()
-	}
-
-	public async getMonthlyInboundQty(commandNumber: string, sizeCode: string): Promise<number> {
-		const [result] = await this.dataSource.query<Array<{ qty: number }>>(
-			/* SQL */ `
-				WITH CTE AS (
-					SELECT DISTINCT EPC_Code, rfid_status
-					FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet
-					WHERE isactive = 'Y'
-						AND mo_no = @0
-						AND size_code = @1
-						AND RIGHT(stationNO, 3) = '101'
-						AND rfid_status = 'A'
-						AND record_time >= DATEFROMPARTS(YEAR(GETDATE()), MONTH(GETDATE()), 1)
-						AND record_time < DATEADD(MONTH, 1, DATEFROMPARTS(YEAR(GETDATE()), MONTH(GETDATE()), 1))
-					UNION
-					SELECT DISTINCT EPC_Code, rfid_status
-					FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet_backup_Daily
-					WHERE isactive = 'Y'
-						AND mo_no = @0
-						AND size_code = @1
-						AND RIGHT(stationNO, 3) = '101'
-						AND rfid_status = 'A'
-						AND record_time >= DATEFROMPARTS(YEAR(GETDATE()), MONTH(GETDATE()), 1)
-						AND record_time < DATEADD(MONTH, 1, DATEFROMPARTS(YEAR(GETDATE()), MONTH(GETDATE()), 1))
-				)
-				SELECT 
-					SUM(CASE WHEN rfid_status = 'A' THEN 1 ELSE -1 END) AS qty
-				FROM CTE
-			`,
-			[commandNumber, sizeCode]
-		)
-		return result?.qty ?? 0
+		// TODO: Create new inventory audit record for the next month
 	}
 
 	// #region Inventory report Excel
@@ -306,15 +167,15 @@ export class InventoryAuditService {
 			},
 			{
 				header: this.i18nService.t('erp.fields.inbound_qty', { lang: currentLanguage }),
-				key: 'total_instock_qty'
+				key: 'stocked_in_qty'
 			},
 			{
 				header: this.i18nService.t('erp.fields.outbound_qty', { lang: currentLanguage }),
-				key: 'total_outstock_qty'
+				key: 'shipped_out_qty'
 			},
 			{
 				header: this.i18nService.t('erp.fields.actual_inventory_qty', { lang: currentLanguage }),
-				key: 'actual_inv_qty'
+				key: 'supplemental_qty'
 			},
 			{
 				header: this.i18nService.t('erp.fields.final_inventory_qty', { lang: currentLanguage }),
@@ -322,16 +183,16 @@ export class InventoryAuditService {
 			}
 		].map((item) => ({ ...item, alignment: { vertical: 'middle', horizontal: 'center' } }))
 
-		const data = await this.getMonthlyInventoryAudit(format(new Date(month), 'yyyyMM'), factoryCode)
+		const data = await this.getMonthlyInventoryAudit(format(new Date(month), 'yyyyMM'))
 
 		// * Add data to worksheet
 		const filteredData = data.filter(
 			(item) =>
-				(item.init_inv_qty > 0 ||
-					item.total_instock_qty > 0 ||
-					item.total_outstock_qty > 0 ||
-					item.actual_inv_qty > 0 ||
-					item.final_inv_qty > 0) &&
+				(item.beginning_inventory_qty > 0 ||
+					item.total_stocked_in_qty > 0 ||
+					item.total_shipped_out_qty > 0 ||
+					item.total_supplemental_qty > 0 ||
+					item.final_inventory_qty > 0) &&
 				(Array.isArray(commandNumbers) && commandNumbers.length > 0 ? commandNumbers.includes(item.mo_no) : true)
 		)
 		for (const record of filteredData) {
@@ -344,26 +205,26 @@ export class InventoryAuditService {
 					fgColor: { argb: ExcelColorPalette.BG_LIGHT_BLUE }
 				}
 			}
-			for (const subRecord of record.detail) {
+			for (const subRecord of record.inventory_variation) {
 				const subRow = worksheet.addRow([])
-				subRow.getCell(5).value = subRecord.size + '#'
+				subRow.getCell(5).value = subRecord.size_numcode + '#'
 				subRow.getCell(5).fill = {
 					type: 'pattern',
 					pattern: 'solid',
 					fgColor: { argb: ExcelColorPalette.BG_LIGHT_YELLOW }
 				}
 				subRow.getCell(5).font = { bold: true }
-				subRow.getCell(6).value = subRecord.order_qty_by_size
+				subRow.getCell(6).value = subRecord.order_qty
 				subRow.getCell(6).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'f2dcdb' } }
-				subRow.getCell(7).value = subRecord.initial_stock_qty
+				subRow.getCell(7).value = subRecord.beginning_inventory_qty
 				subRow.getCell(7).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'f2dcdb' } }
-				subRow.getCell(8).value = subRecord.instock_qty
+				subRow.getCell(8).value = subRecord.stocked_in_qty
 				subRow.getCell(8).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'f2dcdb' } }
-				subRow.getCell(9).value = subRecord.outstock_qty
+				subRow.getCell(9).value = subRecord.shipped_out_qty
 				subRow.getCell(9).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'f2dcdb' } }
-				subRow.getCell(10).value = subRecord.actual_instock_qty - subRecord.actual_outstock_qty
+				subRow.getCell(10).value = subRecord.supplemental_stocked_in_qty - subRecord.supplemental_shipped_out_qty
 				subRow.getCell(10).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'f2dcdb' } }
-				subRow.getCell(11).value = subRecord.final_stock_qty
+				subRow.getCell(11).value = subRecord.final_inventory_qty
 				subRow.getCell(11).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'f2dcdb' } }
 			}
 		}

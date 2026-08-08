@@ -4,11 +4,15 @@ import {
 } from '@modules/finished-goods/application/ports/io-mongo.repository.port'
 import { Inject } from '@nestjs/common'
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs'
+import { PinoLogger } from 'nestjs-pino'
 import { BulkWriteInventoryCommand } from './bulk-write-inventory.command'
 
 @CommandHandler(BulkWriteInventoryCommand)
 export class BulkWriteInventoryHandler implements ICommandHandler<BulkWriteInventoryCommand, void> {
-	constructor(@Inject(IO_MONGO_REPOSITORY) private readonly ioMongoRepository: IIoMongoRepository) {}
+	constructor(
+		private readonly logger: PinoLogger,
+		@Inject(IO_MONGO_REPOSITORY) private readonly ioMongoRepository: IIoMongoRepository
+	) {}
 
 	public async execute({ command }: BulkWriteInventoryCommand) {
 		const { data, sn } = command.payload
@@ -16,7 +20,7 @@ export class BulkWriteInventoryHandler implements ICommandHandler<BulkWriteInven
 		const scanningEpcs = await this.ioMongoRepository.getEpcsInformation(data.tagList.map((tag) => tag.epc))
 
 		if (scanningEpcs.length === 0) return
-
+		const start = performance.now()
 		await this.ioMongoRepository.bulkWriteInventoryEpcs({
 			action: command.action,
 			payload: {
@@ -24,5 +28,7 @@ export class BulkWriteInventoryHandler implements ICommandHandler<BulkWriteInven
 				deviceSerialNumber: sn
 			}
 		})
+		const end = performance.now()
+		this.logger.debug(`Processed in ${end - start} ms`)
 	}
 }

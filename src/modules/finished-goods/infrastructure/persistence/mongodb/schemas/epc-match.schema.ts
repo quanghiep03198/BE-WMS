@@ -43,6 +43,11 @@ export const FinishedGoodsEpcMatchSchema = SchemaFactory.createForClass(Finished
 
 FinishedGoodsEpcMatchSchema.index({ epc: 1 }, { name: 'idx_epc', unique: true })
 
+FinishedGoodsEpcMatchSchema.index(
+	{ mo_no: 1, factory_shoes_style: 1, size_numcode: 1 },
+	{ name: 'idx_group_mo_style_size' }
+)
+
 export type FinishedGoodsEpcMatchDocument = HydratedDocument<FinishedGoodsEpcMatch>
 
 export type FinishedGoodsEpcMatchModel = Model<FinishedGoodsEpcMatchDocument>

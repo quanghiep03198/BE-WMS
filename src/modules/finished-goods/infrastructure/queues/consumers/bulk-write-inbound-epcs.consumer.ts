@@ -10,7 +10,6 @@ import { PostReaderDataDTO } from '../../../presentation/dto/rfid-shared.dto'
 export class BulkWriteInboundEpcsConsumer extends WorkerHost {
 	constructor(
 		private readonly logger: PinoLogger,
-
 		private readonly commandBus: CommandBus
 		// private readonly rfidSharedService: RFIDSharedService
 	) {
@@ -23,12 +22,10 @@ export class BulkWriteInboundEpcsConsumer extends WorkerHost {
 	 * @param {Job<PostReaderDataDTO, void, string>} job
 	 */
 	public async process(job: Job<PostReaderDataDTO, void, string>): Promise<void> {
-		const start = performance.now()
 		const result = await this.commandBus.execute(
 			new BulkWriteInventoryCommand({ action: 'inbound', payload: job.data })
 		)
-		const end = performance.now()
-		this.logger.debug(`Job "${job.name}" processed in ${end - start} ms`)
+
 		return result
 	}
 }

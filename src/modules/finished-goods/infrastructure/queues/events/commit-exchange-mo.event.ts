@@ -1,5 +1,5 @@
 import { OnQueueEvent, QueueEventsHost, QueueEventsListener } from '@nestjs/bullmq'
-import { CompletedEventArgs } from 'bullmq'
+import type { QueueEventsListener as IQueueEventsListener } from 'bullmq'
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
 import { COMMIT_EXCHANGE_MO_QUEUE } from '..'
 
@@ -10,12 +10,17 @@ export class CommitExchangeMoQueueEvent extends QueueEventsHost {
 	}
 
 	@OnQueueEvent('completed')
-	onCompleted(job: CompletedEventArgs) {
-		this.logger.debug(`Job "${job.jobId}" completed successfully`)
+	onCompleted({ jobId }: FirstParameter<IQueueEventsListener['completed']>) {
+		this.logger.debug(`Job "${jobId}" completed successfully`)
 	}
 
 	@OnQueueEvent('error')
-	onError(error) {
+	onError(error: FirstParameter<IQueueEventsListener['error']>) {
 		this.logger.error(error)
+	}
+
+	@OnQueueEvent('failed')
+	onFailed({ jobId, failedReason }: FirstParameter<IQueueEventsListener['failed']>) {
+		this.logger.error(`Job "${jobId}" failed with reason: ${failedReason}`)
 	}
 }

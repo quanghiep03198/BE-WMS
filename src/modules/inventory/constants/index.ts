@@ -4,3 +4,8 @@ export enum InventoryType {
 }
 
 export const SYNC_INVENTORY_AUDIT_QUEUE = 'SYNC_INVENTORY_AUDIT'
+
+export enum InventoryClosureStatus {
+	PENDING = 'pending',
+	COMPLETED = 'completed'
+}

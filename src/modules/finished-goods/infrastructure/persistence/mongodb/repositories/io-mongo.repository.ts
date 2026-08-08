@@ -1,7 +1,7 @@
 import { DATA_WAREHOUSE_CONNECTION } from '@databases/constants'
 import { IIoMongoRepository } from '@modules/finished-goods/application/ports/io-mongo.repository.port'
 import { GetScanningEpcsBySizeQuery } from '@modules/finished-goods/application/queries/get-scanning-epcs-by-size/get-scanning-epcs-by-size.query'
-import { FinishedGoodsEpcStatus } from '@modules/finished-goods/domain/constants'
+import { FALLBACK_VALUE, FinishedGoodsEpcStatus } from '@modules/finished-goods/domain/constants'
 import { StockFlow, UpsertEpcsMatchData } from '@modules/finished-goods/domain/types'
 import { ElectronicProductCode } from '@modules/finished-goods/domain/value-objects/epc.vo'
 import { SizeNumber } from '@modules/finished-goods/domain/value-objects/size-number.vo'
@@ -97,12 +97,29 @@ export class InoutboundMongoRepository implements IIoMongoRepository {
 			factory_code_produce: string
 		}>
 	> {
-		return await this.finishedGoodsEpcMatchModel
+		const data = await this.finishedGoodsEpcMatchModel
 			.find(
 				{ epc: { $in: epcs } },
 				{ epc: 1, mo_no: 1, factory_code_produce: 1, factory_shoes_style: 1, color_sn: 1, size_numcode: 1 }
 			)
 			.lean(true)
+
+		const dataByEpc = new Map(data.map((item) => [item.epc, item]))
+
+		return epcs.map((epc) => {
+			const matched = dataByEpc.get(epc)
+
+			return (
+				matched ?? {
+					epc,
+					factory_code_produce: FALLBACK_VALUE,
+					mo_no: FALLBACK_VALUE,
+					factory_shoes_style: FALLBACK_VALUE,
+					color_sn: FALLBACK_VALUE,
+					size_numcode: FALLBACK_VALUE
+				}
+			)
+		})
 	}
 
 	public async getPendingStockMoveEpcs(
@@ -809,7 +826,10 @@ export class InoutboundMongoRepository implements IIoMongoRepository {
 	@Transactional<TransactionalAdapterMongoose>(DATA_WAREHOUSE_CONNECTION)
 	public async exchangeManufacturingOrder(pendingExchangeEpcs: Array<string>, targetMo: string): Promise<void> {
 		await this.finishedGoodsEpcMatchModel
-			.updateMany({ epc: { $in: pendingExchangeEpcs } }, { mo_no: targetMo })
+			.updateMany({ epc: { $in: pendingExchangeEpcs } }, [
+				{ $set: { old_mo_no: '$mo_no' } },
+				{ $set: { mo_no: targetMo } }
+			])
 			.session(this.txHost.tx)
 
 		await this.finishedGoodsEpcModel
@@ -818,7 +838,7 @@ export class InoutboundMongoRepository implements IIoMongoRepository {
 	}
 
 	@Transactional<TransactionalAdapterMongoose>(DATA_WAREHOUSE_CONNECTION)
-	public async updateScanningEpcsMatch(data: UpsertEpcsMatchData): Promise<void> {
+	public async upsertEpcsMatch(data: UpsertEpcsMatchData, insertOnly: boolean = false): Promise<void> {
 		await this.finishedGoodsEpcMatchModel.bulkWrite(
 			data.map((item) => ({
 				updateOne: {
@@ -829,15 +849,16 @@ export class InoutboundMongoRepository implements IIoMongoRepository {
 						},
 						{
 							$set: {
-								mo_no: item.mo_no,
-								factory_code_produce: item.factory_code_produce,
-								cust_shoes_style: item.cust_shoes_style,
-								factory_shoes_style: item.factory_shoes_style,
-								color_sn: item.color_sn,
-								size_numcode: item.size_numcode
+								mo_no: insertOnly ? '$mo_no' : item.mo_no,
+								factory_code_produce: insertOnly ? '$factory_code_produce' : item.factory_code_produce,
+								cust_shoes_style: insertOnly ? '$cust_shoes_style' : item.cust_shoes_style,
+								factory_shoes_style: insertOnly ? '' : item.factory_shoes_style,
+								color_sn: insertOnly ? '' : item.color_sn,
+								size_numcode: insertOnly ? '' : item.size_numcode
 							}
 						}
-					]
+					],
+					upsert: true
 				}
 			}))
 		)

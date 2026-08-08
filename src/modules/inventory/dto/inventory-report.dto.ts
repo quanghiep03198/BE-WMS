@@ -1,21 +1,17 @@
 import { Tenant } from '@modules/tenancy/constants'
 import { z } from 'zod'
-import { InventoryType } from '../constants'
 
 export const updateInventoryReportQuery = z.object({
-	po: z.string().optional(),
+	// po: z.string().optional(),
 	mo_no: z.string(),
-	factory_shoes_style: z.string(),
-	cust_shoes_style: z.string(),
-	inv_type: z.nativeEnum(InventoryType),
-	inv_year_month: z.string()
+	year_month: z.string()
 })
 
 export const updateInventoryReportPayload = z.array(
 	z.object({
 		size_numcode: z.string().nonempty(),
-		mn_ist_qty: z.number(),
-		mn_ost_qty: z.number()
+		supplemental_stocked_in_qty: z.number(),
+		supplemental_shipped_out_qty: z.number()
 	})
 )
 

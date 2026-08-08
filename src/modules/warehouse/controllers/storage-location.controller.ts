@@ -49,6 +49,15 @@ export class StorageLocationController {
 	}
 
 	@RouteHandler({
+		endpoint: 'summary',
+		method: HttpMethod.GET
+	})
+	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF, UserRole.INDUSTRIAL_ENGINEERING_STAFF)
+	async getStorageSummary() {
+		return await this.storageLocationService.getStorageSummary()
+	}
+
+	@RouteHandler({
 		endpoint: ':id',
 		method: HttpMethod.PATCH,
 		statusCode: HttpStatus.CREATED,

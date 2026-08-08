@@ -95,7 +95,7 @@ export interface IIoMongoRepository {
 
 	exchangeManufacturingOrder(pendingExchangeEpcs: Array<string>, targetMo: string): Promise<void>
 
-	updateScanningEpcsMatch(data: UpsertEpcsMatchData): Promise<void>
+	upsertEpcsMatch(data: UpsertEpcsMatchData, insertOnly?: boolean): Promise<void>
 
 	getPendingInventoryVariation(stockedInEpcs: Array<ElectronicProductCode>): Promise<
 		Array<{

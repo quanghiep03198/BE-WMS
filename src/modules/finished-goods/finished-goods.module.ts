@@ -187,7 +187,7 @@ import { FinishedGoodsListeners } from './presentation/listeners'
 			useClass: InoutboundMongoRepository
 		}
 	],
-	exports: [MongooseModule, FinishedGoodsGateway, IO_MSSQL_REPOSITORY]
+	exports: [MongooseModule, FinishedGoodsGateway, IO_MONGO_REPOSITORY, IO_MSSQL_REPOSITORY]
 })
 export class FinishedGoodsModule implements OnModuleInit {
 	constructor(
