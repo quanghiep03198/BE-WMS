@@ -25,10 +25,13 @@ export class StockOutHandler implements ICommandHandler<StockOutCommand> {
 		const moInventories = (await Promise.all(mo.map((m) => this.ioMongoRepository.getMoInventory(m)))).flat()
 
 		const outboundProgress = await this.ioMongoRepository.getPoOutboundProgress(purchaseOrder)
-		this.logger.debug(moInventories)
+
 		const stockOutTransaction = new StockOutTransaction(pendingOutboundEpcs, outboundProgress, moInventories)
+
 		stockOutTransaction.startTransaction()
+
 		await this.ioMongoRepository.stockOut(pendingOutboundEpcs)
+
 		this.eventPublisher.mergeObjectContext(stockOutTransaction)
 		stockOutTransaction.commit()
 	}

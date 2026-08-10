@@ -164,6 +164,8 @@ export class InoutboundMongoRepository implements IIoMongoRepository {
 			scannable: true
 		}
 
+		this.logger.debug(`Is outboundSizeQuantities an array? ${Array.isArray(outboundSizeQuantities)}`)
+
 		if (!Array.isArray(outboundSizeQuantities)) {
 			const pendingOutboundEpcs = await this.finishedGoodsEpcModel
 				.find({
@@ -189,7 +191,6 @@ export class InoutboundMongoRepository implements IIoMongoRepository {
 			)
 		}
 
-		this.logger.debug(outboundSizeQuantities)
 		const facetPipeline = outboundSizeQuantities.reduce<PipelineStage.Facet['$facet']>((acc, curr) => {
 			return {
 				...acc,
@@ -200,6 +201,7 @@ export class InoutboundMongoRepository implements IIoMongoRepository {
 							_id: 0,
 							epc: 1,
 							mo_no: 1,
+							po: 1,
 							size_numcode: 1,
 							station_no: 1,
 							factory_code_produce: 1
@@ -224,7 +226,7 @@ export class InoutboundMongoRepository implements IIoMongoRepository {
 					color_sn: item.color_sn,
 					size_numcode: item.size_numcode,
 					factory_code_produce: item.factory_code_produce,
-					po: item.po
+					po: purchaseOrder
 				}
 			}))
 		)
