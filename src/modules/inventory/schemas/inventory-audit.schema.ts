@@ -54,6 +54,16 @@ MoInventoryAuditSchema.virtual('mo_attrs', {
 	justOne: true
 })
 
+MoInventoryAuditSchema.virtual('daily_mo_inv_attrs', {
+	ref: 'DailyMoInventoryVariation',
+	localField: 'mo_no',
+	foreignField: 'mo_no'
+})
+
+MoInventoryAuditSchema.set('toJSON', { virtuals: true })
+
+MoInventoryAuditSchema.set('toObject', { virtuals: true })
+
 export type MoInventoryAuditDocument = HydratedDocument<MoInventoryAudit> & {
 	mo_attrs: {
 		mo_no: string

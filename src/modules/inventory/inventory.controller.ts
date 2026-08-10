@@ -10,6 +10,7 @@ import {
 	Get,
 	Headers,
 	HttpStatus,
+	Param,
 	ParseArrayPipe,
 	Query,
 	Res,
@@ -70,6 +71,14 @@ export class InventoryController {
 		@Body(new ZodValidationPipe(updateInventoryReportPayload)) update: UpdateInventoryReportDTO
 	) {
 		return await this.inventoryReportService.updateInventoryAudit(filterQuery, update)
+	}
+
+	@RouteHandler({ endpoint: 'audit/checkout/:month', method: HttpMethod.PUT, statusCode: HttpStatus.CREATED })
+	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
+	async processInventoryAuditCheckout(
+		@Param('month', new DefaultValuePipe(format(new Date(), 'yyyy-MM'))) month: string
+	) {
+		return await this.inventoryReportService.processInventoryAuditCheckout(month)
 	}
 
 	@RouteHandler({ endpoint: 'audit/sync', method: HttpMethod.POST, statusCode: HttpStatus.CREATED })
