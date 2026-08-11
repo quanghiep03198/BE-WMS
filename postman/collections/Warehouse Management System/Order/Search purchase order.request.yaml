@@ -1,0 +1,9 @@
+$kind: http-request
+url: "{{base_url}}/order/purchase-order/search?q=384872"
+method: GET
+headers:
+  X-Tenant-Id: "{{tenant_gl1}}"
+queryParams:
+  q: "384872"
+settings: {}
+order: 1000

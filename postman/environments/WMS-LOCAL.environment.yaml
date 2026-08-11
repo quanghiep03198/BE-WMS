@@ -1,0 +1,53 @@
+name: 'WMS:LOCAL'
+values:
+  - key: base_url
+    value: 'http://localhost:3001/api'
+  - key: gl1_api_url
+    value: 'http://10.30.0.19:3001/api'
+  - key: gl3_api_url
+    value: 'http://10.30.201.201:3001/api'
+  - key: gl4_api_url
+    value: 'http://10.50.5.1:3001/api'
+  - key: access_token
+    value: ''
+  - key: decker_oauth2_url
+    value: 'https://divzen.deckers.com/oauth2/token'
+  - key: gl1_decker_client_id
+    value: ''
+  - key: gl1_decker_client_secret
+    value: ''
+  - key: gl3_decker_client_id
+    value: ''
+  - key: gl3_decker_client_secret
+    value: ''
+  - key: gl4_decker_client_id
+    value: ''
+  - key: gl4_decker_client_secret
+    value: ''
+  - key: client_id
+    value: ''
+  - key: header_tenant
+    value: ''
+  - key: header_factory_code
+    value: ''
+  - key: header_api_version
+    value: ''
+  - key: decker_oauth2_token
+    value: ''
+  - key: decker_oauth2_token
+    value: ''
+  - key: tenant_dev
+    value: ''
+  - key: tenant_central
+    value: ''
+  - key: tenant_gl1
+    value: ''
+  - key: tenant_gl3
+    value: ''
+  - key: tenant_gl4
+    value: ''
+  - key: user_factory
+    value: ''
+  - key: refresh_token
+    value: ''
+color: 120

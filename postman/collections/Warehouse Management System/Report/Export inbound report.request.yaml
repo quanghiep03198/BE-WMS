@@ -1,0 +1,11 @@
+$kind: http-request
+url: "{{base_url}}/report/inbound/export?date.eq=2025-06-01"
+method: GET
+headers:
+  "{{header_tenant}}": "{{tenant_gl1}}"
+  "{{header_factory_code}}": VA1
+  "{{header_api_version}}": "1.0"
+queryParams:
+  date.eq: 2025-06-01
+settings: {}
+order: 5000

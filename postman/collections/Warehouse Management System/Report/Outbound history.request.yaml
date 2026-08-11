@@ -1,0 +1,12 @@
+$kind: http-request
+url: "{{base_url}}/report/outbound-history/:po"
+method: GET
+headers:
+  X-User-Company: VA1
+  X-Tenant-Id: tenant-lianying
+pathVariables:
+  - key: po
+    value: "523068308"
+    description: Purchase order code to search
+settings: {}
+order: 2000

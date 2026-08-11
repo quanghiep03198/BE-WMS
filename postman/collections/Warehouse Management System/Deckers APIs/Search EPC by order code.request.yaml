@@ -1,0 +1,11 @@
+$kind: http-request
+url: https://mfg.deckers.com/pdm-api/v1/epcs?commandNumber=15A07B054
+method: GET
+queryParams:
+  - key: null
+    value: ""
+    disabled: true
+  - key: commandNumber
+    value: 15A07B054
+settings: {}
+order: 1000

@@ -1,0 +1,55 @@
+$kind: http-request
+description: |
+  
+  This endpoint sends an HTTP GET request to retrieve a list of companies.
+
+  ### Response
+  The response of this request is a JSON object representing the list of companies. To document the response as a JSON schema, you can use the following structure:
+
+  ```json
+  {
+    "type": "object",
+    "properties": {
+      "companies": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          // Define the properties of each company object here
+        }
+      }
+    }
+  }
+  ```
+url: "{{base_url}}/companies"
+method: GET
+headers:
+  Accept: application/json
+  Content-Type: application/json
+  Accept-Language: vi
+auth:
+  type: bearer
+  credentials:
+    token: "{{auth_token}}"
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Get companies - Status code is 200', function () {
+          pm.response.to.have.status(200);
+      })
+
+      pm.test('Response time is less than 3000ms', function () {
+          pm.expect(pm.response.responseTime).to.be.below(3000);
+      })
+
+      pm.test('Response has valid structure', function () {
+          const jsonData = pm.response.json();
+          pm.expect(jsonData).to.have.property('statusCode');
+      })
+
+      pm.test('Content-Type header is application/json', function () {
+          pm.response.to.have.header('Content-Type');
+          pm.expect(pm.response.headers.get('Content-Type')).to.include('application/json');
+      })
+    language: text/javascript
+settings: {}
+order: 1000

@@ -1,0 +1,114 @@
+$kind: http-request
+url: "{{base_url}}/report/daily-inbound?date.eq=2025-08-05"
+method: GET
+headers:
+  "{{header_factory_code}}": VA1
+  "{{header_tenant}}": tenant-lianying
+queryParams:
+  date.eq: 2025-08-05
+scripts:
+  - type: afterResponse
+    code: "var template = `\r
+
+      <style type=\"text/css\">\r
+
+      \    .tftable {font-size:14px;color:#333333;width:100%;border-width: 1px;border-color: #87ceeb;border-collapse: collapse;}\r
+
+      \    .tftable th {font-size:18px;background-color:#87ceeb;border-width: 1px;padding: 8px;border-style: solid;border-color: #87ceeb;text-align:left;}\r
+
+      \    .tftable tr {background-color:#ffffff;}\r
+
+      \    .tftable td {font-size:14px;border-width: 1px;padding: 8px;border-style: solid;border-color: #87ceeb;}\r
+
+      \    .tftable tr:hover {background-color:#e0ffff;}\r
+
+      </style>\r
+
+      \r
+
+      <table class=\"tftable\" border=\"1\">\r
+
+      \    <tr>\r
+
+      \        <th>Factory Code</th>\r
+
+      \        <th>MO No</th>\r
+
+      \        <th>Shoes Style Code</th>\r
+
+      \        <th>Color SN</th>\r
+
+      \        <th>Shaping Dept Name</th>\r
+
+      \        <th>Storage</th>\r
+
+      \        <th>Order Qty</th>\r
+
+      \        <th>Accumulated Qty</th>\r
+
+      \        <th>Daily Inbound Qty</th>\r
+
+      \        <th>Missing Qty</th>\r
+
+      \        <th>Size Data</th>\r
+
+      \    </tr>\r
+
+      \    \r
+
+      \    {{#each response.metadata}}\r
+
+      \        <tr>\r
+
+      \            <td>{{factory_code}}</td>\r
+
+      \            <td>{{mo_no}}</td>\r
+
+      \            <td>{{shoes_style_code_factory}}</td>\r
+
+      \            <td>{{color_sn}}</td>\r
+
+      \            <td>{{shaping_dept_name}}</td>\r
+
+      \            <td>{{storage}}</td>\r
+
+      \            <td>{{order_qty}}</td>\r
+
+      \            <td>{{accumulated_qty}}</td>\r
+
+      \            <td>{{daily_inbound_qty}}</td>\r
+
+      \            <td>{{missing_qty}}</td>\r
+
+      \            <td>\r
+
+      \                {{#each size_data}}\r
+
+      \                    <div>Size: {{size_numcode}}, Qty: {{qty}}</div>\r
+
+      \                {{/each}}\r
+
+      \            </td>\r
+
+      \        </tr>\r
+
+      \    {{/each}}\r
+
+      </table>\r
+
+      `;\r
+
+      \r
+
+      function constructVisualizerPayload() {\r
+
+      \    return { response: pm.response.json() };\r
+
+      }\r
+
+      \r
+
+      pm.visualizer.set(template, constructVisualizerPayload());"
+    language: text/javascript
+settings: {}
+order: 4000

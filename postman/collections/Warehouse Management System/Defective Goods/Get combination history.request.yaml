@@ -1,0 +1,7 @@
+$kind: http-request
+url: "{{base_url}}/defective-goods?page=1"
+method: GET
+queryParams:
+  page: "1"
+settings: {}
+order: 4000

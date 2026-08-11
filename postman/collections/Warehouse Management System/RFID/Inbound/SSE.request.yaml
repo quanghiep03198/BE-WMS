@@ -1,0 +1,7 @@
+$kind: http-request
+url: "{{base_url}}/rfid/inbound/sse"
+method: GET
+headers:
+  X-User-Company: VA1
+settings: {}
+order: 8000

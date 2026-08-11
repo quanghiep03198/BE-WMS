@@ -1,0 +1,8 @@
+$kind: http-request
+url: "{{base_url}}/rfid/outbound/archived-epc-features"
+method: GET
+headers:
+  X-User-Company: VA1
+  Accept-Language: en
+settings: {}
+order: 10000

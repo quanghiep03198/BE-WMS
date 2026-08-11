@@ -1,0 +1,17 @@
+$kind: http-request
+url: "{{base_url}}/inventory/summary/export"
+method: GET
+headers:
+  X-Tenant-Id: "{{tenant_gl1}}"
+  X-User-Company: VA1
+  X-Api-Version: "1.0"
+  ResponseType: ""
+scripts:
+  - type: beforeRequest
+    code: pm.request.
+    language: text/javascript
+  - type: afterResponse
+    code: pm.
+    language: text/javascript
+settings: {}
+order: 5000

@@ -1,0 +1,59 @@
+$kind: http-request
+description: This endpoint is used to log out the user from the system. Upon successful logout, the response will include a JSON schema detailing the status of the logout process.
+url: "{{base_url}}/logout"
+method: POST
+body:
+  type: json
+  content: ""
+scripts:
+  - type: afterResponse
+    code: "\r
+
+      pm.test('Logout', function(){\r
+
+      \    pm.response.to.have.status(200)\r
+
+      \    if(pm.response.code === 200){\r
+
+      \        pm.environment.set('access_token', null)\r
+
+      \    }\r
+
+      })\r
+
+
+
+      pm.test('Logout Success - Status code is 200 or 204', function () {
+
+      \    pm.expect(pm.response.code).to.be.oneOf([
+
+      \        200,
+
+      \        204
+
+      \    ]);
+
+      })
+
+
+      pm.test('Response time is less than 2000ms', function () {
+
+      \    pm.expect(pm.response.responseTime).to.be.below(2000);
+
+      })
+
+
+      pm.test('Logout response validation', function () {
+
+      \    if (pm.response.code === 200) {
+
+      \        const jsonData = pm.response.json();
+
+      \        pm.expect(jsonData).to.be.an('object');
+
+      \    }
+
+      })"
+    language: text/javascript
+settings: {}
+order: 2000

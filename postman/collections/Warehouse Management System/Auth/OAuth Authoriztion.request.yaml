@@ -1,0 +1,13 @@
+$kind: http-request
+url: "{{base_url}}/authorize"
+method: POST
+body:
+  type: urlencoded
+  content:
+    uid: "14219"
+    client_id: 2e37ef8fb714c869a014002426c2dec6
+    client_secret: be3fc8a669213fb1917095e185c18dd2a84337fc85e6614e33fad21c75109c75
+    grant_type: authorization_code
+    scope: request_access
+settings: {}
+order: 5000

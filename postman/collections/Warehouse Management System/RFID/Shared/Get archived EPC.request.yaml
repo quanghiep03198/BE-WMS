@@ -1,0 +1,30 @@
+$kind: http-request
+url: "{{base_url}}/rfid/archived-epcs/:type?_page=2&_limit=10&shoes_style.eq=UF25 W960-1&color_sn.eq=BLK&mo_no.eq=14A06C072"
+method: GET
+headers:
+  X-User-Company: VA1
+  Accept-Language: en
+queryParams:
+  - key: _page
+    value: "2"
+  - key: _limit
+    value: "10"
+  - key: shoes_style.eq
+    value: UF25 W960-1
+  - key: color_sn.eq
+    value: BLK
+  - key: mo_no.eq
+    value: 14A06C072
+  - key: size_numcode.eq
+    value: "06"
+    disabled: true
+  - key: scanned.eq
+    value: "false"
+    disabled: true
+  - key: q
+    value: "38618"
+    disabled: true
+pathVariables:
+  type: outbound
+settings: {}
+order: 2000

@@ -1,0 +1,7 @@
+$kind: http-request
+url: "{{base_url}}/rfid/outbound/search-epc?q=C3522F"
+method: GET
+queryParams:
+  q: C3522F
+settings: {}
+order: 9000

@@ -1,0 +1,29 @@
+$kind: http-request
+description: |-
+  This endpoint allows the client to update or insert data from a third-party API using a specific command number. The HTTP PUT request is made to the `{{base_url}}/third-party-api/upsert-by-command-number/13A12A084` endpoint.
+
+  ### Response
+
+  The response of this request is in JSON format and can be documented as a JSON schema.
+url: http://10.30.0.19:3001/api/third-party-api/upsert-by-command-number/:commandNumber
+method: PUT
+headers:
+  X-Tenant-Id: "{{tenant_gl1}}"
+  X-User-Factory: VA1
+pathVariables:
+  commandNumber: 15A04C013
+body:
+  type: json
+  content: "{}"
+scripts:
+  - type: afterResponse
+    code: "// Store the commandId from the response in an environment variable\r
+
+      var responseBody = pm.response.json();\r
+
+      var commandId = responseBody.commandId;\r
+
+      pm.environment.set(\"commandId\", commandId);"
+    language: text/javascript
+settings: {}
+order: 1000

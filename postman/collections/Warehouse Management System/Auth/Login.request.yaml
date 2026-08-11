@@ -1,0 +1,106 @@
+$kind: http-request
+description: |-
+  ### Login
+
+  This endpoint is used to authenticate a user and generate a token for further API access.
+
+  #### Request Body
+
+  - username (string, required): The username of the user.
+      
+  - password (string, required): The password of the user.
+      
+
+  #### Response
+
+  The response is a JSON object with the following schema:
+
+  ``` json
+  {
+      "metadata": {
+          "user": {
+              "id": 0,
+              "username": "",
+              "password": "",
+              "role": null,
+              "display_name": "",
+              "employee_code": "",
+              "email": "",
+              "phone": null,
+              "picture": ""
+          },
+          "token": ""
+      },
+      "statusCode": 0,
+      "message": "",
+      "timestamp": "",
+      "path": ""
+  }
+
+   ```
+url: "{{base_url}}/login"
+method: POST
+body:
+  type: json
+  content: "{\r
+
+    \    \"username\":\"quanghiep\",\r
+
+    \    \"password\":\"03011998\"\r
+
+    }"
+scripts:
+  - type: afterResponse
+    code: |-
+      const jsonData = pm.response.json();
+
+      pm.test('Login', function(){
+          pm.response.to.have.status(200)
+          pm.expect(jsonData.metadata).have.all.keys(['user','token'])
+      })
+
+      if(pm.response.code === 200){
+          pm.environment.set('access_token', jsonData.metadata.token)
+          pm.environment.set('client_id', jsonData.metadata.user.id)
+      }
+
+      pm.test('Login Success - Status code is 200', function () {
+          pm.response.to.have.status(200);
+      })
+
+      pm.test('Response time is less than 2000ms', function () {
+          pm.expect(pm.response.responseTime).to.be.below(2000);
+      })
+
+      pm.test('Response has valid structure', function () {
+          const jsonData = pm.response.json();
+          pm.expect(jsonData).to.have.property('statusCode');
+          pm.expect(jsonData).to.have.property('metadata');
+      })
+
+      pm.test('Response contains user and token', function () {
+          const jsonData = pm.response.json();
+          pm.expect(jsonData.metadata).to.have.property('user');
+          pm.expect(jsonData.metadata).to.have.property('accessToken');
+          pm.expect(jsonData.metadata).to.have.property('refreshToken');
+      })
+
+      pm.test('Store access token in environment', function () {
+          const jsonData = pm.response.json();
+          if (jsonData.metadata && jsonData.metadata.accessToken && jsonData.metadata.refreshToken) {
+              pm.environment.set('access_token', jsonData.metadata.accessToken);
+              pm.environment.set('refresh_token', jsonData.metadata.refreshToken);
+          }
+          if (jsonData.metadata && jsonData.metadata.user && jsonData.metadata.user.id) {
+              pm.environment.set('client_id', jsonData.metadata.user.id);
+          }
+      })
+
+      pm.test('Content-Type header is application/json', function () {
+          pm.response.to.have.header('Content-Type');
+          pm.expect(pm.response.headers.get('Content-Type')).to.include('application/json');
+      })
+    language: text/javascript
+settings: {}
+examples: ./.resources/Login.resources/examples
+order: 1000

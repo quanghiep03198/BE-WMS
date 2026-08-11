@@ -1,0 +1,10 @@
+$kind: http-request
+url: "{{base_url}}/inventory/audit?month.eq=2025-10"
+method: GET
+headers:
+  X-User-Company: VA1
+  X-Tenant-Id: "{{tenant_gl1}}"
+queryParams:
+  month.eq: 2025-10
+settings: {}
+order: 7000

@@ -1,0 +1,7 @@
+$kind: http-request
+url: "{{base_url}}/statistics/defective-goods-inventory-composition"
+method: GET
+headers:
+  X-Tenant-Id: "{{tenant_gl3}}"
+settings: {}
+order: 1000

@@ -1,0 +1,8 @@
+$kind: http-request
+url: "{{base_url}}/rfid/outbound/restore-archived-epcs"
+method: PATCH
+body:
+  type: json
+  content: "[\r\n\t\"test\"\r\n]"
+settings: {}
+order: 11000

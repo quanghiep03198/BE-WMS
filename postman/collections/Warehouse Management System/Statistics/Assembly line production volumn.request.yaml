@@ -1,0 +1,14 @@
+$kind: http-request
+url: "{{base_url}}/statistics/assembly-production-volumn"
+method: GET
+headers:
+  X-Tenant-Id: "{{tenant_gl1}}"
+queryParams:
+  - key: day.between
+    value: last-7-days
+    disabled: true
+  - key: brand_name.eq
+    value: TEVA
+    disabled: true
+settings: {}
+order: 3000

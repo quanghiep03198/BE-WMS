@@ -1,0 +1,10 @@
+$kind: http-request
+url: "{{base_url}}/defective-goods/daily-inbound?date.eq=2025-12-08"
+method: GET
+headers:
+  "{{header_tenant}}": "{{tenant_gl3}}"
+  "{{header_factory_code}}": "{{user_factory}}"
+queryParams:
+  date.eq: 2025-12-08
+settings: {}
+order: 6000

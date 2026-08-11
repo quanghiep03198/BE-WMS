@@ -1,0 +1,3160 @@
+$kind: http-request
+url: "{{base_url}}/defective-goods/create-manually"
+method: POST
+body:
+  type: json
+  content: "[\r
+
+    \  {\r
+
+    \    \"brand_name\": \"KOOLABURRA\",\r
+
+    \    \"po\": \"100587742\",\r
+
+    \    \"mo_no\": \"14B06B002\",\r
+
+    \    \"cust_shoes_style\": \"1159730/W BURREE\",\r
+
+    \    \"factory_shoes_style\": \"KBS24 W580-1\",\r
+
+    \    \"color_sn\": \"BLK\",\r
+
+    \    \"defective_category\": \"B\",\r
+
+    \    \"storage_location\": \"P.B\",\r
+
+    \    \"unit\": \"prs\",\r
+
+    \    \"sizes\": [\r
+
+    \      {\r
+
+    \        \"size_code\": \"10\",\r
+
+    \        \"qty\": 3\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"6\",\r
+
+    \        \"qty\": 1\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"7\",\r
+
+    \        \"qty\": 1\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"8\",\r
+
+    \        \"qty\": 2\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"9\",\r
+
+    \        \"qty\": 2\r
+
+    \      }\r
+
+    \    ]\r
+
+    \  },\r
+
+    \  {\r
+
+    \    \"brand_name\": \"KOOLABURRA\",\r
+
+    \    \"po\": \"100592544\",\r
+
+    \    \"mo_no\": \"14B05B082\",\r
+
+    \    \"cust_shoes_style\": \"1159730/W BURREE\",\r
+
+    \    \"factory_shoes_style\": \"KBS24 W580-1\",\r
+
+    \    \"color_sn\": \"CHE\",\r
+
+    \    \"defective_category\": \"B\",\r
+
+    \    \"storage_location\": \"P.B\",\r
+
+    \    \"unit\": \"prs\",\r
+
+    \    \"sizes\": [\r
+
+    \      {\r
+
+    \        \"size_code\": \"10\",\r
+
+    \        \"qty\": 13\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"11\",\r
+
+    \        \"qty\": 4\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"6\",\r
+
+    \        \"qty\": 1\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"7\",\r
+
+    \        \"qty\": 3\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"8\",\r
+
+    \        \"qty\": 5\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"9\",\r
+
+    \        \"qty\": 17\r
+
+    \      }\r
+
+    \    ]\r
+
+    \  },\r
+
+    \  {\r
+
+    \    \"brand_name\": \"KOOLABURRA\",\r
+
+    \    \"po\": \"100592573\",\r
+
+    \    \"mo_no\": \"14B05B077\",\r
+
+    \    \"cust_shoes_style\": \"1159670K/K BURREE\",\r
+
+    \    \"factory_shoes_style\": \"KBS24 K329-13\",\r
+
+    \    \"color_sn\": \"CHE\",\r
+
+    \    \"defective_category\": \"B\",\r
+
+    \    \"storage_location\": \"P.B\",\r
+
+    \    \"unit\": \"prs\",\r
+
+    \    \"sizes\": [\r
+
+    \      {\r
+
+    \        \"size_code\": \"13\",\r
+
+    \        \"qty\": 1\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"4\",\r
+
+    \        \"qty\": 1\r
+
+    \      }\r
+
+    \    ]\r
+
+    \  },\r
+
+    \  {\r
+
+    \    \"brand_name\": \"KOOLABURRA\",\r
+
+    \    \"po\": \"100592596\",\r
+
+    \    \"mo_no\": \"14B05C047\",\r
+
+    \    \"cust_shoes_style\": \"1159730/W BURREE\",\r
+
+    \    \"factory_shoes_style\": \"KBS24 W580-1\",\r
+
+    \    \"color_sn\": \"SAN\",\r
+
+    \    \"defective_category\": \"B\",\r
+
+    \    \"storage_location\": \"P.B\",\r
+
+    \    \"unit\": \"prs\",\r
+
+    \    \"sizes\": [\r
+
+    \      {\r
+
+    \        \"size_code\": \"10\",\r
+
+    \        \"qty\": 7\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"11\",\r
+
+    \        \"qty\": 3\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"6\",\r
+
+    \        \"qty\": 3\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"7\",\r
+
+    \        \"qty\": 1\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"8\",\r
+
+    \        \"qty\": 4\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"9\",\r
+
+    \        \"qty\": 2\r
+
+    \      }\r
+
+    \    ]\r
+
+    \  },\r
+
+    \  {\r
+
+    \    \"brand_name\": \"UGG\",\r
+
+    \    \"po\": \"\",\r
+
+    \    \"mo_no\": \"\",\r
+
+    \    \"cust_shoes_style\": \"1184130/W Ultra Mini Wild\",\r
+
+    \    \"factory_shoes_style\": \"UF26-W329-51\",\r
+
+    \    \"color_sn\": \"NAVY\",\r
+
+    \    \"defective_category\": \"RD\",\r
+
+    \    \"storage_location\": \"\",\r
+
+    \    \"unit\": \"prs\",\r
+
+    \    \"sizes\": [\r
+
+    \      {\r
+
+    \        \"size_code\": \"5\",\r
+
+    \        \"qty\": 1\r
+
+    \      }\r
+
+    \    ]\r
+
+    \  },\r
+
+    \  {\r
+
+    \    \"brand_name\": \"UGG\",\r
+
+    \    \"po\": \"\",\r
+
+    \    \"mo_no\": \"\",\r
+
+    \    \"cust_shoes_style\": \"5955/W Tasman\",\r
+
+    \    \"factory_shoes_style\": \"UF23 W01-7\",\r
+
+    \    \"color_sn\": \"CHE\",\r
+
+    \    \"defective_category\": \"RD\",\r
+
+    \    \"storage_location\": \"P.A-F2\",\r
+
+    \    \"unit\": \"prs\",\r
+
+    \    \"sizes\": [\r
+
+    \      {\r
+
+    \        \"size_code\": \"5\",\r
+
+    \        \"qty\": 1\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"7\",\r
+
+    \        \"qty\": 1\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"9\",\r
+
+    \        \"qty\": 1\r
+
+    \      }\r
+
+    \    ]\r
+
+    \  },\r
+
+    \  {\r
+
+    \    \"brand_name\": \"UGG\",\r
+
+    \    \"po\": \"\",\r
+
+    \    \"mo_no\": \"\",\r
+
+    \    \"cust_shoes_style\": \"1166732/Essential Ultra Mini\",\r
+
+    \    \"factory_shoes_style\": \"UF24 W04-3\",\r
+
+    \    \"color_sn\": \"GHI\",\r
+
+    \    \"defective_category\": \"RD\",\r
+
+    \    \"storage_location\": \"P.A-F2\",\r
+
+    \    \"unit\": \"prs\",\r
+
+    \    \"sizes\": [\r
+
+    \      {\r
+
+    \        \"size_code\": \"5\",\r
+
+    \        \"qty\": 1\r
+
+    \      }\r
+
+    \    ]\r
+
+    \  },\r
+
+    \  {\r
+
+    \    \"brand_name\": \"UGG\",\r
+
+    \    \"po\": \"\",\r
+
+    \    \"mo_no\": \"\",\r
+
+    \    \"cust_shoes_style\": \"1166732/Essential Ultra Mini\",\r
+
+    \    \"factory_shoes_style\": \"UF24 W04-3\",\r
+
+    \    \"color_sn\": \"GREY\",\r
+
+    \    \"defective_category\": \"RD\",\r
+
+    \    \"storage_location\": \"P.A-F2\",\r
+
+    \    \"unit\": \"prs\",\r
+
+    \    \"sizes\": [\r
+
+    \      {\r
+
+    \        \"size_code\": \"9\",\r
+
+    \        \"qty\": 1\r
+
+    \      }\r
+
+    \    ]\r
+
+    \  },\r
+
+    \  {\r
+
+    \    \"brand_name\": \"UGG\",\r
+
+    \    \"po\": \"\",\r
+
+    \    \"mo_no\": \"\",\r
+
+    \    \"cust_shoes_style\": \"1166732/Essential Ultra Mini\",\r
+
+    \    \"factory_shoes_style\": \"UF24 W04-3\",\r
+
+    \    \"color_sn\": \"VANG\",\r
+
+    \    \"defective_category\": \"RD\",\r
+
+    \    \"storage_location\": \"P.A-F2\",\r
+
+    \    \"unit\": \"prs\",\r
+
+    \    \"sizes\": [\r
+
+    \      {\r
+
+    \        \"size_code\": \"7\",\r
+
+    \        \"qty\": 1\r
+
+    \      }\r
+
+    \    ]\r
+
+    \  },\r
+
+    \  {\r
+
+    \    \"brand_name\": \"UGG\",\r
+
+    \    \"po\": \"\",\r
+
+    \    \"mo_no\": \"\",\r
+
+    \    \"cust_shoes_style\": \"1174495/W Calimuze Ultra Mini Slip On\",\r
+
+    \    \"factory_shoes_style\": \"UF25-W9100-1\",\r
+
+    \    \"color_sn\": \"D.GREY\",\r
+
+    \    \"defective_category\": \"RD\",\r
+
+    \    \"storage_location\": \"P.A-F2\",\r
+
+    \    \"unit\": \"prs\",\r
+
+    \    \"sizes\": [\r
+
+    \      {\r
+
+    \        \"size_code\": \"5\",\r
+
+    \        \"qty\": 1\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"9\",\r
+
+    \        \"qty\": 1\r
+
+    \      }\r
+
+    \    ]\r
+
+    \  },\r
+
+    \  {\r
+
+    \    \"brand_name\": \"UGG\",\r
+
+    \    \"po\": \"\",\r
+
+    \    \"mo_no\": \"\",\r
+
+    \    \"cust_shoes_style\": \"1174495/W Calimuze Ultra Mini Slip On\",\r
+
+    \    \"factory_shoes_style\": \"UF25-W9100-1\",\r
+
+    \    \"color_sn\": \"GHI\",\r
+
+    \    \"defective_category\": \"RD\",\r
+
+    \    \"storage_location\": \"P.A-F2\",\r
+
+    \    \"unit\": \"prs\",\r
+
+    \    \"sizes\": [\r
+
+    \      {\r
+
+    \        \"size_code\": \"7\",\r
+
+    \        \"qty\": 1\r
+
+    \      }\r
+
+    \    ]\r
+
+    \  },\r
+
+    \  {\r
+
+    \    \"brand_name\": \"UGG\",\r
+
+    \    \"po\": \"\",\r
+
+    \    \"mo_no\": \"\",\r
+
+    \    \"cust_shoes_style\": \"1174516/W Calimuze Mini Pull On\",\r
+
+    \    \"factory_shoes_style\": \"UF25-W9100-2\",\r
+
+    \    \"color_sn\": \"DEN\",\r
+
+    \    \"defective_category\": \"RD\",\r
+
+    \    \"storage_location\": \"P.A-F2\",\r
+
+    \    \"unit\": \"prs\",\r
+
+    \    \"sizes\": [\r
+
+    \      {\r
+
+    \        \"size_code\": \"5\",\r
+
+    \        \"qty\": 1\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"7\",\r
+
+    \        \"qty\": 2\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"9\",\r
+
+    \        \"qty\": 1\r
+
+    \      }\r
+
+    \    ]\r
+
+    \  },\r
+
+    \  {\r
+
+    \    \"brand_name\": \"UGG\",\r
+
+    \    \"po\": \"\",\r
+
+    \    \"mo_no\": \"\",\r
+
+    \    \"cust_shoes_style\": \"1174536/W Calimuze Clog\",\r
+
+    \    \"factory_shoes_style\": \"UF25-W9120 -1\",\r
+
+    \    \"color_sn\": \"GHI\",\r
+
+    \    \"defective_category\": \"RD\",\r
+
+    \    \"storage_location\": \"P.A-F2\",\r
+
+    \    \"unit\": \"prs\",\r
+
+    \    \"sizes\": [\r
+
+    \      {\r
+
+    \        \"size_code\": \"7\",\r
+
+    \        \"qty\": 1\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"9\",\r
+
+    \        \"qty\": 1\r
+
+    \      }\r
+
+    \    ]\r
+
+    \  },\r
+
+    \  {\r
+
+    \    \"brand_name\": \"UGG\",\r
+
+    \    \"po\": \"\",\r
+
+    \    \"mo_no\": \"\",\r
+
+    \    \"cust_shoes_style\": \"1168890/W Lo Lowmel\",\r
+
+    \    \"factory_shoes_style\": \"US25 W5120-4\",\r
+
+    \    \"color_sn\": \"CHE\",\r
+
+    \    \"defective_category\": \"RD\",\r
+
+    \    \"storage_location\": \"P.A-F2\",\r
+
+    \    \"unit\": \"prs\",\r
+
+    \    \"sizes\": [\r
+
+    \      {\r
+
+    \        \"size_code\": \"5\",\r
+
+    \        \"qty\": 2\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"7\",\r
+
+    \        \"qty\": 1\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"9\",\r
+
+    \        \"qty\": 2\r
+
+    \      }\r
+
+    \    ]\r
+
+    \  },\r
+
+    \  {\r
+
+    \    \"brand_name\": \"UGG\",\r
+
+    \    \"po\": \"100582365\",\r
+
+    \    \"mo_no\": \"14A03A003\",\r
+
+    \    \"cust_shoes_style\": \"1174470/W TASMAN II\",\r
+
+    \    \"factory_shoes_style\": \"UF23 W01-7\",\r
+
+    \    \"color_sn\": \"BLK\",\r
+
+    \    \"defective_category\": \"B\",\r
+
+    \    \"storage_location\": \"P.B\",\r
+
+    \    \"unit\": \"prs\",\r
+
+    \    \"sizes\": [\r
+
+    \      {\r
+
+    \        \"size_code\": \"10\",\r
+
+    \        \"qty\": 3\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"12\",\r
+
+    \        \"qty\": 8\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"5\",\r
+
+    \        \"qty\": 5\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"6\",\r
+
+    \        \"qty\": 3\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"7\",\r
+
+    \        \"qty\": 6\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"8\",\r
+
+    \        \"qty\": 17\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"9\",\r
+
+    \        \"qty\": 5\r
+
+    \      }\r
+
+    \    ]\r
+
+    \  },\r
+
+    \  {\r
+
+    \    \"brand_name\": \"UGG\",\r
+
+    \    \"po\": \"100582461\",\r
+
+    \    \"mo_no\": \"14A06B003\",\r
+
+    \    \"cust_shoes_style\": \"1174491/W ASHTON WEATHERIZED CHELSEA\",\r
+
+    \    \"factory_shoes_style\": \"UF25 W3220-1\",\r
+
+    \    \"color_sn\": \"DRKT\",\r
+
+    \    \"defective_category\": \"B\",\r
+
+    \    \"storage_location\": \"P.B\",\r
+
+    \    \"unit\": \"prs\",\r
+
+    \    \"sizes\": [\r
+
+    \      {\r
+
+    \        \"size_code\": \"6\",\r
+
+    \        \"qty\": 1\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"8\",\r
+
+    \        \"qty\": 1\r
+
+    \      }\r
+
+    \    ]\r
+
+    \  },\r
+
+    \  {\r
+
+    \    \"brand_name\": \"UGG\",\r
+
+    \    \"po\": \"100582462\",\r
+
+    \    \"mo_no\": \"14A06B004\",\r
+
+    \    \"cust_shoes_style\": \"1174491/W ASHTON WEATHERIZED CHELSEA\",\r
+
+    \    \"factory_shoes_style\": \"UF25 W3220-1\",\r
+
+    \    \"color_sn\": \"BLK\",\r
+
+    \    \"defective_category\": \"B\",\r
+
+    \    \"storage_location\": \"P.B\",\r
+
+    \    \"unit\": \"prs\",\r
+
+    \    \"sizes\": [\r
+
+    \      {\r
+
+    \        \"size_code\": \"6\",\r
+
+    \        \"qty\": 1\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"7\",\r
+
+    \        \"qty\": 2\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"8\",\r
+
+    \        \"qty\": 1\r
+
+    \      }\r
+
+    \    ]\r
+
+    \  },\r
+
+    \  {\r
+
+    \    \"brand_name\": \"UGG\",\r
+
+    \    \"po\": \"100582811\",\r
+
+    \    \"mo_no\": \"14A04C037\",\r
+
+    \    \"cust_shoes_style\": \"1168890/W LO LOWMEL\",\r
+
+    \    \"factory_shoes_style\": \"US25 W5120-4\",\r
+
+    \    \"color_sn\": \"CHE\",\r
+
+    \    \"defective_category\": \"B\",\r
+
+    \    \"storage_location\": \"P.B\",\r
+
+    \    \"unit\": \"prs\",\r
+
+    \    \"sizes\": [\r
+
+    \      {\r
+
+    \        \"size_code\": \"5\",\r
+
+    \        \"qty\": 2\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"6\",\r
+
+    \        \"qty\": 2\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"7\",\r
+
+    \        \"qty\": 2\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"8\",\r
+
+    \        \"qty\": 3\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"9\",\r
+
+    \        \"qty\": 4\r
+
+    \      }\r
+
+    \    ]\r
+
+    \  },\r
+
+    \  {\r
+
+    \    \"brand_name\": \"UGG\",\r
+
+    \    \"po\": \"100583916\",\r
+
+    \    \"mo_no\": \"14A06C011\",\r
+
+    \    \"cust_shoes_style\": \"1017320K/K NEUMEL II\",\r
+
+    \    \"factory_shoes_style\": \"UF22 K460-10\",\r
+
+    \    \"color_sn\": \"BLK\",\r
+
+    \    \"defective_category\": \"B\",\r
+
+    \    \"storage_location\": \"P.B\",\r
+
+    \    \"unit\": \"prs\",\r
+
+    \    \"sizes\": [\r
+
+    \      {\r
+
+    \        \"size_code\": \"1\",\r
+
+    \        \"qty\": 4\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"13\",\r
+
+    \        \"qty\": 1\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"2\",\r
+
+    \        \"qty\": 1\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"3\",\r
+
+    \        \"qty\": 3\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"4\",\r
+
+    \        \"qty\": 5\r
+
+    \      }\r
+
+    \    ]\r
+
+    \  },\r
+
+    \  {\r
+
+    \    \"brand_name\": \"UGG\",\r
+
+    \    \"po\": \"100584544\",\r
+
+    \    \"mo_no\": \"14A06C012\",\r
+
+    \    \"cust_shoes_style\": \"1017320K/K NEUMEL II\",\r
+
+    \    \"factory_shoes_style\": \"UF22 K460-10\",\r
+
+    \    \"color_sn\": \"CHE\",\r
+
+    \    \"defective_category\": \"B\",\r
+
+    \    \"storage_location\": \"P.B\",\r
+
+    \    \"unit\": \"prs\",\r
+
+    \    \"sizes\": [\r
+
+    \      {\r
+
+    \        \"size_code\": \"1\",\r
+
+    \        \"qty\": 2\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"13\",\r
+
+    \        \"qty\": 3\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"2\",\r
+
+    \        \"qty\": 3\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"3\",\r
+
+    \        \"qty\": 2\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"4\",\r
+
+    \        \"qty\": 1\r
+
+    \      }\r
+
+    \    ]\r
+
+    \  },\r
+
+    \  {\r
+
+    \    \"brand_name\": \"UGG\",\r
+
+    \    \"po\": \"100586629\",\r
+
+    \    \"mo_no\": \"14A06B027\",\r
+
+    \    \"cust_shoes_style\": \"1174471/W TAZZ II\",\r
+
+    \    \"factory_shoes_style\": \"UF25 W960-1\",\r
+
+    \    \"color_sn\": \"RYK\",\r
+
+    \    \"defective_category\": \"B\",\r
+
+    \    \"storage_location\": \"P.B\",\r
+
+    \    \"unit\": \"prs\",\r
+
+    \    \"sizes\": [\r
+
+    \      {\r
+
+    \        \"size_code\": \"5\",\r
+
+    \        \"qty\": 1\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"6\",\r
+
+    \        \"qty\": 4\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"8\",\r
+
+    \        \"qty\": 1\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"9\",\r
+
+    \        \"qty\": 2\r
+
+    \      }\r
+
+    \    ]\r
+
+    \  },\r
+
+    \  {\r
+
+    \    \"brand_name\": \"UGG\",\r
+
+    \    \"po\": \"100595617\",\r
+
+    \    \"mo_no\": \"14A07C020\",\r
+
+    \    \"cust_shoes_style\": \"1019066K/K TASMAN II\",\r
+
+    \    \"factory_shoes_style\": \"UF23 K460-13\",\r
+
+    \    \"color_sn\": \"CHE\",\r
+
+    \    \"defective_category\": \"B\",\r
+
+    \    \"storage_location\": \"P.B\",\r
+
+    \    \"unit\": \"prs\",\r
+
+    \    \"sizes\": [\r
+
+    \      {\r
+
+    \        \"size_code\": \"1\",\r
+
+    \        \"qty\": 1\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"3\",\r
+
+    \        \"qty\": 2\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"6\",\r
+
+    \        \"qty\": 3\r
+
+    \      }\r
+
+    \    ]\r
+
+    \  },\r
+
+    \  {\r
+
+    \    \"brand_name\": \"UGG\",\r
+
+    \    \"po\": \"100598048\",\r
+
+    \    \"mo_no\": \"15A02A001\",\r
+
+    \    \"cust_shoes_style\": \"1174471/W Tazz II\",\r
+
+    \    \"factory_shoes_style\": \"UF25 W960-1\",\r
+
+    \    \"color_sn\": \"ARRY\",\r
+
+    \    \"defective_category\": \"B\",\r
+
+    \    \"storage_location\": \"P.B\",\r
+
+    \    \"unit\": \"prs\",\r
+
+    \    \"sizes\": [\r
+
+    \      {\r
+
+    \        \"size_code\": \"06\",\r
+
+    \        \"qty\": 1\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"09\",\r
+
+    \        \"qty\": 1\r
+
+    \      }\r
+
+    \    ]\r
+
+    \  },\r
+
+    \  {\r
+
+    \    \"brand_name\": \"UGG\",\r
+
+    \    \"po\": \"100598048\",\r
+
+    \    \"mo_no\": \"15A02A001\",\r
+
+    \    \"cust_shoes_style\": \"1174471/W Tazz II\",\r
+
+    \    \"factory_shoes_style\": \"UF25 W960-1\",\r
+
+    \    \"color_sn\": \"ARRY\",\r
+
+    \    \"defective_category\": \"C\",\r
+
+    \    \"storage_location\": \"P.B,P.C\",\r
+
+    \    \"unit\": \"pcs\",\r
+
+    \    \"sizes\": [\r
+
+    \      {\r
+
+    \        \"size_code\": \"12\",\r
+
+    \        \"qty\": 2\r
+
+    \      }\r
+
+    \    ]\r
+
+    \  },\r
+
+    \  {\r
+
+    \    \"brand_name\": \"UGG\",\r
+
+    \    \"po\": \"500112835\",\r
+
+    \    \"mo_no\": \"14A06B010\",\r
+
+    \    \"cust_shoes_style\": \"1166732/Essential Ultra Mini\",\r
+
+    \    \"factory_shoes_style\": \"UF24 W04-3\",\r
+
+    \    \"color_sn\": \"BLK\",\r
+
+    \    \"defective_category\": \"B\",\r
+
+    \    \"storage_location\": \"P.B\",\r
+
+    \    \"unit\": \"prs\",\r
+
+    \    \"sizes\": [\r
+
+    \      {\r
+
+    \        \"size_code\": \"07\",\r
+
+    \        \"qty\": 1\r
+
+    \      }\r
+
+    \    ]\r
+
+    \  },\r
+
+    \  {\r
+
+    \    \"brand_name\": \"UGG\",\r
+
+    \    \"po\": \"500112858\",\r
+
+    \    \"mo_no\": \"14A06B013\",\r
+
+    \    \"cust_shoes_style\": \"1115030/W ESSENTIAL MINI\",\r
+
+    \    \"factory_shoes_style\": \"US20 W04-1\",\r
+
+    \    \"color_sn\": \"BLK\",\r
+
+    \    \"defective_category\": \"B\",\r
+
+    \    \"storage_location\": \"P.B\",\r
+
+    \    \"unit\": \"prs\",\r
+
+    \    \"sizes\": [\r
+
+    \      {\r
+
+    \        \"size_code\": \"5\",\r
+
+    \        \"qty\": 1\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"7\",\r
+
+    \        \"qty\": 2\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"9\",\r
+
+    \        \"qty\": 1\r
+
+    \      }\r
+
+    \    ]\r
+
+    \  },\r
+
+    \  {\r
+
+    \    \"brand_name\": \"UGG\",\r
+
+    \    \"po\": \"500112896\",\r
+
+    \    \"mo_no\": \"14A06C003\",\r
+
+    \    \"cust_shoes_style\": \"1174516/W CALIMUZE MINI PULL ON\",\r
+
+    \    \"factory_shoes_style\": \"UF25-W9100-2\",\r
+
+    \    \"color_sn\": \"CHE\",\r
+
+    \    \"defective_category\": \"B\",\r
+
+    \    \"storage_location\": \"P.B\",\r
+
+    \    \"unit\": \"prs\",\r
+
+    \    \"sizes\": [\r
+
+    \      {\r
+
+    \        \"size_code\": \"5\",\r
+
+    \        \"qty\": 2\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"7\",\r
+
+    \        \"qty\": 4\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"8\",\r
+
+    \        \"qty\": 2\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"9\",\r
+
+    \        \"qty\": 1\r
+
+    \      }\r
+
+    \    ]\r
+
+    \  },\r
+
+    \  {\r
+
+    \    \"brand_name\": \"UGG\",\r
+
+    \    \"po\": \"500113123\",\r
+
+    \    \"mo_no\": \"14A06B015\",\r
+
+    \    \"cust_shoes_style\": \"1174495/W CALIMUZE ULTRA MINI SLIP ON\",\r
+
+    \    \"factory_shoes_style\": \"UF25-W9100-1\",\r
+
+    \    \"color_sn\": \"BLK\",\r
+
+    \    \"defective_category\": \"B\",\r
+
+    \    \"storage_location\": \"P.B\",\r
+
+    \    \"unit\": \"prs\",\r
+
+    \    \"sizes\": [\r
+
+    \      {\r
+
+    \        \"size_code\": \"5\",\r
+
+    \        \"qty\": 2\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"6\",\r
+
+    \        \"qty\": 3\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"7\",\r
+
+    \        \"qty\": 6\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"8\",\r
+
+    \        \"qty\": 3\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"9\",\r
+
+    \        \"qty\": 2\r
+
+    \      }\r
+
+    \    ]\r
+
+    \  },\r
+
+    \  {\r
+
+    \    \"brand_name\": \"UGG\",\r
+
+    \    \"po\": \"500113298\",\r
+
+    \    \"mo_no\": \"14A06C006\",\r
+
+    \    \"cust_shoes_style\": \"1174516/W CALIMUZE MINI PULL ON\",\r
+
+    \    \"factory_shoes_style\": \"UF25-W9100-2\",\r
+
+    \    \"color_sn\": \"DRKT\",\r
+
+    \    \"defective_category\": \"B\",\r
+
+    \    \"storage_location\": \"P.B\",\r
+
+    \    \"unit\": \"prs\",\r
+
+    \    \"sizes\": [\r
+
+    \      {\r
+
+    \        \"size_code\": \"5\",\r
+
+    \        \"qty\": 1\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"6\",\r
+
+    \        \"qty\": 3\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"7\",\r
+
+    \        \"qty\": 2\r
+
+    \      }\r
+
+    \    ]\r
+
+    \  },\r
+
+    \  {\r
+
+    \    \"brand_name\": \"UGG\",\r
+
+    \    \"po\": \"500113300\",\r
+
+    \    \"mo_no\": \"14A06B016\",\r
+
+    \    \"cust_shoes_style\": \"1174495/W CALIMUZE ULTRA MINI SLIP ON\",\r
+
+    \    \"factory_shoes_style\": \"UF25-W9100-1\",\r
+
+    \    \"color_sn\": \"CHE\",\r
+
+    \    \"defective_category\": \"B\",\r
+
+    \    \"storage_location\": \"P.B\",\r
+
+    \    \"unit\": \"prs\",\r
+
+    \    \"sizes\": [\r
+
+    \      {\r
+
+    \        \"size_code\": \"5\",\r
+
+    \        \"qty\": 6\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"6\",\r
+
+    \        \"qty\": 37\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"7\",\r
+
+    \        \"qty\": 67\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"8\",\r
+
+    \        \"qty\": 28\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"9\",\r
+
+    \        \"qty\": 1\r
+
+    \      }\r
+
+    \    ]\r
+
+    \  },\r
+
+    \  {\r
+
+    \    \"brand_name\": \"UGG\",\r
+
+    \    \"po\": \"500113686\",\r
+
+    \    \"mo_no\": \"14A05B034\",\r
+
+    \    \"cust_shoes_style\": \"1115030/W ESSENTIAL MINI\",\r
+
+    \    \"factory_shoes_style\": \"US20 W04-1\",\r
+
+    \    \"color_sn\": \"CBBLG\",\r
+
+    \    \"defective_category\": \"B\",\r
+
+    \    \"storage_location\": \"P.B\",\r
+
+    \    \"unit\": \"prs\",\r
+
+    \    \"sizes\": [\r
+
+    \      {\r
+
+    \        \"size_code\": \"8\",\r
+
+    \        \"qty\": 1\r
+
+    \      }\r
+
+    \    ]\r
+
+    \  },\r
+
+    \  {\r
+
+    \    \"brand_name\": \"UGG\",\r
+
+    \    \"po\": \"500113689\",\r
+
+    \    \"mo_no\": \"14A05B037\",\r
+
+    \    \"cust_shoes_style\": \"1115030/W ESSENTIAL MINI\",\r
+
+    \    \"factory_shoes_style\": \"US20 W04-1\",\r
+
+    \    \"color_sn\": \"MSG\",\r
+
+    \    \"defective_category\": \"B\",\r
+
+    \    \"storage_location\": \"P.B\",\r
+
+    \    \"unit\": \"prs\",\r
+
+    \    \"sizes\": [\r
+
+    \      {\r
+
+    \        \"size_code\": \"7\",\r
+
+    \        \"qty\": 1\r
+
+    \      }\r
+
+    \    ]\r
+
+    \  },\r
+
+    \  {\r
+
+    \    \"brand_name\": \"UGG\",\r
+
+    \    \"po\": \"500119510\",\r
+
+    \    \"mo_no\": \"14A06B030\",\r
+
+    \    \"cust_shoes_style\": \"1166732/W ESSENTIAL ULTRA MINI\",\r
+
+    \    \"factory_shoes_style\": \"UF24 W04-3\",\r
+
+    \    \"color_sn\": \"CHE\",\r
+
+    \    \"defective_category\": \"B\",\r
+
+    \    \"storage_location\": \"P.B\",\r
+
+    \    \"unit\": \"prs\",\r
+
+    \    \"sizes\": [\r
+
+    \      {\r
+
+    \        \"size_code\": \"7\",\r
+
+    \        \"qty\": 2\r
+
+    \      }\r
+
+    \    ]\r
+
+    \  },\r
+
+    \  {\r
+
+    \    \"brand_name\": \"UGG\",\r
+
+    \    \"po\": \"500119750\",\r
+
+    \    \"mo_no\": \"14A06A030\",\r
+
+    \    \"cust_shoes_style\": \"1115030/W ESSENTIAL MINI\",\r
+
+    \    \"factory_shoes_style\": \"US20 W04-1\",\r
+
+    \    \"color_sn\": \"CHE\",\r
+
+    \    \"defective_category\": \"B\",\r
+
+    \    \"storage_location\": \"P.B\",\r
+
+    \    \"unit\": \"prs\",\r
+
+    \    \"sizes\": [\r
+
+    \      {\r
+
+    \        \"size_code\": \"5\",\r
+
+    \        \"qty\": 3\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"6\",\r
+
+    \        \"qty\": 1\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"7\",\r
+
+    \        \"qty\": 2\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"8\",\r
+
+    \        \"qty\": 1\r
+
+    \      }\r
+
+    \    ]\r
+
+    \  },\r
+
+    \  {\r
+
+    \    \"brand_name\": \"UGG\",\r
+
+    \    \"po\": \"500122208\",\r
+
+    \    \"mo_no\": \"14A07C029\",\r
+
+    \    \"cust_shoes_style\": \"1166732/W ESSENTIAL ULTRA MINI\",\r
+
+    \    \"factory_shoes_style\": \"UF24 W04-3\",\r
+
+    \    \"color_sn\": \"DRKT\",\r
+
+    \    \"defective_category\": \"B\",\r
+
+    \    \"storage_location\": \"P.B\",\r
+
+    \    \"unit\": \"prs\",\r
+
+    \    \"sizes\": [\r
+
+    \      {\r
+
+    \        \"size_code\": \"5\",\r
+
+    \        \"qty\": 3\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"6\",\r
+
+    \        \"qty\": 1\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"7\",\r
+
+    \        \"qty\": 6\r
+
+    \      }\r
+
+    \    ]\r
+
+    \  },\r
+
+    \  {\r
+
+    \    \"brand_name\": \"UGG\",\r
+
+    \    \"po\": \"500125079\",\r
+
+    \    \"mo_no\": \"14A11A004\",\r
+
+    \    \"cust_shoes_style\": \"1174471/W TAZZ II\",\r
+
+    \    \"factory_shoes_style\": \"UF25 W960-1\",\r
+
+    \    \"color_sn\": \"ARRY\",\r
+
+    \    \"defective_category\": \"B\",\r
+
+    \    \"storage_location\": \"P.B\",\r
+
+    \    \"unit\": \"prs\",\r
+
+    \    \"sizes\": [\r
+
+    \      {\r
+
+    \        \"size_code\": \"5\",\r
+
+    \        \"qty\": 8\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"6\",\r
+
+    \        \"qty\": 7\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"7\",\r
+
+    \        \"qty\": 13\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"8\",\r
+
+    \        \"qty\": 3\r
+
+    \      }\r
+
+    \    ]\r
+
+    \  },\r
+
+    \  {\r
+
+    \    \"brand_name\": \"UGG\",\r
+
+    \    \"po\": \"500125082\",\r
+
+    \    \"mo_no\": \"14A11A005\",\r
+
+    \    \"cust_shoes_style\": \"1174471/W TAZZ II\",\r
+
+    \    \"factory_shoes_style\": \"UF25 W960-1\",\r
+
+    \    \"color_sn\": \"DVL\",\r
+
+    \    \"defective_category\": \"B\",\r
+
+    \    \"storage_location\": \"P.B\",\r
+
+    \    \"unit\": \"prs\",\r
+
+    \    \"sizes\": [\r
+
+    \      {\r
+
+    \        \"size_code\": \"5\",\r
+
+    \        \"qty\": 7\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"6\",\r
+
+    \        \"qty\": 3\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"7\",\r
+
+    \        \"qty\": 10\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"8\",\r
+
+    \        \"qty\": 10\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"9\",\r
+
+    \        \"qty\": 1\r
+
+    \      }\r
+
+    \    ]\r
+
+    \  },\r
+
+    \  {\r
+
+    \    \"brand_name\": \"UGG\",\r
+
+    \    \"po\": \"500127745\",\r
+
+    \    \"mo_no\": \"14A10C005\",\r
+
+    \    \"cust_shoes_style\": \"1174471/W TAZZ II\",\r
+
+    \    \"factory_shoes_style\": \"UF25 W960-1\",\r
+
+    \    \"color_sn\": \"WFF\",\r
+
+    \    \"defective_category\": \"B\",\r
+
+    \    \"storage_location\": \"P.B\",\r
+
+    \    \"unit\": \"prs\",\r
+
+    \    \"sizes\": [\r
+
+    \      {\r
+
+    \        \"size_code\": \"6\",\r
+
+    \        \"qty\": 4\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"7\",\r
+
+    \        \"qty\": 7\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"8\",\r
+
+    \        \"qty\": 2\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"9\",\r
+
+    \        \"qty\": 1\r
+
+    \      }\r
+
+    \    ]\r
+
+    \  },\r
+
+    \  {\r
+
+    \    \"brand_name\": \"UGG\",\r
+
+    \    \"po\": \"500127760\",\r
+
+    \    \"mo_no\": \"15A01C001\",\r
+
+    \    \"cust_shoes_style\": \"1167475/W New Heights Ankle Strap\",\r
+
+    \    \"factory_shoes_style\": \"US25 W260-2\",\r
+
+    \    \"color_sn\": \"DNSS\",\r
+
+    \    \"defective_category\": \"B\",\r
+
+    \    \"storage_location\": \"P.B\",\r
+
+    \    \"unit\": \"prs\",\r
+
+    \    \"sizes\": [\r
+
+    \      {\r
+
+    \        \"size_code\": \"05\",\r
+
+    \        \"qty\": 3\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"05.5\",\r
+
+    \        \"qty\": 1\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"06\",\r
+
+    \        \"qty\": 5\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"08\",\r
+
+    \        \"qty\": 1\r
+
+    \      }\r
+
+    \    ]\r
+
+    \  },\r
+
+    \  {\r
+
+    \    \"brand_name\": \"UGG\",\r
+
+    \    \"po\": \"500127760\",\r
+
+    \    \"mo_no\": \"15A01C001\",\r
+
+    \    \"cust_shoes_style\": \"1167475/W New Heights Ankle Strap\",\r
+
+    \    \"factory_shoes_style\": \"US25 W260-2\",\r
+
+    \    \"color_sn\": \"DNSS\",\r
+
+    \    \"defective_category\": \"C\",\r
+
+    \    \"storage_location\": \"P.B,P.C\",\r
+
+    \    \"unit\": \"pcs\",\r
+
+    \    \"sizes\": [\r
+
+    \      {\r
+
+    \        \"size_code\": \"06\",\r
+
+    \        \"qty\": 2\r
+
+    \      }\r
+
+    \    ]\r
+
+    \  },\r
+
+    \  {\r
+
+    \    \"brand_name\": \"UGG\",\r
+
+    \    \"po\": \"500127784\",\r
+
+    \    \"mo_no\": \"14A10B028\",\r
+
+    \    \"cust_shoes_style\": \"1175301/W MINIMEL\",\r
+
+    \    \"factory_shoes_style\": \"US26 W061-2G\",\r
+
+    \    \"color_sn\": \"JSM\",\r
+
+    \    \"defective_category\": \"B\",\r
+
+    \    \"storage_location\": \"P.B\",\r
+
+    \    \"unit\": \"prs\",\r
+
+    \    \"sizes\": [\r
+
+    \      {\r
+
+    \        \"size_code\": \"05\",\r
+
+    \        \"qty\": 2\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"06\",\r
+
+    \        \"qty\": 4\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"07\",\r
+
+    \        \"qty\": 3\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"07.5\",\r
+
+    \        \"qty\": 2\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"08\",\r
+
+    \        \"qty\": 2\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"08.5\",\r
+
+    \        \"qty\": 2\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"09.5\",\r
+
+    \        \"qty\": 1\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"10\",\r
+
+    \        \"qty\": 1\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"5\",\r
+
+    \        \"qty\": 9\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"5.5\",\r
+
+    \        \"qty\": 7\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"6\",\r
+
+    \        \"qty\": 27\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"6.5\",\r
+
+    \        \"qty\": 9\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"7\",\r
+
+    \        \"qty\": 39\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"7.5\",\r
+
+    \        \"qty\": 9\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"8\",\r
+
+    \        \"qty\": 23\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"8.5\",\r
+
+    \        \"qty\": 1\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"9\",\r
+
+    \        \"qty\": 3\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"9.5\",\r
+
+    \        \"qty\": 1\r
+
+    \      }\r
+
+    \    ]\r
+
+    \  },\r
+
+    \  {\r
+
+    \    \"brand_name\": \"UGG\",\r
+
+    \    \"po\": \"500127784\",\r
+
+    \    \"mo_no\": \"14A10B028\",\r
+
+    \    \"cust_shoes_style\": \"1175301/W Minimel\",\r
+
+    \    \"factory_shoes_style\": \"US26 W061-2G\",\r
+
+    \    \"color_sn\": \"JSM\",\r
+
+    \    \"defective_category\": \"C\",\r
+
+    \    \"storage_location\": \"P.A-F2,P.C\",\r
+
+    \    \"unit\": \"pcs\",\r
+
+    \    \"sizes\": [\r
+
+    \      {\r
+
+    \        \"size_code\": \"06\",\r
+
+    \        \"qty\": 2\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"08\",\r
+
+    \        \"qty\": 2\r
+
+    \      }\r
+
+    \    ]\r
+
+    \  },\r
+
+    \  {\r
+
+    \    \"brand_name\": \"UGG\",\r
+
+    \    \"po\": \"500131657\",\r
+
+    \    \"mo_no\": \"14A10C011\",\r
+
+    \    \"cust_shoes_style\": \"1166732/W ESSENTIAL ULTRA MINI\",\r
+
+    \    \"factory_shoes_style\": \"UF24 W04-3\",\r
+
+    \    \"color_sn\": \"CHE\",\r
+
+    \    \"defective_category\": \"B\",\r
+
+    \    \"storage_location\": \"P.B\",\r
+
+    \    \"unit\": \"prs\",\r
+
+    \    \"sizes\": [\r
+
+    \      {\r
+
+    \        \"size_code\": \"5\",\r
+
+    \        \"qty\": 1\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"6\",\r
+
+    \        \"qty\": 2\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"7\",\r
+
+    \        \"qty\": 6\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"8\",\r
+
+    \        \"qty\": 5\r
+
+    \      }\r
+
+    \    ]\r
+
+    \  },\r
+
+    \  {\r
+
+    \    \"brand_name\": \"UGG\",\r
+
+    \    \"po\": \"500134387\",\r
+
+    \    \"mo_no\": \"14A10B038\",\r
+
+    \    \"cust_shoes_style\": \"1167475/W NEW HEIGHTS ANKLE STRAP\",\r
+
+    \    \"factory_shoes_style\": \"US25 W260-2\",\r
+
+    \    \"color_sn\": \"CHE\",\r
+
+    \    \"defective_category\": \"B\",\r
+
+    \    \"storage_location\": \"P.B\",\r
+
+    \    \"unit\": \"prs\",\r
+
+    \    \"sizes\": [\r
+
+    \      {\r
+
+    \        \"size_code\": \"11\",\r
+
+    \        \"qty\": 1\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"9\",\r
+
+    \        \"qty\": 1\r
+
+    \      }\r
+
+    \    ]\r
+
+    \  },\r
+
+    \  {\r
+
+    \    \"brand_name\": \"UGG\",\r
+
+    \    \"po\": \"500135228\",\r
+
+    \    \"mo_no\": \"14A12A003\",\r
+
+    \    \"cust_shoes_style\": \"1174471/W TAZZ II\",\r
+
+    \    \"factory_shoes_style\": \"UF25 W960-1\",\r
+
+    \    \"color_sn\": \"BLK\",\r
+
+    \    \"defective_category\": \"B\",\r
+
+    \    \"storage_location\": \"P.B\",\r
+
+    \    \"unit\": \"prs\",\r
+
+    \    \"sizes\": [\r
+
+    \      {\r
+
+    \        \"size_code\": \"5\",\r
+
+    \        \"qty\": 5\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"6\",\r
+
+    \        \"qty\": 4\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"7\",\r
+
+    \        \"qty\": 11\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"8\",\r
+
+    \        \"qty\": 3\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"9\",\r
+
+    \        \"qty\": 5\r
+
+    \      }\r
+
+    \    ]\r
+
+    \  },\r
+
+    \  {\r
+
+    \    \"brand_name\": \"UGG\",\r
+
+    \    \"po\": \"523060484\",\r
+
+    \    \"mo_no\": \"13A12C017\",\r
+
+    \    \"cust_shoes_style\": \"1167475/W NEW HEIGHTS ANKLE STRAP\",\r
+
+    \    \"factory_shoes_style\": \"US25 W260-2\",\r
+
+    \    \"color_sn\": \"CHE\",\r
+
+    \    \"defective_category\": \"B\",\r
+
+    \    \"storage_location\": \"P.B\",\r
+
+    \    \"unit\": \"prs\",\r
+
+    \    \"sizes\": [\r
+
+    \      {\r
+
+    \        \"size_code\": \"10\",\r
+
+    \        \"qty\": 1\r
+
+    \      }\r
+
+    \    ]\r
+
+    \  },\r
+
+    \  {\r
+
+    \    \"brand_name\": \"UGG\",\r
+
+    \    \"po\": \"523068074\",\r
+
+    \    \"mo_no\": \"14A05A041\",\r
+
+    \    \"cust_shoes_style\": \"1166732/W ESSENTIAL ULTRA MINI\",\r
+
+    \    \"factory_shoes_style\": \"UF24 W04-3\",\r
+
+    \    \"color_sn\": \"PDW\",\r
+
+    \    \"defective_category\": \"B\",\r
+
+    \    \"storage_location\": \"P.B\",\r
+
+    \    \"unit\": \"prs\",\r
+
+    \    \"sizes\": [\r
+
+    \      {\r
+
+    \        \"size_code\": \"6\",\r
+
+    \        \"qty\": 2\r
+
+    \      }\r
+
+    \    ]\r
+
+    \  },\r
+
+    \  {\r
+
+    \    \"brand_name\": \"UGG\",\r
+
+    \    \"po\": \"523068281\",\r
+
+    \    \"mo_no\": \"14A06A023\",\r
+
+    \    \"cust_shoes_style\": \"1166732/W ESSENTIAL ULTRA MINI\",\r
+
+    \    \"factory_shoes_style\": \"UF24 W04-3\",\r
+
+    \    \"color_sn\": \"BLK\",\r
+
+    \    \"defective_category\": \"B\",\r
+
+    \    \"storage_location\": \"P.B\",\r
+
+    \    \"unit\": \"prs\",\r
+
+    \    \"sizes\": [\r
+
+    \      {\r
+
+    \        \"size_code\": \"10\",\r
+
+    \        \"qty\": 2\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"5\",\r
+
+    \        \"qty\": 1\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"6\",\r
+
+    \        \"qty\": 4\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"7\",\r
+
+    \        \"qty\": 7\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"8\",\r
+
+    \        \"qty\": 1\r
+
+    \      }\r
+
+    \    ]\r
+
+    \  },\r
+
+    \  {\r
+
+    \    \"brand_name\": \"UGG\",\r
+
+    \    \"po\": \"523069455\",\r
+
+    \    \"mo_no\": \"14A06C021\",\r
+
+    \    \"cust_shoes_style\": \"1174471/W TAZZ II\",\r
+
+    \    \"factory_shoes_style\": \"UF25 W960-1\",\r
+
+    \    \"color_sn\": \"BLK\",\r
+
+    \    \"defective_category\": \"B\",\r
+
+    \    \"storage_location\": \"P.B\",\r
+
+    \    \"unit\": \"prs\",\r
+
+    \    \"sizes\": [\r
+
+    \      {\r
+
+    \        \"size_code\": \"10\",\r
+
+    \        \"qty\": 3\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"11\",\r
+
+    \        \"qty\": 1\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"6\",\r
+
+    \        \"qty\": 3\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"7\",\r
+
+    \        \"qty\": 6\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"8\",\r
+
+    \        \"qty\": 6\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"9\",\r
+
+    \        \"qty\": 2\r
+
+    \      }\r
+
+    \    ]\r
+
+    \  },\r
+
+    \  {\r
+
+    \    \"brand_name\": \"UGG\",\r
+
+    \    \"po\": \"523071254\",\r
+
+    \    \"mo_no\": \"14A04B025\",\r
+
+    \    \"cust_shoes_style\": \"1174493/W ESSENTIAL ULTRA MINI LEATHER\",\r
+
+    \    \"factory_shoes_style\": \"UF25-W04-4\",\r
+
+    \    \"color_sn\": \"CHO\",\r
+
+    \    \"defective_category\": \"B\",\r
+
+    \    \"storage_location\": \"P.B\",\r
+
+    \    \"unit\": \"prs\",\r
+
+    \    \"sizes\": [\r
+
+    \      {\r
+
+    \        \"size_code\": \"10\",\r
+
+    \        \"qty\": 4\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"11\",\r
+
+    \        \"qty\": 1\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"5\",\r
+
+    \        \"qty\": 2\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"6\",\r
+
+    \        \"qty\": 1\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"7\",\r
+
+    \        \"qty\": 16\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"8\",\r
+
+    \        \"qty\": 5\r
+
+    \      }\r
+
+    \    ]\r
+
+    \  },\r
+
+    \  {\r
+
+    \    \"brand_name\": \"UGG\",\r
+
+    \    \"po\": \"523072860\",\r
+
+    \    \"mo_no\": \"14A09B003\",\r
+
+    \    \"cust_shoes_style\": \"1166732/W ESSENTIAL ULTRA MINI\",\r
+
+    \    \"factory_shoes_style\": \"UF24 W04-3\",\r
+
+    \    \"color_sn\": \"CRBO\",\r
+
+    \    \"defective_category\": \"B\",\r
+
+    \    \"storage_location\": \"P.B\",\r
+
+    \    \"unit\": \"prs\",\r
+
+    \    \"sizes\": [\r
+
+    \      {\r
+
+    \        \"size_code\": \"5\",\r
+
+    \        \"qty\": 3\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"6\",\r
+
+    \        \"qty\": 6\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"7\",\r
+
+    \        \"qty\": 4\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"8\",\r
+
+    \        \"qty\": 3\r
+
+    \      }\r
+
+    \    ]\r
+
+    \  },\r
+
+    \  {\r
+
+    \    \"brand_name\": \"UGG\",\r
+
+    \    \"po\": \"523072927\",\r
+
+    \    \"mo_no\": \"14A09B002\",\r
+
+    \    \"cust_shoes_style\": \"1115030/W ESSENTIAL MINI\",\r
+
+    \    \"factory_shoes_style\": \"US20 W04-1\",\r
+
+    \    \"color_sn\": \"SAN\",\r
+
+    \    \"defective_category\": \"B\",\r
+
+    \    \"storage_location\": \"P.B\",\r
+
+    \    \"unit\": \"prs\",\r
+
+    \    \"sizes\": [\r
+
+    \      {\r
+
+    \        \"size_code\": \"9\",\r
+
+    \        \"qty\": 1\r
+
+    \      }\r
+
+    \    ]\r
+
+    \  },\r
+
+    \  {\r
+
+    \    \"brand_name\": \"UGG\",\r
+
+    \    \"po\": \"523073500\",\r
+
+    \    \"mo_no\": \"14A09B041\",\r
+
+    \    \"cust_shoes_style\": \"1166732/W ESSENTIAL ULTRA MINI\",\r
+
+    \    \"factory_shoes_style\": \"UF24 W04-3\",\r
+
+    \    \"color_sn\": \"SAN\",\r
+
+    \    \"defective_category\": \"B\",\r
+
+    \    \"storage_location\": \"P.B\",\r
+
+    \    \"unit\": \"prs\",\r
+
+    \    \"sizes\": [\r
+
+    \      {\r
+
+    \        \"size_code\": \"10\",\r
+
+    \        \"qty\": 1\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"5\",\r
+
+    \        \"qty\": 2\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"6\",\r
+
+    \        \"qty\": 5\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"7\",\r
+
+    \        \"qty\": 7\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"8\",\r
+
+    \        \"qty\": 5\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"9\",\r
+
+    \        \"qty\": 1\r
+
+    \      }\r
+
+    \    ]\r
+
+    \  },\r
+
+    \  {\r
+
+    \    \"brand_name\": \"UGG\",\r
+
+    \    \"po\": \"chua po\",\r
+
+    \    \"mo_no\": \"15A01A037\",\r
+
+    \    \"cust_shoes_style\": \"1019066K/K Tasman II\",\r
+
+    \    \"factory_shoes_style\": \"UF23 K460-13\",\r
+
+    \    \"color_sn\": \"CHE\",\r
+
+    \    \"defective_category\": \"C\",\r
+
+    \    \"storage_location\": \"P.C\",\r
+
+    \    \"unit\": \"pcs\",\r
+
+    \    \"sizes\": [\r
+
+    \      {\r
+
+    \        \"size_code\": \"03\",\r
+
+    \        \"qty\": 1\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"13\",\r
+
+    \        \"qty\": 1\r
+
+    \      }\r
+
+    \    ]\r
+
+    \  },\r
+
+    \  {\r
+
+    \    \"brand_name\": \"UGG\",\r
+
+    \    \"po\": \"PRELOAD\",\r
+
+    \    \"mo_no\": \"\",\r
+
+    \    \"cust_shoes_style\": \"1184130/W Ultra Mini Wild\",\r
+
+    \    \"factory_shoes_style\": \"UF26-W329-51\",\r
+
+    \    \"color_sn\": \"CHE\",\r
+
+    \    \"defective_category\": \"RD\",\r
+
+    \    \"storage_location\": \"\",\r
+
+    \    \"unit\": \"prs\",\r
+
+    \    \"sizes\": [\r
+
+    \      {\r
+
+    \        \"size_code\": \"10\",\r
+
+    \        \"qty\": 2\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"11\",\r
+
+    \        \"qty\": 1\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"12\",\r
+
+    \        \"qty\": 2\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"5\",\r
+
+    \        \"qty\": 1\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"6\",\r
+
+    \        \"qty\": 1\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"7\",\r
+
+    \        \"qty\": 1\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"9\",\r
+
+    \        \"qty\": 1\r
+
+    \      }\r
+
+    \    ]\r
+
+    \  },\r
+
+    \  {\r
+
+    \    \"brand_name\": \"UGG\",\r
+
+    \    \"po\": \"PRELOAD\",\r
+
+    \    \"mo_no\": \"\",\r
+
+    \    \"cust_shoes_style\": \"1184130/W Ultra Mini Wild\",\r
+
+    \    \"factory_shoes_style\": \"UF26-W329-51\",\r
+
+    \    \"color_sn\": \"CHE\",\r
+
+    \    \"defective_category\": \"RD\",\r
+
+    \    \"storage_location\": \"\",\r
+
+    \    \"unit\": \"prs\",\r
+
+    \    \"sizes\": [\r
+
+    \      {\r
+
+    \        \"size_code\": \"9\",\r
+
+    \        \"qty\": 1\r
+
+    \      }\r
+
+    \    ]\r
+
+    \  },\r
+
+    \  {\r
+
+    \    \"brand_name\": \"UGG\",\r
+
+    \    \"po\": \"PRELOAD\",\r
+
+    \    \"mo_no\": \"\",\r
+
+    \    \"cust_shoes_style\": \"1184130/W Ultra Mini Wild\",\r
+
+    \    \"factory_shoes_style\": \"UF26-W329-51\",\r
+
+    \    \"color_sn\": \"NAVY\",\r
+
+    \    \"defective_category\": \"RD\",\r
+
+    \    \"storage_location\": \"\",\r
+
+    \    \"unit\": \"prs\",\r
+
+    \    \"sizes\": [\r
+
+    \      {\r
+
+    \        \"size_code\": \"7\",\r
+
+    \        \"qty\": 1\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"9\",\r
+
+    \        \"qty\": 1\r
+
+    \      }\r
+
+    \    ]\r
+
+    \  },\r
+
+    \  {\r
+
+    \    \"brand_name\": \"UGG\",\r
+
+    \    \"po\": \"Preload\",\r
+
+    \    \"mo_no\": \"15A01A037\",\r
+
+    \    \"cust_shoes_style\": \"1019066K/K Tasman II\",\r
+
+    \    \"factory_shoes_style\": \"UF23 K460-13\",\r
+
+    \    \"color_sn\": \"CHE\",\r
+
+    \    \"defective_category\": \"B\",\r
+
+    \    \"storage_location\": \"P.B\",\r
+
+    \    \"unit\": \"prs\",\r
+
+    \    \"sizes\": [\r
+
+    \      {\r
+
+    \        \"size_code\": \"02\",\r
+
+    \        \"qty\": 2\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"04\",\r
+
+    \        \"qty\": 7\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"06\",\r
+
+    \        \"qty\": 2\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"13\",\r
+
+    \        \"qty\": 1\r
+
+    \      }\r
+
+    \    ]\r
+
+    \  },\r
+
+    \  {\r
+
+    \    \"brand_name\": \"UGG\",\r
+
+    \    \"po\": \"Preload\",\r
+
+    \    \"mo_no\": \"15A01A037\",\r
+
+    \    \"cust_shoes_style\": \"1019066K/K Tasman II\",\r
+
+    \    \"factory_shoes_style\": \"UF23 K460-13\",\r
+
+    \    \"color_sn\": \"CHE\",\r
+
+    \    \"defective_category\": \"C\",\r
+
+    \    \"storage_location\": \"P.A-F2\",\r
+
+    \    \"unit\": \"pcs\",\r
+
+    \    \"sizes\": [\r
+
+    \      {\r
+
+    \        \"size_code\": \"03\",\r
+
+    \        \"qty\": 1\r
+
+    \      },\r
+
+    \      {\r
+
+    \        \"size_code\": \"13\",\r
+
+    \        \"qty\": 1\r
+
+    \      }\r
+
+    \    ]\r
+
+    \  }\r
+
+    ]"
+settings: {}
+order: 9000

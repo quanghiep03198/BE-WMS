@@ -1,0 +1,5 @@
+$kind: http-request
+url: "{{base_url}}/packing/manifest/export"
+method: GET
+settings: {}
+order: 5000

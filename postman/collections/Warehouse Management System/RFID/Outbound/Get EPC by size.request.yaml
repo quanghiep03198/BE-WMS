@@ -1,0 +1,8 @@
+$kind: http-request
+url: "{{base_url}}/rfid/outbound/get-epc-by-size?mo_no.eq=13A12A095&size_numcode.eq=05"
+method: GET
+queryParams:
+  mo_no.eq: 13A12A095
+  size_numcode.eq: "05"
+settings: {}
+order: 2000

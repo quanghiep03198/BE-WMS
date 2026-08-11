@@ -1,0 +1,21 @@
+$kind: http-request
+url: "{{base_url}}/truckload-delivery?page=1&limit=50&sort.license_plate=desc"
+method: GET
+queryParams:
+  - key: from.eq
+    value: 2026-01-01
+    disabled: true
+  - key: to.eq
+    value: 2026-03-31
+    disabled: true
+  - key: page
+    value: "1"
+  - key: limit
+    value: "50"
+  - key: sort.license_plate
+    value: desc
+  - key: approval_status.eq
+    value: confirmed
+    disabled: true
+settings: {}
+order: 1000

@@ -1,0 +1,5 @@
+$kind: http-request
+url: "{{base_url}}/report/inventory"
+method: PATCH
+settings: {}
+order: 1000

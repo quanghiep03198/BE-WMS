@@ -1,0 +1,7 @@
+$kind: http-request
+url: "{{base_url}}/rfid/outbound/delete-scanned-order/:commandNumber"
+method: DELETE
+pathVariables:
+  commandNumber: ""
+settings: {}
+order: 4000

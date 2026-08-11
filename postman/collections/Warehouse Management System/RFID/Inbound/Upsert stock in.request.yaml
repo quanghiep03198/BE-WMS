@@ -1,0 +1,26 @@
+$kind: http-request
+url: "{{base_url}}/rfid/inbound/update-stock/:orderCode"
+method: PUT
+headers:
+  X-Database-Host: 10.30.80.2
+pathVariables:
+  orderCode: ""
+body:
+  type: json
+  content: "{\r
+
+    \t\"rfid_status\": \"\",\r
+
+    \t\"rfid_use\": \"\",\r
+
+    \t\"dept_code\": \"\",\r
+
+    \t\"dept_name\": \"\",\r
+
+    \t\"storage\": \"\",\r
+
+    \t\"quantity\": 0\r
+
+    }"
+settings: {}
+order: 7000

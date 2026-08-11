@@ -1,0 +1,10 @@
+$kind: collection
+scripts:
+  - type: http:beforeRequest
+    code: "pm.cookies = {\r
+
+      \    'access-token': pm.environment.get('access_token')\r
+
+      }"
+    language: text/javascript
+order: 17000

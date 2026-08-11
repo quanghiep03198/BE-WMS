@@ -1,0 +1,156 @@
+$kind: http-request
+description: |-
+  ### Description
+
+  Get list of all packing weight or get specific packing weight by `scan_id`
+
+  ### Response body schema
+
+  | Property | Type | Description |
+  | --- | --- | --- |
+  | statusCode | `number` | HTTP Response status code |
+  | message | `string` | Message to describe status of the request or occured error |
+  | metadata | `array or null` | Packing weight list data |
+  | metadata\[\].scan_id | `string` | The unique identifier for the packing weight |
+  | metadata\[\].weight | `string` | The weight associated with the packing |
+
+  ### Sample data
+
+  ``` json
+  {
+      "statusCode": 200,
+      "message": "Successfully",
+      "metadata": [
+          {
+              "scan_id": "",
+              "weight": ""
+          }
+      ]
+  }
+
+   ```
+
+  > Get list of all packing weight or get specific packing weight by `scan_id` 
+    
+
+  #### **Response body schema**
+
+  | Property | Type | Description |
+  | --- | --- | --- |
+  | statusCode | `number` | HTTP Response status code |
+  | message | `string` | Message to describe status of the request or occured error |
+  | metadata | `array or null` | Packing weight list data |
+
+  #### Sample data
+
+  ``` json
+  {
+      "statusCode": 200,
+      "message": "Successfully",
+      "metadata": [
+          {
+              "scan_id": "351702434437",
+              "weight": "54"
+          },
+          {
+              "scan_id": "351702434438",
+              "weight": "40"
+          },
+          {
+              "scan_id": "351702434439",
+              "weight": "60"
+          }
+      ]
+  }
+
+   ```
+url: http://10.30.0.19:3001/api/packing/weight-list/:scan_id
+method: GET
+headers:
+  X-User-Company: VA1
+queryParams:
+  - key: page
+    value: "1"
+    disabled: true
+  - key: limit
+    value: "10"
+    disabled: true
+pathVariables:
+  scan_id: "00008466220850633076"
+scripts:
+  - type: afterResponse
+    code: "pm.test(\"Response status code is 200\", function () {\r
+
+      \    pm.expect(pm.response.code).to.equal(200);\r
+
+      });\r
+
+      \r
+
+      \r
+
+      pm.test(\"Response has the required fields\", function () {\r
+
+      \    const responseData = pm.response.json();\r
+
+      \    \r
+
+      \    pm.expect(responseData).to.be.an('object');\r
+
+      \    pm.expect(responseData).to.have.property('statusCode');\r
+
+      \    pm.expect(responseData).to.have.property('message');\r
+
+      \    pm.expect(responseData).to.have.property('metadata');\r
+
+      });\r
+
+      \r
+
+      \r
+
+      pm.test(\"Metadata is an array with at least one element\", function () {\r
+
+      \    const responseData = pm.response.json();\r
+
+      \  \r
+
+      \    pm.expect(responseData.metadata).to.be.an('array').that.is.not.empty;\r
+
+      });\r
+
+      \r
+
+      \r
+
+      pm.test(\"Scan_id and weight are present in each element of metadata\", function () {\r
+
+      \    const responseData = pm.response.json();\r
+
+      \    \r
+
+      \    pm.expect(responseData.metadata).to.be.an('array');\r
+
+      \    responseData.metadata.forEach(function (item) {\r
+
+      \        pm.expect(item.scan_id).to.exist;\r
+
+      \        pm.expect(item.weight).to.exist;\r
+
+      \    });\r
+
+      });\r
+
+      \r
+
+      \r
+
+      pm.test(\"Response time is less than 500ms\", function () {\r
+
+      \  pm.expect(pm.response.responseTime).to.be.below(500);\r
+
+      });\r\n"
+    language: text/javascript
+settings: {}
+examples: ./.resources/Get packing weight by scan ID.resources/examples
+order: 3000

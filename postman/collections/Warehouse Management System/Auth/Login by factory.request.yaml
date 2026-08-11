@@ -1,0 +1,38 @@
+$kind: http-request
+url: http://10.50.5.251:3001/api/login
+method: POST
+body:
+  type: json
+  content: "{\r
+
+    \    \"username\":\"quanghiep\",\r
+
+    \    \"password\":\"12341234\"\r
+
+    }"
+scripts:
+  - type: afterResponse
+    code: "const jsonData = pm.response.json();\r
+
+      \r
+
+      pm.test('Login', function(){\r
+
+      \    pm.response.to.have.status(200)\r
+
+      \    pm.expect(jsonData.metadata).have.all.keys(['user','token'])\r
+
+      })\r
+
+      \r
+
+      if(pm.response.code === 200){\r
+
+      \    pm.environment.set('access_token', jsonData.metadata.token)\r
+
+      \    pm.environment.set('client_id', jsonData.metadata.user.id)\r
+
+      }"
+    language: text/javascript
+settings: {}
+order: 4000

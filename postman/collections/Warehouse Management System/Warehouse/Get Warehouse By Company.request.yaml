@@ -1,0 +1,180 @@
+$kind: http-request
+url: "{{base_url}}/warehouse"
+method: GET
+headers:
+  Accept: application/json
+  Content-Type: application/json
+  X-User-Company: VA1
+auth:
+  type: bearer
+  credentials:
+    token: "{{access_token}}"
+scripts:
+  - type: afterResponse
+    code: "pm.test(\"Response status code is 200\", function () {\r
+
+      \  pm.response.to.have.status(200);\r
+
+      });\r
+
+      \r
+
+      \r
+
+      pm.test(\"Response time is less than 200ms\", function () {\r
+
+      \  pm.expect(pm.response.responseTime).to.be.below(200);\r
+
+      });\r
+
+      \r
+
+      \r
+
+      pm.test(\"Metadata object and its fields are valid\", function () {\r
+
+      \    const responseData = pm.response.json();\r
+
+      \    \r
+
+      \    pm.expect(responseData).to.be.an('object');\r
+
+      \    pm.expect(responseData.metadata).to.exist.and.to.be.an('array').with.lengthOf.at.least(1);\r
+
+      \    \r
+
+      \    responseData.metadata.forEach(function(item) {\r
+
+      \        pm.expect(item).to.be.an('object');\r
+
+      \        pm.expect(item).to.have.property('id');\r
+
+      \        pm.expect(item).to.have.property('user_code_created');\r
+
+      \        pm.expect(item).to.have.property('user_name_created');\r
+
+      \        pm.expect(item).to.have.property('user_code_updated');\r
+
+      \        pm.expect(item).to.have.property('user_name_updated');\r
+
+      \        pm.expect(item).to.have.property('created');\r
+
+      \        pm.expect(item).to.have.property('updated');\r
+
+      \        pm.expect(item).to.have.property('is_active');\r
+
+      \        pm.expect(item).to.have.property('remark');\r
+
+      \        pm.expect(item).to.have.property('warehouse_num');\r
+
+      \        pm.expect(item).to.have.property('warehouse_name');\r
+
+      \        pm.expect(item).to.have.property('type_warehouse');\r
+
+      \        pm.expect(item).to.have.property('cofactory_code');\r
+
+      \        pm.expect(item).to.have.property('dept_code');\r
+
+      \        pm.expect(item).to.have.property('employee_code');\r
+
+      \        pm.expect(item).to.have.property('employee_name');\r
+
+      \        pm.expect(item).to.have.property('is_default');\r
+
+      \        pm.expect(item).to.have.property('is_disable');\r
+
+      \        pm.expect(item).to.have.property('area');\r
+
+      \        pm.expect(item).to.have.property('storage_locations').to.be.an('array').with.lengthOf.at.least(1);\r
+
+      \        \r
+
+      \        item.storage_locations.forEach(function(storage) {\r
+
+      \            pm.expect(storage).to.be.an('object');\r
+
+      \            pm.expect(storage).to.have.property('id');\r
+
+      \            pm.expect(storage).to.have.property('storage_num');\r
+
+      \            pm.expect(storage).to.have.property('storage_name');\r
+
+      \        });\r
+
+      \    });\r
+
+      });\r
+
+      \r
+
+      \r
+
+      pm.test(\"Storage locations array is present and has the expected number of elements\", function () {\r
+
+      \  const responseData = pm.response.json();\r
+
+      \  \r
+
+      \  pm.expect(responseData).to.have.property('metadata');\r
+
+      \  pm.expect(responseData.metadata).to.be.an('array');\r
+
+      \  \r
+
+      \  responseData.metadata.forEach(function (warehouse) {\r
+
+      \    pm.expect(warehouse).to.have.property('storage_locations');\r
+
+      \    pm.expect(warehouse.storage_locations).to.be.an('array');\r
+
+      \    // Add more specific checks for the number of elements in the storage_locations array if needed\r
+
+      \  });\r
+
+      });\r
+
+      \r
+
+      \r
+
+      pm.test(\"Validate non-empty strings for specific fields\", function () {\r
+
+      \    const responseData = pm.response.json();\r
+
+      \    \r
+
+      \    pm.expect(responseData).to.be.an('object');\r
+
+      \    pm.expect(responseData.metadata).to.be.an('array');\r
+
+      \    \r
+
+      \    responseData.metadata.forEach(function (item) {\r
+
+      \        pm.expect(item.warehouse_num).to.be.a('string').and.to.have.lengthOf.at.least(1, \"Value should not be empty\");\r
+
+      \        pm.expect(item.warehouse_name).to.be.a('string').and.to.have.lengthOf.at.least(1, \"Value should not be empty\");\r
+
+      \        pm.expect(item.type_warehouse).to.be.a('string').and.to.have.lengthOf.at.least(1, \"Value should not be empty\");\r
+
+      \        pm.expect(item.user_code_updated).to.be.a('string').and.to.have.lengthOf.at.least(1, \"Value should not be empty\");\r
+
+      \        pm.expect(item.user_name_updated).to.be.a('string').and.to.have.lengthOf.at.least(1, \"Value should not be empty\");\r
+
+      \    });\r
+
+      });\r
+
+      \r
+
+      pm.test(\"Response time is less than 200ms\", function () {\r
+
+      \  pm.expect(pm.response.responseTime).to.be.below(200);\r
+
+      });\r
+
+      \r\n"
+    language: text/javascript
+settings: {}
+examples: ./.resources/Get Warehouse By Company.resources/examples
+order: 1000

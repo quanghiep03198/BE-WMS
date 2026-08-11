@@ -1,0 +1,11 @@
+$kind: http-request
+url: "{{base_url}}/employee?search=T20150901010101"
+method: GET
+queryParams:
+  search: T20150901010101
+auth:
+  type: bearer
+  credentials:
+    token: "{{auth_token}}"
+settings: {}
+order: 1000

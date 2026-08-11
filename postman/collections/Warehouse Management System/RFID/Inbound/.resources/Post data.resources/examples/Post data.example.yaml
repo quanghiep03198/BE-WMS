@@ -1,0 +1,204 @@
+$kind: http-example
+request:
+  url: "{{base_url}}/rfid/inbound/post-data"
+  method: POST
+  body:
+    type: json
+    content: "{\r
+
+      \t\"timestamp\": \"2026-04-25 17:11:43\",\r
+
+      \t\"method\": \"device_report_probe_data\",\r
+
+      \t\"sn\": \"d56f07f5\",\r
+
+      \t\"data\": {\r
+
+      \t\t\"id\": \"d56f07f5\",\r
+
+      \t\t\"timestamp\": \"1742636263574\",\r
+
+      \t\t\"temperature\": \"0\",\r
+
+      \t\t\"tagList\": [\r
+
+      \t\t\t{\r
+
+      \t\t\t\t\"direction\": \"1\",\r
+
+      \t\t\t\t\"firstTime\": 1742636263587,\r
+
+      \t\t\t\t\"ant\": 4,\r
+
+      \t\t\t\t\"firstAnt\": 3,\r
+
+      \t\t\t\t\"rssi\": \"45.7\",\r
+
+      \t\t\t\t\"lastTime\": 1742636263587,\r
+
+      \t\t\t\t\"epc\": \"30340C100828854023C3AAB3\"\r
+
+      \t\t\t},\r
+
+      \t\t\t{\r
+
+      \t\t\t\t\"direction\": \"1\",\r
+
+      \t\t\t\t\"firstTime\": 1742636263587,\r
+
+      \t\t\t\t\"ant\": 4,\r
+
+      \t\t\t\t\"firstAnt\": 3,\r
+
+      \t\t\t\t\"rssi\": \"45.7\",\r
+
+      \t\t\t\t\"lastTime\": 1742636263587,\r
+
+      \t\t\t\t\"epc\": \"3312D58E3D810100005B6ECE\"\r
+
+      \t\t\t},\r
+
+      \t\t\t{\r
+
+      \t\t\t\t\"direction\": \"1\",\r
+
+      \t\t\t\t\"firstTime\": 1742636263587,\r
+
+      \t\t\t\t\"ant\": 4,\r
+
+      \t\t\t\t\"firstAnt\": 3,\r
+
+      \t\t\t\t\"rssi\": \"45.7\",\r
+
+      \t\t\t\t\"lastTime\": 1742636263587,\r
+
+      \t\t\t\t\"epc\": \"30340C30BC03ADC023C34688\"\r
+
+      \t\t\t},\r
+
+      \t\t\t{\r
+
+      \t\t\t\t\"direction\": \"1\",\r
+
+      \t\t\t\t\"firstTime\": 1742636263587,\r
+
+      \t\t\t\t\"ant\": 4,\r
+
+      \t\t\t\t\"firstAnt\": 3,\r
+
+      \t\t\t\t\"rssi\": \"45.7\",\r
+
+      \t\t\t\t\"lastTime\": 1742636263587,\r
+
+      \t\t\t\t\"epc\": \"30340C30BC03ADC023C34689\"\r
+
+      \t\t\t}\r
+
+      \t\t]\r
+
+      \t}\r
+
+      }"
+response:
+  statusCode: 201
+  statusText: Created
+  headers:
+    Content-Security-Policy: "default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests"
+    Cross-Origin-Opener-Policy: same-origin
+    Cross-Origin-Resource-Policy: same-origin
+    Origin-Agent-Cluster: ?1
+    Referrer-Policy: no-referrer
+    Strict-Transport-Security: max-age=31536000; includeSubDomains
+    X-Content-Type-Options: nosniff
+    X-DNS-Prefetch-Control: off
+    X-Download-Options: noopen
+    X-Frame-Options: SAMEORIGIN
+    X-Permitted-Cross-Domain-Policies: none
+    X-XSS-Protection: "0"
+    vary: Origin
+    access-control-allow-credentials: "true"
+    content-type: application/json; charset=utf-8
+    content-length: "1183"
+    Date: Sat, 25 Apr 2026 10:24:43 GMT
+    Connection: keep-alive
+    Keep-Alive: timeout=72
+  body:
+    type: text
+    content: |-
+      {
+          "metadata": {
+              "name": "RFID_INBOUND",
+              "data": {
+                  "method": "device_report_probe_data",
+                  "sn": "d56f07f5",
+                  "timestamp": "2026-04-25 17:11:43",
+                  "data": {
+                      "id": "d56f07f5",
+                      "timestamp": "1742636263574",
+                      "temperature": "0",
+                      "tagList": [
+                          {
+                              "ant": 4,
+                              "epc": "30340C100828854023C3AAB3",
+                              "firstAnt": 3,
+                              "firstTime": 1742636263587,
+                              "lastTime": 1742636263587,
+                              "direction": "1",
+                              "rssi": "45.7"
+                          },
+                          {
+                              "ant": 4,
+                              "epc": "3312D58E3D810100005B6ECE",
+                              "firstAnt": 3,
+                              "firstTime": 1742636263587,
+                              "lastTime": 1742636263587,
+                              "direction": "1",
+                              "rssi": "45.7"
+                          },
+                          {
+                              "ant": 4,
+                              "epc": "30340C30BC03ADC023C34688",
+                              "firstAnt": 3,
+                              "firstTime": 1742636263587,
+                              "lastTime": 1742636263587,
+                              "direction": "1",
+                              "rssi": "45.7"
+                          },
+                          {
+                              "ant": 4,
+                              "epc": "30340C30BC03ADC023C34689",
+                              "firstAnt": 3,
+                              "firstTime": 1742636263587,
+                              "lastTime": 1742636263587,
+                              "direction": "1",
+                              "rssi": "45.7"
+                          }
+                      ]
+                  }
+              },
+              "opts": {
+                  "attempts": 3,
+                  "removeOnFail": true,
+                  "removeOnComplete": true,
+                  "backoff": {
+                      "type": "exponential",
+                      "delay": 3000
+                  },
+                  "lifo": true
+              },
+              "id": "244",
+              "progress": 0,
+              "returnvalue": null,
+              "stacktrace": null,
+              "priority": 0,
+              "attemptsStarted": 0,
+              "attemptsMade": 0,
+              "timestamp": 1777112683047,
+              "queueQualifiedName": "bull:POST_DATA_INBOUND_QUEUE"
+          },
+          "statusCode": 201,
+          "message": "Created",
+          "timestamp": "2026-04-25 17:24:43",
+          "path": "/api/rfid/inbound/post-data"
+      }
+order: 1000

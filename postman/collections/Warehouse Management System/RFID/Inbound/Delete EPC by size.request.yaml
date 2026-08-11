@@ -1,0 +1,5 @@
+$kind: http-request
+url: "{{base_url}}/rfid/inbound/delete-scanned-epcs"
+method: DELETE
+settings: {}
+order: 9000

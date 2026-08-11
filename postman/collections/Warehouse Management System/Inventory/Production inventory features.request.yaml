@@ -1,0 +1,20 @@
+$kind: http-request
+url: "{{base_url}}/inventory/production-features"
+method: GET
+headers:
+  - key: X-Tenant-Id
+    value: "{{tenant_gl1}}"
+  - key: X-User-Company
+    value: VA1
+  - key: X-Api-Version
+    value: "1.0"
+    disabled: true
+queryParams:
+  - key: shoes_style.eq
+    value: all
+    disabled: true
+  - key: color.eq
+    value: all
+    disabled: true
+settings: {}
+order: 6000

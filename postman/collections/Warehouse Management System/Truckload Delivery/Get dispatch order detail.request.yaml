@@ -1,0 +1,7 @@
+$kind: http-request
+url: "{{base_url}}/truckload-delivery/:dispatch_order"
+method: GET
+pathVariables:
+  dispatch_order: GL1-EXP-20260504-026
+settings: {}
+order: 2000

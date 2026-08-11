@@ -1,0 +1,48 @@
+$kind: http-request
+url: http://10.50.5.251:3001/api/rfid/outbound/post-data
+method: POST
+body:
+  type: json
+  content: "{\r
+
+    \   \"timestamp\": \"2025-05-14 14:21:00\",\r
+
+    \   \"method\": \"device_report_probe_data\",\r
+
+    \   \"sn\": \"X600000000009478\",\r
+
+    \   \"data\": {\r
+
+    \      \"id\": \"X600000000009478\",\r
+
+    \      \"timestamp\": \"1778743360523\",\r
+
+    \      \"temperature\": \"0\",\r
+
+    \      \"tagList\": [\r
+
+    \        {\r
+
+    \            \"direction\": \"1\",\r
+
+    \            \"firstTime\": 0,\r
+
+    \            \"ant\": 0,\r
+
+    \            \"firstAnt\": 0,\r
+
+    \            \"rssi\": \"45.7\",\r
+
+    \            \"lastTime\": 0,\r
+
+    \            \"epc\": \"30340B9A70557EC023C3CE44\"\r
+
+    \         }\r
+
+    \      ]\r
+
+    \   }\r
+
+    }"
+settings: {}
+order: 1000

@@ -1,0 +1,27 @@
+$kind: collection
+description: |-
+  Decker APIs for tracking and getting EPC, Purchase/Manufacturing Order information
+
+  > _Authenticated by OAuth2 token with Decker's credentials_
+auth:
+  - id: 153c6554-64da-4dc0-8d34-7224b4a74941
+    type: oauth2
+    name: oauth2 auth
+    credentials:
+      clientId: "{{gl1_decker_client_id}}"
+      accessTokenUrl: "{{decker_oauth2_url}}"
+      tokenName: gl1_decker_token
+      tokenType: Bearer
+      addTokenTo: header
+      refreshTokenUrl: "{{decker_oauth2_url}}"
+      challengeAlgorithm: S256
+      clientSecret: "{{gl1_decker_client_secret}}"
+      scope: event:publish
+      client_authentication: header
+      redirect_uri: https://divzen.deckers.com/oauth2/token
+      grant_type: client_credentials
+      accessToken: "{{json_web_token_17o0}}"
+      refreshRequestParams: []
+      tokenRequestParams: []
+      authRequestParams: []
+order: 8000

@@ -1,0 +1,20 @@
+$kind: collection
+auth:
+  - id: 47133674-96c7-40f5-a297-e2f191716533
+    type: oauth2
+    name: oauth2 auth
+    credentials:
+      clientId: "{{gl1_decker_client_id}}"
+      accessTokenUrl: "{{decker_oauth2_url}}"
+      tokenName: authentication_token_gl1
+      addTokenTo: header
+      challengeAlgorithm: S256
+      clientSecret: "{{gl1_decker_client_secret}}"
+      scope: event:publish
+      client_authentication: header
+      redirect_uri: https://divzen.deckers.com/oauth2/token
+      grant_type: client_credentials
+      refreshRequestParams: []
+      tokenRequestParams: []
+      authRequestParams: []
+order: 11000

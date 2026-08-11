@@ -1,0 +1,9 @@
+$kind: http-request
+url: "{{base_url}}/order/purchase-order/size-run/:po"
+method: GET
+headers:
+  X-Tenant-Id: "{{tenant_gl1}}"
+pathVariables:
+  po: "500124437"
+settings: {}
+order: 2000

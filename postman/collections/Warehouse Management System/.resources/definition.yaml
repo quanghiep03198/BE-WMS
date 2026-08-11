@@ -1,0 +1,53 @@
+$kind: collection
+name: Warehouse Management System
+description: |-
+  # **Warehouse Managemen System APIs**
+
+  **Base URL** : [http://127.0.0.1:3001/api](http://127.0.0.1:3001/api)
+variables:
+  - key: json_web_token_0iuf
+    secret: true
+  - key: json_web_token_0nsn
+    secret: true
+  - key: json_web_token_0l7x
+    secret: true
+  - key: json_web_token_17o0
+    secret: true
+scripts:
+  - type: http:afterResponse
+    code: "const statusCode = pm.response.code\r
+
+      \r
+
+      if(statusCode === 401){\r
+
+      \    const refreshTokenURL = pm.environment.get('base_url')+ '/refresh-token'\r
+
+      \    try{\r
+
+      \        pm.sendRequest(refreshTokenURL,\r
+
+      \        (_, response) => {\r
+
+      \            const jsonResponse = response.json()\r
+
+      \            const token = jsonResponse.metadata\r
+
+      \            pm.environment.set('access_token', token)      \r
+
+      \        })\r
+
+      \    } catch{\r
+
+      \        pm.execution.setNextRequest(null)\r
+
+      \    }\r
+
+      }"
+    language: text/javascript
+auth:
+  - id: c726e5ea-707f-4fd5-8e65-782393de04f3
+    type: bearer
+    name: bearer auth
+    credentials:
+      token: "{{access_token}}"

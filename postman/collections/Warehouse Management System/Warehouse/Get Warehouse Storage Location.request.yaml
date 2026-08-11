@@ -1,0 +1,19 @@
+$kind: http-request
+url: "{{base_url}}/warehouse/storage-detail/VA1PW01"
+method: GET
+headers:
+  - key: Accept
+    value: application/json
+    disabled: true
+  - key: Content-Type
+    value: application/json
+    disabled: true
+  - key: Content-Type
+    value: application/json
+    disabled: true
+auth:
+  type: bearer
+  credentials:
+    token: "{{auth_token}}"
+settings: {}
+order: 8000

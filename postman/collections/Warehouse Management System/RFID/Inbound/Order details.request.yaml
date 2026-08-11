@@ -1,0 +1,5 @@
+$kind: http-request
+url: "{{base_url}}/rfid/inbound/manufacturing-order-detail"
+method: GET
+settings: {}
+order: 3000

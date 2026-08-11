@@ -1,0 +1,7 @@
+$kind: http-request
+url: "{{base_url}}/statistics/inventory-comparison"
+method: GET
+headers:
+  X-Tenant-Id: "{{tenant_gl1}}"
+settings: {}
+order: 2000

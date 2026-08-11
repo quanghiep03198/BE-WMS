@@ -1,0 +1,13 @@
+$kind: http-request
+url: "{{base_url}}/warehouse"
+method: GET
+headers:
+  Accept: application/json
+  Content-Type: application/json
+  X-User-Company: VA1
+auth:
+  type: bearer
+  credentials:
+    token: "{{access_token}}"
+settings: {}
+order: 2000

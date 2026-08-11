@@ -1,0 +1,3 @@
+$kind: collection
+description: Provide key metrics, analysis for dashboard of WMS
+order: 16000

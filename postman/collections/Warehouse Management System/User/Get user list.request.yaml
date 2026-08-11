@@ -1,0 +1,129 @@
+$kind: http-request
+description: |-
+  # Get User List
+
+  ## Overview
+
+  This endpoint retrieves a list of users from the system. It returns user data in JSON format with pagination and filtering capabilities.
+
+  ## Authentication
+
+  This endpoint requires **Bearer Token** authentication.
+
+  - **Header**: `Authorization`
+      
+  - **Value**: `Bearer {{auth_token}}`
+      
+
+  Ensure that the `auth_token` variable is set in your active environment with a valid access token.
+
+  ## Request Details
+
+  ### HTTP Method
+
+  ```
+  GET
+
+   ```
+
+  ### Endpoint
+
+  ```
+  {{base_url}}/user
+
+   ```
+
+  ### Request Body
+
+  No request body is required for this endpoint.
+
+  ### Headers
+
+  - `Authorization: Bearer {{auth_token}}` (required)
+      
+  - `Accept: \*/\*`
+      
+  - `Cache-Control: no-cache`
+      
+
+  ## Response
+
+  ### Success Response (200 OK)
+
+  The endpoint returns a JSON response with the following structure:
+
+  ``` json
+  {
+    "statusCode": 200,
+    "data": [
+      // Array of user objects
+    ]
+  }
+
+   ```
+
+  ### Response Headers
+
+  - `Content-Type: application/json`
+      
+
+  ### Status Codes
+
+  - **200 OK**: Successfully retrieved the user list
+      
+  - **401 Unauthorized**: Invalid or missing authentication token
+      
+  - **403 Forbidden**: Insufficient permissions to access user data
+      
+  - **500 Internal Server Error**: Server-side error occurred
+      
+
+  ## Performance
+
+  Expected response time: **< 2000ms**
+
+  ## Notes
+
+  - The response will include a `statusCode` property indicating the operation status
+      
+  - Ensure your authentication token is valid and has not expired
+      
+  - The endpoint uses the `base_url` variable which should point to your API server
+url: "{{base_url}}/user"
+method: GET
+headers:
+  Authorization: Bearer {{auth_token}}
+  Cache-Control: no-cache
+  Postman-Token: <calculated when request is sent>
+  Host: <calculated when request is sent>
+  User-Agent: PostmanRuntime/7.39.1
+  Accept: "*/*"
+  Accept-Encoding: gzip, deflate, br
+  Connection: keep-alive
+auth:
+  type: bearer
+  credentials:
+    token: "{{access_token}}"
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Get profile - Status code is 200', function () {
+          pm.response.to.have.status(200);
+      })
+
+      pm.test('Response time is less than 2000ms', function () {
+          pm.expect(pm.response.responseTime).to.be.below(2000);
+      })
+
+      pm.test('Response has valid structure', function () {
+          const jsonData = pm.response.json();
+          pm.expect(jsonData).to.have.property('statusCode');
+      })
+
+      pm.test('Content-Type header is application/json', function () {
+          pm.response.to.have.header('Content-Type');
+          pm.expect(pm.response.headers.get('Content-Type')).to.include('application/json');
+      })
+    language: text/javascript
+settings: {}
+order: 3000

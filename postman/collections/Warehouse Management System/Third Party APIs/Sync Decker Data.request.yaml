@@ -1,0 +1,10 @@
+$kind: http-request
+url: "{{base_url}}/third-party-api/sync-decker-data"
+method: PUT
+headers:
+  X-Tenant-Id: "{{tenant_lianying}}"
+  X-User-Company: VA1
+body:
+  type: urlencoded
+settings: {}
+order: 3000

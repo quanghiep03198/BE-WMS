@@ -1,0 +1,19 @@
+$kind: http-request
+url: "{{decker_oauth2_url}}"
+method: POST
+headers:
+  Content-Type: application/x-www-form-urlencoded
+body:
+  type: urlencoded
+  content:
+    grant_type: client_credentials
+    scope: event:publish
+    client_id: "{{gl4_decker_client_id}}"
+    client_secret: "{{gl4_decker_client_secret}}"
+auth:
+  type: basic
+  credentials:
+    username: "527142314508357"
+    password: DhufuGsWRkVlQihtgeQooyuZFtEyapIk
+settings: {}
+order: 3000

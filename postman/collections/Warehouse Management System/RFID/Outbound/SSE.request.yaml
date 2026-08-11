@@ -1,0 +1,8 @@
+$kind: http-request
+url: "{{base_url}}/rfid/sse"
+method: GET
+headers:
+  X-Tenant-Id: tenant-lianying-primary
+  X-User-Company: VA1
+settings: {}
+order: 6000

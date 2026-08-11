@@ -1,0 +1,56 @@
+$kind: http-request
+description: |-
+  The `PUT` request is used to upsert data by EPC (Electronic Product Code) in the third-party API. The endpoint for this request is `{{base_url}}/third-party-api/upsert-by-epc/30340C1F341EC0C023C3460F`.
+
+  ### Response
+
+  The response returned is in JSON format and can be documented as a JSON schema as follows:
+
+  ``` json
+  {
+      "type": "object",
+      "properties": {
+          "metadata": {
+              "type": "object",
+              "properties": {
+                  "affected": {
+                      "type": "integer"
+                  }
+              }
+          },
+          "statusCode": {
+              "type": "integer"
+          },
+          "message": {
+              "type": "string"
+          },
+          "timestamp": {
+              "type": "string"
+          },
+          "path": {
+              "type": "string"
+          }
+      }
+  }
+
+   ```
+url: "{{base_url}}/third-party-api/upsert-by-epc/30340C100828850023C38A6F"
+method: PUT
+headers:
+  X-Tenant-Id: tenant-lianying
+  X-User-Company: VA1
+body:
+  type: json
+  content: "{}"
+scripts:
+  - type: afterResponse
+    code: "// Stores the affected metadata value in an environment or global variable\r
+
+      var affectedMetadata = pm.response.json().metadata.affected;\r
+
+      pm.environment.set(\"affectedMetadata\", affectedMetadata);\r
+
+      // Alternatively, you can use pm.globals.set(\"affectedMetadata\", affectedMetadata) if it should be stored globally"
+    language: text/javascript
+settings: {}
+order: 2000

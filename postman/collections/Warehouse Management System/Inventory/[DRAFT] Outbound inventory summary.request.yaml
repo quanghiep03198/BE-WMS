@@ -1,0 +1,18 @@
+$kind: http-request
+url: "{{base_url}}/inventory/summary/outbound?brand_name.eq=UGG&shoes_style.eq=ALL&color.eq=ALL&_page=2"
+method: GET
+headers:
+  - key: X-Tenant-Id
+    value: "{{tenant_lianying}}"
+  - key: X-User-Company
+    value: VA1
+  - key: X-Api-Version
+    value: "1.0"
+    disabled: true
+queryParams:
+  brand_name.eq: UGG
+  shoes_style.eq: ALL
+  color.eq: ALL
+  _page: "2"
+settings: {}
+order: 4000

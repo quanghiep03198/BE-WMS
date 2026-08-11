@@ -1,0 +1,11 @@
+$kind: http-request
+url: "{{base_url}}/rfid/devices"
+method: GET
+headers:
+  - key: X-User-Factory
+    value: VA1
+  - key: Accept-Language
+    value: en
+    disabled: true
+settings: {}
+order: 1000

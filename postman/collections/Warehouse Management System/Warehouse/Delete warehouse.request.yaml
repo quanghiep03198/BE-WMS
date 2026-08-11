@@ -1,0 +1,19 @@
+$kind: http-request
+url: "{{base_url}}/warehouse"
+method: DELETE
+headers:
+  Accept: application/json
+  Content-Type: application/json
+queryParams:
+  - key: :id
+    value: ""
+    disabled: true
+body:
+  type: json
+  content: "{\r\n    \"id\": [13]\r\n}   "
+auth:
+  type: bearer
+  credentials:
+    token: "{{access_token}}"
+settings: {}
+order: 4000

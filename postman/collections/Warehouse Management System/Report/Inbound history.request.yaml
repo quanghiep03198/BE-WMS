@@ -1,0 +1,10 @@
+$kind: http-request
+url: "{{base_url}}/report/inbound-history/:commandNumber"
+method: GET
+headers:
+  X-User-Company: CA1
+  X-Tenant-Id: "{{tenant_gl4}}"
+pathVariables:
+  commandNumber: 14D12A034
+settings: {}
+order: 3000

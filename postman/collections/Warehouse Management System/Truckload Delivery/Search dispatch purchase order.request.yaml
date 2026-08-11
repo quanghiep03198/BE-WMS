@@ -1,0 +1,7 @@
+$kind: http-request
+url: "{{base_url}}/truckload-delivery/search-dispatch-purchase-order?search=523089863"
+method: GET
+queryParams:
+  search: "523089863"
+settings: {}
+order: 3000

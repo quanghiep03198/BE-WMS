@@ -1,0 +1,17 @@
+$kind: http-request
+url: "{{base_url}}/report/daily-inbound/export?date.eq=2025-06-01"
+method: GET
+headers:
+  - key: "{{header_tenant}}"
+    value: "{{tenant_gl1}}"
+  - key: "{{header_factory_code}}"
+    value: VA1
+  - key: "{{header_api_version}}"
+    value: "1.0"
+  - key: Accept
+    value: application/text
+    disabled: true
+queryParams:
+  date.eq: 2025-06-01
+settings: {}
+order: 6000

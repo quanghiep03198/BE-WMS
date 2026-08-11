@@ -1,0 +1,11 @@
+$kind: http-request
+url: "{{base_url}}/rfid/devices/:seriesNumber"
+method: GET
+headers:
+  X-Tenant-Id: "{{tenant_dev}}"
+  X-User-Company: VA1
+  Accept-Language: en
+pathVariables:
+  seriesNumber: X600000000009569
+settings: {}
+order: 2000

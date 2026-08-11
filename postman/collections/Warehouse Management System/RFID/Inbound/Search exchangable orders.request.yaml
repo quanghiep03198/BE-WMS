@@ -1,0 +1,12 @@
+$kind: http-request
+url: "{{base_url}}/rfid/inbound/search-exchangable-order?mo_no.eq=14A06C007&shoes_style_code_factory.eq=UF25-W9100-1&color_sn.eq=SAN&q=6b014"
+method: GET
+headers:
+  X-User-Company: VA1
+queryParams:
+  mo_no.eq: 14A06C007
+  shoes_style_code_factory.eq: UF25-W9100-1
+  color_sn.eq: SAN
+  q: 6b014
+settings: {}
+order: 12000

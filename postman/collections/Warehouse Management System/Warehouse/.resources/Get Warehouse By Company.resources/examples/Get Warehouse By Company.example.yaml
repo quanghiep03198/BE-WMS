@@ -1,0 +1,297 @@
+$kind: http-example
+request:
+  url: "{{base_url}}/warehouse"
+  method: GET
+  headers:
+    Accept: application/json
+    Content-Type: application/json
+    X-User-Company: VA1
+response:
+  statusCode: 200
+  statusText: OK
+  headers:
+    Access-Control-Allow-Origin: "*"
+    Content-Security-Policy: "default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests"
+    Cross-Origin-Opener-Policy: same-origin
+    Cross-Origin-Resource-Policy: same-origin
+    Origin-Agent-Cluster: ?1
+    Referrer-Policy: no-referrer
+    Strict-Transport-Security: max-age=15552000; includeSubDomains
+    X-Content-Type-Options: nosniff
+    X-DNS-Prefetch-Control: off
+    X-Download-Options: noopen
+    X-Frame-Options: SAMEORIGIN
+    X-Permitted-Cross-Domain-Policies: none
+    X-XSS-Protection: "0"
+    Content-Type: application/json; charset=utf-8
+    Content-Length: "3118"
+    ETag: W/"c2e-DzwIw+JjlotzxeHe5b9L6nvzEEs"
+    Vary: Accept-Encoding
+    Date: Thu, 05 Dec 2024 08:06:10 GMT
+    Connection: keep-alive
+    Keep-Alive: timeout=5
+  body:
+    type: json
+    content: |-
+      {
+          "metadata": [
+              {
+                  "id": 14,
+                  "user_code_created": null,
+                  "user_name_created": null,
+                  "user_code_updated": "quanghiep",
+                  "user_name_updated": "Trương Quang Hiệp",
+                  "created": "2024-06-19T19:02:28.747Z",
+                  "updated": "2024-11-11T02:38:18.203Z",
+                  "is_active": "Y",
+                  "remark": null,
+                  "warehouse_num": "VA1PW01",
+                  "warehouse_name": "A1.A",
+                  "type_warehouse": "D",
+                  "cofactory_code": "VA1",
+                  "dept_code": "VA1C3B00",
+                  "employee_code": "STEVEN",
+                  "employee_name": "STEVEN",
+                  "is_default": false,
+                  "is_disable": false,
+                  "area": 1000,
+                  "storage_locations": [
+                      {
+                          "id": 48,
+                          "storage_num": "VA1B01",
+                          "storage_name": "A1.A"
+                      },
+                      {
+                          "id": 49,
+                          "storage_num": "VA1B02",
+                          "storage_name": "A1.B"
+                      },
+                      {
+                          "id": 50,
+                          "storage_num": "VA1B03",
+                          "storage_name": "A1.C"
+                      },
+                      {
+                          "id": 51,
+                          "storage_num": "VA1B04",
+                          "storage_name": "A1.1"
+                      },
+                      {
+                          "id": 52,
+                          "storage_num": "VA1B05",
+                          "storage_name": "A1.2"
+                      },
+                      {
+                          "id": 53,
+                          "storage_num": "VA1B06",
+                          "storage_name": "A1.3"
+                      },
+                      {
+                          "id": 54,
+                          "storage_num": "VA1B07",
+                          "storage_name": "A1.4"
+                      },
+                      {
+                          "id": 55,
+                          "storage_num": "VA1B08",
+                          "storage_name": "A1.5"
+                      },
+                      {
+                          "id": 56,
+                          "storage_num": "VA1B09",
+                          "storage_name": "A1.6"
+                      },
+                      {
+                          "id": 57,
+                          "storage_num": "VA1B10",
+                          "storage_name": "A2.A"
+                      },
+                      {
+                          "id": 58,
+                          "storage_num": "VA1B11",
+                          "storage_name": "A2.B"
+                      },
+                      {
+                          "id": 59,
+                          "storage_num": "VA1B12",
+                          "storage_name": "A2.C"
+                      },
+                      {
+                          "id": 60,
+                          "storage_num": "VA1B13",
+                          "storage_name": "A2.1"
+                      },
+                      {
+                          "id": 61,
+                          "storage_num": "VA1B14",
+                          "storage_name": "A2.2"
+                      },
+                      {
+                          "id": 62,
+                          "storage_num": "VA1B15",
+                          "storage_name": "A2.3"
+                      },
+                      {
+                          "id": 63,
+                          "storage_num": "VA1B16",
+                          "storage_name": "A2.4"
+                      },
+                      {
+                          "id": 64,
+                          "storage_num": "VA1B17",
+                          "storage_name": "A2.5"
+                      },
+                      {
+                          "id": 65,
+                          "storage_num": "VA1B18",
+                          "storage_name": "A2.6"
+                      },
+                      {
+                          "id": 66,
+                          "storage_num": "VA1B19",
+                          "storage_name": "A2.7"
+                      },
+                      {
+                          "id": 67,
+                          "storage_num": "VA1B20",
+                          "storage_name": "A3.A"
+                      },
+                      {
+                          "id": 68,
+                          "storage_num": "VA1B21",
+                          "storage_name": "A3.B"
+                      },
+                      {
+                          "id": 69,
+                          "storage_num": "VA1B22",
+                          "storage_name": "A4.A"
+                      },
+                      {
+                          "id": 70,
+                          "storage_num": "VA1B23",
+                          "storage_name": "A4.B"
+                      },
+                      {
+                          "id": 71,
+                          "storage_num": "VA1B24",
+                          "storage_name": "A5.A"
+                      },
+                      {
+                          "id": 72,
+                          "storage_num": "VA1B25",
+                          "storage_name": "A5.B"
+                      },
+                      {
+                          "id": 73,
+                          "storage_num": "VA1B26",
+                          "storage_name": "B1.A"
+                      },
+                      {
+                          "id": 74,
+                          "storage_num": "VA1B27",
+                          "storage_name": "B1.B"
+                      },
+                      {
+                          "id": 75,
+                          "storage_num": "VA1B28",
+                          "storage_name": "B2.A"
+                      },
+                      {
+                          "id": 76,
+                          "storage_num": "VA1B29",
+                          "storage_name": "B2.B"
+                      },
+                      {
+                          "id": 77,
+                          "storage_num": "VA1B30",
+                          "storage_name": "B2.C"
+                      },
+                      {
+                          "id": 78,
+                          "storage_num": "VA1B31",
+                          "storage_name": "B3.A"
+                      },
+                      {
+                          "id": 79,
+                          "storage_num": "VA1B32",
+                          "storage_name": "B3.B"
+                      },
+                      {
+                          "id": 80,
+                          "storage_num": "VA1B33",
+                          "storage_name": "B4.A"
+                      },
+                      {
+                          "id": 81,
+                          "storage_num": "VA1B34",
+                          "storage_name": "B4.B"
+                      },
+                      {
+                          "id": 82,
+                          "storage_num": "VA1B35",
+                          "storage_name": "B5.A"
+                      },
+                      {
+                          "id": 83,
+                          "storage_num": "VA1B36",
+                          "storage_name": "B5.B"
+                      },
+                      {
+                          "id": 84,
+                          "storage_num": "VA1B37",
+                          "storage_name": "C1.A"
+                      },
+                      {
+                          "id": 85,
+                          "storage_num": "VA1B38",
+                          "storage_name": "C1.B"
+                      },
+                      {
+                          "id": 86,
+                          "storage_num": "VA1B39",
+                          "storage_name": "C2.A"
+                      },
+                      {
+                          "id": 87,
+                          "storage_num": "VA1B40",
+                          "storage_name": "C2.B"
+                      },
+                      {
+                          "id": 88,
+                          "storage_num": "VA1B41",
+                          "storage_name": "C2.C"
+                      },
+                      {
+                          "id": 89,
+                          "storage_num": "VA1B42",
+                          "storage_name": "C3.A"
+                      },
+                      {
+                          "id": 90,
+                          "storage_num": "VA1B43",
+                          "storage_name": "C3.B"
+                      },
+                      {
+                          "id": 91,
+                          "storage_num": "VA1B44",
+                          "storage_name": "C4.A"
+                      },
+                      {
+                          "id": 92,
+                          "storage_num": "VA1B45",
+                          "storage_name": "C4.B"
+                      },
+                      {
+                          "id": 93,
+                          "storage_num": "VA1B46",
+                          "storage_name": "C5.A"
+                      }
+                  ]
+              }
+          ],
+          "statusCode": 200,
+          "message": "Ok",
+          "timestamp": "2024-12-05T08:06:10.019Z",
+          "path": "/api/warehouse"
+      }
+order: 1000

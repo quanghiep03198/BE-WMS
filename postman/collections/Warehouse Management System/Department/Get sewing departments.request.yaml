@@ -1,0 +1,7 @@
+$kind: http-request
+url: "{{base_url}}/department/sewing-product-line"
+method: GET
+headers:
+  X-User-Company: VA1
+settings: {}
+order: 2000

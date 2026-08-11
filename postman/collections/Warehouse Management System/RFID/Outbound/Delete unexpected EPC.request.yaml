@@ -1,0 +1,7 @@
+$kind: http-request
+url: "{{base_url}}/rfid/outbound/delete-unexpected-order/13D12B011?rescannable=2"
+method: DELETE
+queryParams:
+  rescannable: "2"
+settings: {}
+order: 5000

@@ -1,0 +1,42 @@
+$kind: http-example
+request:
+  url: "{{url}}/packing/update-weight/65938026"
+  method: PATCH
+  body:
+    type: json
+    content: "{\r
+
+      \    \"actual_weight_in\": 50\r
+
+      }"
+response:
+  statusCode: 200
+  statusText: OK
+  headers:
+    - key: Host
+      value: 10.30.0.19:8000
+    - key: Date
+      value: Tue, 20 Aug 2024 06:16:49 GMT
+    - key: Date
+      value: Tue, 20 Aug 2024 06:16:49 GMT
+    - key: Connection
+      value: close
+    - key: X-Powered-By
+      value: PHP/8.2.0
+    - key: Cache-Control
+      value: no-cache, private
+    - key: Content-Type
+      value: application/json
+    - key: Access-Control-Allow-Origin
+      value: "*"
+  body:
+    type: json
+    content: |-
+      {
+          "statusCode": 200,
+          "message": "Successfully",
+          "metadata": {
+              "success": true
+          }
+      }
+order: 1000

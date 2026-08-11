@@ -1,0 +1,85 @@
+$kind: http-request
+url: "{{base_url}}/rfid/inbound/post-data"
+method: POST
+body:
+  type: json
+  content: "{\r
+
+    \t\"timestamp\": \"2026-04-25 17:11:43\",\r
+
+    \t\"method\": \"device_report_probe_data\",\r
+
+    \t\"sn\": \"d56f07f5\",\r
+
+    \t\"data\": {\r
+
+    \t\t\"id\": \"d56f07f5\",\r
+
+    \t\t\"timestamp\": \"1742636263574\",\r
+
+    \t\t\"temperature\": \"0\",\r
+
+    \t\t\"tagList\": [\r
+
+    \t\t\t{\r
+
+    \t\t\t\t\"direction\": \"1\",\r
+
+    \t\t\t\t\"firstTime\": 1742636263587,\r
+
+    \t\t\t\t\"ant\": 4,\r
+
+    \t\t\t\t\"firstAnt\": 3,\r
+
+    \t\t\t\t\"rssi\": \"45.7\",\r
+
+    \t\t\t\t\"lastTime\": 1742636263587,\r
+
+    \t\t\t\t\"epc\": \"30340C100828854023C3AAB3\"\r
+
+    \t\t\t},\r
+
+    \t\t\t{\r
+
+    \t\t\t\t\"direction\": \"1\",\r
+
+    \t\t\t\t\"firstTime\": 1742636263587,\r
+
+    \t\t\t\t\"ant\": 4,\r
+
+    \t\t\t\t\"firstAnt\": 3,\r
+
+    \t\t\t\t\"rssi\": \"45.7\",\r
+
+    \t\t\t\t\"lastTime\": 1742636263587,\r
+
+    \t\t\t\t\"epc\": \"30340C30BC03ADC023C34688\"\r
+
+    \t\t\t},\r
+
+    \t\t\t{\r
+
+    \t\t\t\t\"direction\": \"1\",\r
+
+    \t\t\t\t\"firstTime\": 1742636263587,\r
+
+    \t\t\t\t\"ant\": 4,\r
+
+    \t\t\t\t\"firstAnt\": 3,\r
+
+    \t\t\t\t\"rssi\": \"45.7\",\r
+
+    \t\t\t\t\"lastTime\": 1742636263587,\r
+
+    \t\t\t\t\"epc\": \"30340C30BC03ADC023C34689\"\r
+
+    \t\t\t}\r
+
+    \t\t]\r
+
+    \t}\r
+
+    }"
+settings: {}
+examples: ./.resources/Post data.resources/examples
+order: 4000

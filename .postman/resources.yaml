@@ -1,0 +1,8 @@
+workspace:
+  id: 7314ad39-0426-4afe-8eb1-882d61f296d9
+
+# Each entry here maps a local resource to one or more corresponding objects in Postman Cloud
+
+cloudResources:
+  collections:
+    ../postman/collections/Warehouse Management System: 24228770-f0799f94-2c6b-47f4-ad6f-d07e0683d9d7

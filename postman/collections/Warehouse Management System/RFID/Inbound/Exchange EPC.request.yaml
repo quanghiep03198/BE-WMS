@@ -1,0 +1,20 @@
+$kind: http-request
+url: "{{base_url}}/rfid/inbound/exchange-epc"
+method: PATCH
+headers:
+  X-Database-Host: 10.30.80.2
+body:
+  type: json
+  content: "{\r
+
+    \    \"mo_no\":\"13A07B053\",\r
+
+    \    \"mat_code\":\"UG2204408\",\r
+
+    \    \"mo_no_actual\":\"13A05A128\",\r
+
+    \    \"quantity\":2\r
+
+    }"
+settings: {}
+order: 5000

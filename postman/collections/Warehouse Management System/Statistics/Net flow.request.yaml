@@ -1,0 +1,8 @@
+$kind: http-request
+url: "{{base_url}}/statistics/net-flow"
+method: GET
+headers:
+  X-Tenant-Id: "{{tenant_gl1}}"
+  X-User-Company: VA1
+settings: {}
+order: 4000

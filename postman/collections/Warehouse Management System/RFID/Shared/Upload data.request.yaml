@@ -1,0 +1,11 @@
+$kind: http-request
+url: "{{base_url}}/rfid/upload-data"
+method: POST
+body:
+  type: formdata
+  content:
+    - type: file
+      key: files
+      src: ""
+settings: {}
+order: 1000

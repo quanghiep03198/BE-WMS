@@ -1,0 +1,7 @@
+$kind: http-request
+url: "{{base_url}}/department/shaping-product-line"
+method: GET
+headers:
+  X-User-Company: vb2
+settings: {}
+order: 1000

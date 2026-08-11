@@ -1,0 +1,12 @@
+$kind: http-request
+url: "{{base_url}}/truckload-delivery/create"
+method: POST
+body:
+  type: json
+  content: "{\r
+
+    \    \"outbound_purchase_orders\":[]\r
+
+    }"
+settings: {}
+order: 4000

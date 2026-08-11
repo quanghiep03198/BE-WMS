@@ -1,0 +1,7 @@
+$kind: http-request
+url: "{{base_url}}/product-specification"
+method: GET
+headers:
+  X-User-Company: VA1
+settings: {}
+order: 1000

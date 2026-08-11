@@ -1,0 +1,62 @@
+$kind: http-example
+name: Login
+request:
+  url: "{{base_url}}/login"
+  method: POST
+  body:
+    type: json
+    content: "{\r
+
+      \    \"username\":\"quanghiep\",\r
+
+      \    \"password\":\"12341234\"\r
+
+      }"
+response:
+  statusCode: 200
+  statusText: OK
+  headers:
+    Access-Control-Allow-Origin: "*"
+    Content-Security-Policy: "default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests"
+    Cross-Origin-Opener-Policy: same-origin
+    Cross-Origin-Resource-Policy: same-origin
+    Origin-Agent-Cluster: ?1
+    Referrer-Policy: no-referrer
+    Strict-Transport-Security: max-age=15552000; includeSubDomains
+    X-Content-Type-Options: nosniff
+    X-DNS-Prefetch-Control: off
+    X-Download-Options: noopen
+    X-Frame-Options: SAMEORIGIN
+    X-Permitted-Cross-Domain-Policies: none
+    X-XSS-Protection: "0"
+    Content-Type: application/json; charset=utf-8
+    Content-Length: "712"
+    ETag: W/"2c8-K9B3qZHEHp5SJS+tu0ok/jno4fI"
+    Vary: Accept-Encoding
+    Date: Wed, 11 Dec 2024 04:39:31 GMT
+    Connection: keep-alive
+    Keep-Alive: timeout=5
+  body:
+    type: json
+    content: |-
+      {
+          "metadata": {
+              "user": {
+                  "id": 13361,
+                  "username": "quanghiep",
+                  "password": "$2b$10$L.3CwqgionKH2LRZOaaQzek7wIIIR8f2MW5jB0kATl6LU38K69Oym",
+                  "role": null,
+                  "display_name": "Trương Quang Hiệp",
+                  "employee_code": "V20241107071309",
+                  "email": "test@gmail.com",
+                  "phone": null,
+                  "picture": "https://ui-avatars.com/api/?background=%23525252&color=%23fafafa&length=1&bold=true&format=svg&name=Tr%C6%B0%C6%A1ng%20Quang%20Hi%E1%BB%87p"
+              },
+              "token": "{{json_web_token_0nsn}}"
+          },
+          "statusCode": 200,
+          "message": "Ok",
+          "timestamp": "2024-12-11T04:39:31.199Z",
+          "path": "/api/login"
+      }
+order: 2000

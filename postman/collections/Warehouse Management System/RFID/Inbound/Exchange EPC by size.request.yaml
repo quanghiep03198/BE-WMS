@@ -1,0 +1,36 @@
+$kind: http-request
+url: "{{base_url}}/rfid/inbound/exchange-epc-by-size"
+method: PATCH
+headers:
+  X-Database-Host: 10.30.80.2
+body:
+  type: json
+  content: "{\r
+
+    \t\"mo_no\": \"\",\r
+
+    \t\"mo_no_actual\": \"\",\r
+
+    \t\"mo_noseq\": \"\",\r
+
+    \t\"or_no\": \"\",\r
+
+    \t\"or_cust_po\": \"\",\r
+
+    \t\"mat_code\": \"\",\r
+
+    \t\"shoes_style_code_factory\": \"\",\r
+
+    \t\"cust_shoes_style\": \"\",\r
+
+    \t\"size_numcode\": \"\",\r
+
+    \t\"size_code\": \"\",\r
+
+    \t\"size_qty\": \"\",\r
+
+    \t\"quantity\": \"\"\r
+
+    }"
+settings: {}
+order: 6000

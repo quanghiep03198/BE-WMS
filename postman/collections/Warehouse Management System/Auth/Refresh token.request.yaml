@@ -1,0 +1,60 @@
+$kind: http-request
+description: |-
+  This endpoint sends an HTTP GET request to the specified URL to refresh a token with the ID 12183. The response of this request is documented below as a JSON schema.
+
+  ``` json
+  {
+    "type": "object",
+    "properties": {
+      "access_token": {
+        "type": "string"
+      },
+      "token_type": {
+        "type": "string"
+      },
+      "expires_in": {
+        "type": "integer"
+      }
+    }
+  }
+
+   ```
+url: "{{base_url}}/refresh-token/:username"
+method: GET
+headers:
+  Cookie: refresh-token=wrISbplw3VaDfFO1x27ohk9lv9l5Ynfp7pg9TZHsCjg
+pathVariables:
+  username: quanghiep
+auth:
+  type: bearer
+  credentials:
+    token: 2|cSMWPJItJTzkwYAcKXPXmIP1TeBGtj3MmLOZARJNe29a5af3
+scripts:
+  - type: afterResponse
+    code: "const jsonData = pm.response.json();\r
+
+      \r
+
+      \r
+
+      pm.test('Refresh token', function(){\r
+
+      \    pm.response.to.have.status(200)\r
+
+      \   \r
+
+      })\r
+
+      \r
+
+      if(pm.response.code === 200){\r
+
+      \tconst refreshToken = jsonData.metadata\r
+
+      \    pm.environment.set('access_token', refreshToken)\r
+
+      }\r\n"
+    language: text/javascript
+settings: {}
+examples: ./.resources/Refresh token.resources/examples
+order: 3000

@@ -1,0 +1,20 @@
+$kind: http-request
+url: "{{base_url}}/warehouse/11"
+method: PATCH
+headers:
+  Accept: application/json
+  Content-Type: application/json
+  X-User-Company: VA1
+body:
+  type: json
+  content: "{\r
+
+    \    \"warehouse_name\": \"test\"\r
+
+    }"
+auth:
+  type: bearer
+  credentials:
+    token: "{{access_token}}"
+settings: {}
+order: 7000

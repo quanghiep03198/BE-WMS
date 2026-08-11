@@ -1,0 +1,8 @@
+$kind: http-request
+url: "{{base_url}}/rfid/outbound/fetch-epc?_page=2&_limit=50"
+method: GET
+queryParams:
+  _page: "2"
+  _limit: "50"
+settings: {}
+order: 8000

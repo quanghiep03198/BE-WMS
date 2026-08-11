@@ -1,0 +1,13 @@
+$kind: http-request
+url: "{{base_url}}/rfid/outbound/upload-data"
+method: POST
+headers:
+  Content-Type: multipart/form-data
+body:
+  type: formdata
+  content:
+    - type: file
+      key: file
+      src: /C:/Users/Administrator/Desktop/data-file.csv
+settings: {}
+order: 3000

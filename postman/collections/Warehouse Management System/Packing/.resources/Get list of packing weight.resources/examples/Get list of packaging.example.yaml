@@ -1,0 +1,82 @@
+$kind: http-example
+request:
+  url: "{{url}}/packing/weight-list"
+  method: GET
+  queryParams:
+    - key: scan_id
+      value: "351702434437"
+      disabled: true
+response:
+  statusCode: 200
+  statusText: OK
+  headers:
+    - key: Host
+      value: 10.30.0.19:8000
+    - key: Date
+      value: Tue, 20 Aug 2024 02:38:17 GMT
+    - key: Date
+      value: Tue, 20 Aug 2024 02:38:17 GMT
+    - key: Connection
+      value: close
+    - key: X-Powered-By
+      value: PHP/8.2.0
+    - key: Cache-Control
+      value: no-cache, private
+    - key: Content-Type
+      value: application/json
+    - key: Access-Control-Allow-Origin
+      value: "*"
+  body:
+    type: json
+    content: |-
+      {
+          "statusCode": 200,
+          "message": "Successfully",
+          "metadata": [
+              {
+                  "scan_id": "351702434437",
+                  "weight": "54"
+              },
+              {
+                  "scan_id": "351702434438",
+                  "weight": "5"
+              },
+              {
+                  "scan_id": "351702434439",
+                  "weight": "7"
+              },
+              {
+                  "scan_id": "351702434440",
+                  "weight": "5"
+              },
+              {
+                  "scan_id": "351702434441",
+                  "weight": "3"
+              },
+              {
+                  "scan_id": "351702434442",
+                  "weight": "0"
+              },
+              {
+                  "scan_id": "351702434443",
+                  "weight": "0"
+              },
+              {
+                  "scan_id": "351702434444",
+                  "weight": "0"
+              },
+              {
+                  "scan_id": "351702434445",
+                  "weight": "0"
+              },
+              {
+                  "scan_id": "351702434446",
+                  "weight": "0"
+              },
+              {
+                  "scan_id": "351702434447",
+                  "weight": "0"
+              }
+          ]
+      }
+order: 1000

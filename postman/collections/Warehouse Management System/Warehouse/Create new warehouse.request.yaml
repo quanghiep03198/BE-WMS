@@ -1,0 +1,22 @@
+$kind: http-request
+url: "{{base_url}}/warehouse"
+method: POST
+headers:
+  Accept: application/json
+  Content-Type: application/json
+  X-User-Company: VA1
+body:
+  type: json
+  content: "{\r
+
+    \    \"type_warehouse\": \"A\",\r
+
+    \    \"dept_code\": \"VA1C3000\"\r
+
+    }"
+auth:
+  type: bearer
+  credentials:
+    token: "{{access_token}}"
+settings: {}
+order: 6000

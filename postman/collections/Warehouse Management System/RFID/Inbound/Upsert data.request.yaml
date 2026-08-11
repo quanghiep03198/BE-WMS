@@ -1,0 +1,20 @@
+$kind: http-request
+url: "{{base_url}}/rfid/update-stock/13A12A034"
+method: PUT
+headers:
+  X-Tenant-Id: tenant-lianying-primary
+body:
+  type: json
+  content: "{\r
+
+    \    \"rfid_status\":\"A\",\r
+
+    \    \"rfid_use\":\"A\",\r
+
+    \    \"storage\": \"VA1B01\",\r
+
+    \    \"dept_code\": \"VA1BA100\"\r
+
+    }"
+settings: {}
+order: 1000

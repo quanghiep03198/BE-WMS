@@ -1,0 +1,7 @@
+$kind: http-request
+url: "{{base_url}}/packing/manifest"
+method: GET
+headers:
+  X-User-Company: VA1
+settings: {}
+order: 4000

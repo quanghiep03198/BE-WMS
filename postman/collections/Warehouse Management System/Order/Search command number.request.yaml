@@ -1,0 +1,9 @@
+$kind: http-request
+url: "{{base_url}}/order/command-number/search?q=12a095"
+method: GET
+headers:
+  X-Tenant-Id: "{{tenant_gl1}}"
+queryParams:
+  q: 12a095
+settings: {}
+order: 3000

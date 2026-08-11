@@ -1,0 +1,58 @@
+$kind: http-request
+description: |-
+  ### Description
+
+  Update the weight of a packing by `series_number`.
+
+  ### Request Body
+
+  | Key | Type | Description |
+  | --- | --- | --- |
+  | Actual_weight_in | `number` | The actual weight to be updated. |
+
+  ### Response body schema
+
+  ``` json
+  {
+    "type": "object",
+    "properties": {
+      "statusCode": {
+        "type": "number",
+        "description": "HTTP Response status code"
+      },
+      "message": {
+        "type": "string",
+        "description": "Message to describe status of the request or occurred error"
+      },
+      "metadata": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "Result of updating action, if null, there may have some errors"
+          }
+        }
+      }
+    }
+  }
+
+   ```
+
+  > Update one packing weight by `series_number` 
+    
+
+  #### **Response body schema**
+
+  | Property | Type | Description |
+  | --- | --- | --- |
+  | statusCode | `number` | HTTP Response status code |
+  | message | `string` | Message to describe status of the request or occured error |
+  | metadata | `{success: boolean} or null` | Result of updating action, if null, there may have some errors |
+url: "{{base_url}}/packing/update-weight/00008466220664883599"
+method: PATCH
+body:
+  type: json
+  content: "{\r\n\t\"Actual_weight_in\": 24\r\n}"
+settings: {}
+examples: ./.resources/Update packing weight.resources/examples
+order: 1000

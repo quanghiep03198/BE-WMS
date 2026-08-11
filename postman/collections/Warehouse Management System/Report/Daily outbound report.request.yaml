@@ -1,0 +1,10 @@
+$kind: http-request
+url: "{{base_url}}/report/daily-outbound?date.eq=2025-04-26"
+method: GET
+headers:
+  "{{header_factory_code}}": VA1
+  "{{header_tenant}}": "{{tenant_gl1}}"
+queryParams:
+  date.eq: 2025-04-26
+settings: {}
+order: 1000
