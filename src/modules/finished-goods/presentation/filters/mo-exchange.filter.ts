@@ -9,7 +9,7 @@ import { I18nContext } from 'nestjs-i18n'
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
 import { FinishedGoodsGateway } from '../gateways/finished-goods.gateway'
 
-@Catch()
+@Catch(NoExchangableEpcException, MismatchingMoSpecsException, MismatchingSizeNumberException)
 export class MoExchageExceptionFilter implements ExceptionFilter {
 	constructor(
 		@InjectPinoLogger(MoExchageExceptionFilter.name)
@@ -21,8 +21,8 @@ export class MoExchageExceptionFilter implements ExceptionFilter {
 		const i18n = I18nContext.current<I18nTranslations>(host)
 		this.logger.error(exception)
 
-		let message: string
-		let status: HttpStatus
+		let message: string = i18n.t('inoutbound.notification.exchange_mo_failed', { lang: i18n.lang })
+		let status: HttpStatus = HttpStatus.INTERNAL_SERVER_ERROR
 
 		switch (true) {
 			case exception instanceof NoExchangableEpcException: {
@@ -40,11 +40,8 @@ export class MoExchageExceptionFilter implements ExceptionFilter {
 				status = HttpStatus.BAD_REQUEST
 				break
 			}
-			default: {
-				message = i18n.t('inoutbound.notification.exchange_mo_failed', { lang: i18n.lang })
-				status = HttpStatus.INTERNAL_SERVER_ERROR
+			default:
 				break
-			}
 		}
 
 		this.finishedGoodsGateway.server.emit('finished_goods:upserted_epcs_match:failed', message)

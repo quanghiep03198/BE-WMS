@@ -1,14 +1,15 @@
 import { ExcelColorPalette } from '@common/constants/excel-color-palette'
 import { type AutoFitColumnOptions, autoFitColumns } from '@common/helpers'
 import { SuperJson } from '@common/utils'
+import { DATA_SOURCE_DATA_LAKE } from '@databases/constants'
 import { FactoryAgencyCode } from '@modules/department/constants'
-import { TENANCY_DATA_SOURCE } from '@modules/tenancy/constants'
-import { Inject, Injectable } from '@nestjs/common'
+import { Injectable } from '@nestjs/common'
+import { InjectDataSource } from '@nestjs/typeorm'
 import { format } from 'date-fns'
 import { Workbook } from 'exceljs'
 import { I18nContext, I18nService } from 'nestjs-i18n'
 import { DataSource } from 'typeorm'
-import { type ProductInventoryReportQueryDTO } from '../dto/inventory-report.dto'
+import { type ProductInventoryReportQueryDTO } from '../../../../presentation/dto/inventory-report.dto'
 import { InboundInventoryEntity } from '../entities/inbound-inventory.view.entity'
 import { OutboundEstimationEntity } from '../entities/outbound-inventory.view.entity'
 import { ProductInventoryReportEntity } from '../entities/product-inventory.view.entity'
@@ -24,7 +25,7 @@ export class ProductionInventoryService {
 	private readonly productionOutboundQuery: string = productionOutboundQuery
 
 	constructor(
-		@Inject(TENANCY_DATA_SOURCE) private readonly dataSourceTNC: DataSource,
+		@InjectDataSource(DATA_SOURCE_DATA_LAKE) private readonly dataSourceDL: DataSource,
 		private readonly i18nService: I18nService
 	) {}
 
@@ -34,17 +35,17 @@ export class ProductionInventoryService {
 		outbound: OutboundEstimationEntity[]
 	}> {
 		const [productSizeInventory, inboundInventory, outboundInventory] = await Promise.all([
-			this.dataSourceTNC.getRepository(SizeInventoryEntity).findBy({
+			this.dataSourceDL.getRepository(SizeInventoryEntity).findBy({
 				shoes_style: queries['shoes_style:eq'],
 				color: queries['color:eq'],
 				brand_name: queries['brand_name:eq']
 			}),
-			this.dataSourceTNC.query(this.productionInboundQuery, [
+			this.dataSourceDL.query(this.productionInboundQuery, [
 				queries['brand_name:eq'],
 				queries['shoes_style:eq'],
 				queries['color:eq']
 			]),
-			this.dataSourceTNC.query(this.productionOutboundQuery, [
+			this.dataSourceDL.query(this.productionOutboundQuery, [
 				queries['brand_name:eq'],
 				queries['shoes_style:eq'],
 				queries['color:eq']
@@ -65,7 +66,7 @@ export class ProductionInventoryService {
 	}
 
 	public async getProductionInventoryFeatures() {
-		const results = await this.dataSourceTNC.query<Array<{ brand_name: string; product_variants: string }>>(
+		const results = await this.dataSourceDL.query<Array<{ brand_name: string; product_variants: string }>>(
 			this.productionFeaturesQuery
 		)
 		return results.map((item) => ({
@@ -82,7 +83,7 @@ export class ProductionInventoryService {
 	public async exportProductionInventorySummary(factory: string) {
 		const currentLanguage = I18nContext.current()?.lang
 		const factoryAgency: string = FactoryAgencyCode[factory]
-		const data = await this.dataSourceTNC.getRepository(ProductInventoryReportEntity).find()
+		const data = await this.dataSourceDL.getRepository(ProductInventoryReportEntity).find()
 		const workbook = new Workbook()
 		const worksheet = workbook.addWorksheet(format(new Date(), 'yyyy-MM-dd'))
 

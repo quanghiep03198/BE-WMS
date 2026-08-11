@@ -1,37 +1,29 @@
 import { DATA_SOURCE_DATA_LAKE, DATA_WAREHOUSE_CONNECTION } from '@databases/constants'
-import { BullModule } from '@nestjs/bullmq'
-import { MiddlewareConsumer, Module, NestModule, OnModuleInit, RequestMethod } from '@nestjs/common'
+import { Module, OnModuleInit } from '@nestjs/common'
 import { InjectModel, MongooseModule } from '@nestjs/mongoose'
 import { TypeOrmModule } from '@nestjs/typeorm'
 import { OrderModule } from '../order/order.module'
-import { TenacyMiddleware } from '../tenancy/tenancy.middleware'
-import { TenancyModule } from '../tenancy/tenancy.module'
-import { SYNC_INVENTORY_AUDIT_QUEUE } from './constants'
-import { InboundInventoryEntity } from './entities/inbound-inventory.view.entity'
-import { InventoryAuditEntity } from './entities/inventory-report.entity'
-import { OutboundEstimationEntity } from './entities/outbound-inventory.view.entity'
-import { ProductInventoryReportEntity } from './entities/product-inventory.view.entity'
-import { SizeInventoryEntity } from './entities/size-inventory.view.entity'
-import { InventoryGateway } from './gateways/inventory.gateway'
-import { InventoryController } from './inventory.controller'
-import { InventoryAuditDataSyncConsumer } from './queues/inventory-audit.consumer'
+import { InventoryAuditCommandHandlers } from './application/commands'
+import { INVENTORY_AUDIT_REPOSITORY } from './application/ports/inventory-audit.port.interface'
+import { InventoryAuditQueryHandlers } from './application/queries'
+import { InventoryAuditRepository } from './infrastructure/persistence/mongodb/repositories/inventory-audit.repository'
 import {
 	MO_INVENTORY_AUDIT_COLLECTION_NAME,
 	MoInventoryAudit,
 	MoInventoryAuditModel,
 	MoInventoryAuditSchema
-} from './schemas/inventory-audit.schema'
-import { InventoryAuditService } from './services/inventory-audit.service'
-import { ProductionInventoryService } from './services/product-inventory.service'
+} from './infrastructure/persistence/mongodb/schemas/inventory-audit.schema'
+import { InboundInventoryEntity } from './infrastructure/persistence/mssql/entities/inbound-inventory.view.entity'
+import { InventoryAuditEntity } from './infrastructure/persistence/mssql/entities/inventory-report.entity'
+import { OutboundEstimationEntity } from './infrastructure/persistence/mssql/entities/outbound-inventory.view.entity'
+import { ProductInventoryReportEntity } from './infrastructure/persistence/mssql/entities/product-inventory.view.entity'
+import { SizeInventoryEntity } from './infrastructure/persistence/mssql/entities/size-inventory.view.entity'
+import { ProductionInventoryService } from './infrastructure/persistence/mssql/services/product-inventory.service'
+import { InventoryController } from './presentation/controllers/inventory.controller'
 
 @Module({
 	imports: [
-		TenancyModule,
 		OrderModule,
-		BullModule.registerQueue({
-			name: SYNC_INVENTORY_AUDIT_QUEUE,
-			defaultJobOptions: { removeOnComplete: true, removeOnFail: true }
-		}),
 		TypeOrmModule.forFeature(
 			[
 				InventoryAuditEntity,
@@ -54,24 +46,19 @@ import { ProductionInventoryService } from './services/product-inventory.service
 		)
 	],
 	controllers: [InventoryController],
-	providers: [InventoryGateway, InventoryAuditService, ProductionInventoryService, InventoryAuditDataSyncConsumer],
-	exports: [BullModule, InventoryAuditService, InventoryAuditDataSyncConsumer]
+	providers: [
+		ProductionInventoryService,
+		{ provide: INVENTORY_AUDIT_REPOSITORY, useClass: InventoryAuditRepository },
+		...InventoryAuditQueryHandlers,
+		...InventoryAuditCommandHandlers
+	],
+	exports: [INVENTORY_AUDIT_REPOSITORY]
 })
-export class InventoryModule implements NestModule, OnModuleInit {
+export class InventoryModule implements OnModuleInit {
 	constructor(
 		@InjectModel(MoInventoryAudit.name, DATA_WAREHOUSE_CONNECTION)
 		private readonly moInventoryAuditModel: MoInventoryAuditModel
 	) {}
-
-	configure(consumer: MiddlewareConsumer) {
-		consumer
-			.apply(TenacyMiddleware)
-			.forRoutes(
-				{ path: '/inventory/summary', method: RequestMethod.GET },
-				{ path: '/inventory/summary/export', method: RequestMethod.GET },
-				{ path: '/inventory/production-features', method: RequestMethod.GET }
-			)
-	}
 
 	async onModuleInit() {
 		await this.moInventoryAuditModel.syncIndexes()

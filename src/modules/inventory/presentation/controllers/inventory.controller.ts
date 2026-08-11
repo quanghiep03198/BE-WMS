@@ -2,7 +2,6 @@ import { CommonRequestHeader } from '@common/constants'
 import { HttpMethod, RequireAuthorized, RouteHandler } from '@common/decorators'
 import { HttpExceptionFilter } from '@common/filters'
 import { ZodValidationPipe } from '@common/pipes'
-import { InjectQueue } from '@nestjs/bullmq'
 import {
 	Body,
 	Controller,
@@ -16,28 +15,32 @@ import {
 	Res,
 	UseFilters
 } from '@nestjs/common'
-import { Queue } from 'bullmq'
 import { format } from 'date-fns'
 import { FastifyReply } from 'fastify'
-import { UserRole } from '../user/constants'
-import { SYNC_INVENTORY_AUDIT_QUEUE } from './constants'
+import { UserRole } from '../../../user/constants'
+// import { SYNC_INVENTORY_AUDIT_QUEUE } from '../../domain/constants'
+import { CheckoutInventoryAuditCommand } from '@modules/inventory/application/commands/checkout-inventory-audit/checkout-inventory-audit.command'
+import { UpdateInventorySupplementalQtyCommand } from '@modules/inventory/application/commands/update-inventory-supplemental-qty/update-inventory-supplemental-qty.command'
+import { ExportMonthlyInventoryAuditQuery } from '@modules/inventory/application/queries/export-monthly-inventory-audit/export-monthly-inventory-audit.query'
+import { GetMonthlyInventoryAuditQuery } from '@modules/inventory/application/queries/get-monthly-inventory-audit/get-monthly-inventory-audit.query'
+import { CommandBus, QueryBus } from '@nestjs/cqrs'
+import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
+import { ProductionInventoryService } from '../../infrastructure/persistence/mssql/services/product-inventory.service'
 import {
+	bulkUpdateInventoryAuditPayload,
+	BulkUpdateInventoryReportDTO,
 	productInventoryReportQuery,
 	ProductInventoryReportQueryDTO,
-	UpdateInventoryReportDTO,
-	updateInventoryReportPayload,
 	updateInventoryReportQuery,
 	UpdateInventoryReportQueryDTO
-} from './dto/inventory-report.dto'
-import { InventoryAuditService } from './services/inventory-audit.service'
-import { ProductionInventoryService } from './services/product-inventory.service'
+} from '../dto/inventory-report.dto'
 
 @Controller('inventory')
 export class InventoryController {
 	constructor(
-		@InjectQueue(SYNC_INVENTORY_AUDIT_QUEUE)
-		private readonly syncInventoryAuditDataQueue: Queue<object>,
-		private readonly inventoryReportService: InventoryAuditService,
+		@InjectPinoLogger(InventoryController.name) private readonly logger: PinoLogger,
+		private readonly queryBus: QueryBus,
+		private readonly commandBus: CommandBus,
 		private readonly productionInventoryService: ProductionInventoryService
 	) {}
 
@@ -48,7 +51,7 @@ export class InventoryController {
 	async getMonthlyInventoryReport(
 		@Query('month:eq', new DefaultValuePipe(format(new Date(), 'yyyy-MM'))) month: string
 	) {
-		return await this.inventoryReportService.getMonthlyInventoryAudit(month)
+		return await this.queryBus.execute(new GetMonthlyInventoryAuditQuery(month))
 	}
 
 	@Get('audit/export')
@@ -56,11 +59,15 @@ export class InventoryController {
 	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF, UserRole.INDUSTRIAL_ENGINEERING_STAFF)
 	async exportMonthlyInventoryReport(
 		@Query('month:eq', new DefaultValuePipe(format(new Date(), 'yyyy-MM'))) month: string,
-		@Query('mo_no.in', new DefaultValuePipe([]), ParseArrayPipe) commandNumbers: string[],
-		@Headers(CommonRequestHeader.FACTORY_CODE) factoryCode: string,
+		@Query('mo_no:in', new DefaultValuePipe([]), new ParseArrayPipe({ items: String, separator: ',' }))
+		manufacturingOrders: string[],
+		@Query() query: Record<string, any>,
+		@Headers(CommonRequestHeader.FACTORY_CODE) factory: string,
 		@Res() reply: FastifyReply
 	) {
-		const buffer = await this.inventoryReportService.exportExcelInventoryAudit(month, factoryCode, commandNumbers)
+		const buffer = await this.queryBus.execute(
+			new ExportMonthlyInventoryAuditQuery(month, factory, manufacturingOrders)
+		)
 		return reply.send(buffer)
 	}
 
@@ -68,9 +75,9 @@ export class InventoryController {
 	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
 	async updateInventoryReport(
 		@Query(new ZodValidationPipe(updateInventoryReportQuery)) filterQuery: UpdateInventoryReportQueryDTO,
-		@Body(new ZodValidationPipe(updateInventoryReportPayload)) update: UpdateInventoryReportDTO
+		@Body(new ZodValidationPipe(bulkUpdateInventoryAuditPayload)) update: BulkUpdateInventoryReportDTO
 	) {
-		return await this.inventoryReportService.updateInventoryAudit(filterQuery, update)
+		return await this.commandBus.execute(new UpdateInventorySupplementalQtyCommand(filterQuery, update))
 	}
 
 	@RouteHandler({ endpoint: 'audit/checkout/:month', method: HttpMethod.PUT, statusCode: HttpStatus.CREATED })
@@ -78,17 +85,10 @@ export class InventoryController {
 	async processInventoryAuditCheckout(
 		@Param('month', new DefaultValuePipe(format(new Date(), 'yyyy-MM'))) month: string
 	) {
-		return await this.inventoryReportService.processInventoryAuditCheckout(month)
+		await this.commandBus.execute(new CheckoutInventoryAuditCommand(month))
+		// return await this.inventoryReportService.checkoutInventoryAudit(month)
 	}
 
-	@RouteHandler({ endpoint: 'audit/sync', method: HttpMethod.POST, statusCode: HttpStatus.CREATED })
-	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
-	async syncInventoryAuditData(
-		@Headers(CommonRequestHeader.FACTORY_CODE) factoryCode: string,
-		@Headers(CommonRequestHeader.USER_REQUEST) user: string
-	) {
-		return await this.syncInventoryAuditDataQueue.add(factoryCode, {}, { jobId: user })
-	}
 	// #endregion
 
 	// #region Inventory Summary

@@ -1,8 +1,9 @@
 import { DATABASE_DATA_LAKE, DATABASE_SCHEMA } from '@databases/constants'
 import { BaseAbstractEntity } from '@modules/_base/base.abstract.entity'
 import { Column, Entity } from 'typeorm'
-import { InventoryType } from '../constants'
+import { InventoryType } from '../../../../domain/constants'
 
+/** */
 @Entity({
 	database: DATABASE_DATA_LAKE,
 	schema: DATABASE_SCHEMA,

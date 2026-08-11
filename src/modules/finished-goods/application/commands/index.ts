@@ -11,7 +11,6 @@ import { RecallFromStockHandler } from './recall-from-stock/recall-from-stock.ha
 import { RestoreDeletedEpcsHandler } from './restore-deleted-epcs/restore-deleted-epcs.handler'
 import { StockInHandler } from './stock-in/stock-in.handler'
 import { StockOutHandler } from './stock-out/stock-out.handler'
-import { SyncInventoryAuditHandler } from './sync-inventory-audit/sync-inventory-audit.handler'
 
 import { UpsertEpcsMatchHandler } from './upsert-epcs-match/upsert-epcs-match.handler'
 
@@ -32,6 +31,5 @@ export const FinishedGoodsCommandHandlers = [
 	// RollbackStockTransactionHandler,
 	StockInHandler,
 	StockOutHandler,
-	SyncInventoryAuditHandler,
 	UpsertEpcsMatchHandler
 ]

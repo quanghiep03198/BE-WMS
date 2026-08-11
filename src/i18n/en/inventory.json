@@ -1,0 +1,6 @@
+{
+	"exceptions": {
+		"time_not_elapsed": "Inventory audit cannot be completed at this time. Please try again later.",
+		"already_checkout": "Inventory audit has already been completed. Please check again."
+	}
+}

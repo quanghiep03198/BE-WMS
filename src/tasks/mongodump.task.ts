@@ -10,7 +10,7 @@ export class MongoDumpTask {
 	@Cron(CronExpression.EVERY_10_MINUTES)
 	handleDump() {
 		const instanceId = process.env.NODE_APP_INSTANCE
-		if (instanceId && instanceId !== '0') {
+		if (instanceId && instanceId !== '1') {
 			this.logger.log(`Skipping mongodump on PM2 instance ${instanceId}`)
 			return
 		}

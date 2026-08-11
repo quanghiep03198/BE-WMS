@@ -9,7 +9,7 @@ import { I18nContext } from 'nestjs-i18n'
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
 import { FinishedGoodsGateway } from '../gateways/finished-goods.gateway'
 
-@Catch()
+@Catch(ExcessInboundOrderException, ExcessOutboundOrderException, InsufficientInventoryException)
 export class StockExceptionFilter implements ExceptionFilter {
 	constructor(
 		@InjectPinoLogger(StockExceptionFilter.name)

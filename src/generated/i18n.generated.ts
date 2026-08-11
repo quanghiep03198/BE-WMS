@@ -184,6 +184,12 @@ export type I18nTranslations = {
             "GIVEAWAY": string;
         };
     };
+    "inventory": {
+        "exceptions": {
+            "time_not_elapsed": string;
+            "already_checkout": string;
+        };
+    };
     "packing": {
         "titles": {
             "daily_weighing_report": string;

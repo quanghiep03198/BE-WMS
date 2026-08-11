@@ -9,7 +9,6 @@ import {
 	FinishedGoodsEpc,
 	FinishedGoodsEpcDocument
 } from '@modules/finished-goods/infrastructure/persistence/mongodb/schemas/finished-goods-epc.schema'
-import { SyncStatePayload } from '@modules/inventory/queues/inventory-audit.consumer'
 import { THIRD_PARTY_API_SYNC } from '@modules/third-party-api/constants'
 import { SyncDataMessageDTO, syncDataMessageValidator } from '@modules/third-party-api/dto/third-party-api.dto'
 import { SyncProcessState } from '@modules/third-party-api/interfaces/third-party-api.interface'
@@ -62,14 +61,10 @@ export class FinishedGoodsGateway implements OnGatewayConnection, OnGatewayDisco
 
 	@UseWebSocketAuthGuard()
 	public async handleConnection(socket: Socket): Promise<void> {
-		const [syncInventoryAuditProcess, syncDeckerDataProcess] = await Promise.all([
-			this.cacheManager.get<string | undefined>('sync_states:inventory_audit'),
-			this.cacheManager.get<string | undefined>('sync_states:deckers_data')
-		])
+		const syncDeckerDataProcess = await this.cacheManager.get<string | undefined>('sync_states:deckers_data')
+
 		// Gửi lại trạng thái sync cho đúng client vừa (re)connect, _không broadcast toàn bộ
-		if (SuperJson.isValid(syncInventoryAuditProcess)) {
-			socket.emit('sync_inventory_audit_data', SuperJson.parse<SyncStatePayload>(syncInventoryAuditProcess))
-		}
+
 		if (SuperJson.isValid(syncDeckerDataProcess)) {
 			socket.emit('sync_decker_data', SuperJson.parse<SyncProcessState>(syncDeckerDataProcess))
 		}
