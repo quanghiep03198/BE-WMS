@@ -70,19 +70,20 @@ export class InboundReportService {
 				daily_inbound_qty: totalDailyInboundQty,
 				accumulated_qty: accumulatedQty,
 				missing_qty: doc.mo_attrs.order_qty - accumulatedQty,
-				variation_details: Object.entries(doc.inventory_variation).map(([size, variation]) => {
-					return {
-						size_numcode: size,
-						qty: variation.stocked_in_qty - variation.total_recall_tx + variation.total_return_tx
-					}
-				})
+				variation_details: Object.entries(doc.inventory_variation)
+					.map(([size, variation]) => {
+						return {
+							size_numcode: size,
+							qty: variation.stocked_in_qty - variation.total_recall_tx + variation.total_return_tx
+						}
+					})
+					.filter((item) => item.qty > 0)
 			}
 		})
 	}
 
 	public async getDailyAssemblyProductivity(date: string): Promise<IInboundReportResponse> {
-		const start = performance.now()
-		const result = await this.finishedGoodsEpcModel.aggregate([
+		return await await this.finishedGoodsEpcModel.aggregate([
 			{
 				$match: {
 					status: 'instock',
@@ -206,9 +207,6 @@ export class InboundReportService {
 				}
 			}
 		])
-		const end = performance.now()
-		this.logger.debug(`getDailyAssemblyProductivity took ${end - start} milliseconds`)
-		return result
 	}
 
 	public async getInboundHistory(commandNumber: string) {
@@ -248,7 +246,6 @@ export class InboundReportService {
 			.then((doc) => {
 				if (!doc) return null
 				const normalizedDoc = doc.toObject()
-				this.logger.debug(normalizedDoc)
 
 				const accumulatedInboundQty = Object.values(normalizedDoc.inventory_variation).reduce(
 					(acc, curr) => acc + curr.stocked_in_qty - curr.total_recall_tx + curr.total_return_tx,

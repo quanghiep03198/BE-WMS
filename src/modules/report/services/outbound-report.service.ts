@@ -124,8 +124,6 @@ export class OutboundReportService {
 			progress: ((totalShippedOutQty / data.order_qty) * 100).toFixed(2) + '%'
 		}
 
-		this.logger.debug(result)
-
 		return result
 	}
 
