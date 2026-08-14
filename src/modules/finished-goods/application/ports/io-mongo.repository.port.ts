@@ -81,7 +81,7 @@ export interface IIoMongoRepository {
 	getPendingExchangeEpcs(query: {
 		deviceSerialNumber: string
 		manufacturingOrder: string
-		// sizeNumber: string
+		sizeNumber: string
 		quantity: number
 	}): Promise<
 		Array<{ epc: string; mo_no: string; factory_shoes_style: string; color_sn: string; size_numcode: string }>

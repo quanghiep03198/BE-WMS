@@ -87,8 +87,6 @@ export class FinishedGoodsGateway implements OnGatewayConnection, OnGatewayDisco
 			})
 			.lean(true)
 
-		this.logger.debug(validUnknownEpcs)
-
 		const UNIQUE_VALUE_RANGE = [0, 22] as const
 
 		const jobData = uniqBy(validUnknownEpcs, (item) => item.substring(...UNIQUE_VALUE_RANGE))

@@ -15,6 +15,10 @@ import { format } from 'date-fns'
 import { flatten } from 'flat'
 import { omitBy, pick, pickBy, uniq } from 'lodash'
 
+import {
+	IInventoryAuditRepository,
+	INVENTORY_AUDIT_REPOSITORY
+} from '@modules/inventory/application/ports/inventory-audit.port.interface'
 import { AnyBulkWriteOperation, FilterQuery, mongo, type MongooseBulkWriteOptions, type PipelineStage } from 'mongoose'
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
 import {
@@ -64,6 +68,7 @@ export class InoutboundMongoRepository implements IIoMongoRepository {
 		@InjectModel(DailyPoShippingProgress.name, DATA_WAREHOUSE_CONNECTION)
 		private readonly dailyPoShippingProgressModel: DailyPoShippingProgressModel,
 		@Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
+		@Inject(INVENTORY_AUDIT_REPOSITORY) private readonly inventoryAuditRepository: IInventoryAuditRepository,
 		@InjectTransactionHost(DATA_WAREHOUSE_CONNECTION)
 		private readonly txHost: TransactionHost<TransactionalAdapterMongoose>
 	) {}
@@ -160,18 +165,23 @@ export class InoutboundMongoRepository implements IIoMongoRepository {
 		outboundSizeQuantities?: Array<{ size_numcode: string; qty: number }>
 	): Promise<ElectronicProductCode[]> {
 		const baseFilterQuery: FilterQuery<FinishedGoodsEpcDocument> = {
-			$or: [{ deleted: false }, { deleted: null }],
-			scannable: true
+			scannable: true,
+			status: FinishedGoodsEpcStatus.SCANNING,
+			inbound_times: { $gte: 1 }
 		}
 
-		this.logger.debug(`Is outboundSizeQuantities an array? ${Array.isArray(outboundSizeQuantities)}`)
+		this.logger.info(`Is outboundSizeQuantities an array? ${Array.isArray(outboundSizeQuantities)}`)
 
 		if (!Array.isArray(outboundSizeQuantities)) {
 			const pendingOutboundEpcs = await this.finishedGoodsEpcModel
 				.find({
 					...baseFilterQuery,
 					mo_no: {
-						...(Array.isArray(manufacturingOrders) ? { $in: manufacturingOrders } : { $eq: manufacturingOrders })
+						...(Array.isArray(manufacturingOrders)
+							? { $in: manufacturingOrders }
+							: typeof manufacturingOrders === 'string'
+								? { $eq: manufacturingOrders }
+								: {})
 					}
 				})
 				.lean(true)
@@ -235,7 +245,7 @@ export class InoutboundMongoRepository implements IIoMongoRepository {
 	public async getPendingExchangeEpcs(query: {
 		deviceSerialNumber: string
 		manufacturingOrder: string
-		// sizeNumber: string
+		sizeNumber: string
 		quantity: number
 	}): Promise<
 		Array<{ epc: string; mo_no: string; factory_shoes_style: string; color_sn: string; size_numcode: string }>
@@ -243,7 +253,7 @@ export class InoutboundMongoRepository implements IIoMongoRepository {
 		return await this.finishedGoodsEpcModel.find(
 			{
 				mo_no: query.manufacturingOrder,
-				// size_numcode: query.sizeNumber,
+				size_numcode: query.sizeNumber,
 				inbound_device_sn: query.deviceSerialNumber,
 				deleted: false,
 				scannable: true
@@ -431,16 +441,8 @@ export class InoutboundMongoRepository implements IIoMongoRepository {
 			>
 		}>
 	> {
-		const pendingStockMoveEpcs = await this.finishedGoodsEpcModel
-			.find({
-				epc: { $in: scannedEpcs.map((epc) => epc.getStockKeepingUnit()) }
-			})
-			.read('primary')
-			.session(this.txHost.tx)
-			.lean(true)
-
-		return pendingStockMoveEpcs.reduce<
-			Array<{
+		return await this.finishedGoodsEpcModel
+			.aggregate<{
 				mo_no: string
 				po: string | undefined | null
 				factory_code_produce: string
@@ -450,50 +452,99 @@ export class InoutboundMongoRepository implements IIoMongoRepository {
 					string,
 					{ stocked_in_qty: number; total_recall_tx: number; total_return_tx: number; shipped_out_qty: number }
 				>
-			}>
-		>((acc, curr) => {
-			const currentMoIndex = acc.findIndex(
-				(item) =>
-					item.mo_no === curr.mo_no &&
-					item.factory_code_produce === curr.factory_code_produce &&
-					item.factory_shoes_style === curr.factory_shoes_style &&
-					item.color_sn === curr.color_sn
-			)
-
-			const pendingSizeVariation = {
-				stocked_in_qty: curr.status === FinishedGoodsEpcStatus.IN_STOCK && curr.inbound_times === 1 ? 1 : 0,
-				total_recall_tx: curr.status === FinishedGoodsEpcStatus.RECALLED ? 1 : 0,
-				total_return_tx: curr.status === FinishedGoodsEpcStatus.IN_STOCK && curr.inbound_times > 1 ? 1 : 0,
-				shipped_out_qty: curr.status === FinishedGoodsEpcStatus.SHIPPED ? 1 : 0
-			}
-
-			if (currentMoIndex === -1) {
-				acc.push({
-					mo_no: curr.mo_no,
-					factory_code_produce: curr.factory_code_produce,
-					factory_shoes_style: curr.factory_shoes_style,
-					color_sn: curr.color_sn,
-					po: curr.po,
-					inventory_variation: {
-						[curr.size_numcode]: pendingSizeVariation
+			}>([
+				{
+					$match: {
+						epc: { $in: scannedEpcs.map((epc) => epc.getStockKeepingUnit()) }
 					}
-				})
-			} else {
-				const currSizeVariation = acc[currentMoIndex].inventory_variation[curr.size_numcode]
-				if (!currSizeVariation) {
-					acc[currentMoIndex].inventory_variation[curr.size_numcode] = pendingSizeVariation
-				} else {
-					acc[currentMoIndex].inventory_variation[curr.size_numcode] = {
-						stocked_in_qty: currSizeVariation.stocked_in_qty + pendingSizeVariation.stocked_in_qty,
-						total_recall_tx: currSizeVariation.total_recall_tx + pendingSizeVariation.total_recall_tx,
-						total_return_tx: currSizeVariation.total_return_tx + pendingSizeVariation.total_return_tx,
-						shipped_out_qty: currSizeVariation.shipped_out_qty + pendingSizeVariation.shipped_out_qty
+				},
+				{ $sort: { _id: 1 } },
+				{
+					$group: {
+						_id: {
+							mo_no: '$mo_no',
+							factory_code_produce: '$factory_code_produce',
+							factory_shoes_style: '$factory_shoes_style',
+							color_sn: '$color_sn',
+							size_numcode: '$size_numcode'
+						},
+						po: { $first: '$po' },
+						stocked_in_qty: {
+							$sum: {
+								$cond: [
+									{
+										$and: [
+											{ $eq: ['$status', FinishedGoodsEpcStatus.IN_STOCK] },
+											{ $eq: ['$inbound_times', 1] }
+										]
+									},
+									1,
+									0
+								]
+							}
+						},
+						total_recall_tx: {
+							$sum: {
+								$cond: [{ $eq: ['$status', FinishedGoodsEpcStatus.RECALLED] }, 1, 0]
+							}
+						},
+						total_return_tx: {
+							$sum: {
+								$cond: [
+									{
+										$and: [
+											{ $eq: ['$status', FinishedGoodsEpcStatus.IN_STOCK] },
+											{ $gt: ['$inbound_times', 1] }
+										]
+									},
+									1,
+									0
+								]
+							}
+						},
+						shipped_out_qty: {
+							$sum: {
+								$cond: [{ $eq: ['$status', FinishedGoodsEpcStatus.SHIPPED] }, 1, 0]
+							}
+						}
+					}
+				},
+				{
+					$group: {
+						_id: {
+							mo_no: '$_id.mo_no',
+							factory_code_produce: '$_id.factory_code_produce',
+							factory_shoes_style: '$_id.factory_shoes_style',
+							color_sn: '$_id.color_sn'
+						},
+						po: { $first: '$po' },
+						inventory_variation: {
+							$push: {
+								k: '$_id.size_numcode',
+								v: {
+									stocked_in_qty: '$stocked_in_qty',
+									total_recall_tx: '$total_recall_tx',
+									total_return_tx: '$total_return_tx',
+									shipped_out_qty: '$shipped_out_qty'
+								}
+							}
+						}
+					}
+				},
+				{
+					$project: {
+						_id: 0,
+						mo_no: '$_id.mo_no',
+						po: 1,
+						factory_code_produce: '$_id.factory_code_produce',
+						factory_shoes_style: '$_id.factory_shoes_style',
+						color_sn: '$_id.color_sn',
+						inventory_variation: { $arrayToObject: '$inventory_variation' }
 					}
 				}
-			}
-
-			return acc
-		}, [])
+			])
+			.read('primary')
+			.session(this.txHost.tx)
 	}
 
 	/**
@@ -504,6 +555,7 @@ export class InoutboundMongoRepository implements IIoMongoRepository {
 	 * 	2. Lấy số lượng biến động tồn kho (inventory variation) từ các EPC đã nhập kho.
 	 * 	3. Cập nhật số lượng tồn kho trong collection `MoInventoryVariation` dựa trên các EPC đã nhập kho.
 	 * 	4. Cập nhật biến động tồn kho hàng ngày trong collection `DailyMoInventoryVariation` dựa trên các EPC đã nhập kho.
+	 * 	5. Cập nhật biểu tồn kho hàng tháng trong collection `MoInventoryAudit`
 	 * @return {void}
 	 */
 	@Transactional<TransactionalAdapterMongoose>(DATA_WAREHOUSE_CONNECTION)
@@ -579,7 +631,6 @@ export class InoutboundMongoRepository implements IIoMongoRepository {
 
 		const bulkWriteConcernSettings: mongo.BulkWriteOptions & MongooseBulkWriteOptions = {
 			session: this.txHost.tx,
-			writeConcern: { w: 'majority' },
 			ordered: false,
 			retryWrites: true,
 			timestamps: true
@@ -635,6 +686,8 @@ export class InoutboundMongoRepository implements IIoMongoRepository {
 		await this.dailyMoInventoryVariationModel.bulkWrite(bulkWriteDailyVariationOperator, bulkWriteConcernSettings)
 
 		await this.moInventoryVariationModel.bulkWrite(bulkWriteMasterVariationOperator, bulkWriteConcernSettings)
+
+		await this.inventoryAuditRepository.updateInventoryAuditVariation(pendingInventoryVariation)
 	}
 
 	/**
@@ -667,7 +720,6 @@ export class InoutboundMongoRepository implements IIoMongoRepository {
 
 		const bulkWriteConcernSettings: mongo.BulkWriteOptions & MongooseBulkWriteOptions = {
 			session: this.txHost.tx,
-			writeConcern: { w: 'majority' },
 			ordered: false,
 			retryWrites: true,
 			timestamps: true
@@ -705,11 +757,6 @@ export class InoutboundMongoRepository implements IIoMongoRepository {
 
 		const poShippingProgressBulkWriteOperator: AnyBulkWriteOperation<PoShippingProgressDocument>[] =
 			pendingInventoryVariation.map((change) => {
-				const increments = {}
-				for (const [size, variation] of Object.entries(change.inventory_variation)) {
-					increments[`shipping_progress.${size}.shipped_out_qty`] = variation.shipped_out_qty
-				}
-
 				return {
 					updateOne: {
 						filter: { po: change.po },
@@ -747,6 +794,8 @@ export class InoutboundMongoRepository implements IIoMongoRepository {
 			})
 
 		await this.dailyPoShippingProgressModel.bulkWrite(dailyShippingBulkWriteOperator, bulkWriteConcernSettings)
+
+		await this.inventoryAuditRepository.updateInventoryAuditVariation(pendingInventoryVariation)
 	}
 
 	/**
@@ -775,33 +824,37 @@ export class InoutboundMongoRepository implements IIoMongoRepository {
 
 		const pendingInventoryVariation = await this.getPendingInventoryVariation(pendingRecallEpcs)
 
-		const createIncrementExpression = (obj: object): Record<string, mongo.NumericType> => {
-			return flatten(pick(obj, 'inventory_variation'))
-		}
-
 		const bulkWriteMasterVariationOperator: AnyBulkWriteOperation<MoInventoryVariationDocument>[] =
-			pendingInventoryVariation.map((mo) => ({
-				updateOne: {
-					filter: {
-						mo_no: mo.mo_no,
-						factory_code_produce: mo.factory_code_produce,
-						factory_shoes_style: mo.factory_shoes_style,
-						color_sn: mo.color_sn
-					},
-					update: { $inc: createIncrementExpression(mo) },
-					upsert: true
+			pendingInventoryVariation.map((mo) => {
+				const { mo_no, factory_code_produce, factory_shoes_style, color_sn } = mo
+
+				const incrementExpression = pickBy(this.createInventoryIncrementExpression(mo), (_, key) =>
+					key.endsWith('total_recall_tx')
+				)
+
+				return {
+					updateOne: {
+						filter: { mo_no, factory_code_produce, factory_shoes_style, color_sn },
+						update: { $inc: incrementExpression },
+						upsert: true
+					}
 				}
-			}))
+			})
 
 		const bulkWriteDailyVariationOperator: AnyBulkWriteOperation<DailyMoInventoryVariationDocument>[] =
 			pendingInventoryVariation.map((mo) => {
 				const { mo_no, factory_code_produce, factory_shoes_style, color_sn } = mo
+
+				const incrementExpression = pickBy(this.createInventoryIncrementExpression(mo), (_, key) =>
+					key.endsWith('total_recall_tx')
+				)
+
 				return {
 					updateOne: {
 						filter: { mo_no, date },
 						update: {
 							$setOnInsert: { date, mo_no, factory_code_produce, factory_shoes_style, color_sn },
-							$inc: createIncrementExpression(mo)
+							$inc: incrementExpression
 						},
 						upsert: true
 					}
@@ -810,7 +863,6 @@ export class InoutboundMongoRepository implements IIoMongoRepository {
 
 		await this.dailyMoInventoryVariationModel.bulkWrite(bulkWriteDailyVariationOperator, {
 			session: this.txHost.tx,
-			writeConcern: { w: 'majority' },
 			ordered: false,
 			retryWrites: true,
 			timestamps: true
@@ -818,11 +870,12 @@ export class InoutboundMongoRepository implements IIoMongoRepository {
 
 		await this.moInventoryVariationModel.bulkWrite(bulkWriteMasterVariationOperator, {
 			session: this.txHost.tx,
-			writeConcern: { w: 'majority' },
 			ordered: false,
 			retryWrites: true,
 			timestamps: true
 		})
+
+		await this.inventoryAuditRepository.updateInventoryAuditVariation(pendingInventoryVariation)
 	}
 
 	@Transactional<TransactionalAdapterMongoose>(DATA_WAREHOUSE_CONNECTION)
@@ -841,6 +894,8 @@ export class InoutboundMongoRepository implements IIoMongoRepository {
 
 	@Transactional<TransactionalAdapterMongoose>(DATA_WAREHOUSE_CONNECTION)
 	public async upsertEpcsMatch(data: UpsertEpcsMatchData, insertOnly: boolean = false): Promise<void> {
+		this.logger.debug(data)
+
 		await this.finishedGoodsEpcMatchModel.bulkWrite(
 			data.map((item) => ({
 				updateOne: {
@@ -849,20 +904,30 @@ export class InoutboundMongoRepository implements IIoMongoRepository {
 						{
 							$set: { old_mo_no: '$mo_no' }
 						},
-						{
-							$set: {
-								mo_no: insertOnly ? '$mo_no' : item.mo_no,
-								factory_code_produce: insertOnly ? '$factory_code_produce' : item.factory_code_produce,
-								cust_shoes_style: insertOnly ? '$cust_shoes_style' : item.cust_shoes_style,
-								factory_shoes_style: insertOnly ? '' : item.factory_shoes_style,
-								color_sn: insertOnly ? '' : item.color_sn,
-								size_numcode: insertOnly ? '' : item.size_numcode
-							}
-						}
+						...(insertOnly
+							? []
+							: [
+									{
+										$set: {
+											mo_no: item.mo_no,
+											factory_code_produce: item.factory_code_produce,
+											cust_shoes_style: item.cust_shoes_style,
+											factory_shoes_style: item.factory_shoes_style,
+											color_sn: item.color_sn,
+											size_numcode: item.size_numcode
+										}
+									}
+								])
 					],
-					upsert: true
+					upsert: insertOnly
 				}
-			}))
+			})),
+			{
+				session: this.txHost.tx,
+				ordered: false,
+				retryWrites: true,
+				timestamps: true
+			}
 		)
 
 		await this.finishedGoodsEpcModel.bulkWrite(
@@ -870,17 +935,19 @@ export class InoutboundMongoRepository implements IIoMongoRepository {
 				updateOne: {
 					filter: { epc: item.epc },
 					update: {
-						mo_no: item.mo_no,
-						factory_shoes_style: item.factory_shoes_style,
-						color_sn: item.color_sn,
-						size_numcode: item.size_numcode,
-						factory_code_produce: item.factory_code_produce
+						$set: {
+							mo_no: item.mo_no,
+							factory_code_produce: item.factory_code_produce,
+							cust_shoes_style: item.cust_shoes_style,
+							factory_shoes_style: item.factory_shoes_style,
+							color_sn: item.color_sn,
+							size_numcode: item.size_numcode
+						}
 					}
 				}
 			})),
 			{
 				session: this.txHost.tx,
-				writeConcern: { w: 'majority' },
 				ordered: false,
 				retryWrites: true,
 				timestamps: true

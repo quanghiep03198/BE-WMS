@@ -26,13 +26,14 @@ export class UpsertEpcsMatchHandler implements ICommandHandler<UpsertEpcsMatchCo
 		const pendingExchangeEpcs = await this.ioMongoRepository.getPendingExchangeEpcs({
 			deviceSerialNumber,
 			manufacturingOrder: sourceMo,
+			sizeNumber,
 			quantity
 		})
 		const targetExchangeMo = await this.orderRepository.getManufacturingOrder(targetMo, subMo)
 		const upsertEpcInfoTransaction = new UpsertEpcsMatchTransaction(pendingExchangeEpcs, targetExchangeMo, sizeNumber)
 		const tx = upsertEpcInfoTransaction.startTransaction()
 
-		await this.ioMongoRepository.upsertEpcsMatch(tx.getPayload())
+		await this.ioMongoRepository.upsertEpcsMatch(tx.getPayload(), false)
 
 		this.eventPublisher.mergeObjectContext(upsertEpcInfoTransaction)
 		upsertEpcInfoTransaction.commit()

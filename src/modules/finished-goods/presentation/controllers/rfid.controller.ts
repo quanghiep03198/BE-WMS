@@ -138,7 +138,7 @@ export class RFIDController {
 			void setup()
 
 			return () => {
-				this.logger.debug(`Cleaning up inbound RFID stream for device ${deviceSerialNumber}`)
+				this.logger.info(`Cleaning up inbound RFID stream for device ${deviceSerialNumber}`)
 				if (changeStream) void changeStream.close()
 				subscriber.complete()
 			}
@@ -189,7 +189,7 @@ export class RFIDController {
 			void setup()
 
 			return () => {
-				this.logger.debug('Cleaning up outbound RFID stream')
+				this.logger.info('Cleaning up outbound RFID stream')
 				if (changeStream) {
 					void changeStream.close()
 				}
@@ -234,7 +234,7 @@ export class RFIDController {
 			void setup()
 
 			return () => {
-				this.logger.debug('Cleaning up deduplication status stream')
+				this.logger.info('Cleaning up deduplication status stream')
 				void this.redisService.unsubscribe('enable_deduplicate_inbound_epc')
 				subscriber.complete()
 			}

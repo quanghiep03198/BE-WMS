@@ -39,6 +39,9 @@ export class StockOutTransaction extends AggregateRoot {
 	}
 
 	public startTransaction() {
+		// console.log('poOutboundProgress :>>', this.poOutboundProgress)
+		// console.log('moInventories :>>', this.moInventories)
+
 		const transactionalSizeQty = entries(
 			groupBy(this.pendingShipOutEpcs, (epc) => {
 				const mo = epc.getManufacturingOrder()
@@ -58,6 +61,8 @@ export class StockOutTransaction extends AggregateRoot {
 			const tx = transactionalSizeQty.find((incoming) =>
 				outboundSizeDetail.size_numcode.isEqual(incoming.size_numcode)
 			)
+			console.log('tx :>>>', tx)
+
 			if (!tx)
 				return {
 					size_numcode: outboundSizeDetail.size_numcode.getValue(),
@@ -87,8 +92,6 @@ export class StockOutTransaction extends AggregateRoot {
 				xf_deficit: inventory.accumulated_qty - tx.outbound_qty
 			}
 		})
-
-		console.log('outStandingManufaturingOrderQty :>>', outStandingManufaturingOrderQty)
 
 		const excessedSizingOrder = outstandingPurchaseOrderQty.filter((size) => size.missing_qty < 0)
 

@@ -2,7 +2,7 @@ import { DATA_SOURCE_DATA_LAKE, DATA_WAREHOUSE_CONNECTION } from '@databases/con
 import { InventoryModule } from '@modules/inventory/inventory.module'
 import { OrderModule } from '@modules/order/order.module'
 import { BullModule } from '@nestjs/bullmq'
-import { Module, OnModuleInit } from '@nestjs/common'
+import { forwardRef, Module, OnModuleInit } from '@nestjs/common'
 import { InjectModel, MongooseModule } from '@nestjs/mongoose'
 import { TypeOrmModule } from '@nestjs/typeorm'
 import { InjectRedisClient } from '@redis/decorators'
@@ -80,9 +80,9 @@ import { FinishedGoodsListeners } from './presentation/listeners'
 
 @Module({
 	imports: [
+		forwardRef(() => InventoryModule),
 		TenancyModule,
 		ThirdPartyApiModule,
-		InventoryModule,
 		OrderModule,
 		BullModule.registerQueue({ name: BULK_WRITE_INBOUND_EPCS_QUEUE }),
 		BullModule.registerQueue({ name: BULK_WRITE_OUTBOUND_EPCS_QUEUE }),

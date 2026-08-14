@@ -20,7 +20,7 @@ export class BulkWriteInventoryHandler implements ICommandHandler<BulkWriteInven
 		const scanningEpcs = await this.ioMongoRepository.getEpcsInformation(data.tagList.map((tag) => tag.epc))
 
 		if (scanningEpcs.length === 0) return
-		const start = performance.now()
+
 		await this.ioMongoRepository.bulkWriteInventoryEpcs({
 			action: command.action,
 			payload: {
@@ -28,7 +28,5 @@ export class BulkWriteInventoryHandler implements ICommandHandler<BulkWriteInven
 				deviceSerialNumber: sn
 			}
 		})
-		const end = performance.now()
-		this.logger.debug(`Processed in ${end - start} ms`)
 	}
 }

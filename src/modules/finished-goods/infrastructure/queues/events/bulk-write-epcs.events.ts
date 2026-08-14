@@ -10,7 +10,7 @@ export class BulkWriteEpcsQueueEvents extends QueueEventsHost {
 	}
 	@OnQueueEvent('completed')
 	onCompleted({ jobId }: FirstParameter<IQueueEventsListener['completed']>) {
-		this.logger.debug(`Job "${jobId}" completed successfully`)
+		this.logger.info(`Job "${jobId}" completed successfully`)
 	}
 
 	@OnQueueEvent('error')

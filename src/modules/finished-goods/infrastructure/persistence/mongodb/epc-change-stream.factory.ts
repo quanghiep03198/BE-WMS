@@ -3,6 +3,7 @@ import { EpcChangeStreamFilterQuery, IEpcChangeStream } from '@modules/finished-
 import { IEpcChangeStreamFactory } from '@modules/finished-goods/domain/interfaces/epc-change-stream.factory.interface'
 import { Injectable } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
+import { throttle } from 'lodash'
 import { mongo } from 'mongoose'
 import { EpcChangeStreamWrapper } from './epc-change-stream.wrapper'
 import { FinishedGoodsEpc, FinishedGoodsEpcDocument, FinishedGoodsEpcModel } from './schemas/finished-goods-epc.schema'
@@ -35,7 +36,7 @@ export class MongoEpcChangeStreamFactory implements IEpcChangeStreamFactory {
 		)
 
 		const wrapper = new EpcChangeStreamWrapper(changeStream) // Wrapper cũng chuyển xuống đây luôn
-		wrapper.onChange(onChange)
+		wrapper.onChange(throttle(onChange, 200, { leading: true, trailing: false }))
 		return wrapper
 	}
 }
