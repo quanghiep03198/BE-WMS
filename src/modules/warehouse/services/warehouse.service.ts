@@ -13,12 +13,13 @@ export class WarehouseService extends BaseAbstractService<WarehouseEntity> {
 	) {
 		super(warehouseRepository)
 	}
-	async findAllByFactory(cofactoryCode: string) {
+
+	async findAllByFactory(factory: string) {
 		return await this.warehouseRepository
 			.createQueryBuilder('warehouse')
 			.leftJoinAndSelect('warehouse.storage_locations', 'storage')
 			.select(['warehouse', 'storage.id', 'storage.storage_num', 'storage.storage_name'])
-			.where('warehouse.cofactory_code = :cofactoryCode', { cofactoryCode: cofactoryCode })
+			.where('warehouse.cofactory_code = :factory', { factory: factory })
 			.getMany()
 	}
 
