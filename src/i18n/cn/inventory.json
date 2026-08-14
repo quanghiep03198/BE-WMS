@@ -1,6 +1,7 @@
 {
 	"exceptions": {
 		"time_not_elapsed": "，当前无法完成库存盘点.请稍后再试.",
-		"already_checkout": "库存盘点已完成.请重新检查."
+		"already_checkout": "库存盘点已完成.请重新检查.",
+		"supplemental_qty_excess": "补充数量超过当前库存数量."
 	}
 }

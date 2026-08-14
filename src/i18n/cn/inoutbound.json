@@ -19,8 +19,12 @@
 		"no_exchangable_sku": "没有可交换的 SKU.",
 		"mismatching_mo_specs": "所选 SKU 的规格不一致，请重新检查.",
 		"mismatching_size_number": "所选 SKU 的尺码不一致，请重新检查.",
-		"stock_in_success": "已成功入库 {quantity} 个产品.",
-		"stock_in_failed": "入库时发生错误."
+		"recalled_from_stock": "已成功从库存中召回产品.",
+		"recalled_from_stock_failed": "召回库存时发生错误.",
+		"stock_in_success": "已成功入库个产品.",
+		"stock_in_failed": "入库时发生错误.",
+		"stock_out_success": "已成功出库个产品.",
+		"stock_out_failed": "出库时发生错误."
 	},
 	"outbound_purpose": {
 		"SELL": "出貨",

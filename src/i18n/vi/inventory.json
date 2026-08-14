@@ -1,6 +1,7 @@
 {
 	"exceptions": {
 		"time_not_elapsed": "Chưa đến thời gian kết đơn. Vui lòng thử lại sau.",
-		"already_checkout": "Đơn hàng đã được kết. Vui lòng kiểm tra lại."
+		"already_checkout": "Đơn hàng đã được kết. Vui lòng kiểm tra lại.",
+		"supplemental_qty_excess": "Số lượng bổ sung vượt quá số lượng tồn kho hiện tại."
 	}
 }

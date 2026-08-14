@@ -175,8 +175,12 @@ export type I18nTranslations = {
             "no_exchangable_sku": string;
             "mismatching_mo_specs": string;
             "mismatching_size_number": string;
+            "recalled_from_stock": string;
+            "recalled_from_stock_failed": string;
             "stock_in_success": string;
             "stock_in_failed": string;
+            "stock_out_success": string;
+            "stock_out_failed": string;
         };
         "outbound_purpose": {
             "SELL": string;
@@ -188,6 +192,7 @@ export type I18nTranslations = {
         "exceptions": {
             "time_not_elapsed": string;
             "already_checkout": string;
+            "supplemental_qty_excess": string;
         };
     };
     "packing": {
