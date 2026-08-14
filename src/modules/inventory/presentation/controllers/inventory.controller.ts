@@ -1,5 +1,5 @@
 import { CommonRequestHeader } from '@common/constants'
-import { HttpMethod, RequireAuthorized, RouteHandler } from '@common/decorators'
+import { HttpMethod, RequireAuthorized, ResponseMessage, RouteHandler } from '@common/decorators'
 import { HttpExceptionFilter } from '@common/filters'
 import { ZodValidationPipe } from '@common/pipes'
 import {
@@ -8,9 +8,12 @@ import {
 	DefaultValuePipe,
 	Get,
 	Headers,
+	HttpCode,
 	HttpStatus,
 	Param,
 	ParseArrayPipe,
+	Patch,
+	Put,
 	Query,
 	Res,
 	UseFilters
@@ -34,6 +37,7 @@ import {
 	updateInventoryReportQuery,
 	UpdateInventoryReportQueryDTO
 } from '../dto/inventory-report.dto'
+import { InventoryAuditExceptionFilter } from '../filters/inventory-audit.filter'
 
 @Controller('inventory')
 export class InventoryController {
@@ -71,22 +75,28 @@ export class InventoryController {
 		return reply.send(buffer)
 	}
 
-	@RouteHandler({ endpoint: 'audit/update', method: HttpMethod.PATCH, statusCode: HttpStatus.CREATED })
+	@Patch('audit/update')
+	@HttpCode(HttpStatus.CREATED)
+	@ResponseMessage('common.created')
+	@UseFilters(InventoryAuditExceptionFilter)
 	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
 	async updateInventoryReport(
 		@Query(new ZodValidationPipe(updateInventoryReportQuery)) filterQuery: UpdateInventoryReportQueryDTO,
 		@Body(new ZodValidationPipe(bulkUpdateInventoryAuditPayload)) update: BulkUpdateInventoryReportDTO
 	) {
-		return await this.commandBus.execute(new UpdateInventorySupplementalQtyCommand(filterQuery, update))
+		await this.commandBus.execute(new UpdateInventorySupplementalQtyCommand(filterQuery, update))
+		return filterQuery
 	}
 
-	@RouteHandler({ endpoint: 'audit/checkout/:month', method: HttpMethod.PUT, statusCode: HttpStatus.CREATED })
+	@Put('audit/checkout/:month')
+	@HttpCode(HttpStatus.CREATED)
+	@ResponseMessage('common.created')
+	@UseFilters(InventoryAuditExceptionFilter)
 	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
 	async processInventoryAuditCheckout(
 		@Param('month', new DefaultValuePipe(format(new Date(), 'yyyy-MM'))) month: string
 	) {
 		await this.commandBus.execute(new CheckoutInventoryAuditCommand(month))
-		// return await this.inventoryReportService.checkoutInventoryAudit(month)
 	}
 
 	// #endregion

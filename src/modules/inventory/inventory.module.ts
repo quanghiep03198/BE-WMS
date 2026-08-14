@@ -1,11 +1,13 @@
 import { DATA_SOURCE_DATA_LAKE, DATA_WAREHOUSE_CONNECTION } from '@databases/constants'
-import { Module, OnModuleInit } from '@nestjs/common'
+import { FinishedGoodsModule } from '@modules/finished-goods/finished-goods.module'
+import { forwardRef, Module, OnModuleInit } from '@nestjs/common'
 import { InjectModel, MongooseModule } from '@nestjs/mongoose'
 import { TypeOrmModule } from '@nestjs/typeorm'
 import { OrderModule } from '../order/order.module'
 import { InventoryAuditCommandHandlers } from './application/commands'
 import { INVENTORY_AUDIT_REPOSITORY } from './application/ports/inventory-audit.port.interface'
 import { InventoryAuditQueryHandlers } from './application/queries'
+import { InventoryAuditEventHandlers } from './domain/events'
 import { InventoryAuditRepository } from './infrastructure/persistence/mongodb/repositories/inventory-audit.repository'
 import {
 	MO_INVENTORY_AUDIT_COLLECTION_NAME,
@@ -24,6 +26,8 @@ import { InventoryController } from './presentation/controllers/inventory.contro
 @Module({
 	imports: [
 		OrderModule,
+		forwardRef(() => FinishedGoodsModule),
+
 		TypeOrmModule.forFeature(
 			[
 				InventoryAuditEntity,
@@ -50,9 +54,10 @@ import { InventoryController } from './presentation/controllers/inventory.contro
 		ProductionInventoryService,
 		{ provide: INVENTORY_AUDIT_REPOSITORY, useClass: InventoryAuditRepository },
 		...InventoryAuditQueryHandlers,
-		...InventoryAuditCommandHandlers
+		...InventoryAuditCommandHandlers,
+		...InventoryAuditEventHandlers
 	],
-	exports: [INVENTORY_AUDIT_REPOSITORY]
+	exports: [MongooseModule, INVENTORY_AUDIT_REPOSITORY]
 })
 export class InventoryModule implements OnModuleInit {
 	constructor(

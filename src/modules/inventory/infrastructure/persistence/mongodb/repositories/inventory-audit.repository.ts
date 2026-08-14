@@ -1,27 +1,35 @@
 import { ExcelColorPalette } from '@common/constants/excel-color-palette'
 import { applyCommonStyles, type AutoFitColumnOptions, autoFitColumns } from '@common/helpers'
 import { DATA_WAREHOUSE_CONNECTION } from '@databases/constants'
-import { Transactional } from '@nestjs-cls/transactional'
+import {
+	MoInventoryVariation,
+	MoInventoryVariationModel
+} from '@modules/finished-goods/infrastructure/persistence/mongodb/schemas/mo-inventory-variation.schema'
+import { InventoryClosureStatus } from '@modules/inventory/domain/constants'
+import { InjectTransactionHost, Transactional, TransactionHost } from '@nestjs-cls/transactional'
 import { TransactionalAdapterMongoose } from '@nestjs-cls/transactional-adapter-mongoose'
 import { Injectable } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
 import { addMonths, format } from 'date-fns'
 import { Workbook } from 'exceljs'
+import { AnyBulkWriteOperation } from 'mongoose'
 import { I18nContext, I18nService } from 'nestjs-i18n'
 import { InjectPinoLogger } from 'nestjs-pino'
 import { IInventoryReportResponse } from '../../../../application/interfaces'
 import { IInventoryAuditRepository } from '../../../../application/ports/inventory-audit.port.interface'
 import { InventoryAuditCheckoutPipelineBuilder } from '../builders/inventory-audit-checkout-pipeline.builder'
-import { MoInventoryAudit, MoInventoryAuditModel } from '../schemas/inventory-audit.schema'
+import { MoInventoryAudit, MoInventoryAuditDocument, MoInventoryAuditModel } from '../schemas/inventory-audit.schema'
 
 @Injectable()
 export class InventoryAuditRepository implements IInventoryAuditRepository {
 	constructor(
 		@InjectPinoLogger(InventoryAuditRepository.name) private readonly logger,
-
+		@InjectTransactionHost(DATA_WAREHOUSE_CONNECTION)
+		private readonly txHost: TransactionHost<TransactionalAdapterMongoose>,
 		@InjectModel(MoInventoryAudit.name, DATA_WAREHOUSE_CONNECTION)
 		private readonly moInventoryAuditModel: MoInventoryAuditModel,
-
+		@InjectModel(MoInventoryVariation.name, DATA_WAREHOUSE_CONNECTION)
+		private readonly moInventoryVariationModel: MoInventoryVariationModel,
 		private readonly i18nService: I18nService
 	) {}
 
@@ -93,28 +101,130 @@ export class InventoryAuditRepository implements IInventoryAuditRepository {
 		})
 	}
 
+	public async getInventoryAuditClosureStatus(month: string): Promise<InventoryClosureStatus[]> {
+		const statuses = await this.moInventoryAuditModel
+			.distinct('inventory_closure_status', { year_month: month })
+			.exec()
+		return statuses as InventoryClosureStatus[]
+	}
+
 	@Transactional<TransactionalAdapterMongoose>(DATA_WAREHOUSE_CONNECTION)
-	public async updateInventorySupplementalQty(
+	public async updateInventoryAuditVariation(
+		pendingVariation: Array<{
+			mo_no: string
+			po: string | null | undefined
+			factory_code_produce: string
+			factory_shoes_style: string
+			color_sn: string
+			inventory_variation: Record<
+				string,
+				{
+					order_qty: number
+					stocked_in_qty: number
+					total_recall_tx: number
+					total_return_tx: number
+					shipped_out_qty: number
+				}
+			>
+		}>,
+		storageLocation: Array<string> = []
+	) {
+		const manufacturingOrders = await this.moInventoryVariationModel
+			.find({ mo_no: { $in: pendingVariation.map(({ mo_no }) => mo_no) } })
+			.lean()
+
+		const manufacturingOrdersMap = new Map(manufacturingOrders.map((mo) => [mo.mo_no, mo]))
+		const yearMonth = format(new Date(), 'yyyy-MM')
+
+		// * Cập nhật lại tồn kho trong tháng
+		const monthlyInventoryBulkWriteOperator = pendingVariation.flatMap((change) => {
+			const { inventory_variation } = manufacturingOrdersMap.get(change.mo_no)
+
+			const inventoryVariation = Object.entries(inventory_variation).reduce((acc, [size, variation]) => {
+				return {
+					...acc,
+					[size]: {
+						order_qty: variation.order_qty,
+						beginning_inventory_qty: 0,
+						stocked_in_qty: 0,
+						shipped_out_qty: 0,
+						supplemental_stocked_in_qty: 0,
+						supplemental_shipped_out_qty: 0
+					}
+				}
+			}, {})
+
+			this.logger.debug(inventoryVariation)
+
+			const incrementExpression = Object.entries(change.inventory_variation).reduce((acc, [size, variation]) => {
+				return {
+					...acc,
+					[`inventory_variation.${size}.stocked_in_qty`]:
+						variation.stocked_in_qty - variation.total_recall_tx + variation.total_return_tx,
+					[`inventory_variation.${size}.shipped_out_qty`]: variation.shipped_out_qty
+				}
+			}, {})
+
+			return [
+				{
+					updateOne: {
+						filter: { mo_no: change.mo_no, year_month: yearMonth },
+						update: {
+							$setOnInsert: {
+								mo_no: change.mo_no,
+								year_month: yearMonth,
+								inventory_closure_status: 'pending',
+								inventory_variation: inventoryVariation
+							},
+							$addToSet: {
+								storage_locations: { $each: storageLocation }
+							}
+						},
+						upsert: true
+					}
+				},
+				{
+					updateOne: {
+						filter: { mo_no: change.mo_no, year_month: yearMonth },
+						update: {
+							$inc: incrementExpression
+						}
+					}
+				}
+			] as AnyBulkWriteOperation<MoInventoryAuditDocument>[]
+		})
+
+		await this.moInventoryAuditModel.bulkWrite(monthlyInventoryBulkWriteOperator, {
+			session: this.txHost.tx,
+			writeConcern: { w: 'majority' },
+			ordered: true,
+			retryWrites: true,
+			timestamps: true
+		})
+	}
+
+	@Transactional<TransactionalAdapterMongoose>(DATA_WAREHOUSE_CONNECTION)
+	public async saveSupplementalQty(
 		filterQuery: {
 			mo_no: string
 			year_month: string
 		},
-		update: Required<{
-			supplemental_stocked_in_qty?: number
-			supplemental_shipped_out_qty?: number
-			size_numcode?: string
-		}>[]
+		update: Record<
+			| `inventory_variation.${string}.supplemental_stocked_in_qty`
+			| `inventory_variation.${string}.supplemental_shipped_out_qty`,
+			number
+		>
 	): Promise<void> {
-		const updateOperation = update.reduce((acc, curr) => {
-			return {
-				...acc,
-				[`inventory_variation.${curr.size_numcode}.supplemental_stocked_in_qty`]: curr.supplemental_stocked_in_qty,
-				[`inventory_variation.${curr.size_numcode}.supplemental_shipped_out_qty`]: curr.supplemental_shipped_out_qty
-			}
-		}, {})
+		// const updateOperation = update.reduce((acc, curr) => {
+		// 	return {
+		// 		...acc,
+		// 		[`inventory_variation.${curr.size_numcode}.supplemental_stocked_in_qty`]: curr.supplemental_stocked_in_qty,
+		// 		[`inventory_variation.${curr.size_numcode}.supplemental_shipped_out_qty`]: curr.supplemental_shipped_out_qty
+		// 	}
+		// }, {})
 
 		await this.moInventoryAuditModel
-			.updateOne({ ...filterQuery, inventory_closure_status: 'pending' }, { $set: updateOperation })
+			.updateOne({ ...filterQuery, inventory_closure_status: 'pending' }, { $set: update })
 			.exec()
 	}
 
