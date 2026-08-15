@@ -1,4 +1,7 @@
-﻿export default /* SQL */ `
+﻿/**
+ * @deprecated
+ */
+export default /* SQL */ `
 -- Test performance
 SET STATISTICS IO ON;
 SET STATISTICS TIME ON;
@@ -26,63 +29,39 @@ WITH months_cte AS (
 inbound_combined AS (
    SELECT 
       MONTH(record_time) AS month,
-      EPC_Code
-   FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet WITH (NOLOCK)
-   WHERE 
-      isactive = 'Y'
-      AND record_time >= @StartDate 
-      AND record_time <= @EndDate
-      AND rfid_status = 'A'
-      AND stationNO LIKE '%WH101'
-   UNION ALL
-   SELECT 
-      MONTH(record_time) AS month,
-      EPC_Code
+      quantity
    FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet_backup_Daily WITH (NOLOCK)
    WHERE 
       isactive = 'Y'
       AND record_time >= @StartDate 
       AND record_time <= @EndDate
       AND rfid_status = 'A'
-      AND stationNO LIKE '%WH101'
+      AND station_suffix = '101'
 ),
 -- Union all outbound data first, then count distinct
 outbound_combined AS (
    SELECT 
       MONTH(record_time) AS month,
-      EPC_Code
-   FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet WITH (NOLOCK)
-   WHERE 
-      isactive = 'Y'
-      AND record_time >= @StartDate 
-      AND record_time <= @EndDate
-      AND rfid_status = 'B'
-      AND stationNO LIKE '%WH103'
-   
-   UNION 
-   
-   SELECT 
-      MONTH(record_time) AS month,
-      EPC_Code
+      quantity
    FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet_backup_Daily WITH (NOLOCK)
    WHERE 
       isactive = 'Y'
       AND record_time >= @StartDate 
       AND record_time <= @EndDate
       AND rfid_status = 'B'
-      AND stationNO LIKE '%WH103'
+      AND station_suffix = '103'
 ),
 total_inbound AS (
    SELECT 
       month,
-      COUNT(DISTINCT EPC_Code) AS inbound_qty
+      SUM(ABS(quantity)) AS inbound_qty
    FROM inbound_combined
    GROUP BY month
 ),
 total_outbound AS (
    SELECT 
       month,
-      COUNT(DISTINCT EPC_Code) AS outbound_qty
+      SUM(ABS(quantity)) AS outbound_qty
    FROM outbound_combined
    GROUP BY month
 ),
@@ -116,10 +95,7 @@ FROM final_statistics f
 ORDER BY f.month
 OPTION (
    OPTIMIZE FOR UNKNOWN,                              -- Prevent parameter sniffing  
-   USE HINT('ENABLE_PARALLEL_PLAN_PREFERENCE'),       -- Force parallel execution
-   USE HINT('FORCE_DEFAULT_CARDINALITY_ESTIMATION'),  -- Better cardinality estimates
-   MAXDOP 4,                                          -- Limit parallelism for better resource usage
-   KEEPFIXED PLAN                                     -- Fresh execution plan each time
+   RECOMPILE
 );
 
 SET STATISTICS IO OFF;

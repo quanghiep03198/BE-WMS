@@ -1,4 +1,7 @@
-﻿export default /* SQL */ `
+﻿/**
+ * @deprecated
+ */
+export default /* SQL */ `
 DECLARE @CurrentDate DATE = GETDATE();
 DECLARE @CurrentYear INT = YEAR(@CurrentDate);
 DECLARE @CurrentMonth INT = MONTH(@CurrentDate);
