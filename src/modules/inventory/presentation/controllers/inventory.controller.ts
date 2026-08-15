@@ -65,7 +65,6 @@ export class InventoryController {
 		@Query('month:eq', new DefaultValuePipe(format(new Date(), 'yyyy-MM'))) month: string,
 		@Query('mo_no:in', new DefaultValuePipe([]), new ParseArrayPipe({ items: String, separator: ',' }))
 		manufacturingOrders: string[],
-		@Query() query: Record<string, any>,
 		@Headers(CommonRequestHeader.FACTORY_CODE) factory: string,
 		@Res() reply: FastifyReply
 	) {

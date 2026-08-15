@@ -27,7 +27,6 @@ import { InventoryController } from './presentation/controllers/inventory.contro
 	imports: [
 		OrderModule,
 		forwardRef(() => FinishedGoodsModule),
-
 		TypeOrmModule.forFeature(
 			[
 				InventoryAuditEntity,

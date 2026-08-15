@@ -1,5 +1,3 @@
-// src/presentation/filters/order-cannot-be-closed.filter.ts
-
 import { ResponseBody } from '@common/helpers'
 import { I18nTranslations } from '@generated/i18n.generated'
 import {
@@ -55,7 +53,6 @@ export class InventoryAuditExceptionFilter implements ExceptionFilter {
 				break
 		}
 
-		// Trả về 409 Conflict hoặc 400 Bad Request tùy quy ước
 		const responseBody = new ResponseBody({
 			message: message,
 			statusCode: statusCode,
