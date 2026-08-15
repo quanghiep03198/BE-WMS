@@ -31,12 +31,12 @@ export class GetScanningEpcsHandler implements IQueryHandler<GetScanningEpcsQuer
 			status: FinishedGoodsEpcStatus.SCANNING,
 			...filterQuery
 		})
-			.withEqualFields('scannable', 'deleted', 'mo_no', 'status')
+			.whereFieldsAreEqual('scannable', 'deleted', 'mo_no', 'status')
 			.when(stockFlow === 'inbound', (builder) =>
-				builder.withEqualBy('inbound_device_sn').withNullishFields('storage_location', 'outbound_at')
+				builder.whereFieldsAreEqual('inbound_device_sn').whereFieldsAreNull('storage_location', 'outbound_at')
 			)
 			.when(stockFlow === 'outbound', (builder) =>
-				builder.withNullishFields('outbound_at').withNonNullableFields('outbound_device_sn', 'inbound_at')
+				builder.whereFieldsAreNull('outbound_at').whereFieldsAreNotNull('outbound_device_sn', 'inbound_at')
 			)
 			.build()
 

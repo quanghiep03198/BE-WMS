@@ -39,11 +39,11 @@ import { z } from 'zod'
 import { DeleteScanningEpcsCommand } from '../../application/commands/delete-scanning-epcs/delete-scanning-epcs.command'
 import { DeleteScanningMoCommand } from '../../application/commands/delete-scanning-mo/delete-scanning-mo.command'
 import { RestoreDeletedEpcsCommand } from '../../application/commands/restore-deleted-epcs/restore-deleted-epcs.command'
-import { GetDeletedEpcSpecsQuery } from '../../application/queries/get-deleted-epc-sepcs/get-deleted-epc-specs.query'
+import { GetDeletedEpcSpecsQuery } from '../../application/queries/get-archived-epc-specs/get-archived-epc-specs.query'
 import { GetScanningEpcsBySizeQuery } from '../../application/queries/get-scanning-epcs-by-size/get-scanning-epcs-by-size.query'
 import { GetScanningEpcsQuery } from '../../application/queries/get-scanning-epcs/get-scanning-epcs.query'
 import { GetScanningMosQuery } from '../../application/queries/get-scanning-mo/get-scanning-mo.query'
-import { RetriveDeletedEpcsQuery } from '../../application/queries/retrieve-deleted-epcs/retrive-deleted-epcs.query'
+import { RetriveArchivedEpcsQuery } from '../../application/queries/retrieve-archived-epcs/retrive-archived-epcs.query'
 import { StockFlow } from '../../domain/types'
 import { CsvFileValidationPipe } from '../../infrastructure/pipes/csv-validation.pipe'
 import {
@@ -346,27 +346,22 @@ export class RFIDController {
 	}
 
 	@RouteHandler({
-		endpoint: ':stockFlow/deleted-epcs',
+		endpoint: ':stockFlow/archived-epcs',
 		method: HttpMethod.GET
 	})
 	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
-	async retrieveDeletedEpcs(
+	async retrieveArchivedEpcs(
 		@Param('stockFlow') stockFlow: 'inbound' | 'outbound',
 		@Query('_page', new DefaultValuePipe(1), ParseIntPipe) page: number,
 		@Query('_limit', new DefaultValuePipe(100), ParseIntPipe) limit: number,
 		@Query('scannable:eq', new ParseBoolPipe({ optional: true })) scannable: boolean,
-		@Query('scanned:eq', new DefaultValuePipe('scanned')) outboundScanned: 'scanned' | 'unscanned',
+		@Query('scanned:eq', new ParseBoolPipe({ optional: true })) shippedOutScanned: boolean,
 		@Query() filterQuery: Omit<RFIDSearchParams, '_page' | '_limit' | 'scannable:eq' | 'scanned:eq'>
 	) {
 		if (stockFlow !== 'inbound' && stockFlow !== 'outbound') throw new BadRequestException('Invalid type')
 
-		const outboundScannedStatus: Readonly<{ scanned: 'dectectable'; unscanned: 'undetectable' }> = {
-			scanned: 'dectectable',
-			unscanned: 'undetectable'
-		}
-
 		return await this.queryBus.execute(
-			new RetriveDeletedEpcsQuery(
+			new RetriveArchivedEpcsQuery(
 				stockFlow,
 				{ page, limit },
 				{
@@ -376,28 +371,31 @@ export class RFIDController {
 					color_sn: filterQuery['color_sn:eq'],
 					size_numcode: filterQuery['size_numcode:eq'],
 					scannable: scannable,
-					outbound_device_sn: outboundScannedStatus[outboundScanned]
+					po: undefined,
+					inbound_times: stockFlow === 'inbound' ? 0 : 1,
+					deleted: stockFlow === 'inbound' || shippedOutScanned
+					// outbound_device_sn: outboundScannedStatus
 				}
 			)
 		)
 	}
 
 	@RouteHandler({
-		endpoint: 'deleted-epc-specs',
+		endpoint: 'archived-epc-specs',
 		method: HttpMethod.GET
 	})
 	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
-	async retrieveDeletedEpcSpecs() {
+	async retrieveArchivedEpcSpecs() {
 		return await this.queryBus.execute(new GetDeletedEpcSpecsQuery())
 	}
 
 	@RouteHandler({
-		endpoint: 'restore-deleted-epcs',
+		endpoint: 'restore-archived-epcs',
 		method: HttpMethod.PATCH,
 		statusCode: HttpStatus.CREATED
 	})
 	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
-	async restoreDeletedEpcs(
+	async restoreArchivedEpcs(
 		@Body(new ZodValidationPipe(restoreArchivedEpcValidator)) epcs: RestoreArchivedEpcsDTO
 	): Promise<void> {
 		return await this.commandBus.execute(new RestoreDeletedEpcsCommand(epcs))

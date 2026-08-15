@@ -21,6 +21,9 @@ export class MoInventoryVariation {
 	mo_no: string
 
 	@Prop({ type: String, requried: true })
+	brand_name: string
+
+	@Prop({ type: String, requried: true })
 	factory_code_produce: string
 
 	@Prop({ type: String, requried: true })

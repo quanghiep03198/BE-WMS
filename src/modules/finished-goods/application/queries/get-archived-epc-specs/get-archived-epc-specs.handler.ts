@@ -1,15 +1,15 @@
 import { DATA_WAREHOUSE_CONNECTION } from '@databases/constants'
-import { FALLBACK_VALUE } from '@modules/finished-goods/domain/constants'
+import { FALLBACK_VALUE, FinishedGoodsEpcStatus } from '@modules/finished-goods/domain/constants'
 import {
 	FinishedGoodsEpc,
 	FinishedGoodsEpcModel
 } from '@modules/finished-goods/infrastructure/persistence/mongodb/schemas/finished-goods-epc.schema'
 import { IQueryHandler, QueryHandler } from '@nestjs/cqrs'
 import { InjectModel } from '@nestjs/mongoose'
-import { GetDeletedEpcSpecsQuery } from './get-deleted-epc-specs.query'
+import { GetDeletedEpcSpecsQuery as GetArchivedEpcSpecsQuery } from './get-archived-epc-specs.query'
 
-@QueryHandler(GetDeletedEpcSpecsQuery)
-export class GetDeletedEpcSpecsHandler implements IQueryHandler<GetDeletedEpcSpecsQuery> {
+@QueryHandler(GetArchivedEpcSpecsQuery)
+export class GetArchivedEpcSpecsHandler implements IQueryHandler<GetArchivedEpcSpecsQuery> {
 	constructor(
 		@InjectModel(FinishedGoodsEpc.name, DATA_WAREHOUSE_CONNECTION)
 		private readonly finishedGoodsEpcModel: FinishedGoodsEpcModel
@@ -17,7 +17,7 @@ export class GetDeletedEpcSpecsHandler implements IQueryHandler<GetDeletedEpcSpe
 
 	public async execute() {
 		return await this.finishedGoodsEpcModel
-			.aggregateDeleted<{
+			.aggregateWithDeleted<{
 				factory_shoes_style: string
 				colorways: Array<{
 					color_sn: string
@@ -27,10 +27,22 @@ export class GetDeletedEpcSpecsHandler implements IQueryHandler<GetDeletedEpcSpe
 				{
 					$match: {
 						scannable: { $ne: null },
-						deleted: true,
 						mo_no: { $ne: FALLBACK_VALUE },
 						factory_shoes_style: { $ne: FALLBACK_VALUE },
-						size_numcode: { $ne: FALLBACK_VALUE }
+						size_numcode: { $ne: FALLBACK_VALUE },
+						$or: [
+							// * Đang quét nhưng đã xóa
+							{
+								deleted: true,
+								status: FinishedGoodsEpcStatus.SCANNING
+							},
+							// * Chưa xuất
+							{
+								inbound_times: { $gte: 1 },
+								status: FinishedGoodsEpcStatus.IN_STOCK
+							}
+						]
+
 						// epc: { $regex: VALID_EPC_PATTERN }
 					}
 				},

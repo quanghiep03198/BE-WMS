@@ -10,50 +10,50 @@ import { InjectModel } from '@nestjs/mongoose'
 import { omitBy } from 'lodash'
 import { mongo } from 'mongoose'
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
-import { RetriveDeletedEpcsQuery } from './retrive-deleted-epcs.query'
+import { RetriveArchivedEpcsQuery } from './retrive-archived-epcs.query'
 
-@QueryHandler(RetriveDeletedEpcsQuery)
-export class RetriveDeletedEpcsHandler implements IQueryHandler<RetriveDeletedEpcsQuery> {
+@QueryHandler(RetriveArchivedEpcsQuery)
+export class RetriveArchivedEpcsHandler implements IQueryHandler<RetriveArchivedEpcsQuery> {
 	constructor(
 		@InjectModel(FinishedGoodsEpc.name, DATA_WAREHOUSE_CONNECTION)
 		private readonly finishedGoodsEpcModel: FinishedGoodsEpcModel,
-		@InjectPinoLogger(RetriveDeletedEpcsHandler.name) private readonly logger: PinoLogger
+		@InjectPinoLogger(RetriveArchivedEpcsHandler.name) private readonly logger: PinoLogger
 	) {}
 
-	public async execute({ stockFlow, filterQuery, pagination }: RetriveDeletedEpcsQuery) {
-		const filterCase = {
-			isInboundFlow: stockFlow === 'inbound',
-			isOutboundFlow: stockFlow === 'outbound',
-			outboundScanDetected: filterQuery.outbound_device_sn === 'dectectable',
-			outboundScanNotDetected: filterQuery.outbound_device_sn === 'undetectable'
-		}
-
+	public async execute({ stockFlow, filterQuery, pagination }: RetriveArchivedEpcsQuery) {
 		const queryHint: Record<StockFlow, mongo.Hint> = {
 			inbound: 'idx_specs_inbound',
 			outbound: 'idx_specs_outbound'
 		}
 
 		const query = MongoQueryBuilder.from(omitBy(filterQuery, (value) => value === ''))
-			.withEqualFields('scannable', 'deleted', 'mo_no', 'factory_shoes_style', 'size_numcode')
-			.withMatchRegexBy('epc')
-			.when(filterCase.isInboundFlow, (builder) => builder.withNullishFields('inbound_at', 'storage_location'))
-			.when(filterCase.isOutboundFlow, (builder) => {
+			.whereFieldsAreEqual('scannable', 'mo_no', 'factory_shoes_style', 'size_numcode', 'deleted')
+			.whereLike('epc')
+			.when(stockFlow === 'inbound', (builder) =>
+				builder
+					.whereEqual('inbound_times', 0)
+					.whereFieldsAreNull('inbound_at', 'storage_location', 'outbound_device_sn')
+			)
+			.when(stockFlow === 'outbound', (builder) => {
 				return builder
-					.withNonNullableFields('inbound_at', 'storage_location')
-					.withNullBy('outbound_at')
-					.when(filterCase.outboundScanDetected, (b) => b.withNotNullBy('outbound_device_sn'))
-					.when(filterCase.outboundScanNotDetected, (b) => b.withNullBy('outbound_device_sn'))
+					.whereGreaterOrEqual('inbound_times', 1)
+					.whereFieldsAreNotNull('inbound_at', 'storage_location')
+					.whereFieldsAreNull('outbound_at', 'po')
+					.when(filterQuery.deleted === true, (b) => b.whereFieldIsNotNull('outbound_device_sn'))
+					.when(filterQuery.deleted === false, (b) => b.whereFieldIsNull('outbound_device_sn'))
 			})
 			.build()
+
+		this.logger.debug(query)
 
 		return await this.finishedGoodsEpcModel.paginate(query, {
 			page: pagination.page,
 			limit: pagination.limit,
 			customLabels: { docs: 'data' },
-			customFind: 'findDeleted',
+			customFind: 'findWithDeleted',
 			lean: true,
 			useCustomCountFn: async () => {
-				return await this.finishedGoodsEpcModel.countDocumentsDeleted(query, { hint: queryHint[stockFlow] })
+				return await this.finishedGoodsEpcModel.countDocumentsWithDeleted(query, { hint: queryHint[stockFlow] })
 			},
 			projection: {
 				_id: 0,
@@ -63,7 +63,7 @@ export class RetriveDeletedEpcsHandler implements IQueryHandler<RetriveDeletedEp
 				factory_shoes_style: 1,
 				color_sn: 1,
 				size_numcode: 1,
-				...(filterCase.isOutboundFlow && {
+				...(stockFlow === 'outbound' && {
 					scanned: {
 						$ne: ['$outbound_device_sn', null]
 					}
