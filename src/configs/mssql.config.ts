@@ -15,9 +15,6 @@ export default registerAs('mssql', (): TypeOrmModuleOptions => ({
 	username: env('DB_USERNAME'),
 	password: env('DB_PASSWORD'),
 	schema: DATABASE_SCHEMA,
-	// entities: [path.join(__dirname, '..', '**', '*.entity.{ts,js}')],
-
-	// migrations: [path.join(__dirname, '..', 'databases', 'migrations', '**', '*.{ts,js}')],
 	migrations: [
 		InvDefectiveGoods1757390824605,
 		TruckloadDelivery1762756390180,
@@ -66,7 +63,7 @@ export default registerAs('mssql', (): TypeOrmModuleOptions => ({
 		enableArithAbort: true,
 		connectTimeout: env('DB_CONNECTION_TIMEOUT', { serialize: (value): number => Number.parseInt(value) }),
 		abortTransactionOnError: true,
-		isolation: 'SNAPSHOT'
+		isolation: 'SNAPSHOT' // * Đặt mức độ cô lập mặc định cho các giao dịch. SNAPSHOT giúp giảm khả năng bị deadlock và cải thiện hiệu suất trong các môi trường có nhiều giao dịch đồng thời.
 	},
 	extra: {
 		connectionLimit: 100,
