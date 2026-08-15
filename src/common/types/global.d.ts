@@ -121,4 +121,6 @@ export declare global {
 	}
 
 	type QueueJobStatus = 'completed' | 'wait' | 'active' | 'paused' | 'prioritized' | 'delayed' | 'failed'
+
+	type Nullable<T> = T | null | undefined
 }
