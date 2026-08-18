@@ -37,7 +37,7 @@ import { RedisModule } from './redis/redis.module'
 // Schedule Tasks
 import { AllExceptionsFilter } from '@common/filters'
 import { getConnectionToken } from '@nestjs/mongoose'
-import { DatabaseModule } from './databases'
+import { CdcModule, DatabaseModule } from './databases'
 import {
 	DATA_SOURCE_DATA_LAKE,
 	DATA_SOURCE_ERP,
@@ -72,9 +72,12 @@ import { ScheduleTasks } from './tasks'
 			validate: AppConfig.validate
 		}),
 		CqrsModule.forRoot(),
-		// DatabaseModule.forRootAsync(),
-		DatabaseModule,
 		RedisModule.forRoot(),
+		DatabaseModule,
+		CdcModule.registerAsync({
+			inject: [ConfigService],
+			useFactory: (configService) => configService.getOrThrow('cdc')
+		}),
 		// SentryModule.forRoot(),
 		ScheduleModule.forRoot(),
 		ClsModule.forRoot({
