@@ -1,7 +1,8 @@
+import { generateShortId } from '@common/utils/short-id.util'
 import {
-	IIoMssqlRepository,
-	IO_MSSQL_REPOSITORY
-} from '@modules/finished-goods/application/ports/io-mssql.repository.port'
+	IMssqlFinishedGoodsRepository,
+	MSSQL_FINISHED_GOODS_REPOSITORY
+} from '@modules/finished-goods/application/ports/mssql-finished-goods.repository.port'
 import { UpsertEpcsMatchData } from '@modules/finished-goods/domain/types'
 import { SizeNumber } from '@modules/finished-goods/domain/value-objects/size-number.vo'
 import { ORDER_REPOSITORY } from '@modules/order/order.constant'
@@ -19,7 +20,8 @@ export class ThirdPartyApiService {
 		@InjectPinoLogger(ThirdPartyApiService.name)
 		private readonly logger: PinoLogger,
 		@Inject(ORDER_REPOSITORY) private readonly orderRepository: IOrderRepository,
-		@Inject(IO_MSSQL_REPOSITORY) private readonly ioMssqlRepository: IIoMssqlRepository,
+		@Inject(MSSQL_FINISHED_GOODS_REPOSITORY)
+		private readonly mssqlFinishedGoodsRepository: IMssqlFinishedGoodsRepository,
 		private readonly httpService: HttpService
 	) {}
 
@@ -62,6 +64,8 @@ export class ThirdPartyApiService {
 			throw new NotFoundException(`Order information could not be found`)
 		}
 
+		const syncId = generateShortId()
+
 		const sourceData: UpsertEpcsMatchData = data.map((item) => {
 			const uniqSizeNumbers = item.sizeNumber.split('/').map((size) => size.trim())
 
@@ -80,6 +84,7 @@ export class ThirdPartyApiService {
 			return {
 				...manufacturingOrders,
 				epc: item.epc,
+				sync_id: syncId,
 				cust_shoestyle: manufacturingOrders.cust_shoes_style?.replace('/', '\/'),
 				size_numcode: new SizeNumber(sizeNumber).normalize('padleft'),
 				size_qty: sizeQuantity,
@@ -87,7 +92,7 @@ export class ThirdPartyApiService {
 			}
 		})
 
-		await this.ioMssqlRepository.upsertEpcsMatch(sourceData)
+		await this.mssqlFinishedGoodsRepository.upsertEpcsMatch(sourceData)
 	}
 
 	public async upsertByEpc(accessToken: string, epc: string) {
@@ -120,15 +125,18 @@ export class ThirdPartyApiService {
 				return new SizeNumber(sizeNumber).isEqual(new SizeNumber(size.size_numcode))
 			})?.size_qty ?? 1
 
+		const syncId = generateShortId()
+
 		const upsertPayload: UpsertEpcsMatchData[number] = {
 			...manufacturingOrder,
 			epc: data.epc,
 			cust_shoes_style: manufacturingOrder.cust_shoes_style?.replace('/', '\/'),
 			size_numcode: new SizeNumber(sizeNumber).normalize('padleft'),
 			size_qty: sizeQuantity,
+			sync_id: syncId,
 			remark: `[${currentTimestamp}] Info: Synchronized from Deckers API with command number "${data.commandNumber}"`
 		}
 
-		await this.ioMssqlRepository.upsertEpcsMatch([upsertPayload])
+		await this.mssqlFinishedGoodsRepository.upsertEpcsMatch([upsertPayload])
 	}
 }

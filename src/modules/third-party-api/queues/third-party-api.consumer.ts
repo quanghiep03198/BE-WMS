@@ -1,15 +1,16 @@
 import { Processor, WorkerHost } from '@nestjs/bullmq'
 // import { Logger } from '@nestjs/common'
 import { SuperJson } from '@common/utils'
+import { generateShortId } from '@common/utils/short-id.util'
 import { FactoryCode } from '@modules/department/constants'
 import {
-	IIoMongoRepository,
-	IO_MONGO_REPOSITORY
-} from '@modules/finished-goods/application/ports/io-mongo.repository.port'
+	EPC_MONGO_REPOSITORY,
+	IEpcMongoRepository
+} from '@modules/finished-goods/application/ports/epc-mongo.repository.port'
 import {
-	IIoMssqlRepository,
-	IO_MSSQL_REPOSITORY
-} from '@modules/finished-goods/application/ports/io-mssql.repository.port'
+	IMssqlFinishedGoodsRepository,
+	MSSQL_FINISHED_GOODS_REPOSITORY
+} from '@modules/finished-goods/application/ports/mssql-finished-goods.repository.port'
 import { UpsertEpcsMatchData } from '@modules/finished-goods/domain/types'
 import { SizeNumber } from '@modules/finished-goods/domain/value-objects/size-number.vo'
 import { FinishedGoodsGateway } from '@modules/finished-goods/presentation/gateways/finished-goods.gateway'
@@ -34,8 +35,9 @@ export class ThirdPartyApiConsumer extends WorkerHost {
 
 	constructor(
 		@Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
-		@Inject(IO_MONGO_REPOSITORY) private readonly ioMongoRepository: IIoMongoRepository,
-		@Inject(IO_MSSQL_REPOSITORY) private readonly ioMssqlRepository: IIoMssqlRepository,
+		@Inject(EPC_MONGO_REPOSITORY) private readonly epcRepository: IEpcMongoRepository,
+		@Inject(MSSQL_FINISHED_GOODS_REPOSITORY)
+		private readonly mssqlFinishedGoodsRepository: IMssqlFinishedGoodsRepository,
 		@Inject(ORDER_REPOSITORY) private readonly orderRepository: IOrderRepository,
 		private readonly logger: PinoLogger,
 		private readonly thirdPartyApiService: ThirdPartyApiService,
@@ -184,6 +186,7 @@ export class ThirdPartyApiConsumer extends WorkerHost {
 	// * Step 3: Upsert data to database
 	private async upsertData(epcs: Array<ThirdPartyApiResponseData>, manufacturingOrders: Array<TManufacturingOrder>) {
 		const currentTimestamp = format(new Date(), 'yyyy-MM-dd HH:mm:ss')
+		const syncId = generateShortId()
 		const payload: UpsertEpcsMatchData = epcs.map((item) => {
 			const matchSpecs = manufacturingOrders.find((data) => data.mo_no === item.commandNumber.slice(0, 9))
 
@@ -204,13 +207,14 @@ export class ThirdPartyApiConsumer extends WorkerHost {
 			return {
 				...matchSpecs,
 				epc: item.epc,
+				sync_id: syncId,
 				size_numcode: new SizeNumber(sizeNumber).normalize('padleft'),
 				size_qty: sizeQuantity ?? 1,
 				remark: `[${currentTimestamp}] Info: Synchronized from Deckers API with command number "${item.commandNumber}"`
 			}
 		})
-		await this.ioMongoRepository.upsertEpcsMatch(payload, true)
-		await this.ioMssqlRepository.upsertEpcsMatch(payload, true)
+		await this.epcRepository.upsertEpcsMatch(payload, true)
+		await this.mssqlFinishedGoodsRepository.upsertEpcsMatch(payload, true)
 	}
 
 	private async executeSync(data: string[], accessToken: string) {
