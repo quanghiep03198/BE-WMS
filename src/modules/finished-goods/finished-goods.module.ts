@@ -12,14 +12,20 @@ import { RFIDDeviceEntity } from '../rfid-device/entities/rfid-device.entity'
 import { TenancyModule } from '../tenancy/tenancy.module'
 import { ThirdPartyApiModule } from '../third-party-api/third-party-api.module'
 import { FinishedGoodsCommandHandlers } from './application/commands'
-import { IO_MONGO_REPOSITORY } from './application/ports/io-mongo.repository.port'
-import { IO_MSSQL_REPOSITORY } from './application/ports/io-mssql.repository.port'
+import { EPC_MONGO_REPOSITORY } from './application/ports/epc-mongo.repository.port'
+import { INVENTORY_VARIATION_MONGO_REPOSITORY } from './application/ports/inventory-variation-mongo.repository.port'
+import { MSSQL_FINISHED_GOODS_REPOSITORY } from './application/ports/mssql-finished-goods.repository.port'
+import { SHIPPING_PROGRESS_MONGO_REPOSITORY } from './application/ports/shipping-progress-mongo.repository.port'
+import { STOCK_TRANSACTION_MONGO_REPOSITORY } from './application/ports/stock-transaction-mongo.repository.port'
 import { FinishedGoodsQueryHandlers } from './application/queries'
 import { FinishedGoodsSagas } from './application/sagas'
 import { FinishedGoodsEventHandlers } from './domain/events'
 import { MONGO_EPC_CHANGE_STREAM_FACTORY } from './domain/interfaces/epc-change-stream.factory.interface'
 import { MongoEpcChangeStreamFactory } from './infrastructure/persistence/mongodb/epc-change-stream.factory'
-import { InoutboundMongoRepository } from './infrastructure/persistence/mongodb/repositories/io-mongo.repository'
+import { EpcMongoRepository } from './infrastructure/persistence/mongodb/repositories/epc-mongo.repository'
+import { InventoryVariationMongoRepository } from './infrastructure/persistence/mongodb/repositories/inventory-variation-mongo.repository'
+import { ShippingProgressMongoRepository } from './infrastructure/persistence/mongodb/repositories/shipping-progress-mongo.repository'
+import { StockTransactionMongoRepository } from './infrastructure/persistence/mongodb/repositories/stock-transaction-mongo.repository'
 import {
 	DAILY_MO_INVENTORY_VARIATION_COLLECTION,
 	DailyMoInventoryVariation,
@@ -56,12 +62,13 @@ import {
 	PoShippingProgressModel,
 	PoShippingProgressSchema
 } from './infrastructure/persistence/mongodb/schemas/po-shipping-progress.schema'
+import { FinishedGoodsCdcHandlers } from './infrastructure/persistence/mssql/cdc'
 import {
 	RFIDInventoryBackupEntity,
 	RFIDInventoryEntity
 } from './infrastructure/persistence/mssql/entities/rfid-inventory.entity'
 import { RFIDMatchEntity } from './infrastructure/persistence/mssql/entities/rfid-match.entity'
-import { InoutboundMssqlRepository } from './infrastructure/persistence/mssql/repositories/io-mssql.repository'
+import { MssqlFinishedGoodsRepository } from './infrastructure/persistence/mssql/repositories/mssql-finished-goods.repository'
 import { FinishedGoodsEntitySubscribers } from './infrastructure/persistence/mssql/subscribers'
 import {
 	BULK_WRITE_INBOUND_EPCS_QUEUE,
@@ -173,21 +180,42 @@ import { FinishedGoodsListeners } from './presentation/listeners'
 		...FinishedGoodsSagas,
 		...FinishedGoodsEntitySubscribers,
 		...FinsishedGoodsQueueEvents,
+		...FinishedGoodsCdcHandlers,
 		FinishedGoodsGateway,
+		{
+			provide: EPC_MONGO_REPOSITORY,
+			useClass: EpcMongoRepository
+		},
+		{
+			provide: INVENTORY_VARIATION_MONGO_REPOSITORY,
+			useClass: InventoryVariationMongoRepository
+		},
+		{
+			provide: SHIPPING_PROGRESS_MONGO_REPOSITORY,
+			useClass: ShippingProgressMongoRepository
+		},
+		{
+			provide: STOCK_TRANSACTION_MONGO_REPOSITORY,
+			useClass: StockTransactionMongoRepository
+		},
 		{
 			provide: MONGO_EPC_CHANGE_STREAM_FACTORY,
 			useClass: MongoEpcChangeStreamFactory
 		},
 		{
-			provide: IO_MSSQL_REPOSITORY,
-			useClass: InoutboundMssqlRepository
-		},
-		{
-			provide: IO_MONGO_REPOSITORY,
-			useClass: InoutboundMongoRepository
+			provide: MSSQL_FINISHED_GOODS_REPOSITORY,
+			useClass: MssqlFinishedGoodsRepository
 		}
 	],
-	exports: [MongooseModule, FinishedGoodsGateway, IO_MONGO_REPOSITORY, IO_MSSQL_REPOSITORY]
+	exports: [
+		MongooseModule,
+		FinishedGoodsGateway,
+		EPC_MONGO_REPOSITORY,
+		INVENTORY_VARIATION_MONGO_REPOSITORY,
+		SHIPPING_PROGRESS_MONGO_REPOSITORY,
+		STOCK_TRANSACTION_MONGO_REPOSITORY,
+		MSSQL_FINISHED_GOODS_REPOSITORY
+	]
 })
 export class FinishedGoodsModule implements OnModuleInit {
 	constructor(

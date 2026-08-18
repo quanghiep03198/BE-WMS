@@ -1,7 +1,7 @@
 // import { IIoMongoRepository as IIoMssqlRepository } from '@modules/finished-goods/application/ports/io-mongo.repository.port'
 import { InventoryActions, InventoryStorageType } from '@modules/finished-goods/domain/constants'
 import { generateStation, StationNO } from '@modules/finished-goods/domain/utils'
-import { CommandHandler, EventBus, ICommandHandler } from '@nestjs/cqrs'
+import { CommandHandler, ICommandHandler } from '@nestjs/cqrs'
 import { chunk } from 'lodash'
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
 // import { IO_MSSQL_REPOSITORY } from '../../ports/io-mssql.repository.port'
@@ -27,8 +27,7 @@ export class CommitStockOutHandler implements ICommandHandler<CommitStockOutComm
 					station_no: StationNO
 				}>
 			>
-		>,
-		private readonly eventBus: EventBus
+		>
 	) {}
 
 	public async execute({ pendingStockOutEpcs }: CommitStockOutCommand): Promise<void> {

@@ -1,7 +1,7 @@
 import {
-	IIoMssqlRepository,
-	IO_MSSQL_REPOSITORY
-} from '@modules/finished-goods/application/ports/io-mssql.repository.port'
+	IMssqlFinishedGoodsRepository,
+	MSSQL_FINISHED_GOODS_REPOSITORY
+} from '@modules/finished-goods/application/ports/mssql-finished-goods.repository.port'
 import { InventoryStorageType } from '@modules/finished-goods/domain/constants'
 import { Processor, WorkerHost } from '@nestjs/bullmq'
 import { Inject } from '@nestjs/common'
@@ -11,7 +11,10 @@ import { StationNO } from '../../../domain/utils'
 
 @Processor(COMMIT_STOCK_OUT_QUEUE)
 export class CommitStockOutConsumer extends WorkerHost {
-	constructor(@Inject(IO_MSSQL_REPOSITORY) private readonly ioMssqlRepository: IIoMssqlRepository) {
+	constructor(
+		@Inject(MSSQL_FINISHED_GOODS_REPOSITORY)
+		private readonly mssqlFinishedGoodsRepository: IMssqlFinishedGoodsRepository
+	) {
 		super()
 	}
 
@@ -32,6 +35,6 @@ export class CommitStockOutConsumer extends WorkerHost {
 			void
 		>
 	) {
-		await this.ioMssqlRepository.commitStockOut(job.data)
+		await this.mssqlFinishedGoodsRepository.commitStockOut(job.data)
 	}
 }

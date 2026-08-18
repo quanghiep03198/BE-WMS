@@ -13,6 +13,7 @@ export type ScannedOrderDetail = {
 
 export type UpsertEpcsMatchData = Array<
 	Omit<TManufacturingOrder, 'sizes'> & {
+		sync_id: string
 		epc: string
 		size_qty: number
 		remark: string

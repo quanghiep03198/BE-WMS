@@ -1,3 +1,4 @@
+import { generateShortId } from '@common/utils/short-id.util'
 import { TManufacturingOrder } from '@modules/order/types'
 import { AggregateRoot } from '@nestjs/cqrs'
 import { format } from 'date-fns'
@@ -21,6 +22,8 @@ export type UpsertEpcInformationPayload = Array<{
 }>
 
 export class UpsertEpcsMatchTransaction extends AggregateRoot {
+	private readonly id: string = generateShortId()
+
 	constructor(
 		public readonly pendingExchangeEpcs: UpsertEpcInformationPayload,
 		public readonly targetMo: TManufacturingOrder,
@@ -80,15 +83,12 @@ export class UpsertEpcsMatchTransaction extends AggregateRoot {
 			cust_shoes_style: this.getTargetCustomerShoeStyle(),
 			size_code: this.getTargetSizeCode(),
 			or_cust_po: this.getTargetOrCustPo(),
+			sync_id: this.id,
 			remark:
 				item.mo_no === FALLBACK_VALUE
-					? `[${timestamp}] Info: Combined from WMS`
-					: `[${timestamp}] Info: Exchanged from MO ${item.mo_no}`
+					? `${timestamp} Info: Combined from WMS`
+					: `${timestamp} Info: Exchanged from Manufacturing Order "${item.mo_no}"`
 		}))
-	}
-
-	private getPendingUpsertEpcs() {
-		return this.pendingExchangeEpcs.map((item) => item.epc)
 	}
 
 	private getTargetMo() {

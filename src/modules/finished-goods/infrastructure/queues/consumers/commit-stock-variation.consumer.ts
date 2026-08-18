@@ -1,7 +1,7 @@
 import {
-	IIoMssqlRepository,
-	IO_MSSQL_REPOSITORY
-} from '@modules/finished-goods/application/ports/io-mssql.repository.port'
+	IMssqlFinishedGoodsRepository,
+	MSSQL_FINISHED_GOODS_REPOSITORY
+} from '@modules/finished-goods/application/ports/mssql-finished-goods.repository.port'
 import { Processor, WorkerHost } from '@nestjs/bullmq'
 import { Inject } from '@nestjs/common'
 import { Job } from 'bullmq'
@@ -10,7 +10,9 @@ import { StationNO } from '../../../domain/utils'
 
 @Processor(COMMIT_STOCK_VARIATION_QUEUE)
 export class CommitStockVariationConsumer extends WorkerHost {
-	constructor(@Inject(IO_MSSQL_REPOSITORY) private readonly inoutboundMssqlRepository: IIoMssqlRepository) {
+	constructor(
+		@Inject(MSSQL_FINISHED_GOODS_REPOSITORY) private readonly inoutboundMssqlRepository: IMssqlFinishedGoodsRepository
+	) {
 		super()
 	}
 
