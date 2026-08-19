@@ -48,7 +48,7 @@ export const MoInventoryAuditSchema = SchemaFactory.createForClass(MoInventoryAu
 MoInventoryAuditSchema.index({ mo_no: 1, year_month: 1 }, { unique: true })
 
 MoInventoryAuditSchema.virtual('mo_attrs', {
-	ref: 'MoInventoryVariation',
+	ref: 'ManufacturingOrder',
 	localField: 'mo_no',
 	foreignField: 'mo_no',
 	justOne: true

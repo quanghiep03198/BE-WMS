@@ -8,9 +8,9 @@ import {
 	FinishedGoodsEpcModel
 } from '@modules/finished-goods/infrastructure/persistence/mongodb/schemas/finished-goods-epc.schema'
 import {
-	MoInventoryVariation,
-	MoInventoryVariationModel
-} from '@modules/finished-goods/infrastructure/persistence/mongodb/schemas/mo-inventory-variation.schema'
+	ManufacturingOrder,
+	ManufacturingOrderModel
+} from '@modules/finished-goods/infrastructure/persistence/mongodb/schemas/manufacturing-order.schema'
 import { Injectable } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
 import { InjectDataSource } from '@nestjs/typeorm'
@@ -35,8 +35,8 @@ export class InboundReportService {
 		@InjectPinoLogger(InboundReportService.name) private readonly logger: PinoLogger,
 		@InjectModel(DailyMoInventoryVariation.name, DATA_WAREHOUSE_CONNECTION)
 		private readonly dailyMoInventoryVariationModel: DailyMoInventoryVariationModel,
-		@InjectModel(MoInventoryVariation.name, DATA_WAREHOUSE_CONNECTION)
-		private readonly moInventoryVariationModel: MoInventoryVariationModel,
+		@InjectModel(ManufacturingOrder.name, DATA_WAREHOUSE_CONNECTION)
+		private readonly manufacturingOrderModel: ManufacturingOrderModel,
 		@InjectModel(FinishedGoodsEpc.name, DATA_WAREHOUSE_CONNECTION)
 		private readonly finishedGoodsEpcModel: FinishedGoodsEpcModel,
 		private readonly i18nService: I18nService
@@ -138,14 +138,14 @@ export class InboundReportService {
 			},
 			{
 				$lookup: {
-					from: 'mo_inventory_variation',
+					from: 'manufacturing_orders',
 					localField: '_id.mo_no',
 					foreignField: 'mo_no',
-					as: 'mo_inventory_variation'
+					as: 'manufacturing_orders'
 				}
 			},
 			{
-				$unwind: '$mo_inventory_variation'
+				$unwind: '$manufacturing_orders'
 			},
 			{
 				$project: {
@@ -155,11 +155,11 @@ export class InboundReportService {
 					factory_code_produce: '$_id.factory_code_produce',
 					factory_shoes_style: '$_id.factory_shoes_style',
 					color_sn: '$_id.color_sn',
-					order_qty: '$mo_inventory_variation.order_qty',
+					order_qty: '$manufacturing_orders.order_qty',
 					accumulated_qty: {
 						$reduce: {
 							input: {
-								$objectToArray: '$mo_inventory_variation.inventory_variation'
+								$objectToArray: '$manufacturing_orders.inventory_variation'
 							},
 							initialValue: 0,
 							in: {
@@ -236,7 +236,7 @@ export class InboundReportService {
 	}
 
 	public async getInboundHistoryReport(manufacturingOrder: string) {
-		return await this.moInventoryVariationModel
+		return await this.manufacturingOrderModel
 			.findOne({ mo_no: manufacturingOrder })
 			.populate({
 				path: 'daily_inbound_history',

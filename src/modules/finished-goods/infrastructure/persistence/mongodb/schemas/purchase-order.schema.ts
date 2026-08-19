@@ -1,10 +1,10 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose'
 import type { HydratedDocument, Model } from 'mongoose'
 
-export const PO_SHIPPING_PROGRESS_COLLECTION = 'po_shipping_progress'
+export const PURCHASE_ORDER_COLLECTION = 'purchase_orders'
 
 @Schema({
-	collection: PO_SHIPPING_PROGRESS_COLLECTION,
+	collection: PURCHASE_ORDER_COLLECTION,
 	timestamps: {
 		createdAt: 'created_at',
 		updatedAt: 'updated_at'
@@ -16,7 +16,7 @@ export const PO_SHIPPING_PROGRESS_COLLECTION = 'po_shipping_progress'
 	readConcern: { level: 'majority' },
 	writeConcern: { w: 'majority' }
 })
-export class PoShippingProgress {
+export class PurchaseOrder {
 	@Prop({ type: String, required: true })
 	po: string
 
@@ -48,24 +48,24 @@ export class PoShippingProgress {
 	>
 }
 
-export const PoShippingProgressSchema = SchemaFactory.createForClass(PoShippingProgress)
+export const PurchaseOrderSchema = SchemaFactory.createForClass(PurchaseOrder)
 
-PoShippingProgressSchema.index({ po: 1 }, { unique: true, name: 'po_idx' })
+PurchaseOrderSchema.index({ po: 1 }, { unique: true, name: 'po_idx' })
 
-PoShippingProgressSchema.virtual('outbound_history', {
+PurchaseOrderSchema.virtual('outbound_history', {
 	ref: 'DailyPoShippingProgress',
 	localField: 'po',
 	foreignField: 'po'
 })
 
-PoShippingProgressSchema.set('toObject', { virtuals: true })
-PoShippingProgressSchema.set('toJSON', { virtuals: true })
+PurchaseOrderSchema.set('toObject', { virtuals: true })
+PurchaseOrderSchema.set('toJSON', { virtuals: true })
 
-export type PoShippingProgressDocument = HydratedDocument<PoShippingProgress> & {
+export type PurchaseOrderDocument = HydratedDocument<PurchaseOrder> & {
 	outbound_history: Array<{
 		date: string
 		shipping_progress: Record<string, Record<string, number>>
 	}>
 }
 
-export type PoShippingProgressModel = Model<PoShippingProgressDocument>
+export type PurchaseOrderModel = Model<PurchaseOrderDocument>

@@ -23,10 +23,10 @@ import {
 } from '../schemas/daily-mo-inventory-variation.schema'
 import { FinishedGoodsEpc, FinishedGoodsEpcModel } from '../schemas/finished-goods-epc.schema'
 import {
-	MoInventoryVariation,
-	MoInventoryVariationDocument,
-	MoInventoryVariationModel
-} from '../schemas/mo-inventory-variation.schema'
+	ManufacturingOrder,
+	ManufacturingOrderDocument,
+	ManufacturingOrderModel
+} from '../schemas/manufacturing-order.schema'
 
 type InventoryVariationIncrementKey =
 	`inventory_variation.${string}.${'stocked_in_qty' | 'total_recall_tx' | 'total_return_tx' | 'shipped_out_qty'}`
@@ -40,8 +40,8 @@ export class InventoryVariationMongoRepository implements IInventoryVariationMon
 	constructor(
 		@InjectModel(FinishedGoodsEpc.name, DATA_WAREHOUSE_CONNECTION)
 		private readonly finishedGoodsEpcModel: FinishedGoodsEpcModel,
-		@InjectModel(MoInventoryVariation.name, DATA_WAREHOUSE_CONNECTION)
-		private readonly moInventoryVariationModel: MoInventoryVariationModel,
+		@InjectModel(ManufacturingOrder.name, DATA_WAREHOUSE_CONNECTION)
+		private readonly manufacturingOrderModel: ManufacturingOrderModel,
 		@InjectModel(DailyMoInventoryVariation.name, DATA_WAREHOUSE_CONNECTION)
 		private readonly dailyMoInventoryVariationModel: DailyMoInventoryVariationModel,
 		@Inject(INVENTORY_AUDIT_REPOSITORY) private readonly inventoryAuditRepository: IInventoryAuditRepository,
@@ -178,9 +178,7 @@ export class InventoryVariationMongoRepository implements IInventoryVariationMon
 	public async getMoInventory(
 		manufacturingOrder: string
 	): Promise<Array<{ mo_no: string; size_numcode: string; order_qty: number; accumulated_qty: number }>> {
-		const moInventoryVariation = await this.moInventoryVariationModel
-			.findOne({ mo_no: manufacturingOrder })
-			.lean(true)
+		const moInventoryVariation = await this.manufacturingOrderModel.findOne({ mo_no: manufacturingOrder }).lean(true)
 
 		if (!moInventoryVariation) return []
 
@@ -206,7 +204,7 @@ export class InventoryVariationMongoRepository implements IInventoryVariationMon
 
 		const pendingInventoryVariation = await this.getPendingInventoryVariation(pendingStockInEpcs)
 
-		const bulkWriteMasterVariationOperator: AnyBulkWriteOperation<MoInventoryVariationDocument>[] =
+		const bulkWriteMasterVariationOperator: AnyBulkWriteOperation<ManufacturingOrderDocument>[] =
 			pendingInventoryVariation.map((mo) => ({
 				updateOne: {
 					filter: {
@@ -241,7 +239,7 @@ export class InventoryVariationMongoRepository implements IInventoryVariationMon
 			})
 
 		await this.dailyMoInventoryVariationModel.bulkWrite(bulkWriteDailyVariationOperator, bulkWriteConcernSettings)
-		await this.moInventoryVariationModel.bulkWrite(bulkWriteMasterVariationOperator, bulkWriteConcernSettings)
+		await this.manufacturingOrderModel.bulkWrite(bulkWriteMasterVariationOperator, bulkWriteConcernSettings)
 		await this.inventoryAuditRepository.updateInventoryAuditVariation(pendingInventoryVariation)
 	}
 
@@ -255,7 +253,7 @@ export class InventoryVariationMongoRepository implements IInventoryVariationMon
 
 		const pendingInventoryVariation = await this.getPendingInventoryVariation(pendingShipOutEpcs)
 
-		const bulkWriteMasterVariationOperator: AnyBulkWriteOperation<MoInventoryVariationDocument>[] =
+		const bulkWriteMasterVariationOperator: AnyBulkWriteOperation<ManufacturingOrderDocument>[] =
 			pendingInventoryVariation.map((mo) => {
 				const incrementExpression = pickBy(this.createInventoryIncrementExpression(mo), (_, key) =>
 					key.endsWith('shipped_out_qty')
@@ -275,14 +273,14 @@ export class InventoryVariationMongoRepository implements IInventoryVariationMon
 				}
 			})
 
-		await this.moInventoryVariationModel.bulkWrite(bulkWriteMasterVariationOperator, bulkWriteConcernSettings)
+		await this.manufacturingOrderModel.bulkWrite(bulkWriteMasterVariationOperator, bulkWriteConcernSettings)
 		await this.inventoryAuditRepository.updateInventoryAuditVariation(pendingInventoryVariation)
 	}
 
 	public async applyInventoryVariationForRecall(pendingRecallEpcs: Array<ElectronicProductCode>): Promise<void> {
 		const pendingInventoryVariation = await this.getPendingInventoryVariation(pendingRecallEpcs)
 
-		const bulkWriteMasterVariationOperator: AnyBulkWriteOperation<MoInventoryVariationDocument>[] =
+		const bulkWriteMasterVariationOperator: AnyBulkWriteOperation<ManufacturingOrderDocument>[] =
 			pendingInventoryVariation.map((mo) => {
 				const incrementExpression = pickBy(this.createInventoryIncrementExpression(mo), (_, key) =>
 					key.endsWith('total_recall_tx')
@@ -328,7 +326,7 @@ export class InventoryVariationMongoRepository implements IInventoryVariationMon
 			timestamps: true
 		})
 
-		await this.moInventoryVariationModel.bulkWrite(bulkWriteMasterVariationOperator, {
+		await this.manufacturingOrderModel.bulkWrite(bulkWriteMasterVariationOperator, {
 			session: this.txHost.tx,
 			ordered: false,
 			retryWrites: true,

@@ -36,7 +36,6 @@ export class DailyMoInventoryVariation {
 			stocked_in_qty: number
 			total_recall_tx: number
 			total_return_tx: number
-			shipped_out_qty: number
 		}
 	>
 }
@@ -48,7 +47,7 @@ DailyMoInventoryVariationSchema.index({ date: 1, mo_no: 1 }, { name: 'idx_date_m
 DailyMoInventoryVariationSchema.plugin(mongooseLeanVirtuals)
 
 DailyMoInventoryVariationSchema.virtual('mo_attrs', {
-	ref: 'MoInventoryVariation',
+	ref: 'ManufacturingOrder',
 	localField: 'mo_no',
 	foreignField: 'mo_no',
 	justOne: true

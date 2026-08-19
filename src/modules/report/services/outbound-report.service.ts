@@ -6,9 +6,9 @@ import {
 	DailyPoShippingProgressModel
 } from '@modules/finished-goods/infrastructure/persistence/mongodb/schemas/daily-po-shipping-progress.schema'
 import {
-	PoShippingProgress,
-	PoShippingProgressModel
-} from '@modules/finished-goods/infrastructure/persistence/mongodb/schemas/po-shipping-progress.schema'
+	PurchaseOrder,
+	PurchaseOrderModel
+} from '@modules/finished-goods/infrastructure/persistence/mongodb/schemas/purchase-order.schema'
 import { Injectable } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
 import { InjectDataSource } from '@nestjs/typeorm'
@@ -25,8 +25,8 @@ export class OutboundReportService {
 		@InjectPinoLogger(OutboundReportService.name) private readonly logger: PinoLogger,
 		@InjectModel(DailyPoShippingProgress.name, DATA_WAREHOUSE_CONNECTION)
 		private readonly dailyPoShippingProgressModel: DailyPoShippingProgressModel,
-		@InjectModel(PoShippingProgress.name, DATA_WAREHOUSE_CONNECTION)
-		private readonly poShippingProgressModel: PoShippingProgressModel,
+		@InjectModel(PurchaseOrder.name, DATA_WAREHOUSE_CONNECTION)
+		private readonly purchaseOrderModel: PurchaseOrderModel,
 		@InjectDataSource(DATA_SOURCE_DATA_LAKE) private readonly dataSource: DataSource,
 		private readonly i18nService: I18nService
 	) {}
@@ -81,7 +81,7 @@ export class OutboundReportService {
 		})
 	}
 	public async getOutboundHistory(po: string): Promise<any> {
-		const data = await this.poShippingProgressModel
+		const data = await this.purchaseOrderModel
 			.findOne({ po })
 			.populate('outbound_history', 'date shipping_progress')
 			.exec()

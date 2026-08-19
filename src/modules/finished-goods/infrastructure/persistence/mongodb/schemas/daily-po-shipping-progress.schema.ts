@@ -37,7 +37,7 @@ export const DailyPoShippingProgressSchema = SchemaFactory.createForClass(DailyP
 DailyPoShippingProgressSchema.index({ date: 1, po: 1 }, { unique: true, name: 'idx_date_po' })
 
 DailyPoShippingProgressSchema.virtual('po_attrs', {
-	ref: 'PoShippingProgress',
+	ref: 'PurchaseOrder',
 	localField: 'po',
 	foreignField: 'po',
 	justOne: true

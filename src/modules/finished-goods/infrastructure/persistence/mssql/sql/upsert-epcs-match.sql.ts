@@ -17,6 +17,7 @@ USING (
       JSON_VALUE(value, '$.factory_code_produce') AS factory_code_produce,
       JSON_VALUE(value, '$.factory_name_produce') AS factory_name_produce,
       CAST(JSON_VALUE(value, '$.size_qty') AS INT) AS size_qty,
+      JSON_VALUE(value, '$.sync_id') AS sync_id,
       JSON_VALUE(value, '$.remark') AS remark
    FROM OPENJSON(@0)
 ) AS source
@@ -25,16 +26,17 @@ WHEN MATCHED AND @1 = 0 THEN
    UPDATE SET
    target.mo_no_actual = target.mo_no,
       target.mo_no = source.mo_no, 
-      target.remark = source.remark
+      target.remark = source.remark,
+      target.sync_id = source.sync_id
 WHEN NOT MATCHED THEN
    INSERT (
-      EPC_Code, mo_no, mat_code, mo_noseq, or_no, or_custpo, 
+      EPC_Code, mo_no, mat_code, mo_noseq, or_no, or_custpo, sync_id,
       shoestyle_codefactory, cust_shoestyle, color_sn, size_code, size_numcode,
       factory_code_orders, factory_name_orders, factory_code_produce, factory_name_produce, size_qty, remark,
       isactive, created, ri_date, ri_type, ri_foot, ri_cancel
    )
    VALUES (
-      source.EPC_Code, source.mo_no, source.mat_code, source.mo_noseq, source.or_no, 
+      source.EPC_Code, source.mo_no, source.mat_code, source.mo_noseq, source.or_no, source.sync_id,
       source.or_custpo, source.shoestyle_codefactory, source.cust_shoestyle, source.color_sn, source.size_code, source.size_numcode,
       source.factory_code_orders, source.factory_name_orders, source.factory_code_produce, source.factory_name_produce, source.size_qty, source.remark,
       'Y', GETDATE(), CAST(GETDATE() AS DATE), 'A', 'A', 0

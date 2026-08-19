@@ -2,9 +2,9 @@ import { ExcelColorPalette } from '@common/constants/excel-color-palette'
 import { applyCommonStyles, type AutoFitColumnOptions, autoFitColumns } from '@common/helpers'
 import { DATA_WAREHOUSE_CONNECTION } from '@databases/constants'
 import {
-	MoInventoryVariation,
-	MoInventoryVariationModel
-} from '@modules/finished-goods/infrastructure/persistence/mongodb/schemas/mo-inventory-variation.schema'
+	ManufacturingOrder,
+	ManufacturingOrderModel
+} from '@modules/finished-goods/infrastructure/persistence/mongodb/schemas/manufacturing-order.schema'
 import { InventoryClosureStatus } from '@modules/inventory/domain/constants'
 import { InjectTransactionHost, Transactional, TransactionHost } from '@nestjs-cls/transactional'
 import { TransactionalAdapterMongoose } from '@nestjs-cls/transactional-adapter-mongoose'
@@ -28,8 +28,8 @@ export class InventoryAuditRepository implements IInventoryAuditRepository {
 		private readonly txHost: TransactionHost<TransactionalAdapterMongoose>,
 		@InjectModel(MoInventoryAudit.name, DATA_WAREHOUSE_CONNECTION)
 		private readonly moInventoryAuditModel: MoInventoryAuditModel,
-		@InjectModel(MoInventoryVariation.name, DATA_WAREHOUSE_CONNECTION)
-		private readonly moInventoryVariationModel: MoInventoryVariationModel,
+		@InjectModel(ManufacturingOrder.name, DATA_WAREHOUSE_CONNECTION)
+		private readonly manufacturingOrderModel: ManufacturingOrderModel,
 		private readonly i18nService: I18nService
 	) {}
 
@@ -129,7 +129,7 @@ export class InventoryAuditRepository implements IInventoryAuditRepository {
 		}>,
 		storageLocation: Array<string> = []
 	) {
-		const manufacturingOrders = await this.moInventoryVariationModel
+		const manufacturingOrders = await this.manufacturingOrderModel
 			.find({ mo_no: { $in: pendingVariation.map(({ mo_no }) => mo_no) } })
 			.lean()
 

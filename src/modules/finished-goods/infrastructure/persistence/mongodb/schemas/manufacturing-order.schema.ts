@@ -1,10 +1,10 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose'
 import { HydratedDocument, Model } from 'mongoose'
 
-export const MO_INVENTORY_VARIATION_COLLECTION = 'mo_inventory_variation'
+export const MANUFACTURING_ORDERS_COLLECTION = 'manufacturing_orders'
 
 @Schema({
-	collection: MO_INVENTORY_VARIATION_COLLECTION,
+	collection: MANUFACTURING_ORDERS_COLLECTION,
 	timestamps: {
 		createdAt: 'created_at',
 		updatedAt: 'updated_at'
@@ -16,7 +16,7 @@ export const MO_INVENTORY_VARIATION_COLLECTION = 'mo_inventory_variation'
 	readConcern: { level: 'majority' },
 	writeConcern: { w: 'majority' }
 })
-export class MoInventoryVariation {
+export class ManufacturingOrder {
 	@Prop({ type: String, requried: true })
 	mo_no: string
 
@@ -51,18 +51,18 @@ export class MoInventoryVariation {
 	>
 }
 
-export const MoInventoryVariationSchema = SchemaFactory.createForClass(MoInventoryVariation)
+export const ManufacturingOrderSchema = SchemaFactory.createForClass(ManufacturingOrder)
 
-MoInventoryVariationSchema.index({ mo_no: 1 }, { name: 'idx_mo', unique: true })
+ManufacturingOrderSchema.index({ mo_no: 1 }, { name: 'idx_mo', unique: true })
 
-MoInventoryVariationSchema.virtual('daily_inbound_history', {
+ManufacturingOrderSchema.virtual('daily_inbound_history', {
 	ref: 'DailyMoInventoryVariation',
 	localField: 'mo_no',
 	foreignField: 'mo_no'
 })
 
-MoInventoryVariationSchema.set('toObject', { virtuals: true })
-MoInventoryVariationSchema.set('toJSON', { virtuals: true })
+ManufacturingOrderSchema.set('toObject', { virtuals: true })
+ManufacturingOrderSchema.set('toJSON', { virtuals: true })
 
-export type MoInventoryVariationDocument = HydratedDocument<MoInventoryVariation> & { record_time: string }
-export type MoInventoryVariationModel = Model<MoInventoryVariationDocument>
+export type ManufacturingOrderDocument = HydratedDocument<ManufacturingOrder> & { record_time: string }
+export type ManufacturingOrderModel = Model<ManufacturingOrderDocument>

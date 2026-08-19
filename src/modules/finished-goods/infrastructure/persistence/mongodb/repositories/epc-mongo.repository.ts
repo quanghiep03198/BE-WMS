@@ -8,9 +8,11 @@ import { CACHE_MANAGER } from '@nestjs/cache-manager'
 import { Inject, Injectable } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
 import { Cache } from 'cache-manager'
-import { FilterQuery, PipelineStage, mongo } from 'mongoose'
+import { FilterQuery, mongo, PipelineStage } from 'mongoose'
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
 
+import { InjectTransactionHost, Transactional, TransactionHost } from '@nestjs-cls/transactional'
+import { TransactionalAdapterMongoose } from '@nestjs-cls/transactional-adapter-mongoose'
 import { FinishedGoodsEpcMatch, FinishedGoodsEpcMatchModel } from '../schemas/epc-match.schema'
 import { FinishedGoodsEpc, FinishedGoodsEpcDocument, FinishedGoodsEpcModel } from '../schemas/finished-goods-epc.schema'
 
@@ -18,6 +20,8 @@ import { FinishedGoodsEpc, FinishedGoodsEpcDocument, FinishedGoodsEpcModel } fro
 export class EpcMongoRepository implements IEpcMongoRepository {
 	constructor(
 		@InjectPinoLogger(EpcMongoRepository.name) private readonly logger: PinoLogger,
+		@InjectTransactionHost(DATA_WAREHOUSE_CONNECTION)
+		private readonly txHost: TransactionHost<TransactionalAdapterMongoose>,
 		@InjectModel(FinishedGoodsEpc.name, DATA_WAREHOUSE_CONNECTION)
 		private readonly finishedGoodsEpcModel: FinishedGoodsEpcModel,
 		@InjectModel(FinishedGoodsEpcMatch.name, DATA_WAREHOUSE_CONNECTION)
@@ -318,15 +322,22 @@ export class EpcMongoRepository implements IEpcMongoRepository {
 		})
 	}
 
+	@Transactional<TransactionalAdapterMongoose>(DATA_WAREHOUSE_CONNECTION)
 	public async exchangeManufacturingOrder(pendingExchangeEpcs: Array<string>, targetMo: string): Promise<void> {
-		await this.finishedGoodsEpcMatchModel.updateMany({ epc: { $in: pendingExchangeEpcs } }, [
-			{ $set: { old_mo_no: '$mo_no' } },
-			{ $set: { mo_no: targetMo } }
-		])
+		await this.finishedGoodsEpcMatchModel.updateMany(
+			{ epc: { $in: pendingExchangeEpcs } },
+			[{ $set: { old_mo_no: '$mo_no' } }, { $set: { mo_no: targetMo } }],
+			{ session: this.txHost.tx }
+		)
 
-		await this.finishedGoodsEpcModel.updateMany({ epc: { $in: pendingExchangeEpcs } }, { mo_no: targetMo })
+		await this.finishedGoodsEpcModel.updateMany(
+			{ epc: { $in: pendingExchangeEpcs } },
+			{ mo_no: targetMo },
+			{ session: this.txHost.tx }
+		)
 	}
 
+	@Transactional<TransactionalAdapterMongoose>(DATA_WAREHOUSE_CONNECTION)
 	public async upsertEpcsMatch(data: UpsertEpcsMatchData, insertOnly: boolean = false): Promise<void> {
 		this.logger.debug(data)
 
@@ -357,7 +368,8 @@ export class EpcMongoRepository implements IEpcMongoRepository {
 			{
 				ordered: false,
 				retryWrites: true,
-				timestamps: true
+				timestamps: true,
+				session: this.txHost.tx
 			}
 		)
 
@@ -380,7 +392,8 @@ export class EpcMongoRepository implements IEpcMongoRepository {
 			{
 				ordered: false,
 				retryWrites: true,
-				timestamps: true
+				timestamps: true,
+				session: this.txHost.tx
 			}
 		)
 	}

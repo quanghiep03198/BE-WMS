@@ -39,10 +39,10 @@ export class InventoryAuditCheckoutPipelineBuilder {
 	private static buildLookupMoInventoryVariationStage(): PipelineStage {
 		return {
 			$lookup: {
-				from: 'mo_inventory_variation',
+				from: 'manufacturing_orders',
 				localField: 'mo_no',
 				foreignField: 'mo_no',
-				as: 'mo_inventory_variation'
+				as: 'manufacturing_orders'
 			}
 		}
 	}
@@ -50,8 +50,8 @@ export class InventoryAuditCheckoutPipelineBuilder {
 	private static buildSetFirstMoInventoryVariationStage(): PipelineStage {
 		return {
 			$set: {
-				mo_inventory_variation: {
-					$first: '$mo_inventory_variation'
+				manufacturing_orders: {
+					$first: '$manufacturing_orders'
 				}
 			}
 		}
@@ -62,15 +62,15 @@ export class InventoryAuditCheckoutPipelineBuilder {
 			$set: {
 				remaining_order_qty: {
 					$cond: {
-						if: { $ifNull: ['$mo_inventory_variation', false] },
+						if: { $ifNull: ['$manufacturing_orders', false] },
 						then: {
 							$subtract: [
-								'$mo_inventory_variation.order_qty',
+								'$manufacturing_orders.order_qty',
 								{
 									$reduce: {
 										input: {
 											$objectToArray: {
-												$ifNull: ['$mo_inventory_variation.inventory_variation', {}]
+												$ifNull: ['$manufacturing_orders.inventory_variation', {}]
 											}
 										},
 										initialValue: 0,
@@ -392,7 +392,7 @@ export class InventoryAuditCheckoutPipelineBuilder {
 				'daily_variation',
 				'previous_shipping_variation',
 				'current_shipping_variation',
-				'mo_inventory_variation',
+				'manufacturing_orders',
 				'remaining_order_qty'
 			]
 		}

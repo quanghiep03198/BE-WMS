@@ -13,11 +13,7 @@ import {
 	DailyPoShippingProgressDocument,
 	DailyPoShippingProgressModel
 } from '../schemas/daily-po-shipping-progress.schema'
-import {
-	PoShippingProgress,
-	PoShippingProgressDocument,
-	PoShippingProgressModel
-} from '../schemas/po-shipping-progress.schema'
+import { PurchaseOrder, PurchaseOrderDocument, PurchaseOrderModel } from '../schemas/purchase-order.schema'
 
 type ShippingProgressIncrementKey = `shipping_progress.${string}.shipped_out_qty`
 
@@ -28,8 +24,8 @@ type InventoryVariationAsync = Awaited<
 @Injectable()
 export class ShippingProgressMongoRepository implements IShippingProgressMongoRepository {
 	constructor(
-		@InjectModel(PoShippingProgress.name, DATA_WAREHOUSE_CONNECTION)
-		private readonly poShippingProgress: PoShippingProgressModel,
+		@InjectModel(PurchaseOrder.name, DATA_WAREHOUSE_CONNECTION)
+		private readonly poShippingProgress: PurchaseOrderModel,
 		@InjectModel(DailyPoShippingProgress.name, DATA_WAREHOUSE_CONNECTION)
 		private readonly dailyPoShippingProgressModel: DailyPoShippingProgressModel,
 		@InjectTransactionHost(DATA_WAREHOUSE_CONNECTION)
@@ -90,7 +86,7 @@ export class ShippingProgressMongoRepository implements IShippingProgressMongoRe
 			inventory_variation: Record<string, { shipped_out_qty: number }>
 		}>
 	): Promise<void> {
-		const poShippingProgressBulkWriteOperator: AnyBulkWriteOperation<PoShippingProgressDocument>[] =
+		const poShippingProgressBulkWriteOperator: AnyBulkWriteOperation<PurchaseOrderDocument>[] =
 			pendingInventoryVariation.map((change) => {
 				return {
 					updateOne: {

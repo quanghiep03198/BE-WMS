@@ -21,6 +21,7 @@ import { FinishedGoodsQueryHandlers } from './application/queries'
 import { FinishedGoodsSagas } from './application/sagas'
 import { FinishedGoodsEventHandlers } from './domain/events'
 import { MONGO_EPC_CHANGE_STREAM_FACTORY } from './domain/interfaces/epc-change-stream.factory.interface'
+import { FinishedGoodsCdcHandlers } from './infrastructure/cdc'
 import { MongoEpcChangeStreamFactory } from './infrastructure/persistence/mongodb/epc-change-stream.factory'
 import { EpcMongoRepository } from './infrastructure/persistence/mongodb/repositories/epc-mongo.repository'
 import { InventoryVariationMongoRepository } from './infrastructure/persistence/mongodb/repositories/inventory-variation-mongo.repository'
@@ -51,18 +52,17 @@ import {
 	FinishedGoodsEpcSchema
 } from './infrastructure/persistence/mongodb/schemas/finished-goods-epc.schema'
 import {
-	MO_INVENTORY_VARIATION_COLLECTION,
-	MoInventoryVariation,
-	MoInventoryVariationModel,
-	MoInventoryVariationSchema
-} from './infrastructure/persistence/mongodb/schemas/mo-inventory-variation.schema'
+	MANUFACTURING_ORDERS_COLLECTION,
+	ManufacturingOrder,
+	ManufacturingOrderModel,
+	ManufacturingOrderSchema
+} from './infrastructure/persistence/mongodb/schemas/manufacturing-order.schema'
 import {
-	PO_SHIPPING_PROGRESS_COLLECTION,
-	PoShippingProgress,
-	PoShippingProgressModel,
-	PoShippingProgressSchema
-} from './infrastructure/persistence/mongodb/schemas/po-shipping-progress.schema'
-import { FinishedGoodsCdcHandlers } from './infrastructure/persistence/mssql/cdc'
+	PURCHASE_ORDER_COLLECTION,
+	PurchaseOrder,
+	PurchaseOrderModel,
+	PurchaseOrderSchema
+} from './infrastructure/persistence/mongodb/schemas/purchase-order.schema'
 import {
 	RFIDInventoryBackupEntity,
 	RFIDInventoryEntity
@@ -147,9 +147,9 @@ import { FinishedGoodsListeners } from './presentation/listeners'
 					schema: FinishedGoodsEpcMatchSchema
 				},
 				{
-					name: MoInventoryVariation.name,
-					collection: MO_INVENTORY_VARIATION_COLLECTION,
-					schema: MoInventoryVariationSchema
+					name: ManufacturingOrder.name,
+					collection: MANUFACTURING_ORDERS_COLLECTION,
+					schema: ManufacturingOrderSchema
 				},
 				{
 					name: DailyMoInventoryVariation.name,
@@ -157,9 +157,9 @@ import { FinishedGoodsListeners } from './presentation/listeners'
 					schema: DailyMoInventoryVariationSchema
 				},
 				{
-					name: PoShippingProgress.name,
-					collection: PO_SHIPPING_PROGRESS_COLLECTION,
-					schema: PoShippingProgressSchema
+					name: PurchaseOrder.name,
+					collection: PURCHASE_ORDER_COLLECTION,
+					schema: PurchaseOrderSchema
 				},
 				{
 					name: DailyPoShippingProgress.name,
@@ -223,15 +223,15 @@ export class FinishedGoodsModule implements OnModuleInit {
 		@InjectRedisClient() private readonly redisClient: Redis,
 		@InjectModel(FinishedGoodsEpc.name, DATA_WAREHOUSE_CONNECTION)
 		private readonly finishedGoodsEpcModel: FinishedGoodsEpcModel,
-		@InjectModel(MoInventoryVariation.name, DATA_WAREHOUSE_CONNECTION)
-		private readonly moInventoryVariationModel: MoInventoryVariationModel,
+		@InjectModel(ManufacturingOrder.name, DATA_WAREHOUSE_CONNECTION)
+		private readonly manufacturingOrderModel: ManufacturingOrderModel,
 		@InjectModel(DailyMoInventoryVariation.name, DATA_WAREHOUSE_CONNECTION)
 		private readonly dailyMoInventoryVariationModel: DailyMoInventoryVariationModel,
 		@InjectModel(FinishedGoodsEpcMatch.name, DATA_WAREHOUSE_CONNECTION)
 		private readonly finishedGoodsEpcMatchModel: FinishedGoodsEpcMatchModel,
-		@InjectModel(PoShippingProgress.name, DATA_WAREHOUSE_CONNECTION)
-		private readonly poShippingProgressModel: PoShippingProgressModel,
-		@InjectModel(PoShippingProgress.name, DATA_WAREHOUSE_CONNECTION)
+		@InjectModel(PurchaseOrder.name, DATA_WAREHOUSE_CONNECTION)
+		private readonly purchaseOrderModel: PurchaseOrderModel,
+		@InjectModel(PurchaseOrder.name, DATA_WAREHOUSE_CONNECTION)
 		private readonly dailyPoShippingProgressModel: DailyPoShippingProgressModel
 	) {}
 
@@ -240,9 +240,9 @@ export class FinishedGoodsModule implements OnModuleInit {
 			await Promise.all([
 				this.finishedGoodsEpcModel.syncIndexes(),
 				this.finishedGoodsEpcMatchModel.syncIndexes(),
-				this.moInventoryVariationModel.syncIndexes(),
+				this.manufacturingOrderModel.syncIndexes(),
 				this.dailyMoInventoryVariationModel.syncIndexes(),
-				this.poShippingProgressModel.syncIndexes(),
+				this.purchaseOrderModel.syncIndexes(),
 				this.dailyPoShippingProgressModel.syncIndexes()
 			])
 			this.redisClient.setnx('cached:rfid:enable_deduplicate_inbound_epc', JSON.stringify({ value: true }))
