@@ -115,12 +115,11 @@ export class CdcWatcherService {
 	}
 
 	/**
-	 * Gọi handler 1 lần với toàn bộ danh sách group. Nếu handler throw lỗi (xử lý gộp,
-	 * không tự bắt lỗi per-row/per-group bên trong), toàn bộ row của MỌI group trong lượt
-	 * poll này bị quarantine cùng nhau — vì watcher không biết group nào cụ thể gây lỗi.
-	 *
-	 * Nếu cần cách ly lỗi theo từng group hoặc từng row, handler nên tự try/catch bên
-	 * trong handle() và chỉ để lỗi hệ thống (mất kết nối DB...) văng ra ngoài.
+	 * @description Processes grouped CDC changes by invoking the handler instance. If an error occurs during processing, the affected rows are quarantined for later inspection.
+	 * @param instance
+	 * @param tableLabel
+	 * @param dataSourceToken
+	 * @param groups
 	 */
 	private async processGroups(
 		instance: DiscoveredCdcHandler['instance'],

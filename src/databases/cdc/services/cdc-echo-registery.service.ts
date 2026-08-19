@@ -9,9 +9,12 @@ export class CdcEchoRegistryService {
 	constructor(@InjectRedisClient() private readonly redis: Redis) {}
 
 	/**
-	 * Gọi TRƯỚC khi Saga ghi vào MSSQL — đánh dấu "sắp có 1 echo với originId này,
-	 * đừng xử lý lại". TTL nên đủ lớn hơn CDC capture job latency (thường vài trăm ms
-	 * tới vài giây) cộng thêm buffer an toàn.
+	 * @description Registers an origin in the CDC echo registry with a specified time-to-live (TTL).
+	 * @param dataSourceToken
+	 * @param schema
+	 * @param sourceName
+	 * @param originId
+	 * @param ttlMs
 	 */
 	async registerOrigin(
 		dataSourceToken: string,
