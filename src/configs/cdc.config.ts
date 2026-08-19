@@ -36,6 +36,7 @@ export default registerAs(
 					'cust_shoestyle',
 					'color_sn',
 					'size_numcode',
+					'factory_code_produce',
 					'sync_id'
 				],
 				supportsNetChanges: true
