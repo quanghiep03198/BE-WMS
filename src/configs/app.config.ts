@@ -87,7 +87,7 @@ export const appConfigFactory: ConfigFactory = () => ({
 		autoLoadEntities: true,
 		synchronize: false,
 		logging: ['error'],
-		requestTimeout: 30000,
+		requestTimeout: 10000,
 		cache: {
 			type: 'redis',
 			options: {
@@ -101,9 +101,10 @@ export const appConfigFactory: ConfigFactory = () => ({
 			ignoreErrors: false
 		},
 		pool: {
-			max: 100,
+			max: 24,
 			min: 5,
-			acquireTimeoutMillis: 30000
+			idleTimeoutMillis: 30000,
+			acquireTimeoutMillis: 10000
 		},
 		options: {
 			trustServerCertificate: env('DB_TRUST_SERVER_CERTIFICATE', {
