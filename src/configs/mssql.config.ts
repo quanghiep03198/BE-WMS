@@ -7,6 +7,7 @@ import { RefreshTokens1769534028893 } from '@databases/migrations/1769534028893-
 
 import { registerAs } from '@nestjs/config'
 import { type TypeOrmModuleOptions } from '@nestjs/typeorm'
+import { RedisOptions } from 'ioredis'
 
 export default registerAs('mssql', (): TypeOrmModuleOptions => ({
 	type: 'mssql',
@@ -26,15 +27,13 @@ export default registerAs('mssql', (): TypeOrmModuleOptions => ({
 	logging: ['error'],
 	requestTimeout: 30000,
 	cache: {
-		type: 'redis',
+		type: 'ioredis',
 		options: {
-			socket: {
-				host: env('REDIS_HOST'),
-				port: env('REDIS_PORT', { serialize: (value): number => Number.parseInt(value) })
-			},
+			host: env('REDIS_HOST'),
+			port: env('REDIS_PORT', { serialize: (value): number => Number.parseInt(value) }),
 			db: env('REDIS_DB', { fallbackValue: 0, serialize: (value): number => Number.parseInt(value) }),
 			password: env('REDIS_PASSWORD')
-		},
+		} satisfies RedisOptions,
 		ignoreErrors: false
 	},
 	pool: {
