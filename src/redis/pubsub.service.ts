@@ -4,11 +4,11 @@ import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
 import { InjectPublisher, InjectSubscriber } from './decorators'
 
 @Injectable()
-export class RedisService implements OnModuleDestroy, OnApplicationShutdown {
+export class PubSubService implements OnModuleDestroy, OnApplicationShutdown {
 	constructor(
 		@InjectPublisher() private readonly publisher: Redis,
 		@InjectSubscriber() private readonly subscriber: Redis,
-		@InjectPinoLogger(RedisService.name) private readonly logger: PinoLogger
+		@InjectPinoLogger(PubSubService.name) private readonly logger: PinoLogger
 	) {}
 
 	onModuleDestroy() {
