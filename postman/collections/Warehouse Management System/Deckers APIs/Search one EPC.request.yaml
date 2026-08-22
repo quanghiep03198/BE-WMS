@@ -1,7 +1,10 @@
 $kind: http-request
+name: Search one EPC
 url: https://mfg.deckers.com/pdm-api/v1/epc/:epc
 method: GET
 pathVariables:
-  epc: 30340C30BC0931C023C34A17
+  - key: epc
+    value: 30340B9A7053B30023C3566E
+    description: ""
 settings: {}
 order: 2000

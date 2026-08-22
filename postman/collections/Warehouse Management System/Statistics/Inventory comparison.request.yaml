@@ -1,7 +1,10 @@
 $kind: http-request
+name: Inventory comparison
 url: "{{base_url}}/statistics/inventory-comparison"
 method: GET
 headers:
-  X-Tenant-Id: "{{tenant_gl1}}"
+  - key: X-Tenant-Id
+    value: "{{tenant_gl1}}"
+    disabled: true
 settings: {}
 order: 2000

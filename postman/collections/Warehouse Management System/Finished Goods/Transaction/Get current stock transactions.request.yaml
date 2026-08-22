@@ -1,0 +1,5 @@
+$kind: http-request
+name: Get current stock transactions
+url: "{{base_url}}/finished-goods/stock/transactions/inbound"
+method: GET
+order: 1787211388801

@@ -1,8 +1,13 @@
 $kind: http-request
-url: "{{base_url}}/inventory/audit/checkout/2026-08"
+name: Checkout Inventory Audit
+url: "{{base_url}}/inventory/audit/checkout/:month"
 method: PUT
 headers:
   X-User-Company: VA1
   X-Tenant-Id: "{{tenant_gl1}}"
+pathVariables:
+  - key: month
+    value: 2026-08
+    description: ""
 settings: {}
 order: 8000
