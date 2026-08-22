@@ -43,9 +43,6 @@ jobs:
         run: |
           pnpm install --fix-lockfile
 
-      - name: Sentry CLI verification
-        run: npx sentry-cli login --auth-token ${{secrets.SENTRY_AUTH_TOKEN}}
-
       - name: Build Nest application
         run: pnpm build
 
@@ -71,9 +68,6 @@ jobs:
       - name: Install dependencies
         run: |
           pnpm install --fix-lockfile
-
-      - name: Sentry CLI verification
-        run: npx sentry-cli login --auth-token ${{secrets.SENTRY_AUTH_TOKEN}}
 
       - name: Build Nest application
         run: pnpm build
@@ -101,9 +95,6 @@ jobs:
       - name: Install dependencies
         run: |
           pnpm install --fix-lockfile
-
-      - name: Sentry CLI verification
-        run: npx sentry-cli login --auth-token ${{secrets.SENTRY_AUTH_TOKEN}}
 
       - name: Build Nest application
         run: pnpm build
