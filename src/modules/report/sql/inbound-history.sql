@@ -1,17 +1,17 @@
 WITH inv_rfid AS(
    SELECT EPC_Code, po, mo_no, size_code, rfid_status, stationNO, record_time, FC_server_code, isactive
-   FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet WITH (NOLOCK)
+   FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet
    WHERE 
       mo_no = @0
       AND isactive = 'Y' 
-      AND (RIGHT(stationNO, 5) = 'WH101' OR RIGHT(stationNO, 5) = 'WH102')
+      AND station_suffix IN ('101', '102') 
    UNION ALL
    SELECT EPC_Code, po, mo_no, size_code, rfid_status, stationNO, record_time, FC_server_code, isactive
-   FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet_backup_Daily WITH (NOLOCK)
+   FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet_backup_Daily
    WHERE 
       mo_no = @0
       AND isactive = 'Y' 
-      AND (RIGHT(stationNO, 5) = 'WH101' OR RIGHT(stationNO, 5) = 'WH102')
+      AND station_suffix IN ('101', '102') 
 ),
 daily_inbound_history_cte AS (
    SELECT 
@@ -27,7 +27,6 @@ daily_inbound_history_cte AS (
 		AND a.EPC_Code NOT LIKE 'E28%'
 		AND a.mo_no NOT IN ('13D05B006', '13A08C003')
       AND a.mo_no = @0
-		AND (RIGHT(a.stationNO, 5) = 'WH101' OR RIGHT(a.stationNO, 5) = 'WH102')
    GROUP BY 
       a.mo_no, 
       a.size_code,
@@ -46,7 +45,6 @@ inbound_history_by_size_cte AS (
 		AND a.EPC_Code NOT LIKE 'E28%'
 		AND a.mo_no NOT IN ('13D05B006', '13A08C003')
       AND a.mo_no = @0
-		AND (RIGHT(a.stationNO, 5) = 'WH101' OR RIGHT(a.stationNO, 5) = 'WH102')
    GROUP BY 
       a.mo_no, 
       a.size_code
@@ -58,11 +56,7 @@ mo_size_run_cte AS (
 			WHEN LEFT(b.size_numcode, 1) IN ('T', 'K') THEN CAST(SUBSTRING(b.size_numcode, 2, LEN(b.size_numcode)) AS FLOAT)
 		END AS [size_numcode], 
 		SUM(CAST(b.size_qty AS INT)) AS qty
-	FROM wuerp_vnrd.dbo.ta_ordersizerun a
-	LEFT JOIN wuerp_vnrd.dbo.ta_ordermst or1 ON or1.or_no = a.or_no
-		AND or1.isactive = 'Y'
-	LEFT JOIN wuerp_vnrd.dbo.ta_manufacturdet a1 ON or1.or_no = a1.or_no
-		AND a1.isactive = 'Y'
+	FROM wuerp_vnrd.dbo.ta_manufactursizerun a
 	OUTER APPLY (
 	VALUES
 		([size_numcode01], [size_qty01]),
@@ -108,7 +102,7 @@ mo_size_run_cte AS (
 	) b ([size_numcode],[size_qty])
 	WHERE b.size_qty <> 0
 	AND a.isactive = 'Y'
-	AND a1.mo_no = @0
+	AND a.mo_no = @0
 	GROUP BY a.size_code, b.size_numcode
 )
 SELECT 
@@ -148,5 +142,6 @@ GROUP BY
    f.shoestyle_codecust,
    UPPER(CONCAT(e.color_sn, '/', (e.mat_ecolor)))
 OPTION (
-   OPTIMIZE FOR (@0 UNKNOWN)
+   OPTIMIZE FOR UNKNOWN,
+   RECOMPILE
 )

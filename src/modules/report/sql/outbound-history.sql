@@ -7,7 +7,7 @@ WITH inv_rfid AS(
       isactive = 'Y'
       AND FC_server_code = @0
       AND po = @1
-      AND RIGHT(stationNO, 5) = 'WH103'
+      AND station_suffix = '103'
    UNION ALL
    SELECT EPC_Code, po, mo_no, size_code, rfid_status, stationNO, record_time, FC_server_code, isactive
    FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet_backup_Daily WITH (NOLOCK)
@@ -15,7 +15,7 @@ WITH inv_rfid AS(
       isactive = 'Y'
       AND FC_server_code = @0
       AND po = @1
-      AND RIGHT(stationNO, 5) = 'WH103'
+      AND station_suffix = '103'
 ),
 base_data AS (
    SELECT 
@@ -233,8 +233,6 @@ GROUP BY pi.brand_name, pi.po, pi.factory_shoes_style, pi.cust_shoes_style, pi.c
 ORDER BY pi.po
 OPTION (
 	OPTIMIZE FOR UNKNOWN,                           -- * Avoid "Paramenter Sniffing" issues
-	USE HINT('ENABLE_PARALLEL_PLAN_PREFERENCE'),    -- * Prioritize parallel plan
+	-- USE HINT('ENABLE_PARALLEL_PLAN_PREFERENCE'),    -- * Prioritize parallel plan
    RECOMPILE
 );
-
-

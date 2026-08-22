@@ -7,7 +7,7 @@ WITH rfid_inbound_cte AS (
 	WHERE 
 		isactive = 'Y'
 		AND rfid_status = 'A'
-		AND stationNO LIKE 'CUS%WH10[12]'
+		AND station_suffix IN ('101', '102')
 		AND FC_server_code = @0
 		AND mo_no NOT IN ('13D05B006', '13A08C003')
 		AND EPC_Code NOT LIKE '303429%'
@@ -19,7 +19,7 @@ WITH rfid_inbound_cte AS (
 	WHERE 
 		isactive = 'Y'
 		AND rfid_status = 'A'
-		AND stationNO LIKE 'CUS%WH10[12]'
+		AND station_suffix IN ('101', '102')
 		AND FC_server_code = @0
 		AND mo_no NOT IN ('13D05B006', '13A08C003')
 		AND EPC_Code NOT LIKE '303429%'
@@ -101,6 +101,6 @@ GROUP BY
 ORDER BY ric.mo_no DESC
 OPTION (
 	OPTIMIZE FOR UNKNOWN,                        		-- * Avoid "Parameter Sniffing" issues
-	USE HINT('ENABLE_PARALLEL_PLAN_PREFERENCE'),    	-- * Prioritize parallel plan
+	-- USE HINT('ENABLE_PARALLEL_PLAN_PREFERENCE'),    	-- * Prioritize parallel plan
 	RECOMPILE                                         	-- * Re-optimize for each execution
 );
