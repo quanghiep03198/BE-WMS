@@ -1,5 +1,5 @@
 import { AggregateRoot } from '@nestjs/cqrs'
-import { ExchangeMoSuccessEvent } from '../events/exchange-mo-success/exchange-mo-success.event'
+import { ExchangedManufacturingOrderEvent } from '../events/exchanged-manufacturing-order/exchanged-manufacturing-order.event'
 import {
 	MismatchingMoSpecsException,
 	MismatchingSizeNumberException,
@@ -51,7 +51,7 @@ export class MoExchangeTransaction extends AggregateRoot {
 			throw new MismatchingSizeNumberException()
 		}
 
-		this.apply(new ExchangeMoSuccessEvent(pendingExchangeSkus, this.getTargetMo()))
+		this.apply(new ExchangedManufacturingOrderEvent(pendingExchangeSkus, this.getTargetMo()))
 
 		return pendingExchangeSkus
 	}

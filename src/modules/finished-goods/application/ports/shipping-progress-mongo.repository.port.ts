@@ -1,14 +1,14 @@
 import { ElectronicProductCode } from '@modules/finished-goods/domain/value-objects/epc.vo'
 
 export interface IShippingProgressMongoRepository {
-	getPendingShippingVariation(scannedEpcs: Array<ElectronicProductCode>): Promise<
+	getPendingShippingFluctuation(scannedEpcs: Array<ElectronicProductCode>): Promise<
 		Array<{
 			mo_no: string
 			po: string | null | undefined
 			factory_code_produce: string
 			factory_shoes_style: string
 			color_sn: string
-			inventory_variation: Record<string, { shipped_out_qty: number }>
+			size_ledger: Record<string, { shipped_out_qty: number }>
 		}>
 	>
 
@@ -17,13 +17,13 @@ export interface IShippingProgressMongoRepository {
 	): Promise<Array<{ size_numcode: string; order_qty: number; accumulated_qty: number }>>
 
 	applyShippingProgressForStockOut(
-		pendingInventoryVariation: Array<{
+		pendingInventoryFluctuation: Array<{
 			mo_no: string
 			po: string | null | undefined
 			factory_code_produce: string
 			factory_shoes_style: string
 			color_sn: string
-			inventory_variation: Record<string, { shipped_out_qty: number }>
+			size_ledger: Record<string, { shipped_out_qty: number }>
 		}>
 	): Promise<void>
 }

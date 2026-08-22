@@ -21,7 +21,7 @@ export class MssqlFinishedGoodsRepository implements IMssqlFinishedGoodsReposito
 	) {}
 
 	@Transactional<TransactionalAdapterTypeOrm>(DATA_SOURCE_DATA_LAKE)
-	public async commitStockVariation(
+	public async commitStockFluctuation(
 		data: Array<
 			Array<{
 				epc: string
@@ -49,7 +49,7 @@ export class MssqlFinishedGoodsRepository implements IMssqlFinishedGoodsReposito
 				size_numcode: string
 				factory_code: string
 				status: string
-				inventory_variation_type: string
+				inventory_ledger_type: string
 				station_no: StationNO
 			}>
 		>

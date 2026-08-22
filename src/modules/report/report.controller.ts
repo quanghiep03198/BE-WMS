@@ -36,7 +36,7 @@ export class ReportController {
 		@Query('date:eq', new DefaultValuePipe(format(new Date(), 'yyyy-MM-dd')))
 		dateQuery: any
 	) {
-		return await this.inboundReportService.getDailyInventoryVariation(dateQuery)
+		return await this.inboundReportService.getDailyInventoryLedger(dateQuery)
 	}
 
 	@RouteHandler({ endpoint: 'inbound-history/:commandNumber', method: HttpMethod.GET })

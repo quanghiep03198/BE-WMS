@@ -1,6 +1,6 @@
 import { PipelineStage } from 'mongoose'
 
-type ShippingVariationAlias = 'previous_shipping_variation' | 'current_shipping_variation'
+type ShippingFluctuationAlias = 'previous_shipping_fluctuation' | 'current_shipping_fluctuation'
 
 interface BuildCheckoutPipelineParams {
 	checkoutMonth: string
@@ -13,16 +13,16 @@ export class InventoryAuditCheckoutPipelineBuilder {
 
 		return [
 			this.buildMatchCheckoutMonthStage(checkoutMonth),
-			this.buildLookupMoInventoryVariationStage(),
-			this.buildSetFirstMoInventoryVariationStage(),
+			this.buildLookupMoInventoryFluctuationStage(),
+			this.buildSetFirstMoInventoryFluctuationStage(),
 			this.buildSetRemainingOrderQtyStage(),
 			this.buildMatchRemainingOrderQtyStage(),
-			this.buildSetBaseInventoryVariationArrayStage(),
-			this.buildLookupDailyVariationStage(nextMonth),
-			this.buildLookupShippingVariationStage(checkoutMonth, 'previous_shipping_variation'),
-			this.buildLookupShippingVariationStage(nextMonth, 'current_shipping_variation'),
-			this.buildNormalizeAggregatedVariationStage(),
-			this.buildSetNextMonthInventoryVariationStage(nextMonth),
+			this.buildSetBaseInventoryFluctuationArrayStage(),
+			this.buildLookupDailyFluctuationStage(nextMonth),
+			this.buildLookupShippingFluctuationStage(checkoutMonth, 'previous_shipping_fluctuation'),
+			this.buildLookupShippingFluctuationStage(nextMonth, 'current_shipping_fluctuation'),
+			this.buildNormalizeAggregatedFluctuationStage(),
+			this.buildSetNextMonthInventoryFluctuationStage(nextMonth),
 			this.buildUnsetTemporaryFieldsStage(),
 			this.buildMergeToInventoryAuditStage()
 		]
@@ -36,7 +36,7 @@ export class InventoryAuditCheckoutPipelineBuilder {
 		}
 	}
 
-	private static buildLookupMoInventoryVariationStage(): PipelineStage {
+	private static buildLookupMoInventoryFluctuationStage(): PipelineStage {
 		return {
 			$lookup: {
 				from: 'manufacturing_orders',
@@ -47,7 +47,7 @@ export class InventoryAuditCheckoutPipelineBuilder {
 		}
 	}
 
-	private static buildSetFirstMoInventoryVariationStage(): PipelineStage {
+	private static buildSetFirstMoInventoryFluctuationStage(): PipelineStage {
 		return {
 			$set: {
 				manufacturing_orders: {
@@ -70,7 +70,7 @@ export class InventoryAuditCheckoutPipelineBuilder {
 									$reduce: {
 										input: {
 											$objectToArray: {
-												$ifNull: ['$manufacturing_orders.inventory_variation', {}]
+												$ifNull: ['$manufacturing_orders.size_ledger', {}]
 											}
 										},
 										initialValue: 0,
@@ -94,12 +94,12 @@ export class InventoryAuditCheckoutPipelineBuilder {
 		}
 	}
 
-	private static buildSetBaseInventoryVariationArrayStage(): PipelineStage {
+	private static buildSetBaseInventoryFluctuationArrayStage(): PipelineStage {
 		return {
 			$set: {
-				base_inventory_variation_array: {
+				base_size_ledger_array: {
 					$map: {
-						input: { $objectToArray: '$inventory_variation' },
+						input: { $objectToArray: '$size_ledger' },
 						as: 'sizeItem',
 						in: {
 							k: '$$sizeItem.k',
@@ -127,10 +127,10 @@ export class InventoryAuditCheckoutPipelineBuilder {
 		}
 	}
 
-	private static buildLookupDailyVariationStage(nextMonth: string): PipelineStage {
+	private static buildLookupDailyFluctuationStage(nextMonth: string): PipelineStage {
 		return {
 			$lookup: {
-				from: 'daily_mo_inventory_variation',
+				from: 'daily_mo_inventory_ledger',
 				let: {
 					moNo: '$mo_no'
 				},
@@ -144,23 +144,20 @@ export class InventoryAuditCheckoutPipelineBuilder {
 					},
 					{
 						$project: {
-							inventory_variation_array: { $objectToArray: '$inventory_variation' }
+							size_ledger_array: { $objectToArray: '$size_ledger' }
 						}
 					},
-					{ $unwind: '$inventory_variation_array' },
+					{ $unwind: '$size_ledger_array' },
 					{
 						$group: {
-							_id: '$inventory_variation_array.k',
+							_id: '$size_ledger_array.k',
 							stocked_in_qty: {
 								$sum: {
 									$subtract: [
 										{
-											$add: [
-												'$inventory_variation_array.v.stocked_in_qty',
-												'$inventory_variation_array.v.total_return_tx'
-											]
+											$add: ['$size_ledger_array.v.stocked_in_qty', '$size_ledger_array.v.total_return_tx']
 										},
-										'$inventory_variation_array.v.total_recall_tx'
+										'$size_ledger_array.v.total_recall_tx'
 									]
 								}
 							}
@@ -178,22 +175,25 @@ export class InventoryAuditCheckoutPipelineBuilder {
 					{
 						$group: {
 							_id: null,
-							inventory_variation: { $push: '$$ROOT' }
+							size_ledger: { $push: '$$ROOT' }
 						}
 					},
 					{
 						$project: {
 							_id: 0,
-							inventory_variation: { $arrayToObject: '$inventory_variation' }
+							size_ledger: { $arrayToObject: '$size_ledger' }
 						}
 					}
 				],
-				as: 'daily_variation'
+				as: 'daily_fluctuation'
 			}
 		}
 	}
 
-	private static buildLookupShippingVariationStage(targetMonth: string, alias: ShippingVariationAlias): PipelineStage {
+	private static buildLookupShippingFluctuationStage(
+		targetMonth: string,
+		alias: ShippingFluctuationAlias
+	): PipelineStage {
 		return {
 			$lookup: {
 				from: 'daily_po_shipping_progress',
@@ -227,23 +227,23 @@ export class InventoryAuditCheckoutPipelineBuilder {
 					},
 					{
 						$project: {
-							shipping_variation_array: {
+							shipping_fluctuation_array: {
 								$objectToArray: {
 									$ifNull: ['$shipping_progress_array.v', {}]
 								}
 							}
 						}
 					},
-					{ $unwind: '$shipping_variation_array' },
+					{ $unwind: '$shipping_fluctuation_array' },
 					{
 						$group: {
-							_id: '$shipping_variation_array.k',
+							_id: '$shipping_fluctuation_array.k',
 							shipped_out_qty: {
 								$sum: {
 									$cond: {
-										if: { $eq: [{ $type: '$shipping_variation_array.v' }, 'object'] },
-										then: { $ifNull: ['$shipping_variation_array.v.shipped_out_qty', 0] },
-										else: { $ifNull: ['$shipping_variation_array.v', 0] }
+										if: { $eq: [{ $type: '$shipping_fluctuation_array.v' }, 'object'] },
+										then: { $ifNull: ['$shipping_fluctuation_array.v.shipped_out_qty', 0] },
+										else: { $ifNull: ['$shipping_fluctuation_array.v', 0] }
 									}
 								}
 							}
@@ -261,13 +261,13 @@ export class InventoryAuditCheckoutPipelineBuilder {
 					{
 						$group: {
 							_id: null,
-							inventory_variation: { $push: '$$ROOT' }
+							size_ledger: { $push: '$$ROOT' }
 						}
 					},
 					{
 						$project: {
 							_id: 0,
-							inventory_variation: { $arrayToObject: '$inventory_variation' }
+							size_ledger: { $arrayToObject: '$size_ledger' }
 						}
 					}
 				],
@@ -276,42 +276,42 @@ export class InventoryAuditCheckoutPipelineBuilder {
 		}
 	}
 
-	private static buildNormalizeAggregatedVariationStage(): PipelineStage {
+	private static buildNormalizeAggregatedFluctuationStage(): PipelineStage {
 		return {
 			$set: {
-				daily_variation: {
-					$ifNull: [{ $first: '$daily_variation' }, { inventory_variation: {} }]
+				daily_fluctuation: {
+					$ifNull: [{ $first: '$daily_fluctuation' }, { size_ledger: {} }]
 				},
-				previous_shipping_variation: {
-					$ifNull: [{ $first: '$previous_shipping_variation' }, { inventory_variation: {} }]
+				previous_shipping_fluctuation: {
+					$ifNull: [{ $first: '$previous_shipping_fluctuation' }, { size_ledger: {} }]
 				},
-				current_shipping_variation: {
-					$ifNull: [{ $first: '$current_shipping_variation' }, { inventory_variation: {} }]
+				current_shipping_fluctuation: {
+					$ifNull: [{ $first: '$current_shipping_fluctuation' }, { size_ledger: {} }]
 				}
 			}
 		}
 	}
 
-	private static buildSetNextMonthInventoryVariationStage(nextMonth: string): PipelineStage {
+	private static buildSetNextMonthInventoryFluctuationStage(nextMonth: string): PipelineStage {
 		return {
 			$set: {
-				inventory_variation: {
+				size_ledger: {
 					$arrayToObject: {
 						$map: {
-							input: '$base_inventory_variation_array',
+							input: '$base_size_ledger_array',
 							as: 'baseSizeItem',
 							in: {
 								k: '$$baseSizeItem.k',
 								v: {
 									$let: {
 										vars: {
-											dailySizeVariation: {
+											dailySizeLedger: {
 												$first: {
 													$map: {
 														input: {
 															$filter: {
 																input: {
-																	$objectToArray: '$daily_variation.inventory_variation'
+																	$objectToArray: '$daily_fluctuation.size_ledger'
 																},
 																as: 'dailyItem',
 																cond: { $eq: ['$$dailyItem.k', '$$baseSizeItem.k'] }
@@ -322,13 +322,13 @@ export class InventoryAuditCheckoutPipelineBuilder {
 													}
 												}
 											},
-											previousShippingSizeVariation: {
+											previousShippingSizeLedger: {
 												$first: {
 													$map: {
 														input: {
 															$filter: {
 																input: {
-																	$objectToArray: '$previous_shipping_variation.inventory_variation'
+																	$objectToArray: '$previous_shipping_fluctuation.size_ledger'
 																},
 																as: 'shippingItem',
 																cond: { $eq: ['$$shippingItem.k', '$$baseSizeItem.k'] }
@@ -339,13 +339,13 @@ export class InventoryAuditCheckoutPipelineBuilder {
 													}
 												}
 											},
-											dailyShippingSizeVariation: {
+											dailyShippingSizeLedger: {
 												$first: {
 													$map: {
 														input: {
 															$filter: {
 																input: {
-																	$objectToArray: '$current_shipping_variation.inventory_variation'
+																	$objectToArray: '$current_shipping_fluctuation.size_ledger'
 																},
 																as: 'shippingItem',
 																cond: { $eq: ['$$shippingItem.k', '$$baseSizeItem.k'] }
@@ -362,12 +362,12 @@ export class InventoryAuditCheckoutPipelineBuilder {
 											beginning_inventory_qty: {
 												$subtract: [
 													'$$baseSizeItem.v.beginning_inventory_qty',
-													{ $ifNull: ['$$previousShippingSizeVariation.shipped_out_qty', 0] }
+													{ $ifNull: ['$$previousShippingSizeLedger.shipped_out_qty', 0] }
 												]
 											},
-											stocked_in_qty: { $ifNull: ['$$dailySizeVariation.stocked_in_qty', 0] },
+											stocked_in_qty: { $ifNull: ['$$dailySizeLedger.stocked_in_qty', 0] },
 											shipped_out_qty: {
-												$ifNull: ['$$dailyShippingSizeVariation.shipped_out_qty', 0]
+												$ifNull: ['$$dailyShippingSizeLedger.shipped_out_qty', 0]
 											},
 											supplemental_stocked_in_qty: 0,
 											supplemental_shipped_out_qty: 0
@@ -388,10 +388,10 @@ export class InventoryAuditCheckoutPipelineBuilder {
 		return {
 			$unset: [
 				'_id',
-				'base_inventory_variation_array',
-				'daily_variation',
-				'previous_shipping_variation',
-				'current_shipping_variation',
+				'base_size_ledger_array',
+				'daily_fluctuation',
+				'previous_shipping_fluctuation',
+				'current_shipping_fluctuation',
 				'manufacturing_orders',
 				'remaining_order_qty'
 			]

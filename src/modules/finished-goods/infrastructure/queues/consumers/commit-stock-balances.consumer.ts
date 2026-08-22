@@ -5,11 +5,11 @@ import {
 import { Processor, WorkerHost } from '@nestjs/bullmq'
 import { Inject } from '@nestjs/common'
 import { Job } from 'bullmq'
-import { COMMIT_STOCK_VARIATION_QUEUE } from '..'
+import { COMMIT_STOCK_BALANCES_QUEUE } from '..'
 import { StationNO } from '../../../domain/utils'
 
-@Processor(COMMIT_STOCK_VARIATION_QUEUE)
-export class CommitStockVariationConsumer extends WorkerHost {
+@Processor(COMMIT_STOCK_BALANCES_QUEUE)
+export class CommitStockBalancesConsumer extends WorkerHost {
 	constructor(
 		@Inject(MSSQL_FINISHED_GOODS_REPOSITORY) private readonly inoutboundMssqlRepository: IMssqlFinishedGoodsRepository
 	) {
@@ -25,7 +25,7 @@ export class CommitStockVariationConsumer extends WorkerHost {
 					size_numcode: string
 					factory_code: string
 					status: string
-					inventory_variation_type: string
+					inventory_ledger_type: string
 					dept_code: string
 					dept_name: string
 					storage: string
@@ -35,6 +35,6 @@ export class CommitStockVariationConsumer extends WorkerHost {
 			void
 		>
 	) {
-		await this.inoutboundMssqlRepository.commitStockVariation(job.data)
+		await this.inoutboundMssqlRepository.commitStockFluctuation(job.data)
 	}
 }

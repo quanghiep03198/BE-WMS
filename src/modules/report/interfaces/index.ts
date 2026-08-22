@@ -28,7 +28,7 @@ export interface IOutboundReportQueryResult extends IReportQueryResult {
 
 export type IInboundReportResponse = Array<
 	IInboundReportQueryResult & {
-		variation_details: Array<{ size_numcode: string; qty: number }>
+		size_ledger: Array<{ size_numcode: string; qty: number }>
 	}
 >
 

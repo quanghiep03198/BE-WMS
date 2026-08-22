@@ -2,7 +2,7 @@ import { ExcelColorPalette } from '@common/constants/excel-color-palette'
 import { applyCommonStyles, type AutoFitColumnOptions, autoFitColumns } from '@common/helpers'
 import { SuperJson } from '@common/utils'
 import { DATA_SOURCE_DATA_LAKE, DATA_WAREHOUSE_CONNECTION } from '@databases/constants'
-import { DailyMoInventoryVariationModel } from '@modules/finished-goods/infrastructure/persistence/mongodb/schemas/daily-mo-inventory-variation.schema'
+import { DailyMoInventoryLedgerModel } from '@modules/finished-goods/infrastructure/persistence/mongodb/schemas/daily-mo-inventory-ledger.schema'
 import {
 	FinishedGoodsEpc,
 	FinishedGoodsEpcModel
@@ -19,10 +19,10 @@ import { Workbook } from 'exceljs'
 import { I18nContext, I18nService } from 'nestjs-i18n'
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
 import { DataSource } from 'typeorm'
+import { DailyMoInventoryLedger } from '../../finished-goods/infrastructure/persistence/mongodb/schemas/daily-mo-inventory-ledger.schema'
 import { IInboundHistory, IInboundReportResponse } from '../interfaces'
 import shapingDepartmentProductivityQuery from '../sql/assembly-productivity.sql'
 import inboundHistoryQuery from '../sql/inbound-history.sql'
-import { DailyMoInventoryVariation } from './../../finished-goods/infrastructure/persistence/mongodb/schemas/daily-mo-inventory-variation.schema'
 
 @Injectable()
 export class InboundReportService {
@@ -33,8 +33,8 @@ export class InboundReportService {
 	constructor(
 		@InjectDataSource(DATA_SOURCE_DATA_LAKE) private readonly dataSource: DataSource,
 		@InjectPinoLogger(InboundReportService.name) private readonly logger: PinoLogger,
-		@InjectModel(DailyMoInventoryVariation.name, DATA_WAREHOUSE_CONNECTION)
-		private readonly dailyMoInventoryVariationModel: DailyMoInventoryVariationModel,
+		@InjectModel(DailyMoInventoryLedger.name, DATA_WAREHOUSE_CONNECTION)
+		private readonly dailyMoInventoryLedgerModel: DailyMoInventoryLedgerModel,
 		@InjectModel(ManufacturingOrder.name, DATA_WAREHOUSE_CONNECTION)
 		private readonly manufacturingOrderModel: ManufacturingOrderModel,
 		@InjectModel(FinishedGoodsEpc.name, DATA_WAREHOUSE_CONNECTION)
@@ -42,44 +42,48 @@ export class InboundReportService {
 		private readonly i18nService: I18nService
 	) {}
 
-	public async getDailyInventoryVariation(date: string): Promise<IInboundReportResponse> {
-		const docs = await this.dailyMoInventoryVariationModel
+	public async getDailyInventoryLedger(date: string): Promise<IInboundReportResponse> {
+		const docs = await this.dailyMoInventoryLedgerModel
 			.find({ date: date })
 			.lean({ virtuals: true })
-			.populate('mo_attrs', 'factory_shoes_style color_sn factory_code_produce order_qty inventory_variation')
+			.populate('mo_attrs', 'factory_shoes_style color_sn factory_code_produce order_qty size_ledger')
 			.exec()
 
-		return docs.map((doc) => {
-			const accumulatedQty = Object.values(doc.mo_attrs.inventory_variation).reduce(
-				(acc, variation) => acc + variation.stocked_in_qty - variation.total_recall_tx + variation.total_return_tx,
-				0
-			)
-			const totalDailyInboundQty = Object.values(doc.inventory_variation).reduce(
-				(acc, variation) => acc + variation.stocked_in_qty - variation.total_recall_tx + variation.total_return_tx,
-				0
-			)
+		return docs
+			.map((doc) => {
+				const accumulatedQty = Object.values(doc.mo_attrs.size_ledger).reduce(
+					(acc, fluctuation) =>
+						acc + fluctuation.stocked_in_qty - fluctuation.total_recall_tx + fluctuation.total_return_tx,
+					0
+				)
+				const totalDailyInboundQty = Object.values(doc.size_ledger).reduce(
+					(acc, fluctuation) =>
+						acc + fluctuation.stocked_in_qty - fluctuation.total_recall_tx + fluctuation.total_return_tx,
+					0
+				)
 
-			return {
-				mo_no: doc.mo_no,
-				factory_code_produce: doc.mo_attrs.factory_code_produce,
-				factory_shoes_style: doc.mo_attrs.factory_shoes_style,
-				color_sn: doc.mo_attrs.color_sn,
-				assembly_lines: doc.assembly_lines.sort((a, b) => a.localeCompare(b)),
-				storage_locations: doc.storage_locations.sort((a, b) => a.localeCompare(b)),
-				order_qty: doc.mo_attrs.order_qty,
-				daily_inbound_qty: totalDailyInboundQty,
-				accumulated_qty: accumulatedQty,
-				missing_qty: doc.mo_attrs.order_qty - accumulatedQty,
-				variation_details: Object.entries(doc.inventory_variation)
-					.map(([size, variation]) => {
-						return {
-							size_numcode: size,
-							qty: variation.stocked_in_qty - variation.total_recall_tx + variation.total_return_tx
-						}
-					})
-					.filter((item) => item.qty > 0)
-			}
-		})
+				return {
+					mo_no: doc.mo_no,
+					factory_code_produce: doc.mo_attrs.factory_code_produce,
+					factory_shoes_style: doc.mo_attrs.factory_shoes_style,
+					color_sn: doc.mo_attrs.color_sn,
+					assembly_lines: doc.assembly_lines.sort((a, b) => a.localeCompare(b)),
+					storage_locations: doc.storage_locations.sort((a, b) => a.localeCompare(b)),
+					order_qty: doc.mo_attrs.order_qty,
+					daily_inbound_qty: totalDailyInboundQty,
+					accumulated_qty: accumulatedQty,
+					missing_qty: doc.mo_attrs.order_qty - accumulatedQty,
+					size_ledger: Object.entries(doc.size_ledger)
+						.map(([size, fluctuation]) => {
+							return {
+								size_numcode: size,
+								qty: fluctuation.stocked_in_qty - fluctuation.total_recall_tx + fluctuation.total_return_tx
+							}
+						})
+						.filter((item) => item.qty > 0)
+				}
+			})
+			.filter((item) => item.daily_inbound_qty > 0)
 	}
 
 	public async getDailyAssemblyProductivity(date: string): Promise<IInboundReportResponse> {
@@ -114,7 +118,7 @@ export class InboundReportService {
 						color_sn: '$_id.color_sn'
 					},
 					daily_inbound_qty: { $sum: '$qty' },
-					variation_details: {
+					size_ledger: {
 						$push: {
 							size_numcode: '$_id.size_numcode',
 							qty: '$qty'
@@ -159,7 +163,7 @@ export class InboundReportService {
 					accumulated_qty: {
 						$reduce: {
 							input: {
-								$objectToArray: '$manufacturing_orders.inventory_variation'
+								$objectToArray: '$manufacturing_orders.size_ledger'
 							},
 							initialValue: 0,
 							in: {
@@ -178,7 +182,7 @@ export class InboundReportService {
 						}
 					},
 					daily_inbound_qty: 1,
-					variation_details: 1,
+					size_ledger: 1,
 					storage_locations: 1
 				}
 			},
@@ -193,7 +197,7 @@ export class InboundReportService {
 					accumulated_qty: 1,
 					missing_qty: { $subtract: ['$order_qty', '$accumulated_qty'] },
 					daily_inbound_qty: 1,
-					variation_details: 1,
+					size_ledger: 1,
 					storage_locations: 1
 				}
 			},
@@ -240,14 +244,14 @@ export class InboundReportService {
 			.findOne({ mo_no: manufacturingOrder })
 			.populate({
 				path: 'daily_inbound_history',
-				select: 'date mo_no inventory_variation'
+				select: 'date mo_no size_ledger'
 			})
 			.exec()
 			.then((doc) => {
 				if (!doc) return null
 				const normalizedDoc = doc.toObject()
 
-				const accumulatedInboundQty = Object.values(normalizedDoc.inventory_variation).reduce(
+				const accumulatedInboundQty = Object.values(normalizedDoc.size_ledger).reduce(
 					(acc, curr) => acc + curr.stocked_in_qty - curr.total_recall_tx + curr.total_return_tx,
 					0
 				)
@@ -325,7 +329,7 @@ export class InboundReportService {
 				'daily-productivity',
 				{
 					i18nKey: 'daily_inbound_report',
-					handler: (reportDate) => this.getDailyInventoryVariation(reportDate)
+					handler: (reportDate) => this.getDailyInventoryLedger(reportDate)
 				}
 			],
 			[
@@ -358,7 +362,7 @@ export class InboundReportService {
 					fgColor: { argb: ExcelColorPalette.BG_LIGHT_BLUE }
 				}
 			}
-			for (const subRecord of record.variation_details) {
+			for (const subRecord of record.size_ledger) {
 				const row = worksheet.addRow([])
 				row.alignment = { vertical: 'middle', horizontal: 'center' }
 				row.getCell(2).value = subRecord.size_numcode + '#'

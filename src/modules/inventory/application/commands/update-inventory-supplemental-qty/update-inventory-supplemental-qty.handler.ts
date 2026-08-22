@@ -14,7 +14,7 @@ export class UpdateInventorySupplementalQtyHandler implements ICommandHandler<Up
 		const [moInventory] = await this.inventoryAuditRepository.getMonthlyInventoryAudit(filter.year_month, [
 			filter.mo_no
 		])
-		const tx = new UpdateSupplementalQtyModel(moInventory.inventory_variation, update)
+		const tx = new UpdateSupplementalQtyModel(moInventory.size_ledger, update)
 		const updatedSupplementalQty = tx.updateSupplementalQty()
 		await this.inventoryAuditRepository.saveSupplementalQty(filter, updatedSupplementalQty)
 	}

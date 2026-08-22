@@ -100,7 +100,7 @@ export class ExportMonthlyInventoryAuditHandler implements IQueryHandler<ExportM
 					fgColor: { argb: ExcelColorPalette.BG_LIGHT_BLUE }
 				}
 			}
-			for (const subRecord of record.inventory_variation) {
+			for (const subRecord of record.size_ledger) {
 				const subRow = worksheet.addRow([])
 				subRow.getCell(5).value = subRecord.size_numcode + '#'
 				subRow.getCell(5).fill = {

@@ -1,10 +1,11 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose'
 import { HydratedDocument, Model } from 'mongoose'
 import mongooseLeanVirtuals from 'mongoose-lean-virtuals'
-export const DAILY_MO_INVENTORY_VARIATION_COLLECTION = 'daily_mo_inventory_variation'
+
+export const DAILY_MO_INVENTORY_LEDGER_COLLECTION = 'daily_mo_inventory_ledger'
 
 @Schema({
-	collection: DAILY_MO_INVENTORY_VARIATION_COLLECTION,
+	collection: DAILY_MO_INVENTORY_LEDGER_COLLECTION,
 	timestamps: {
 		createdAt: 'created_at',
 		updatedAt: 'updated_at'
@@ -16,7 +17,7 @@ export const DAILY_MO_INVENTORY_VARIATION_COLLECTION = 'daily_mo_inventory_varia
 	readConcern: { level: 'majority' },
 	writeConcern: { w: 'majority' }
 })
-export class DailyMoInventoryVariation {
+export class DailyMoInventoryLedger {
 	@Prop({ type: String, required: true })
 	date: string
 
@@ -30,7 +31,7 @@ export class DailyMoInventoryVariation {
 	storage_locations: Array<string>
 
 	@Prop({ type: Object, required: true })
-	inventory_variation: Record<
+	size_ledger: Record<
 		string,
 		{
 			stocked_in_qty: number
@@ -40,30 +41,30 @@ export class DailyMoInventoryVariation {
 	>
 }
 
-export const DailyMoInventoryVariationSchema = SchemaFactory.createForClass(DailyMoInventoryVariation)
+export const DailyMoInventoryLedgerSchema = SchemaFactory.createForClass(DailyMoInventoryLedger)
 
-DailyMoInventoryVariationSchema.index({ date: 1, mo_no: 1 }, { name: 'idx_date_mo', unique: true })
+DailyMoInventoryLedgerSchema.index({ date: 1, mo_no: 1 }, { name: 'idx_date_mo', unique: true })
 
-DailyMoInventoryVariationSchema.plugin(mongooseLeanVirtuals)
+DailyMoInventoryLedgerSchema.plugin(mongooseLeanVirtuals)
 
-DailyMoInventoryVariationSchema.virtual('mo_attrs', {
+DailyMoInventoryLedgerSchema.virtual('mo_attrs', {
 	ref: 'ManufacturingOrder',
 	localField: 'mo_no',
 	foreignField: 'mo_no',
 	justOne: true
 })
 
-DailyMoInventoryVariationSchema.set('toObject', { virtuals: true })
-DailyMoInventoryVariationSchema.set('toJSON', { virtuals: true })
+DailyMoInventoryLedgerSchema.set('toObject', { virtuals: true })
+DailyMoInventoryLedgerSchema.set('toJSON', { virtuals: true })
 
-export type DailyMoInventoryVariationDocument = HydratedDocument<DailyMoInventoryVariation> & {
+export type DailyMoInventoryLedgerDocument = HydratedDocument<DailyMoInventoryLedger> & {
 	mo_attrs: {
 		factory_shoes_style: string
 		color_sn: string
 		factory_code_produce: string
 		order_qty: number
 		brand_name: string
-		inventory_variation: Record<
+		size_ledger: Record<
 			string,
 			{
 				order_qty: number
@@ -76,4 +77,4 @@ export type DailyMoInventoryVariationDocument = HydratedDocument<DailyMoInventor
 	}
 }
 
-export type DailyMoInventoryVariationModel = Model<DailyMoInventoryVariationDocument>
+export type DailyMoInventoryLedgerModel = Model<DailyMoInventoryLedgerDocument>

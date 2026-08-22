@@ -7,7 +7,7 @@ WITH source_data AS (
       JSON_VALUE(value, '$.mo_no') AS mo_no,
       JSON_VALUE(value, '$.size_numcode') AS size_code,
       JSON_VALUE(value, '$.status') AS rfid_status,
-      JSON_VALUE(value, '$.inventory_variation_type') AS rfid_use,
+      JSON_VALUE(value, '$.inventory_ledger_type') AS rfid_use,
       JSON_VALUE(value, '$.station_no') AS stationNO,
       JSON_VALUE(value, '$.storage') AS storage,
       JSON_VALUE(value, '$.factory_code') AS FC_server_code,

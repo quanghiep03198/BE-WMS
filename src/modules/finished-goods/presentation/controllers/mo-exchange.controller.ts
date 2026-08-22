@@ -1,6 +1,7 @@
 import { CommonRequestHeader } from '@common/constants'
 import { HttpMethod, RequireAuthorized, ResponseMessage, RouteHandler } from '@common/decorators'
 import { ZodValidationPipe } from '@common/pipes'
+import { I18nTranslations } from '@generated/i18n.generated'
 import {
 	ExchangeOrderDTO,
 	exchangeOrderValidator,
@@ -50,7 +51,7 @@ export class MoExchangeController {
 	async exchangeEpc(
 		@Headers(CommonRequestHeader.RFID_READER_ID) deviceSerialNumber: string,
 		@Body(new ZodValidationPipe(exchangeOrderValidator)) payload: ExchangeOrderDTO,
-		@I18n() i18n: I18nContext
+		@I18n() i18n: I18nContext<I18nTranslations>
 	) {
 		await this.commandBus.execute(
 			new ExchangeMoRmCommand(deviceSerialNumber, payload.mo_no.split(','), payload.mo_no_actual)
@@ -68,7 +69,7 @@ export class MoExchangeController {
 	async upsertEpcInformation(
 		@Headers(CommonRequestHeader.RFID_READER_ID) deviceSerialNumber: string,
 		@Body(new ZodValidationPipe(upsertEpcInformationSchema)) payload: UpsertEpcInformationDTO,
-		@I18n() i18n: I18nContext
+		@I18n() i18n: I18nContext<I18nTranslations>
 	) {
 		await this.commandBus.execute(
 			new UpsertEpcsMatchCommand(

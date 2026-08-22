@@ -12,7 +12,7 @@ export type IInventoryReportResponse = Array<{
 	total_shipped_out_qty: number
 	total_supplemental_qty: number
 	final_inventory_qty: number
-	inventory_variation: Array<{
+	size_ledger: Array<{
 		size_numcode: string
 		order_qty: number
 		beginning_inventory_qty: number

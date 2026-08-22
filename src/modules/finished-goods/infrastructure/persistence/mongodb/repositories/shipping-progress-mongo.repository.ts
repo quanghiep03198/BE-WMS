@@ -17,8 +17,8 @@ import { PurchaseOrder, PurchaseOrderDocument, PurchaseOrderModel } from '../sch
 
 type ShippingProgressIncrementKey = `shipping_progress.${string}.shipped_out_qty`
 
-type InventoryVariationAsync = Awaited<
-	ReturnType<ShippingProgressMongoRepository['getPendingShippingVariation']>
+type InventoryFluctuationAsync = Awaited<
+	ReturnType<ShippingProgressMongoRepository['getPendingShippingFluctuation']>
 >[number]
 
 @Injectable()
@@ -33,27 +33,27 @@ export class ShippingProgressMongoRepository implements IShippingProgressMongoRe
 	) {}
 
 	private createShippingProgressIncrementExpression(
-		change: InventoryVariationAsync
+		change: InventoryFluctuationAsync
 	): Record<ShippingProgressIncrementKey, mongo.NumericType> {
-		return Object.entries(change.inventory_variation).reduce<
+		return Object.entries(change.size_ledger).reduce<
 			Record<`shipping_progress.${string}.shipped_out_qty`, mongo.NumericType>
-		>((acc, [size, variation]) => {
+		>((acc, [size, fluctuation]) => {
 			return {
 				...acc,
-				[`shipping_progress.${size}.shipped_out_qty`]: variation.shipped_out_qty
+				[`shipping_progress.${size}.shipped_out_qty`]: fluctuation.shipped_out_qty
 			}
 		}, {})
 	}
 
 	@Transactional<TransactionalAdapterMongoose>(DATA_WAREHOUSE_CONNECTION)
-	public async getPendingShippingVariation(scannedEpcs: Array<ElectronicProductCode>): Promise<
+	public async getPendingShippingFluctuation(scannedEpcs: Array<ElectronicProductCode>): Promise<
 		Array<{
 			mo_no: string
 			po: string | null | undefined
 			factory_code_produce: string
 			factory_shoes_style: string
 			color_sn: string
-			inventory_variation: Record<string, { shipped_out_qty: number }>
+			size_ledger: Record<string, { shipped_out_qty: number }>
 		}>
 	> {
 		return [] as any
@@ -66,8 +66,8 @@ export class ShippingProgressMongoRepository implements IShippingProgressMongoRe
 
 		if (!poShippingProgress) return []
 
-		return Object.entries(poShippingProgress.shipping_progress).map(([size, variation]) => {
-			const { order_qty, shipped_out_qty } = variation as any
+		return Object.entries(poShippingProgress.shipping_progress).map(([size, balances]) => {
+			const { order_qty, shipped_out_qty } = balances as any
 			return {
 				size_numcode: size,
 				order_qty,
@@ -77,17 +77,17 @@ export class ShippingProgressMongoRepository implements IShippingProgressMongoRe
 	}
 
 	public async applyShippingProgressForStockOut(
-		pendingInventoryVariation: Array<{
+		pendingInventoryFluctuation: Array<{
 			mo_no: string
 			po: string | null | undefined
 			factory_code_produce: string
 			factory_shoes_style: string
 			color_sn: string
-			inventory_variation: Record<string, { shipped_out_qty: number }>
+			size_ledger: Record<string, { shipped_out_qty: number }>
 		}>
 	): Promise<void> {
 		const poShippingProgressBulkWriteOperator: AnyBulkWriteOperation<PurchaseOrderDocument>[] =
-			pendingInventoryVariation.map((change) => {
+			pendingInventoryFluctuation.map((change) => {
 				return {
 					updateOne: {
 						filter: { po: change.po },
@@ -105,11 +105,11 @@ export class ShippingProgressMongoRepository implements IShippingProgressMongoRe
 
 		const date = format(new Date(), 'yyyy-MM-dd')
 		const dailyShippingBulkWriteOperator: AnyBulkWriteOperation<DailyPoShippingProgressDocument>[] =
-			pendingInventoryVariation.map((change) => {
-				const incrementExpression = Object.entries(change.inventory_variation).reduce((acc, [size, variation]) => {
+			pendingInventoryFluctuation.map((change) => {
+				const incrementExpression = Object.entries(change.size_ledger).reduce((acc, [size, fluctuation]) => {
 					return {
 						...acc,
-						[`shipping_progress.${change.mo_no}.${size}`]: variation.shipped_out_qty
+						[`shipping_progress.${change.mo_no}.${size}`]: fluctuation.shipped_out_qty
 					}
 				}, {})
 

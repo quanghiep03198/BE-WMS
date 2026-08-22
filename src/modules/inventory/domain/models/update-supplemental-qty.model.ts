@@ -4,7 +4,7 @@ import { SupplementalQtyExcessException } from '../exceptions'
 
 export class UpdateSupplementalQtyModel extends AggregateRoot {
 	constructor(
-		private readonly variation: Array<{
+		private readonly fluctuation: Array<{
 			size_numcode: string
 			order_qty: number
 			beginning_inventory_qty: number
@@ -24,13 +24,12 @@ export class UpdateSupplementalQtyModel extends AggregateRoot {
 	}
 
 	updateSupplementalQty(): Record<
-		| `inventory_variation.${string}.supplemental_stocked_in_qty`
-		| `inventory_variation.${string}.supplemental_shipped_out_qty`,
+		`size_ledger.${string}.supplemental_stocked_in_qty` | `size_ledger.${string}.supplemental_shipped_out_qty`,
 		number
 	> {
 		const updateMap = new Map(this.update.map((item) => [item.size_numcode, item]))
 
-		const updateExpression = this.variation.map((item) => ({
+		const updateExpression = this.fluctuation.map((item) => ({
 			...item,
 			supplemental_stocked_in_qty:
 				updateMap.get(item.size_numcode)?.supplemental_stocked_in_qty ?? item.supplemental_stocked_in_qty,
@@ -47,7 +46,7 @@ export class UpdateSupplementalQtyModel extends AggregateRoot {
 		if (isOrderExcessed) throw new SupplementalQtyExcessException()
 
 		return flatten({
-			inventory_variation: updateExpression.reduce((acc, curr) => {
+			size_ledger: updateExpression.reduce((acc, curr) => {
 				return {
 					...acc,
 					[curr.size_numcode]: {

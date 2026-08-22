@@ -50,33 +50,30 @@ export class InventoryAuditRepository implements IInventoryAuditRepository {
 			.exec()
 
 		return data.map((item) => {
-			const inventoryVariation = Object.entries(item.inventory_variation)
+			const sizeLedger = Object.entries(item.size_ledger)
 				.sort(([size1], [size2]) => Number.parseFloat(size1) - Number.parseFloat(size2))
-				.map(([size, variation]) => {
+				.map(([size, fluctuation]) => {
 					return {
 						size_numcode: size,
-						order_qty: variation.order_qty,
-						beginning_inventory_qty: variation.beginning_inventory_qty,
-						stocked_in_qty: variation.stocked_in_qty,
-						shipped_out_qty: variation.shipped_out_qty,
-						supplemental_stocked_in_qty: variation.supplemental_stocked_in_qty,
-						supplemental_shipped_out_qty: variation.supplemental_shipped_out_qty,
+						order_qty: fluctuation.order_qty,
+						beginning_inventory_qty: fluctuation.beginning_inventory_qty,
+						stocked_in_qty: fluctuation.stocked_in_qty,
+						shipped_out_qty: fluctuation.shipped_out_qty,
+						supplemental_stocked_in_qty: fluctuation.supplemental_stocked_in_qty,
+						supplemental_shipped_out_qty: fluctuation.supplemental_shipped_out_qty,
 						final_inventory_qty:
-							variation.beginning_inventory_qty +
-							variation.stocked_in_qty +
-							variation.supplemental_stocked_in_qty -
-							variation.shipped_out_qty -
-							variation.supplemental_shipped_out_qty
+							fluctuation.beginning_inventory_qty +
+							fluctuation.stocked_in_qty +
+							fluctuation.supplemental_stocked_in_qty -
+							fluctuation.shipped_out_qty -
+							fluctuation.supplemental_shipped_out_qty
 					}
 				})
 
-			const totalBeginningInventoryQty = inventoryVariation.reduce(
-				(acc, curr) => acc + curr.beginning_inventory_qty,
-				0
-			)
-			const totalStockedInQty = inventoryVariation.reduce((acc, curr) => acc + curr.stocked_in_qty, 0)
-			const totalShippedOutQty = inventoryVariation.reduce((acc, curr) => acc + curr.shipped_out_qty, 0)
-			const totalSupplementalStockedInQty = inventoryVariation.reduce(
+			const totalBeginningInventoryQty = sizeLedger.reduce((acc, curr) => acc + curr.beginning_inventory_qty, 0)
+			const totalStockedInQty = sizeLedger.reduce((acc, curr) => acc + curr.stocked_in_qty, 0)
+			const totalShippedOutQty = sizeLedger.reduce((acc, curr) => acc + curr.shipped_out_qty, 0)
+			const totalSupplementalStockedInQty = sizeLedger.reduce(
 				(acc, curr) => acc + curr.supplemental_stocked_in_qty - curr.supplemental_shipped_out_qty,
 				0
 			)
@@ -96,7 +93,7 @@ export class InventoryAuditRepository implements IInventoryAuditRepository {
 				storage_locations: item.storage_locations,
 				final_inventory_qty:
 					totalBeginningInventoryQty + totalStockedInQty - totalShippedOutQty + totalSupplementalStockedInQty,
-				inventory_variation: inventoryVariation
+				size_ledger: sizeLedger
 			}
 		})
 	}
@@ -108,15 +105,15 @@ export class InventoryAuditRepository implements IInventoryAuditRepository {
 		return statuses as InventoryClosureStatus[]
 	}
 
-	@Transactional<TransactionalAdapterMongoose>(DATA_WAREHOUSE_CONNECTION)
-	public async updateInventoryAuditVariation(
-		pendingVariation: Array<{
+	// @Transactional<TransactionalAdapterMongoose>(DATA_WAREHOUSE_CONNECTION)
+	public async updateInventoryAuditFluctuation(
+		pendingFluctuation: Array<{
 			mo_no: string
-			po: string | null | undefined
-			factory_code_produce: string
-			factory_shoes_style: string
-			color_sn: string
-			inventory_variation: Record<
+			po?: string
+			factory_code_produce?: string
+			factory_shoes_style?: string
+			color_sn?: string
+			size_ledger: Record<
 				string,
 				{
 					order_qty: number
@@ -130,21 +127,21 @@ export class InventoryAuditRepository implements IInventoryAuditRepository {
 		storageLocation: Array<string> = []
 	) {
 		const manufacturingOrders = await this.manufacturingOrderModel
-			.find({ mo_no: { $in: pendingVariation.map(({ mo_no }) => mo_no) } })
+			.find({ mo_no: { $in: pendingFluctuation.map(({ mo_no }) => mo_no) } })
 			.lean()
 
 		const manufacturingOrdersMap = new Map(manufacturingOrders.map((mo) => [mo.mo_no, mo]))
 		const yearMonth = format(new Date(), 'yyyy-MM')
 
 		// * Cập nhật lại tồn kho trong tháng
-		const monthlyInventoryBulkWriteOperator = pendingVariation.flatMap((change) => {
-			const { inventory_variation } = manufacturingOrdersMap.get(change.mo_no)
+		const monthlyInventoryBulkWriteOperator = pendingFluctuation.flatMap((change) => {
+			const { size_ledger } = manufacturingOrdersMap.get(change.mo_no)
 
-			const inventoryVariation = Object.entries(inventory_variation).reduce((acc, [size, variation]) => {
+			const sizeLedger = Object.entries(size_ledger).reduce((acc, [size, fluctuation]) => {
 				return {
 					...acc,
 					[size]: {
-						order_qty: variation.order_qty,
+						order_qty: fluctuation.order_qty,
 						beginning_inventory_qty: 0,
 						stocked_in_qty: 0,
 						shipped_out_qty: 0,
@@ -154,14 +151,12 @@ export class InventoryAuditRepository implements IInventoryAuditRepository {
 				}
 			}, {})
 
-			this.logger.debug(inventoryVariation)
-
-			const incrementExpression = Object.entries(change.inventory_variation).reduce((acc, [size, variation]) => {
+			const incrementExpression = Object.entries(change.size_ledger).reduce((acc, [size, fluctuation]) => {
 				return {
 					...acc,
-					[`inventory_variation.${size}.stocked_in_qty`]:
-						variation.stocked_in_qty - variation.total_recall_tx + variation.total_return_tx,
-					[`inventory_variation.${size}.shipped_out_qty`]: variation.shipped_out_qty
+					[`size_ledger.${size}.stocked_in_qty`]:
+						fluctuation.stocked_in_qty - fluctuation.total_recall_tx + fluctuation.total_return_tx,
+					[`size_ledger.${size}.shipped_out_qty`]: fluctuation.shipped_out_qty
 				}
 			}, {})
 
@@ -174,7 +169,7 @@ export class InventoryAuditRepository implements IInventoryAuditRepository {
 								mo_no: change.mo_no,
 								year_month: yearMonth,
 								inventory_closure_status: 'pending',
-								inventory_variation: inventoryVariation
+								size_ledger: sizeLedger
 							},
 							$addToSet: {
 								storage_locations: { $each: storageLocation }
@@ -210,19 +205,10 @@ export class InventoryAuditRepository implements IInventoryAuditRepository {
 			year_month: string
 		},
 		update: Record<
-			| `inventory_variation.${string}.supplemental_stocked_in_qty`
-			| `inventory_variation.${string}.supplemental_shipped_out_qty`,
+			`size_ledger.${string}.supplemental_stocked_in_qty` | `size_ledger.${string}.supplemental_shipped_out_qty`,
 			number
 		>
 	): Promise<void> {
-		// const updateOperation = update.reduce((acc, curr) => {
-		// 	return {
-		// 		...acc,
-		// 		[`inventory_variation.${curr.size_numcode}.supplemental_stocked_in_qty`]: curr.supplemental_stocked_in_qty,
-		// 		[`inventory_variation.${curr.size_numcode}.supplemental_shipped_out_qty`]: curr.supplemental_shipped_out_qty
-		// 	}
-		// }, {})
-
 		await this.moInventoryAuditModel
 			.updateOne({ ...filterQuery, inventory_closure_status: 'pending' }, { $set: update })
 			.exec()
@@ -332,7 +318,7 @@ export class InventoryAuditRepository implements IInventoryAuditRepository {
 					fgColor: { argb: ExcelColorPalette.BG_LIGHT_BLUE }
 				}
 			}
-			for (const subRecord of record.inventory_variation) {
+			for (const subRecord of record.size_ledger) {
 				const subRow = worksheet.addRow([])
 				subRow.getCell(5).value = subRecord.size_numcode + '#'
 				subRow.getCell(5).fill = {

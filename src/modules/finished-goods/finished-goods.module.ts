@@ -13,10 +13,10 @@ import { TenancyModule } from '../tenancy/tenancy.module'
 import { ThirdPartyApiModule } from '../third-party-api/third-party-api.module'
 import { FinishedGoodsCommandHandlers } from './application/commands'
 import { EPC_MONGO_REPOSITORY } from './application/ports/epc-mongo.repository.port'
-import { INVENTORY_VARIATION_MONGO_REPOSITORY } from './application/ports/inventory-variation-mongo.repository.port'
+import { INVENTORY_LEDGER_MG_REPOSITORY } from './application/ports/inventory-ledger-mongo.repository.port'
 import { MSSQL_FINISHED_GOODS_REPOSITORY } from './application/ports/mssql-finished-goods.repository.port'
 import { SHIPPING_PROGRESS_MONGO_REPOSITORY } from './application/ports/shipping-progress-mongo.repository.port'
-import { STOCK_TRANSACTION_MONGO_REPOSITORY } from './application/ports/stock-transaction-mongo.repository.port'
+import { STOCK_TX_MONGO_REPOSITORY } from './application/ports/stock-transaction-mongo.repository.port'
 import { FinishedGoodsQueryHandlers } from './application/queries'
 import { FinishedGoodsSagas } from './application/sagas'
 import { FinishedGoodsEventHandlers } from './domain/events'
@@ -24,15 +24,15 @@ import { MONGO_EPC_CHANGE_STREAM_FACTORY } from './domain/interfaces/epc-change-
 import { FinishedGoodsCdcHandlers } from './infrastructure/cdc'
 import { MongoEpcChangeStreamFactory } from './infrastructure/persistence/mongodb/epc-change-stream.factory'
 import { EpcMongoRepository } from './infrastructure/persistence/mongodb/repositories/epc-mongo.repository'
-import { InventoryVariationMongoRepository } from './infrastructure/persistence/mongodb/repositories/inventory-variation-mongo.repository'
+import { InventoryLedgerMongoRepository } from './infrastructure/persistence/mongodb/repositories/inventory-ledger-mongo.repository'
 import { ShippingProgressMongoRepository } from './infrastructure/persistence/mongodb/repositories/shipping-progress-mongo.repository'
 import { StockTransactionMongoRepository } from './infrastructure/persistence/mongodb/repositories/stock-transaction-mongo.repository'
 import {
-	DAILY_MO_INVENTORY_VARIATION_COLLECTION,
-	DailyMoInventoryVariation,
-	DailyMoInventoryVariationModel,
-	DailyMoInventoryVariationSchema
-} from './infrastructure/persistence/mongodb/schemas/daily-mo-inventory-variation.schema'
+	DAILY_MO_INVENTORY_LEDGER_COLLECTION,
+	DailyMoInventoryLedger,
+	DailyMoInventoryLedgerModel,
+	DailyMoInventoryLedgerSchema
+} from './infrastructure/persistence/mongodb/schemas/daily-mo-inventory-ledger.schema'
 import {
 	DAILY_PO_SHIPPING_PROGRESS_COLLECTION,
 	DailyPoShippingProgress,
@@ -74,10 +74,12 @@ import {
 	BULK_WRITE_INBOUND_EPCS_QUEUE,
 	BULK_WRITE_OUTBOUND_EPCS_QUEUE,
 	COMMIT_EXCHANGE_MO_QUEUE,
+	COMMIT_STOCK_BALANCES_QUEUE,
 	COMMIT_STOCK_OUT_QUEUE,
-	COMMIT_STOCK_VARIATION_QUEUE,
 	COMMIT_UPSERT_EPC_MATCH_QUEUE,
-	IMPORT_INOUTBOUND_EPCS_QUEUE
+	FINISHED_GOODS_JOB_OPTIONS,
+	IMPORT_INOUTBOUND_EPCS_QUEUE,
+	ROLLBACK_INBOUND_TX_QUEUE
 } from './infrastructure/queues'
 import { FinishedGoodsConsumers } from './infrastructure/queues/consumers'
 import { FinsishedGoodsQueueEvents } from './infrastructure/queues/events'
@@ -95,40 +97,24 @@ import { FinishedGoodsListeners } from './presentation/listeners'
 		BullModule.registerQueue({ name: BULK_WRITE_OUTBOUND_EPCS_QUEUE }),
 		BullModule.registerQueue({ name: IMPORT_INOUTBOUND_EPCS_QUEUE }),
 		BullModule.registerQueue({
-			name: COMMIT_STOCK_VARIATION_QUEUE,
-			defaultJobOptions: {
-				attempts: 10,
-				removeOnComplete: { count: 10 },
-				removeOnFail: { count: 100 },
-				backoff: { type: 'fixed', delay: 10_000 }
-			}
+			name: COMMIT_STOCK_BALANCES_QUEUE,
+			defaultJobOptions: FINISHED_GOODS_JOB_OPTIONS
 		}),
 		BullModule.registerQueue({
 			name: COMMIT_STOCK_OUT_QUEUE,
-			defaultJobOptions: {
-				attempts: 10,
-				removeOnComplete: { count: 10 },
-				removeOnFail: { count: 100 },
-				backoff: { type: 'fixed', delay: 10_000 }
-			}
+			defaultJobOptions: FINISHED_GOODS_JOB_OPTIONS
 		}),
 		BullModule.registerQueue({
 			name: COMMIT_EXCHANGE_MO_QUEUE,
-			defaultJobOptions: {
-				attempts: 10,
-				removeOnComplete: { count: 10 },
-				removeOnFail: { count: 100 },
-				backoff: { type: 'fixed', delay: 3000 }
-			}
+			defaultJobOptions: FINISHED_GOODS_JOB_OPTIONS
 		}),
 		BullModule.registerQueue({
 			name: COMMIT_UPSERT_EPC_MATCH_QUEUE,
-			defaultJobOptions: {
-				attempts: 10,
-				removeOnComplete: { count: 10 },
-				removeOnFail: { count: 100 },
-				backoff: { type: 'fixed', delay: 3000 }
-			}
+			defaultJobOptions: FINISHED_GOODS_JOB_OPTIONS
+		}),
+		BullModule.registerQueue({
+			name: ROLLBACK_INBOUND_TX_QUEUE,
+			defaultJobOptions: FINISHED_GOODS_JOB_OPTIONS
 		}),
 		TypeOrmModule.forFeature(
 			[RFIDInventoryEntity, RFIDInventoryBackupEntity, RFIDMatchEntity, RFIDDeviceEntity],
@@ -152,9 +138,9 @@ import { FinishedGoodsListeners } from './presentation/listeners'
 					schema: ManufacturingOrderSchema
 				},
 				{
-					name: DailyMoInventoryVariation.name,
-					collection: DAILY_MO_INVENTORY_VARIATION_COLLECTION,
-					schema: DailyMoInventoryVariationSchema
+					name: DailyMoInventoryLedger.name,
+					collection: DAILY_MO_INVENTORY_LEDGER_COLLECTION,
+					schema: DailyMoInventoryLedgerSchema
 				},
 				{
 					name: PurchaseOrder.name,
@@ -187,15 +173,15 @@ import { FinishedGoodsListeners } from './presentation/listeners'
 			useClass: EpcMongoRepository
 		},
 		{
-			provide: INVENTORY_VARIATION_MONGO_REPOSITORY,
-			useClass: InventoryVariationMongoRepository
+			provide: INVENTORY_LEDGER_MG_REPOSITORY,
+			useClass: InventoryLedgerMongoRepository
 		},
 		{
 			provide: SHIPPING_PROGRESS_MONGO_REPOSITORY,
 			useClass: ShippingProgressMongoRepository
 		},
 		{
-			provide: STOCK_TRANSACTION_MONGO_REPOSITORY,
+			provide: STOCK_TX_MONGO_REPOSITORY,
 			useClass: StockTransactionMongoRepository
 		},
 		{
@@ -211,9 +197,9 @@ import { FinishedGoodsListeners } from './presentation/listeners'
 		MongooseModule,
 		FinishedGoodsGateway,
 		EPC_MONGO_REPOSITORY,
-		INVENTORY_VARIATION_MONGO_REPOSITORY,
+		INVENTORY_LEDGER_MG_REPOSITORY,
 		SHIPPING_PROGRESS_MONGO_REPOSITORY,
-		STOCK_TRANSACTION_MONGO_REPOSITORY,
+		STOCK_TX_MONGO_REPOSITORY,
 		MSSQL_FINISHED_GOODS_REPOSITORY
 	]
 })
@@ -225,8 +211,8 @@ export class FinishedGoodsModule implements OnModuleInit {
 		private readonly finishedGoodsEpcModel: FinishedGoodsEpcModel,
 		@InjectModel(ManufacturingOrder.name, DATA_WAREHOUSE_CONNECTION)
 		private readonly manufacturingOrderModel: ManufacturingOrderModel,
-		@InjectModel(DailyMoInventoryVariation.name, DATA_WAREHOUSE_CONNECTION)
-		private readonly dailyMoInventoryVariationModel: DailyMoInventoryVariationModel,
+		@InjectModel(DailyMoInventoryLedger.name, DATA_WAREHOUSE_CONNECTION)
+		private readonly dailyMoInventoryLedgerModel: DailyMoInventoryLedgerModel,
 		@InjectModel(FinishedGoodsEpcMatch.name, DATA_WAREHOUSE_CONNECTION)
 		private readonly finishedGoodsEpcMatchModel: FinishedGoodsEpcMatchModel,
 		@InjectModel(PurchaseOrder.name, DATA_WAREHOUSE_CONNECTION)
@@ -241,7 +227,7 @@ export class FinishedGoodsModule implements OnModuleInit {
 				this.finishedGoodsEpcModel.syncIndexes(),
 				this.finishedGoodsEpcMatchModel.syncIndexes(),
 				this.manufacturingOrderModel.syncIndexes(),
-				this.dailyMoInventoryVariationModel.syncIndexes(),
+				this.dailyMoInventoryLedgerModel.syncIndexes(),
 				this.purchaseOrderModel.syncIndexes(),
 				this.dailyPoShippingProgressModel.syncIndexes()
 			])

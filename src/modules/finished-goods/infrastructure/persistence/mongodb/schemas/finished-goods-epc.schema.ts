@@ -89,6 +89,15 @@ export class FinishedGoodsEpc {
 
 	@Prop({ type: String, enum: Object.values(FinishedGoodsEpcStatus), default: FinishedGoodsEpcStatus.SCANNING })
 	status: FinishedGoodsEpcStatus
+
+	@Prop({ type: String })
+	stock_in_tx: string
+
+	@Prop({ type: String })
+	ship_out_tx: string
+
+	@Prop({ type: String })
+	recall_tx: string
 }
 
 export const FinishedGoodsEpcSchema = SchemaFactory.createForClass(FinishedGoodsEpc)

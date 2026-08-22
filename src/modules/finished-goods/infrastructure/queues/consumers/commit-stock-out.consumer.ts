@@ -28,7 +28,7 @@ export class CommitStockOutConsumer extends WorkerHost {
 					size_numcode: string
 					factory_code: string
 					status: string
-					inventory_variation_type: InventoryStorageType
+					inventory_ledger_type: InventoryStorageType
 					station_no: StationNO
 				}>
 			>,

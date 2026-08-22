@@ -74,7 +74,7 @@ export class FinishedGoodsEpcMatchCdcHandler implements ICdcHandler {
 					break
 				}
 				case 'update': {
-					const inventoryVariationChanges = await this.finishedGoodsEpcModel.aggregate<{
+					const inventoryFluctuationChanges = await this.finishedGoodsEpcModel.aggregate<{
 						old_group: Record<'mo_no' | 'size_numcode', string>
 						new_group: Record<'mo_no' | 'size_numcode', string>
 						epcs: Array<{ epc: string; status: FinishedGoodsEpcStatus }>
@@ -156,20 +156,17 @@ export class FinishedGoodsEpcMatchCdcHandler implements ICdcHandler {
 						}
 					])
 
-					if (inventoryVariationChanges.length === 0) return
+					if (inventoryFluctuationChanges.length === 0) return
 
 					await this.manufacturingOrderModel.bulkWrite(
-						inventoryVariationChanges.map((change) => ({
+						inventoryFluctuationChanges.map((change) => ({
 							updateOne: {
 								filter: { mo_no: change.old_group.mo_no },
 								update: {
 									$inc: {
-										[`inventory_variation.${change.old_group.size_numcode}.stocked_in_qty`]:
-											-change.stocked_in_qty,
-										[`inventory_variation.${change.old_group.size_numcode}.shipped_out_qty`]:
-											-change.shipped_out_qty,
-										[`inventory_variation.${change.old_group.size_numcode}.total_recall_tx`]:
-											-change.total_recall_tx
+										[`size_ledger.${change.old_group.size_numcode}.stocked_in_qty`]: -change.stocked_in_qty,
+										[`size_ledger.${change.old_group.size_numcode}.shipped_out_qty`]: -change.shipped_out_qty,
+										[`size_ledger.${change.old_group.size_numcode}.total_recall_tx`]: -change.total_recall_tx
 									}
 								}
 							}
@@ -177,17 +174,14 @@ export class FinishedGoodsEpcMatchCdcHandler implements ICdcHandler {
 					)
 
 					await this.manufacturingOrderModel.bulkWrite(
-						inventoryVariationChanges.map((change) => ({
+						inventoryFluctuationChanges.map((change) => ({
 							updateOne: {
 								filter: { mo_no: change.new_group.mo_no },
 								update: {
 									$inc: {
-										[`inventory_variation.${change.new_group.size_numcode}.stocked_in_qty`]:
-											change.stocked_in_qty,
-										[`inventory_variation.${change.new_group.size_numcode}.shipped_out_qty`]:
-											change.shipped_out_qty,
-										[`inventory_variation.${change.new_group.size_numcode}.total_recall_tx`]:
-											change.total_recall_tx
+										[`size_ledger.${change.new_group.size_numcode}.stocked_in_qty`]: change.stocked_in_qty,
+										[`size_ledger.${change.new_group.size_numcode}.shipped_out_qty`]: change.shipped_out_qty,
+										[`size_ledger.${change.new_group.size_numcode}.total_recall_tx`]: change.total_recall_tx
 									}
 								}
 							}

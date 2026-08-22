@@ -3,16 +3,16 @@ import {
 	IEpcMongoRepository
 } from '@modules/finished-goods/application/ports/epc-mongo.repository.port'
 import {
-	IInventoryVariationMongoRepository,
-	INVENTORY_VARIATION_MONGO_REPOSITORY
-} from '@modules/finished-goods/application/ports/inventory-variation-mongo.repository.port'
+	IInventoryLedgerMongoRepository,
+	INVENTORY_LEDGER_MG_REPOSITORY
+} from '@modules/finished-goods/application/ports/inventory-ledger-mongo.repository.port'
 import {
 	IShippingProgressMongoRepository,
 	SHIPPING_PROGRESS_MONGO_REPOSITORY
 } from '@modules/finished-goods/application/ports/shipping-progress-mongo.repository.port'
 import {
 	IStockTransactionMongoRepository,
-	STOCK_TRANSACTION_MONGO_REPOSITORY
+	STOCK_TX_MONGO_REPOSITORY
 } from '@modules/finished-goods/application/ports/stock-transaction-mongo.repository.port'
 import { StockOutTransaction } from '@modules/finished-goods/domain/models/stock-out-transaction.model'
 import { SizeNumber } from '@modules/finished-goods/domain/value-objects/size-number.vo'
@@ -26,11 +26,11 @@ export class StockOutHandler implements ICommandHandler<StockOutCommand> {
 	constructor(
 		@InjectPinoLogger(StockOutHandler.name) private readonly logger,
 		@Inject(EPC_MONGO_REPOSITORY) private readonly epcMongoRepository: IEpcMongoRepository,
-		@Inject(INVENTORY_VARIATION_MONGO_REPOSITORY)
-		private readonly inventoryVariationMongoRepository: IInventoryVariationMongoRepository,
+		@Inject(INVENTORY_LEDGER_MG_REPOSITORY)
+		private readonly inventoryLedgerMongoRepository: IInventoryLedgerMongoRepository,
 		@Inject(SHIPPING_PROGRESS_MONGO_REPOSITORY)
 		private readonly shippingProgressMongoRepository: IShippingProgressMongoRepository,
-		@Inject(STOCK_TRANSACTION_MONGO_REPOSITORY)
+		@Inject(STOCK_TX_MONGO_REPOSITORY)
 		private readonly stockTransactionMongoRepository: IStockTransactionMongoRepository,
 		private readonly eventPublisher: EventPublisher
 	) {}
@@ -47,7 +47,7 @@ export class StockOutHandler implements ICommandHandler<StockOutCommand> {
 		const moInventories = (
 			await Promise.all(
 				mo.map(async (m) =>
-					(await this.inventoryVariationMongoRepository.getMoInventory(m)).map((item) => ({
+					(await this.inventoryLedgerMongoRepository.getMoInventory(m)).map((item) => ({
 						...item,
 						size_numcode: new SizeNumber(item.size_numcode)
 					}))
@@ -61,9 +61,9 @@ export class StockOutHandler implements ICommandHandler<StockOutCommand> {
 
 		const stockOutTransaction = new StockOutTransaction(pendingOutboundEpcs, outboundProgress, moInventories)
 
-		stockOutTransaction.startTransaction()
+		const transactionId = stockOutTransaction.startTransaction()
 
-		await this.stockTransactionMongoRepository.stockOut(pendingOutboundEpcs)
+		await this.stockTransactionMongoRepository.stockOut(transactionId, pendingOutboundEpcs)
 
 		this.eventPublisher.mergeObjectContext(stockOutTransaction)
 		stockOutTransaction.commit()

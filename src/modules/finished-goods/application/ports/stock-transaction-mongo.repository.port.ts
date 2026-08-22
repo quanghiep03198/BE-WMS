@@ -1,9 +1,11 @@
+import { FinishedGoodsEpcStatus } from '@modules/finished-goods/domain/constants'
 import { ElectronicProductCode } from '@modules/finished-goods/domain/value-objects/epc.vo'
 
 export interface IStockTransactionMongoRepository {
-	stockIn(pendingStockInEpcs: Array<ElectronicProductCode>): Promise<void>
-	stockOut(pendingShipOutEpcs: Array<ElectronicProductCode>): Promise<void>
-	recallFromStock(pendingRecallEpcs: Array<ElectronicProductCode>): Promise<void>
+	stockIn(transactionId: string, pendingStockInEpcs: Array<ElectronicProductCode>): Promise<void>
+	stockOut(transactionId: string, pendingShipOutEpcs: Array<ElectronicProductCode>): Promise<void>
+	recallFromStock(transactionId: string, pendingRecallEpcs: Array<ElectronicProductCode>): Promise<void>
+	rollbackInboundTransaction(transactionId: string): Promise<Array<{ epc: string; status: FinishedGoodsEpcStatus }>>
 }
 
-export const STOCK_TRANSACTION_MONGO_REPOSITORY = Symbol('IStockTransactionMongoRepository')
+export const STOCK_TX_MONGO_REPOSITORY = Symbol('IStockTransactionMongoRepository')

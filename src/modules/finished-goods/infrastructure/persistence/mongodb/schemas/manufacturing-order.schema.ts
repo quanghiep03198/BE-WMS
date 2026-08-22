@@ -39,7 +39,7 @@ export class ManufacturingOrder {
 	order_qty: number
 
 	@Prop({ type: Object, requried: true })
-	inventory_variation: Record<
+	size_ledger: Record<
 		string,
 		{
 			order_qty: number
@@ -56,7 +56,7 @@ export const ManufacturingOrderSchema = SchemaFactory.createForClass(Manufacturi
 ManufacturingOrderSchema.index({ mo_no: 1 }, { name: 'idx_mo', unique: true })
 
 ManufacturingOrderSchema.virtual('daily_inbound_history', {
-	ref: 'DailyMoInventoryVariation',
+	ref: 'DailyMoInventoryLedger',
 	localField: 'mo_no',
 	foreignField: 'mo_no'
 })

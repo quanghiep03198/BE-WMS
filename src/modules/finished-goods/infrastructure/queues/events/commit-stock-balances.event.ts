@@ -1,11 +1,11 @@
 import { OnQueueEvent, QueueEventsHost, QueueEventsListener } from '@nestjs/bullmq'
 import type { QueueEventsListener as IQueueEventsListener } from 'bullmq'
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
-import { COMMIT_STOCK_VARIATION_QUEUE } from '..'
+import { COMMIT_STOCK_BALANCES_QUEUE } from '..'
 
-@QueueEventsListener(COMMIT_STOCK_VARIATION_QUEUE)
-export class CommitStockVariationQueueEvent extends QueueEventsHost {
-	constructor(@InjectPinoLogger(CommitStockVariationQueueEvent.name) private readonly logger: PinoLogger) {
+@QueueEventsListener(COMMIT_STOCK_BALANCES_QUEUE)
+export class CommitStockBalancesQueueEvent extends QueueEventsHost {
+	constructor(@InjectPinoLogger(CommitStockBalancesQueueEvent.name) private readonly logger: PinoLogger) {
 		super()
 	}
 

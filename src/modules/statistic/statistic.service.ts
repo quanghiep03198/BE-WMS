@@ -5,9 +5,9 @@ import { DefectiveGoodsEntity } from '../defective-goods/entities/defective-good
 // import { RFIDInventoryBackupEntity } from '../rfid/infrastructure/entities/rifd-inventory.entity'
 import { DATA_SOURCE_DATA_LAKE, DATA_WAREHOUSE_CONNECTION } from '@databases/constants'
 import {
-	DailyMoInventoryVariation,
-	DailyMoInventoryVariationModel
-} from '@modules/finished-goods/infrastructure/persistence/mongodb/schemas/daily-mo-inventory-variation.schema'
+	DailyMoInventoryLedger,
+	DailyMoInventoryLedgerModel
+} from '@modules/finished-goods/infrastructure/persistence/mongodb/schemas/daily-mo-inventory-ledger.schema'
 import {
 	MoInventoryAudit,
 	MoInventoryAuditModel
@@ -22,8 +22,8 @@ export class StatisticService {
 	constructor(
 		@InjectModel(MoInventoryAudit.name, DATA_WAREHOUSE_CONNECTION)
 		private readonly moInventoryAuditModel: MoInventoryAuditModel,
-		@InjectModel(DailyMoInventoryVariation.name, DATA_WAREHOUSE_CONNECTION)
-		private readonly dailyMoInventoryVariation: DailyMoInventoryVariationModel,
+		@InjectModel(DailyMoInventoryLedger.name, DATA_WAREHOUSE_CONNECTION)
+		private readonly dailyMoInventoryLedger: DailyMoInventoryLedgerModel,
 		@InjectDataSource(DATA_SOURCE_DATA_LAKE) private readonly dataSource: DataSource
 	) {}
 
@@ -62,44 +62,44 @@ export class StatisticService {
 			{
 				$project: {
 					year_month: 1,
-					inventory_variation_array: { $objectToArray: '$inventory_variation' }
+					size_ledger_array: { $objectToArray: '$size_ledger' }
 				}
 			},
-			{ $unwind: '$inventory_variation_array' },
+			{ $unwind: '$size_ledger_array' },
 			{
 				$project: {
 					year_month: 1,
-					variation: '$inventory_variation_array.v'
+					fluctuation: '$size_ledger_array.v'
 				}
 			},
 			{
 				$group: {
 					_id: '$year_month',
-					month_initial_qty: { $sum: { $ifNull: ['$variation.beginning_inventory_qty', 0] } },
+					month_initial_qty: { $sum: { $ifNull: ['$fluctuation.beginning_inventory_qty', 0] } },
 					month_inbound_qty: {
 						$sum: {
 							$add: [
-								{ $ifNull: ['$variation.stocked_in_qty', 0] },
-								{ $ifNull: ['$variation.supplemental_stocked_in_qty', 0] }
+								{ $ifNull: ['$fluctuation.stocked_in_qty', 0] },
+								{ $ifNull: ['$fluctuation.supplemental_stocked_in_qty', 0] }
 							]
 						}
 					},
 					month_outbound_qty: {
 						$sum: {
 							$add: [
-								{ $ifNull: ['$variation.shipped_out_qty', 0] },
-								{ $ifNull: ['$variation.supplemental_shipped_out_qty', 0] }
+								{ $ifNull: ['$fluctuation.shipped_out_qty', 0] },
+								{ $ifNull: ['$fluctuation.supplemental_shipped_out_qty', 0] }
 							]
 						}
 					},
 					month_final_qty: {
 						$sum: {
 							$add: [
-								{ $ifNull: ['$variation.beginning_inventory_qty', 0] },
-								{ $ifNull: ['$variation.stocked_in_qty', 0] },
-								{ $ifNull: ['$variation.supplemental_stocked_in_qty', 0] },
-								{ $multiply: [{ $ifNull: ['$variation.shipped_out_qty', 0] }, -1] },
-								{ $multiply: [{ $ifNull: ['$variation.supplemental_shipped_out_qty', 0] }, -1] }
+								{ $ifNull: ['$fluctuation.beginning_inventory_qty', 0] },
+								{ $ifNull: ['$fluctuation.stocked_in_qty', 0] },
+								{ $ifNull: ['$fluctuation.supplemental_stocked_in_qty', 0] },
+								{ $multiply: [{ $ifNull: ['$fluctuation.shipped_out_qty', 0] }, -1] },
+								{ $multiply: [{ $ifNull: ['$fluctuation.supplemental_shipped_out_qty', 0] }, -1] }
 							]
 						}
 					}
@@ -179,14 +179,14 @@ export class StatisticService {
 							replacement: ''
 						}
 					},
-					inventory_variation_array: { $objectToArray: '$inventory_variation' }
+					size_ledger_array: { $objectToArray: '$size_ledger' }
 				}
 			},
 			{
 				$project: {
 					year: { $toInt: { $substr: ['$normalized_year_month', 0, 4] } },
 					month: { $toInt: { $substr: ['$normalized_year_month', 4, 2] } },
-					inventory_variation_array: 1
+					size_ledger_array: 1
 				}
 			},
 			{
@@ -194,11 +194,11 @@ export class StatisticService {
 					year
 				}
 			},
-			{ $unwind: '$inventory_variation_array' },
+			{ $unwind: '$size_ledger_array' },
 			{
 				$project: {
 					month: 1,
-					variation: '$inventory_variation_array.v'
+					fluctuation: '$size_ledger_array.v'
 				}
 			},
 			{
@@ -206,19 +206,19 @@ export class StatisticService {
 					_id: '$month',
 					inbound_qty: {
 						$sum: {
-							$ifNull: ['$variation.stocked_in_qty', 0]
+							$ifNull: ['$fluctuation.stocked_in_qty', 0]
 							// $add: [
-							// 	{ $ifNull: ['$variation.stocked_in_qty', 0] },
-							// 	{ $ifNull: ['$variation.supplemental_stocked_in_qty', 0] }
+							// 	{ $ifNull: ['$fluctuation.stocked_in_qty', 0] },
+							// 	{ $ifNull: ['$fluctuation.supplemental_stocked_in_qty', 0] }
 							// ]
 						}
 					},
 					outbound_qty: {
 						$sum: {
-							$ifNull: ['$variation.shipped_out_qty', 0]
+							$ifNull: ['$fluctuation.shipped_out_qty', 0]
 							// $add: [
-							// 	{ $ifNull: ['$variation.shipped_out_qty', 0] },
-							// 	{ $ifNull: ['$variation.supplemental_shipped_out_qty', 0] }
+							// 	{ $ifNull: ['$fluctuation.shipped_out_qty', 0] },
+							// 	{ $ifNull: ['$fluctuation.supplemental_shipped_out_qty', 0] }
 							// ]
 						}
 					}
@@ -295,23 +295,23 @@ export class StatisticService {
 	}
 
 	public async getAssemblyLineProductivity() {
-		const data = await this.dailyMoInventoryVariation
+		const data = await this.dailyMoInventoryLedger
 			.find(
 				{
 					date: { $gte: format(subMonths(new Date(), 3), 'yyyy-MM-dd') }
 				},
-				{ mo_no: 1, date: 1, inventory_variation: 1 }
+				{ mo_no: 1, date: 1, size_ledger: 1 }
 			)
 			.populate('mo_attrs', 'brand_name')
-			.select(['date', 'mo_attrs', 'inventory_variation'])
+			.select(['date', 'mo_attrs', 'size_ledger'])
 			.lean({ virtuals: true })
 			.exec()
 
 		return data.map((item) => ({
 			work_date: item.date,
 			brand_name: item.mo_attrs?.brand_name,
-			volumn: Object.values(item.inventory_variation).reduce(
-				(sum, variation) => sum + (variation.stocked_in_qty ?? 0),
+			volumn: Object.values(item.size_ledger).reduce(
+				(sum, fluctuation) => sum + (fluctuation.stocked_in_qty ?? 0),
 				0
 			)
 		}))
@@ -373,21 +373,21 @@ export class StatisticService {
 			{
 				$project: {
 					year_month: 1,
-					inventory_variation_array: { $objectToArray: '$inventory_variation' }
+					size_ledger_array: { $objectToArray: '$size_ledger' }
 				}
 			},
-			{ $unwind: '$inventory_variation_array' },
+			{ $unwind: '$size_ledger_array' },
 			{
 				$project: {
 					year_month: 1,
-					variation: '$inventory_variation_array.v'
+					fluctuation: '$size_ledger_array.v'
 				}
 			},
 			{
 				$group: {
 					_id: '$year_month',
-					inbound_qty: { $sum: { $ifNull: ['$variation.stocked_in_qty', 0] } },
-					outbound_qty: { $sum: { $ifNull: ['$variation.shipped_out_qty', 0] } }
+					inbound_qty: { $sum: { $ifNull: ['$fluctuation.stocked_in_qty', 0] } },
+					outbound_qty: { $sum: { $ifNull: ['$fluctuation.shipped_out_qty', 0] } }
 				}
 			}
 		])

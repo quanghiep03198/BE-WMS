@@ -6,14 +6,14 @@ export interface IInventoryAuditRepository {
 
 	getInventoryAuditClosureStatus(month: string): Promise<Array<InventoryClosureStatus>>
 
-	updateInventoryAuditVariation(
-		pendingVariation: {
+	updateInventoryAuditFluctuation(
+		inventoryFluctuationData: {
 			mo_no: string
-			po: string
-			factory_code_produce: string
-			factory_shoes_style: string
-			color_sn: string
-			inventory_variation: Record<
+			po?: string
+			factory_code_produce?: string
+			factory_shoes_style?: string
+			color_sn?: string
+			size_ledger: Record<
 				string,
 				{
 					stocked_in_qty: number
@@ -29,15 +29,9 @@ export interface IInventoryAuditRepository {
 	saveSupplementalQty(
 		filter: { mo_no: string; year_month: string },
 		update: Record<
-			| `inventory_variation.${string}.supplemental_stocked_in_qty`
-			| `inventory_variation.${string}.supplemental_shipped_out_qty`,
+			`size_ledger.${string}.supplemental_stocked_in_qty` | `size_ledger.${string}.supplemental_shipped_out_qty`,
 			number
 		>
-		// update: {
-		// 	supplemental_stocked_in_qty?: number
-		// 	supplemental_shipped_out_qty?: number
-		// 	size_numcode?: string
-		// }[]
 	): Promise<void>
 
 	checkoutInventoryAudit(month: string): Promise<any[]>

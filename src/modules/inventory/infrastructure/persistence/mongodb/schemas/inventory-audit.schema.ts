@@ -30,7 +30,7 @@ export class MoInventoryAudit {
 	storage_locations: Array<string>
 
 	@Prop({ type: Object, required: true, default: {} })
-	inventory_variation: Record<
+	size_ledger: Record<
 		string,
 		{
 			order_qty: number
@@ -55,7 +55,7 @@ MoInventoryAuditSchema.virtual('mo_attrs', {
 })
 
 MoInventoryAuditSchema.virtual('daily_mo_inv_attrs', {
-	ref: 'DailyMoInventoryVariation',
+	ref: 'DailyMoInventoryLedger',
 	localField: 'mo_no',
 	foreignField: 'mo_no'
 })
@@ -72,7 +72,7 @@ export type MoInventoryAuditDocument = HydratedDocument<MoInventoryAudit> & {
 		cust_shoes_style: string
 		factory_shoes_style: string
 		color_sn: string
-		inventory_variation: Record<
+		size_ledger: Record<
 			string,
 			{
 				order_qty: number

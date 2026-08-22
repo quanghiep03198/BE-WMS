@@ -1,20 +1,20 @@
 import { InventoryActions, InventoryStorageType } from '@modules/finished-goods/domain/constants'
 import { StockFlow } from '@modules/finished-goods/domain/types'
 import { generateStation, StationNO } from '@modules/finished-goods/domain/utils'
-import { COMMIT_STOCK_VARIATION_QUEUE } from '@modules/finished-goods/infrastructure/queues'
+import { COMMIT_STOCK_BALANCES_QUEUE } from '@modules/finished-goods/infrastructure/queues'
 import { InjectQueue } from '@nestjs/bullmq'
 import { CommandHandler, EventBus, ICommandHandler } from '@nestjs/cqrs'
 import { Queue } from 'bullmq'
 import { chunk } from 'lodash'
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
-import { CommitStockVariationCommand } from './commit-stock-variation.command'
+import { CommitStockBalancesCommand } from './commit-stock-balances.command'
 
-@CommandHandler(CommitStockVariationCommand)
-export class CommitStockVariationHandler implements ICommandHandler<CommitStockVariationCommand> {
+@CommandHandler(CommitStockBalancesCommand)
+export class CommitStockBalancesHandler implements ICommandHandler<CommitStockBalancesCommand> {
 	constructor(
-		@InjectPinoLogger(CommitStockVariationHandler.name) private readonly logger: PinoLogger,
-		@InjectQueue(COMMIT_STOCK_VARIATION_QUEUE)
-		private readonly commitStockVariationQueue: Queue<
+		@InjectPinoLogger(CommitStockBalancesHandler.name) private readonly logger: PinoLogger,
+		@InjectQueue(COMMIT_STOCK_BALANCES_QUEUE)
+		private readonly commitStockBalancesQueue: Queue<
 			Array<
 				Array<{
 					epc: string
@@ -22,7 +22,7 @@ export class CommitStockVariationHandler implements ICommandHandler<CommitStockV
 					size_numcode: string
 					factory_code: string
 					status: string
-					inventory_variation_type: string
+					inventory_ledger_type: string
 					dept_code: string
 					dept_name: string
 					storage: string
@@ -33,28 +33,28 @@ export class CommitStockVariationHandler implements ICommandHandler<CommitStockV
 		private readonly eventBus: EventBus
 	) {}
 
-	public async execute({ pendingInboundEpcs, stockFlow }: CommitStockVariationCommand): Promise<void> {
+	public async execute({ pendingInboundEpcs, stockFlow }: CommitStockBalancesCommand): Promise<void> {
 		try {
 			const data = chunk(pendingInboundEpcs, 100).map((ck) => {
 				return ck
 					.filter((item) => item.getIsWritable() && !item.getIsInternal())
 					.map((item) => {
-						const variationFlow: Map<
+						const stockFlowMapping: Map<
 							StockFlow,
-							{ status: InventoryActions; inventory_variation_type: InventoryStorageType }
+							{ status: InventoryActions; inventory_ledger_type: InventoryStorageType }
 						> = new Map([
 							[
 								'inbound',
 								{
 									status: InventoryActions.INBOUND,
-									inventory_variation_type: InventoryStorageType.NORMAL_IMPORT
+									inventory_ledger_type: InventoryStorageType.NORMAL_IMPORT
 								}
 							],
 							[
 								'outbound',
 								{
 									status: InventoryActions.OUTBOUND,
-									inventory_variation_type: InventoryStorageType.RECYCLING
+									inventory_ledger_type: InventoryStorageType.RECYCLING
 								}
 							]
 						])
@@ -68,7 +68,7 @@ export class CommitStockVariationHandler implements ICommandHandler<CommitStockV
 							dept_name: item.getAssemblyLine('name'),
 							storage: item.getStorageLocation('code'),
 							station_no: generateStation(item.getFactoryProduce(), 'WH101'),
-							...variationFlow.get(stockFlow)
+							...stockFlowMapping.get(stockFlow)
 						}
 					})
 			})
@@ -78,7 +78,7 @@ export class CommitStockVariationHandler implements ICommandHandler<CommitStockV
 				['outbound', 'COMMIT_RECALL']
 			])
 
-			await this.commitStockVariationQueue.add(queueNameMap.get(stockFlow), data, {
+			await this.commitStockBalancesQueue.add(queueNameMap.get(stockFlow), data, {
 				removeOnFail: false,
 				removeOnComplete: true,
 				attempts: 10,

@@ -1,16 +1,15 @@
+import { generateShortId } from '@common/utils/short-id.util'
 import { AggregateRoot } from '@nestjs/cqrs'
 import { entries, groupBy } from 'lodash'
-import { randomBytes } from 'node:crypto'
 import { StockedInEvent } from '../events/stocked-in/stocked-in.event'
 import { ExcessInboundOrderException } from '../exceptions/excess-order.exception'
 import { ElectronicProductCode } from '../value-objects/epc.vo'
 import { SizeNumber } from '../value-objects/size-number.vo'
 
 export class StockInTransaction extends AggregateRoot {
-	private readonly stockInTxId: string = randomBytes(8).toString('hex')
+	private readonly id: string = generateShortId()
 
 	constructor(
-		// private readonly stockFlow: StockFlow,
 		private readonly pendingInStockEpcs: Array<ElectronicProductCode>,
 		private readonly moInventory: Array<{
 			size_numcode: SizeNumber
@@ -21,10 +20,10 @@ export class StockInTransaction extends AggregateRoot {
 		super()
 	}
 
-	public get stockInTransactionId() {
-		return this.stockInTxId
-	}
-
+	/**
+	 * @description Initiates the stock-in transaction by validating the incoming EPCs against the manufacturing order inventory. It checks if the inbound order exceeds the limit and applies the stock-in event if valid.
+	 * @returns {string} `transactionId` - A unique identifier for the stock-in transaction.
+	 */
 	public startTransaction() {
 		const transactionalSizeQty = entries(groupBy(this.pendingInStockEpcs, (epc) => epc.getSize())).map(
 			([size, epcs]) => ({
@@ -54,6 +53,8 @@ export class StockInTransaction extends AggregateRoot {
 
 		if (isOrderExcessed) throw new ExcessInboundOrderException('', { cause: excessedOrderSizes })
 
-		this.apply(new StockedInEvent(this.stockInTxId, this.pendingInStockEpcs))
+		this.apply(new StockedInEvent(this.pendingInStockEpcs))
+
+		return this.id
 	}
 }

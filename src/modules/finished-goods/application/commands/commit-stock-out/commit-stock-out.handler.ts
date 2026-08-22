@@ -23,7 +23,7 @@ export class CommitStockOutHandler implements ICommandHandler<CommitStockOutComm
 					size_numcode: string
 					factory_code: string
 					status: string
-					inventory_variation_type: InventoryStorageType
+					inventory_ledger_type: InventoryStorageType
 					station_no: StationNO
 				}>
 			>
@@ -44,7 +44,7 @@ export class CommitStockOutHandler implements ICommandHandler<CommitStockOutComm
 							factory_code: item.getFactoryProduce(),
 							status: InventoryActions.OUTBOUND,
 							station_no: generateStation(item.getFactoryProduce(), 'WH103'),
-							inventory_variation_type: InventoryStorageType.NORMAL_EXPORT
+							inventory_ledger_type: InventoryStorageType.NORMAL_EXPORT
 						}
 					})
 			})

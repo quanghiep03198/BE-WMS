@@ -1,7 +1,7 @@
+import { generateShortId } from '@common/utils/short-id.util'
 import { AggregateRoot } from '@nestjs/cqrs'
 import { entries, groupBy } from 'lodash'
 import join from 'lodash/join'
-import { randomBytes } from 'node:crypto'
 import { StockedOutEvent } from '../events/stocked-out/stocked-out.event'
 import { ExcessOutboundOrderException } from '../exceptions/excess-order.exception'
 import { InsufficientInventoryException } from '../exceptions/insufficient-inventory.exception'
@@ -15,7 +15,7 @@ import { SizeNumber } from '../value-objects/size-number.vo'
  * @tutorial
  */
 export class StockOutTransaction extends AggregateRoot {
-	private readonly stockOutTransaction: string = randomBytes(8).toString('hex')
+	private readonly id: string = generateShortId()
 
 	constructor(
 		private readonly pendingShipOutEpcs: Array<ElectronicProductCode>,
@@ -35,13 +35,14 @@ export class StockOutTransaction extends AggregateRoot {
 	}
 
 	public get shipOutTransactionId() {
-		return this.stockOutTransaction
+		return this.id
 	}
 
-	public startTransaction() {
-		// console.log('poOutboundProgress :>>', this.poOutboundProgress)
-		// console.log('moInventories :>>', this.moInventories)
-
+	/**
+	 * @description Initiates the recall-from-stock transaction by validating the incoming EPCs against the manufacturing order inventory. It checks if the recall order exceeds the available stock and applies the recalled-from-stock event if valid.
+	 * @returns {string} `transactionId` - A unique identifier for the recall-from-stock transaction.
+	 */
+	public startTransaction(): string {
 		const transactionalSizeQty = entries(
 			groupBy(this.pendingShipOutEpcs, (epc) => {
 				const mo = epc.getManufacturingOrder()
@@ -106,6 +107,8 @@ export class StockOutTransaction extends AggregateRoot {
 				cause: outStandingManufaturingOrderQty.filter((size) => size.xf_deficit < 0)
 			})
 
-		this.apply(new StockedOutEvent(this.stockOutTransaction, this.pendingShipOutEpcs))
+		this.apply(new StockedOutEvent(this.pendingShipOutEpcs))
+
+		return this.id
 	}
 }

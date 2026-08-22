@@ -29,7 +29,7 @@ import { CACHE_MANAGER } from '@nestjs/cache-manager'
 import { CommandBus, QueryBus } from '@nestjs/cqrs'
 import { EventEmitter2 } from '@nestjs/event-emitter'
 import { Throttle } from '@nestjs/throttler'
-import { RedisService } from '@redis/redis.service'
+import { PubSubService } from '@redis/pubsub.service'
 import { Queue } from 'bullmq'
 import { Cache } from 'cache-manager'
 import { format } from 'date-fns'
@@ -74,7 +74,7 @@ export class RFIDController {
 		@InjectPinoLogger(RFIDController.name) private readonly logger: PinoLogger,
 		@Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
 		private readonly eventEmitter: EventEmitter2,
-		private readonly redisService: RedisService,
+		private readonly redisService: PubSubService,
 		private readonly commandBus: CommandBus,
 		private readonly queryBus: QueryBus
 	) {}

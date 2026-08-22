@@ -7,7 +7,7 @@ import { StationNO } from '@modules/finished-goods/domain/utils'
  * - Interface này định nghĩa các phương thức lấy dữ liệu thô từ SQL Server cho các thao tác nghiệp vụ liên quan đến kho hàng
  */
 export interface IMssqlFinishedGoodsRepository {
-	commitStockVariation(
+	commitStockFluctuation(
 		data: Array<
 			Array<{
 				epc: string
@@ -15,7 +15,7 @@ export interface IMssqlFinishedGoodsRepository {
 				size_numcode: string
 				factory_code: string
 				status: string
-				inventory_variation_type: string
+				inventory_ledger_type: string
 				dept_code: string
 				dept_name: string
 				storage: string
@@ -32,7 +32,7 @@ export interface IMssqlFinishedGoodsRepository {
 				size_numcode: string
 				factory_code: string
 				status: string
-				inventory_variation_type: string
+				inventory_ledger_type: string
 				station_no: StationNO
 			}>
 		>
