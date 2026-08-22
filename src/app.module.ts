@@ -1,14 +1,11 @@
 import { DatabaseModule } from '@/databases'
 import { BullModule } from '@nestjs/bullmq'
 import { CacheModule } from '@nestjs/cache-manager'
-import { Module, type OnApplicationBootstrap, type OnApplicationShutdown } from '@nestjs/common'
+import { Module } from '@nestjs/common'
 import { ConfigModule, ConfigService } from '@nestjs/config'
-import { APP_FILTER } from '@nestjs/core'
 import { EventEmitterModule } from '@nestjs/event-emitter'
 import { ScheduleModule } from '@nestjs/schedule'
 import { ThrottlerModule } from '@nestjs/throttler'
-import * as Sentry from '@sentry/nestjs'
-import { SentryGlobalFilter, SentryModule } from '@sentry/nestjs/setup'
 import { PrometheusModule } from '@willsoto/nestjs-prometheus'
 import { AcceptLanguageResolver, HeaderResolver, I18nModule, QueryResolver } from 'nestjs-i18n'
 import { LoggerModule, Params } from 'nestjs-pino'
@@ -34,7 +31,6 @@ import { UserModule } from './modules/user/user.module'
 import { WarehouseModule } from './modules/warehouse/warehouse.module'
 import { RedisModule } from './redis/redis.module'
 import { MongoDumpTask } from './tasks/mongodump.task'
-import { SyncLicensePlateSnapshotTask } from './tasks/sync-license-plate-snapshot.task'
 import { SyncProductSpecificationTask } from './tasks/sync-product-specification.task'
 
 @Module({
@@ -62,7 +58,6 @@ import { SyncProductSpecificationTask } from './tasks/sync-product-specification
 		}),
 		DatabaseModule.forRootAsync(),
 		RedisModule.forRoot(),
-		SentryModule.forRoot(),
 		ScheduleModule.forRoot(),
 		I18nModule.forRootAsync({
 			inject: [ConfigService],
@@ -118,19 +113,8 @@ import { SyncProductSpecificationTask } from './tasks/sync-product-specification
 		EventGateway,
 		RotateLogTask,
 		MongoDumpTask,
-		SyncLicensePlateSnapshotTask,
-		SyncProductSpecificationTask,
-		{
-			provide: APP_FILTER,
-			useClass: SentryGlobalFilter
-		}
+		// SyncLicensePlateSnapshotTask,
+		SyncProductSpecificationTask
 	]
 })
-export class AppModule implements OnApplicationBootstrap, OnApplicationShutdown {
-	onApplicationBootstrap() {
-		Sentry.profiler.startProfiler()
-	}
-	onApplicationShutdown() {
-		Sentry.profiler.stopProfiler()
-	}
-}
+export class AppModule {}

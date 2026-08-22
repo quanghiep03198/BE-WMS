@@ -7,7 +7,6 @@ import { FastifyRequest } from 'fastify/types/request'
 import { Logger } from 'nestjs-pino'
 import { AppModule } from './app.module'
 import { env, stringToBoolean } from './common/utils'
-import './instrument'
 
 async function bootstrap() {
 	try {
