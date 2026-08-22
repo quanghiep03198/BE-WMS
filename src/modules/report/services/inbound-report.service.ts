@@ -7,6 +7,7 @@ import { REQUEST } from '@nestjs/core'
 import { format } from 'date-fns'
 import { Workbook } from 'exceljs'
 import { FastifyRequest } from 'fastify'
+import { groupBy } from 'lodash'
 import { I18nContext, I18nService } from 'nestjs-i18n'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
@@ -64,10 +65,40 @@ export class InboundReportService {
 						result.order_size_run,
 						1
 					),
-					daily_inbound_history: SuperJson.parse<Exclude<IInboundHistory['daily_inbound_history'], string>>(
-						result.daily_inbound_history,
-						1
-					),
+					daily_inbound_history: Object.entries(
+						groupBy(
+							SuperJson.parse<Exclude<IInboundHistory['daily_inbound_history'], string>>(
+								result.daily_inbound_history,
+								1
+							),
+							(item) => format(new Date(item.inbound_time), 'yyyy-MM-dd')
+						)
+					).map(([date, items]) => ({
+						date,
+						size_ledger: Object.entries(groupBy(items, (i) => i.size_numcode)).map(([size, gr]) => ({
+							size_numcode: size,
+							qty: gr.reduce((acc, curr) => acc + curr.qty, 0)
+						})),
+						timeline: Object.entries(
+							Object.groupBy(
+								items,
+								(item) =>
+									`${format(new Date(item.inbound_time), 'HH:mm')}/${item.assembly_line}/${item.storage_location}`
+							)
+						).map(([k, v]) => {
+							const [inbound_time, assembly_line, storage_location] = k.split('/')
+
+							return {
+								inbound_time,
+								assembly_line,
+								storage_location,
+								size_ledger: v.map((item) => ({
+									size_numcode: item.size_numcode,
+									qty: item.qty
+								}))
+							}
+						})
+					})),
 					inbound_history_by_size: SuperJson.parse<Exclude<IInboundHistory['inbound_history_by_size'], string>>(
 						result.inbound_history_by_size,
 						1

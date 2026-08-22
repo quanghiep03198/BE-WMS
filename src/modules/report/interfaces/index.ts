@@ -108,7 +108,9 @@ export interface IInboundHistory {
 		| Array<{
 				size_numcode: string
 				qty: number
-				inbound_date: Date
+				assembly_line: string
+				storage_location: string
+				inbound_time: Date
 		  }>
 }
 
