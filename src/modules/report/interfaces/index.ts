@@ -143,3 +143,17 @@ export interface IOutboundHistory {
 		  }>
 	progress: `${string}%`
 }
+
+
+
+export interface TimelineBucket {
+	inbound_time: string
+	assembly_line: string
+	storage_location: string
+	size_ledger: { size_numcode: string; qty: number }[]
+}
+
+export interface DateBucket {
+	size_ledger: Map<string, number>
+	timeline: Map<string, TimelineBucket>
+}

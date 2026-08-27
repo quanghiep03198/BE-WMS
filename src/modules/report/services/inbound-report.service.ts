@@ -12,7 +12,9 @@ import { I18nContext, I18nService } from 'nestjs-i18n'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { DataSource } from 'typeorm'
-import { IInboundHistory, IInboundReportQueryResult, IInboundReportResponse } from '../interfaces'
+import { DateBucket, IInboundHistory, IInboundReportQueryResult, IInboundReportResponse } from '../interfaces'
+
+
 
 @Injectable()
 export class InboundReportService {
@@ -52,59 +54,74 @@ export class InboundReportService {
 	}
 
 	public async getInboundHistory(commandNumber: string) {
-		return await this.dataSource
-			.query<IInboundHistory[]>(this.inboundHistoryQuery, [commandNumber])
-			.then((result) => result.at(0))
-			.then((result) => {
-				if (!result) return null
-				return {
-					...result,
-					missing_qty: result.mo_qty - result.accumulated_inbound_qty,
-					progress: ((result.accumulated_inbound_qty / result.mo_qty) * 100).toFixed(2) + '%',
-					order_size_run: SuperJson.parse<Exclude<IInboundHistory['order_size_run'], string>>(
-						result.order_size_run,
-						1
-					),
-					daily_inbound_history: Object.entries(
-						groupBy(
-							SuperJson.parse<Exclude<IInboundHistory['daily_inbound_history'], string>>(
-								result.daily_inbound_history,
-								1
-							),
-							(item) => format(new Date(item.inbound_time), 'yyyy-MM-dd')
-						)
-					).map(([date, items]) => ({
-						date,
-						size_ledger: Object.entries(groupBy(items, (i) => i.size_numcode)).map(([size, gr]) => ({
-							size_numcode: size,
-							qty: gr.reduce((acc, curr) => acc + curr.qty, 0)
-						})),
-						timeline: Object.entries(
-							Object.groupBy(
-								items,
-								(item) =>
-									`${format(new Date(item.inbound_time), 'HH:mm')}/${item.assembly_line}/${item.storage_location}`
-							)
-						).map(([k, v]) => {
-							const [inbound_time, assembly_line, storage_location] = k.split('/')
-
-							return {
-								inbound_time,
-								assembly_line,
-								storage_location,
-								size_ledger: v.map((item) => ({
-									size_numcode: item.size_numcode,
-									qty: item.qty
-								}))
-							}
-						})
-					})),
-					inbound_history_by_size: SuperJson.parse<Exclude<IInboundHistory['inbound_history_by_size'], string>>(
-						result.inbound_history_by_size,
-						1
-					)
+		const rows = await this.dataSource.query<IInboundHistory[]>(this.inboundHistoryQuery, [commandNumber])
+		const result = rows.at(0)
+		if (!result) return null
+	
+		const dailyItems = SuperJson.parse<Exclude<IInboundHistory['daily_inbound_history'], string>>(
+			result.daily_inbound_history,
+			1
+		)
+	
+		
+	
+		const dateMap = new Map<string, DateBucket>()
+	
+		for (const item of dailyItems) {
+			const d = new Date(item.inbound_time) // parsed once, not twice
+			const dateKey = format(d, 'yyyy-MM-dd')
+			const timeKey = format(d, 'HH:mm')
+	
+			let dateBucket = dateMap.get(dateKey)
+			if (!dateBucket) {
+				dateBucket = { size_ledger: new Map(), timeline: new Map() }
+				dateMap.set(dateKey, dateBucket)
+			}
+	
+			// date-level aggregated size ledger (mirrors your reduce)
+			dateBucket.size_ledger.set(
+				item.size_numcode,
+				(dateBucket.size_ledger.get(item.size_numcode) ?? 0) + item.qty
+			)
+	
+			// timeline bucket — key only used for lookup, never split back apart
+			const timelineKey = `${timeKey}\u0000${item.assembly_line}\u0000${item.storage_location}`
+			let timelineBucket = dateBucket.timeline.get(timelineKey)
+			if (!timelineBucket) {
+				timelineBucket = {
+					inbound_time: timeKey,
+					assembly_line: item.assembly_line,
+					storage_location: item.storage_location,
+					size_ledger: []
 				}
-			})
+				dateBucket.timeline.set(timelineKey, timelineBucket)
+			}
+			timelineBucket.size_ledger.push({ size_numcode: item.size_numcode, qty: item.qty })
+		}
+	
+		const daily_inbound_history = Array.from(dateMap.entries()).map(([date, bucket]) => ({
+			date,
+			size_ledger: Array.from(bucket.size_ledger.entries()).map(([size_numcode, qty]) => ({
+				size_numcode,
+				qty
+			})),
+			timeline: Array.from(bucket.timeline.values())
+		}))
+	
+		return {
+			...result,
+			missing_qty: result.mo_qty - result.accumulated_inbound_qty,
+			progress: ((result.accumulated_inbound_qty / result.mo_qty) * 100).toFixed(2) + '%',
+			order_size_run: SuperJson.parse<Exclude<IInboundHistory['order_size_run'], string>>(
+				result.order_size_run,
+				1
+			),
+			daily_inbound_history,
+			inbound_history_by_size: SuperJson.parse<Exclude<IInboundHistory['inbound_history_by_size'], string>>(
+				result.inbound_history_by_size,
+				1
+			)
+		}
 	}
 
 	async exportDailyInboundToExcel(reportType: 'daily-productivity' | 'shaping-department-productivity', date: string) {
