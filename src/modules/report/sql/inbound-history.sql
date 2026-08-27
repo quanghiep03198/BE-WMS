@@ -89,7 +89,7 @@ WITH daily_inbound_history_cte AS (
         CONVERT(CHAR(16), a.record_time, 120) AS inbound_time
     FROM #latest_inv_rfid a
     LEFT JOIN DV_DATA_LAKE.dbo.dv_warehouseccodedet w
-        ON w.storage_num = a.storage
+        ON w.storage_num COLLATE database_default = a.storage COLLATE database_default
     GROUP BY
         a.mo_no,
         a.size_code,
@@ -185,7 +185,7 @@ SELECT
         FOR JSON PATH
     ) AS order_size_run
 FROM wuerp_vnrd.dbo.ta_manufacturmst b
-LEFT JOIN #latest_inv_rfid a ON a.mo_no = b.mo_no
+LEFT JOIN #latest_inv_rfid a ON a.mo_no COLLATE database_default = b.mo_no COLLATE database_default
 LEFT JOIN wuerp_vnrd.dbo.ta_productmst e ON e.mat_code = b.mat_code AND e.isactive = 'Y'
 LEFT JOIN wuerp_vnrd.dbo.ta_shoefactorymst f ON f.shoestyle_systemcodefty = e.shoestyle_systemcodefty AND f.isactive = 'Y'
 LEFT JOIN wuerp_vnrd.dbo.ta_brand g ON g.custbrand_id = e.custbrand_id
