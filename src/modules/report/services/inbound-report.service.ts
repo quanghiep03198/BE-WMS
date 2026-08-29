@@ -67,8 +67,20 @@ export class InboundReportService {
 					factory_code_produce: doc.mo_attrs.factory_code_produce,
 					factory_shoes_style: doc.mo_attrs.factory_shoes_style,
 					color_sn: doc.mo_attrs.color_sn,
-					assembly_lines: doc.assembly_lines.sort((a, b) => a.localeCompare(b)),
-					storage_locations: doc.storage_locations.sort((a, b) => a.localeCompare(b)),
+					assembly_lines: Array.from(
+						new Set(
+							Object.values(doc.transaction_history)
+								.map((tx) => tx.assembly_line)
+								.sort()
+						)
+					),
+					storage_locations: Array.from(
+						new Set(
+							Object.values(doc.transaction_history)
+								.map((tx) => tx.storage_location)
+								.sort()
+						)
+					),
 					order_qty: doc.mo_attrs.order_qty,
 					daily_inbound_qty: totalDailyInboundQty,
 					accumulated_qty: accumulatedQty,
@@ -213,7 +225,7 @@ export class InboundReportService {
 		])
 	}
 
-	public async getInboundHistory(commandNumber: string) {
+	public async getLegacyInboundHistory(commandNumber: string) {
 		return await this.dataSource
 			.query<IInboundHistory[]>(this.inboundHistoryQuery, [commandNumber])
 			.then((result) => result.at(0))
@@ -239,7 +251,7 @@ export class InboundReportService {
 			})
 	}
 
-	public async getInboundHistoryReport(manufacturingOrder: string) {
+	public async getInboundHistory(manufacturingOrder: string) {
 		return await this.manufacturingOrderModel
 			.findOne({ mo_no: manufacturingOrder })
 			.populate({

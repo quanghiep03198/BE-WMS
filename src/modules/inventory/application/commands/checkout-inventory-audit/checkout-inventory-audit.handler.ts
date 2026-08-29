@@ -1,7 +1,7 @@
 import { CheckOutInventoryAuditModel } from '@modules/inventory/domain/models/checkout-inventory-audit.model'
 import { Inject } from '@nestjs/common'
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs'
-import { IInventoryAuditRepository, INVENTORY_AUDIT_REPOSITORY } from '../../ports/inventory-audit.port.interface'
+import { IInventoryAuditRepository, INVENTORY_AUDIT_REPOSITORY } from '../../ports/inventory-audit.repository.port'
 import { CheckoutInventoryAuditCommand } from './checkout-inventory-audit.command'
 
 @CommandHandler(CheckoutInventoryAuditCommand)

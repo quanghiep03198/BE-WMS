@@ -44,8 +44,6 @@ export class RetriveArchivedEpcsHandler implements IQueryHandler<RetriveArchived
 			})
 			.build()
 
-		this.logger.debug(query)
-
 		return await this.finishedGoodsEpcModel.paginate(query, {
 			page: pagination.page,
 			limit: pagination.limit,
@@ -64,9 +62,7 @@ export class RetriveArchivedEpcsHandler implements IQueryHandler<RetriveArchived
 				color_sn: 1,
 				size_numcode: 1,
 				...(stockFlow === 'outbound' && {
-					scanned: {
-						$ne: ['$outbound_device_sn', null]
-					}
+					scanned: { $and: [{ $ne: ['$outbound_device_sn', null] }, { $eq: ['$deleted', true] }] }
 				})
 			},
 			options: {

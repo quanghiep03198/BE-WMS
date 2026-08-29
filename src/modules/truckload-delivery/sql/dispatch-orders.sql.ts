@@ -14,7 +14,7 @@ SELECT
    , a.moist_container
    , a.factory_departure_time
    , MAX(c.snap_time) AS actual_snap_time
-   , ISNULL(MAX(b.snap_time), MAX(c.snap_time)) AS actual_departure_time
+   , ISNULL(ISNULL(MAX(b.snap_time), MAX(c.snap_time)), MAX(a.factory_departure_time)) AS actual_departure_time
    , MAX(a.ie_signature) AS ie_signature
    , MAX(a.warehouse_officer_signature) AS warehouse_officer_signature
    , MAX(a.security_1_signature) AS security_1_signature

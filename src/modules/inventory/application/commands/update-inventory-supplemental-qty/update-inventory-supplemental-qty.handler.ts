@@ -1,7 +1,7 @@
 import { UpdateSupplementalQtyModel } from '@modules/inventory/domain/models/update-supplemental-qty.model'
 import { Inject } from '@nestjs/common'
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs'
-import { IInventoryAuditRepository, INVENTORY_AUDIT_REPOSITORY } from '../../ports/inventory-audit.port.interface'
+import { IInventoryAuditRepository, INVENTORY_AUDIT_REPOSITORY } from '../../ports/inventory-audit.repository.port'
 import { UpdateInventorySupplementalQtyCommand } from './update-inventory-supplemental-qty.command'
 
 @CommandHandler(UpdateInventorySupplementalQtyCommand)

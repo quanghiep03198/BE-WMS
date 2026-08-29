@@ -91,13 +91,7 @@ export class FinishedGoodsEpc {
 	status: FinishedGoodsEpcStatus
 
 	@Prop({ type: String })
-	stock_in_tx: string
-
-	@Prop({ type: String })
-	ship_out_tx: string
-
-	@Prop({ type: String })
-	recall_tx: string
+	last_tx: string
 }
 
 export const FinishedGoodsEpcSchema = SchemaFactory.createForClass(FinishedGoodsEpc)

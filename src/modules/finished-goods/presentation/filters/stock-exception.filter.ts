@@ -7,6 +7,7 @@ import {
 import { InsufficientInventoryException } from '@modules/finished-goods/domain/exceptions/insufficient-inventory.exception'
 import { ArgumentsHost, Catch, ExceptionFilter, HttpStatus } from '@nestjs/common'
 import { HttpAdapterHost } from '@nestjs/core'
+import { TokenExpiredError } from '@nestjs/jwt'
 import { I18nContext } from 'nestjs-i18n'
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
 import { FinishedGoodsGateway } from '../gateways/finished-goods.gateway'
@@ -50,15 +51,21 @@ export class StockExceptionFilter implements ExceptionFilter {
 				cause = exception.cause
 				break
 			}
+			case exception instanceof TokenExpiredError: {
+				message = i18n.t('common.unauthorized', { lang: i18n.lang })
+				statusCode = HttpStatus.UNAUTHORIZED
+				cause = exception.cause
+				break
+			}
 			default:
 				break
 		}
 
 		const responseBody: IResponseBody = {
-			message: message,
-			statusCode: statusCode,
-			stack: exception instanceof Error ? exception.stack : undefined,
-			cause: exception instanceof Error ? (exception as Error & { cause?: unknown }).cause : undefined,
+			message,
+			statusCode,
+			stack,
+			cause,
 			timestamp: new Date().toISOString(),
 			path: httpAdapter.getRequestUrl(ctx.getRequest())
 		}

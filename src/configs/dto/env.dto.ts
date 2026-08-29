@@ -1,4 +1,5 @@
 import { Environment, Languages } from '@common/constants'
+import { stringToBoolean } from '@common/utils'
 import { z } from 'zod'
 
 export const envConfigDTO = z.object({
@@ -13,6 +14,9 @@ export const envConfigDTO = z.object({
 		.transform((value) => +value),
 	FALLBACK_LANGUAGE: z.nativeEnum(Languages),
 	POSTMAN_DOCUMENTATION_URL: z.string().trim().nonempty().url().optional(),
+
+	ENABLE_LOKI_LOGGER: z.enum(['true', 'false']).transform((value) => stringToBoolean(value)),
+	ENABLE_PROMETHEUS_METRICS_LOGGER: z.enum(['true', 'false']).transform((value) => stringToBoolean(value)),
 
 	// * Loki
 	GRAFANA_LOKI_URL: z.string().trim().nonempty().url(),
@@ -102,9 +106,9 @@ export const envConfigDTO = z.object({
 	TENANT_CENTRAL: z.string().trim().nonempty().ip({ version: 'v4' }),
 	TENANT_GL1: z.string().trim().nonempty().ip({ version: 'v4' }),
 	TENANT_GL3: z.string().trim().nonempty().ip({ version: 'v4' }),
-	TENANT_GL4: z.string().trim().nonempty().ip({ version: 'v4' }),
+	TENANT_GL4: z.string().trim().nonempty().ip({ version: 'v4' })
 
 	// * Sentry
-	SENTRY_DSN: z.string().trim().nonempty().url(),
-	SENTRY_AUTH_TOKEN: z.string().trim().nonempty()
+	// SENTRY_DSN: z.string().trim().nonempty().url(),
+	// SENTRY_AUTH_TOKEN: z.string().trim().nonempty()
 })

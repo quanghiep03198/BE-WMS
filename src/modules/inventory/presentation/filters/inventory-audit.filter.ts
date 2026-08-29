@@ -7,6 +7,7 @@ import {
 } from '@modules/inventory/domain/exceptions'
 import { ArgumentsHost, Catch, ExceptionFilter, HttpStatus } from '@nestjs/common'
 import { HttpAdapterHost } from '@nestjs/core'
+import { TokenExpiredError } from '@nestjs/jwt'
 import { I18nContext } from 'nestjs-i18n'
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
 
@@ -46,6 +47,12 @@ export class InventoryAuditExceptionFilter implements ExceptionFilter {
 			case exception instanceof SupplementalQtyExcessException: {
 				message = i18n.t('inventory.exceptions.supplemental_qty_excess', { lang: i18n.lang })
 				statusCode = HttpStatus.BAD_REQUEST
+				cause = exception.cause
+				break
+			}
+			case exception instanceof TokenExpiredError: {
+				message = i18n.t('common.unauthorized', { lang: i18n.lang })
+				statusCode = HttpStatus.UNAUTHORIZED
 				cause = exception.cause
 				break
 			}

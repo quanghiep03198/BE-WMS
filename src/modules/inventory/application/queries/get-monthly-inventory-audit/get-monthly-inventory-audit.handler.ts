@@ -1,6 +1,6 @@
 import { Inject } from '@nestjs/common'
 import { IQueryHandler, QueryHandler } from '@nestjs/cqrs'
-import { IInventoryAuditRepository, INVENTORY_AUDIT_REPOSITORY } from '../../ports/inventory-audit.port.interface'
+import { IInventoryAuditRepository, INVENTORY_AUDIT_REPOSITORY } from '../../ports/inventory-audit.repository.port'
 import { GetMonthlyInventoryAuditQuery } from './get-monthly-inventory-audit.query'
 
 @QueryHandler(GetMonthlyInventoryAuditQuery)

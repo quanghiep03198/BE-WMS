@@ -65,7 +65,7 @@ export class CommitStockBalancesHandler implements ICommandHandler<CommitStockBa
 							size_numcode: item.getSize(),
 							factory_code: item.getFactoryProduce(),
 							dept_code: item.getAssemblyLine('code'),
-							dept_name: item.getAssemblyLine('name'),
+							dept_name: item.getAssemblyLine('name', 'sanitized'),
 							storage: item.getStorageLocation('code'),
 							station_no: generateStation(item.getFactoryProduce(), 'WH101'),
 							...stockFlowMapping.get(stockFlow)
@@ -78,6 +78,7 @@ export class CommitStockBalancesHandler implements ICommandHandler<CommitStockBa
 				['outbound', 'COMMIT_RECALL']
 			])
 
+			const metrics = this.commitStockBalancesQueue.exportPrometheusMetrics()
 			await this.commitStockBalancesQueue.add(queueNameMap.get(stockFlow), data, {
 				removeOnFail: false,
 				removeOnComplete: true,

@@ -1,3 +1,4 @@
+import { IPendingInventoryFluctuation } from '@modules/finished-goods/application/ports/inventory-ledger-mongo.repository.port'
 import { IInventoryReportResponse } from '@modules/inventory/application/interfaces'
 import { InventoryClosureStatus } from '@modules/inventory/domain/constants'
 
@@ -7,23 +8,11 @@ export interface IInventoryAuditRepository {
 	getInventoryAuditClosureStatus(month: string): Promise<Array<InventoryClosureStatus>>
 
 	updateInventoryAuditFluctuation(
-		inventoryFluctuationData: {
-			mo_no: string
-			po?: string
-			factory_code_produce?: string
-			factory_shoes_style?: string
-			color_sn?: string
-			size_ledger: Record<
-				string,
-				{
-					stocked_in_qty: number
-					total_recall_tx: number
-					total_return_tx: number
-					shipped_out_qty: number
-				}
-			>
-		}[],
-		storageLocations?: Array<string>
+		inventoryFluctuationData:
+			| IPendingInventoryFluctuation
+			| Pick<IPendingInventoryFluctuation, 'mo_no' | 'size_ledger'>
+			| Array<IPendingInventoryFluctuation>,
+		storageLocations?: string
 	): Promise<void>
 
 	saveSupplementalQty(

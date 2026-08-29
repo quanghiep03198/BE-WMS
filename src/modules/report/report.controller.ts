@@ -10,8 +10,7 @@ import {
 	Param,
 	Query,
 	Res,
-	UseFilters,
-	Version
+	UseFilters
 } from '@nestjs/common'
 import { format } from 'date-fns'
 import { FastifyReply } from 'fastify'
@@ -39,18 +38,17 @@ export class ReportController {
 		return await this.inboundReportService.getDailyInventoryLedger(dateQuery)
 	}
 
-	@RouteHandler({ endpoint: 'inbound-history/:commandNumber', method: HttpMethod.GET })
-	@Version('1')
-	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF, UserRole.INDUSTRIAL_ENGINEERING_STAFF)
-	async getInboundHistory(@Param('commandNumber') commandNumber: string) {
-		return await this.inboundReportService.getInboundHistory(commandNumber)
-	}
+	// @RouteHandler({ endpoint: 'inbound-history/:mo', method: HttpMethod.GET })
+	// @Version('1')
+	// @RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF, UserRole.INDUSTRIAL_ENGINEERING_STAFF)
+	// async getLegacyInboundHistory(@Param('mo') manufacturingOrder: string) {
+	// 	return await this.inboundReportService.getLegacyInboundHistory(manufacturingOrder)
+	// }
 
 	@RouteHandler({ endpoint: 'inbound-history/:mo', method: HttpMethod.GET })
-	@Version('2')
 	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF, UserRole.INDUSTRIAL_ENGINEERING_STAFF)
-	async getInboundHistoryV2(@Param('mo') manufacturingOrder: string) {
-		return await this.inboundReportService.getInboundHistoryReport(manufacturingOrder)
+	async getInboundHistory(@Param('mo') manufacturingOrder: string) {
+		return await this.inboundReportService.getInboundHistory(manufacturingOrder)
 	}
 
 	@Get('daily-inbound/export/:reportType')

@@ -5,7 +5,7 @@ import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify
 import { FastifyReply } from 'fastify/types/reply'
 import { FastifyRequest } from 'fastify/types/request'
 import { Logger } from 'nestjs-pino'
-import { AppModule } from './app.module'
+import { AppModule, ObserveInstrument } from './app.module'
 import { env, stringToBoolean } from './common/utils'
 // import './instrument'
 
@@ -78,6 +78,7 @@ async function bootstrap() {
 				}
 			}),
 			{
+				instrument: ObserveInstrument,
 				abortOnError: false,
 				rawBody: true,
 				bufferLogs: true

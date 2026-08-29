@@ -339,8 +339,6 @@ export class EpcMongoRepository implements IEpcMongoRepository {
 
 	@Transactional<TransactionalAdapterMongoose>(DATA_WAREHOUSE_CONNECTION)
 	public async upsertEpcsMatch(data: UpsertEpcsMatchData, insertOnly: boolean = false): Promise<void> {
-		this.logger.debug(data)
-
 		await this.finishedGoodsEpcMatchModel.bulkWrite(
 			data.map((item) => ({
 				updateOne: {

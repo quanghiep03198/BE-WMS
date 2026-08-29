@@ -1,6 +1,5 @@
 import { StockFlow } from '@modules/finished-goods/domain/types'
-
-type StockTransactionType = 'stock_in' | 'recall' | 'stock_out'
+import { ISizeLedgerFluctuation } from '../ports/inventory-ledger-mongo.repository.port'
 
 export interface IStockTransaction<T = StockFlow> {
 	id: string
@@ -9,13 +8,6 @@ export interface IStockTransaction<T = StockFlow> {
 	qty: number
 	tx_at: string
 	tx_type: T extends 'outbound' ? 'stock_out' : T extends 'inbound' ? 'stock_in' | 'recall' : never
-	changes: Record<
-		string,
-		{
-			stocked_in_qty: number
-			total_recall_tx: number
-			total_return_tx: number
-			shipped_out_qty: number
-		}
-	>
+	changes: Record<string, ISizeLedgerFluctuation>
+	reversed: boolean
 }

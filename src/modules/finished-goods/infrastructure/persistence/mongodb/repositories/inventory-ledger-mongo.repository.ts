@@ -1,5 +1,8 @@
 import { DATA_WAREHOUSE_CONNECTION } from '@databases/constants'
-import { IInventoryLedgerMongoRepository } from '@modules/finished-goods/application/ports/inventory-ledger-mongo.repository.port'
+import {
+	IInventoryLedgerMongoRepository,
+	IPendingInventoryFluctuation
+} from '@modules/finished-goods/application/ports/inventory-ledger-mongo.repository.port'
 import { FinishedGoodsEpcStatus } from '@modules/finished-goods/domain/constants'
 import { ElectronicProductCode } from '@modules/finished-goods/domain/value-objects/epc.vo'
 import { Inject, Injectable } from '@nestjs/common'
@@ -12,17 +15,13 @@ import { IStockTransaction } from '@modules/finished-goods/application/types'
 import {
 	IInventoryAuditRepository,
 	INVENTORY_AUDIT_REPOSITORY
-} from '@modules/inventory/application/ports/inventory-audit.port.interface'
-import { InjectTransactionHost, Transactional, TransactionHost } from '@nestjs-cls/transactional'
+} from '@modules/inventory/application/ports/inventory-audit.repository.port'
+import { InjectTransactionHost, TransactionHost } from '@nestjs-cls/transactional'
 import { TransactionalAdapterMongoose } from '@nestjs-cls/transactional-adapter-mongoose'
 import { format } from 'date-fns'
 import { AnyBulkWriteOperation, MongooseBulkWriteOptions } from 'mongoose'
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
-import {
-	DailyMoInventoryLedger,
-	DailyMoInventoryLedgerDocument,
-	DailyMoInventoryLedgerModel
-} from '../schemas/daily-mo-inventory-ledger.schema'
+import { DailyMoInventoryLedger, DailyMoInventoryLedgerModel } from '../schemas/daily-mo-inventory-ledger.schema'
 import { FinishedGoodsEpc, FinishedGoodsEpcModel } from '../schemas/finished-goods-epc.schema'
 import {
 	ManufacturingOrder,
@@ -32,10 +31,6 @@ import {
 
 type InventoryFluctuationIncrementKey =
 	`size_ledger.${string}.${'stocked_in_qty' | 'total_recall_tx' | 'total_return_tx' | 'shipped_out_qty'}`
-
-type InventoryFluctuationAsync = Awaited<
-	ReturnType<InventoryLedgerMongoRepository['getPendingInventoryFluctuation']>
->[number]
 
 @Injectable()
 export class InventoryLedgerMongoRepository implements IInventoryLedgerMongoRepository {
@@ -53,19 +48,19 @@ export class InventoryLedgerMongoRepository implements IInventoryLedgerMongoRepo
 	) {}
 
 	private createInventoryIncrementExpression(
-		change: InventoryFluctuationAsync | Pick<InventoryFluctuationAsync, 'mo_no' | 'size_ledger'>
+		change: IPendingInventoryFluctuation | Pick<IPendingInventoryFluctuation, 'mo_no' | 'size_ledger'>
 	): Record<InventoryFluctuationIncrementKey, mongo.NumericType> {
 		return flatten<
-			Pick<InventoryFluctuationAsync, 'size_ledger'>,
+			Pick<IPendingInventoryFluctuation, 'size_ledger'>,
 			Record<InventoryFluctuationIncrementKey, mongo.NumericType>
 		>(pick(change, 'size_ledger'))
 	}
 
 	private createInventoryDecrementExpression(
-		change: InventoryFluctuationAsync | Pick<InventoryFluctuationAsync, 'mo_no' | 'size_ledger'>
+		change: IPendingInventoryFluctuation | Pick<IPendingInventoryFluctuation, 'mo_no' | 'size_ledger'>
 	): Record<InventoryFluctuationIncrementKey, mongo.NumericType> {
 		const decrementExpression = flatten<
-			Pick<InventoryFluctuationAsync, 'size_ledger'>,
+			Pick<IPendingInventoryFluctuation, 'size_ledger'>,
 			Record<InventoryFluctuationIncrementKey, mongo.NumericType>
 		>(pick(change, 'size_ledger'))
 		for (const field in decrementExpression) {
@@ -75,21 +70,10 @@ export class InventoryLedgerMongoRepository implements IInventoryLedgerMongoRepo
 		return decrementExpression
 	}
 
-	@Transactional<TransactionalAdapterMongoose>(DATA_WAREHOUSE_CONNECTION)
-	public async getPendingInventoryFluctuation(scannedEpcs: Array<ElectronicProductCode>): Promise<
-		Array<{
-			mo_no: string
-			po: string | null | undefined
-			factory_code_produce: string
-			factory_shoes_style: string
-			color_sn: string
-			size_ledger: Record<
-				string,
-				{ stocked_in_qty: number; total_recall_tx: number; total_return_tx: number; shipped_out_qty: number }
-			>
-		}>
-	> {
-		return await this.finishedGoodsEpcModel
+	public async getPendingInventoryFluctuation(
+		scannedEpcs: Array<ElectronicProductCode>
+	): Promise<IPendingInventoryFluctuation | Array<IPendingInventoryFluctuation>> {
+		const aggregated = await this.finishedGoodsEpcModel
 			.aggregate<{
 				mo_no: string
 				po: string | undefined | null
@@ -106,7 +90,6 @@ export class InventoryLedgerMongoRepository implements IInventoryLedgerMongoRepo
 						epc: { $in: scannedEpcs.map((epc) => epc.getStockKeepingUnit()) }
 					}
 				},
-				{ $sort: { _id: 1 } },
 				{
 					$group: {
 						_id: {
@@ -193,6 +176,8 @@ export class InventoryLedgerMongoRepository implements IInventoryLedgerMongoRepo
 			])
 			.read('primary')
 			.session(this.txHost.tx)
+
+		return aggregated.length === 1 ? aggregated[0] : aggregated
 	}
 
 	public async getMoInventory(
@@ -214,69 +199,50 @@ export class InventoryLedgerMongoRepository implements IInventoryLedgerMongoRepo
 		})
 	}
 
-	public async commitInventoryLedgerOnStockIn(pendingStockInEpcs: Array<ElectronicProductCode>) {
-		const bulkWriteConcernSettings: mongo.BulkWriteOptions & MongooseBulkWriteOptions = {
-			session: this.txHost.tx,
-			ordered: false,
-			retryWrites: true,
-			timestamps: true
+	public async commitInventoryLedgerOnStockIn(
+		transactionId: string,
+		pendingStockInEpcs: Array<ElectronicProductCode>
+	) {
+		const pendingInventoryFluctuation = (await this.getPendingInventoryFluctuation(
+			pendingStockInEpcs
+		)) as IPendingInventoryFluctuation
+
+		const incrementExpression = this.createInventoryIncrementExpression(pendingInventoryFluctuation)
+
+		const txSizeLedger = pendingInventoryFluctuation.size_ledger
+
+		for (const size in txSizeLedger) {
+			delete txSizeLedger[size].shipped_out_qty
 		}
 
-		const pendingInventoryFluctuation = await this.getPendingInventoryFluctuation(pendingStockInEpcs)
-
-		const bulkWriteMasterFluctuationOperator: AnyBulkWriteOperation<ManufacturingOrderDocument>[] =
-			pendingInventoryFluctuation.map((mo) => ({
-				updateOne: {
-					filter: {
-						mo_no: mo.mo_no,
-						factory_code_produce: mo.factory_code_produce,
-						factory_shoes_style: mo.factory_shoes_style,
-						color_sn: mo.color_sn
-					},
-					update: { $inc: this.createInventoryIncrementExpression(mo) },
-					upsert: true
+		await this.dailyMoInventoryLedgerModel.updateOne(
+			pick(pendingInventoryFluctuation, ['mo_no', 'factory_code_produce', 'factory_shoes_style', 'color_sn']),
+			{
+				$setOnInsert: { mo_no: pendingInventoryFluctuation.mo_no, date: format(new Date(), 'yyyy-MM-dd') },
+				$inc: omitBy(incrementExpression, (_, key) => key.endsWith('shipped_out_qty')),
+				[`transaction_history.${transactionId}`]: {
+					time: format(new Date(), 'HH:mm'),
+					assembly_line: pendingStockInEpcs.at(0).getAssemblyLine('name', 'sanitized'),
+					storage_location: pendingStockInEpcs.at(0).getStorageLocation('name'),
+					size_ledger: txSizeLedger,
+					reversed: false
 				}
-			}))
-
-		const date = format(new Date(), 'yyyy-MM-dd')
-
-		const storageLocations = [...new Set(pendingStockInEpcs.map((item) => item.getStorageLocation('name')))]
-		const assemblyLines = [...new Set(pendingStockInEpcs.map((item) => item.getAssemblyLine('name')))]
-
-		const bulkWriteDailyFluctuationOperator: AnyBulkWriteOperation<DailyMoInventoryLedgerDocument>[] =
-			pendingInventoryFluctuation.map((mo) => {
-				this.logger.debug(mo)
-
-				const incrementExpression = omitBy(this.createInventoryIncrementExpression(mo), (_, key) =>
-					key.endsWith('shipped_out_qty')
-				)
-
-				return {
-					updateOne: {
-						filter: { mo_no: mo.mo_no, date },
-						update: {
-							$setOnInsert: { date, mo_no: mo.mo_no },
-							$inc: incrementExpression,
-							$addToSet: {
-								storage_locations: { $each: storageLocations },
-								assembly_lines: { $each: assemblyLines }
-							}
-						},
-						upsert: true
-					}
-				}
-			})
-
-		await this.dailyMoInventoryLedgerModel.bulkWrite(bulkWriteDailyFluctuationOperator, bulkWriteConcernSettings)
-		await this.manufacturingOrderModel.bulkWrite(bulkWriteMasterFluctuationOperator, bulkWriteConcernSettings)
-		await this.inventoryAuditRepository.updateInventoryAuditFluctuation(pendingInventoryFluctuation, storageLocations)
+			},
+			{ upsert: true, session: this.txHost.tx }
+		)
+		await this.manufacturingOrderModel.updateOne(
+			pick(pendingInventoryFluctuation, ['mo_no', 'factory_code_produce', 'factory_shoes_style', 'color_sn']),
+			{ $inc: incrementExpression },
+			{ upsert: true, session: this.txHost.tx }
+		)
+		await this.inventoryAuditRepository.updateInventoryAuditFluctuation(pendingInventoryFluctuation)
 
 		return pendingInventoryFluctuation
 	}
 
 	public async commitInventoryLedgerOnStockOut(
 		pendingShipOutEpcs: Array<ElectronicProductCode>
-	): ReturnType<IInventoryLedgerMongoRepository['getPendingInventoryFluctuation']> {
+	): Promise<IPendingInventoryFluctuation[]> {
 		const bulkWriteConcernSettings: mongo.BulkWriteOptions & MongooseBulkWriteOptions = {
 			session: this.txHost.tx,
 			ordered: false,
@@ -286,12 +252,15 @@ export class InventoryLedgerMongoRepository implements IInventoryLedgerMongoRepo
 
 		const pendingInventoryFluctuation = await this.getPendingInventoryFluctuation(pendingShipOutEpcs)
 
-		const bulkWriteMasterFluctuationOperator: AnyBulkWriteOperation<ManufacturingOrderDocument>[] =
-			pendingInventoryFluctuation.map((mo) => {
-				const incrementExpression = pickBy(this.createInventoryIncrementExpression(mo), (_, key) =>
-					key.endsWith('shipped_out_qty')
-				)
+		const fluctuation = Array.isArray(pendingInventoryFluctuation)
+			? pendingInventoryFluctuation
+			: [pendingInventoryFluctuation]
 
+		const bulkWriteMasterFluctuationOperator: AnyBulkWriteOperation<ManufacturingOrderDocument>[] = fluctuation.map(
+			(mo) => {
+				const incrementExpression = pickBy(this.createInventoryIncrementExpression(mo), (_, key) => {
+					return key.endsWith('shipped_out_qty')
+				})
 				return {
 					updateOne: {
 						filter: {
@@ -304,139 +273,106 @@ export class InventoryLedgerMongoRepository implements IInventoryLedgerMongoRepo
 						upsert: true
 					}
 				}
-			})
+			}
+		)
 
-		await this.manufacturingOrderModel.bulkWrite(bulkWriteMasterFluctuationOperator, bulkWriteConcernSettings)
-		await this.inventoryAuditRepository.updateInventoryAuditFluctuation(pendingInventoryFluctuation)
+		await this.manufacturingOrderModel.updateOne(bulkWriteMasterFluctuationOperator, bulkWriteConcernSettings)
+		await this.inventoryAuditRepository.updateInventoryAuditFluctuation(fluctuation)
 
-		return pendingInventoryFluctuation
+		return fluctuation
 	}
 
 	public async commitInventoryLedgerOnRecall(
+		transactionId: string,
 		pendingRecallEpcs: Array<ElectronicProductCode>
-	): ReturnType<IInventoryLedgerMongoRepository['getPendingInventoryFluctuation']> {
-		const pendingInventoryFluctuation = await this.getPendingInventoryFluctuation(pendingRecallEpcs)
-
-		const bulkWriteMasterFluctuationOperator: AnyBulkWriteOperation<ManufacturingOrderDocument>[] =
-			pendingInventoryFluctuation.map((mo) => {
-				const incrementExpression = pickBy(this.createInventoryIncrementExpression(mo), (_, key) =>
-					key.endsWith('total_recall_tx')
-				)
-
-				return {
-					updateOne: {
-						filter: {
-							mo_no: mo.mo_no,
-							factory_code_produce: mo.factory_code_produce,
-							factory_shoes_style: mo.factory_shoes_style,
-							color_sn: mo.color_sn
-						},
-						update: { $inc: incrementExpression },
-						upsert: true
-					}
-				}
-			})
+	): Promise<IPendingInventoryFluctuation> {
+		const pendingInventoryFluctuation = (await this.getPendingInventoryFluctuation(
+			pendingRecallEpcs
+		)) as IPendingInventoryFluctuation
 
 		const date = format(new Date(), 'yyyy-MM-dd')
 
-		const bulkWriteDailyFluctuationOperator: AnyBulkWriteOperation<DailyMoInventoryLedgerDocument>[] =
-			pendingInventoryFluctuation.map((mo) => {
-				const incrementExpression = pickBy(this.createInventoryIncrementExpression(mo), (_, key) =>
-					key.endsWith('total_recall_tx')
-				)
+		const incrementExpression = this.createInventoryIncrementExpression(pendingInventoryFluctuation)
+		const txSizeLedger = { ...pendingInventoryFluctuation.size_ledger }
 
-				return {
-					updateOne: {
-						filter: { mo_no: mo.mo_no, date },
-						update: {
-							$setOnInsert: { date, mo_no: mo.mo_no },
-							$inc: incrementExpression
-						},
-						upsert: true
-					}
+		for (const size in txSizeLedger) {
+			delete txSizeLedger[size].shipped_out_qty
+		}
+
+		await this.dailyMoInventoryLedgerModel.updateOne(
+			{ mo_no: pendingInventoryFluctuation.mo_no, date },
+			{
+				$setOnInsert: { date, mo_no: pendingInventoryFluctuation.mo_no },
+				$inc: incrementExpression,
+				[`transaction_history.${transactionId}`]: {
+					date,
+					time: format(new Date(), 'HH:mm'),
+					size_ledger: txSizeLedger,
+					reversed: false
 				}
-			})
+			},
+			{ session: this.txHost.tx, upsert: true }
+		)
 
-		await this.dailyMoInventoryLedgerModel.bulkWrite(bulkWriteDailyFluctuationOperator, {
-			session: this.txHost.tx,
-			ordered: false,
-			retryWrites: true,
-			timestamps: true
-		})
-
-		await this.manufacturingOrderModel.bulkWrite(bulkWriteMasterFluctuationOperator, {
-			session: this.txHost.tx,
-			ordered: false,
-			retryWrites: true,
-			timestamps: true
-		})
+		await this.manufacturingOrderModel.updateOne(
+			pick(pendingInventoryFluctuation, ['mo_no', 'factory_code_produce', 'factory_shoes_style', 'color_sn']),
+			{ $inc: pickBy(incrementExpression, (_, key) => key.endsWith('total_recall_tx')) },
+			{ session: this.txHost.tx }
+		)
 
 		await this.inventoryAuditRepository.updateInventoryAuditFluctuation(pendingInventoryFluctuation)
 
 		return pendingInventoryFluctuation
 	}
 
-	async rollbackInboundFluctuation(pendingInventoryFluctuation: Array<IStockTransaction<'inbound'>>) {
-		const bulkWriteConcernSettings: mongo.BulkWriteOptions & MongooseBulkWriteOptions = {
-			session: this.txHost.tx,
-			ordered: false,
-			retryWrites: true,
-			timestamps: true
+	async rollbackInboundFluctuation({ id, mo_no, changes, tx_type }: IStockTransaction<'inbound'>) {
+		const decrementExpression = omitBy(
+			this.createInventoryDecrementExpression({
+				mo_no,
+				size_ledger: changes
+			}),
+			(_, key) => key.endsWith('shipped_out_qty')
+		)
+
+		for (const expr in decrementExpression) {
+			const size = expr.split('.').at(1)
+
+			// * Rollback "Recall" transaction thì giữ nguyên số lượng thu hồi và tăng số lượng trả về (coi như quét lại lần 2)
+			if (tx_type === 'recall') {
+				if (expr.endsWith('total_recall_tx')) decrementExpression[expr] = 0
+				if (expr.endsWith('total_return_tx'))
+					decrementExpression[expr] = Math.abs(changes[size]?.total_recall_tx ?? 0)
+			}
+			// * Rollback "Stock In" transaction thì giữ nguyên số lượng nhập kho và tăng số lượng trả về (coi như quét lại lần 2)
+			if (tx_type === 'stock_in') {
+				if (expr.endsWith('stocked_in_qty')) decrementExpression[expr] = 0
+				if (expr.endsWith('total_return_tx'))
+					decrementExpression[expr] = Math.abs(changes[size].total_return_tx || changes[size].stocked_in_qty)
+			}
 		}
 
-		const bulkWriteMasterFluctuationOperator: AnyBulkWriteOperation<ManufacturingOrderDocument>[] =
-			pendingInventoryFluctuation.map((fluctuation) => ({
-				updateOne: {
-					filter: { mo_no: fluctuation.mo_no },
-					update: {
-						$inc: this.createInventoryDecrementExpression({
-							mo_no: fluctuation.mo_no,
-							size_ledger: fluctuation.changes
-						})
-					},
-					upsert: true
-				}
-			}))
-
-		const bulkWriteDailyFluctuationOperator: AnyBulkWriteOperation<DailyMoInventoryLedgerDocument>[] =
-			pendingInventoryFluctuation.map((fluctuation) => {
-				const decrementExpression = omitBy(
-					this.createInventoryDecrementExpression({
-						mo_no: fluctuation.mo_no,
-						size_ledger: fluctuation.changes
-					}),
-					(_, key) => key.endsWith('shipped_out_qty')
-				)
-
-				const date = format(new Date(fluctuation.tx_at), 'yyyy-MM-dd')
-
-				return {
-					updateOne: {
-						filter: { mo_no: fluctuation.mo_no, date },
-						update: { $setOnInsert: { date, mo_no: fluctuation.mo_no }, $inc: decrementExpression },
-						upsert: true
-					}
-				}
-			})
-
-		await this.dailyMoInventoryLedgerModel.bulkWrite(bulkWriteDailyFluctuationOperator, bulkWriteConcernSettings)
-		await this.manufacturingOrderModel.bulkWrite(bulkWriteMasterFluctuationOperator, bulkWriteConcernSettings)
-
-		await this.inventoryAuditRepository.updateInventoryAuditFluctuation(
-			pendingInventoryFluctuation.map((fluctuation) => {
-				for (const size in fluctuation.changes) {
-					if (fluctuation.changes.hasOwnProperty(size)) {
-						fluctuation.changes[size].stocked_in_qty = -fluctuation.changes[size].stocked_in_qty
-						fluctuation.changes[size].total_recall_tx = -fluctuation.changes[size].total_recall_tx
-						fluctuation.changes[size].total_return_tx = -fluctuation.changes[size].total_return_tx
-					}
-				}
-
-				return {
-					mo_no: fluctuation.mo_no,
-					size_ledger: fluctuation.changes
-				}
-			})
+		await this.dailyMoInventoryLedgerModel.updateOne(
+			{ mo_no, date: format(new Date(), 'yyyy-MM-dd') },
+			{ [`transaction_history.${id}.reversed`]: true },
+			{ session: this.txHost.tx }
 		)
+
+		await this.manufacturingOrderModel.updateOne(
+			{ mo_no },
+			{ $inc: decrementExpression },
+			{ session: this.txHost.tx }
+		)
+
+		const sizeLedger = { ...changes }
+
+		for (const size in sizeLedger) {
+			delete changes[size].shipped_out_qty
+
+			changes[size].stocked_in_qty = -1 * changes[size].stocked_in_qty
+			changes[size].total_recall_tx = -1 * changes[size].total_recall_tx
+			changes[size].total_return_tx = -1 * changes[size].total_return_tx
+		}
+
+		await this.inventoryAuditRepository.updateInventoryAuditFluctuation({ mo_no, size_ledger: sizeLedger })
 	}
 }

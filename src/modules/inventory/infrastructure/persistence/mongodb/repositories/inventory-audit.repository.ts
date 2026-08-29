@@ -1,10 +1,12 @@
 import { ExcelColorPalette } from '@common/constants/excel-color-palette'
 import { applyCommonStyles, type AutoFitColumnOptions, autoFitColumns } from '@common/helpers'
 import { DATA_WAREHOUSE_CONNECTION } from '@databases/constants'
+import { IPendingInventoryFluctuation } from '@modules/finished-goods/application/ports/inventory-ledger-mongo.repository.port'
 import {
 	ManufacturingOrder,
 	ManufacturingOrderModel
 } from '@modules/finished-goods/infrastructure/persistence/mongodb/schemas/manufacturing-order.schema'
+import { IInventoryAuditRepository } from '@modules/inventory/application/ports/inventory-audit.repository.port'
 import { InventoryClosureStatus } from '@modules/inventory/domain/constants'
 import { InjectTransactionHost, Transactional, TransactionHost } from '@nestjs-cls/transactional'
 import { TransactionalAdapterMongoose } from '@nestjs-cls/transactional-adapter-mongoose'
@@ -16,7 +18,6 @@ import { AnyBulkWriteOperation } from 'mongoose'
 import { I18nContext, I18nService } from 'nestjs-i18n'
 import { InjectPinoLogger } from 'nestjs-pino'
 import { IInventoryReportResponse } from '../../../../application/interfaces'
-import { IInventoryAuditRepository } from '../../../../application/ports/inventory-audit.port.interface'
 import { InventoryAuditCheckoutPipelineBuilder } from '../builders/inventory-audit-checkout-pipeline.builder'
 import { MoInventoryAudit, MoInventoryAuditDocument, MoInventoryAuditModel } from '../schemas/inventory-audit.schema'
 
@@ -105,97 +106,88 @@ export class InventoryAuditRepository implements IInventoryAuditRepository {
 		return statuses as InventoryClosureStatus[]
 	}
 
-	// @Transactional<TransactionalAdapterMongoose>(DATA_WAREHOUSE_CONNECTION)
 	public async updateInventoryAuditFluctuation(
-		pendingFluctuation: Array<{
-			mo_no: string
-			po?: string
-			factory_code_produce?: string
-			factory_shoes_style?: string
-			color_sn?: string
-			size_ledger: Record<
-				string,
-				{
-					order_qty: number
-					stocked_in_qty: number
-					total_recall_tx: number
-					total_return_tx: number
-					shipped_out_qty: number
-				}
-			>
-		}>,
-		storageLocation: Array<string> = []
+		pendingFluctuation:
+			| IPendingInventoryFluctuation
+			| Pick<IPendingInventoryFluctuation, 'mo_no' | 'size_ledger'>
+			| Array<IPendingInventoryFluctuation>,
+		storageLocation?: string
 	) {
+		const fluctuation = Array.isArray(pendingFluctuation) ? pendingFluctuation : [pendingFluctuation]
+
 		const manufacturingOrders = await this.manufacturingOrderModel
-			.find({ mo_no: { $in: pendingFluctuation.map(({ mo_no }) => mo_no) } })
+			.find({ mo_no: { $in: fluctuation.map(({ mo_no }) => mo_no) } })
 			.lean()
 
 		const manufacturingOrdersMap = new Map(manufacturingOrders.map((mo) => [mo.mo_no, mo]))
 		const yearMonth = format(new Date(), 'yyyy-MM')
 
 		// * Cập nhật lại tồn kho trong tháng
-		const monthlyInventoryBulkWriteOperator = pendingFluctuation.flatMap((change) => {
-			const { size_ledger } = manufacturingOrdersMap.get(change.mo_no)
+		const monthlyInventoryBulkWriteOperator = fluctuation.reduce((acc, curr) => {
+			const moInventoryFluctuation = manufacturingOrdersMap.get(curr.mo_no)
+			// this.logger.debug(moInventoryFluctuation)
 
-			const sizeLedger = Object.entries(size_ledger).reduce((acc, [size, fluctuation]) => {
+			if (!moInventoryFluctuation) return acc
+
+			const setOnInsertExpression = Object.entries(moInventoryFluctuation.size_ledger).reduce<
+				Record<string, number | string>
+			>((acc, [size, fluctuation]) => {
 				return {
 					...acc,
-					[size]: {
-						order_qty: fluctuation.order_qty,
-						beginning_inventory_qty: 0,
-						stocked_in_qty: 0,
-						shipped_out_qty: 0,
-						supplemental_stocked_in_qty: 0,
-						supplemental_shipped_out_qty: 0
-					}
+					[`size_ledger.${size}.order_qty`]: fluctuation.order_qty ?? 0,
+					[`size_ledger.${size}.beginning_inventory_qty`]: 0,
+					[`size_ledger.${size}.supplemental_stocked_in_qty`]: 0,
+					[`size_ledger.${size}.supplemental_shipped_out_qty`]: 0
 				}
 			}, {})
 
-			const incrementExpression = Object.entries(change.size_ledger).reduce((acc, [size, fluctuation]) => {
+			const incrementExpression = Object.entries(curr.size_ledger).reduce((acc, [size, fluctuation]) => {
 				return {
 					...acc,
 					[`size_ledger.${size}.stocked_in_qty`]:
-						fluctuation.stocked_in_qty - fluctuation.total_recall_tx + fluctuation.total_return_tx,
-					[`size_ledger.${size}.shipped_out_qty`]: fluctuation.shipped_out_qty
+						(fluctuation.stocked_in_qty ?? 0) -
+						(fluctuation.total_recall_tx ?? 0) +
+						(fluctuation.total_return_tx ?? 0),
+					[`size_ledger.${size}.shipped_out_qty`]: fluctuation.shipped_out_qty ?? 0
 				}
 			}, {})
 
-			return [
-				{
-					updateOne: {
-						filter: { mo_no: change.mo_no, year_month: yearMonth },
-						update: {
-							$setOnInsert: {
-								mo_no: change.mo_no,
-								year_month: yearMonth,
-								inventory_closure_status: 'pending',
-								size_ledger: sizeLedger
-							},
-							$addToSet: {
-								storage_locations: { $each: storageLocation }
-							}
-						},
-						upsert: true
-					}
-				},
-				{
-					updateOne: {
-						filter: { mo_no: change.mo_no, year_month: yearMonth },
-						update: {
-							$inc: incrementExpression
-						}
-					}
-				}
-			] as AnyBulkWriteOperation<MoInventoryAuditDocument>[]
-		})
+			this.logger.debug(incrementExpression)
 
-		await this.moInventoryAuditModel.bulkWrite(monthlyInventoryBulkWriteOperator, {
-			session: this.txHost.tx,
-			writeConcern: { w: 'majority' },
-			ordered: true,
-			retryWrites: true,
-			timestamps: true
-		})
+			const bulkWriteOperator = {
+				updateOne: {
+					filter: { mo_no: curr.mo_no, year_month: yearMonth },
+					update: {
+						$setOnInsert: {
+							mo_no: curr.mo_no,
+							year_month: yearMonth,
+							inventory_closure_status: 'pending',
+							storage_locations: [],
+							...setOnInsertExpression
+						},
+						$inc: incrementExpression,
+						...(typeof storageLocation === 'string' &&
+							storageLocation.length > 0 && {
+								$addToSet: {
+									storage_locations: storageLocation
+								}
+							})
+					},
+					upsert: true
+				}
+			} satisfies AnyBulkWriteOperation<MoInventoryAuditDocument>
+
+			return [...acc, bulkWriteOperator]
+		}, [])
+
+		if (monthlyInventoryBulkWriteOperator.length > 0)
+			await this.moInventoryAuditModel.bulkWrite(monthlyInventoryBulkWriteOperator, {
+				session: this.txHost.tx,
+				writeConcern: { w: 'majority' },
+				ordered: true,
+				retryWrites: true,
+				timestamps: true
+			})
 	}
 
 	@Transactional<TransactionalAdapterMongoose>(DATA_WAREHOUSE_CONNECTION)

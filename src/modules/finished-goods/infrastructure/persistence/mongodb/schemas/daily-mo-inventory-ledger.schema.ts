@@ -24,12 +24,6 @@ export class DailyMoInventoryLedger {
 	@Prop({ type: String, required: true })
 	mo_no: string
 
-	@Prop({ type: Array, default: [] })
-	assembly_lines: Array<string>
-
-	@Prop({ type: Array, default: [] })
-	storage_locations: Array<string>
-
 	@Prop({ type: Object, required: true })
 	size_ledger: Record<
 		string,
@@ -37,6 +31,25 @@ export class DailyMoInventoryLedger {
 			stocked_in_qty: number
 			total_recall_tx: number
 			total_return_tx: number
+		}
+	>
+
+	@Prop({ type: Object, required: true })
+	transaction_history: Record<
+		string, // * Transaction ID
+		{
+			time: string
+			assembly_line: string
+			storage_location: string
+			size_ledger: Record<
+				string,
+				{
+					stocked_in_qty: number
+					total_recall_tx: number
+					total_return_tx: number
+				}
+			>
+			reversed: boolean // * Indicates whether the transaction has been reversed or not
 		}
 	>
 }

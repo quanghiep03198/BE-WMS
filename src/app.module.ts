@@ -37,6 +37,7 @@ import { RedisModule } from './redis/redis.module'
 // Schedule Tasks
 import { AllExceptionsFilter } from '@common/filters'
 import { getConnectionToken } from '@nestjs/mongoose'
+import { createObserveModule, ObserveOptions } from '@nestjs/observe'
 import { CdcModule, DatabaseModule } from './databases'
 import {
 	DATA_SOURCE_DATA_LAKE,
@@ -47,18 +48,31 @@ import {
 import { RFIDDeviceModule } from './modules/rfid-device/rfid-device.module'
 import { ScheduleTasks } from './tasks'
 
+export const { ObserveModule, ObserveInstrument } = createObserveModule()
+
 @Module({
 	imports: [
+		ObserveModule.forRootAsync({
+			inject: [ConfigService],
+			useFactory: (configService: ConfigService) => configService.getOrThrow<ObserveOptions>('observe')
+		}),
 		// * Core modules
 		PrometheusModule.registerAsync({
 			inject: [ConfigService],
-			useFactory: (configService: ConfigService) => ({
-				global: true,
-				path: '/metrics',
-				defaultMetrics: {
-					enabled: configService.get<RuntimeEnvironment>('NODE_ENV') === 'production'
+			useFactory: (configService: ConfigService) => {
+				console.log(
+					'ENABLE_PROMETHEUS_METRICS_LOGGER type :>>> ',
+					typeof configService.get<boolean>('ENABLE_PROMETHEUS_METRICS_LOGGER')
+				)
+
+				return {
+					global: true,
+					path: '/metrics',
+					defaultMetrics: {
+						enabled: configService.get<boolean>('ENABLE_PROMETHEUS_METRICS_LOGGER')
+					}
 				}
-			})
+			}
 		}),
 		LoggerModule.forRootAsync({
 			inject: [ConfigService],

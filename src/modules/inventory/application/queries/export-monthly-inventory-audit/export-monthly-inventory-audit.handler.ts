@@ -5,7 +5,7 @@ import { IQueryHandler, QueryHandler } from '@nestjs/cqrs'
 import { format } from 'date-fns'
 import { Workbook } from 'exceljs'
 import { I18nContext, I18nService } from 'nestjs-i18n'
-import { IInventoryAuditRepository, INVENTORY_AUDIT_REPOSITORY } from '../../ports/inventory-audit.port.interface'
+import { IInventoryAuditRepository, INVENTORY_AUDIT_REPOSITORY } from '../../ports/inventory-audit.repository.port'
 import { ExportMonthlyInventoryAuditQuery } from './export-monthly-inventory-audit.query'
 
 @QueryHandler(ExportMonthlyInventoryAuditQuery)

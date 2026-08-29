@@ -23,6 +23,12 @@ export enum FinishedGoodsEpcStatus {
 	RECALLED = 'recalled'
 }
 
+export enum StockTransactionType {
+	STOCK_IN = 'stock_in',
+	STOCK_OUT = 'stock_out',
+	RECALL = 'recall'
+}
+
 export const EXCLUDED_ORDERS: Array<string> = ['13D05B006', '13A08C003']
 export const EXCLUDED_EPC_PATTERN: string = '303429%'
 export const EXCLUDED_EPC_PREFIX: string = '303429'

@@ -51,6 +51,9 @@ export declare global {
 			DB_TRUST_SERVER_CERTIFICATE: string
 			DB_CONNECTION_TIMEOUT: string
 
+			OBSERVE_APP_KEY: string
+			OBSERVE_APP_SECRET: string
+
 			MONGO_URI: string
 			MONGO_DB_NAME: string
 
