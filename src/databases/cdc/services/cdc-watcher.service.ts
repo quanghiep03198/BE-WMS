@@ -54,11 +54,13 @@ export class CdcWatcherService {
 			if (Buffer.compare(lastLsn, max_lsn) >= 0) return
 
 			const originColumnSelect = options.originMarkerColumn
-				? `, sys.fn_cdc_has_column_changed('${captureInstance}', '${options.originMarkerColumn}', __$update_mask) AS __origin_changed`
-				: ''
+				? `* , sys.fn_cdc_has_column_changed('${captureInstance}', '${options.originMarkerColumn}', __$update_mask) AS __origin_changed`
+				: '*'
+			const fromLsnHex = lastLsn.toString('hex')
+			const toLsnHex = max_lsn.toString('hex')
 
 			const rawChanges = await dataSource.query(
-				`SELECT *${originColumnSelect} FROM cdc.fn_cdc_get_net_changes_${captureInstance}(@0, @1, 'all with mask')`,
+				`SELECT ${originColumnSelect} FROM cdc.fn_cdc_get_net_changes_${captureInstance}(@0, @1, 'all with mask')`,
 				[lastLsn, max_lsn]
 			)
 
