@@ -7,7 +7,7 @@ import { FinishedGoodsEpcStatus } from '@modules/finished-goods/domain/constants
 import { ElectronicProductCode } from '@modules/finished-goods/domain/value-objects/epc.vo'
 import { Inject, Injectable } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
-import { flatten } from 'flat'
+import { flatten, unflatten } from 'flat'
 import { omitBy, pick, pickBy } from 'lodash'
 import { mongo } from 'mongoose'
 
@@ -325,7 +325,7 @@ export class InventoryLedgerMongoRepository implements IInventoryLedgerMongoRepo
 		return pendingInventoryFluctuation
 	}
 
-	async rollbackInboundFluctuation({ id, mo_no, changes, tx_type }: IStockTransaction<'inbound'>) {
+	async rollbackInboundFluctuation({ id, mo_no, changes }: IStockTransaction<'inbound'>) {
 		const decrementExpression = omitBy(
 			this.createInventoryDecrementExpression({
 				mo_no,
@@ -334,26 +334,9 @@ export class InventoryLedgerMongoRepository implements IInventoryLedgerMongoRepo
 			(_, key) => key.endsWith('shipped_out_qty')
 		)
 
-		for (const expr in decrementExpression) {
-			const size = expr.split('.').at(1)
-
-			// * Rollback "Recall" transaction thì giữ nguyên số lượng thu hồi và tăng số lượng trả về (coi như quét lại lần 2)
-			if (tx_type === 'recall') {
-				if (expr.endsWith('total_recall_tx')) decrementExpression[expr] = 0
-				if (expr.endsWith('total_return_tx'))
-					decrementExpression[expr] = Math.abs(changes[size]?.total_recall_tx ?? 0)
-			}
-			// * Rollback "Stock In" transaction thì giữ nguyên số lượng nhập kho và tăng số lượng trả về (coi như quét lại lần 2)
-			if (tx_type === 'stock_in') {
-				if (expr.endsWith('stocked_in_qty')) decrementExpression[expr] = 0
-				if (expr.endsWith('total_return_tx'))
-					decrementExpression[expr] = Math.abs(changes[size].total_return_tx || changes[size].stocked_in_qty)
-			}
-		}
-
 		await this.dailyMoInventoryLedgerModel.updateOne(
 			{ mo_no, date: format(new Date(), 'yyyy-MM-dd') },
-			{ [`transaction_history.${id}.reversed`]: true },
+			{ $inc: decrementExpression, [`transaction_history.${id}.reversed`]: true },
 			{ session: this.txHost.tx }
 		)
 
@@ -363,16 +346,9 @@ export class InventoryLedgerMongoRepository implements IInventoryLedgerMongoRepo
 			{ session: this.txHost.tx }
 		)
 
-		const sizeLedger = { ...changes }
-
-		for (const size in sizeLedger) {
-			delete changes[size].shipped_out_qty
-
-			changes[size].stocked_in_qty = -1 * changes[size].stocked_in_qty
-			changes[size].total_recall_tx = -1 * changes[size].total_recall_tx
-			changes[size].total_return_tx = -1 * changes[size].total_return_tx
-		}
-
-		await this.inventoryAuditRepository.updateInventoryAuditFluctuation({ mo_no, size_ledger: sizeLedger })
+		await this.inventoryAuditRepository.updateInventoryAuditFluctuation({
+			mo_no,
+			...unflatten(decrementExpression, { object: true })
+		})
 	}
 }

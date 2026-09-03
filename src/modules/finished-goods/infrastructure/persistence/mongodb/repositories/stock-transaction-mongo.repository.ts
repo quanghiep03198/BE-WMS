@@ -262,10 +262,32 @@ export class StockTransactionMongoRepository implements IStockTransactionMongoRe
 
 		await this.finishedGoodsEpcModel.updateMany(
 			{ epc: { $in: epcsToRollback.map((item) => item.epc) } },
-			{
-				$inc: { inbound_times: { $cond: [{ $eq: ['$status', FinishedGoodsEpcStatus.IN_STOCK] }, -1, 0] } },
-				$set: { status: FinishedGoodsEpcStatus.SCANNING, storage_location: null, assembly_line: null }
-			},
+			[
+				{
+					$set: {
+						inbound_times: {
+							$cond: [
+								{ $eq: ['$status', FinishedGoodsEpcStatus.IN_STOCK] },
+								{ $subtract: ['$inbound_times', 1] },
+								'$inbound_times'
+							]
+						},
+						status: {
+							$cond: [
+								{ $eq: ['$status', FinishedGoodsEpcStatus.RECALLED] },
+								FinishedGoodsEpcStatus.IN_STOCK,
+								FinishedGoodsEpcStatus.SCANNING
+							]
+						},
+						storage_location: {
+							$cond: [{ $eq: ['$status', FinishedGoodsEpcStatus.IN_STOCK] }, null, '$storage_location']
+						},
+						assembly_line: {
+							$cond: [{ $eq: ['$status', FinishedGoodsEpcStatus.IN_STOCK] }, null, '$assembly_line']
+						}
+					}
+				}
+			],
 			{ session: this.txHost.tx }
 		)
 

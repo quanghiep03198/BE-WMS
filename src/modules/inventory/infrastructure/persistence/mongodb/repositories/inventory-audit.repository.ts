@@ -125,7 +125,6 @@ export class InventoryAuditRepository implements IInventoryAuditRepository {
 		// * Cập nhật lại tồn kho trong tháng
 		const monthlyInventoryBulkWriteOperator = fluctuation.reduce((acc, curr) => {
 			const moInventoryFluctuation = manufacturingOrdersMap.get(curr.mo_no)
-			// this.logger.debug(moInventoryFluctuation)
 
 			if (!moInventoryFluctuation) return acc
 
@@ -151,8 +150,6 @@ export class InventoryAuditRepository implements IInventoryAuditRepository {
 					[`size_ledger.${size}.shipped_out_qty`]: fluctuation.shipped_out_qty ?? 0
 				}
 			}, {})
-
-			this.logger.debug(incrementExpression)
 
 			const bulkWriteOperator = {
 				updateOne: {
