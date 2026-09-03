@@ -60,11 +60,6 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule()
 		PrometheusModule.registerAsync({
 			inject: [ConfigService],
 			useFactory: (configService: ConfigService) => {
-				console.log(
-					'ENABLE_PROMETHEUS_METRICS_LOGGER type :>>> ',
-					typeof configService.get<boolean>('ENABLE_PROMETHEUS_METRICS_LOGGER')
-				)
-
 				return {
 					global: true,
 					path: '/metrics',
