@@ -1,5 +1,6 @@
 {
 	"compilerOptions": {
+		"types": ["@rspack/core/module", "node", "jest"],
 		"module": "nodenext",
 		"moduleResolution": "nodenext",
 		"declaration": true,
@@ -38,9 +39,8 @@
 			"@redis/*": ["./src/redis/*"],
 			"@tasks/*": ["./src/tasks/*"]
 		},
-		"inlineSources": true,
-		"types": ["node", "jest"]
+		"inlineSources": true
 	},
 	"include": ["src", "test", "src/instrument.ts", "global.d.ts"],
-	"exclude": ["node_modules", "dist", ".tmp/deprecated", ".tmp"]
+	"exclude": ["node_modules", "dist", ".tmp"]
 }

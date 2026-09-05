@@ -1,10 +1,12 @@
 allowBuilds:
-  '@automock/adapters.nestjs': true
-  '@compodoc/compodoc': set this to true or false
-  '@nestjs/core': set this to true or false
-  '@sentry/cli': true
-  '@sentry/node-cpu-profiler': true
-  '@sentry/profiling-node': set this to true or false
-  '@swc/core': true
+  "@automock/adapters.nestjs": true
+  "@compodoc/compodoc": set this to true or false
+  "@nestjs/core": set this to true or false
+  "@sentry/cli": true
+  "@sentry/node-cpu-profiler": true
+  "@sentry/profiling-node": set this to true or false
+  "@swc/core": true
   bcrypt: true
   msgpackr-extract: true
+overrides:
+  "fastify": "^5.10.0"

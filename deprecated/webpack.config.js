@@ -1,12 +1,23 @@
-const swcDefaultConfig = require('@nestjs/cli/lib/compiler/defaults/swc-defaults').swcDefaultsFactory().swcOptions
+// @ts-nocheck
 const CopyPlugin = require('copy-webpack-plugin')
 const path = require('path')
 const nodeExternals = require('webpack-node-externals')
 
-module.exports = function (options, webpack) {
+/**
+ * @typedef {import('webpack').Configuration} WebpackConfiguration
+ * @typedef {typeof import('webpack')} WebpackModule
+ */
+
+/**
+ * @param {WebpackConfiguration} options
+ * @returns {WebpackConfiguration}
+ */
+module.exports = function (options) {
+	const baseEntry = /** @type {string} */ (options.entry)
+
 	return {
 		...options,
-		entry: [options.entry],
+		entry: [baseEntry],
 		module: {
 			rules: [
 				{
@@ -15,7 +26,6 @@ module.exports = function (options, webpack) {
 					use: {
 						loader: 'swc-loader',
 						options: {
-							...swcDefaultConfig,
 							swcrc: true,
 							configFile: path.resolve(__dirname, 'infrastructure', '.swcrc')
 						}
@@ -25,7 +35,7 @@ module.exports = function (options, webpack) {
 		},
 		externals: [nodeExternals()],
 		plugins: [
-			...options.plugins,
+			...(options.plugins ?? []),
 			new CopyPlugin({
 				patterns: [
 					{

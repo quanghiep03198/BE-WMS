@@ -16,9 +16,7 @@
 				"swcrcPath": "infrastructure/.swcrc"
 			}
 		},
-		"webpack": true,
-		"webpackConfigPath": "webpack.config.js",
-		"typeCheck": false,
+		"typeCheck": true,
 		"tsConfigPath": "tsconfig.build.json"
 	}
 }

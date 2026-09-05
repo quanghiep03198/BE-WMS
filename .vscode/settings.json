@@ -15,5 +15,6 @@
 	},
 	"[yaml]": {
 		"editor.defaultFormatter": "redhat.vscode-yaml"
-	}
+	},
+	"js/ts.experimental.useTsgo": true
 }

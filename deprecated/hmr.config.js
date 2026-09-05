@@ -1,13 +1,25 @@
-const swcDefaultConfig = require('@nestjs/cli/lib/compiler/defaults/swc-defaults').swcDefaultsFactory().swcOptions
+// @ts-nocheck
 const CopyPlugin = require('copy-webpack-plugin')
 const path = require('path')
 const nodeExternals = require('webpack-node-externals')
 const { RunScriptWebpackPlugin } = require('run-script-webpack-plugin')
 
+/**
+ * @typedef {import('webpack').Configuration} WebpackConfiguration
+ * @typedef {typeof import('webpack')} WebpackModule
+ */
+
+/**
+ * @param {WebpackConfiguration} options
+ * @param {WebpackModule} webpack
+ * @returns {WebpackConfiguration}
+ */
 module.exports = function (options, webpack) {
+	const baseEntry = /** @type {string} */ (options.entry)
+
 	return {
 		...options,
-		entry: ['webpack/hot/poll?100', options.entry],
+		entry: ['webpack/hot/poll?100', baseEntry],
 		module: {
 			rules: [
 				{
@@ -16,7 +28,6 @@ module.exports = function (options, webpack) {
 					use: {
 						loader: 'swc-loader',
 						options: {
-							...swcDefaultConfig,
 							swcrc: true,
 							configFile: path.resolve(__dirname, 'infrastructure', '.swcrc')
 						}
@@ -30,10 +41,13 @@ module.exports = function (options, webpack) {
 			})
 		],
 		plugins: [
-			...options.plugins,
+			...(options.plugins ?? []),
 			new webpack.HotModuleReplacementPlugin(),
 			new webpack.WatchIgnorePlugin({ paths: [/\.js$/, /\.d\.ts$/] }),
-			new RunScriptWebpackPlugin({ name: options.output.filename, autoRestart: true }),
+			new RunScriptWebpackPlugin({
+				name: /** @type {string} */ (options.output?.filename ?? 'main.js'),
+				autoRestart: false
+			}),
 			new CopyPlugin({
 				patterns: [
 					{
