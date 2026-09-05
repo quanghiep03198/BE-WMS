@@ -62,7 +62,6 @@ export class StockOutTransaction extends AggregateRoot {
 			const tx = transactionalSizeQty.find((incoming) =>
 				outboundSizeDetail.size_numcode.isEqual(incoming.size_numcode)
 			)
-			console.log('tx :>>>', tx)
 
 			if (!tx)
 				return {

@@ -30,6 +30,32 @@ export class DailyPoShippingProgress {
 
 	@Prop({ type: Object, default: {} })
 	shipping_progress: Record<string, Record<string, number>>
+
+	/**
+	 * @example
+	 * {
+	 *   "transaction_history": {
+	 *     "time": "09:00",
+	 *     "packing": {
+	 *       "13A12A095": {
+	 *         "05": 10,
+	 *         "06": 5,
+	 *         "07": 20
+	 *       }
+	 *     },
+	 *     "reversed": false
+	 *   }
+	 * }
+	 */
+	@Prop({ type: Object, required: true })
+	transaction_history: Record<
+		string,
+		{
+			time: string
+			packing: Record<string, Record<string, number>>
+			reversed: boolean
+		}
+	>
 }
 
 export const DailyPoShippingProgressSchema = SchemaFactory.createForClass(DailyPoShippingProgress)
@@ -55,7 +81,7 @@ export type DailyPoShippingProgressDocument = HydratedDocument<DailyPoShippingPr
 		shipping_type: string
 		shipping_destination: string
 		shipping_progress: Record<
-			`0${number}` | `${number}`,
+			string,
 			{
 				order_qty: number
 				shipped_out_qty: number

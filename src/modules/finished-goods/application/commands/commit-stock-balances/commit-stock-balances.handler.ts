@@ -3,7 +3,7 @@ import { StockFlow } from '@modules/finished-goods/domain/types'
 import { generateStation, StationNO } from '@modules/finished-goods/domain/utils'
 import { COMMIT_STOCK_BALANCES_QUEUE } from '@modules/finished-goods/infrastructure/queues'
 import { InjectQueue } from '@nestjs/bullmq'
-import { CommandHandler, EventBus, ICommandHandler } from '@nestjs/cqrs'
+import { CommandHandler, ICommandHandler } from '@nestjs/cqrs'
 import { Queue } from 'bullmq'
 import { chunk } from 'lodash'
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
@@ -29,8 +29,7 @@ export class CommitStockBalancesHandler implements ICommandHandler<CommitStockBa
 					station_no: StationNO
 				}>
 			>
-		>,
-		private readonly eventBus: EventBus
+		>
 	) {}
 
 	public async execute({ pendingInboundEpcs, stockFlow }: CommitStockBalancesCommand): Promise<void> {

@@ -3,7 +3,11 @@ import { ElectronicProductCode } from '@modules/finished-goods/domain/value-obje
 
 export interface IStockTransactionMongoRepository {
 	stockIn(transactionId: string, pendingStockInEpcs: Array<ElectronicProductCode>): Promise<void>
-	stockOut(transactionId: string, pendingShipOutEpcs: Array<ElectronicProductCode>): Promise<void>
+	stockOut(
+		transactionId: string,
+		purchaseOrder: string,
+		pendingShipOutEpcs: Array<ElectronicProductCode>
+	): Promise<void>
 	recallFromStock(transactionId: string, pendingRecallEpcs: Array<ElectronicProductCode>): Promise<void>
 	rollbackInboundTransaction(transactionId: string): Promise<Array<{ epc: string; status: FinishedGoodsEpcStatus }>>
 }

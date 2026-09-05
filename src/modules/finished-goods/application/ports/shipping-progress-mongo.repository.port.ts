@@ -17,6 +17,7 @@ export interface IShippingProgressMongoRepository {
 	): Promise<Array<{ size_numcode: string; order_qty: number; accumulated_qty: number }>>
 
 	applyShippingProgressForStockOut(
+		transactionId: string,
 		pendingInventoryFluctuation: Array<{
 			mo_no: string
 			po: string | null | undefined

@@ -63,7 +63,7 @@ export class StockOutHandler implements ICommandHandler<StockOutCommand> {
 
 		const transactionId = stockOutTransaction.startTransaction()
 
-		await this.stockTransactionMongoRepository.stockOut(transactionId, pendingOutboundEpcs)
+		await this.stockTransactionMongoRepository.stockOut(transactionId, purchaseOrder, pendingOutboundEpcs)
 
 		this.eventPublisher.mergeObjectContext(stockOutTransaction)
 		stockOutTransaction.commit()

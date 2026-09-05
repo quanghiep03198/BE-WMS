@@ -1,21 +1,21 @@
 import { SuperJson } from '@common/utils'
 import { DATA_WAREHOUSE_CONNECTION } from '@databases/constants'
-import { IQueryHandler, QueryHandler } from '@nestjs/cqrs'
-import { InjectModel } from '@nestjs/mongoose'
-import { InjectRedisClient } from '@redis/decorators'
-import Redis from 'ioredis'
-import { isEqual, omitBy } from 'lodash'
+import { FinishedGoodsEpcStatus } from '@modules/finished-goods/domain/constants'
 import {
 	FinishedGoodsEpc,
 	FinishedGoodsEpcModel
-} from './../../../infrastructure/persistence/mongodb/schemas/finished-goods-epc.schema'
-
+} from '@modules/finished-goods/infrastructure/persistence/mongodb/schemas/finished-goods-epc.schema'
+import { IQueryHandler, QueryHandler } from '@nestjs/cqrs'
+import { InjectModel } from '@nestjs/mongoose'
+import { InjectRedisClient } from '@redis/decorators'
 import { format } from 'date-fns'
 import { flatten } from 'flat'
+import Redis from 'ioredis'
+import { isEqual, omitBy } from 'lodash'
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
-import { ISizeLedgerFluctuation } from '../../ports/inventory-ledger-mongo.repository.port'
-import { IStockTransaction } from '../../types'
-import { GetCurrentStockTxQuery } from './get-current-stock-tx.query'
+import { ISizeLedgerFluctuation } from '../../../ports/inventory-ledger-mongo.repository.port'
+import { IStockTransaction } from '../../../types'
+import { GetCurrentStockTxQuery } from '../impl/get-current-stock-tx.query'
 
 @QueryHandler(GetCurrentStockTxQuery)
 export class GetCurrentStockTxHandler implements IQueryHandler<GetCurrentStockTxQuery> {
@@ -26,8 +26,8 @@ export class GetCurrentStockTxHandler implements IQueryHandler<GetCurrentStockTx
 		private readonly finishedGoodsEpcModel: FinishedGoodsEpcModel
 	) {}
 
-	public async execute({ stockFlow }: GetCurrentStockTxQuery): Promise<IStockTransaction<typeof stockFlow>[]> {
-		const currentStockTx = await this.redisClient.lrange(`transactions:${stockFlow}`, 0, -1)
+	public async execute(): Promise<IStockTransaction<'inbound'>[]> {
+		const currentStockTx = await this.redisClient.lrange(`transactions:inbound`, 0, -1)
 
 		const persistedCurrentTx = await this.finishedGoodsEpcModel.aggregate<{
 			last_tx: string
@@ -36,7 +36,7 @@ export class GetCurrentStockTxHandler implements IQueryHandler<GetCurrentStockTx
 		}>([
 			{
 				$match: {
-					status: { $in: ['instock', 'recalled', 'shipped'] },
+					status: { $in: [FinishedGoodsEpcStatus.IN_STOCK, FinishedGoodsEpcStatus.RECALLED] },
 					inbound_times: { $gte: 1 },
 					$expr: {
 						$eq: [
@@ -79,11 +79,6 @@ export class GetCurrentStockTxHandler implements IQueryHandler<GetCurrentStockTx
 								0
 							]
 						}
-					},
-					shipped_out_qty: {
-						$sum: {
-							$cond: [{ $eq: ['$status', 'shipped'] }, 1, 0]
-						}
 					}
 				}
 			},
@@ -99,8 +94,7 @@ export class GetCurrentStockTxHandler implements IQueryHandler<GetCurrentStockTx
 							v: {
 								stocked_in_qty: '$stocked_in_qty',
 								total_recall_tx: '$total_recall_tx',
-								total_return_tx: '$total_return_tx',
-								shipped_out_qty: '$shipped_out_qty'
+								total_return_tx: '$total_return_tx'
 							}
 						}
 					}
@@ -118,12 +112,10 @@ export class GetCurrentStockTxHandler implements IQueryHandler<GetCurrentStockTx
 			}
 		])
 
-		this.logger.debug(persistedCurrentTx)
-
 		const persistedCurrentTxMap = new Map(persistedCurrentTx.map((item) => [item.last_tx, item]))
 
 		return currentStockTx.map((item) => {
-			const tx = SuperJson.parse<IStockTransaction<typeof stockFlow>>(item)
+			const tx = SuperJson.parse<IStockTransaction<'inbound'>>(item)
 
 			const cachedPositiveChanges = omitBy(
 				flatten<Record<string, ISizeLedgerFluctuation>, Record<string, number>>(tx?.changes),

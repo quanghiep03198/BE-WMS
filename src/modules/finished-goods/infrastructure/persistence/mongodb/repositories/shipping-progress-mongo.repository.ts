@@ -77,6 +77,7 @@ export class ShippingProgressMongoRepository implements IShippingProgressMongoRe
 	}
 
 	public async applyShippingProgressForStockOut(
+		transactionId: string,
 		pendingInventoryFluctuation: Array<{
 			mo_no: string
 			po: string | null | undefined
@@ -118,7 +119,13 @@ export class ShippingProgressMongoRepository implements IShippingProgressMongoRe
 						filter: { po: change.po, date },
 						update: {
 							$setOnInsert: { po: change.po, date },
-							$inc: incrementExpression
+							$inc: incrementExpression,
+							...Object.entries(change.size_ledger).reduce((acc, [size, fluctuation]) => {
+								return {
+									...acc,
+									[`transaction_history.${transactionId}.${change.mo_no}.${size}`]: fluctuation.shipped_out_qty
+								}
+							}, {})
 						},
 						upsert: true
 					}

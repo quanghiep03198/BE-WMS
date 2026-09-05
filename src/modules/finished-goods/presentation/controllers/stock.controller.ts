@@ -5,7 +5,7 @@ import { I18nTranslations } from '@generated/i18n.generated'
 import { RecallFromStockCommand } from '@modules/finished-goods/application/commands/recall-from-stock/recall-from-stock.command'
 import { RollbackStockInTxCommand } from '@modules/finished-goods/application/commands/rollback-inbound-tx/rollback-inbound-tx.command'
 import { StockOutCommand } from '@modules/finished-goods/application/commands/stock-out/stock-out.command'
-import { GetCurrentStockTxQuery } from '@modules/finished-goods/application/queries/get-current-stock-tx/get-current-stock-tx.query'
+import { GetCurrentTxQueryFactory } from '@modules/finished-goods/application/queries/get-current-tx/get-current-tx.factory'
 import { StockFlow } from '@modules/finished-goods/domain/types'
 import { StockBalancesDTO, stockBalancesValidator } from '@modules/finished-goods/presentation/dto/rfid-inbound.dto'
 import { UserRole } from '@modules/user/constants'
@@ -101,7 +101,7 @@ export class StockController {
 		if (stockFlow !== 'inbound' && stockFlow !== 'outbound')
 			throw new BadRequestException('Invalid stock transaction type. Must be either "inbound" or "outbound".')
 
-		return await this.queryBus.execute(new GetCurrentStockTxQuery(stockFlow))
+		return await this.queryBus.execute(GetCurrentTxQueryFactory.create(stockFlow))
 	}
 
 	@RouteHandler({

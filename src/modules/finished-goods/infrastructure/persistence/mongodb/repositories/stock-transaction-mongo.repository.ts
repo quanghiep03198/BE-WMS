@@ -1,23 +1,23 @@
+import { SuperJson } from '@common/utils'
 import { DATA_WAREHOUSE_CONNECTION } from '@databases/constants'
+import {
+	INVENTORY_LEDGER_MG_REPOSITORY,
+	IPendingInventoryFluctuation,
+	ISizeLedgerFluctuation
+} from '@modules/finished-goods/application/ports/inventory-ledger-mongo.repository.port'
+import { SHIPPING_PROGRESS_MONGO_REPOSITORY } from '@modules/finished-goods/application/ports/shipping-progress-mongo.repository.port'
 import { IStockTransactionMongoRepository } from '@modules/finished-goods/application/ports/stock-transaction-mongo.repository.port'
+import { IStockTransaction } from '@modules/finished-goods/application/types'
 import { FinishedGoodsEpcStatus } from '@modules/finished-goods/domain/constants'
 import { ElectronicProductCode } from '@modules/finished-goods/domain/value-objects/epc.vo'
 import { InjectTransactionHost, Transactional, TransactionHost } from '@nestjs-cls/transactional'
 import { TransactionalAdapterMongoose } from '@nestjs-cls/transactional-adapter-mongoose'
 import { Inject, Injectable } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
-import { AnyBulkWriteOperation, mongo, type MongooseBulkWriteOptions } from 'mongoose'
-
-import { SuperJson } from '@common/utils'
-import {
-	INVENTORY_LEDGER_MG_REPOSITORY,
-	IPendingInventoryFluctuation
-} from '@modules/finished-goods/application/ports/inventory-ledger-mongo.repository.port'
-import { SHIPPING_PROGRESS_MONGO_REPOSITORY } from '@modules/finished-goods/application/ports/shipping-progress-mongo.repository.port'
-import { IStockTransaction } from '@modules/finished-goods/application/types'
 import { InjectRedisClient } from '@redis/decorators'
 import { format } from 'date-fns'
 import Redis from 'ioredis'
+import { AnyBulkWriteOperation, mongo, type MongooseBulkWriteOptions } from 'mongoose'
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
 import { FinishedGoodsEpc, FinishedGoodsEpcDocument, FinishedGoodsEpcModel } from '../schemas/finished-goods-epc.schema'
 import { InventoryLedgerMongoRepository } from './inventory-ledger-mongo.repository'
@@ -147,7 +147,11 @@ export class StockTransactionMongoRepository implements IStockTransactionMongoRe
 	}
 
 	@Transactional<TransactionalAdapterMongoose>(DATA_WAREHOUSE_CONNECTION)
-	public async stockOut(transactionId: string, pendingShipOutEpcs: Array<ElectronicProductCode>): Promise<void> {
+	public async stockOut(
+		transactionId: string,
+		purchaseOrder: string,
+		pendingShipOutEpcs: Array<ElectronicProductCode>
+	): Promise<void> {
 		const bulkWriteOperations: AnyBulkWriteOperation<FinishedGoodsEpcDocument>[] = pendingShipOutEpcs.map((epc) => ({
 			updateOne: {
 				filter: { epc: epc.getStockKeepingUnit(), status: FinishedGoodsEpcStatus.SCANNING, outbound_at: null },
@@ -156,7 +160,7 @@ export class StockTransactionMongoRepository implements IStockTransactionMongoRe
 					po: epc.getPurchaseOrder(),
 					status: FinishedGoodsEpcStatus.SHIPPED,
 					scannable: false,
-					ship_out_tx: transactionId
+					last_tx: transactionId
 				}
 			}
 		}))
@@ -172,24 +176,33 @@ export class StockTransactionMongoRepository implements IStockTransactionMongoRe
 		const pendingInventoryFluctuation = (await this.inventoryLedgerMongoRepository.getPendingInventoryFluctuation(
 			pendingShipOutEpcs
 		)) as Array<IPendingInventoryFluctuation>
-		const balances = await this.inventoryLedgerMongoRepository.commitInventoryLedgerOnStockOut(pendingShipOutEpcs)
-		await this.shippingProgressMongoRepository.applyShippingProgressForStockOut(pendingInventoryFluctuation)
+		const fluctuation = await this.inventoryLedgerMongoRepository.commitInventoryLedgerOnStockOut(pendingShipOutEpcs)
+		await this.shippingProgressMongoRepository.applyShippingProgressForStockOut(
+			transactionId,
+			pendingInventoryFluctuation
+		)
 
-		for (const blc of balances) {
-			await this.redisClient.lpush(
-				`transactions:outbound`,
-				SuperJson.stringify({
-					id: transactionId,
-					mo_no: blc.mo_no,
-					po: blc.po,
-					qty: Object.values(blc.size_ledger).reduce((sum, item) => sum + item.stocked_in_qty, 0),
-					changes: blc.size_ledger,
-					tx_at: format(new Date(), 'yyyy-MM-dd HH:mm:ss'),
-					tx_type: 'stock_out',
-					reversed: false
-				} satisfies IStockTransaction<'outbound'>)
-			)
-		}
+		await this.redisClient.lpush(
+			`transactions:outbound`,
+			SuperJson.stringify({
+				id: transactionId,
+				po: purchaseOrder,
+				qty: fluctuation.reduce(
+					(sum, item) =>
+						sum + Object.values(item.size_ledger).reduce((subSum, curr) => subSum + curr.shipped_out_qty, 0),
+					0
+				),
+				changes: fluctuation.map<{ mo_no: string; size_ledger: Record<string, ISizeLedgerFluctuation> }>(
+					(item) => ({
+						mo_no: item.mo_no,
+						size_ledger: item.size_ledger
+					})
+				),
+				tx_at: format(new Date(), 'yyyy-MM-dd HH:mm:ss'),
+				tx_type: 'stock_out',
+				reversed: false
+			} satisfies IStockTransaction<'outbound'>)
+		)
 
 		// * Apply expiry after writes to avoid missing TTL when key is first created by RPUSH.
 		const expiryTime = Math.floor(new Date().setHours(23, 0, 0, 0) / 1000)

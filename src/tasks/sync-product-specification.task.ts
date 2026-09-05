@@ -12,6 +12,7 @@ import { Cron, CronExpression } from '@nestjs/schedule'
 import { InjectDataSource } from '@nestjs/typeorm'
 import { AnyBulkWriteOperation, Model } from 'mongoose'
 import { DataSource } from 'typeorm'
+
 @Injectable()
 export class SyncProductSpecificationTask {
 	private readonly logger = new Logger(SyncProductSpecificationTask.name)
