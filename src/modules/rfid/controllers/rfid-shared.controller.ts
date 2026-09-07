@@ -35,6 +35,7 @@ import { RFIDOutboundService } from '../services/rfid-outbound.service'
 import { RFIDSharedService } from '../services/rfid-shared.service'
 import { RFIDSearchParams } from '../types'
 import { generateStation } from '../utils'
+import { CacheKey, CacheTTL } from '@nestjs/cache-manager'
 
 @Controller('rfid')
 export class RFIDSharedController {
@@ -102,6 +103,8 @@ export class RFIDSharedController {
 		endpoint: 'archived-epc-features',
 		method: HttpMethod.GET
 	})
+	@CacheKey('cached:apis:archived-epc-features')
+	@CacheTTL(60 * 1000 * 5)
 	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
 	async getArchivedEpcFeatures() {
 		return await this.rfidSharedService.getArchivedEpcFeatures()
