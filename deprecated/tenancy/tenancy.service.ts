@@ -1,3 +1,5 @@
+// @ts-nocheck
+
 import { env } from '@common/utils'
 import { Injectable, NotFoundException, OnModuleDestroy } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'

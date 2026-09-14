@@ -1,7 +1,7 @@
 import { DATA_SOURCE_DATA_LAKE } from '@databases/constants'
 import { HttpModule, HttpService } from '@nestjs/axios'
 import { BullModule } from '@nestjs/bullmq'
-import { forwardRef, MiddlewareConsumer, Module, NestModule, OnModuleInit } from '@nestjs/common'
+import { forwardRef, Module, OnModuleInit } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { TypeOrmModule } from '@nestjs/typeorm'
 import { AxiosError, AxiosResponse } from 'axios'
@@ -12,18 +12,14 @@ import { FactoryCode } from '../department/constants'
 import { FinishedGoodsModule } from '../finished-goods/finished-goods.module'
 import { BaseRFIDInventoryEntity } from '../finished-goods/infrastructure/persistence/mssql/entities/rfid-inventory.entity'
 import { OrderModule } from '../order/order.module'
-import { TenacyMiddleware } from '../tenancy/tenancy.middleware'
-import { TenancyModule } from '../tenancy/tenancy.module'
 import { DECKERS_OAUTH2_STRATEGY, THIRD_PARTY_API_SYNC } from './constants'
 import { ThirdPartyApiConsumer } from './queues/third-party-api.consumer'
 import { DeckersOAuth2Strategy } from './strategies/deckers-oauth2.strategy'
 import { ThirdPartyApiController } from './third-party-api.controller'
-import { ThirdPartyApiMiddleware } from './third-party-api.middleware'
 import { ThirdPartyApiService } from './third-party-api.service'
 
 @Module({
 	imports: [
-		TenancyModule,
 		OrderModule,
 		TypeOrmModule.forFeature([BaseRFIDInventoryEntity], DATA_SOURCE_DATA_LAKE),
 		HttpModule.register({ httpsAgent: new Agent({ keepAlive: true }) }),
@@ -69,7 +65,7 @@ import { ThirdPartyApiService } from './third-party-api.service'
 	],
 	exports: [HttpModule, ThirdPartyApiService, BullModule]
 })
-export class ThirdPartyApiModule implements NestModule, OnModuleInit {
+export class ThirdPartyApiModule implements OnModuleInit {
 	constructor(
 		private readonly logger: PinoLogger,
 		private readonly httpService: HttpService,
@@ -99,9 +95,5 @@ export class ThirdPartyApiModule implements NestModule, OnModuleInit {
 				return Promise.reject(error)
 			}
 		)
-	}
-
-	configure(consumer: MiddlewareConsumer) {
-		consumer.apply(TenacyMiddleware, ThirdPartyApiMiddleware).forRoutes(ThirdPartyApiController)
 	}
 }

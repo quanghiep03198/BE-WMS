@@ -1,3 +1,5 @@
+// @ts-nocheck
+
 export enum Tenant {
 	DEV = 'tenant-dev',
 	CENTRAL = 'tenant-central', // 10.30.0.21

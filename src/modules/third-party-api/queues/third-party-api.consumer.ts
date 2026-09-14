@@ -4,13 +4,13 @@ import { SuperJson } from '@common/utils'
 import { generateShortId } from '@common/utils/short-id.util'
 import { FactoryCode } from '@modules/department/constants'
 import {
-	EPC_MONGO_REPOSITORY,
-	IEpcMongoRepository
-} from '@modules/finished-goods/application/ports/epc-mongo.repository.port'
+	FINISHED_GOODS_EPC_REPOSITORY,
+	IFinishedGoodsEpcRepository
+} from '@modules/finished-goods/application/ports/finished-goods-epc.repository.port'
 import {
-	IMssqlFinishedGoodsRepository,
-	MSSQL_FINISHED_GOODS_REPOSITORY
-} from '@modules/finished-goods/application/ports/mssql-finished-goods.repository.port'
+	FINISHED_GOODS_RMDBS_REPOSITORY,
+	IFinishedGoodsRmdbsRepository
+} from '@modules/finished-goods/application/ports/finished-goods.rmdbs.repository.port'
 import { UpsertEpcsMatchData } from '@modules/finished-goods/domain/types'
 import { SizeNumber } from '@modules/finished-goods/domain/value-objects/size-number.vo'
 import { FinishedGoodsGateway } from '@modules/finished-goods/presentation/gateways/finished-goods.gateway'
@@ -35,9 +35,9 @@ export class ThirdPartyApiConsumer extends WorkerHost {
 
 	constructor(
 		@Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
-		@Inject(EPC_MONGO_REPOSITORY) private readonly epcRepository: IEpcMongoRepository,
-		@Inject(MSSQL_FINISHED_GOODS_REPOSITORY)
-		private readonly mssqlFinishedGoodsRepository: IMssqlFinishedGoodsRepository,
+		@Inject(FINISHED_GOODS_EPC_REPOSITORY) private readonly epcRepository: IFinishedGoodsEpcRepository,
+		@Inject(FINISHED_GOODS_RMDBS_REPOSITORY)
+		private readonly mssqlFinishedGoodsRepository: IFinishedGoodsRmdbsRepository,
 		@Inject(ORDER_REPOSITORY) private readonly orderRepository: IOrderRepository,
 		private readonly logger: PinoLogger,
 		private readonly thirdPartyApiService: ThirdPartyApiService,
@@ -171,7 +171,7 @@ export class ThirdPartyApiConsumer extends WorkerHost {
 	private async getManufacturingOrdersInfo(manufacturingOrders: string[]) {
 		try {
 			const data = await Promise.all(
-				manufacturingOrders.map(async (mo) => await this.orderRepository.getManufacturingOrder(mo))
+				manufacturingOrders.map(async (mo) => await this.orderRepository.getRawManufacturingOrder(mo))
 			)
 			this.updateProcessState(2, 'processing')
 			await this.broadcastStateChange()

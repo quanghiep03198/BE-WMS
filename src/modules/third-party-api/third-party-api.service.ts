@@ -1,8 +1,8 @@
 import { generateShortId } from '@common/utils/short-id.util'
 import {
-	IMssqlFinishedGoodsRepository,
-	MSSQL_FINISHED_GOODS_REPOSITORY
-} from '@modules/finished-goods/application/ports/mssql-finished-goods.repository.port'
+	FINISHED_GOODS_RMDBS_REPOSITORY,
+	IFinishedGoodsRmdbsRepository
+} from '@modules/finished-goods/application/ports/finished-goods.rmdbs.repository.port'
 import { UpsertEpcsMatchData } from '@modules/finished-goods/domain/types'
 import { SizeNumber } from '@modules/finished-goods/domain/value-objects/size-number.vo'
 import { ORDER_REPOSITORY } from '@modules/order/order.constant'
@@ -20,8 +20,8 @@ export class ThirdPartyApiService {
 		@InjectPinoLogger(ThirdPartyApiService.name)
 		private readonly logger: PinoLogger,
 		@Inject(ORDER_REPOSITORY) private readonly orderRepository: IOrderRepository,
-		@Inject(MSSQL_FINISHED_GOODS_REPOSITORY)
-		private readonly mssqlFinishedGoodsRepository: IMssqlFinishedGoodsRepository,
+		@Inject(FINISHED_GOODS_RMDBS_REPOSITORY)
+		private readonly mssqlFinishedGoodsRepository: IFinishedGoodsRmdbsRepository,
 		private readonly httpService: HttpService
 	) {}
 
@@ -58,7 +58,7 @@ export class ThirdPartyApiService {
 			throw new NotFoundException('No data fetched from the customer')
 		}
 
-		const manufacturingOrders = await this.orderRepository.getManufacturingOrder(commandNumber.slice(0, 9))
+		const manufacturingOrders = await this.orderRepository.getRawManufacturingOrder(commandNumber.slice(0, 9))
 
 		if (!manufacturingOrders) {
 			throw new NotFoundException(`Order information could not be found`)
@@ -103,7 +103,7 @@ export class ThirdPartyApiService {
 
 		if (!data) throw new NotFoundException('No data fetched from the customer')
 
-		const manufacturingOrder = await this.orderRepository.getManufacturingOrder(data.commandNumber)
+		const manufacturingOrder = await this.orderRepository.getRawManufacturingOrder(data.commandNumber)
 
 		if (!manufacturingOrder) {
 			throw new NotFoundException(`Order information could not be found`)

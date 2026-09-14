@@ -1,3 +1,5 @@
+// @ts-nocheck
+
 import { CommonRequestHeader } from '@common/constants'
 import { HttpMethod, RequireAuthenticated, RouteHandler } from '@common/decorators'
 import { BadRequestException, Controller, Headers } from '@nestjs/common'

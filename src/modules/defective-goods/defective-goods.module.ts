@@ -1,8 +1,6 @@
 import { DATA_SOURCE_DATA_LAKE } from '@databases/constants'
-import { MiddlewareConsumer, Module, NestModule, RequestMethod } from '@nestjs/common'
+import { Module } from '@nestjs/common'
 import { TypeOrmModule } from '@nestjs/typeorm'
-import { TenacyMiddleware } from '../tenancy/tenancy.middleware'
-import { TenancyModule } from '../tenancy/tenancy.module'
 import { DefectiveGoodsController } from './defective-goods.controller'
 import { DefectiveGoodsEntity } from './entities/defective-goods.entity'
 import { DefectiveGoodsService } from './services/defective-goods.service'
@@ -11,7 +9,7 @@ import { DefectiveGoodsInventoryService } from './services/defective-inventory.s
 import { DefectiveGoodsOutboundService } from './services/defective-outbound.service'
 
 @Module({
-	imports: [TenancyModule, TypeOrmModule.forFeature([DefectiveGoodsEntity], DATA_SOURCE_DATA_LAKE)],
+	imports: [TypeOrmModule.forFeature([DefectiveGoodsEntity], DATA_SOURCE_DATA_LAKE)],
 	controllers: [DefectiveGoodsController],
 	providers: [
 		DefectiveGoodsService,
@@ -20,17 +18,4 @@ import { DefectiveGoodsOutboundService } from './services/defective-outbound.ser
 		DefectiveGoodsInventoryService
 	]
 })
-export class DefectiveGoodsModule implements NestModule {
-	configure(consumer: MiddlewareConsumer) {
-		consumer
-			.apply(TenacyMiddleware)
-			.forRoutes(
-				{ path: '/defective-goods/daily-inbound', method: RequestMethod.GET },
-				{ path: '/defective-goods/export-daily-inbound', method: RequestMethod.GET },
-				{ path: '/defective-goods/daily-outbound', method: RequestMethod.GET },
-				{ path: '/defective-goods/export-daily-outbound', method: RequestMethod.GET },
-				{ path: '/defective-goods/inventory', method: RequestMethod.GET },
-				{ path: '/defective-goods/export-inventory-report', method: RequestMethod.GET }
-			)
-	}
-}
+export class DefectiveGoodsModule {}

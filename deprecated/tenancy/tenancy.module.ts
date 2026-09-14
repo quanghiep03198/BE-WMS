@@ -1,3 +1,5 @@
+// @ts-nocheck
+
 import { CommonRequestHeader } from '@common/constants'
 import { Module, Scope } from '@nestjs/common'
 import { REQUEST } from '@nestjs/core'
@@ -6,6 +8,9 @@ import { TENANCY_DATA_SOURCE } from './constants'
 import { TenancyController } from './tenancy.controller'
 import { TenancyService } from './tenancy.service'
 
+/**
+ * @deprecated This module is deprecated and should not be used in new implementations.
+ */
 @Module({
 	controllers: [TenancyController],
 	providers: [

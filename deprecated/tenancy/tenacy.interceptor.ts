@@ -1,3 +1,5 @@
+// @ts-nocheck
+
 import { CallHandler, ExecutionContext, Injectable, Logger, NestInterceptor, Scope } from '@nestjs/common'
 import { FastifyReply, FastifyRequest } from 'fastify'
 import { Observable } from 'rxjs'

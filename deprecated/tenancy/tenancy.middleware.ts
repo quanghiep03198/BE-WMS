@@ -1,3 +1,5 @@
+// @ts-nocheck
+
 import { CommonRequestHeader } from '@common/constants'
 import { BadRequestException, Injectable, NestMiddleware } from '@nestjs/common'
 import { FastifyReply, FastifyRequest } from 'fastify'
