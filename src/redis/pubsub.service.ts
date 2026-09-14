@@ -1,26 +1,21 @@
-import { Injectable, OnApplicationShutdown, OnModuleDestroy } from '@nestjs/common'
+import { Injectable, OnApplicationShutdown } from '@nestjs/common'
 import { Redis } from 'ioredis'
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
 import { InjectPublisher, InjectSubscriber } from './decorators'
 
 @Injectable()
-export class PubSubService implements OnModuleDestroy, OnApplicationShutdown {
+export class PubSubService implements OnApplicationShutdown {
 	constructor(
 		@InjectPublisher() private readonly publisher: Redis,
 		@InjectSubscriber() private readonly subscriber: Redis,
 		@InjectPinoLogger(PubSubService.name) private readonly logger: PinoLogger
 	) {}
 
-	onModuleDestroy() {
-		this.publisher.quit()
-		this.subscriber.quit()
-		this.publisher.disconnect()
-	}
-
-	onApplicationShutdown() {
-		this.publisher.quit()
-		this.subscriber.quit()
-		this.publisher.disconnect()
+	async onApplicationShutdown() {
+		// * Only close connections that are still active to avoid "Connection is closed" errors
+		await Promise.allSettled(
+			[this.publisher, this.subscriber].filter((client) => client.status !== 'end').map((client) => client.quit())
+		)
 	}
 
 	async publish(channel: string, message: string): Promise<number> {
