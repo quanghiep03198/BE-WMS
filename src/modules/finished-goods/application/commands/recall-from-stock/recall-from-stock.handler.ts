@@ -1,17 +1,15 @@
 import {
-	EPC_MONGO_REPOSITORY,
-	IEpcMongoRepository
-} from '@modules/finished-goods/application/ports/epc-mongo.repository.port'
+	FINISHED_GOODS_EPC_REPOSITORY,
+	IFinishedGoodsEpcRepository
+} from '@modules/finished-goods/application/ports/finished-goods-epc.repository.port'
 import {
-	IInventoryLedgerMongoRepository,
-	INVENTORY_LEDGER_MG_REPOSITORY
-} from '@modules/finished-goods/application/ports/inventory-ledger-mongo.repository.port'
-import {
-	IStockTransactionMongoRepository,
-	STOCK_TX_MONGO_REPOSITORY
-} from '@modules/finished-goods/application/ports/stock-transaction-mongo.repository.port'
+	IStockTransactionRepository,
+	STOCK_TX_REPOSITORY
+} from '@modules/finished-goods/application/ports/stock-transaction.repository.port'
 import { RecallFromStockTransaction } from '@modules/finished-goods/domain/models/recall-transaction.model'
 import { SizeNumber } from '@modules/finished-goods/domain/value-objects/size-number.vo'
+import { ORDER_REPOSITORY } from '@modules/order/order.constant'
+import { IOrderRepository } from '@modules/order/order.repository.interface'
 import { Inject } from '@nestjs/common'
 import { CommandHandler, EventPublisher, ICommandHandler } from '@nestjs/cqrs'
 import { RecallFromStockCommand } from './recall-from-stock.command'
@@ -19,11 +17,11 @@ import { RecallFromStockCommand } from './recall-from-stock.command'
 @CommandHandler(RecallFromStockCommand)
 export class RecallFromStockHandler implements ICommandHandler<RecallFromStockCommand> {
 	constructor(
-		@Inject(EPC_MONGO_REPOSITORY) private readonly epcMongoRepository: IEpcMongoRepository,
-		@Inject(INVENTORY_LEDGER_MG_REPOSITORY)
-		private readonly inventoryLedgerMongoRepository: IInventoryLedgerMongoRepository,
-		@Inject(STOCK_TX_MONGO_REPOSITORY)
-		private readonly stockTransactionMongoRepository: IStockTransactionMongoRepository,
+		@Inject(FINISHED_GOODS_EPC_REPOSITORY) private readonly epcMongoRepository: IFinishedGoodsEpcRepository,
+		@Inject(ORDER_REPOSITORY)
+		private readonly orderRepository: IOrderRepository,
+		@Inject(STOCK_TX_REPOSITORY)
+		private readonly stockTransactionMongoRepository: IStockTransactionRepository,
 		private readonly eventPublisher: EventPublisher
 	) {}
 
@@ -33,7 +31,7 @@ export class RecallFromStockHandler implements ICommandHandler<RecallFromStockCo
 			command.mo_no
 		)
 
-		const moInventory = (await this.inventoryLedgerMongoRepository.getMoInventory(command.mo_no)).map((item) => ({
+		const moInventory = (await this.orderRepository.getManufacturingOrderInventory(command.mo_no)).map((item) => ({
 			...item,
 			size_numcode: new SizeNumber(item.size_numcode)
 		}))

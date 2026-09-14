@@ -49,7 +49,7 @@ export class DailyMoInventoryLedger {
 					total_return_tx: number
 				}
 			>
-			reversed: boolean // * Indicates whether the transaction has been reversed or not
+			voided: boolean // * Indicates whether the transaction has been voided or not
 		}
 	>
 }

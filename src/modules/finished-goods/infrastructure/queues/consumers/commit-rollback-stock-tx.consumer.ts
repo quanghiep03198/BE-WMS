@@ -4,10 +4,10 @@ import { InjectTransactionHost, TransactionHost } from '@nestjs-cls/transactiona
 import { TransactionalAdapterTypeOrm } from '@nestjs-cls/transactional-adapter-typeorm'
 import { Processor, WorkerHost } from '@nestjs/bullmq'
 import { Job } from 'bullmq'
-import { ROLLBACK_INBOUND_TX_QUEUE } from '..'
+import { ROLLBACK_STOCK_TX_QUEUE } from '..'
 
-@Processor(ROLLBACK_INBOUND_TX_QUEUE)
-export class RollbackInboundTxConsumer extends WorkerHost {
+@Processor(ROLLBACK_STOCK_TX_QUEUE)
+export class RollbackStockTxConsumer extends WorkerHost {
 	constructor(
 		@InjectTransactionHost(DATA_SOURCE_DATA_LAKE)
 		private readonly txHostDL: TransactionHost<TransactionalAdapterTypeOrm>
@@ -16,16 +16,20 @@ export class RollbackInboundTxConsumer extends WorkerHost {
 	}
 
 	public async process(job: Job<Array<{ epc: string; status: FinishedGoodsEpcStatus }>>): Promise<void> {
-		const statusMap: Map<FinishedGoodsEpcStatus, 'A' | 'B'> = new Map([
-			[FinishedGoodsEpcStatus.IN_STOCK, 'A'],
-			[FinishedGoodsEpcStatus.RECALLED, 'B']
+		const statusMap: Map<
+			FinishedGoodsEpcStatus,
+			{ status: 'A'; station: '101' } | { status: 'B'; station: '101' | '103' }
+		> = new Map([
+			[FinishedGoodsEpcStatus.IN_STOCK, { status: 'A', station: '101' }],
+			[FinishedGoodsEpcStatus.RECALLED, { status: 'B', station: '101' }],
+			[FinishedGoodsEpcStatus.SHIPPED, { status: 'B', station: '103' }]
 		])
 
 		const paramter = JSON.stringify(
 			job.data.map((item) => ({
 				epc: item.epc,
-				status: statusMap.get(item.status),
-				station: '101'
+				status: statusMap.get(item.status).status,
+				station: statusMap.get(item.status).station
 			}))
 		)
 

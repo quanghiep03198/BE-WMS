@@ -3,14 +3,14 @@ import { CdcChangeContext, ICdcHandler } from '@databases/cdc/types'
 import { DATA_SOURCE_DATA_LAKE, DATA_WAREHOUSE_CONNECTION, DATABASE_SCHEMA } from '@databases/constants'
 import { FinishedGoodsEpcStatus } from '@modules/finished-goods/domain/constants'
 import { SizeNumber } from '@modules/finished-goods/domain/value-objects/size-number.vo'
-import { ManufacturingOrder, ManufacturingOrderModel } from '@modules/order/schemas/manufacturing-order.schema'
 import { InjectTransactionHost, Transactional, TransactionHost } from '@nestjs-cls/transactional'
 import { TransactionalAdapterMongoose } from '@nestjs-cls/transactional-adapter-mongoose'
 import { InjectModel } from '@nestjs/mongoose'
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
+import { ManufacturingOrder, ManufacturingOrderModel } from '../../../order/schemas/manufacturing-order.schema'
+import { PurchaseOrder, PurchaseOrderModel } from '../../../order/schemas/purchase-order.schema'
 import { FinishedGoodsEpcMatch, FinishedGoodsEpcMatchModel } from '../persistence/mongodb/schemas/epc-match.schema'
 import { FinishedGoodsEpc, FinishedGoodsEpcModel } from '../persistence/mongodb/schemas/finished-goods-epc.schema'
-import { PurchaseOrder, PurchaseOrderModel } from '../persistence/mongodb/schemas/purchase-order.schema'
 
 @CdcHandler({
 	schema: DATABASE_SCHEMA,

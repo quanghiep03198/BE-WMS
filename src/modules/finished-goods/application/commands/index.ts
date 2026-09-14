@@ -1,5 +1,5 @@
 import { BulkWriteInventoryHandler } from './bulk-write-inventory/bulk-write-inventory.handler'
-import { CommitRollbackInboundTxHandler } from './commit-rollback-inbound-tx/commit-rollback-inbound-tx.handler'
+import { CommitRollbackStockTxHandler } from './commit-rollback-stock-tx/commit-rollback-stock-tx.handler'
 import { CommitStockBalancesHandler } from './commit-stock-balances/commit-stock-balances.handler'
 import { CommitStockOutHandler } from './commit-stock-out/commit-stock-out.handler'
 import { CommitUpsertEpcsMatchHandler } from './commit-upsert-epcs-match/commit-upsert-epcs-match.handler'
@@ -10,7 +10,8 @@ import { ExchangeMoRmHandler } from './exchange-mo/handlers/exchange-mo-rm.handl
 import { ExchangeMoWmHandler } from './exchange-mo/handlers/exchange-mo-wm.handler'
 import { RecallFromStockHandler } from './recall-from-stock/recall-from-stock.handler'
 import { RestoreDeletedEpcsHandler } from './restore-deleted-epcs/restore-deleted-epcs.handler'
-import { RollbackInboundTxHandler } from './rollback-inbound-tx/rollback-inbound-tx.handler'
+import { RollbackInboundTxHandler } from './rollback-stock-tx/handlers/rollback-inbound-tx.handler'
+import { RollbackOutboundTxHandler } from './rollback-stock-tx/handlers/rollback-outbound-tx.handler'
 import { StockInHandler } from './stock-in/stock-in.handler'
 import { StockOutHandler } from './stock-out/stock-out.handler'
 
@@ -21,7 +22,7 @@ export const FinishedGoodsCommandHandlers = [
 	CommitStockBalancesHandler,
 	CommitStockOutHandler,
 	CommitUpsertEpcsMatchHandler,
-	CommitRollbackInboundTxHandler,
+	CommitRollbackStockTxHandler,
 	CreateEpcChangeStreamHandler,
 	DeleteScanningEpcsHandler,
 	DeleteScanningMoHandler,
@@ -30,6 +31,7 @@ export const FinishedGoodsCommandHandlers = [
 	RecallFromStockHandler,
 	RestoreDeletedEpcsHandler,
 	RollbackInboundTxHandler,
+	RollbackOutboundTxHandler,
 	StockInHandler,
 	StockOutHandler,
 	UpsertEpcsMatchHandler

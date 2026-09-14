@@ -1,14 +1,14 @@
 import { SuperJson } from '@common/utils'
 import { DATA_WAREHOUSE_CONNECTION } from '@databases/constants'
 import {
-	INVENTORY_LEDGER_MG_REPOSITORY,
-	IPendingInventoryFluctuation,
-	ISizeLedgerFluctuation
-} from '@modules/finished-goods/application/ports/inventory-ledger-mongo.repository.port'
-import { SHIPPING_PROGRESS_MONGO_REPOSITORY } from '@modules/finished-goods/application/ports/shipping-progress-mongo.repository.port'
-import { IStockTransactionMongoRepository } from '@modules/finished-goods/application/ports/stock-transaction-mongo.repository.port'
-import { IStockTransaction } from '@modules/finished-goods/application/types'
+	INVENTORY_LEDGER_REPOSITORY,
+	IPendingInventoryFluctuation
+} from '@modules/finished-goods/application/ports/inventory-ledger.repository.port'
+import { SHIPPING_PROGRESS_REPOSITORY } from '@modules/finished-goods/application/ports/shipping-progress.repository.port'
+import { IStockTransactionRepository } from '@modules/finished-goods/application/ports/stock-transaction.repository.port'
+import { IInoutboundTransaction } from '@modules/finished-goods/application/types'
 import { FinishedGoodsEpcStatus } from '@modules/finished-goods/domain/constants'
+import { StockFlow } from '@modules/finished-goods/domain/types'
 import { ElectronicProductCode } from '@modules/finished-goods/domain/value-objects/epc.vo'
 import { InjectTransactionHost, Transactional, TransactionHost } from '@nestjs-cls/transactional'
 import { TransactionalAdapterMongoose } from '@nestjs-cls/transactional-adapter-mongoose'
@@ -17,28 +17,123 @@ import { InjectModel } from '@nestjs/mongoose'
 import { InjectRedisClient } from '@redis/decorators'
 import { format } from 'date-fns'
 import Redis from 'ioredis'
-import { AnyBulkWriteOperation, mongo, type MongooseBulkWriteOptions } from 'mongoose'
+import { AnyBulkWriteOperation, mongo, type FilterQuery, type MongooseBulkWriteOptions } from 'mongoose'
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
 import { FinishedGoodsEpc, FinishedGoodsEpcDocument, FinishedGoodsEpcModel } from '../schemas/finished-goods-epc.schema'
-import { InventoryLedgerMongoRepository } from './inventory-ledger-mongo.repository'
+import { InventoryLedgerRepository } from './inventory-ledger.repository'
 import { ShippingProgressMongoRepository } from './shipping-progress-mongo.repository'
 
 @Injectable()
-export class StockTransactionMongoRepository implements IStockTransactionMongoRepository {
+export class StockTransactionMongoRepository implements IStockTransactionRepository {
 	constructor(
+		@InjectPinoLogger(StockTransactionMongoRepository.name) private readonly logger: PinoLogger,
 		@InjectModel(FinishedGoodsEpc.name, DATA_WAREHOUSE_CONNECTION)
 		private readonly finishedGoodsEpcModel: FinishedGoodsEpcModel,
-		@Inject(INVENTORY_LEDGER_MG_REPOSITORY)
-		private readonly inventoryLedgerMongoRepository: InventoryLedgerMongoRepository,
-		@Inject(SHIPPING_PROGRESS_MONGO_REPOSITORY)
+		@Inject(INVENTORY_LEDGER_REPOSITORY)
+		private readonly inventoryLedgerMongoRepository: InventoryLedgerRepository,
+		@Inject(SHIPPING_PROGRESS_REPOSITORY)
 		private readonly shippingProgressMongoRepository: ShippingProgressMongoRepository,
 		@InjectTransactionHost(DATA_WAREHOUSE_CONNECTION)
 		private readonly txHost: TransactionHost<TransactionalAdapterMongoose>,
-		@InjectPinoLogger(StockTransactionMongoRepository.name)
-		private readonly logger: PinoLogger,
 		@InjectRedisClient()
 		private readonly redisClient: Redis
 	) {}
+
+	public async getStockTransactionById(
+		stockFlow: StockFlow,
+		transactionId: string
+	): Promise<IPendingInventoryFluctuation | Array<IPendingInventoryFluctuation>> {
+		const filterQueryMap: Map<StockFlow, FilterQuery<FinishedGoodsEpcDocument>> = new Map([
+			['inbound', { status: { $in: [FinishedGoodsEpcStatus.IN_STOCK, FinishedGoodsEpcStatus.RECALLED] } }],
+			['outbound', { status: { $eq: FinishedGoodsEpcStatus.SHIPPED } }]
+		])
+
+		const data = await this.finishedGoodsEpcModel.aggregate<IPendingInventoryFluctuation>([
+			{ $match: { last_tx: transactionId, ...filterQueryMap.get(stockFlow) } },
+			{
+				$group: {
+					_id: {
+						mo_no: '$mo_no',
+						factory_code_produce: '$factory_code_produce',
+						factory_shoes_style: '$factory_shoes_style',
+						color_sn: '$color_sn',
+						size_numcode: '$size_numcode'
+					},
+					po: { $first: '$po' },
+					stocked_in_qty: {
+						$sum: {
+							$cond: [
+								{
+									$and: [{ $eq: ['$status', FinishedGoodsEpcStatus.IN_STOCK] }, { $eq: ['$inbound_times', 1] }]
+								},
+								1,
+								0
+							]
+						}
+					},
+					total_recall_tx: {
+						$sum: {
+							$cond: [{ $eq: ['$status', FinishedGoodsEpcStatus.RECALLED] }, 1, 0]
+						}
+					},
+					total_return_tx: {
+						$sum: {
+							$cond: [
+								{
+									$and: [{ $eq: ['$status', FinishedGoodsEpcStatus.IN_STOCK] }, { $gt: ['$inbound_times', 1] }]
+								},
+								1,
+								0
+							]
+						}
+					},
+					shipped_out_qty: {
+						$sum: {
+							$cond: [{ $eq: ['$status', FinishedGoodsEpcStatus.SHIPPED] }, 1, 0]
+						}
+					}
+				}
+			},
+			{
+				$group: {
+					_id: {
+						mo_no: '$_id.mo_no',
+						factory_code_produce: '$_id.factory_code_produce',
+						factory_shoes_style: '$_id.factory_shoes_style',
+						color_sn: '$_id.color_sn'
+					},
+					po: { $first: '$po' },
+					size_ledger: {
+						$push: {
+							k: '$_id.size_numcode',
+							v: {
+								stocked_in_qty: '$stocked_in_qty',
+								total_recall_tx: '$total_recall_tx',
+								total_return_tx: '$total_return_tx',
+								shipped_out_qty: '$shipped_out_qty'
+							}
+						}
+					}
+				}
+			},
+			{
+				$project: {
+					_id: 0,
+					mo_no: '$_id.mo_no',
+					po: {
+						$cond: {
+							if: { $eq: ['$po', null] },
+							then: '$$REMOVE',
+							else: '$po'
+						}
+					},
+					size_ledger: { $arrayToObject: '$size_ledger' }
+				}
+			}
+		])
+
+		return data.length === 1 ? data[0] : data
+	}
 
 	@Transactional<TransactionalAdapterMongoose>(DATA_WAREHOUSE_CONNECTION)
 	public async stockIn(transactionId: string, pendingStockInEpcs: Array<ElectronicProductCode>): Promise<void> {
@@ -113,7 +208,6 @@ export class StockTransactionMongoRepository implements IStockTransactionMongoRe
 		const bulkWriteConcernSettings: mongo.BulkWriteOptions & MongooseBulkWriteOptions = {
 			session: this.txHost.tx,
 			ordered: false,
-			retryWrites: true,
 			timestamps: true
 		}
 
@@ -136,8 +230,8 @@ export class StockTransactionMongoRepository implements IStockTransactionMongoRe
 				changes: balances.size_ledger,
 				tx_at: format(new Date(), 'yyyy-MM-dd HH:mm:ss'),
 				tx_type: 'stock_in',
-				reversed: false
-			} satisfies IStockTransaction<'inbound'>)
+				voided: false
+			} satisfies IInoutboundTransaction<'inbound'>)
 		)
 
 		// * Apply expiry after writes to avoid missing TTL when key is first created by RPUSH.
@@ -165,43 +259,38 @@ export class StockTransactionMongoRepository implements IStockTransactionMongoRe
 			}
 		}))
 
-		const bulkWriteConcernSettings: mongo.BulkWriteOptions & MongooseBulkWriteOptions = {
+		await this.finishedGoodsEpcModel.bulkWrite(bulkWriteOperations, {
 			session: this.txHost.tx,
 			ordered: false,
-			retryWrites: true,
 			timestamps: true
-		}
+		})
 
-		await this.finishedGoodsEpcModel.bulkWrite(bulkWriteOperations, bulkWriteConcernSettings)
-		const pendingInventoryFluctuation = (await this.inventoryLedgerMongoRepository.getPendingInventoryFluctuation(
-			pendingShipOutEpcs
-		)) as Array<IPendingInventoryFluctuation>
-		const fluctuation = await this.inventoryLedgerMongoRepository.commitInventoryLedgerOnStockOut(pendingShipOutEpcs)
-		await this.shippingProgressMongoRepository.applyShippingProgressForStockOut(
-			transactionId,
-			pendingInventoryFluctuation
-		)
+		const balances = await this.inventoryLedgerMongoRepository.commitInventoryLedgerOnStockOut(pendingShipOutEpcs)
+		await this.shippingProgressMongoRepository.applyShippingProgressForStockOut(transactionId, balances)
 
 		await this.redisClient.lpush(
 			`transactions:outbound`,
 			SuperJson.stringify({
 				id: transactionId,
 				po: purchaseOrder,
-				qty: fluctuation.reduce(
+				qty: balances.reduce(
 					(sum, item) =>
 						sum + Object.values(item.size_ledger).reduce((subSum, curr) => subSum + curr.shipped_out_qty, 0),
 					0
 				),
-				changes: fluctuation.map<{ mo_no: string; size_ledger: Record<string, ISizeLedgerFluctuation> }>(
-					(item) => ({
-						mo_no: item.mo_no,
-						size_ledger: item.size_ledger
-					})
-				),
+				changes: balances.map((item) => ({
+					mo_no: item.mo_no,
+					size_ledger: Object.fromEntries(
+						Object.entries(item.size_ledger).map(([size, fluctuation]) => [
+							size,
+							{ shipped_out_qty: fluctuation.shipped_out_qty }
+						])
+					)
+				})),
 				tx_at: format(new Date(), 'yyyy-MM-dd HH:mm:ss'),
 				tx_type: 'stock_out',
-				reversed: false
-			} satisfies IStockTransaction<'outbound'>)
+				voided: false
+			} satisfies IInoutboundTransaction<'outbound'>)
 		)
 
 		// * Apply expiry after writes to avoid missing TTL when key is first created by RPUSH.
@@ -237,8 +326,8 @@ export class StockTransactionMongoRepository implements IStockTransactionMongoRe
 				changes: balances.size_ledger,
 				tx_at: format(new Date(), 'yyyy-MM-dd HH:mm:ss'),
 				tx_type: 'recall',
-				reversed: false
-			} satisfies IStockTransaction<'inbound'>)
+				voided: false
+			} satisfies IInoutboundTransaction<'inbound'>)
 		)
 
 		// * Apply expiry after writes to avoid missing TTL when key is first created by RPUSH.
@@ -253,13 +342,13 @@ export class StockTransactionMongoRepository implements IStockTransactionMongoRe
 	): Promise<Array<{ epc: string; status: FinishedGoodsEpcStatus }>> {
 		const transactionHistory = await this.redisClient.lrange('transactions:inbound', 0, -1)
 		const inboundStockTransactions = transactionHistory.find((item) => {
-			const parsedItem = SuperJson.parse(item) as IStockTransaction<'inbound'>
+			const parsedItem = SuperJson.parse(item) as IInoutboundTransaction<'inbound'>
 			return parsedItem.id === transactionId
 		})
 
 		if (!inboundStockTransactions) return
 
-		const transaction = SuperJson.parse<IStockTransaction<'inbound'>>(inboundStockTransactions)
+		const transaction = SuperJson.parse<IInoutboundTransaction<'inbound'>>(inboundStockTransactions)
 
 		const epcsToRollback = await this.finishedGoodsEpcModel.find(
 			{
@@ -309,7 +398,44 @@ export class StockTransactionMongoRepository implements IStockTransactionMongoRe
 		await this.redisClient.lset(
 			'transactions:inbound',
 			transactionHistory.indexOf(inboundStockTransactions),
-			SuperJson.stringify({ ...transaction, reversed: true })
+			SuperJson.stringify({ ...transaction, voided: true })
+		)
+
+		return epcsToRollback
+	}
+
+	@Transactional<TransactionalAdapterMongoose>(DATA_WAREHOUSE_CONNECTION)
+	public async rollbackOutboundTransaction(transactionId: string) {
+		const transactionHistory = await this.redisClient.lrange('transactions:outbound', 0, -1)
+		const inboundStockTransactions = transactionHistory.find((item) => {
+			const parsedItem = SuperJson.parse(item) as IInoutboundTransaction<'outbound'>
+			return parsedItem.id === transactionId
+		})
+
+		if (!inboundStockTransactions) return
+
+		const transaction = SuperJson.parse<IInoutboundTransaction<'outbound'>>(inboundStockTransactions)
+
+		const epcsToRollback = await this.finishedGoodsEpcModel.find(
+			{ status: FinishedGoodsEpcStatus.SHIPPED, last_tx: transactionId },
+			{ _id: 0, epc: 1, last_tx: 1, status: 1 },
+			{ lean: true, session: this.txHost.tx, readPreference: 'primary' }
+		)
+
+		if (epcsToRollback.length === 0) return
+
+		await this.finishedGoodsEpcModel.updateMany(
+			{ epc: { $in: epcsToRollback.map((item) => item.epc) } },
+			[{ $set: { scannable: true, status: FinishedGoodsEpcStatus.SCANNING } }, { $unset: ['po', 'outbound_at'] }],
+			{ session: this.txHost.tx }
+		)
+
+		await this.inventoryLedgerMongoRepository.rollbackOutboundFluctuation(transaction)
+
+		await this.redisClient.lset(
+			'transactions:outbound',
+			transactionHistory.indexOf(inboundStockTransactions),
+			SuperJson.stringify({ ...transaction, voided: true })
 		)
 
 		return epcsToRollback

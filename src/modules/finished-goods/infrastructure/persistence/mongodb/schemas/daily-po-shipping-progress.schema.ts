@@ -43,7 +43,7 @@ export class DailyPoShippingProgress {
 	 *         "07": 20
 	 *       }
 	 *     },
-	 *     "reversed": false
+	 *     "voided": false
 	 *   }
 	 * }
 	 */
@@ -53,7 +53,7 @@ export class DailyPoShippingProgress {
 		{
 			time: string
 			packing: Record<string, Record<string, number>>
-			reversed: boolean
+			voided: boolean
 		}
 	>
 }

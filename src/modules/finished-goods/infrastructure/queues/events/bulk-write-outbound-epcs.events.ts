@@ -1,11 +1,11 @@
 import { OnQueueEvent, QueueEventsHost, QueueEventsListener } from '@nestjs/bullmq'
 import type { QueueEventsListener as IQueueEventsListener } from 'bullmq'
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
-import { BULK_WRITE_INBOUND_EPCS_QUEUE } from '..'
+import { BULK_WRITE_OUTBOUND_EPCS_QUEUE } from '..'
 
-@QueueEventsListener(BULK_WRITE_INBOUND_EPCS_QUEUE)
-export class BulkWriteEpcsQueueEvents extends QueueEventsHost {
-	constructor(@InjectPinoLogger(BulkWriteEpcsQueueEvents.name) private readonly logger: PinoLogger) {
+@QueueEventsListener(BULK_WRITE_OUTBOUND_EPCS_QUEUE)
+export class BulkWriteOutboundEpcsQueueEvents extends QueueEventsHost {
+	constructor(@InjectPinoLogger(BulkWriteOutboundEpcsQueueEvents.name) private readonly logger: PinoLogger) {
 		super()
 	}
 	@OnQueueEvent('completed')

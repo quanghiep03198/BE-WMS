@@ -2,7 +2,7 @@ import { StockFlow, UpsertEpcsMatchData } from '@modules/finished-goods/domain/t
 import { ElectronicProductCode } from '@modules/finished-goods/domain/value-objects/epc.vo'
 import { GetScanningEpcsBySizeQuery } from '../queries/get-scanning-epcs-by-size/get-scanning-epcs-by-size.query'
 
-export interface IEpcMongoRepository {
+export interface IFinishedGoodsEpcRepository {
 	bulkWriteInventoryEpcs({
 		action,
 		payload
@@ -74,4 +74,4 @@ export interface IEpcMongoRepository {
 	upsertEpcsMatch(data: UpsertEpcsMatchData, insertOnly?: boolean): Promise<void>
 }
 
-export const EPC_MONGO_REPOSITORY = Symbol('IEpcMongoRepository')
+export const FINISHED_GOODS_EPC_REPOSITORY = Symbol('IFinishedGoodsEpcRepository')

@@ -1,11 +1,12 @@
 import { RecalledFromStockEvent } from '@modules/finished-goods/domain/events/recalled-from-stock/recalled-from-stock.event'
-import { RolledBackInboundTxEvent } from '@modules/finished-goods/domain/events/rolledback-inbound-tx/rolledback-inbound-tx.event'
+import { RolledBackInboundTxEvent } from '@modules/finished-goods/domain/events/rolledback-stock-tx/impl/rolledback-inbound-tx.event'
+import { RolledBackOutboundTxEvent } from '@modules/finished-goods/domain/events/rolledback-stock-tx/impl/rolledback-outbound-tx.event'
 import { StockedOutEvent } from '@modules/finished-goods/domain/events/stocked-out/stocked-out.event'
 import { Injectable } from '@nestjs/common'
 import { ICommand, ofType, Saga } from '@nestjs/cqrs'
 import { map, Observable } from 'rxjs'
 import { StockedInEvent } from '../../domain/events/stocked-in/stocked-in.event'
-import { CommitRollbackInboundTxCommand } from '../commands/commit-rollback-inbound-tx/commit-rollback-inbound-tx.command'
+import { CommitRollbackStockTxCommand } from '../commands/commit-rollback-stock-tx/commit-rollback-stock-tx.command'
 import { CommitStockBalancesCommand } from '../commands/commit-stock-balances/commit-stock-balances.command'
 import { CommitStockOutCommand } from '../commands/commit-stock-out/commit-stock-out.command'
 
@@ -39,7 +40,15 @@ export class InoutboundSaga {
 	rollbackInboundTx(events$: Observable<unknown>): Observable<ICommand> {
 		return events$.pipe(
 			ofType(RolledBackInboundTxEvent),
-			map(({ rolledBackEpcs }) => new CommitRollbackInboundTxCommand(rolledBackEpcs))
+			map(({ rolledBackEpcs }) => new CommitRollbackStockTxCommand('inbound', rolledBackEpcs))
+		)
+	}
+
+	@Saga()
+	rollbackOutboundTx(events$: Observable<unknown>): Observable<ICommand> {
+		return events$.pipe(
+			ofType(RolledBackOutboundTxEvent),
+			map(({ rolledBackEpcs }) => new CommitRollbackStockTxCommand('outbound', rolledBackEpcs))
 		)
 	}
 }

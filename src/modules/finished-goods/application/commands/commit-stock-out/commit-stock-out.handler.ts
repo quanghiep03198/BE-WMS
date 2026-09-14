@@ -1,19 +1,22 @@
 // import { IIoMongoRepository as IIoMssqlRepository } from '@modules/finished-goods/application/ports/io-mongo.repository.port'
+import { BULLMQ_JOBS_GAUGE } from '@configs/bullmq.config'
 import { InventoryActions, InventoryStorageType } from '@modules/finished-goods/domain/constants'
 import { generateStation, StationNO } from '@modules/finished-goods/domain/utils'
-import { CommandHandler, ICommandHandler } from '@nestjs/cqrs'
-import { chunk } from 'lodash'
-import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
-// import { IO_MSSQL_REPOSITORY } from '../../ports/io-mssql.repository.port'
 import { COMMIT_STOCK_OUT_QUEUE } from '@modules/finished-goods/infrastructure/queues'
 import { InjectQueue } from '@nestjs/bullmq'
+import { CommandHandler, ICommandHandler } from '@nestjs/cqrs'
+import { InjectMetric } from '@willsoto/nestjs-prometheus'
 import { Queue } from 'bullmq'
+import { chunk } from 'lodash'
+import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
+import { Gauge } from 'prom-client'
 import { CommitStockOutCommand } from './commit-stock-out.command'
 
 @CommandHandler(CommitStockOutCommand)
 export class CommitStockOutHandler implements ICommandHandler<CommitStockOutCommand> {
 	constructor(
 		@InjectPinoLogger(CommitStockOutHandler.name) private readonly logger: PinoLogger,
+		@InjectMetric(BULLMQ_JOBS_GAUGE) private readonly jobsGauge: Gauge<string>,
 		@InjectQueue(COMMIT_STOCK_OUT_QUEUE)
 		private readonly commitStockOutQueue: Queue<
 			Array<

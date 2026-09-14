@@ -8,23 +8,24 @@ import { TypeOrmModule } from '@nestjs/typeorm'
 import { InjectRedisClient } from '@redis/decorators'
 import Redis from 'ioredis'
 import { PinoLogger } from 'nestjs-pino'
+import { PurchaseOrder } from '../order/schemas/purchase-order.schema'
 import { RFIDDeviceEntity } from '../rfid-device/entities/rfid-device.entity'
 import { TenancyModule } from '../tenancy/tenancy.module'
 import { ThirdPartyApiModule } from '../third-party-api/third-party-api.module'
 import { FinishedGoodsCommandHandlers } from './application/commands'
-import { EPC_MONGO_REPOSITORY } from './application/ports/epc-mongo.repository.port'
-import { INVENTORY_LEDGER_MG_REPOSITORY } from './application/ports/inventory-ledger-mongo.repository.port'
-import { MSSQL_FINISHED_GOODS_REPOSITORY } from './application/ports/mssql-finished-goods.repository.port'
-import { SHIPPING_PROGRESS_MONGO_REPOSITORY } from './application/ports/shipping-progress-mongo.repository.port'
-import { STOCK_TX_MONGO_REPOSITORY } from './application/ports/stock-transaction-mongo.repository.port'
+import { FINISHED_GOODS_EPC_REPOSITORY } from './application/ports/finished-goods-epc.repository.port'
+import { FINISHED_GOODS_RMDBS_REPOSITORY } from './application/ports/finished-goods.rmdbs.repository.port'
+import { INVENTORY_LEDGER_REPOSITORY } from './application/ports/inventory-ledger.repository.port'
+import { SHIPPING_PROGRESS_REPOSITORY } from './application/ports/shipping-progress.repository.port'
+import { STOCK_TX_REPOSITORY } from './application/ports/stock-transaction.repository.port'
 import { FinishedGoodsQueryHandlers } from './application/queries'
 import { FinishedGoodsSagas } from './application/sagas'
 import { FinishedGoodsEventHandlers } from './domain/events'
 import { MONGO_EPC_CHANGE_STREAM_FACTORY } from './domain/interfaces/epc-change-stream.factory.interface'
 import { FinishedGoodsCdcHandlers } from './infrastructure/cdc'
 import { MongoEpcChangeStreamFactory } from './infrastructure/persistence/mongodb/epc-change-stream.factory'
-import { EpcMongoRepository } from './infrastructure/persistence/mongodb/repositories/epc-mongo.repository'
-import { InventoryLedgerMongoRepository } from './infrastructure/persistence/mongodb/repositories/inventory-ledger-mongo.repository'
+import { FinishedGoodsEpcRepository } from './infrastructure/persistence/mongodb/repositories/finished-goods-epc.repository'
+import { InventoryLedgerRepository } from './infrastructure/persistence/mongodb/repositories/inventory-ledger.repository'
 import { ShippingProgressMongoRepository } from './infrastructure/persistence/mongodb/repositories/shipping-progress-mongo.repository'
 import { StockTransactionMongoRepository } from './infrastructure/persistence/mongodb/repositories/stock-transaction-mongo.repository'
 import {
@@ -52,18 +53,6 @@ import {
 	FinishedGoodsEpcSchema
 } from './infrastructure/persistence/mongodb/schemas/finished-goods-epc.schema'
 import {
-	MANUFACTURING_ORDERS_COLLECTION,
-	ManufacturingOrder,
-	ManufacturingOrderModel,
-	ManufacturingOrderSchema
-} from './infrastructure/persistence/mongodb/schemas/manufacturing-order.schema'
-import {
-	PURCHASE_ORDER_COLLECTION,
-	PurchaseOrder,
-	PurchaseOrderModel,
-	PurchaseOrderSchema
-} from './infrastructure/persistence/mongodb/schemas/purchase-order.schema'
-import {
 	RFIDInventoryBackupEntity,
 	RFIDInventoryEntity
 } from './infrastructure/persistence/mssql/entities/rfid-inventory.entity'
@@ -79,7 +68,7 @@ import {
 	COMMIT_UPSERT_EPC_MATCH_QUEUE,
 	FINISHED_GOODS_JOB_OPTIONS,
 	IMPORT_INOUTBOUND_EPCS_QUEUE,
-	ROLLBACK_INBOUND_TX_QUEUE
+	ROLLBACK_STOCK_TX_QUEUE
 } from './infrastructure/queues'
 import { FinishedGoodsConsumers } from './infrastructure/queues/consumers'
 import { FinsishedGoodsQueueEvents } from './infrastructure/queues/events'
@@ -90,9 +79,9 @@ import { FinishedGoodsListeners } from './presentation/listeners'
 @Module({
 	imports: [
 		forwardRef(() => InventoryModule),
+		forwardRef(() => OrderModule),
 		TenancyModule,
 		ThirdPartyApiModule,
-		OrderModule,
 		BullModule.registerQueue({ name: BULK_WRITE_INBOUND_EPCS_QUEUE }),
 		BullModule.registerQueue({ name: BULK_WRITE_OUTBOUND_EPCS_QUEUE }),
 		BullModule.registerQueue({ name: IMPORT_INOUTBOUND_EPCS_QUEUE }),
@@ -113,7 +102,7 @@ import { FinishedGoodsListeners } from './presentation/listeners'
 			defaultJobOptions: FINISHED_GOODS_JOB_OPTIONS
 		}),
 		BullModule.registerQueue({
-			name: ROLLBACK_INBOUND_TX_QUEUE,
+			name: ROLLBACK_STOCK_TX_QUEUE,
 			defaultJobOptions: FINISHED_GOODS_JOB_OPTIONS
 		}),
 		TypeOrmModule.forFeature(
@@ -133,20 +122,11 @@ import { FinishedGoodsListeners } from './presentation/listeners'
 					schema: FinishedGoodsEpcMatchSchema
 				},
 				{
-					name: ManufacturingOrder.name,
-					collection: MANUFACTURING_ORDERS_COLLECTION,
-					schema: ManufacturingOrderSchema
-				},
-				{
 					name: DailyMoInventoryLedger.name,
 					collection: DAILY_MO_INVENTORY_LEDGER_COLLECTION,
 					schema: DailyMoInventoryLedgerSchema
 				},
-				{
-					name: PurchaseOrder.name,
-					collection: PURCHASE_ORDER_COLLECTION,
-					schema: PurchaseOrderSchema
-				},
+
 				{
 					name: DailyPoShippingProgress.name,
 					collection: DAILY_PO_SHIPPING_PROGRESS_COLLECTION,
@@ -169,19 +149,19 @@ import { FinishedGoodsListeners } from './presentation/listeners'
 		...FinishedGoodsCdcHandlers,
 		FinishedGoodsGateway,
 		{
-			provide: EPC_MONGO_REPOSITORY,
-			useClass: EpcMongoRepository
+			provide: FINISHED_GOODS_EPC_REPOSITORY,
+			useClass: FinishedGoodsEpcRepository
 		},
 		{
-			provide: INVENTORY_LEDGER_MG_REPOSITORY,
-			useClass: InventoryLedgerMongoRepository
+			provide: INVENTORY_LEDGER_REPOSITORY,
+			useClass: InventoryLedgerRepository
 		},
 		{
-			provide: SHIPPING_PROGRESS_MONGO_REPOSITORY,
+			provide: SHIPPING_PROGRESS_REPOSITORY,
 			useClass: ShippingProgressMongoRepository
 		},
 		{
-			provide: STOCK_TX_MONGO_REPOSITORY,
+			provide: STOCK_TX_REPOSITORY,
 			useClass: StockTransactionMongoRepository
 		},
 		{
@@ -189,18 +169,18 @@ import { FinishedGoodsListeners } from './presentation/listeners'
 			useClass: MongoEpcChangeStreamFactory
 		},
 		{
-			provide: MSSQL_FINISHED_GOODS_REPOSITORY,
+			provide: FINISHED_GOODS_RMDBS_REPOSITORY,
 			useClass: MssqlFinishedGoodsRepository
 		}
 	],
 	exports: [
 		MongooseModule,
 		FinishedGoodsGateway,
-		EPC_MONGO_REPOSITORY,
-		INVENTORY_LEDGER_MG_REPOSITORY,
-		SHIPPING_PROGRESS_MONGO_REPOSITORY,
-		STOCK_TX_MONGO_REPOSITORY,
-		MSSQL_FINISHED_GOODS_REPOSITORY
+		FINISHED_GOODS_EPC_REPOSITORY,
+		INVENTORY_LEDGER_REPOSITORY,
+		SHIPPING_PROGRESS_REPOSITORY,
+		STOCK_TX_REPOSITORY,
+		FINISHED_GOODS_RMDBS_REPOSITORY
 	]
 })
 export class FinishedGoodsModule implements OnModuleInit {
@@ -209,14 +189,10 @@ export class FinishedGoodsModule implements OnModuleInit {
 		@InjectRedisClient() private readonly redisClient: Redis,
 		@InjectModel(FinishedGoodsEpc.name, DATA_WAREHOUSE_CONNECTION)
 		private readonly finishedGoodsEpcModel: FinishedGoodsEpcModel,
-		@InjectModel(ManufacturingOrder.name, DATA_WAREHOUSE_CONNECTION)
-		private readonly manufacturingOrderModel: ManufacturingOrderModel,
 		@InjectModel(DailyMoInventoryLedger.name, DATA_WAREHOUSE_CONNECTION)
 		private readonly dailyMoInventoryLedgerModel: DailyMoInventoryLedgerModel,
 		@InjectModel(FinishedGoodsEpcMatch.name, DATA_WAREHOUSE_CONNECTION)
 		private readonly finishedGoodsEpcMatchModel: FinishedGoodsEpcMatchModel,
-		@InjectModel(PurchaseOrder.name, DATA_WAREHOUSE_CONNECTION)
-		private readonly purchaseOrderModel: PurchaseOrderModel,
 		@InjectModel(PurchaseOrder.name, DATA_WAREHOUSE_CONNECTION)
 		private readonly dailyPoShippingProgressModel: DailyPoShippingProgressModel
 	) {}
@@ -226,9 +202,7 @@ export class FinishedGoodsModule implements OnModuleInit {
 			await Promise.all([
 				this.finishedGoodsEpcModel.syncIndexes(),
 				this.finishedGoodsEpcMatchModel.syncIndexes(),
-				this.manufacturingOrderModel.syncIndexes(),
 				this.dailyMoInventoryLedgerModel.syncIndexes(),
-				this.purchaseOrderModel.syncIndexes(),
 				this.dailyPoShippingProgressModel.syncIndexes()
 			])
 			this.redisClient.setnx('cached:rfid:enable_deduplicate_inbound_epc', JSON.stringify({ value: true }))

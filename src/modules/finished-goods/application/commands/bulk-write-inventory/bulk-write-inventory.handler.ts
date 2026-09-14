@@ -1,17 +1,15 @@
 import {
-	EPC_MONGO_REPOSITORY,
-	IEpcMongoRepository
-} from '@modules/finished-goods/application/ports/epc-mongo.repository.port'
+	FINISHED_GOODS_EPC_REPOSITORY,
+	IFinishedGoodsEpcRepository
+} from '@modules/finished-goods/application/ports/finished-goods-epc.repository.port'
 import { Inject } from '@nestjs/common'
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs'
-import { PinoLogger } from 'nestjs-pino'
 import { BulkWriteInventoryCommand } from './bulk-write-inventory.command'
 
 @CommandHandler(BulkWriteInventoryCommand)
 export class BulkWriteInventoryHandler implements ICommandHandler<BulkWriteInventoryCommand, void> {
 	constructor(
-		private readonly logger: PinoLogger,
-		@Inject(EPC_MONGO_REPOSITORY) private readonly epcMongoRepository: IEpcMongoRepository
+		@Inject(FINISHED_GOODS_EPC_REPOSITORY) private readonly epcMongoRepository: IFinishedGoodsEpcRepository
 	) {}
 
 	public async execute({ command }: BulkWriteInventoryCommand) {

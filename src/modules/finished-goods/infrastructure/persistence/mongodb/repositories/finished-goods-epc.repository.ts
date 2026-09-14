@@ -1,25 +1,22 @@
 import { DATA_WAREHOUSE_CONNECTION } from '@databases/constants'
-import { IEpcMongoRepository } from '@modules/finished-goods/application/ports/epc-mongo.repository.port'
+import { IFinishedGoodsEpcRepository } from '@modules/finished-goods/application/ports/finished-goods-epc.repository.port'
 import { GetScanningEpcsBySizeQuery } from '@modules/finished-goods/application/queries/get-scanning-epcs-by-size/get-scanning-epcs-by-size.query'
 import { FALLBACK_VALUE, FinishedGoodsEpcStatus } from '@modules/finished-goods/domain/constants'
 import { StockFlow, UpsertEpcsMatchData } from '@modules/finished-goods/domain/types'
 import { ElectronicProductCode } from '@modules/finished-goods/domain/value-objects/epc.vo'
+import { InjectTransactionHost, Transactional, TransactionHost } from '@nestjs-cls/transactional'
+import { TransactionalAdapterMongoose } from '@nestjs-cls/transactional-adapter-mongoose'
 import { CACHE_MANAGER } from '@nestjs/cache-manager'
 import { Inject, Injectable } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
 import { Cache } from 'cache-manager'
-import { FilterQuery, mongo, PipelineStage } from 'mongoose'
-import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
-
-import { InjectTransactionHost, Transactional, TransactionHost } from '@nestjs-cls/transactional'
-import { TransactionalAdapterMongoose } from '@nestjs-cls/transactional-adapter-mongoose'
+import { type FilterQuery, mongo, type MongooseBulkWriteOptions, type PipelineStage } from 'mongoose'
 import { FinishedGoodsEpcMatch, FinishedGoodsEpcMatchModel } from '../schemas/epc-match.schema'
 import { FinishedGoodsEpc, FinishedGoodsEpcDocument, FinishedGoodsEpcModel } from '../schemas/finished-goods-epc.schema'
 
 @Injectable()
-export class EpcMongoRepository implements IEpcMongoRepository {
+export class FinishedGoodsEpcRepository implements IFinishedGoodsEpcRepository {
 	constructor(
-		@InjectPinoLogger(EpcMongoRepository.name) private readonly logger: PinoLogger,
 		@InjectTransactionHost(DATA_WAREHOUSE_CONNECTION)
 		private readonly txHost: TransactionHost<TransactionalAdapterMongoose>,
 		@InjectModel(FinishedGoodsEpc.name, DATA_WAREHOUSE_CONNECTION)
@@ -107,8 +104,6 @@ export class EpcMongoRepository implements IEpcMongoRepository {
 			status: FinishedGoodsEpcStatus.SCANNING,
 			inbound_times: { $gte: 1 }
 		}
-
-		this.logger.info(`Is outboundSizeQuantities an array? ${Array.isArray(outboundSizeQuantities)}`)
 
 		if (!Array.isArray(outboundSizeQuantities)) {
 			const pendingOutboundEpcs = await this.finishedGoodsEpcModel
@@ -317,7 +312,7 @@ export class EpcMongoRepository implements IEpcMongoRepository {
 		await this.finishedGoodsEpcModel.bulkWrite(bulkWriteOptions, {
 			writeConcern: { w: 'majority' },
 			ordered: false,
-			retryWrites: true,
+
 			timestamps: true
 		})
 	}
@@ -339,6 +334,12 @@ export class EpcMongoRepository implements IEpcMongoRepository {
 
 	@Transactional<TransactionalAdapterMongoose>(DATA_WAREHOUSE_CONNECTION)
 	public async upsertEpcsMatch(data: UpsertEpcsMatchData, insertOnly: boolean = false): Promise<void> {
+		const bulkWriteOptions: mongo.BulkWriteOptions & MongooseBulkWriteOptions = {
+			session: this.txHost.tx,
+			ordered: false,
+			timestamps: true
+		}
+
 		await this.finishedGoodsEpcMatchModel.bulkWrite(
 			data.map((item) => ({
 				updateOne: {
@@ -363,12 +364,7 @@ export class EpcMongoRepository implements IEpcMongoRepository {
 					upsert: insertOnly
 				}
 			})),
-			{
-				ordered: false,
-				retryWrites: true,
-				timestamps: true,
-				session: this.txHost.tx
-			}
+			bulkWriteOptions
 		)
 
 		await this.finishedGoodsEpcModel.bulkWrite(
@@ -387,12 +383,7 @@ export class EpcMongoRepository implements IEpcMongoRepository {
 					}
 				}
 			})),
-			{
-				ordered: false,
-				retryWrites: true,
-				timestamps: true,
-				session: this.txHost.tx
-			}
+			bulkWriteOptions
 		)
 	}
 }

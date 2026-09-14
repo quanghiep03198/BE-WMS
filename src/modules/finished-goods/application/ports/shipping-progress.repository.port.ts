@@ -1,6 +1,6 @@
 import { ElectronicProductCode } from '@modules/finished-goods/domain/value-objects/epc.vo'
 
-export interface IShippingProgressMongoRepository {
+export interface IShippingProgressRepository {
 	getPendingShippingFluctuation(scannedEpcs: Array<ElectronicProductCode>): Promise<
 		Array<{
 			mo_no: string
@@ -29,4 +29,4 @@ export interface IShippingProgressMongoRepository {
 	): Promise<void>
 }
 
-export const SHIPPING_PROGRESS_MONGO_REPOSITORY = Symbol('IShippingProgressMongoRepository')
+export const SHIPPING_PROGRESS_REPOSITORY = Symbol('IShippingProgressRepository')

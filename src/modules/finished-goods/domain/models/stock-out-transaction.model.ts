@@ -54,7 +54,7 @@ export class StockOutTransaction extends AggregateRoot {
 			return {
 				mo_no,
 				size_numcode: new SizeNumber(size),
-				outbound_qty: epcs.length
+				shipped_out_qty: epcs.length
 			}
 		})
 
@@ -70,7 +70,7 @@ export class StockOutTransaction extends AggregateRoot {
 				}
 			return {
 				size_numcode: outboundSizeDetail.size_numcode.getValue(),
-				missing_qty: outboundSizeDetail.order_qty - outboundSizeDetail.accumulated_qty - tx.outbound_qty
+				missing_qty: outboundSizeDetail.order_qty - outboundSizeDetail.accumulated_qty - tx.shipped_out_qty
 			}
 		})
 
@@ -89,7 +89,7 @@ export class StockOutTransaction extends AggregateRoot {
 			return {
 				mo_no: inventory.mo_no,
 				size_numcode: inventory.size_numcode.getValue(),
-				xf_deficit: inventory.accumulated_qty - tx.outbound_qty
+				xf_deficit: inventory.accumulated_qty - tx.shipped_out_qty
 			}
 		})
 

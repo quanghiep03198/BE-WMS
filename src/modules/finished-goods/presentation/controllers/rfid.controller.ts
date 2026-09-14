@@ -30,12 +30,15 @@ import { CommandBus, QueryBus } from '@nestjs/cqrs'
 import { EventEmitter2 } from '@nestjs/event-emitter'
 import { Throttle } from '@nestjs/throttler'
 import { PubSubService } from '@redis/pubsub.service'
+import { InjectMetric } from '@willsoto/nestjs-prometheus'
 import { Queue } from 'bullmq'
 import { Cache } from 'cache-manager'
 import { format } from 'date-fns'
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
+import { Gauge } from 'prom-client'
 import { Observable } from 'rxjs'
 import { z } from 'zod'
+import { BULLMQ_JOBS_GAUGE } from '../../../../configs/bullmq.config'
 import { DeleteScanningEpcsCommand } from '../../application/commands/delete-scanning-epcs/delete-scanning-epcs.command'
 import { DeleteScanningMoCommand } from '../../application/commands/delete-scanning-mo/delete-scanning-mo.command'
 import { RestoreDeletedEpcsCommand } from '../../application/commands/restore-deleted-epcs/restore-deleted-epcs.command'
@@ -70,6 +73,7 @@ export class RFIDController {
 	constructor(
 		@InjectQueue(BULK_WRITE_INBOUND_EPCS_QUEUE) private readonly postInboundDataQueue: Queue<PostReaderDataDTO>,
 		@InjectQueue(BULK_WRITE_OUTBOUND_EPCS_QUEUE) private readonly postOutboundDataQueue: Queue<PostReaderDataDTO>,
+		@InjectMetric(BULLMQ_JOBS_GAUGE) private readonly jobsGauge: Gauge<string>,
 		@InjectQueue(IMPORT_INOUTBOUND_EPCS_QUEUE) private readonly importDataQueue: Queue,
 		@InjectPinoLogger(RFIDController.name) private readonly logger: PinoLogger,
 		@Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
@@ -251,6 +255,18 @@ export class RFIDController {
 	})
 	async postInboundData(@Body(new ZodValidationPipe(readerPostDataValidator)) payload: PostReaderDataDTO) {
 		const job = await this.postInboundDataQueue.add('BULK_WRITE_INBOUND_DATA', payload, { lifo: true })
+		const jobCounts = await this.postInboundDataQueue.getJobCounts(
+			'waiting',
+			'active',
+			'delayed',
+			'paused',
+			'prioritized'
+		)
+
+		for (const [state, value] of Object.entries(jobCounts)) {
+			this.jobsGauge.set({ queue: this.postInboundDataQueue.name, state }, value)
+		}
+
 		await Promise.all([
 			this.eventEmitter.emitAsync('rfid.reader.post_data', {
 				deviceSeriesNumber: payload.sn,
@@ -276,7 +292,19 @@ export class RFIDController {
 			lastUsageTime: format(new Date(), 'yyyy-MM-dd HH:mm:ss.SSS')
 		})
 
-		return await this.postOutboundDataQueue.add('BULK_WRITE_OUTBOUND_DATA', payload)
+		const job = await this.postOutboundDataQueue.add('BULK_WRITE_OUTBOUND_DATA', payload)
+		const jobCounts = await this.postOutboundDataQueue.getJobCounts(
+			'waiting',
+			'active',
+			'delayed',
+			'paused',
+			'prioritized'
+		)
+
+		for (const [state, value] of Object.entries(jobCounts)) {
+			this.jobsGauge.set({ queue: this.postOutboundDataQueue.name, state }, value)
+		}
+		return job
 	}
 
 	@RouteHandler({ endpoint: 'enable-deduplicate-inbound', method: HttpMethod.PUT })

@@ -5,18 +5,16 @@ import {
 	ExcessOutboundOrderException
 } from '@modules/finished-goods/domain/exceptions/excess-order.exception'
 import { InsufficientInventoryException } from '@modules/finished-goods/domain/exceptions/insufficient-inventory.exception'
-import { ArgumentsHost, Catch, ExceptionFilter, HttpStatus } from '@nestjs/common'
+import { ArgumentsHost, Catch, ExceptionFilter, HttpStatus, UnauthorizedException } from '@nestjs/common'
 import { HttpAdapterHost } from '@nestjs/core'
-import { TokenExpiredError } from '@nestjs/jwt'
+import { JsonWebTokenError, TokenExpiredError } from '@nestjs/jwt'
 import { I18nContext } from 'nestjs-i18n'
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
-import { FinishedGoodsGateway } from '../gateways/finished-goods.gateway'
 
 @Catch()
 export class StockExceptionFilter implements ExceptionFilter {
 	constructor(
 		private readonly httpAdapterHost: HttpAdapterHost,
-		private readonly finishedGoodsGateway: FinishedGoodsGateway,
 		@InjectPinoLogger(StockExceptionFilter.name)
 		private readonly logger: PinoLogger
 	) {}
@@ -51,7 +49,9 @@ export class StockExceptionFilter implements ExceptionFilter {
 				cause = exception.cause
 				break
 			}
-			case exception instanceof TokenExpiredError: {
+			case exception instanceof UnauthorizedException ||
+				exception instanceof TokenExpiredError ||
+				exception instanceof JsonWebTokenError: {
 				message = i18n.t('common.unauthorized', { lang: i18n.lang })
 				statusCode = HttpStatus.UNAUTHORIZED
 				cause = exception.cause

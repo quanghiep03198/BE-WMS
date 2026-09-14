@@ -1,6 +1,6 @@
 import { Command } from '@nestjs/cqrs'
 
-export class RollbackStockInTxCommand extends Command<void> {
+export class RollbackOutboundTxCommand extends Command<void> {
 	constructor(public readonly transactionId: string) {
 		super()
 	}

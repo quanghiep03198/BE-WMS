@@ -1,7 +1,7 @@
 import { Query } from '@nestjs/cqrs'
-import { IStockTransaction } from '../../../types'
+import { IInoutboundTransaction } from '../../../types'
 
-export class GetCurrentShippingTxQuery extends Query<IStockTransaction<'outbound'>[]> {
+export class GetCurrentShippingTxQuery extends Query<IInoutboundTransaction<'outbound'>[]> {
 	constructor() {
 		super()
 	}

@@ -1,6 +1,6 @@
 import { EventsHandler, IEventHandler } from '@nestjs/cqrs'
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
-import { RolledBackInboundTxEvent } from './rolledback-inbound-tx.event'
+import { RolledBackInboundTxEvent } from '../impl/rolledback-inbound-tx.event'
 
 @EventsHandler(RolledBackInboundTxEvent)
 export class RolledBackInboundTxHandler implements IEventHandler<RolledBackInboundTxEvent> {

@@ -1,8 +1,8 @@
 import { DATA_WAREHOUSE_CONNECTION } from '@databases/constants'
 import {
-	IInventoryLedgerMongoRepository,
+	IInventoryLedgerRepository,
 	IPendingInventoryFluctuation
-} from '@modules/finished-goods/application/ports/inventory-ledger-mongo.repository.port'
+} from '@modules/finished-goods/application/ports/inventory-ledger.repository.port'
 import { FinishedGoodsEpcStatus } from '@modules/finished-goods/domain/constants'
 import { ElectronicProductCode } from '@modules/finished-goods/domain/value-objects/epc.vo'
 import { Inject, Injectable } from '@nestjs/common'
@@ -11,7 +11,7 @@ import { flatten, unflatten } from 'flat'
 import { omitBy, pick, pickBy } from 'lodash'
 import { mongo } from 'mongoose'
 
-import { IStockTransaction } from '@modules/finished-goods/application/types'
+import { IInoutboundTransaction } from '@modules/finished-goods/application/types'
 import {
 	IInventoryAuditRepository,
 	INVENTORY_AUDIT_REPOSITORY
@@ -20,29 +20,36 @@ import { InjectTransactionHost, TransactionHost } from '@nestjs-cls/transactiona
 import { TransactionalAdapterMongoose } from '@nestjs-cls/transactional-adapter-mongoose'
 import { format } from 'date-fns'
 import { AnyBulkWriteOperation, MongooseBulkWriteOptions } from 'mongoose'
-import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
-import { DailyMoInventoryLedger, DailyMoInventoryLedgerModel } from '../schemas/daily-mo-inventory-ledger.schema'
-import { FinishedGoodsEpc, FinishedGoodsEpcModel } from '../schemas/finished-goods-epc.schema'
+import { InjectPinoLogger } from 'nestjs-pino'
 import {
 	ManufacturingOrder,
 	ManufacturingOrderDocument,
 	ManufacturingOrderModel
-} from '../schemas/manufacturing-order.schema'
+} from '../../../../../order/schemas/manufacturing-order.schema'
+import { PurchaseOrder, PurchaseOrderModel } from '../../../../../order/schemas/purchase-order.schema'
+import { DailyMoInventoryLedger, DailyMoInventoryLedgerModel } from '../schemas/daily-mo-inventory-ledger.schema'
+import { DailyPoShippingProgress, DailyPoShippingProgressModel } from '../schemas/daily-po-shipping-progress.schema'
+import { FinishedGoodsEpc, FinishedGoodsEpcModel } from '../schemas/finished-goods-epc.schema'
 
 type InventoryFluctuationIncrementKey =
 	`size_ledger.${string}.${'stocked_in_qty' | 'total_recall_tx' | 'total_return_tx' | 'shipped_out_qty'}`
 
 @Injectable()
-export class InventoryLedgerMongoRepository implements IInventoryLedgerMongoRepository {
+export class InventoryLedgerRepository implements IInventoryLedgerRepository {
 	constructor(
+		@InjectPinoLogger(InventoryLedgerRepository.name) private readonly logger,
 		@InjectModel(FinishedGoodsEpc.name, DATA_WAREHOUSE_CONNECTION)
 		private readonly finishedGoodsEpcModel: FinishedGoodsEpcModel,
 		@InjectModel(ManufacturingOrder.name, DATA_WAREHOUSE_CONNECTION)
 		private readonly manufacturingOrderModel: ManufacturingOrderModel,
 		@InjectModel(DailyMoInventoryLedger.name, DATA_WAREHOUSE_CONNECTION)
 		private readonly dailyMoInventoryLedgerModel: DailyMoInventoryLedgerModel,
-		@Inject(INVENTORY_AUDIT_REPOSITORY) private readonly inventoryAuditRepository: IInventoryAuditRepository,
-		@InjectPinoLogger(InventoryLedgerMongoRepository.name) private readonly logger: PinoLogger,
+		@InjectModel(DailyPoShippingProgress.name, DATA_WAREHOUSE_CONNECTION)
+		private readonly dailyPoShippingProgressModel: DailyPoShippingProgressModel,
+		@InjectModel(PurchaseOrder.name, DATA_WAREHOUSE_CONNECTION)
+		private readonly purchaseOrderModel: PurchaseOrderModel,
+		@Inject(INVENTORY_AUDIT_REPOSITORY)
+		private readonly inventoryAuditRepository: IInventoryAuditRepository,
 		@InjectTransactionHost(DATA_WAREHOUSE_CONNECTION)
 		private readonly txHost: TransactionHost<TransactionalAdapterMongoose>
 	) {}
@@ -57,10 +64,10 @@ export class InventoryLedgerMongoRepository implements IInventoryLedgerMongoRepo
 	}
 
 	private createInventoryDecrementExpression(
-		change: IPendingInventoryFluctuation | Pick<IPendingInventoryFluctuation, 'mo_no' | 'size_ledger'>
+		change: IPendingInventoryFluctuation | { size_ledger: Partial<Pick<IPendingInventoryFluctuation, 'size_ledger'>> }
 	): Record<InventoryFluctuationIncrementKey, mongo.NumericType> {
 		const decrementExpression = flatten<
-			Pick<IPendingInventoryFluctuation, 'size_ledger'>,
+			IPendingInventoryFluctuation | { size_ledger: Partial<Pick<IPendingInventoryFluctuation, 'size_ledger'>> },
 			Record<InventoryFluctuationIncrementKey, mongo.NumericType>
 		>(pick(change, 'size_ledger'))
 		for (const field in decrementExpression) {
@@ -166,7 +173,13 @@ export class InventoryLedgerMongoRepository implements IInventoryLedgerMongoRepo
 					$project: {
 						_id: 0,
 						mo_no: '$_id.mo_no',
-						po: 1,
+						po: {
+							$cond: {
+								if: { $eq: ['$po', null] },
+								then: '$$REMOVE',
+								else: '$po'
+							}
+						},
 						factory_code_produce: '$_id.factory_code_produce',
 						factory_shoes_style: '$_id.factory_shoes_style',
 						color_sn: '$_id.color_sn',
@@ -178,25 +191,6 @@ export class InventoryLedgerMongoRepository implements IInventoryLedgerMongoRepo
 			.session(this.txHost.tx)
 
 		return aggregated.length === 1 ? aggregated[0] : aggregated
-	}
-
-	public async getMoInventory(
-		manufacturingOrder: string
-	): Promise<Array<{ mo_no: string; size_numcode: string; order_qty: number; accumulated_qty: number }>> {
-		const moInventoryBalance = await this.manufacturingOrderModel.findOne({ mo_no: manufacturingOrder }).lean(true)
-
-		if (!moInventoryBalance) return []
-
-		return Object.entries(moInventoryBalance.size_ledger).map(([size, balances]: [string, any]) => {
-			const { order_qty, stocked_in_qty, total_recall_tx, total_return_tx, shipped_out_qty } = balances
-
-			return {
-				mo_no: moInventoryBalance.mo_no,
-				size_numcode: size,
-				order_qty,
-				accumulated_qty: stocked_in_qty - total_recall_tx + total_return_tx - shipped_out_qty
-			}
-		})
 	}
 
 	public async commitInventoryLedgerOnStockIn(
@@ -225,7 +219,7 @@ export class InventoryLedgerMongoRepository implements IInventoryLedgerMongoRepo
 					assembly_line: pendingStockInEpcs.at(0).getAssemblyLine('name', 'sanitized'),
 					storage_location: pendingStockInEpcs.at(0).getStorageLocation('name'),
 					size_ledger: txSizeLedger,
-					reversed: false
+					voided: false
 				}
 			},
 			{ upsert: true, session: this.txHost.tx }
@@ -246,7 +240,7 @@ export class InventoryLedgerMongoRepository implements IInventoryLedgerMongoRepo
 		const bulkWriteConcernSettings: mongo.BulkWriteOptions & MongooseBulkWriteOptions = {
 			session: this.txHost.tx,
 			ordered: false,
-			retryWrites: true,
+
 			timestamps: true
 		}
 
@@ -276,7 +270,8 @@ export class InventoryLedgerMongoRepository implements IInventoryLedgerMongoRepo
 			}
 		)
 
-		await this.manufacturingOrderModel.updateOne(bulkWriteMasterFluctuationOperator, bulkWriteConcernSettings)
+		await this.manufacturingOrderModel.bulkWrite(bulkWriteMasterFluctuationOperator, bulkWriteConcernSettings)
+
 		await this.inventoryAuditRepository.updateInventoryAuditFluctuation(fluctuation)
 
 		return fluctuation
@@ -308,7 +303,7 @@ export class InventoryLedgerMongoRepository implements IInventoryLedgerMongoRepo
 					date,
 					time: format(new Date(), 'HH:mm'),
 					size_ledger: txSizeLedger,
-					reversed: false
+					voided: false
 				}
 			},
 			{ session: this.txHost.tx, upsert: true }
@@ -325,18 +320,15 @@ export class InventoryLedgerMongoRepository implements IInventoryLedgerMongoRepo
 		return pendingInventoryFluctuation
 	}
 
-	async rollbackInboundFluctuation({ id, mo_no, changes }: IStockTransaction<'inbound'>) {
-		const decrementExpression = omitBy(
-			this.createInventoryDecrementExpression({
-				mo_no,
-				size_ledger: changes
-			}),
-			(_, key) => key.endsWith('shipped_out_qty')
-		)
+	async rollbackInboundFluctuation({ id, mo_no, changes }: IInoutboundTransaction<'inbound'>) {
+		const decrementExpression = this.createInventoryDecrementExpression({
+			mo_no,
+			size_ledger: changes
+		})
 
 		await this.dailyMoInventoryLedgerModel.updateOne(
 			{ mo_no, date: format(new Date(), 'yyyy-MM-dd') },
-			{ $inc: decrementExpression, [`transaction_history.${id}.reversed`]: true },
+			{ $inc: decrementExpression, [`transaction_history.${id}.voided`]: true },
 			{ session: this.txHost.tx }
 		)
 
@@ -349,6 +341,69 @@ export class InventoryLedgerMongoRepository implements IInventoryLedgerMongoRepo
 		await this.inventoryAuditRepository.updateInventoryAuditFluctuation({
 			mo_no,
 			...unflatten(decrementExpression, { object: true })
+		})
+	}
+
+	public async rollbackOutboundFluctuation({ id, po, changes }: IInoutboundTransaction<'outbound'>) {
+		const decrementExpressionMap = new Map(
+			changes.map((change) => [
+				change.mo_no,
+
+				this.createInventoryDecrementExpression({
+					mo_no: change.mo_no,
+					size_ledger: change.size_ledger
+				})
+			])
+		)
+
+		await this.dailyPoShippingProgressModel.bulkWrite(
+			changes.map((change) => {
+				const decrementExpression: Record<`${string}.${string}`, mongo.NumericType> = Object.entries(
+					change.size_ledger
+				).reduce((acc, [size, { shipped_out_qty }]) => {
+					acc[`shipping_progress.${change.mo_no}.${size}`] = -shipped_out_qty
+					return acc
+				}, {})
+
+				return {
+					updateOne: {
+						filter: { po, date: format(new Date(), 'yyyy-MM-dd') },
+						update: { $inc: decrementExpression, [`transaction_history.${id}.voided`]: true }
+					}
+				}
+			}),
+			{ session: this.txHost.tx, ordered: false }
+		)
+
+		await this.purchaseOrderModel.updateOne(
+			{ po },
+			{
+				$inc: changes.reduce((acc, change) => {
+					Object.entries(change.size_ledger).forEach(([size, { shipped_out_qty }]) => {
+						acc[`shipping_progress.${size}.shipped_out_qty`] =
+							(acc[`shipping_progress.${size}.shipped_out_qty`] ?? 0) - shipped_out_qty
+					})
+					return acc
+				}, {})
+			},
+			{ session: this.txHost.tx }
+		)
+
+		await this.manufacturingOrderModel.bulkWrite(
+			Array.from(decrementExpressionMap, ([manufacturingOrder, decrementExpression]) => ({
+				updateOne: {
+					filter: { mo_no: manufacturingOrder },
+					update: { $inc: decrementExpression }
+				}
+			})),
+			{ session: this.txHost.tx, ordered: false }
+		)
+
+		decrementExpressionMap.forEach(async (decrementExpression, manufacturingOrder) => {
+			await this.inventoryAuditRepository.updateInventoryAuditFluctuation({
+				mo_no: manufacturingOrder,
+				...unflatten(decrementExpression, { object: true })
+			})
 		})
 	}
 }

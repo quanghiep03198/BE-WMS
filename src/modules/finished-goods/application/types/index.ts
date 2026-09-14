@@ -1,15 +1,18 @@
 import { StockFlow } from '@modules/finished-goods/domain/types'
-import { ISizeLedgerFluctuation } from '../ports/inventory-ledger-mongo.repository.port'
+import { ISizeLedgerFluctuation } from '../ports/inventory-ledger.repository.port'
 
-export interface IStockTransaction<T extends StockFlow> {
+export type StockTxType = 'stock_in' | 'recall'
+export type ShippingTxType = 'stock_out'
+
+export interface IInoutboundTransaction<T extends StockFlow> {
 	id: string
 	mo_no?: string
-	po?: T extends 'outbound' ? string : never
+	po?: T extends Extract<StockFlow, 'outbound'> ? string : never
 	qty: number
 	tx_at: string
-	tx_type: T extends 'outbound' ? 'stock_out' : T extends 'inbound' ? 'stock_in' | 'recall' : never
-	changes: T extends 'outbound'
-		? Array<{ mo_no: string; size_ledger: Record<string, ISizeLedgerFluctuation> }>
+	tx_type: T extends Extract<StockFlow, 'outbound'> ? ShippingTxType : T extends 'inbound' ? StockTxType : never
+	changes: T extends Extract<StockFlow, 'outbound'>
+		? Array<{ mo_no: string; size_ledger: Record<string, Pick<ISizeLedgerFluctuation, 'shipped_out_qty'>> }>
 		: Record<string, ISizeLedgerFluctuation>
-	reversed: boolean
+	voided: boolean
 }

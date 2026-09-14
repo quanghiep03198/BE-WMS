@@ -10,10 +10,11 @@ import { InjectModel } from '@nestjs/mongoose'
 import { InjectRedisClient } from '@redis/decorators'
 import { format } from 'date-fns'
 import Redis from 'ioredis'
-import { isEqual, omit } from 'lodash'
+import { isEqual } from 'lodash'
+import pick from 'lodash/pick'
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
-import { ISizeLedgerFluctuation } from '../../../ports/inventory-ledger-mongo.repository.port'
-import { IStockTransaction } from '../../../types'
+import { ISizeLedgerFluctuation } from '../../../ports/inventory-ledger.repository.port'
+import { IInoutboundTransaction } from '../../../types'
 import { GetCurrentShippingTxQuery } from '../impl/get-current-shipping-tx.query'
 
 @QueryHandler(GetCurrentShippingTxQuery)
@@ -25,8 +26,8 @@ export class GetCurrentShippingTxHandler implements IQueryHandler<GetCurrentShip
 		private readonly finishedGoodsEpcModel: FinishedGoodsEpcModel
 	) {}
 
-	public async execute(): Promise<IStockTransaction<'outbound'>[]> {
-		const currentStockTx = await this.redisClient.lrange(`transactions:inbound`, 0, -1)
+	public async execute(): Promise<IInoutboundTransaction<'outbound'>[]> {
+		const currentStockTx = await this.redisClient.lrange(`transactions:outbound`, 0, -1)
 
 		if (!currentStockTx.length) return []
 
@@ -41,7 +42,7 @@ export class GetCurrentShippingTxHandler implements IQueryHandler<GetCurrentShip
 					status: FinishedGoodsEpcStatus.SHIPPED,
 					$expr: {
 						$eq: [
-							{ $dateToString: { date: '$last_scanned_at', format: '%Y-%m-%d' } },
+							{ $dateToString: { date: '$outbound_at', format: '%Y-%m-%d' } },
 							format(new Date(), 'yyyy-MM-dd')
 						]
 					}
@@ -93,16 +94,18 @@ export class GetCurrentShippingTxHandler implements IQueryHandler<GetCurrentShip
 		])
 
 		return currentStockTx.map((item) => {
-			const tx = SuperJson.parse<IStockTransaction<'outbound'>>(item)
+			const tx = SuperJson.parse<IInoutboundTransaction<'outbound'>>(item)
 
 			const positivePersistedChanges = persistedCurrentTx
 				.filter((item) => item.last_tx === tx.id && item.po === tx.po)
-				.map((item) => omit(item, ['last_tx']))
+				.map((item) => pick(item, ['mo_no', 'size_ledger']))
 
-			const isConsistent = positivePersistedChanges.length > 0
-			positivePersistedChanges.length === tx.changes.length && isEqual(tx.changes, positivePersistedChanges)
+			const isConsistent =
+				positivePersistedChanges.length > 0 &&
+				positivePersistedChanges.length === tx.changes.length &&
+				isEqual(tx.changes, positivePersistedChanges)
 
-			return { ...tx, can_rollback: isConsistent }
+			return { ...tx, reversible: isConsistent }
 		})
 	}
 }

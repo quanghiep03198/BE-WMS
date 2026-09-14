@@ -3,7 +3,7 @@ import { HttpMethod, RequestUser, RequireAuthorized, ResponseMessage, RouteHandl
 import { ZodValidationPipe } from '@common/pipes'
 import { I18nTranslations } from '@generated/i18n.generated'
 import { RecallFromStockCommand } from '@modules/finished-goods/application/commands/recall-from-stock/recall-from-stock.command'
-import { RollbackStockInTxCommand } from '@modules/finished-goods/application/commands/rollback-inbound-tx/rollback-inbound-tx.command'
+import { RollbackStockCommandFactory } from '@modules/finished-goods/application/commands/rollback-stock-tx/impl/rollback-stock-tx.command.factory'
 import { StockOutCommand } from '@modules/finished-goods/application/commands/stock-out/stock-out.command'
 import { GetCurrentTxQueryFactory } from '@modules/finished-goods/application/queries/get-current-tx/get-current-tx.factory'
 import { StockFlow } from '@modules/finished-goods/domain/types'
@@ -119,6 +119,6 @@ export class StockController {
 		if (stockFlow !== 'inbound' && stockFlow !== 'outbound')
 			throw new UnprocessableEntityException(i18n.t('common.unprocessable_entity'))
 
-		if (stockFlow === 'inbound') await this.commandBus.execute(new RollbackStockInTxCommand(transactionId))
+		await this.commandBus.execute(RollbackStockCommandFactory.create(stockFlow, transactionId))
 	}
 }

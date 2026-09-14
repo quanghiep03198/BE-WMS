@@ -27,16 +27,18 @@ export class MongoEpcChangeStreamFactory implements IEpcChangeStreamFactory {
 			[
 				{
 					$match: {
-						$or: [{ operationType: { $in: ['insert', 'update'] } }, { operationType: 'delete' }],
-						...filterQuery
+						$or: [
+							{ $and: [{ operationType: { $in: ['insert', 'update'] } }, filterQuery] },
+							{ operationType: 'delete' }
+						]
 					}
 				}
 			],
 			{ fullDocument: 'updateLookup', readPreference: 'nearest' }
 		)
 
-		const wrapper = new EpcChangeStreamWrapper(changeStream) // Wrapper cũng chuyển xuống đây luôn
-		wrapper.onChange(throttle(onChange, 200, { leading: true, trailing: false }))
+		const wrapper = new EpcChangeStreamWrapper(changeStream)
+		wrapper.onChange(throttle(onChange, 200, { leading: true, trailing: true }))
 		return wrapper
 	}
 }

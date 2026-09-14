@@ -1,7 +1,7 @@
 import {
-	EPC_MONGO_REPOSITORY,
-	IEpcMongoRepository
-} from '@modules/finished-goods/application/ports/epc-mongo.repository.port'
+	FINISHED_GOODS_EPC_REPOSITORY,
+	IFinishedGoodsEpcRepository
+} from '@modules/finished-goods/application/ports/finished-goods-epc.repository.port'
 import { UpsertEpcsMatchTransaction } from '@modules/finished-goods/domain/models/upsert-epcs-match-transaction.model'
 import { ORDER_REPOSITORY } from '@modules/order/order.constant'
 import { IOrderRepository } from '@modules/order/order.repository.interface'
@@ -15,7 +15,7 @@ import { UpsertEpcsMatchCommand } from './upsert-epcs-match.command'
 @CommandHandler(UpsertEpcsMatchCommand)
 export class UpsertEpcsMatchHandler implements ICommandHandler<UpsertEpcsMatchCommand> {
 	constructor(
-		@Inject(EPC_MONGO_REPOSITORY) private readonly epcMongoRepository: IEpcMongoRepository,
+		@Inject(FINISHED_GOODS_EPC_REPOSITORY) private readonly epcMongoRepository: IFinishedGoodsEpcRepository,
 		private readonly eventPublisher: EventPublisher,
 		// @InjectPinoLogger(UpsertEpcsMatchHandler.name) private readonly logger: PinoLogger
 		@Inject(ORDER_REPOSITORY) private readonly orderRepository: IOrderRepository
@@ -30,7 +30,7 @@ export class UpsertEpcsMatchHandler implements ICommandHandler<UpsertEpcsMatchCo
 			sizeNumber,
 			quantity
 		})
-		const targetExchangeMo = await this.orderRepository.getManufacturingOrder(targetMo, subMo)
+		const targetExchangeMo = await this.orderRepository.getRawManufacturingOrder(targetMo, subMo)
 		const upsertEpcInfoTransaction = new UpsertEpcsMatchTransaction(pendingExchangeEpcs, targetExchangeMo, sizeNumber)
 		const tx = upsertEpcInfoTransaction.startTransaction()
 

@@ -1,5 +1,5 @@
 import { DATA_SOURCE_DATA_LAKE } from '@databases/constants'
-import { IMssqlFinishedGoodsRepository } from '@modules/finished-goods/application/ports/mssql-finished-goods.repository.port'
+import { IFinishedGoodsRmdbsRepository } from '@modules/finished-goods/application/ports/finished-goods.rmdbs.repository.port'
 import { UpsertEpcsMatchData } from '@modules/finished-goods/domain/types'
 import { InjectTransactionHost, Transactional, TransactionHost } from '@nestjs-cls/transactional'
 import { TransactionalAdapterTypeOrm } from '@nestjs-cls/transactional-adapter-typeorm'
@@ -14,7 +14,7 @@ import upsertInboundQuery from '../sql/upsert-inbound.sql'
 import upsertOutboundQuery from '../sql/upsert-outbound.sql'
 
 @Injectable()
-export class MssqlFinishedGoodsRepository implements IMssqlFinishedGoodsRepository {
+export class MssqlFinishedGoodsRepository implements IFinishedGoodsRmdbsRepository {
 	constructor(
 		@InjectTransactionHost(DATA_SOURCE_DATA_LAKE)
 		private readonly txHostDL: TransactionHost<TransactionalAdapterTypeOrm>

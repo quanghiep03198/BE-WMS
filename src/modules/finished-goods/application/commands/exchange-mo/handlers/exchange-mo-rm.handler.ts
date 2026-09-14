@@ -1,7 +1,7 @@
 import {
-	EPC_MONGO_REPOSITORY,
-	IEpcMongoRepository
-} from '@modules/finished-goods/application/ports/epc-mongo.repository.port'
+	FINISHED_GOODS_EPC_REPOSITORY,
+	IFinishedGoodsEpcRepository
+} from '@modules/finished-goods/application/ports/finished-goods-epc.repository.port'
 import { MoExchangeTransaction } from '@modules/finished-goods/domain/models/mo-exchange-transaction.model'
 import { SizeNumber } from '@modules/finished-goods/domain/value-objects/size-number.vo'
 import { ORDER_REPOSITORY } from '@modules/order/order.constant'
@@ -13,7 +13,7 @@ import { ExchangeMoRmCommand } from '../impl/exchange-mo-rm.command'
 @CommandHandler(ExchangeMoRmCommand)
 export class ExchangeMoRmHandler implements ICommandHandler<ExchangeMoRmCommand> {
 	constructor(
-		@Inject(EPC_MONGO_REPOSITORY) private readonly epcMongoRepository: IEpcMongoRepository,
+		@Inject(FINISHED_GOODS_EPC_REPOSITORY) private readonly epcMongoRepository: IFinishedGoodsEpcRepository,
 		@Inject(ORDER_REPOSITORY) private readonly orderRepository: IOrderRepository,
 		private readonly eventPublisher: EventPublisher,
 		private readonly eventBus: EventBus
@@ -21,7 +21,7 @@ export class ExchangeMoRmHandler implements ICommandHandler<ExchangeMoRmCommand>
 
 	public async execute({ deviceSerialNumber, sourceMos, targetMo }: ExchangeMoRmCommand): Promise<void> {
 		const pendingExchangeData = await this.epcMongoRepository.getPendingExchangeMos(deviceSerialNumber, sourceMos)
-		const exchangeTargetMo = await this.orderRepository.getManufacturingOrder(targetMo)
+		const exchangeTargetMo = await this.orderRepository.getRawManufacturingOrder(targetMo)
 
 		// * Create a new instance of MoExchangeTransaction with the pending exchange data and target MO information
 		const moExchangeTransaction = new MoExchangeTransaction(

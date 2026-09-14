@@ -100,7 +100,7 @@ export class ImportInoutboundEpcsConsumer extends WorkerHost {
 		await this.finishedGoodsEpcModel.bulkWrite(bulkWriteOptions, {
 			writeConcern: { w: 'majority' },
 			ordered: false,
-			retryWrites: true,
+
 			timestamps: true
 		})
 	}

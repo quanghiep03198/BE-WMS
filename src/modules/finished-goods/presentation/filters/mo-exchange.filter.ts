@@ -5,20 +5,18 @@ import {
 	MismatchingSizeNumberException,
 	NoExchangableEpcException
 } from '@modules/finished-goods/domain/exceptions/mo-exchange-tx.exception'
-import { ArgumentsHost, Catch, ExceptionFilter, HttpStatus } from '@nestjs/common'
+import { ArgumentsHost, Catch, ExceptionFilter, HttpStatus, UnauthorizedException } from '@nestjs/common'
 import { HttpAdapterHost } from '@nestjs/core'
 import { TokenExpiredError } from '@nestjs/jwt'
 import { I18nContext } from 'nestjs-i18n'
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
-import { FinishedGoodsGateway } from '../gateways/finished-goods.gateway'
 
 @Catch()
 export class MoExchageExceptionFilter implements ExceptionFilter {
 	constructor(
 		@InjectPinoLogger(MoExchageExceptionFilter.name)
 		private readonly logger: PinoLogger,
-		private readonly httpAdapterHost: HttpAdapterHost,
-		private readonly finishedGoodsGateway: FinishedGoodsGateway
+		private readonly httpAdapterHost: HttpAdapterHost
 	) {}
 
 	catch(exception: unknown, host: ArgumentsHost) {
@@ -53,7 +51,7 @@ export class MoExchageExceptionFilter implements ExceptionFilter {
 				cause = exception.cause
 				break
 			}
-			case exception instanceof TokenExpiredError: {
+			case exception instanceof UnauthorizedException || exception instanceof TokenExpiredError: {
 				message = i18n.t('common.unauthorized', { lang: i18n.lang })
 				statusCode = HttpStatus.UNAUTHORIZED
 				stack = exception.stack
