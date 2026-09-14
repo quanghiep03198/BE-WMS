@@ -27,7 +27,6 @@ import { PackingModule } from './modules/packing/packing.module'
 import { ProductSpecificationModule } from './modules/product-specification/product-specification.module'
 import { ReportModule } from './modules/report/report.module'
 import { StatisticModule } from './modules/statistic/statistic.module'
-import { TenancyModule } from './modules/tenancy/tenancy.module'
 import { ThirdPartyApiModule } from './modules/third-party-api/third-party-api.module'
 import { TruckloadDeliveryModule } from './modules/truckload-delivery/truckload-delivery.module'
 import { UserModule } from './modules/user/user.module'
@@ -144,7 +143,6 @@ import { ScheduleTasks } from './tasks'
 		PackingModule,
 		ReportModule,
 		FinishedGoodsModule,
-		TenancyModule,
 		ThirdPartyApiModule,
 		InventoryModule,
 		UserModule,
