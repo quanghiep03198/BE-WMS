@@ -8,4 +8,6 @@ export module 'mongoose' {
 	interface PaginateOptions {
 		customFind?: keyof Pick<SoftDeleteModel, 'findDeleted' | 'findWithDeleted'>
 	}
+
+	type LeanDocument<T> = T & { $locals?: never }
 }
