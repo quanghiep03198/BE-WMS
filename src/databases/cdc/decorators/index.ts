@@ -26,7 +26,7 @@ export interface CdcHandlerOptions {
 
 	lockTtlMs?: number
 
-	originMarkerColumn?: string // MỚI — chỉ khai nếu bảng này có Saga ghi ngược lại
+	originMarkerColumn?: string // Only specify if the table has a Saga that writes back
 }
 
 export function CdcHandler(options: CdcHandlerOptions): ClassDecorator {
