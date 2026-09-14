@@ -15,6 +15,7 @@ import {
 } from './constants'
 
 // * Entities
+import { RefreshTokenEntity } from '@modules/auth/entities/refresh-token.entity'
 import { DepartmentEntity } from '@modules/department/entities/department.entity'
 import {
 	RFIDInventoryBackupEntity,
@@ -45,6 +46,7 @@ import { WarehouseEntity } from '@modules/warehouse/entities/warehouse.entity'
 			useFactory: (configService: ConfigService) => {
 				return {
 					...configService.getOrThrow<SqlServerConnectionOptions>('mssql'),
+					name: DATA_SOURCE_DATA_LAKE,
 					database: DATABASE_DATA_LAKE,
 					entities: [
 						RFIDInventoryEntity,
@@ -71,8 +73,9 @@ import { WarehouseEntity } from '@modules/warehouse/entities/warehouse.entity'
 			useFactory: (configService: ConfigService) => {
 				return {
 					...configService.getOrThrow<SqlServerConnectionOptions>('mssql'),
+					name: DATA_SOURCE_SYSCLOUD,
 					database: DATABASE_SYSCLOUD,
-					entities: [UserEntity, DepartmentEntity, EmployeeEntity, OldUserEntity]
+					entities: [UserEntity, DepartmentEntity, EmployeeEntity, OldUserEntity, RefreshTokenEntity]
 				}
 			}
 		}),
@@ -82,6 +85,7 @@ import { WarehouseEntity } from '@modules/warehouse/entities/warehouse.entity'
 			useFactory: (configService: ConfigService) => {
 				return {
 					...configService.getOrThrow<SqlServerConnectionOptions>('mssql'),
+					name: DATA_SOURCE_ERP,
 					database: DATABASE_ERP
 				}
 			}
@@ -92,7 +96,7 @@ import { WarehouseEntity } from '@modules/warehouse/entities/warehouse.entity'
 			useFactory: (configService: ConfigService) => {
 				return {
 					...configService.getOrThrow<SqlServerConnectionOptions>('mssql'),
-					// database: DATABASE_DATA_LAKE,
+					name: DATA_SOURCE_DATA_LAKE_CENTRAL,
 					entities: [PackingEntity],
 					host: configService.getOrThrow<string>('TENANT_CENTRAL')
 				}
