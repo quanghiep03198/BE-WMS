@@ -31,9 +31,8 @@
 		"paths": {
 			// "@/*": ["./src/*"],
 			"@common/*": ["./src/common/*"],
-			"@config/*": ["./src/config/*"],
+			"@configs/*": ["./src/configs/*"],
 			"@databases/*": ["./src/databases/*"],
-			"@events/*": ["./src/events/*"],
 			"@generated/*": ["./src/generated/*"],
 			"@modules/*": ["./src/modules/*"],
 			"@redis/*": ["./src/redis/*"],
@@ -42,5 +41,5 @@
 		"inlineSources": true
 	},
 	"include": ["src", "test", "src/instrument.ts", "global.d.ts"],
-	"exclude": ["node_modules", "dist", ".tmp"]
+	"exclude": ["node_modules", "dist", "deprecated", ".tmp"]
 }
