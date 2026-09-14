@@ -4,8 +4,8 @@ import path from 'path'
 import { RunScriptWebpackPlugin } from 'run-script-webpack-plugin'
 import nodeExternals from 'webpack-node-externals'
 
-export default defineConfig((env: Record<string, any>): Configuration => {
-	const isDev = env.NODE_ENV !== 'production'
+export default defineConfig((): Configuration => {
+	const isDev = process.env.NODE_ENV !== 'production'
 
 	const plugins: Plugins = [
 		new rspack.CopyRspackPlugin({
@@ -41,7 +41,7 @@ export default defineConfig((env: Record<string, any>): Configuration => {
 			extensions: ['...', '.ts', '.tsx', '.jsx'],
 			alias: {
 				'@common': path.resolve(import.meta.dirname, 'src/common'),
-				'@config': path.resolve(import.meta.dirname, 'src/config'),
+				'@configs': path.resolve(import.meta.dirname, 'src/configs'),
 				'@databases': path.resolve(import.meta.dirname, 'src/databases'),
 				'@generated': path.resolve(import.meta.dirname, 'src/generated'),
 				'@modules': path.resolve(import.meta.dirname, 'src/modules'),
