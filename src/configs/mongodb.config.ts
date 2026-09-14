@@ -7,7 +7,7 @@ export default registerAs('mongodb', (): MongooseModuleOptions => ({
 	dbName: env('MONGO_DB_NAME'),
 	maxPoolSize: 24,
 	connectTimeoutMS: 10000,
-	readPreference: 'nearest', // * Đặt readPreference để đọc dữ liệu từ node gần nhất, giúp giảm độ trễ và cải thiện hiệu suất đọc trong các cụm MongoDB.
+	readPreference: 'secondaryPreferred', // * Prefer reading from secondary nodes in a replica set.
 	writeConcern: {
 		w: 'majority'
 	}

@@ -19,3 +19,6 @@ export default registerAs('bullmq', (): BullRootModuleOptions => ({
 		}
 	}
 }))
+
+export const BULLMQ_JOBS_GAUGE = 'bullmq_jobs_gauge'
+export const BULLMQ_JOBS_COUNTER = 'bullmq_jobs_total'
