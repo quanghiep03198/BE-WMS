@@ -5,7 +5,7 @@ import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify
 import { FastifyReply } from 'fastify/types/reply'
 import { FastifyRequest } from 'fastify/types/request'
 import { Logger } from 'nestjs-pino'
-import { AppModule, ObserveInstrument } from './app.module'
+import { AppModule } from './app.module'
 import { env, stringToBoolean } from './common/utils'
 // import './instrument'
 
@@ -77,12 +77,7 @@ async function bootstrap() {
 					}
 				}
 			}),
-			{
-				instrument: ObserveInstrument,
-				abortOnError: false,
-				rawBody: true,
-				bufferLogs: true
-			}
+			{ bufferLogs: true }
 		)
 
 		const configService = app.get(ConfigService)
@@ -123,7 +118,12 @@ async function bootstrap() {
 
 		if (module.hot) {
 			module.hot.accept()
-			module.hot.dispose(() => app.close())
+			module.hot.dispose(async () => {
+				// * Clear prom-client's default registry to avoid duplicate metric registration on HMR reload
+				const { register } = await import('prom-client')
+				register.clear()
+				await app.close()
+			})
 		}
 	} catch (error) {
 		console.error(error)
