@@ -1,3 +1,7 @@
+// @type-check
+
+'use strict'
+
 require('dotenv').config()
 
 /** @type {EcosystemConfig} */
@@ -5,12 +9,11 @@ module.exports = {
 	apps: [
 		{
 			name: 'wms-api',
-			script: './dist/main.js',
+			script: './dist/main.cjs',
 			node_args: '--max-old-space-size=8192',
 			cwd: __dirname,
-			exec_mode: 'cluster',
-			max_memory_restart: '1G',
-			instances: 2,
+			exec_mode: 'fork',
+			max_memory_restart: '2G',
 			increment_var: 'PORT',
 			exp_backoff_restart_delay: 5000,
 			env: {
@@ -36,7 +39,6 @@ module.exports = {
  * @property {boolean} autorestart
  * @property {boolean | string | string[]} watch
  * @property {boolean | string | string[]} ignore_watch
- * @property {string} exec_mode
  * @property {string} increment_var
  * @property {string} max_memory_restart
  * @property {string} cron_restart
