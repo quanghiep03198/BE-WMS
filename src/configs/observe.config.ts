@@ -1,7 +1,12 @@
+// @ts-nocheck
+
 import { env } from '@common/utils'
 import { registerAs } from '@nestjs/config'
 import { ObserveOptions } from '@nestjs/observe'
 
+/**
+ * @deprecated
+ */
 export default registerAs('observe', (): ObserveOptions => ({
 	appKey: env<string>('OBSERVE_APP_KEY'),
 	appSecret: env<string>('OBSERVE_APP_SECRET'),

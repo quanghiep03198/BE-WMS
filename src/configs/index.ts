@@ -6,7 +6,6 @@ import i18nConfig from './i18n.config'
 import loggerConfig from './logger.config'
 import mongodbConfig from './mongodb.config'
 import mssqlConfig from './mssql.config'
-import observeConfig from './observe.config'
 import throttlerConfig from './throttler.config'
 
 export class AppConfig {
@@ -19,7 +18,6 @@ export class AppConfig {
 			loggerConfig,
 			mongodbConfig,
 			mssqlConfig,
-			observeConfig,
 			throttlerConfig
 		]
 	}
