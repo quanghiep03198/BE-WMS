@@ -132,7 +132,7 @@ export class RFIDOutboundService {
 			await this.epcOutboundModel
 				.updateMany(
 					{ ...baseFilterQuery, epc: { $in: epcToUpsert.map((item) => item.epc) } },
-					{ $set: { deleted: true, stored_at: outboundTime, factory_code_produce: factoryCode, po: payload.po } }
+					{ $set: { deleted: true, scannable: false, stored_at: outboundTime, factory_code_produce: factoryCode, po: payload.po } }
 				)
 				.exec()
 
