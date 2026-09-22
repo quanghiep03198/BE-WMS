@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { ArgumentMetadata, PipeTransform, UnprocessableEntityException } from '@nestjs/common'
-import { ZodError, ZodSchema, ZodType } from 'zod'
+import { ZodSchema, ZodType } from 'zod'
 
 export class ZodValidationPipe implements PipeTransform {
 	constructor(private readonly schema: ZodType | ZodSchema) {}
@@ -9,8 +9,8 @@ export class ZodValidationPipe implements PipeTransform {
 		try {
 			return this.schema.parse(value)
 		} catch (error) {
-			const firstEarliestError = (error as ZodError)?.issues?.[0]
-			throw new UnprocessableEntityException(firstEarliestError)
+			// const firstEarliestError = (error as ZodError)?.issues?.[0]
+			throw new UnprocessableEntityException(error)
 		}
 	}
 }
