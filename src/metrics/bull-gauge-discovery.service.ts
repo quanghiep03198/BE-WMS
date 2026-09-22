@@ -1,6 +1,6 @@
 // bullmq-gauge-discovery.service.ts
 import { BULLMQ_JOBS_COUNTER, BULLMQ_JOBS_GAUGE } from '@configs/bullmq.config'
-import { Injectable, OnApplicationBootstrap, OnModuleDestroy } from '@nestjs/common'
+import { Injectable, Logger, OnApplicationBootstrap, OnModuleDestroy } from '@nestjs/common'
 import { DiscoveryService } from '@nestjs/core'
 import { InjectMetric } from '@willsoto/nestjs-prometheus'
 import { Queue, QueueEvents } from 'bullmq'
@@ -8,8 +8,10 @@ import { Gauge } from 'prom-client'
 
 @Injectable()
 export class BullmqGaugeDiscoveryService implements OnApplicationBootstrap, OnModuleDestroy {
+	private readonly logger = new Logger(BullmqGaugeDiscoveryService.name)
 	private queues: Queue[] = []
 	private queueEventsList: QueueEvents[] = []
+	private isPolling = false
 	private timer: NodeJS.Timeout
 
 	constructor(
@@ -35,27 +37,38 @@ export class BullmqGaugeDiscoveryService implements OnApplicationBootstrap, OnMo
 			this.queueEventsList.push(events)
 		}
 
-		this.timer = setInterval(() => this.poll(), 5000)
-	}
-
-	private async poll() {
-		for (const queue of this.queues) {
-			const counts = await queue.getJobCounts(
-				'waiting',
-				'active',
-				'delayed',
-				'paused',
-				'prioritized',
-				'completed',
-				'failed'
-			)
-			for (const [state, value] of Object.entries(counts)) {
-				this.gauge.set({ queue: queue.name, state }, value)
-			}
-		}
+		this.timer = setInterval(() => void this.poll(), 5000)
 	}
 
 	onModuleDestroy() {
 		clearInterval(this.timer)
+	}
+
+	private async poll() {
+		if (this.isPolling) return
+
+		this.isPolling = true
+		try {
+			for (const queue of this.queues) {
+				try {
+					const counts = await queue.getJobCounts(
+						'waiting',
+						'active',
+						'delayed',
+						'paused',
+						'prioritized',
+						'completed',
+						'failed'
+					)
+					for (const [state, value] of Object.entries(counts)) {
+						this.gauge.set({ queue: queue.name, state }, value)
+					}
+				} catch (error) {
+					this.logger.warn(`Unable to poll BullMQ queue "${queue.name}": ${String(error)}`)
+				}
+			}
+		} finally {
+			this.isPolling = false
+		}
 	}
 }
