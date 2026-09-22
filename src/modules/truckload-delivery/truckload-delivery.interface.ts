@@ -19,6 +19,7 @@ export type DispatchOrder = {
 	punctured_container: boolean
 	smelling_container: boolean
 	moist_container: boolean
+	factory_entrance_time: Date | null
 	container_sealing_time: Date | null
 	factory_departure_time: Date | null
 	actual_snap_time: Date | null

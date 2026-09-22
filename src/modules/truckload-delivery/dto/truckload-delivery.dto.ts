@@ -29,18 +29,22 @@ export const filterQueryDTO = z
 			.optional(),
 		approval_status: z.nativeEnum(TruckloadDeliveryStatus).optional(),
 		'sort.container_number': z.nativeEnum(SortDirection).optional(),
+		'sort.seal_number': z.nativeEnum(SortDirection).optional(),
 		'sort.license_plate': z.nativeEnum(SortDirection).optional(),
 		'sort.total_outbound_qty': z.nativeEnum(SortDirection).optional(),
 		'sort.created': z.nativeEnum(SortDirection).optional(),
 		'sort.container_sealing_time': z.nativeEnum(SortDirection).optional(),
+		'sort.factory_entrance_time': z.nativeEnum(SortDirection).optional(),
 		'sort.factory_departure_time': z.nativeEnum(SortDirection).optional(),
 		'sort.actual_departure_time': z.nativeEnum(SortDirection).optional(),
 		'where.approval_status': z.string().refine(isWhereClauseExpValid).optional(),
 		'where.license_plate': z.string().refine(isWhereClauseExpValid).optional(),
 		'where.container_number': z.string().refine(isWhereClauseExpValid).optional(),
+		'where.seal_number': z.string().refine(isWhereClauseExpValid).optional(),
 		'where.po': z.string().refine(isWhereClauseExpValid).optional(),
 		'where.created_at': z.string().refine(isWhereClauseExpValid).optional(),
 		'where.container_sealing_time': z.string().refine(isWhereClauseExpValid).optional(),
+		'where.factory_entrance_time': z.string().refine(isWhereClauseExpValid).optional(),
 		'where.factory_departure_time': z.string().refine(isWhereClauseExpValid).optional(),
 		'where.actual_departure_time': z.string().refine(isWhereClauseExpValid).optional()
 	})
@@ -72,6 +76,11 @@ export const createDeliveryDTO = z.object({
 		.nonempty()
 		.transform((value) => value.toLocaleUpperCase())
 		.nullish(),
+	seal_number: z
+		.string()
+		.nonempty()
+		.transform((value) => value.toLocaleUpperCase())
+		.nullish(),
 	outbound_purchase_orders: z.array(
 		z.object({
 			po: z.string({ message: 'ns_validation:required' }).trim().nonempty({ message: 'ns_validation:required' }),
@@ -92,6 +101,15 @@ export const updateDeliveryDTO = z.object({
 		.trim()
 		.nullish()
 		.transform((value) => (isNil(value) ? null : value.toUpperCase())),
+	seal_number: z
+		.string()
+		.trim()
+		.nullish()
+		.transform((value) => (isNil(value) ? null : value.toUpperCase())),
+	factory_entrance_time: z.object({
+		date: z.coerce.date().nullish(),
+		time: z.string().nullish()
+	}),
 	punctured_container: z.boolean().optional(),
 	smelling_container: z.boolean().optional(),
 	moist_container: z.boolean().optional(),
@@ -151,7 +169,6 @@ export const updateSignatureDTO = z
 			case 'security_2_signature':
 				return {
 					signature_type: data.signature_type,
-
 					security_2_signature: data.signature,
 					approval_status: data.approval_status
 				}
@@ -186,6 +203,7 @@ export type UpdateContainerConditionDTO = z.infer<typeof updateContainerConditio
 export type UnflatedFilterQueryDTO = Pick<FilterQueryDTO, 'page' | 'limit' | 'from' | 'approval_status'> & {
 	sort: {
 		container_number: SortDirection
+		seal_number: SortDirection
 		license_plate: SortDirection
 		outbound_qty: SortDirection
 		created: SortDirection
@@ -196,6 +214,7 @@ export type UnflatedFilterQueryDTO = Pick<FilterQueryDTO, 'page' | 'limit' | 'fr
 	where: {
 		license_plate: string
 		container_number: string
+		seal_number: string
 		po: string
 	}
 }

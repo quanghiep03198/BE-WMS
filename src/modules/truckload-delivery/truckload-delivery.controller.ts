@@ -118,12 +118,14 @@ export class TruckloadDeliveryController {
 		statusCode: HttpStatus.CREATED,
 		message: 'common.updated'
 	})
-	@RequireAuthorized(UserRole.IE_STAFF, UserRole.FG_WAREHOUSE_STAFF)
+	@RequireAuthorized(UserRole.IE_STAFF, UserRole.FG_WAREHOUSE_STAFF, UserRole.SECURITY_GUARD)
 	async bulkUpdateByDispatchOrder(
 		@User() user: RequestUser,
 		@Param('dispatchOrder') dispatchOrder: string,
 		@Body(new ZodValidationPipe(updateDeliveryDTO)) payload: UpdateDeliveryDTO
 	) {
+
+
 		return await this.deliveryService.bulkUpdateByDispatchOrder(dispatchOrder, {
 			...payload,
 			user_code_updated: user?.username,

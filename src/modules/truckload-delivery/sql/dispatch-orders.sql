@@ -5,6 +5,7 @@ SELECT
    , a.factory_code
    , a.approval_status
    , a.license_plate
+   , a.seal_number
    , a.container_number
    , a.container_sealing_time
    , d.total_outbound_qty AS total_outbound_qty
@@ -13,6 +14,7 @@ SELECT
    , a.moist_container
    , a.factory_departure_time
    , MAX(c.snap_time) AS actual_snap_time
+   , MAX(a.factory_entrance_time) AS factory_entrance_time
    , ISNULL(ISNULL(MAX(b.snap_time), MAX(c.snap_time)), MAX(a.factory_departure_time)) AS actual_departure_time
    , MAX(a.ie_signature) AS ie_signature
    , MAX(a.warehouse_officer_signature) AS warehouse_officer_signature
@@ -48,6 +50,8 @@ GROUP BY a.dispatch_order
    , a.factory_code
    , a.license_plate
    , a.container_number
+   , a.seal_number
+   , a.factory_entrance_time
    , a.container_sealing_time
    , a.factory_departure_time
    , a.approval_status

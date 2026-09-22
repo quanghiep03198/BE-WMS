@@ -59,6 +59,15 @@ export class TruckloadDeliveryEntity extends BaseAbstractEntity {
 	container_number: string
 
 	@Column({
+		name: 'seal_number',
+		type: 'nvarchar',
+		length: 50,
+		nullable: true,
+		comment: 'Seal number for the container in the truckload delivery'
+	})
+	seal_number: string
+
+	@Column({
 		name: 'outbound_qty',
 		type: 'int',
 		nullable: false,
@@ -141,6 +150,14 @@ export class TruckloadDeliveryEntity extends BaseAbstractEntity {
 		comment: 'Base64 image of the security guard 2 signature'
 	})
 	security_2_signature: string
+
+	@Column({
+		name: 'factory_entrance_time',
+		type: 'datetime',
+		nullable: true,
+		comment: 'The time when the truckload delivery entered the factory premises'
+	})
+	factory_entrance_time: Date
 
 	@Column({
 		name: 'container_sealing_time',

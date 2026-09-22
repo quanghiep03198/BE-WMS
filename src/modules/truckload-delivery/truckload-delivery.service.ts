@@ -66,7 +66,7 @@ export class TruckloadDeliveryService
 			.map(([column, expression]) => {
 				const [operator, value] = expression.split(':')
 				if (
-					['created_at', 'container_sealing_time', 'factory_departure_time', 'actual_departure_time'].includes(
+					['created_at','factory_entrance_time', 'container_sealing_time', 'factory_departure_time', 'actual_departure_time'].includes(
 						column
 					)
 				) {
@@ -360,9 +360,14 @@ export class TruckloadDeliveryService
 
 	public async bulkUpdateByDispatchOrder(
 		dispatchOrder: string,
-		payload: UpdateDeliveryDTO & Partial<BaseAbstractEntity>
+		payload: UpdateDeliveryDTO & Partial<BaseAbstractEntity> 
 	) {
-		return await this.deliveryRepository.update({ dispatch_order: dispatchOrder }, payload)
+		const entranceTime = new Date(payload.factory_entrance_time.date)
+		const entranceHour = parseInt(payload.factory_entrance_time.time.split(':')[0])
+		const entranceMinute = parseInt(payload.factory_entrance_time.time.split(':')[1])
+		entranceTime.setHours(entranceHour, entranceMinute)
+		this.logger.debug(payload)
+		return await this.deliveryRepository.update({ dispatch_order: dispatchOrder }, {...payload, factory_entrance_time: entranceTime})
 	}
 
 	public async bulkDeleteByDispatchOrder(dispatchOrder: string) {
