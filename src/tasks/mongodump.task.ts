@@ -3,11 +3,15 @@ import { Cron, CronExpression } from '@nestjs/schedule'
 import { exec } from 'child_process'
 import * as path from 'path'
 
+/**
+ * @deprecated
+ * This task will be removed to use Windows Task Scheduler instead.
+ */
 @Injectable()
 export class MongoDumpTask {
 	private readonly logger = new Logger(MongoDumpTask.name)
 
-	@Cron(CronExpression.EVERY_10_MINUTES)
+	@Cron(CronExpression.EVERY_30_MINUTES)
 	handleDump() {
 		const instanceId = process.env.NODE_APP_INSTANCE
 		if (instanceId && instanceId !== '1') {
