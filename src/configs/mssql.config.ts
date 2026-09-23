@@ -2,26 +2,21 @@ import { env } from '@common/utils'
 import { DATABASE_SCHEMA } from '@databases/constants'
 import { InvDefectiveGoods1757390824605 } from '@databases/migrations/1757390824605-inv_defective_goods'
 import { TruckloadDelivery1762756390180 } from '@databases/migrations/1762756390180-truckload-delivery'
-import { Users1768439528524 } from '@databases/migrations/1768439528524-users'
-import { RefreshTokens1769534028893 } from '@databases/migrations/1769534028893-refresh-tokens'
 
 import { registerAs } from '@nestjs/config'
 import { type TypeOrmModuleOptions } from '@nestjs/typeorm'
 import { RedisOptions } from 'ioredis'
 
-export default registerAs('mssql', (): TypeOrmModuleOptions => ({
+export const MSSQL_CONFIG_TOKEN = Symbol('mssql')
+
+export default registerAs(MSSQL_CONFIG_TOKEN, (): TypeOrmModuleOptions => ({
 	type: 'mssql',
 	host: env('DB_HOST'),
 	port: env('DB_PORT', { serialize: (value): number => Number.parseInt(value) }),
 	username: env('DB_USERNAME'),
 	password: env('DB_PASSWORD'),
 	schema: DATABASE_SCHEMA,
-	migrations: [
-		InvDefectiveGoods1757390824605,
-		TruckloadDelivery1762756390180,
-		Users1768439528524,
-		RefreshTokens1769534028893
-	],
+	migrations: [InvDefectiveGoods1757390824605, TruckloadDelivery1762756390180],
 	autoLoadEntities: true,
 	synchronize: false,
 	logging: ['error'],

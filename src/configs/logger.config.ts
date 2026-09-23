@@ -2,7 +2,9 @@ import { env, stringToBoolean } from '@common/utils'
 import { registerAs } from '@nestjs/config'
 import { type Params } from 'nestjs-pino'
 
-export default registerAs('logger', (): Params => ({
+export const LOGGER_CONFIG_TOKEN = Symbol('logger')
+
+export default registerAs(LOGGER_CONFIG_TOKEN, (): Params => ({
 	renameContext: 'WMS-API',
 	pinoHttp: {
 		name: 'WMS API',

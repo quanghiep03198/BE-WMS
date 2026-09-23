@@ -2,7 +2,9 @@ import { env } from '@common/utils'
 import { type BullRootModuleOptions } from '@nestjs/bullmq'
 import { registerAs } from '@nestjs/config'
 
-export default registerAs('bullmq', (): BullRootModuleOptions => ({
+export const BULLMQ_CONFIG_TOKEN = Symbol('bullmq')
+
+export default registerAs(BULLMQ_CONFIG_TOKEN, (): BullRootModuleOptions => ({
 	connection: {
 		host: env('REDIS_HOST'),
 		port: env('REDIS_PORT', { serialize: (value): number => Number.parseInt(value) }),

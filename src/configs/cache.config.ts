@@ -3,8 +3,10 @@ import { createKeyv, RedisClientOptions } from '@keyv/redis'
 import { CacheModuleOptions } from '@nestjs/cache-manager'
 import { registerAs } from '@nestjs/config'
 
+export const CACHE_CONFIG_TOKEN = Symbol('cache')
+
 export default registerAs(
-	'cache',
+	CACHE_CONFIG_TOKEN,
 	() =>
 		({
 			isGlobal: true,

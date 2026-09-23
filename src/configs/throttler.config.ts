@@ -1,7 +1,9 @@
 import { registerAs } from '@nestjs/config'
 import { type ThrottlerOptions } from '@nestjs/throttler'
 
-export default registerAs('throttler', (): ThrottlerOptions[] => [
+export const THROTTLER_CONFIG_TOKEN = Symbol('throttler')
+
+export default registerAs(THROTTLER_CONFIG_TOKEN, (): ThrottlerOptions[] => [
 	{
 		name: 'short',
 		ttl: 1000,

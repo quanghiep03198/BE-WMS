@@ -3,7 +3,9 @@ import { registerAs } from '@nestjs/config'
 import { AcceptLanguageResolver, HeaderResolver, type I18nOptions } from 'nestjs-i18n'
 import path from 'node:path'
 
-export default registerAs('i18n', (): I18nOptions => {
+export const I18N_CONFIG_TOKEN = Symbol('i18n')
+
+export default registerAs(I18N_CONFIG_TOKEN, (): I18nOptions => {
 	return {
 		fallbackLanguage: env('FALLBACK_LANGUAGE', { fallbackValue: 'en' }),
 		loaderOptions: {

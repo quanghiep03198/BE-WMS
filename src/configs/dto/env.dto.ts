@@ -4,16 +4,16 @@ import { z } from 'zod'
 
 export const envConfigDTO = z.object({
 	// * Application
-	NODE_ENV: z.nativeEnum(Environment),
-	HOST: z.string().trim().ip({ version: 'v4' }),
+	NODE_ENV: z.enum(Environment),
+	HOST: z.ipv4(),
 	PORT: z
 		.string()
 		.trim()
 		.nonempty()
 		.refine((value) => !Number.isNaN(+value))
 		.transform((value) => +value),
-	FALLBACK_LANGUAGE: z.nativeEnum(Languages),
-	POSTMAN_DOCUMENTATION_URL: z.string().trim().nonempty().url().optional(),
+	FALLBACK_LANGUAGE: z.enum(Languages),
+	POSTMAN_DOCUMENTATION_URL: z.url().optional(),
 
 	ENABLE_LOKI_LOGGER: z.enum(['true', 'false']).transform((value) => stringToBoolean(value)),
 	ENABLE_PROMETHEUS_METRICS_LOGGER: z.enum(['true', 'false']).transform((value) => stringToBoolean(value)),
@@ -40,7 +40,7 @@ export const envConfigDTO = z.object({
 	MONGO_DB_NAME: z.string().trim().nonempty(),
 
 	// * Redis
-	REDIS_HOST: z.string().trim().nonempty().ip({ version: 'v4' }),
+	REDIS_HOST: z.ipv4(),
 	REDIS_PORT: z
 		.string()
 		.trim()
@@ -92,8 +92,8 @@ export const envConfigDTO = z.object({
 	JWT_EXPIRES: z.string().trim().nonempty().or(z.number().positive()),
 
 	// * Decker Third-party APIs
-	DECKERS_OAUTH_API_URL: z.string().trim().nonempty().url(),
-	DECKERS_API_URL: z.string().trim().nonempty().url(),
+	DECKERS_OAUTH_API_URL: z.url(),
+	DECKERS_API_URL: z.url(),
 	DECKERS_GL1_CLIENT_ID: z.string().trim().nonempty(),
 	DECKERS_GL1_CLIENT_SECRET: z.string().trim().nonempty(),
 	DECKERS_GL3_CLIENT_ID: z.string().trim().nonempty(),
@@ -102,11 +102,11 @@ export const envConfigDTO = z.object({
 	DECKERS_GL4_CLIENT_SECRET: z.string().trim().nonempty(),
 
 	// * Tenancy IPs
-	TENANT_DEV: z.string().trim().nonempty().ip({ version: 'v4' }),
-	TENANT_CENTRAL: z.string().trim().nonempty().ip({ version: 'v4' }),
-	TENANT_GL1: z.string().trim().nonempty().ip({ version: 'v4' }),
-	TENANT_GL3: z.string().trim().nonempty().ip({ version: 'v4' }),
-	TENANT_GL4: z.string().trim().nonempty().ip({ version: 'v4' })
+	TENANT_DEV: z.ipv4(),
+	TENANT_CENTRAL: z.ipv4(),
+	TENANT_GL1: z.ipv4(),
+	TENANT_GL3: z.ipv4(),
+	TENANT_GL4: z.ipv4()
 
 	// * Sentry
 	// SENTRY_DSN: z.string().trim().nonempty().url(),

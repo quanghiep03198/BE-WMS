@@ -15,7 +15,14 @@ import { ClsModule } from 'nestjs-cls'
 import { AcceptLanguageResolver, HeaderResolver, I18nModule, QueryResolver } from 'nestjs-i18n'
 import { LoggerModule, Params } from 'nestjs-pino'
 import { AppController } from './app.controller'
-import { AppConfig } from './configs/index'
+import {
+	AppConfig,
+	CACHE_CONFIG_TOKEN,
+	CDC_CONFIG_TOKEN,
+	I18N_CONFIG_TOKEN,
+	IApplicationConfigFactory,
+	THROTTLER_CONFIG_TOKEN
+} from './configs/index'
 // Feature modules
 import { AuthModule } from './modules/auth/auth.module'
 import { DefectiveGoodsModule } from './modules/defective-goods/defective-goods.module'
@@ -34,6 +41,7 @@ import { WarehouseModule } from './modules/warehouse/warehouse.module'
 import { RedisModule } from './redis/redis.module'
 // Schedule Tasks
 import { AllExceptionsFilter } from '@common/filters'
+import { BULLMQ_CONFIG_TOKEN, LOGGER_CONFIG_TOKEN } from '@configs/index'
 import { getConnectionToken } from '@nestjs/mongoose'
 import { CdcModule, DatabaseModule } from './databases'
 import {
@@ -46,14 +54,13 @@ import { MetricsModule } from './metrics/metrics.module'
 import { RFIDDeviceModule } from './modules/rfid-device/rfid-device.module'
 import { ScheduleTasks } from './tasks'
 
-// export const { ObserveModule, ObserveInstrument } = createObserveModule()
-
 @Module({
 	imports: [
 		// * Core modules
 		LoggerModule.forRootAsync({
 			inject: [ConfigService],
-			useFactory: (configService: ConfigService) => configService.getOrThrow<Params>('logger')
+			useFactory: (configService: ConfigService<IApplicationConfigFactory>) =>
+				configService.getOrThrow<Params>(LOGGER_CONFIG_TOKEN)
 		}),
 		ConfigModule.forRoot({
 			envFilePath: ['.env'],
@@ -67,8 +74,8 @@ import { ScheduleTasks } from './tasks'
 		DatabaseModule,
 		MetricsModule,
 		CdcModule.registerAsync({
-			inject: [ConfigService],
-			useFactory: (configService) => configService.getOrThrow('cdc')
+			inject: [ConfigService<IApplicationConfigFactory>],
+			useFactory: (configService) => configService.getOrThrow(CDC_CONFIG_TOKEN)
 		}),
 
 		ScheduleModule.forRoot(),
@@ -106,7 +113,8 @@ import { ScheduleTasks } from './tasks'
 		}),
 		I18nModule.forRootAsync({
 			inject: [ConfigService],
-			useFactory: (configService: ConfigService) => configService.getOrThrow('i18n'),
+			useFactory: (configService: ConfigService<IApplicationConfigFactory>) =>
+				configService.getOrThrow(I18N_CONFIG_TOKEN),
 			resolvers: [
 				{ use: QueryResolver, options: ['lng'] },
 				new HeaderResolver(['X-Language']),
@@ -116,15 +124,18 @@ import { ScheduleTasks } from './tasks'
 		CacheModule.registerAsync({
 			isGlobal: true,
 			inject: [ConfigService],
-			useFactory: (configService: ConfigService) => configService.getOrThrow('cache')
+			useFactory: (configService: ConfigService<IApplicationConfigFactory>) =>
+				configService.getOrThrow(CACHE_CONFIG_TOKEN)
 		}),
 		ThrottlerModule.forRootAsync({
 			inject: [ConfigService],
-			useFactory: (configService: ConfigService) => configService.getOrThrow('throttler')
+			useFactory: (configService: ConfigService<IApplicationConfigFactory>) =>
+				configService.getOrThrow(THROTTLER_CONFIG_TOKEN)
 		}),
 		BullModule.forRootAsync({
 			inject: [ConfigService],
-			useFactory: (configService: ConfigService) => configService.getOrThrow('bullmq')
+			useFactory: (configService: ConfigService<IApplicationConfigFactory>) =>
+				configService.getOrThrow(BULLMQ_CONFIG_TOKEN)
 		}),
 		EventEmitterModule.forRoot({
 			wildcard: false, // cho phép sử dụng các ký tự đại diện (wildcards) trong tên sự kiện. Ví dụ: (user.login, user.logout, user.signup) => wildcard = user.*.
