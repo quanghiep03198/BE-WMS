@@ -90,31 +90,35 @@ export const createDeliveryDTO = z.object({
 	)
 })
 
-export const updateDeliveryDTO = z.object({
-	license_plate: z
-		.string()
-		.trim()
-		.nullish()
-		.transform((value) => (isNil(value) ? null : value.toUpperCase())),
-	container_number: z
-		.string()
-		.trim()
-		.nullish()
-		.transform((value) => (isNil(value) ? null : value.toUpperCase())),
-	seal_number: z
-		.string()
-		.trim()
-		.nullish()
-		.transform((value) => (isNil(value) ? null : value.toUpperCase())),
-	factory_entrance_time: z.object({
-		date: z.coerce.date().nullish(),
-		time: z.string().nullish()
-	}),
-	punctured_container: z.boolean().optional(),
-	smelling_container: z.boolean().optional(),
-	moist_container: z.boolean().optional(),
-	remark: z.string().trim().max(255).nullish()
-})
+export const updateDeliveryDTO = z
+	.object({
+		license_plate: z
+			.string()
+			.trim()
+			.nullish()
+			.transform((value) => (isNil(value) ? null : value.toUpperCase())),
+		container_number: z
+			.string()
+			.trim()
+			.nullish()
+			.transform((value) => (isNil(value) ? null : value.toUpperCase())),
+		seal_number: z
+			.string()
+			.trim()
+			.nullish()
+			.transform((value) => (isNil(value) ? null : value.toUpperCase())),
+		factory_entrance_time: z
+			.object({
+				date: z.coerce.date(),
+				time: z.string()
+			})
+			.optional(),
+		punctured_container: z.boolean().optional(),
+		smelling_container: z.boolean().optional(),
+		moist_container: z.boolean().optional(),
+		remark: z.string().trim().max(255).nullish()
+	})
+	
 
 export const updateSignatureDTO = z
 	.object({
