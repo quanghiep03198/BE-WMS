@@ -1,3 +1,3 @@
-export interface IListener<D, R> {
+export interface IEventListener<D, R> {
 	handle(data: D): R
 }
