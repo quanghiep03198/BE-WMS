@@ -23,6 +23,8 @@ export declare global {
 
 	type DatabaseType<T = 'mssql'> = Extract<DataSourceOptions['type'], T>
 
+	type FactoryCode = 'VA1' | 'VB1' | 'VB2' | 'CA1'
+
 	namespace NodeJS {
 		interface ProcessEnv {
 			// * Application
@@ -35,6 +37,7 @@ export declare global {
 			ENABLE_PROMETHEUS_METRICS_LOGGER: 'true' | 'false'
 			ENABLE_LOKI_LOGGER: 'true' | 'false'
 			CORS_ORIGINS: string
+			APP_TENANCY: FactoryCode
 
 			// * Throttler
 			THROTTLER_TTL: string
@@ -126,4 +129,10 @@ export declare global {
 	type QueueJobStatus = 'completed' | 'wait' | 'active' | 'paused' | 'prioritized' | 'delayed' | 'failed'
 
 	type Nullable<T> = T | null | undefined
+
+	type TObjectId = {
+		id: string | Uint8Array
+		__id?: string
+		toHexString(): string
+	}
 }

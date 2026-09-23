@@ -1,4 +1,4 @@
-import { mongo } from 'mongoose'
+import { mongo, type SchemaDefinitionProperty as DefinitionProperty } from 'mongoose'
 import { SoftDeleteModel } from 'mongoose-delete'
 
 export module 'mongoose' {
@@ -10,4 +10,8 @@ export module 'mongoose' {
 	}
 
 	type LeanDocument<T> = T & { $locals?: never }
+
+	type SchemaDefinitionProperty<T> = DefinitionProperty<T> & {
+		autopopulate?: boolean
+	}
 }
