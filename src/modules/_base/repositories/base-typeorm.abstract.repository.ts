@@ -1,9 +1,9 @@
 import { Injectable } from '@nestjs/common'
 import { DeepPartial, DeleteResult, FindManyOptions, FindOptionsWhere, Repository, UpdateResult } from 'typeorm'
 import { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity'
-import { BaseAbstractEntity } from './base.abstract.entity'
-import { IBaseService } from './base.service.interface'
-import { PaginationDTO } from './dto/pagination.dto'
+import { BaseAbstractEntity } from '../base.abstract.entity'
+import { PaginationDTO } from '../dto/pagination.dto'
+import { IBaseTypeOrmRepository } from '../interfaces/base-typeorm.repository.interface'
 
 /**
  * @description
@@ -16,7 +16,9 @@ import { PaginationDTO } from './dto/pagination.dto'
  * @implements `IBaseService<Entity>`
  */
 @Injectable()
-export abstract class BaseAbstractService<Entity extends BaseAbstractEntity> implements IBaseService<Entity> {
+export abstract class BaseTypeOrmRepository<
+	Entity extends BaseAbstractEntity
+> implements IBaseTypeOrmRepository<Entity> {
 	protected constructor(private readonly repository: Repository<Entity>) {}
 
 	/**
@@ -24,8 +26,8 @@ export abstract class BaseAbstractService<Entity extends BaseAbstractEntity> imp
 	 * @param payload
 	 * @returns
 	 */
-	async insertOne(payload: DeepPartial<Entity>) {
-		const newRecord = this.repository.create(payload)
+	async createOne(payload: Partial<Omit<Entity, '_id' | 'id'>>) {
+		const newRecord = this.repository.create(payload as DeepPartial<Entity>)
 		return await this.repository.save(newRecord)
 	}
 
@@ -34,9 +36,17 @@ export abstract class BaseAbstractService<Entity extends BaseAbstractEntity> imp
 	 * @param payload
 	 * @returns
 	 */
-	async insertMany(payload: DeepPartial<Entity>[]) {
+	async createMany(payload: DeepPartial<Entity>[]) {
 		const newRecords = this.repository.create(payload)
 		return await this.repository.insert(newRecords as FirstParameter<typeof this.repository.insert>)
+	}
+
+	async insertOne(payload: Partial<Omit<Entity, '_id' | 'id'>>) {
+		return await this.createOne(payload)
+	}
+
+	async insertMany(payload: Partial<Omit<Entity, '_id' | 'id'>>[]) {
+		return await this.createMany(payload as DeepPartial<Entity>[])
 	}
 
 	/**
@@ -46,6 +56,10 @@ export abstract class BaseAbstractService<Entity extends BaseAbstractEntity> imp
 
 	async findAll(): Promise<Entity[]> {
 		return await this.repository.find()
+	}
+
+	async findOne(filter: FindOptionsWhere<Entity>): Promise<Entity | null> {
+		return await this.repository.findOneBy(filter)
 	}
 
 	/**
@@ -63,8 +77,8 @@ export abstract class BaseAbstractService<Entity extends BaseAbstractEntity> imp
 	 * @param partialEntity
 	 * @returns
 	 */
-	async updateOneById(id: number, partialEntity: QueryDeepPartialEntity<Entity>) {
-		return await this.repository.update(id, partialEntity)
+	async updateOneById(id: number, partialEntity: Partial<Entity>) {
+		return await this.repository.update(id, partialEntity as QueryDeepPartialEntity<Entity>)
 	}
 
 	/**
