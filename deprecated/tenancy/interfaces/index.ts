@@ -1,6 +1,5 @@
 // @ts-nocheck
 
-import { FactoryCode } from '../../department/constants'
 import { Tenant } from '../constants'
 
 export interface ITenancy {
