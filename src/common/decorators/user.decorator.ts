@@ -1,7 +1,7 @@
-import { IUser } from '@modules/user/user.interface'
+import { IUser } from '@modules/user/domain/interfaces'
 import { createParamDecorator, ExecutionContext } from '@nestjs/common'
 
-type UserDecoratorProperty = Extract<keyof IUser, 'id' | 'username' | 'employee_code' | 'display_name' | 'roles'>
+type UserDecoratorProperty = Extract<keyof IUser, '_id' | 'username' | 'display_name' | 'roles'>
 
 export type RequestUser = Pick<IUser, UserDecoratorProperty>
 
