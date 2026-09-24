@@ -4,7 +4,7 @@ import 'dotenv/config'
 import { Column, Entity, Index } from 'typeorm'
 
 @Entity('ts_user', { database: DATABASE_SYSCLOUD })
-export class OldUserEntity extends BaseAbstractEntity {
+export class UserEntity extends BaseAbstractEntity {
 	@Index({ unique: true })
 	@Column({ name: 'user_code', type: 'nvarchar', length: 20 })
 	username: string
@@ -20,7 +20,7 @@ export class OldUserEntity extends BaseAbstractEntity {
 		return this.password === password
 	}
 
-	constructor(user: Partial<OldUserEntity>) {
+	constructor(user: Partial<UserEntity>) {
 		super()
 		Object.assign(this, user)
 	}
