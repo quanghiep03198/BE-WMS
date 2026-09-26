@@ -40,6 +40,6 @@
 		},
 		"inlineSources": true
 	},
-	"include": ["src", "test", "src/instrument.ts", "global.d.ts"],
-	"exclude": ["node_modules", "dist", "deprecated", ".tmp"]
+	"include": ["src", "test", "global.d.ts"],
+	"exclude": ["node_modules", "dist", "deprecated", ".tmp", "src/**/.tmp/*"]
 }
