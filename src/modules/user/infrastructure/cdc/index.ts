@@ -36,8 +36,6 @@ export class UserCdcHandler implements ICdcHandler<{
 		usercode: string
 		user_password: string
 	}>): Promise<void> {
-		this.logger.debug(`Handling ${changes.length} changes for ${table}`)
-
 		const bulkWriteOps: AnyBulkWriteOperation<UserDocument>[] = changes.flatMap((change) => {
 			if (change.operation === 'delete')
 				return {
