@@ -1,17 +1,17 @@
 import { DATA_SOURCE_DATA_LAKE } from '@databases/constants'
+import { BaseTypeOrmService } from '@modules/_base/services/base-typeorm.abstract.service'
 import { BadGatewayException, Injectable } from '@nestjs/common'
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm'
 import { chunk, omit } from 'lodash'
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
 import { And, Between, DataSource, Equal, FindOptionsWhere, In, IsNull, Like, Not, Repository } from 'typeorm'
-import { BaseAbstractService } from '../../_base/base.abstract.service'
 import { FALLBACK_VALUE } from '../../finished-goods/domain/constants'
 import { FALLBACK_PURCHASE_ORDER } from '../constants'
 import { DeleteManyDefectiveGoodsDTO } from '../dto/defective-goods.dto'
 import { DefectiveGoodsEntity } from '../entities/defective-goods.entity'
 
 @Injectable()
-export class DefectiveGoodsService extends BaseAbstractService<DefectiveGoodsEntity> {
+export class DefectiveGoodsService extends BaseTypeOrmService<DefectiveGoodsEntity> {
 	constructor(
 		@InjectPinoLogger(DefectiveGoodsService.name) private readonly logger: PinoLogger,
 		@InjectRepository(DefectiveGoodsEntity, DATA_SOURCE_DATA_LAKE)

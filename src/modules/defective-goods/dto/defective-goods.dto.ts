@@ -4,7 +4,7 @@ import { DefectiveCategory, DefectiveGoodsSource, DefectiveLocation } from '../c
 
 export const baseDefectiveGoodsDTO = z.object({
 	ri_type: z.enum(['uhf', 'usb', 'manually']),
-	defective_category: z.nativeEnum(DefectiveCategory),
+	defective_category: z.enum(DefectiveCategory),
 	po: z.any().nullish().default('PRELOAD'),
 	mo_no: z.any().nullish(),
 	brand_name: z.string().trim().nonempty(),
@@ -12,9 +12,9 @@ export const baseDefectiveGoodsDTO = z.object({
 	factory_shoes_style: z.string().trim().nonempty(),
 	color_sn: z.string().trim().nonempty(),
 	size_code: z.string().nonempty().optional(),
-	defective_location: z.nativeEnum(DefectiveLocation),
+	defective_location: z.enum(DefectiveLocation),
 	defective_description: z.string().nonempty(),
-	shoe_source: z.nativeEnum(DefectiveGoodsSource).optional(),
+	shoe_source: z.enum(DefectiveGoodsSource).optional(),
 	sewing_line: z
 		.string()
 		.trim()
@@ -50,24 +50,26 @@ export const createDefectiveGoodsDTO = baseDefectiveGoodsDTO
 		defective_category: true
 	})
 	.refine(
-		(values) => {
-			if (values.defective_category === DefectiveCategory.B_GRADE) return !!values.mo_no
+		(value) => {
+			if (value.defective_category === DefectiveCategory.B_GRADE) return !!value.mo_no
 			return true
 		},
 		{ message: 'Purchase order and Manufacturing order. are required for B Grade category' }
 	)
-	.superRefine((values, context) => {
-		switch (values.ri_type) {
+	.check(({ issues, value }) => {
+		switch (value.ri_type) {
 			case 'uhf': {
-				if (!Array.isArray(values.epc) || values.epc.length === 0)
-					context.addIssue({
+				if (!Array.isArray(value.epc) || value.epc.length === 0)
+					issues.push({
 						code: 'custom',
+						input: value,
 						message: 'EPCs are required when combination strategy is UHF',
 						fatal: true
 					})
-				if (isNil(values.size_code) || isEmpty(values.size_code.trim()))
-					context.addIssue({
+				if (isNil(value.size_code) || isEmpty(value.size_code.trim()))
+					issues.push({
 						code: 'custom',
+						input: value,
 						message: 'ns_validation:required',
 						fatal: true
 					})
@@ -75,15 +77,17 @@ export const createDefectiveGoodsDTO = baseDefectiveGoodsDTO
 				break
 			}
 			case 'usb': {
-				if (typeof values.epc !== 'string' || values.epc.trim() === '')
-					context.addIssue({
+				if (typeof value.epc !== 'string' || value.epc.trim() === '')
+					issues.push({
 						code: 'custom',
+						input: value,
 						message: 'EPCs are required when combination strategy is USB',
 						fatal: true
 					})
-				if (isNil(values.size_code) || isEmpty(values.size_code.trim()))
-					context.addIssue({
+				if (isNil(value.size_code) || isEmpty(value.size_code.trim()))
+					issues.push({
 						code: 'custom',
+						input: value,
 						message: 'ns_validation:required',
 						fatal: true
 					})
@@ -91,9 +95,10 @@ export const createDefectiveGoodsDTO = baseDefectiveGoodsDTO
 				break
 			}
 			case 'manually': {
-				if (!Array.isArray(values.sizes))
-					context.addIssue({
+				if (!Array.isArray(value.sizes))
+					issues.push({
 						code: 'custom',
+						input: value,
 						message: 'Sizes are required when combination strategy is manually',
 						fatal: true
 					})
@@ -103,12 +108,13 @@ export const createDefectiveGoodsDTO = baseDefectiveGoodsDTO
 				break
 		}
 	})
-	.superRefine((values, context) => {
-		if (Array.isArray(values.sizes) && values.ri_type === 'manually')
-			values.sizes.forEach((item, index) => {
-				if (values.sizes.findIndex((otherItem) => otherItem.size_code === item.size_code) !== index)
-					context.addIssue({
+	.check(({ issues, value }) => {
+		if (Array.isArray(value.sizes) && value.ri_type === 'manually')
+			value.sizes.forEach((item, index) => {
+				if (value.sizes.findIndex((otherItem) => otherItem.size_code === item.size_code) !== index)
+					issues.push({
 						code: 'custom',
+						input: value,
 						message: 'Do not select the same Size',
 						fatal: true,
 						path: [`sizes.${index}.size_code`]
@@ -122,9 +128,9 @@ export const updateDefectiveGoodsDTO = baseDefectiveGoodsDTO
 	})
 	.partial()
 	.refine(
-		(values) => {
-			if (values.defective_category === DefectiveCategory.B_GRADE)
-				return typeof values.mo_no === 'string' && !isEmpty(values.mo_no)
+		(value) => {
+			if (value.defective_category === DefectiveCategory.B_GRADE)
+				return typeof value.mo_no === 'string' && !isEmpty(value.mo_no)
 			return true
 		},
 		{ message: 'Purchase order and Manufacturing order. are required for B Grade category' }
@@ -133,7 +139,7 @@ export const updateDefectiveGoodsDTO = baseDefectiveGoodsDTO
 export const deleteManyDefectiveGoodsDTO = z.object({
 	including_ids: z.literal('all').or(z.array(z.number().int().positive()).nonempty()),
 	excluding_ids: z.array(z.number().int().positive()).optional(),
-	category: z.nativeEnum(DefectiveCategory).optional(),
+	category: z.enum(DefectiveCategory).optional(),
 	po: z.string().optional(),
 	mo_no: z.string().optional(),
 	brand_name: z.string().optional(),
@@ -141,7 +147,7 @@ export const deleteManyDefectiveGoodsDTO = z.object({
 	factory_shoes_style: z.string().optional(),
 	color_sn: z.string().optional(),
 	size_code: z.string().optional(),
-	defective_location: z.nativeEnum(DefectiveLocation).optional(),
+	defective_location: z.enum(DefectiveLocation).optional(),
 	defect_description: z.string().optional(),
 	created: z.string().optional()
 })

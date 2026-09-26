@@ -1,8 +1,9 @@
 import { ExcelColorPalette } from '@common/constants/excel-color-palette'
 import { applyCommonStyles, AutoFitColumnOptions, autoFitColumns, getLastColumnLetter } from '@common/helpers'
 import { SuperJson } from '@common/utils'
-import { TENANCY_DATA_SOURCE } from '@modules/tenancy/constants'
-import { Inject, Injectable } from '@nestjs/common'
+import { DATA_SOURCE_DATA_LAKE } from '@databases/constants'
+import { Injectable } from '@nestjs/common'
+import { InjectDataSource } from '@nestjs/typeorm'
 import { Workbook } from 'exceljs'
 import { omit } from 'lodash'
 import { I18nContext, I18nService } from 'nestjs-i18n'
@@ -14,7 +15,7 @@ import { DefectiveGoodsInboundService } from './defective-inbound.service'
 @Injectable()
 export class DefectiveGoodsInventoryService {
 	constructor(
-		@Inject(TENANCY_DATA_SOURCE) private readonly dataSourceTNC: DataSource,
+		@InjectDataSource(DATA_SOURCE_DATA_LAKE) private readonly dataSource: DataSource,
 		private readonly defectiveInboundService: DefectiveGoodsInboundService,
 		private readonly i18nService: I18nService
 	) {}
@@ -24,7 +25,7 @@ export class DefectiveGoodsInventoryService {
 			shouldCheckReturnInstructionStatus: false
 		})
 
-		return await this.dataSourceTNC
+		return await this.dataSource
 			.getRepository(DefectiveGoodsEntity)
 			.createQueryBuilder('a')
 			.addCommonTableExpression(storageListCommonTableExpression, 'storage_list_cte')

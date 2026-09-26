@@ -2,9 +2,8 @@ import { ExcelColorPalette } from '@common/constants/excel-color-palette'
 import { applyCommonStyles, AutoFitColumnOptions, autoFitColumns } from '@common/helpers'
 import { SuperJson } from '@common/utils'
 import { DATA_SOURCE_DATA_LAKE } from '@databases/constants'
-import { TENANCY_DATA_SOURCE } from '@modules/tenancy/constants'
-import { ConflictException, Inject, Injectable } from '@nestjs/common'
-import { InjectRepository } from '@nestjs/typeorm'
+import { ConflictException, Injectable } from '@nestjs/common'
+import { InjectDataSource, InjectRepository } from '@nestjs/typeorm'
 import { format } from 'date-fns'
 import { Workbook } from 'exceljs'
 import { omit } from 'lodash'
@@ -19,7 +18,7 @@ export class DefectiveGoodsOutboundService {
 	constructor(
 		@InjectRepository(DefectiveGoodsEntity, DATA_SOURCE_DATA_LAKE)
 		private readonly defectiveGoodsRepository: Repository<DefectiveGoodsEntity>,
-		@Inject(TENANCY_DATA_SOURCE) private readonly dataSourceTNC: DataSource,
+		@InjectDataSource(DATA_SOURCE_DATA_LAKE) private readonly dataSource: DataSource,
 		private readonly i18nService: I18nService
 	) {}
 
@@ -65,7 +64,7 @@ export class DefectiveGoodsOutboundService {
 	}
 
 	public async getDailyOutboundReport(date: string) {
-		return await this.dataSourceTNC
+		return await this.dataSource
 			.getRepository(DefectiveGoodsEntity)
 			.createQueryBuilder('a')
 			.select('a.brand_name', 'brand_name')

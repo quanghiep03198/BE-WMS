@@ -13,16 +13,17 @@ export const updateInboundStatusDTO = z.object({
 export const updateOutboundStatusDTO = z
 	.object({
 		epcs: z.array(z.string().trim().nonempty()),
-		outbound_purpose: z.nativeEnum(DefectiveGoodsOutboundPurpose, {
+		outbound_purpose: z.enum(DefectiveGoodsOutboundPurpose, {
 			message: `Outbound purpose must be one of: ${Object.values(DefectiveGoodsOutboundPurpose).join(', ')}`
 		}),
 		po: z.string().trim().optional()
 	})
-	.superRefine((values, ctx) => {
-		if (values.outbound_purpose === DefectiveGoodsOutboundPurpose.SHIPPING && !values.po) {
-			ctx.addIssue({
-				path: ['po'],
+	.check(({ issues, value }) => {
+		if (value.outbound_purpose === DefectiveGoodsOutboundPurpose.SHIPPING && !value.po) {
+			issues.push({
 				code: 'custom',
+				input: value,
+				path: ['po'],
 				message: 'ns_validation:required'
 			})
 		}

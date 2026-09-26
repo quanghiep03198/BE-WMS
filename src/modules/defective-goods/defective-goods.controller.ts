@@ -1,6 +1,7 @@
 import { CommonRequestHeader } from '@common/constants'
 import { HttpMethod, RequestUser, RequireAuthorized, RouteHandler, StrictRoles, User } from '@common/decorators'
 import { ZodValidationPipe } from '@common/pipes'
+import { UserRole } from '@modules/user/domain/constants'
 import {
 	Body,
 	ConflictException,
@@ -20,7 +21,6 @@ import { I18nContext, I18nService } from 'nestjs-i18n'
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
 import { Between, Like } from 'typeorm'
 import z from 'zod'
-import { UserRole } from '../user/constants'
 import { DefectiveCategory, DefectiveGoodsUnit } from './constants'
 import {
 	CreateDefectiveGoodsDTO,

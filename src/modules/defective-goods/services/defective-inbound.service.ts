@@ -2,9 +2,8 @@ import { ExcelColorPalette } from '@common/constants/excel-color-palette'
 import { applyCommonStyles, AutoFitColumnOptions, autoFitColumns } from '@common/helpers'
 import { SuperJson } from '@common/utils'
 import { DATA_SOURCE_DATA_LAKE } from '@databases/constants'
-import { TENANCY_DATA_SOURCE } from '@modules/tenancy/constants'
-import { Inject, Injectable } from '@nestjs/common'
-import { InjectRepository } from '@nestjs/typeorm'
+import { Injectable } from '@nestjs/common'
+import { InjectDataSource, InjectRepository } from '@nestjs/typeorm'
 import { format } from 'date-fns'
 import { Workbook } from 'exceljs'
 import { I18nContext, I18nService } from 'nestjs-i18n'
@@ -16,7 +15,7 @@ import { DefectiveGoodsEntity } from '../entities/defective-goods.entity'
 @Injectable()
 export class DefectiveGoodsInboundService {
 	constructor(
-		@Inject(TENANCY_DATA_SOURCE) private readonly dataSourceTNC: DataSource,
+		@InjectDataSource(DATA_SOURCE_DATA_LAKE) private readonly dataSource: DataSource,
 		@InjectRepository(DefectiveGoodsEntity, DATA_SOURCE_DATA_LAKE)
 		private readonly defectiveGoodsRepository: Repository<DefectiveGoodsEntity>,
 		private readonly i18nService: I18nService
@@ -39,7 +38,7 @@ export class DefectiveGoodsInboundService {
 		date?: string
 		shouldCheckReturnInstructionStatus: boolean
 	}) {
-		return this.dataSourceTNC
+		return this.dataSource
 			.createQueryBuilder()
 			.select([
 				/* SQL */ `STRING_AGG(storage_location, ',') WITHIN GROUP (ORDER BY storage_location ASC) AS storage_location`,
@@ -94,7 +93,7 @@ export class DefectiveGoodsInboundService {
 			date: date
 		})
 
-		return await this.dataSourceTNC
+		return await this.dataSource
 			.getRepository(DefectiveGoodsEntity)
 			.createQueryBuilder('a')
 			.addCommonTableExpression(storageListCommonTableExpression, 'storage_list_cte')
