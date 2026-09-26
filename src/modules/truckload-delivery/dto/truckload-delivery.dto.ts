@@ -27,14 +27,14 @@ export const filterQueryDTO = z
 			.string()
 			.refine((value) => isValid(new Date(value)))
 			.optional(),
-		approval_status: z.nativeEnum(TruckloadDeliveryStatus).optional(),
-		'sort.container_number': z.nativeEnum(SortDirection).optional(),
-		'sort.license_plate': z.nativeEnum(SortDirection).optional(),
-		'sort.total_outbound_qty': z.nativeEnum(SortDirection).optional(),
-		'sort.created': z.nativeEnum(SortDirection).optional(),
-		'sort.container_sealing_time': z.nativeEnum(SortDirection).optional(),
-		'sort.factory_departure_time': z.nativeEnum(SortDirection).optional(),
-		'sort.actual_departure_time': z.nativeEnum(SortDirection).optional(),
+		approval_status: z.enum(TruckloadDeliveryStatus).optional(),
+		'sort.container_number': z.enum(SortDirection).optional(),
+		'sort.license_plate': z.enum(SortDirection).optional(),
+		'sort.total_outbound_qty': z.enum(SortDirection).optional(),
+		'sort.created': z.enum(SortDirection).optional(),
+		'sort.container_sealing_time': z.enum(SortDirection).optional(),
+		'sort.factory_departure_time': z.enum(SortDirection).optional(),
+		'sort.actual_departure_time': z.enum(SortDirection).optional(),
 		'where.approval_status': z.string().refine(isWhereClauseExpValid).optional(),
 		'where.license_plate': z.string().refine(isWhereClauseExpValid).optional(),
 		'where.container_number': z.string().refine(isWhereClauseExpValid).optional(),
@@ -76,7 +76,7 @@ export const createDeliveryDTO = z.object({
 		z.object({
 			po: z.string({ message: 'ns_validation:required' }).trim().nonempty({ message: 'ns_validation:required' }),
 			outbound_qty: z.number({ message: 'ns_validation:required' }).int().positive(),
-			status: z.nativeEnum(TruckloadDeliveryStatus).default(TruckloadDeliveryStatus.PENDING)
+			status: z.enum(TruckloadDeliveryStatus).default(TruckloadDeliveryStatus.PENDING)
 		})
 	)
 })
@@ -109,23 +109,25 @@ export const updateSignatureDTO = z
 		]),
 		signature: z.string()
 	})
-	.superRefine((data, ctx) => {
+	.check(({ issues, value }) => {
 		if (
-			data.approval_status &&
-			data.signature_type !== 'security_1_signature' &&
-			data.signature_type !== 'security_2_signature'
+			value.approval_status &&
+			value.signature_type !== 'security_1_signature' &&
+			value.signature_type !== 'security_2_signature'
 		) {
-			ctx.addIssue({
-				code: z.ZodIssueCode.custom,
+			issues.push({
+				code: 'custom',
+				input: value,
 				message: 'Only security guard can update approval status'
 			})
 		}
 		if (
-			!data.approval_status &&
-			(data.signature_type === 'security_1_signature' || data.signature_type === 'security_2_signature')
+			!value.approval_status &&
+			(value.signature_type === 'security_1_signature' || value.signature_type === 'security_2_signature')
 		) {
-			ctx.addIssue({
-				code: z.ZodIssueCode.custom,
+			issues.push({
+				code: 'custom',
+				input: value,
 				message: 'Approval status is required when role is security guard'
 			})
 		}

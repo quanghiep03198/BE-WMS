@@ -10,9 +10,8 @@ import { omit, padStart, upperCase } from 'lodash'
 import { I18nContext, I18nService } from 'nestjs-i18n'
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
 import { DataSource, Repository } from 'typeorm'
+import { FactoryAgencyCode } from '../../common/constants/factory'
 import { BaseAbstractEntity } from '../_base/base.abstract.entity'
-import { BaseAbstractService } from '../_base/base.abstract.service'
-import { FactoryAgencyCode } from '../department/constants'
 import { TruckloadDeliveryStatus } from './constants'
 import {
 	UnflatedFilterQueryDTO,
@@ -25,14 +24,11 @@ import dispatchOrdersWithProductAttributesQuery from './sql/dispatch-orders-with
 import dispatchOrdersQuery from './sql/dispatch-orders.sql'
 import nextSeqNoQuery from './sql/next-seq-no.sql'
 import upsertPurchaseOrdersQuery from './sql/upsert-purchase-orders.sql'
-import { DispatchOrder, ITruckloadDeliveryService } from './truckload-delivery.interface'
+import { DispatchOrder } from './truckload-delivery.interface'
 import type { TruckloadDeliveryDispatchOrder } from './types'
 
 @Injectable()
-export class TruckloadDeliveryService
-	extends BaseAbstractService<TruckloadDeliveryEntity>
-	implements ITruckloadDeliveryService
-{
+export class TruckloadDeliveryService {
 	constructor(
 		@InjectRepository(TruckloadDeliveryEntity, DATA_SOURCE_DATA_LAKE)
 		private readonly deliveryRepository: Repository<TruckloadDeliveryEntity>,
@@ -40,9 +36,7 @@ export class TruckloadDeliveryService
 		@InjectDataSource(DATA_SOURCE_ERP) private readonly dataSourceERP: DataSource,
 		private readonly i18nService: I18nService,
 		@InjectPinoLogger(TruckloadDeliveryService.name) private readonly logger: PinoLogger
-	) {
-		super(deliveryRepository)
-	}
+	) {}
 
 	private readonly upsertPurchaseOrderDeliveryQuery: string = upsertPurchaseOrdersQuery
 
@@ -100,6 +94,10 @@ export class TruckloadDeliveryService
 			return /* SQL */ `ORDER BY ${sortingCriteria}`
 		}
 		return /* SQL */ `ORDER BY ${qualified('created_at')} DESC, ${qualified('container_sealing_time')} DESC`
+	}
+
+	public async deleteOneById(id: number) {
+		return await this.deliveryRepository.delete(id)
 	}
 
 	/**
@@ -277,7 +275,7 @@ export class TruckloadDeliveryService
 			}>()
 	}
 
-	public override async insertMany(payload: Partial<TruckloadDeliveryEntity>[]) {
+	public async insertMany(payload: Partial<TruckloadDeliveryEntity>[]) {
 		const entities = payload.map((item) => this.deliveryRepository.create(item))
 		return await this.deliveryRepository.insert(entities)
 	}

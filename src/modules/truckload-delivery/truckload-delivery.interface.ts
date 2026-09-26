@@ -1,6 +1,6 @@
 import { DeleteResult, UpdateResult } from 'typeorm'
-import { IBaseService } from '../_base/base.service.interface'
-import { FactoryAgencyCode } from '../department/constants'
+import { FactoryAgencyCode } from '../../common/constants/factory'
+import { IBaseTypeOrmRepository } from '../_base/interfaces/base-typeorm.repository.interface'
 import {
 	UnflatedFilterQueryDTO,
 	UpdateDeliveryDTO,
@@ -42,7 +42,7 @@ export type DispatchOrder = {
 		  }>
 }
 
-export interface ITruckloadDeliveryService extends IBaseService<TruckloadDeliveryEntity> {
+export interface ITruckloadDeliveryService extends IBaseTypeOrmRepository<TruckloadDeliveryEntity> {
 	getDispatchOrders(filters?: UnflatedFilterQueryDTO): Promise<Pagination<DispatchOrder>>
 	getNextDispatchOrder(factoryCode: FactoryAgencyCode): Promise<TruckloadDeliveryDispatchOrder>
 	updateDispatchOrderSignature(dispatchOrder: string, payload: UpdateSignatureDTO): Promise<UpdateResult>

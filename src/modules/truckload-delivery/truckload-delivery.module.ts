@@ -1,3 +1,4 @@
+import { env } from '@common/utils'
 import { DATA_SOURCE_DATA_LAKE } from '@databases/constants'
 import { Module } from '@nestjs/common'
 import { TypeOrmModule } from '@nestjs/typeorm'
@@ -9,7 +10,7 @@ import { TruckloadDeliveryService } from './truckload-delivery.service'
 
 @Module({
 	imports: [TypeOrmModule.forFeature([TruckloadDeliveryEntity, CarLicenseSnapshotEntity], DATA_SOURCE_DATA_LAKE)],
-	providers: [TruckloadDeliveryService, TruckloadDeliveryCdcHandler],
+	providers: [TruckloadDeliveryService, ...(env('DB_HOST') !== '10.30.0.18' ? [] : [TruckloadDeliveryCdcHandler])],
 	controllers: [TruckloadDeliveryController]
 })
 export class TruckloadDeliveryModule {}

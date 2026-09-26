@@ -2,6 +2,7 @@ import { CommonRequestHeader } from '@common/constants'
 import { HttpMethod, RequestUser, RequireAuthorized, RouteHandler, StrictRoles, User } from '@common/decorators'
 import { HttpExceptionFilter } from '@common/filters'
 import { ZodValidationPipe } from '@common/pipes'
+import { UserRole } from '@modules/user/domain/constants'
 import {
 	Body,
 	Controller,
@@ -20,8 +21,7 @@ import { type FastifyReply } from 'fastify'
 import { unflatten } from 'flat'
 import { pick } from 'lodash'
 import z from 'zod'
-import { FactoryAgencyCode } from '../department/constants'
-import { UserRole } from '../user/constants'
+import { FactoryAgencyCode } from '../../common/constants/factory'
 import {
 	CreateDeliveryDTO,
 	createDeliveryDTO,
