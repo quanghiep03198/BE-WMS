@@ -1,4 +1,8 @@
 {
+	"errors": {
+		"warehouse_name_conflict": "Warehouse with the same name already exists",
+		"storage_location_conflict": "Storage location with the same name already exists"
+	},
 	"fields": {
 		"area": "Area (m²)",
 		"is_default": "Default",

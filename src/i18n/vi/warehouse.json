@@ -1,4 +1,8 @@
 {
+	"errors": {
+		"warehouse_name_conflict": "Kho với tên giống nhau đã tồn tại",
+		"storage_location_conflict": "Vị trí lưu kho với tên giống nhau đã tồn tại"
+	},
 	"fields": {
 		"warehouse_num": "Mã kho",
 		"warehouse_name": "Tên kho",

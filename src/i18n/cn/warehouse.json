@@ -1,4 +1,8 @@
 {
+	"errors": {
+		"warehouse_name_conflict": "具有相同名称的仓库已存在",
+		"storage_location_conflict": "具有相同名称的储位已存在"
+	},
 	"fields": {
 		"warehouse_num": "库位编号",
 		"warehouse_name": "库位名称",

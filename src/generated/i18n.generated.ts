@@ -231,6 +231,10 @@ export type I18nTranslations = {
         };
     };
     "warehouse": {
+        "errors": {
+            "warehouse_name_conflict": string;
+            "storage_location_conflict": string;
+        };
         "fields": {
             "warehouse_num": string;
             "warehouse_name": string;
