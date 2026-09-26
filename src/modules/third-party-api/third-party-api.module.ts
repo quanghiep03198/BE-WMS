@@ -8,7 +8,7 @@ import { AxiosError, AxiosResponse } from 'axios'
 import { upperCase } from 'lodash'
 import { PinoLogger } from 'nestjs-pino'
 import { Agent } from 'node:https'
-import { FactoryCode } from '../department/constants'
+import { FactoryCodeRef } from '../../common/constants/factory'
 import { FinishedGoodsModule } from '../finished-goods/finished-goods.module'
 import { BaseRFIDInventoryEntity } from '../finished-goods/infrastructure/persistence/mssql/entities/rfid-inventory.entity'
 import { OrderModule } from '../order/order.module'
@@ -38,23 +38,23 @@ import { ThirdPartyApiService } from './third-party-api.service'
 			provide: DECKERS_OAUTH2_STRATEGY,
 			inject: [ConfigService],
 			useFactory: (configService: ConfigService) =>
-				new Map<FactoryCode, Record<'client_id' | 'client_secret', string>>([
+				new Map<FactoryCodeRef, Record<'client_id' | 'client_secret', string>>([
 					[
-						FactoryCode.GL1,
+						FactoryCodeRef.GL1,
 						{
 							client_id: configService.get('DECKERS_GL1_CLIENT_ID'),
 							client_secret: configService.get('DECKERS_GL1_CLIENT_SECRET')
 						}
 					],
 					[
-						FactoryCode.GL3,
+						FactoryCodeRef.GL3,
 						{
 							client_id: configService.get('DECKERS_GL3_CLIENT_ID'),
 							client_secret: configService.get('DECKERS_GL3_CLIENT_SECRET')
 						}
 					],
 					[
-						FactoryCode.GL4,
+						FactoryCodeRef.GL4,
 						{
 							client_id: configService.get('DECKERS_GL4_CLIENT_ID'),
 							client_secret: configService.get('DECKERS_GL4_CLIENT_SECRET')

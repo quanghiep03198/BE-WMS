@@ -1,6 +1,7 @@
 import { CommonRequestHeader } from '@common/constants'
 import { HttpMethod, Public, RequireAuthorized, RouteHandler } from '@common/decorators'
 import { DATA_WAREHOUSE_CONNECTION } from '@databases/constants'
+import { UserRole } from '@modules/user/domain/constants'
 import { InjectQueue } from '@nestjs/bullmq'
 import { Controller, Headers, HttpStatus, Param, Req } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
@@ -13,7 +14,6 @@ import {
 	FinishedGoodsEpc,
 	FinishedGoodsEpcDocument
 } from '../finished-goods/infrastructure/persistence/mongodb/schemas/finished-goods-epc.schema'
-import { UserRole } from '../user/constants'
 import { THIRD_PARTY_API_SYNC } from './constants'
 import { ThirdPartyApiService } from './third-party-api.service'
 

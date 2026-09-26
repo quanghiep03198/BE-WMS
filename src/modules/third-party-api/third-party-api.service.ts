@@ -58,7 +58,7 @@ export class ThirdPartyApiService {
 			throw new NotFoundException('No data fetched from the customer')
 		}
 
-		const manufacturingOrders = await this.orderRepository.getRawManufacturingOrder(commandNumber.slice(0, 9))
+		const manufacturingOrders = await this.orderRepository.getOneRawManufacturingOrder(commandNumber.slice(0, 9))
 
 		if (!manufacturingOrders) {
 			throw new NotFoundException(`Order information could not be found`)
@@ -103,7 +103,7 @@ export class ThirdPartyApiService {
 
 		if (!data) throw new NotFoundException('No data fetched from the customer')
 
-		const manufacturingOrder = await this.orderRepository.getRawManufacturingOrder(data.commandNumber)
+		const manufacturingOrder = await this.orderRepository.getOneRawManufacturingOrder(data.commandNumber)
 
 		if (!manufacturingOrder) {
 			throw new NotFoundException(`Order information could not be found`)

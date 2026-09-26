@@ -1,8 +1,6 @@
-import { Processor, WorkerHost } from '@nestjs/bullmq'
-// import { Logger } from '@nestjs/common'
+import { FactoryCodeRef } from '@common/constants/factory'
 import { SuperJson } from '@common/utils'
 import { generateShortId } from '@common/utils/short-id.util'
-import { FactoryCode } from '@modules/department/constants'
 import {
 	FINISHED_GOODS_EPC_REPOSITORY,
 	IFinishedGoodsEpcRepository
@@ -17,10 +15,10 @@ import { FinishedGoodsGateway } from '@modules/finished-goods/presentation/gatew
 import { ORDER_REPOSITORY } from '@modules/order/order.constant'
 import { IOrderRepository } from '@modules/order/order.repository.interface'
 import { TManufacturingOrder } from '@modules/order/types'
-import { CACHE_MANAGER } from '@nestjs/cache-manager'
+import { Processor, WorkerHost } from '@nestjs/bullmq'
+import { Cache, CACHE_MANAGER } from '@nestjs/cache-manager'
 import { Inject } from '@nestjs/common'
 import { Job } from 'bullmq'
-import { Cache } from 'cache-manager'
 import { format } from 'date-fns'
 import { groupBy } from 'lodash'
 import { PinoLogger } from 'nestjs-pino'
@@ -53,7 +51,7 @@ export class ThirdPartyApiConsumer extends WorkerHost {
 	 * @param { Job<string[], void, string>} job
 	 */
 	public async process(job: Job<string[], void, string>): Promise<void> {
-		const factoryCode = job.id as FactoryCode
+		const factoryCode = job.id as FactoryCodeRef
 		const data = job.data
 
 		await this.broadcastStateChange()
@@ -110,7 +108,7 @@ export class ThirdPartyApiConsumer extends WorkerHost {
 	}
 
 	// * Step 1: Authenticate API via Decker OAuth2
-	private async authenticate(factoryCode: FactoryCode): Promise<string> {
+	private async authenticate(factoryCode: FactoryCodeRef): Promise<string> {
 		const accessToken = await this.thirdPartyApiOAuth2Service.authenticate(factoryCode)
 		if (!accessToken) {
 			this.updateProcessState(0, 'failed')
@@ -171,7 +169,7 @@ export class ThirdPartyApiConsumer extends WorkerHost {
 	private async getManufacturingOrdersInfo(manufacturingOrders: string[]) {
 		try {
 			const data = await Promise.all(
-				manufacturingOrders.map(async (mo) => await this.orderRepository.getRawManufacturingOrder(mo))
+				manufacturingOrders.map(async (mo) => await this.orderRepository.getOneRawManufacturingOrder(mo))
 			)
 			this.updateProcessState(2, 'processing')
 			await this.broadcastStateChange()
