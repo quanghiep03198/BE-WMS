@@ -1,0 +1,2092 @@
+{
+	"annotations": {
+		"list": [
+			{
+				"builtIn": 1,
+				"datasource": {
+					"type": "datasource",
+					"uid": "grafana"
+				},
+				"enable": true,
+				"hide": true,
+				"iconColor": "rgba(0, 211, 255, 1)",
+				"name": "Annotations & Alerts",
+				"type": "dashboard"
+			}
+		]
+	},
+	"description": "Backend WMS dashboard: Node.js process metrics on top, BullMQ queue metrics (bullmq_jobs_gauge / bullmq_jobs_total) below.",
+	"editable": true,
+	"fiscalYearStartMonth": 0,
+	"graphTooltip": 0,
+	"id": 4,
+	"links": [],
+	"panels": [
+		{
+			"collapsed": false,
+			"gridPos": {
+				"h": 1,
+				"w": 24,
+				"x": 0,
+				"y": 0
+			},
+			"id": 100,
+			"panels": [],
+			"title": "Profiler & Requests",
+			"type": "row"
+		},
+		{
+			"datasource": {
+				"type": "prometheus",
+				"uid": "{{dataSourceId}}"
+			},
+			"fieldConfig": {
+				"defaults": {
+					"color": {
+						"mode": "palette-classic"
+					},
+					"custom": {
+						"axisBorderShow": false,
+						"axisCenteredZero": false,
+						"axisColorMode": "text",
+						"axisLabel": "",
+						"axisPlacement": "auto",
+						"barAlignment": 0,
+						"barWidthFactor": 0.6,
+						"drawStyle": "line",
+						"fillOpacity": 10,
+						"gradientMode": "none",
+						"hideFrom": {
+							"legend": false,
+							"tooltip": false,
+							"viz": false
+						},
+						"insertNulls": false,
+						"lineInterpolation": "linear",
+						"lineWidth": 1,
+						"pointSize": 5,
+						"scaleDistribution": {
+							"type": "linear"
+						},
+						"showPoints": "never",
+						"spanNulls": false,
+						"stacking": {
+							"group": "A",
+							"mode": "none"
+						},
+						"thresholdsStyle": {
+							"mode": "off"
+						}
+					},
+					"mappings": [],
+					"thresholds": {
+						"mode": "absolute",
+						"steps": [
+							{
+								"color": "green",
+								"value": null
+							},
+							{
+								"color": "red",
+								"value": 80
+							}
+						]
+					},
+					"unit": "percent"
+				},
+				"overrides": []
+			},
+			"gridPos": {
+				"h": 7,
+				"w": 10,
+				"x": 0,
+				"y": 1
+			},
+			"id": 1,
+			"options": {
+				"legend": {
+					"calcs": ["mean", "lastNotNull", "max", "min"],
+					"displayMode": "table",
+					"placement": "bottom",
+					"showLegend": true
+				},
+				"tooltip": {
+					"hideZeros": false,
+					"mode": "multi",
+					"sort": "none"
+				}
+			},
+			"pluginVersion": "11.5.1",
+			"targets": [
+				{
+					"datasource": {
+						"type": "prometheus",
+						"uid": "{{dataSourceId}}"
+					},
+					"expr": "irate(process_cpu_user_seconds_total{instance=~\"$instance\"}[2m]) * 100",
+					"format": "time_series",
+					"intervalFactor": 1,
+					"legendFormat": "User CPU - {{instance}}",
+					"refId": "A"
+				},
+				{
+					"datasource": {
+						"type": "prometheus",
+						"uid": "{{dataSourceId}}"
+					},
+					"expr": "irate(process_cpu_system_seconds_total{instance=~\"$instance\"}[2m]) * 100",
+					"format": "time_series",
+					"intervalFactor": 1,
+					"legendFormat": "Sys CPU - {{instance}}",
+					"refId": "B"
+				}
+			],
+			"title": "Process CPU Usage",
+			"type": "timeseries"
+		},
+		{
+			"datasource": {
+				"type": "prometheus",
+				"uid": "{{dataSourceId}}"
+			},
+			"fieldConfig": {
+				"defaults": {
+					"color": {
+						"mode": "palette-classic"
+					},
+					"custom": {
+						"axisBorderShow": false,
+						"axisCenteredZero": false,
+						"axisColorMode": "text",
+						"axisLabel": "",
+						"axisPlacement": "auto",
+						"barAlignment": 0,
+						"barWidthFactor": 0.6,
+						"drawStyle": "line",
+						"fillOpacity": 10,
+						"gradientMode": "none",
+						"hideFrom": {
+							"legend": false,
+							"tooltip": false,
+							"viz": false
+						},
+						"insertNulls": false,
+						"lineInterpolation": "linear",
+						"lineWidth": 1,
+						"pointSize": 5,
+						"scaleDistribution": {
+							"type": "linear"
+						},
+						"showPoints": "never",
+						"spanNulls": false,
+						"stacking": {
+							"group": "A",
+							"mode": "none"
+						},
+						"thresholdsStyle": {
+							"mode": "off"
+						}
+					},
+					"mappings": [],
+					"thresholds": {
+						"mode": "absolute",
+						"steps": [
+							{
+								"color": "green",
+								"value": null
+							},
+							{
+								"color": "red",
+								"value": 80
+							}
+						]
+					},
+					"unit": "s"
+				},
+				"overrides": []
+			},
+			"gridPos": {
+				"h": 7,
+				"w": 9,
+				"x": 10,
+				"y": 1
+			},
+			"id": 2,
+			"options": {
+				"legend": {
+					"calcs": ["mean", "lastNotNull", "max", "min"],
+					"displayMode": "table",
+					"placement": "bottom",
+					"showLegend": true
+				},
+				"tooltip": {
+					"hideZeros": false,
+					"mode": "multi",
+					"sort": "none"
+				}
+			},
+			"pluginVersion": "11.5.1",
+			"targets": [
+				{
+					"datasource": {
+						"type": "prometheus",
+						"uid": "{{dataSourceId}}"
+					},
+					"expr": "nodejs_eventloop_lag_seconds{instance=~\"$instance\"}",
+					"format": "time_series",
+					"intervalFactor": 1,
+					"legendFormat": "{{instance}}",
+					"refId": "A"
+				}
+			],
+			"title": "Event Loop Lag",
+			"type": "timeseries"
+		},
+		{
+			"datasource": {
+				"type": "prometheus",
+				"uid": "{{dataSourceId}}"
+			},
+			"fieldConfig": {
+				"defaults": {
+					"mappings": [
+						{
+							"options": {
+								"match": "null",
+								"result": {
+									"text": "N/A"
+								}
+							},
+							"type": "special"
+						}
+					],
+					"thresholds": {
+						"mode": "absolute",
+						"steps": [
+							{
+								"color": "green",
+								"value": null
+							},
+							{
+								"color": "red",
+								"value": 80
+							}
+						]
+					},
+					"unit": "none"
+				},
+				"overrides": []
+			},
+			"gridPos": {
+				"h": 3,
+				"w": 5,
+				"x": 19,
+				"y": 1
+			},
+			"id": 3,
+			"maxDataPoints": 100,
+			"options": {
+				"colorMode": "none",
+				"graphMode": "none",
+				"justifyMode": "auto",
+				"orientation": "horizontal",
+				"percentChangeColorMode": "standard",
+				"reduceOptions": {
+					"calcs": ["mean"],
+					"fields": "/^__name__$/",
+					"values": false
+				},
+				"showPercentChange": false,
+				"textMode": "name",
+				"wideLayout": true
+			},
+			"pluginVersion": "11.5.1",
+			"targets": [
+				{
+					"datasource": {
+						"type": "prometheus",
+						"uid": "{{dataSourceId}}"
+					},
+					"expr": "sum(nodejs_version_info{instance=~\"$instance\"}) by (version)",
+					"format": "time_series",
+					"instant": false,
+					"interval": "",
+					"intervalFactor": 1,
+					"legendFormat": "{{version}}",
+					"refId": "A"
+				}
+			],
+			"title": "Node.js Version",
+			"type": "stat"
+		},
+		{
+			"datasource": {
+				"type": "prometheus",
+				"uid": "{{dataSourceId}}"
+			},
+			"fieldConfig": {
+				"defaults": {
+					"color": {
+						"fixedColor": "#F2495C",
+						"mode": "fixed"
+					},
+					"mappings": [
+						{
+							"options": {
+								"match": "null",
+								"result": {
+									"text": "N/A"
+								}
+							},
+							"type": "special"
+						}
+					],
+					"thresholds": {
+						"mode": "absolute",
+						"steps": [
+							{
+								"color": "green",
+								"value": null
+							},
+							{
+								"color": "red",
+								"value": 80
+							}
+						]
+					},
+					"unit": "none"
+				},
+				"overrides": []
+			},
+			"gridPos": {
+				"h": 4,
+				"w": 5,
+				"x": 19,
+				"y": 4
+			},
+			"id": 4,
+			"maxDataPoints": 100,
+			"options": {
+				"colorMode": "none",
+				"graphMode": "area",
+				"justifyMode": "auto",
+				"orientation": "horizontal",
+				"percentChangeColorMode": "standard",
+				"reduceOptions": {
+					"calcs": ["lastNotNull"],
+					"fields": "",
+					"values": false
+				},
+				"showPercentChange": false,
+				"textMode": "auto",
+				"wideLayout": true
+			},
+			"pluginVersion": "11.5.1",
+			"targets": [
+				{
+					"datasource": {
+						"type": "prometheus",
+						"uid": "{{dataSourceId}}"
+					},
+					"expr": "sum(changes(process_start_time_seconds{instance=~\"$instance\"}[1m]))",
+					"format": "time_series",
+					"intervalFactor": 1,
+					"legendFormat": "{{instance}}",
+					"refId": "A"
+				}
+			],
+			"title": "Process Restart Times",
+			"type": "stat"
+		},
+		{
+			"datasource": {
+				"type": "prometheus",
+				"uid": "{{dataSourceId}}"
+			},
+			"fieldConfig": {
+				"defaults": {
+					"color": {
+						"mode": "palette-classic"
+					},
+					"custom": {
+						"axisBorderShow": false,
+						"axisCenteredZero": false,
+						"axisColorMode": "text",
+						"axisLabel": "",
+						"axisPlacement": "auto",
+						"barAlignment": 0,
+						"barWidthFactor": 0.6,
+						"drawStyle": "line",
+						"fillOpacity": 10,
+						"gradientMode": "none",
+						"hideFrom": {
+							"legend": false,
+							"tooltip": false,
+							"viz": false
+						},
+						"insertNulls": false,
+						"lineInterpolation": "linear",
+						"lineWidth": 1,
+						"pointSize": 5,
+						"scaleDistribution": {
+							"type": "linear"
+						},
+						"showPoints": "never",
+						"spanNulls": false,
+						"stacking": {
+							"group": "A",
+							"mode": "none"
+						},
+						"thresholdsStyle": {
+							"mode": "off"
+						}
+					},
+					"mappings": [],
+					"thresholds": {
+						"mode": "absolute",
+						"steps": [
+							{
+								"color": "green",
+								"value": null
+							},
+							{
+								"color": "red",
+								"value": 80
+							}
+						]
+					},
+					"unit": "bytes"
+				},
+				"overrides": []
+			},
+			"gridPos": {
+				"h": 7,
+				"w": 16,
+				"x": 0,
+				"y": 8
+			},
+			"id": 5,
+			"options": {
+				"legend": {
+					"calcs": ["mean", "lastNotNull", "max", "min"],
+					"displayMode": "table",
+					"placement": "right",
+					"showLegend": true
+				},
+				"tooltip": {
+					"hideZeros": false,
+					"mode": "multi",
+					"sort": "none"
+				}
+			},
+			"pluginVersion": "11.5.1",
+			"targets": [
+				{
+					"datasource": {
+						"type": "prometheus",
+						"uid": "{{dataSourceId}}"
+					},
+					"expr": "process_resident_memory_bytes{instance=~\"$instance\"}",
+					"format": "time_series",
+					"intervalFactor": 1,
+					"legendFormat": "Process Memory - {{instance}}",
+					"refId": "A"
+				},
+				{
+					"datasource": {
+						"type": "prometheus",
+						"uid": "{{dataSourceId}}"
+					},
+					"expr": "nodejs_heap_size_total_bytes{instance=~\"$instance\"}",
+					"format": "time_series",
+					"intervalFactor": 1,
+					"legendFormat": "Heap Total - {{instance}}",
+					"refId": "B"
+				},
+				{
+					"datasource": {
+						"type": "prometheus",
+						"uid": "{{dataSourceId}}"
+					},
+					"expr": "nodejs_heap_size_used_bytes{instance=~\"$instance\"}",
+					"format": "time_series",
+					"intervalFactor": 1,
+					"legendFormat": "Heap Used - {{instance}}",
+					"refId": "C"
+				},
+				{
+					"datasource": {
+						"type": "prometheus",
+						"uid": "{{dataSourceId}}"
+					},
+					"expr": "nodejs_external_memory_bytes{instance=~\"$instance\"}",
+					"format": "time_series",
+					"intervalFactor": 1,
+					"legendFormat": "External Memory - {{instance}}",
+					"refId": "D"
+				}
+			],
+			"title": "Process Memory Usage",
+			"type": "timeseries"
+		},
+		{
+			"datasource": {
+				"type": "prometheus",
+				"uid": "{{dataSourceId}}"
+			},
+			"fieldConfig": {
+				"defaults": {
+					"color": {
+						"mode": "palette-classic"
+					},
+					"custom": {
+						"axisBorderShow": false,
+						"axisCenteredZero": false,
+						"axisColorMode": "text",
+						"axisLabel": "",
+						"axisPlacement": "auto",
+						"barAlignment": 0,
+						"barWidthFactor": 0.6,
+						"drawStyle": "line",
+						"fillOpacity": 10,
+						"gradientMode": "none",
+						"hideFrom": {
+							"legend": false,
+							"tooltip": false,
+							"viz": false
+						},
+						"insertNulls": false,
+						"lineInterpolation": "linear",
+						"lineWidth": 1,
+						"pointSize": 5,
+						"scaleDistribution": {
+							"type": "linear"
+						},
+						"showPoints": "never",
+						"spanNulls": false,
+						"stacking": {
+							"group": "A",
+							"mode": "none"
+						},
+						"thresholdsStyle": {
+							"mode": "off"
+						}
+					},
+					"mappings": [],
+					"thresholds": {
+						"mode": "absolute",
+						"steps": [
+							{
+								"color": "green",
+								"value": null
+							},
+							{
+								"color": "red",
+								"value": 80
+							}
+						]
+					},
+					"unit": "short"
+				},
+				"overrides": []
+			},
+			"gridPos": {
+				"h": 7,
+				"w": 8,
+				"x": 16,
+				"y": 8
+			},
+			"id": 6,
+			"options": {
+				"legend": {
+					"calcs": ["mean", "lastNotNull", "max", "min"],
+					"displayMode": "table",
+					"placement": "bottom",
+					"showLegend": true
+				},
+				"tooltip": {
+					"hideZeros": false,
+					"mode": "multi",
+					"sort": "none"
+				}
+			},
+			"pluginVersion": "11.5.1",
+			"targets": [
+				{
+					"datasource": {
+						"type": "prometheus",
+						"uid": "{{dataSourceId}}"
+					},
+					"expr": "nodejs_active_handles_total{instance=~\"$instance\"}",
+					"format": "time_series",
+					"intervalFactor": 1,
+					"legendFormat": "Active Handler - {{instance}}",
+					"refId": "A"
+				},
+				{
+					"datasource": {
+						"type": "prometheus",
+						"uid": "{{dataSourceId}}"
+					},
+					"expr": "nodejs_active_requests_total{instance=~\"$instance\"}",
+					"format": "time_series",
+					"intervalFactor": 1,
+					"legendFormat": "Active Request - {{instance}}",
+					"refId": "B"
+				}
+			],
+			"title": "Active Handlers/Requests Total",
+			"type": "timeseries"
+		},
+		{
+			"collapsed": false,
+			"gridPos": {
+				"h": 1,
+				"w": 24,
+				"x": 0,
+				"y": 15
+			},
+			"id": 101,
+			"panels": [],
+			"title": "Jobs",
+			"type": "row"
+		},
+		{
+			"datasource": {
+				"type": "prometheus",
+				"uid": "{{dataSourceId}}"
+			},
+			"description": "Current backlog across the selected queues. Backlog includes waiting, active, delayed, prioritized, and waiting-children jobs.",
+			"fieldConfig": {
+				"defaults": {
+					"color": {
+						"mode": "thresholds"
+					},
+					"mappings": [],
+					"thresholds": {
+						"mode": "absolute",
+						"steps": [
+							{
+								"color": "green",
+								"value": 0
+							},
+							{
+								"color": "orange",
+								"value": 1
+							},
+							{
+								"color": "red",
+								"value": 100
+							}
+						]
+					},
+					"unit": "none"
+				},
+				"overrides": []
+			},
+			"gridPos": {
+				"h": 4,
+				"w": 4,
+				"x": 0,
+				"y": 16
+			},
+			"id": 7,
+			"options": {
+				"colorMode": "background",
+				"graphMode": "none",
+				"justifyMode": "center",
+				"orientation": "auto",
+				"percentChangeColorMode": "standard",
+				"reduceOptions": {
+					"calcs": ["lastNotNull"],
+					"fields": "",
+					"values": false
+				},
+				"showPercentChange": false,
+				"textMode": "auto",
+				"wideLayout": true
+			},
+			"pluginVersion": "12.4.1",
+			"targets": [
+				{
+					"datasource": {
+						"type": "prometheus",
+						"uid": "{{dataSourceId}}"
+					},
+					"editorMode": "code",
+					"expr": "sum(bullmq_jobs_gauge{queue=~\"$queue\",state=~\"waiting|active|delayed|prioritized|waiting-children\"})",
+					"instant": true,
+					"legendFormat": "",
+					"range": false,
+					"refId": "A"
+				}
+			],
+			"title": "Total Backlog",
+			"type": "stat"
+		},
+		{
+			"datasource": {
+				"type": "prometheus",
+				"uid": "{{dataSourceId}}"
+			},
+			"description": "Jobs currently being processed.",
+			"fieldConfig": {
+				"defaults": {
+					"color": {
+						"fixedColor": "blue",
+						"mode": "fixed"
+					},
+					"mappings": [],
+					"thresholds": {
+						"mode": "absolute",
+						"steps": [
+							{
+								"color": "blue",
+								"value": 0
+							}
+						]
+					},
+					"unit": "none"
+				},
+				"overrides": []
+			},
+			"gridPos": {
+				"h": 4,
+				"w": 4,
+				"x": 4,
+				"y": 16
+			},
+			"id": 8,
+			"options": {
+				"colorMode": "background",
+				"graphMode": "none",
+				"justifyMode": "center",
+				"orientation": "auto",
+				"percentChangeColorMode": "standard",
+				"reduceOptions": {
+					"calcs": ["lastNotNull"],
+					"fields": "",
+					"values": false
+				},
+				"showPercentChange": false,
+				"textMode": "auto",
+				"wideLayout": true
+			},
+			"pluginVersion": "12.4.1",
+			"targets": [
+				{
+					"datasource": {
+						"type": "prometheus",
+						"uid": "{{dataSourceId}}"
+					},
+					"editorMode": "code",
+					"expr": "sum(bullmq_jobs_gauge{queue=~\"$queue\",state=\"active\"})",
+					"instant": true,
+					"legendFormat": "",
+					"range": false,
+					"refId": "A"
+				}
+			],
+			"title": "Active Jobs",
+			"type": "stat"
+		},
+		{
+			"datasource": {
+				"type": "prometheus",
+				"uid": "{{dataSourceId}}"
+			},
+			"description": "Delayed and prioritized jobs waiting for their turn to run.",
+			"fieldConfig": {
+				"defaults": {
+					"color": {
+						"mode": "thresholds"
+					},
+					"mappings": [],
+					"thresholds": {
+						"mode": "absolute",
+						"steps": [
+							{
+								"color": "green",
+								"value": 0
+							},
+							{
+								"color": "orange",
+								"value": 1
+							},
+							{
+								"color": "red",
+								"value": 10
+							}
+						]
+					},
+					"unit": "none"
+				},
+				"overrides": []
+			},
+			"gridPos": {
+				"h": 4,
+				"w": 4,
+				"x": 8,
+				"y": 16
+			},
+			"id": 9,
+			"options": {
+				"colorMode": "background",
+				"graphMode": "none",
+				"justifyMode": "center",
+				"orientation": "auto",
+				"percentChangeColorMode": "standard",
+				"reduceOptions": {
+					"calcs": ["lastNotNull"],
+					"fields": "",
+					"values": false
+				},
+				"showPercentChange": false,
+				"textMode": "auto",
+				"wideLayout": true
+			},
+			"pluginVersion": "12.4.1",
+			"targets": [
+				{
+					"datasource": {
+						"type": "prometheus",
+						"uid": "{{dataSourceId}}"
+					},
+					"editorMode": "code",
+					"expr": "sum(bullmq_jobs_gauge{queue=~\"$queue\",state=~\"delayed|prioritized\"})",
+					"instant": true,
+					"legendFormat": "",
+					"range": false,
+					"refId": "A"
+				}
+			],
+			"title": "Delayed / Prioritized",
+			"type": "stat"
+		},
+		{
+			"datasource": {
+				"type": "prometheus",
+				"uid": "{{dataSourceId}}"
+			},
+			"description": "Current failed jobs that remain in the failed set.",
+			"fieldConfig": {
+				"defaults": {
+					"color": {
+						"mode": "thresholds"
+					},
+					"mappings": [],
+					"thresholds": {
+						"mode": "absolute",
+						"steps": [
+							{
+								"color": "green",
+								"value": 0
+							},
+							{
+								"color": "red",
+								"value": 1
+							}
+						]
+					},
+					"unit": "none"
+				},
+				"overrides": []
+			},
+			"gridPos": {
+				"h": 4,
+				"w": 4,
+				"x": 12,
+				"y": 16
+			},
+			"id": 10,
+			"options": {
+				"colorMode": "background",
+				"graphMode": "none",
+				"justifyMode": "center",
+				"orientation": "auto",
+				"percentChangeColorMode": "standard",
+				"reduceOptions": {
+					"calcs": ["lastNotNull"],
+					"fields": "",
+					"values": false
+				},
+				"showPercentChange": false,
+				"textMode": "auto",
+				"wideLayout": true
+			},
+			"pluginVersion": "12.4.1",
+			"targets": [
+				{
+					"datasource": {
+						"type": "prometheus",
+						"uid": "{{dataSourceId}}"
+					},
+					"editorMode": "code",
+					"expr": "sum(bullmq_jobs_gauge{queue=~\"$queue\",state=\"failed\"})",
+					"instant": true,
+					"legendFormat": "",
+					"range": false,
+					"refId": "A"
+				}
+			],
+			"title": "Failed Jobs",
+			"type": "stat"
+		},
+		{
+			"datasource": {
+				"type": "prometheus",
+				"uid": "{{dataSourceId}}"
+			},
+			"description": "Jobs completed during the latest BullMQ one-minute bucket.",
+			"fieldConfig": {
+				"defaults": {
+					"color": {
+						"fixedColor": "green",
+						"mode": "fixed"
+					},
+					"mappings": [],
+					"thresholds": {
+						"mode": "absolute",
+						"steps": [
+							{
+								"color": "green",
+								"value": 0
+							}
+						]
+					},
+					"unit": "none"
+				},
+				"overrides": []
+			},
+			"gridPos": {
+				"h": 4,
+				"w": 4,
+				"x": 16,
+				"y": 16
+			},
+			"id": 11,
+			"options": {
+				"colorMode": "background",
+				"graphMode": "none",
+				"justifyMode": "center",
+				"orientation": "auto",
+				"percentChangeColorMode": "standard",
+				"reduceOptions": {
+					"calcs": ["lastNotNull"],
+					"fields": "",
+					"values": false
+				},
+				"showPercentChange": false,
+				"textMode": "auto",
+				"wideLayout": true
+			},
+			"pluginVersion": "12.4.1",
+			"targets": [
+				{
+					"datasource": {
+						"type": "prometheus",
+						"uid": "{{dataSourceId}}"
+					},
+					"editorMode": "code",
+					"expr": "sum(increase(bullmq_jobs_total{queue=~\"$queue\",status=\"completed\"}[1m]))",
+					"instant": true,
+					"legendFormat": "",
+					"range": false,
+					"refId": "A"
+				}
+			],
+			"title": "Completed Last Minute",
+			"type": "stat"
+		},
+		{
+			"datasource": {
+				"type": "prometheus",
+				"uid": "{{dataSourceId}}"
+			},
+			"description": "Share of failed jobs over the last five minutes.",
+			"fieldConfig": {
+				"defaults": {
+					"color": {
+						"mode": "thresholds"
+					},
+					"decimals": 1,
+					"mappings": [],
+					"max": 100,
+					"min": 0,
+					"thresholds": {
+						"mode": "absolute",
+						"steps": [
+							{
+								"color": "green",
+								"value": 0
+							},
+							{
+								"color": "orange",
+								"value": 1
+							},
+							{
+								"color": "red",
+								"value": 5
+							}
+						]
+					},
+					"unit": "percent"
+				},
+				"overrides": []
+			},
+			"gridPos": {
+				"h": 4,
+				"w": 4,
+				"x": 20,
+				"y": 16
+			},
+			"id": 12,
+			"options": {
+				"colorMode": "background",
+				"graphMode": "none",
+				"justifyMode": "center",
+				"orientation": "auto",
+				"percentChangeColorMode": "standard",
+				"reduceOptions": {
+					"calcs": ["lastNotNull"],
+					"fields": "",
+					"values": false
+				},
+				"showPercentChange": false,
+				"textMode": "auto",
+				"wideLayout": true
+			},
+			"pluginVersion": "12.4.1",
+			"targets": [
+				{
+					"datasource": {
+						"type": "prometheus",
+						"uid": "{{dataSourceId}}"
+					},
+					"editorMode": "code",
+					"expr": "100 * sum(increase(bullmq_jobs_total{queue=~\"$queue\",status=\"failed\"}[5m])) / clamp_min(sum(increase(bullmq_jobs_total{queue=~\"$queue\",status=\"completed\"}[5m])) + sum(increase(bullmq_jobs_total{queue=~\"$queue\",status=\"failed\"}[5m])), 1)",
+					"instant": true,
+					"legendFormat": "",
+					"range": false,
+					"refId": "A"
+				}
+			],
+			"title": "5m Failure Rate",
+			"type": "stat"
+		},
+		{
+			"datasource": {
+				"type": "prometheus",
+				"uid": "{{dataSourceId}}"
+			},
+			"description": "Backlog state composition over time for the selected queues.",
+			"fieldConfig": {
+				"defaults": {
+					"color": {
+						"mode": "palette-classic"
+					},
+					"custom": {
+						"axisBorderShow": false,
+						"axisCenteredZero": false,
+						"axisColorMode": "text",
+						"axisLabel": "",
+						"axisPlacement": "auto",
+						"barAlignment": 0,
+						"barWidthFactor": 0.6,
+						"drawStyle": "line",
+						"fillOpacity": 18,
+						"gradientMode": "opacity",
+						"hideFrom": {
+							"legend": false,
+							"tooltip": false,
+							"viz": false
+						},
+						"insertNulls": false,
+						"lineInterpolation": "smooth",
+						"lineWidth": 2,
+						"pointSize": 4,
+						"scaleDistribution": {
+							"type": "linear"
+						},
+						"showPoints": "never",
+						"showValues": false,
+						"spanNulls": false,
+						"stacking": {
+							"group": "A",
+							"mode": "normal"
+						},
+						"thresholdsStyle": {
+							"mode": "off"
+						}
+					},
+					"mappings": [],
+					"thresholds": {
+						"mode": "absolute",
+						"steps": [
+							{
+								"color": "green",
+								"value": 0
+							}
+						]
+					},
+					"unit": "none"
+				},
+				"overrides": [
+					{
+						"matcher": {
+							"id": "byName",
+							"options": "active"
+						},
+						"properties": [
+							{
+								"id": "color",
+								"value": {
+									"fixedColor": "blue",
+									"mode": "fixed"
+								}
+							}
+						]
+					},
+					{
+						"matcher": {
+							"id": "byName",
+							"options": "delayed"
+						},
+						"properties": [
+							{
+								"id": "color",
+								"value": {
+									"fixedColor": "orange",
+									"mode": "fixed"
+								}
+							}
+						]
+					},
+					{
+						"matcher": {
+							"id": "byName",
+							"options": "prioritized"
+						},
+						"properties": [
+							{
+								"id": "color",
+								"value": {
+									"fixedColor": "yellow",
+									"mode": "fixed"
+								}
+							}
+						]
+					}
+				]
+			},
+			"gridPos": {
+				"h": 8,
+				"w": 8,
+				"x": 0,
+				"y": 20
+			},
+			"id": 13,
+			"options": {
+				"legend": {
+					"calcs": [],
+					"displayMode": "table",
+					"placement": "bottom",
+					"showLegend": true
+				},
+				"tooltip": {
+					"hideZeros": false,
+					"mode": "multi",
+					"sort": "desc"
+				}
+			},
+			"pluginVersion": "12.4.1",
+			"targets": [
+				{
+					"datasource": {
+						"type": "prometheus",
+						"uid": "{{dataSourceId}}"
+					},
+					"editorMode": "code",
+					"expr": "sum by (state) (bullmq_jobs_gauge{queue=~\"$queue\",state=~\"waiting|active|delayed|prioritized|waiting-children\"})",
+					"legendFormat": "{{state}}",
+					"range": true,
+					"refId": "A"
+				}
+			],
+			"title": "Backlog By State",
+			"type": "timeseries"
+		},
+		{
+			"datasource": {
+				"type": "prometheus",
+				"uid": "{{dataSourceId}}"
+			},
+			"description": "Completed and failed jobs per minute, derived from BullMQ history.",
+			"fieldConfig": {
+				"defaults": {
+					"color": {
+						"mode": "palette-classic"
+					},
+					"custom": {
+						"axisBorderShow": false,
+						"axisCenteredZero": false,
+						"axisColorMode": "text",
+						"axisLabel": "jobs/min",
+						"axisPlacement": "auto",
+						"barAlignment": 0,
+						"barWidthFactor": 0.6,
+						"drawStyle": "line",
+						"fillOpacity": 12,
+						"gradientMode": "opacity",
+						"hideFrom": {
+							"legend": false,
+							"tooltip": false,
+							"viz": false
+						},
+						"insertNulls": false,
+						"lineInterpolation": "smooth",
+						"lineWidth": 2,
+						"pointSize": 4,
+						"scaleDistribution": {
+							"type": "linear"
+						},
+						"showPoints": "never",
+						"showValues": false,
+						"spanNulls": false,
+						"stacking": {
+							"group": "A",
+							"mode": "none"
+						},
+						"thresholdsStyle": {
+							"mode": "off"
+						}
+					},
+					"mappings": [],
+					"thresholds": {
+						"mode": "absolute",
+						"steps": [
+							{
+								"color": "green",
+								"value": 0
+							}
+						]
+					},
+					"unit": "none"
+				},
+				"overrides": [
+					{
+						"matcher": {
+							"id": "byName",
+							"options": "Completed"
+						},
+						"properties": [
+							{
+								"id": "color",
+								"value": {
+									"fixedColor": "green",
+									"mode": "fixed"
+								}
+							}
+						]
+					},
+					{
+						"matcher": {
+							"id": "byName",
+							"options": "Failed"
+						},
+						"properties": [
+							{
+								"id": "color",
+								"value": {
+									"fixedColor": "red",
+									"mode": "fixed"
+								}
+							}
+						]
+					}
+				]
+			},
+			"gridPos": {
+				"h": 8,
+				"w": 8,
+				"x": 8,
+				"y": 20
+			},
+			"id": 14,
+			"options": {
+				"legend": {
+					"calcs": [],
+					"displayMode": "list",
+					"placement": "bottom",
+					"showLegend": true
+				},
+				"tooltip": {
+					"hideZeros": false,
+					"mode": "multi",
+					"sort": "desc"
+				}
+			},
+			"pluginVersion": "12.4.1",
+			"targets": [
+				{
+					"datasource": {
+						"type": "prometheus",
+						"uid": "{{dataSourceId}}"
+					},
+					"editorMode": "code",
+					"expr": "sum(rate(bullmq_jobs_total{queue=~\"$queue\",status=\"completed\"}[5m])) * 60",
+					"legendFormat": "Completed",
+					"range": true,
+					"refId": "A"
+				},
+				{
+					"datasource": {
+						"type": "prometheus",
+						"uid": "{{dataSourceId}}"
+					},
+					"editorMode": "code",
+					"expr": "sum(rate(bullmq_jobs_total{queue=~\"$queue\",status=\"failed\"}[5m])) * 60",
+					"legendFormat": "Failed",
+					"range": true,
+					"refId": "B"
+				}
+			],
+			"title": "Throughput",
+			"type": "timeseries"
+		},
+		{
+			"datasource": {
+				"type": "prometheus",
+				"uid": "{{dataSourceId}}"
+			},
+			"description": "Failure share over time for the selected queues.",
+			"fieldConfig": {
+				"defaults": {
+					"color": {
+						"fixedColor": "red",
+						"mode": "fixed"
+					},
+					"custom": {
+						"axisBorderShow": false,
+						"axisCenteredZero": false,
+						"axisColorMode": "text",
+						"axisLabel": "failure %",
+						"axisPlacement": "auto",
+						"barAlignment": 0,
+						"barWidthFactor": 0.6,
+						"drawStyle": "line",
+						"fillOpacity": 10,
+						"gradientMode": "opacity",
+						"hideFrom": {
+							"legend": false,
+							"tooltip": false,
+							"viz": false
+						},
+						"insertNulls": false,
+						"lineInterpolation": "smooth",
+						"lineWidth": 2,
+						"pointSize": 4,
+						"scaleDistribution": {
+							"type": "linear"
+						},
+						"showPoints": "never",
+						"showValues": false,
+						"spanNulls": false,
+						"stacking": {
+							"group": "A",
+							"mode": "none"
+						},
+						"thresholdsStyle": {
+							"mode": "line"
+						}
+					},
+					"decimals": 1,
+					"mappings": [],
+					"thresholds": {
+						"mode": "absolute",
+						"steps": [
+							{
+								"color": "green",
+								"value": 0
+							},
+							{
+								"color": "orange",
+								"value": 1
+							},
+							{
+								"color": "red",
+								"value": 5
+							}
+						]
+					},
+					"unit": "percent"
+				},
+				"overrides": []
+			},
+			"gridPos": {
+				"h": 8,
+				"w": 8,
+				"x": 16,
+				"y": 20
+			},
+			"id": 15,
+			"options": {
+				"legend": {
+					"calcs": [],
+					"displayMode": "hidden",
+					"placement": "bottom",
+					"showLegend": false
+				},
+				"tooltip": {
+					"hideZeros": false,
+					"mode": "single",
+					"sort": "none"
+				}
+			},
+			"pluginVersion": "12.4.1",
+			"targets": [
+				{
+					"datasource": {
+						"type": "prometheus",
+						"uid": "{{dataSourceId}}"
+					},
+					"editorMode": "code",
+					"expr": "100 * sum(rate(bullmq_jobs_total{queue=~\"$queue\",status=\"failed\"}[5m])) / clamp_min(sum(rate(bullmq_jobs_total{queue=~\"$queue\",status=\"completed\"}[5m])) + sum(rate(bullmq_jobs_total{queue=~\"$queue\",status=\"failed\"}[5m])), 0.000001)",
+					"legendFormat": "Failure %",
+					"range": true,
+					"refId": "A"
+				}
+			],
+			"title": "Failure Ratio",
+			"type": "timeseries"
+		},
+		{
+			"datasource": {
+				"type": "prometheus",
+				"uid": "{{dataSourceId}}"
+			},
+			"description": "Current distribution of queue states across the selection.",
+			"fieldConfig": {
+				"defaults": {
+					"color": {
+						"mode": "palette-classic"
+					},
+					"custom": {
+						"hideFrom": {
+							"legend": false,
+							"tooltip": false,
+							"viz": false
+						}
+					},
+					"mappings": [],
+					"unit": "none"
+				},
+				"overrides": [
+					{
+						"matcher": {
+							"id": "byName",
+							"options": "active"
+						},
+						"properties": [
+							{
+								"id": "color",
+								"value": {
+									"fixedColor": "blue",
+									"mode": "fixed"
+								}
+							}
+						]
+					},
+					{
+						"matcher": {
+							"id": "byName",
+							"options": "completed"
+						},
+						"properties": [
+							{
+								"id": "color",
+								"value": {
+									"fixedColor": "green",
+									"mode": "fixed"
+								}
+							}
+						]
+					},
+					{
+						"matcher": {
+							"id": "byName",
+							"options": "delayed"
+						},
+						"properties": [
+							{
+								"id": "color",
+								"value": {
+									"fixedColor": "orange",
+									"mode": "fixed"
+								}
+							}
+						]
+					},
+					{
+						"matcher": {
+							"id": "byName",
+							"options": "failed"
+						},
+						"properties": [
+							{
+								"id": "color",
+								"value": {
+									"fixedColor": "red",
+									"mode": "fixed"
+								}
+							}
+						]
+					},
+					{
+						"matcher": {
+							"id": "byName",
+							"options": "paused"
+						},
+						"properties": [
+							{
+								"id": "color",
+								"value": {
+									"fixedColor": "#667085",
+									"mode": "fixed"
+								}
+							}
+						]
+					}
+				]
+			},
+			"gridPos": {
+				"h": 8,
+				"w": 8,
+				"x": 0,
+				"y": 28
+			},
+			"id": 16,
+			"options": {
+				"displayLabels": ["name", "value", "percent"],
+				"legend": {
+					"displayMode": "list",
+					"placement": "right",
+					"showLegend": true,
+					"values": ["value", "percent"]
+				},
+				"pieType": "donut",
+				"reduceOptions": {
+					"calcs": ["lastNotNull"],
+					"fields": "",
+					"values": false
+				},
+				"sort": "desc",
+				"tooltip": {
+					"hideZeros": false,
+					"mode": "single",
+					"sort": "none"
+				}
+			},
+			"pluginVersion": "12.4.1",
+			"targets": [
+				{
+					"datasource": {
+						"type": "prometheus",
+						"uid": "{{dataSourceId}}"
+					},
+					"editorMode": "code",
+					"expr": "sum by (state) (bullmq_jobs_gauge{queue=~\"$queue\"})",
+					"instant": true,
+					"legendFormat": "{{state}}",
+					"range": false,
+					"refId": "A"
+				}
+			],
+			"title": "Current State Mix",
+			"type": "piechart"
+		},
+		{
+			"datasource": {
+				"type": "prometheus",
+				"uid": "{{dataSourceId}}"
+			},
+			"description": "Queues with the largest current backlog.",
+			"fieldConfig": {
+				"defaults": {
+					"color": {
+						"fixedColor": "blue",
+						"mode": "fixed"
+					},
+					"custom": {
+						"axisBorderShow": false,
+						"axisCenteredZero": false,
+						"axisColorMode": "text",
+						"axisLabel": "",
+						"axisPlacement": "auto",
+						"fillOpacity": 80,
+						"gradientMode": "none",
+						"hideFrom": {
+							"legend": false,
+							"tooltip": false,
+							"viz": false
+						},
+						"lineWidth": 1,
+						"scaleDistribution": {
+							"type": "linear"
+						},
+						"thresholdsStyle": {
+							"mode": "off"
+						}
+					},
+					"mappings": [],
+					"thresholds": {
+						"mode": "absolute",
+						"steps": [
+							{
+								"color": "blue",
+								"value": 0
+							}
+						]
+					},
+					"unit": "none"
+				},
+				"overrides": []
+			},
+			"gridPos": {
+				"h": 8,
+				"w": 8,
+				"x": 8,
+				"y": 28
+			},
+			"id": 17,
+			"options": {
+				"barRadius": 0.2,
+				"barWidth": 0.9,
+				"fullHighlight": false,
+				"groupWidth": 0.7,
+				"legend": {
+					"calcs": [],
+					"displayMode": "hidden",
+					"placement": "bottom",
+					"showLegend": false
+				},
+				"orientation": "horizontal",
+				"showValue": "always",
+				"stacking": "none",
+				"tooltip": {
+					"hideZeros": false,
+					"mode": "single",
+					"sort": "none"
+				},
+				"xField": "queue",
+				"xTickLabelRotation": 0,
+				"xTickLabelSpacing": 0
+			},
+			"pluginVersion": "12.4.1",
+			"targets": [
+				{
+					"datasource": {
+						"type": "prometheus",
+						"uid": "{{dataSourceId}}"
+					},
+					"editorMode": "code",
+					"expr": "topk(10, sum by (queue) (bullmq_jobs_gauge{queue=~\"$queue\",state=~\"waiting|active|delayed|prioritized|waiting-children\"}))",
+					"format": "table",
+					"instant": true,
+					"legendFormat": "",
+					"range": false,
+					"refId": "A"
+				}
+			],
+			"title": "Top Queues By Backlog",
+			"transformations": [
+				{
+					"id": "organize",
+					"options": {
+						"excludeByName": {
+							"Time": true
+						},
+						"renameByName": {
+							"Value": "Backlog"
+						}
+					}
+				}
+			],
+			"type": "barchart"
+		},
+		{
+			"datasource": {
+				"type": "prometheus",
+				"uid": "{{dataSourceId}}"
+			},
+			"description": "Queues with the most failed jobs still present.",
+			"fieldConfig": {
+				"defaults": {
+					"color": {
+						"fixedColor": "red",
+						"mode": "fixed"
+					},
+					"custom": {
+						"axisBorderShow": false,
+						"axisCenteredZero": false,
+						"axisColorMode": "text",
+						"axisLabel": "",
+						"axisPlacement": "auto",
+						"fillOpacity": 80,
+						"gradientMode": "none",
+						"hideFrom": {
+							"legend": false,
+							"tooltip": false,
+							"viz": false
+						},
+						"lineWidth": 1,
+						"scaleDistribution": {
+							"type": "linear"
+						},
+						"thresholdsStyle": {
+							"mode": "off"
+						}
+					},
+					"mappings": [],
+					"thresholds": {
+						"mode": "absolute",
+						"steps": [
+							{
+								"color": "red",
+								"value": 0
+							}
+						]
+					},
+					"unit": "none"
+				},
+				"overrides": []
+			},
+			"gridPos": {
+				"h": 8,
+				"w": 8,
+				"x": 16,
+				"y": 28
+			},
+			"id": 18,
+			"options": {
+				"barRadius": 0.2,
+				"barWidth": 0.9,
+				"fullHighlight": false,
+				"groupWidth": 0.7,
+				"legend": {
+					"calcs": [],
+					"displayMode": "hidden",
+					"placement": "bottom",
+					"showLegend": false
+				},
+				"orientation": "horizontal",
+				"showValue": "always",
+				"stacking": "none",
+				"tooltip": {
+					"hideZeros": false,
+					"mode": "single",
+					"sort": "none"
+				},
+				"xField": "queue",
+				"xTickLabelRotation": 0,
+				"xTickLabelSpacing": 0
+			},
+			"pluginVersion": "12.4.1",
+			"targets": [
+				{
+					"datasource": {
+						"type": "prometheus",
+						"uid": "{{dataSourceId}}"
+					},
+					"editorMode": "code",
+					"expr": "topk(10, sum by (queue) (bullmq_jobs_gauge{queue=~\"$queue\",state=\"failed\"}))",
+					"format": "table",
+					"instant": true,
+					"legendFormat": "",
+					"range": false,
+					"refId": "A"
+				}
+			],
+			"title": "Top Queues By Failed Jobs",
+			"transformations": [
+				{
+					"id": "organize",
+					"options": {
+						"excludeByName": {
+							"Time": true
+						},
+						"renameByName": {
+							"Value": "Failed"
+						}
+					}
+				}
+			],
+			"type": "barchart"
+		},
+		{
+			"datasource": {
+				"type": "prometheus",
+				"uid": "{{dataSourceId}}"
+			},
+			"description": "Per-queue queue depth and one-hour throughput summary.",
+			"fieldConfig": {
+				"defaults": {
+					"color": {
+						"mode": "thresholds"
+					},
+					"custom": {
+						"align": "auto",
+						"cellOptions": {
+							"type": "auto"
+						},
+						"footer": {
+							"reducers": []
+						},
+						"inspect": false
+					},
+					"mappings": [],
+					"thresholds": {
+						"mode": "absolute",
+						"steps": [
+							{
+								"color": "green",
+								"value": 0
+							}
+						]
+					},
+					"unit": "none"
+				},
+				"overrides": [
+					{
+						"matcher": {
+							"id": "byName",
+							"options": "Failure %"
+						},
+						"properties": [
+							{
+								"id": "unit",
+								"value": "percent"
+							},
+							{
+								"id": "decimals",
+								"value": 1
+							}
+						]
+					}
+				]
+			},
+			"gridPos": {
+				"h": 10,
+				"w": 24,
+				"x": 0,
+				"y": 36
+			},
+			"id": 19,
+			"options": {
+				"cellHeight": "sm",
+				"showHeader": true,
+				"sortBy": [
+					{
+						"desc": true,
+						"displayName": "Failed"
+					}
+				]
+			},
+			"pluginVersion": "12.4.1",
+			"targets": [
+				{
+					"datasource": {
+						"type": "prometheus",
+						"uid": "{{dataSourceId}}"
+					},
+					"editorMode": "code",
+					"expr": "sum by (queue) (bullmq_jobs_gauge{queue=~\"$queue\",state=\"waiting\"})",
+					"format": "table",
+					"instant": true,
+					"legendFormat": "",
+					"range": false,
+					"refId": "A"
+				},
+				{
+					"datasource": {
+						"type": "prometheus",
+						"uid": "{{dataSourceId}}"
+					},
+					"editorMode": "code",
+					"expr": "sum by (queue) (bullmq_jobs_gauge{queue=~\"$queue\",state=\"active\"})",
+					"format": "table",
+					"instant": true,
+					"legendFormat": "",
+					"range": false,
+					"refId": "B"
+				},
+				{
+					"datasource": {
+						"type": "prometheus",
+						"uid": "{{dataSourceId}}"
+					},
+					"editorMode": "code",
+					"expr": "sum by (queue) (bullmq_jobs_gauge{queue=~\"$queue\",state=~\"delayed|prioritized\"})",
+					"format": "table",
+					"instant": true,
+					"legendFormat": "",
+					"range": false,
+					"refId": "C"
+				},
+				{
+					"datasource": {
+						"type": "prometheus",
+						"uid": "{{dataSourceId}}"
+					},
+					"editorMode": "code",
+					"expr": "sum by (queue) (bullmq_jobs_gauge{queue=~\"$queue\",state=\"failed\"})",
+					"format": "table",
+					"instant": true,
+					"legendFormat": "",
+					"range": false,
+					"refId": "D"
+				},
+				{
+					"datasource": {
+						"type": "prometheus",
+						"uid": "{{dataSourceId}}"
+					},
+					"editorMode": "code",
+					"expr": "sum by (queue) (increase(bullmq_jobs_total{queue=~\"$queue\",status=\"completed\"}[1h]))",
+					"format": "table",
+					"instant": true,
+					"legendFormat": "",
+					"range": false,
+					"refId": "E"
+				},
+				{
+					"datasource": {
+						"type": "prometheus",
+						"uid": "{{dataSourceId}}"
+					},
+					"editorMode": "code",
+					"expr": "sum by (queue) (increase(bullmq_jobs_total{queue=~\"$queue\",status=\"failed\"}[1h]))",
+					"format": "table",
+					"instant": true,
+					"legendFormat": "",
+					"range": false,
+					"refId": "F"
+				},
+				{
+					"datasource": {
+						"type": "prometheus",
+						"uid": "{{dataSourceId}}"
+					},
+					"editorMode": "code",
+					"expr": "100 * sum by (queue) (increase(bullmq_jobs_total{queue=~\"$queue\",status=\"failed\"}[1h])) / clamp_min(sum by (queue) (increase(bullmq_jobs_total{queue=~\"$queue\",status=\"completed\"}[1h])) + sum by (queue) (increase(bullmq_jobs_total{queue=~\"$queue\",status=\"failed\"}[1h])), 1)",
+					"format": "table",
+					"instant": true,
+					"legendFormat": "",
+					"range": false,
+					"refId": "G"
+				}
+			],
+			"title": "Queue Detail",
+			"transformations": [
+				{
+					"id": "joinByField",
+					"options": {
+						"byField": "queue",
+						"mode": "outer"
+					}
+				},
+				{
+					"id": "organize",
+					"options": {
+						"excludeByName": {
+							"Time": true,
+							"Time 1": true,
+							"Time 2": true,
+							"Time 3": true,
+							"Time 4": true,
+							"Time 5": true,
+							"Time 6": true
+						},
+						"indexByName": {
+							"Value #A": 1,
+							"Value #B": 2,
+							"Value #C": 3,
+							"Value #D": 4,
+							"Value #E": 5,
+							"Value #F": 6,
+							"Value #G": 7,
+							"queue": 0
+						},
+						"renameByName": {
+							"Value #A": "Waiting",
+							"Value #B": "Active",
+							"Value #C": "Delayed",
+							"Value #D": "Failed",
+							"Value #E": "Completed 1h",
+							"Value #F": "Failed 1h",
+							"Value #G": "Failure %",
+							"queue": "Queue"
+						}
+					}
+				}
+			],
+			"type": "table"
+		}
+	],
+	"preload": false,
+	"refresh": "",
+	"schemaVersion": 40,
+	"tags": ["nodejs", "bullmq"],
+	"templating": {
+		"list": [
+			{
+				"current": {
+					"text": ["10.30.146.60:3001"],
+					"value": ["10.30.146.60:3001"]
+				},
+				"datasource": "{{dataSourceId}}",
+				"definition": "label_values(nodejs_version_info, instance)",
+				"includeAll": true,
+				"label": "Instance",
+				"multi": true,
+				"name": "instance",
+				"options": [],
+				"query": "label_values(nodejs_version_info, instance)",
+				"refresh": 1,
+				"regex": "",
+				"sort": 1,
+				"type": "query"
+			},
+			{
+				"allValue": ".+",
+				"current": {
+					"selected": true,
+					"text": "All",
+					"value": "$__all"
+				},
+				"datasource": "{{dataSourceId}}",
+				"definition": "label_values(bullmq_jobs_gauge, queue)",
+				"includeAll": true,
+				"label": "Queue",
+				"multi": true,
+				"name": "queue",
+				"options": [],
+				"query": "label_values(bullmq_jobs_gauge, queue)",
+				"refresh": 1,
+				"regex": "",
+				"sort": 1,
+				"type": "query"
+			}
+		]
+	},
+	"time": {
+		"from": "2026-09-09T04:29:24.567Z",
+		"to": "2026-09-09T08:29:24.567Z"
+	},
+	"timepicker": {},
+	"timezone": "",
+	"title": "Backend WMS",
+	"uid": "PTSqcpJWk",
+	"version": 5,
+	"weekStart": ""
+}
