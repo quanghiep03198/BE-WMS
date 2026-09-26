@@ -1,3 +1,4 @@
+import { Bit } from '@databases/transformers/bool.transformer'
 import { Injectable, Logger } from '@nestjs/common'
 import { ModuleRef } from '@nestjs/core'
 import { getDataSourceToken } from '@nestjs/typeorm'
@@ -25,6 +26,11 @@ export class CdcProvisionerService {
 		@InjectRedisClient() private readonly redis: Redis
 	) {}
 
+	/**
+	 * * Provision and configure CDC for all specified tables.
+	 * * Chuẩn bị và cấu hình CDC cho tất cả các bảng được chỉ định trong mảng configs.
+	 * @param configs
+	 */
 	async provisionAll(configs: CdcProvisionConfig[]): Promise<void> {
 		for (const cfg of configs) {
 			try {
@@ -41,6 +47,12 @@ export class CdcProvisionerService {
 		}
 	}
 
+	/**
+	 * * Provision and configure CDC for a single table.
+	 * * Chuẩn bị và cấu hình CDC cho một bảng duy nhất.
+	 * @param cfg
+	 * @returns
+	 */
 	private async provisionOne(cfg: CdcProvisionConfig): Promise<void> {
 		this.validateIdentifiers(cfg)
 
@@ -71,11 +83,11 @@ export class CdcProvisionerService {
 		this.logger.warn(`CDC config for ${captureInstance} has changed — disabling and recreating`)
 
 		await dataSource.query(/* SQL */ `
-      EXEC sys.sp_cdc_disable_table
-        @source_schema    = N'${cfg.schema}',
-        @source_name      = N'${cfg.sourceName}',
-        @capture_instance = N'${captureInstance}';
-    `)
+			EXEC sys.sp_cdc_disable_table
+			@source_schema    = N'${cfg.schema}',
+			@source_name      = N'${cfg.sourceName}',
+			@capture_instance = N'${captureInstance}';
+		`)
 
 		await this.enableTable(dataSource, cfg, captureInstance)
 		await this.registerCheckpointKey(checkpointKey)
@@ -86,6 +98,11 @@ export class CdcProvisionerService {
 		this.logger.warn(`Reset Redis checkpoint: ${checkpointKey} (table: ${tableLabel})`)
 	}
 
+	/**
+	 * * Ensure that CDC is enabled at the database level.
+	 * * Đảm bảo rằng CDC được bật ở cấp cơ sở dữ liệu.
+	 * @param dataSource
+	 */
 	private async ensureDbLevelCdc(dataSource: DataSource): Promise<void> {
 		const [{ is_cdc_enabled }] = await dataSource.query(
 			`SELECT is_cdc_enabled FROM sys.databases WHERE name = DB_NAME()`
@@ -96,6 +113,15 @@ export class CdcProvisionerService {
 		}
 	}
 
+	/**
+	 * * Retrieve the existing CDC configuration for a specific table.
+	 * * Lấy cấu hình CDC hiện có cho một bảng cụ thể.
+	 * @param dataSource
+	 * @param schema
+	 * @param sourceName
+	 * @param captureInstance
+	 * @returns
+	 */
 	private async getExistingConfig(
 		dataSource: DataSource,
 		schema: string,
@@ -132,18 +158,31 @@ export class CdcProvisionerService {
 		}
 	}
 
+	/**
+	 * * Enable CDC for a specific table.
+	 * * Bật CDC cho một bảng cụ thể.
+	 * @param dataSource
+	 * @param cfg
+	 * @param captureInstance
+	 */
 	private async enableTable(dataSource: DataSource, cfg: CdcProvisionConfig, captureInstance: string): Promise<void> {
-		const roleNameSql = cfg.roleName ? `N'${cfg.roleName}'` : 'NULL'
+		const { schema, sourceName, capturedColumns, roleName, indexName, supportsNetChanges } = cfg
+
+		const roleNameSql = roleName ? `N'${roleName}'` : 'NULL'
+		const indexNameSql = indexName ? `N'${indexName}'` : 'NULL'
+		const supportsNetChangesSql: Bit = supportsNetChanges ? 1 : 0
+		const capturedColumnListSql = `N'${cfg.capturedColumns.join(', ')}'`
 
 		try {
 			await dataSource.query(/* SQL */ `
         EXEC sys.sp_cdc_enable_table
-          @source_schema        = N'${cfg.schema}',
-          @source_name          = N'${cfg.sourceName}',
+          @source_schema        = N'${schema}',
+          @source_name          = N'${sourceName}',
           @capture_instance     = N'${captureInstance}',
           @role_name            = ${roleNameSql},
-          @captured_column_list = N'${cfg.capturedColumns.join(', ')}',
-          @supports_net_changes = ${cfg.supportsNetChanges ? 1 : 0};
+          @captured_column_list = ${capturedColumnListSql},
+			 @index_name           = ${indexNameSql},
+          @supports_net_changes = ${supportsNetChangesSql};
       `)
 		} catch (err) {
 			if (this.isMissingPkForNetChangesError(err)) {
@@ -156,6 +195,12 @@ export class CdcProvisionerService {
 		}
 	}
 
+	/**
+	 * * Check if the error is related to a missing primary key when `supportsNetChanges` is enabled.
+	 * * Kiểm tra xem lỗi có liên quan đến việc thiếu khóa chính khi `supportsNetChanges` được bật hay không.
+	 * @param err
+	 * @returns
+	 */
 	private isMissingPkForNetChangesError(err: any): boolean {
 		const candidates = [
 			err?.number,

@@ -46,6 +46,7 @@ export class CdcWatcherService {
 
 		try {
 			const dataSource = this.resolveDataSource(options.dataSourceToken)
+			const supportsNetChanges = await this.getSupportsNetChanges(dataSource, captureInstance)
 
 			const [{ max_lsn }] = await dataSource.query(`SELECT sys.fn_cdc_get_max_lsn() AS max_lsn`)
 			const lastLsnHex = await this.redis.get(checkpointKey)
@@ -56,9 +57,11 @@ export class CdcWatcherService {
 			const originColumnSelect = options.originMarkerColumn
 				? `* , sys.fn_cdc_has_column_changed('${captureInstance}', '${options.originMarkerColumn}', __$update_mask) AS __origin_changed`
 				: '*'
+			const changeFunction = supportsNetChanges ? 'net_changes' : 'all_changes'
+			const rowFilterOption = supportsNetChanges ? 'all with mask' : 'all'
 
 			const rawChanges = await dataSource.query(
-				`SELECT ${originColumnSelect} FROM cdc.fn_cdc_get_net_changes_${captureInstance}(@0, @1, 'all with mask')`,
+				`SELECT ${originColumnSelect} FROM cdc.fn_cdc_get_${changeFunction}_${captureInstance}(@0, @1, '${rowFilterOption}')`,
 				[lastLsn, max_lsn]
 			)
 
@@ -73,6 +76,10 @@ export class CdcWatcherService {
 			for (const row of rawChanges) {
 				const { __$operation, __$update_mask, __$seqval, __$command_id, __$start_lsn, __origin_changed, ...data } =
 					row
+
+				// all_changes returns both the before-image (3) and after-image (4)
+				// for updates. Handlers consume only the after-image.
+				if (!supportsNetChanges && __$operation === 3) continue
 
 				if (options.originMarkerColumn && __origin_changed === 1) {
 					const originId = data[options.originMarkerColumn]
@@ -177,5 +184,14 @@ export class CdcWatcherService {
 	private async getMinLsn(dataSource: DataSource, captureInstance: string): Promise<Buffer> {
 		const [{ min_lsn }] = await dataSource.query(`SELECT sys.fn_cdc_get_min_lsn(@0) AS min_lsn`, [captureInstance])
 		return min_lsn
+	}
+
+	private async getSupportsNetChanges(dataSource: DataSource, captureInstance: string): Promise<boolean> {
+		const rows = await dataSource.query(
+			`SELECT supports_net_changes FROM cdc.change_tables WHERE capture_instance = @0`,
+			[captureInstance]
+		)
+		if (rows.length === 0) throw new Error(`CDC capture instance not found: ${captureInstance}`)
+		return Boolean(rows[0].supports_net_changes)
 	}
 }

@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common'
+import { Module, OnModuleInit } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { MongooseModule, MongooseModuleOptions } from '@nestjs/mongoose'
 import { TypeOrmModule } from '@nestjs/typeorm'
@@ -34,6 +34,7 @@ import { TruckloadDeliveryEntity } from '@modules/truckload-delivery/entities/tr
 import { UserEntity } from '@modules/user/infrastructure/persistence/mssql/entities/user.entity'
 import { StorageLocationEntity } from '@modules/warehouse/infrastructure/persistence/mssql/entities/storage-location.entity'
 import { WarehouseEntity } from '@modules/warehouse/infrastructure/persistence/mssql/entities/warehouse.entity'
+import { DatabaseService } from './database.service'
 
 @Module({
 	imports: [
@@ -108,6 +109,13 @@ import { WarehouseEntity } from '@modules/warehouse/infrastructure/persistence/m
 			useFactory: (configService: ConfigService) =>
 				configService.getOrThrow<MongooseModuleOptions>(MONGODB_CONFIG_TOKEN)
 		})
-	]
+	],
+	providers: [DatabaseService]
 })
-export class DatabaseModule {}
+export class DatabaseModule implements OnModuleInit {
+	constructor(private readonly databaseService: DatabaseService) {}
+
+	async onModuleInit() {
+		await this.databaseService.createNormalizeSizeMssqlFn()
+	}
+}

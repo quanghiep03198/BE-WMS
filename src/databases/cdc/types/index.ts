@@ -24,6 +24,7 @@ export interface CdcProvisionConfig {
 	roleName?: string | null
 	capturedColumns: string[]
 	supportsNetChanges: boolean
+	indexName?: string | null
 }
 
 export interface ICdcHandler<TRow = any> {
