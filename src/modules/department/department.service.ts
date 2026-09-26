@@ -11,17 +11,22 @@ export class DepartmentService {
 		private readonly departmentRepository: Repository<DepartmentEntity>
 	) {}
 
+	/**
+	 * @deprecated
+	 * @param factoryCode
+	 * @returns
+	 */
 	async getWarehouseDepartments(factoryCode: string) {
 		return await this.departmentRepository
 			.createQueryBuilder()
-			.select([/* SQL */ `DISTINCT dept_name AS dept_name`, /* SQL */ `MIN(dept_code) AS dept_code`])
+			.select([/* SQL */ `DISTINCT dept_name AS name`, /* SQL */ `MIN(dept_code) AS code`])
 			.groupBy('dept_name')
 			.orderBy('dept_code', 'ASC')
 			.where({ dept_code: Like(`${factoryCode}C3%`) })
 			.getRawMany()
 	}
 
-	async getShapingDepartment(factoryCode: string) {
+	async getAssemblyDepartments(factoryCode: string) {
 		const cteQueryBuilder = this.departmentRepository
 			.createQueryBuilder()
 			.select([
@@ -38,18 +43,18 @@ export class DepartmentService {
 		return await this.departmentRepository.manager
 			.createQueryBuilder()
 			.addCommonTableExpression(cteQueryBuilder.getQuery(), 'cte')
-			.select([/* SQL */ `cte.dept_code AS dept_code`, /* SQL */ `cte.dept_name AS dept_name`])
+			.select([/* SQL */ `dept_code AS code`, /* SQL */ `dept_name AS name`])
 			.from('cte', 'cte')
 			.where(/* SQL */ `row_num = 1`)
 			.andWhere(/* SQL */ `LEN(dept_name) >= 3`)
 			.setParameters(cteQueryBuilder.getParameters())
-			.getRawMany<{ dept_code: string; dept_name: string }>()
+			.getRawMany<{ code: string; name: string }>()
 	}
 
-	async getSewingDepartment(factoryCode: string) {
+	async getSewingDepartments(factoryCode: string) {
 		return await this.departmentRepository
 			.createQueryBuilder()
-			.select([/* SQL */ `DISTINCT dept_name AS dept_name`, /* SQL */ `MIN(dept_code) AS dept_code`])
+			.select([/* SQL */ `DISTINCT dept_name AS name`, /* SQL */ `MIN(dept_code) AS code`])
 			.where({ factory_code: factoryCode })
 			.andWhere({ dept_name: Or(Like('%針車[0-9]%')) })
 			.groupBy('dept_name')
