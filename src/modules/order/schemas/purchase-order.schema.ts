@@ -1,11 +1,12 @@
-import { Prop, Schema } from '@nestjs/mongoose'
+import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose'
+import type { HydratedDocument, Model } from 'mongoose'
+import { ShippingMethod } from '../types'
+
+export const PURCHASE_ORDER_COLLECTION = 'purchase_orders'
 
 @Schema({
-	collection: 'purchase_orders',
-	timestamps: {
-		createdAt: 'created_at',
-		updatedAt: 'updated_at'
-	},
+	collection: PURCHASE_ORDER_COLLECTION,
+	timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' },
 	versionKey: false,
 	suppressReservedKeysWarning: false,
 	strict: false,
@@ -13,12 +14,18 @@ import { Prop, Schema } from '@nestjs/mongoose'
 	readConcern: { level: 'majority' },
 	writeConcern: { w: 'majority' }
 })
-export class ManufacturingOrder {
+export class PurchaseOrder {
 	@Prop({ type: String, required: true })
 	po: string
 
+	@Prop({ type: Number, required: true })
+	order_qty: number
+
 	@Prop({ type: String, required: true })
 	brand_name: string
+
+	@Prop({ type: String, required: true })
+	cust_shoes_style: string
 
 	@Prop({ type: String, required: true })
 	factory_shoes_style: string
@@ -26,9 +33,43 @@ export class ManufacturingOrder {
 	@Prop({ type: String, required: true })
 	color_sn: string
 
-	@Prop({ type: Array, required: true })
-	packing_list: Array<{
-		mo_no: string
-		sizes: Array<{ size_numcode: string; size_qty: number }>
+	@Prop({ type: Object, required: true })
+	packing: Record<string, Record<string, number>>
+
+	@Prop({ type: String, requried: true })
+	shipping_destination: string
+
+	@Prop({ type: String, required: true })
+	shipping_method: ShippingMethod
+
+	@Prop({ type: Object, defautl: {} })
+	shipping_progress: Record<
+		string,
+		{
+			order_qty: number
+			shipped_out_qty: number
+		}
+	>
+}
+
+export const PurchaseOrderSchema = SchemaFactory.createForClass(PurchaseOrder)
+
+PurchaseOrderSchema.index({ po: 1 }, { unique: true, name: 'po_idx' })
+
+PurchaseOrderSchema.virtual('outbound_history', {
+	ref: 'DailyPoShippingProgress',
+	localField: 'po',
+	foreignField: 'po'
+})
+
+PurchaseOrderSchema.set('toObject', { virtuals: true })
+PurchaseOrderSchema.set('toJSON', { virtuals: true })
+
+export type PurchaseOrderDocument = HydratedDocument<PurchaseOrder> & {
+	outbound_history: Array<{
+		date: string
+		shipping_progress: Record<string, Record<string, number>>
 	}>
 }
+
+export type PurchaseOrderModel = Model<PurchaseOrderDocument>

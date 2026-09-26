@@ -19,3 +19,17 @@ export type TManufacturingOrder = {
 	factory_code_produce: string
 	sizes: Array<SizeRun>
 }
+
+export type TPurchaseOrder = {
+	po: string
+	brand_name: string
+	factory_shoes_style: string
+	cust_shoes_style: string
+	color_sn: string
+	shipping_method: ShippingMethod
+	shipping_destination: string
+	packing: Record<string, Record<string, number>>
+	shipping_progress: Record<string, { order_qty: number; shipped_out_qty: number }>
+}
+
+export type ShippingMethod = 'AIR' | 'OCEAN'

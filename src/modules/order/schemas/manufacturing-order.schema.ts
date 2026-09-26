@@ -1,10 +1,10 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose'
 import { HydratedDocument, Model } from 'mongoose'
 
-export const MANUFACTURING_ORDER_COLLECTION = 'manufacturing_orders'
+export const MANUFACTURING_ORDERS_COLLECTION = 'manufacturing_orders'
 
 @Schema({
-	collection: MANUFACTURING_ORDER_COLLECTION,
+	collection: MANUFACTURING_ORDERS_COLLECTION,
 	timestamps: {
 		createdAt: 'created_at',
 		updatedAt: 'updated_at'
@@ -17,32 +17,58 @@ export const MANUFACTURING_ORDER_COLLECTION = 'manufacturing_orders'
 	writeConcern: { w: 'majority' }
 })
 export class ManufacturingOrder {
-	@Prop({ type: String, required: true })
+	@Prop({ type: String, requried: true })
 	mo_no: string
 
-	@Prop({ type: Number, required: true })
-	mo_total_qty: number
-
-	@Prop({ type: String, required: true })
+	@Prop({ type: String, requried: true })
 	brand_name: string
 
-	@Prop({ type: String, required: true })
-	factory_shoes_style: string
-
-	@Prop({ type: String, required: true })
-	color_sn: string
-
-	@Prop({ type: String, required: true })
+	@Prop({ type: String, requried: true })
 	factory_code_produce: string
 
-	@Prop({
-		type: Object,
-		required: true,
-		default: {}
-	})
-	sizes: { [key: string]: number }
+	@Prop({ type: String, requried: true })
+	factory_shoes_style: string
+
+	@Prop({ type: String, requried: true })
+	cust_shoes_style: string
+
+	@Prop({ type: String, requried: true })
+	color_sn: string
+
+	@Prop({ type: Number, requried: true })
+	order_qty: number
+
+	@Prop({ type: Object, requried: true })
+	size_ledger: Record<
+		string,
+		{
+			order_qty: number
+			stocked_in_qty: number
+			total_recall_tx: number
+			total_return_tx: number
+			shipped_out_qty: number
+		}
+	>
 }
 
 export const ManufacturingOrderSchema = SchemaFactory.createForClass(ManufacturingOrder)
-export type ManufacturingOrderDocument = HydratedDocument<ManufacturingOrder>
+
+ManufacturingOrderSchema.index({ mo_no: 1 }, { name: 'idx_mo', unique: true })
+
+ManufacturingOrderSchema.virtual('daily_inbound_history', {
+	ref: 'DailyMoInventoryLedger',
+	localField: 'mo_no',
+	foreignField: 'mo_no'
+})
+
+ManufacturingOrderSchema.set('toObject', { virtuals: true })
+ManufacturingOrderSchema.set('toJSON', { virtuals: true })
+
+export type ManufacturingOrderDocument = HydratedDocument<ManufacturingOrder> & {
+	daily_inbound_history: Array<{
+		date: string
+		mo_no: string
+		size_ledger: Record<string, { stocked_in_qty: number; total_recall_tx: number; total_return_tx: number }>
+	}>
+}
 export type ManufacturingOrderModel = Model<ManufacturingOrderDocument>
