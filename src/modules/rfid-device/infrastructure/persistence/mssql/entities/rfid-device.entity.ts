@@ -2,7 +2,7 @@ import { DATABASE_DATA_LAKE, DATABASE_SCHEMA, RecordStatus } from '@databases/co
 import { format } from 'date-fns'
 import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm'
 
-@Entity('dv_rfidreader', { database: DATABASE_DATA_LAKE, schema: DATABASE_SCHEMA, synchronize: true })
+@Entity('dv_rfidreader', { database: DATABASE_DATA_LAKE, schema: DATABASE_SCHEMA })
 export class RFIDDeviceEntity {
 	@PrimaryGeneratedColumn({ name: 'id', type: 'int' })
 	id: number
@@ -19,14 +19,14 @@ export class RFIDDeviceEntity {
 	@Column({ name: 'device_sn' })
 	device_sn: string
 
-	@Column({ name: 'device_ant' })
-	device_ant: string
+	@Column({ type: 'varchar', nullable: true })
+	device_ant: string | null
 
 	@Column({ name: 'device_name' })
 	station_no: string
 
 	@Column({ name: 'ip_address' })
-	ip_address: string
+	tcp_ip: string
 
 	@Column({ name: 'ip_port' })
 	ip_port: string
