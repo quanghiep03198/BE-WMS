@@ -19,7 +19,7 @@ export class RotateLogTask {
 		writeFileSync(resolve('logs/error.log'), '')
 	}
 
-	@Cron(CronExpression.EVERY_WEEKEND, { name: 'ROTATE_BACKUP_LOGS_EVERY_WEEKEND' })
+	@Cron(CronExpression.EVERY_1ST_DAY_OF_MONTH_AT_MIDNIGHT, { name: 'ROTATE_BACKUP_LOGS_EVERY_WEEKEND' })
 	handleRotateBackupLogs() {
 		writeFileSync(resolve('logs/backup.log'), '')
 	}

@@ -4,6 +4,10 @@ import { Cron, CronExpression } from '@nestjs/schedule'
 import { InjectDataSource } from '@nestjs/typeorm'
 import { DataSource, QueryFailedError } from 'typeorm'
 
+/**
+ * @deprecated - This task is no longer in use and will be removed in future versions.
+ * This task is responsible for syncing license plate snapshots with truckload delivery records.
+ */
 @Injectable()
 export class SyncLicensePlateSnapshotTask {
 	private readonly logger = new Logger(SyncLicensePlateSnapshotTask.name)
@@ -14,6 +18,8 @@ export class SyncLicensePlateSnapshotTask {
 		name: 'SYNC_LICENSE_PLATE_SNAPSHOT'
 	})
 	async handleSyncLicensePlateSnapshot() {
+		if (1 === 1) return
+
 		try {
 			await this.dataSource.query(/* SQL */ `
 				UPDATE a
