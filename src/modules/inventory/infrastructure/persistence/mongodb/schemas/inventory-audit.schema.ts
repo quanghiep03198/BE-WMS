@@ -47,6 +47,13 @@ export const MoInventoryAuditSchema = SchemaFactory.createForClass(MoInventoryAu
 
 MoInventoryAuditSchema.index({ mo_no: 1, year_month: 1 }, { unique: true })
 
+MoInventoryAuditSchema.virtual('epcs', {
+	ref: 'FinishedGoodsEpc',
+	localField: 'mo_no',
+	foreignField: 'mo_no',
+	applyToArray: true
+})
+
 MoInventoryAuditSchema.virtual('mo_attrs', {
 	ref: 'ManufacturingOrder',
 	localField: 'mo_no',
@@ -65,6 +72,7 @@ MoInventoryAuditSchema.set('toJSON', { virtuals: true })
 MoInventoryAuditSchema.set('toObject', { virtuals: true })
 
 export type MoInventoryAuditDocument = HydratedDocument<MoInventoryAudit> & {
+	storage_locations: Array<any>
 	mo_attrs: {
 		mo_no: string
 		order_qty: number

@@ -1,13 +1,10 @@
 import { ExcelColorPalette } from '@common/constants/excel-color-palette'
 import { applyCommonStyles, type AutoFitColumnOptions, autoFitColumns } from '@common/helpers'
 import { DATA_WAREHOUSE_CONNECTION } from '@databases/constants'
-import { IPendingInventoryFluctuation } from '@modules/finished-goods/application/ports/inventory-ledger-mongo.repository.port'
-import {
-	ManufacturingOrder,
-	ManufacturingOrderModel
-} from '@modules/finished-goods/infrastructure/persistence/mongodb/schemas/manufacturing-order.schema'
+import { IPendingInventoryFluctuation } from '@modules/finished-goods/application/ports/inventory-ledger.repository.port'
 import { IInventoryAuditRepository } from '@modules/inventory/application/ports/inventory-audit.repository.port'
 import { InventoryClosureStatus } from '@modules/inventory/domain/constants'
+import { ManufacturingOrder, ManufacturingOrderModel } from '@modules/order/schemas/manufacturing-order.schema'
 import { InjectTransactionHost, Transactional, TransactionHost } from '@nestjs-cls/transactional'
 import { TransactionalAdapterMongoose } from '@nestjs-cls/transactional-adapter-mongoose'
 import { Injectable } from '@nestjs/common'
@@ -16,7 +13,6 @@ import { addMonths, format } from 'date-fns'
 import { Workbook } from 'exceljs'
 import { AnyBulkWriteOperation } from 'mongoose'
 import { I18nContext, I18nService } from 'nestjs-i18n'
-import { InjectPinoLogger } from 'nestjs-pino'
 import { IInventoryReportResponse } from '../../../../application/interfaces'
 import { InventoryAuditCheckoutPipelineBuilder } from '../builders/inventory-audit-checkout-pipeline.builder'
 import { MoInventoryAudit, MoInventoryAuditDocument, MoInventoryAuditModel } from '../schemas/inventory-audit.schema'
@@ -24,7 +20,6 @@ import { MoInventoryAudit, MoInventoryAuditDocument, MoInventoryAuditModel } fro
 @Injectable()
 export class InventoryAuditRepository implements IInventoryAuditRepository {
 	constructor(
-		@InjectPinoLogger(InventoryAuditRepository.name) private readonly logger,
 		@InjectTransactionHost(DATA_WAREHOUSE_CONNECTION)
 		private readonly txHost: TransactionHost<TransactionalAdapterMongoose>,
 		@InjectModel(MoInventoryAudit.name, DATA_WAREHOUSE_CONNECTION)
@@ -47,6 +42,10 @@ export class InventoryAuditRepository implements IInventoryAuditRepository {
 			.populate({
 				path: 'mo_attrs',
 				select: 'brand_name factory_code_produce factory_shoes_style cust_shoes_style color_sn order_qty'
+			})
+			.populate({
+				path: 'epcs',
+				select: 'storage_location.name'
 			})
 			.exec()
 
@@ -135,6 +134,10 @@ export class InventoryAuditRepository implements IInventoryAuditRepository {
 					...acc,
 					[`size_ledger.${size}.order_qty`]: fluctuation.order_qty ?? 0,
 					[`size_ledger.${size}.beginning_inventory_qty`]: 0,
+					...(!Object.hasOwn(curr.size_ledger, size) && {
+						[`size_ledger.${size}.stocked_in_qty`]: 0,
+						[`size_ledger.${size}.shipped_out_qty`]: 0
+					}),
 					[`size_ledger.${size}.supplemental_stocked_in_qty`]: 0,
 					[`size_ledger.${size}.supplemental_shipped_out_qty`]: 0
 				}
@@ -182,7 +185,7 @@ export class InventoryAuditRepository implements IInventoryAuditRepository {
 				session: this.txHost.tx,
 				writeConcern: { w: 'majority' },
 				ordered: true,
-				retryWrites: true,
+
 				timestamps: true
 			})
 	}

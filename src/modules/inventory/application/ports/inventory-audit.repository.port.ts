@@ -1,4 +1,4 @@
-import { IPendingInventoryFluctuation } from '@modules/finished-goods/application/ports/inventory-ledger-mongo.repository.port'
+import { IPendingInventoryFluctuation } from '@modules/finished-goods/application/ports/inventory-ledger.repository.port'
 import { IInventoryReportResponse } from '@modules/inventory/application/interfaces'
 import { InventoryClosureStatus } from '@modules/inventory/domain/constants'
 

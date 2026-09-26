@@ -1,4 +1,3 @@
-import { Tenant } from '@modules/tenancy/constants'
 import { z } from 'zod'
 
 export const updateInventoryReportQuery = z.strictObject({
@@ -22,7 +21,7 @@ export const productInventoryReportQuery = z.object({
 })
 
 export const syncInventoryAuditValidator = z.object({
-	tenantId: z.nativeEnum(Tenant)
+	tenantId: z.any()
 })
 
 export type SyncInventoryAuditDTO = z.infer<typeof syncInventoryAuditValidator>

@@ -2,6 +2,7 @@ import { CommonRequestHeader } from '@common/constants'
 import { HttpMethod, RequireAuthorized, ResponseMessage, RouteHandler } from '@common/decorators'
 import { HttpExceptionFilter } from '@common/filters'
 import { ZodValidationPipe } from '@common/pipes'
+import { UserRole } from '@modules/user/domain/constants'
 import {
 	Body,
 	Controller,
@@ -20,7 +21,6 @@ import {
 } from '@nestjs/common'
 import { format } from 'date-fns'
 import { FastifyReply } from 'fastify'
-import { UserRole } from '../../../user/constants'
 // import { SYNC_INVENTORY_AUDIT_QUEUE } from '../../domain/constants'
 import { CheckoutInventoryAuditCommand } from '@modules/inventory/application/commands/checkout-inventory-audit/checkout-inventory-audit.command'
 import { UpdateInventorySupplementalQtyCommand } from '@modules/inventory/application/commands/update-inventory-supplemental-qty/update-inventory-supplemental-qty.command'
@@ -106,7 +106,7 @@ export class InventoryController {
 	async getProductInventory(
 		@Query(new ZodValidationPipe(productInventoryReportQuery)) filterQueries: ProductInventoryReportQueryDTO
 	) {
-		return await this.productionInventoryService.getProductInventory(filterQueries)
+		return await this.productionInventoryService.getLegacyProductInventory(filterQueries)
 	}
 
 	@Get('summary/export')

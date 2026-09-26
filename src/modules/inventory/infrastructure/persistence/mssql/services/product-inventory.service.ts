@@ -1,8 +1,8 @@
 import { ExcelColorPalette } from '@common/constants/excel-color-palette'
+import { FactoryAgencyCode } from '@common/constants/factory'
 import { type AutoFitColumnOptions, autoFitColumns } from '@common/helpers'
 import { SuperJson } from '@common/utils'
 import { DATA_SOURCE_DATA_LAKE } from '@databases/constants'
-import { FactoryAgencyCode } from '@modules/department/constants'
 import { Injectable } from '@nestjs/common'
 import { InjectDataSource } from '@nestjs/typeorm'
 import { format } from 'date-fns'
@@ -29,7 +29,7 @@ export class ProductionInventoryService {
 		private readonly i18nService: I18nService
 	) {}
 
-	public async getProductInventory(queries: ProductInventoryReportQueryDTO): Promise<{
+	public async getLegacyProductInventory(queries: ProductInventoryReportQueryDTO): Promise<{
 		sizes: SizeInventoryEntity[]
 		inbound: InboundInventoryEntity[]
 		outbound: OutboundEstimationEntity[]
