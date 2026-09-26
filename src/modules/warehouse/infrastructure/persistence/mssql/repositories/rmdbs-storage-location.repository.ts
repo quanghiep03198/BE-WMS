@@ -23,8 +23,6 @@ export class RmdbsStorageLocationRepository extends BaseTypeOrmRepository<Storag
 			relations: { warehouse: true }
 		})
 
-		this.logger.debug(storageLocation)
-
 		if (!storageLocation?.warehouse) return
 
 		return await this.storageLocationRepository.update(

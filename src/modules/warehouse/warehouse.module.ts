@@ -1,3 +1,4 @@
+import { env } from '@common/utils'
 import { DATA_SOURCE_DATA_LAKE, DATA_WAREHOUSE_CONNECTION } from '@databases/constants'
 import { UserModule } from '@modules/user/user.module'
 import { Module, OnModuleInit } from '@nestjs/common'
@@ -48,8 +49,8 @@ import { WarehouseController } from './presentation/controllers/warehouse.contro
 		{ provide: STORAGE_LOCATION_REPOSITORY, useClass: StorageLocationRepository },
 		RmdbsWarehouseRepository,
 		RmdbsStorageLocationRepository,
-		WarehouseCdcHandler,
-		StorageLocationCdcHandler
+		...(env('DB_HOST') !== '10.30.0.18' ? [] : [WarehouseCdcHandler, StorageLocationCdcHandler])
+
 		// StorageLocationSubscriber
 	]
 })
