@@ -7,32 +7,22 @@ import {
 	FinishedGoodsEpc,
 	FinishedGoodsEpcModel
 } from '@modules/finished-goods/infrastructure/persistence/mongodb/schemas/finished-goods-epc.schema'
-import {
-	ManufacturingOrder,
-	ManufacturingOrderModel
-} from '@modules/finished-goods/infrastructure/persistence/mongodb/schemas/manufacturing-order.schema'
+import { ManufacturingOrder, ManufacturingOrderModel } from '@modules/order/schemas/manufacturing-order.schema'
 import { Injectable } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
 import { InjectDataSource } from '@nestjs/typeorm'
 import { format } from 'date-fns'
 import { Workbook } from 'exceljs'
 import { I18nContext, I18nService } from 'nestjs-i18n'
-import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
 import { DataSource } from 'typeorm'
 import { DailyMoInventoryLedger } from '../../finished-goods/infrastructure/persistence/mongodb/schemas/daily-mo-inventory-ledger.schema'
 import { IInboundHistory, IInboundReportResponse } from '../interfaces'
-import shapingDepartmentProductivityQuery from '../sql/assembly-productivity.sql'
 import inboundHistoryQuery from '../sql/inbound-history.sql'
 
 @Injectable()
 export class InboundReportService {
-	// private readonly inboundReportQuery: string = inboundReportQuery
-	private readonly shapingDepartmentProductivityQuery: string = shapingDepartmentProductivityQuery
-	private readonly inboundHistoryQuery: string = inboundHistoryQuery
-
 	constructor(
 		@InjectDataSource(DATA_SOURCE_DATA_LAKE) private readonly dataSource: DataSource,
-		@InjectPinoLogger(InboundReportService.name) private readonly logger: PinoLogger,
 		@InjectModel(DailyMoInventoryLedger.name, DATA_WAREHOUSE_CONNECTION)
 		private readonly dailyMoInventoryLedgerModel: DailyMoInventoryLedgerModel,
 		@InjectModel(ManufacturingOrder.name, DATA_WAREHOUSE_CONNECTION)
@@ -227,7 +217,7 @@ export class InboundReportService {
 
 	public async getLegacyInboundHistory(commandNumber: string) {
 		return await this.dataSource
-			.query<IInboundHistory[]>(this.inboundHistoryQuery, [commandNumber])
+			.query<IInboundHistory[]>(inboundHistoryQuery, [commandNumber])
 			.then((result) => result.at(0))
 			.then((result) => {
 				if (!result) return null
@@ -273,6 +263,10 @@ export class InboundReportService {
 					...normalizedDoc,
 					accumulated_inbound_qty: accumulatedInboundQty,
 					missing_qty: missingQty,
+					daily_inbound_history: normalizedDoc.daily_inbound_history.filter(
+						(item) =>
+							!Object.values(item.size_ledger).every((ledger) => Object.values(ledger).every((v) => v === 0))
+					),
 					progress: ((accumulatedInboundQty / normalizedDoc.order_qty) * 100).toFixed(2) + '%'
 				}
 			})

@@ -1,6 +1,7 @@
 import { CommonRequestHeader } from '@common/constants'
 import { HttpMethod, RequireAuthorized, RouteHandler } from '@common/decorators'
 import { HttpExceptionFilter } from '@common/filters'
+import { UserRole } from '@modules/user/domain/constants'
 import {
 	BadRequestException,
 	Controller,
@@ -14,7 +15,6 @@ import {
 } from '@nestjs/common'
 import { format } from 'date-fns'
 import { FastifyReply } from 'fastify'
-import { UserRole } from '../user/constants'
 import { InboundReportService } from './services/inbound-report.service'
 import { OutboundReportService } from './services/outbound-report.service'
 import { PackingWeightReportService } from './services/packing-weight-report.service'

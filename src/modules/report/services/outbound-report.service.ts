@@ -5,10 +5,7 @@ import {
 	DailyPoShippingProgress,
 	DailyPoShippingProgressModel
 } from '@modules/finished-goods/infrastructure/persistence/mongodb/schemas/daily-po-shipping-progress.schema'
-import {
-	PurchaseOrder,
-	PurchaseOrderModel
-} from '@modules/finished-goods/infrastructure/persistence/mongodb/schemas/purchase-order.schema'
+import { PurchaseOrder, PurchaseOrderModel } from '@modules/order/schemas/purchase-order.schema'
 import { Injectable } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
 import { InjectDataSource } from '@nestjs/typeorm'
@@ -35,84 +32,99 @@ export class OutboundReportService {
 		const data = await this.dailyPoShippingProgressModel
 			.find({ date })
 			.lean({ virtuals: true, autopopulate: true })
-			.populate('po_attrs', 'order_qty factory_shoes_style cust_shoes_style color_sn shipping_progress')
+			.populate({
+				path: 'po_attrs',
+				select: 'order_qty factory_shoes_style cust_shoes_style color_sn shipping_progress'
+			})
 			.exec()
 
-		return data.map((item) => {
-			const accumulated_qty: number = Object.values(item.po_attrs.shipping_progress).reduce(
-				(acc, curr) => acc + curr.shipped_out_qty,
-				0
-			)
+		return data
+			.map((item) => {
+				const accumulated_qty: number =
+					typeof item.po_attrs?.shipping_progress === 'object'
+						? Object.values(item.po_attrs.shipping_progress).reduce((acc, curr) => acc + curr.shipped_out_qty, 0)
+						: 0
 
-			const detail = Object.entries(item.shipping_progress).map(([mo_no, sizes]) => ({
-				mo_no,
-				sizes: Object.entries(sizes).map(([size_numcode, qty]) => ({
-					size_numcode,
-					qty
+				const detail = Object.entries(item.shipping_progress).map(([mo_no, sizes]) => ({
+					mo_no,
+					sizes: Object.entries(sizes).map(([size_numcode, qty]) => ({ size_numcode, qty }))
 				}))
-			}))
 
-			return {
-				po: item.po,
-				factory_shoes_style: item.po_attrs.factory_shoes_style,
-				cust_shoes_style: item.po_attrs.cust_shoes_style,
-				color_sn: item.po_attrs.color_sn,
-				order_qty: item.po_attrs.order_qty,
-				accumulated_qty: accumulated_qty,
-				missing_qty: item.po_attrs.order_qty - accumulated_qty,
-				daily_outbound_qty: detail.reduce(
-					(acc, curr) => acc + curr.sizes.reduce((_acc, _curr) => _acc + _curr.qty, 0),
-					0
-				),
-				detail: detail,
-				overall: Object.entries(item.po_attrs.shipping_progress).map(
-					([size_numcode, { order_qty, shipped_out_qty }]) => {
-						return {
-							size_numcode,
-							order_qty,
-							daily_qty: detail.reduce((acc, curr) => {
-								return acc + (curr.sizes.find((sz) => sz.size_numcode === size_numcode)?.qty ?? 0)
-							}, 0),
-							missing_qty: order_qty - shipped_out_qty
-						}
-					}
-				)
-			}
-		})
+				const overall =
+					typeof item.po_attrs?.shipping_progress === 'object'
+						? Object.entries(item.po_attrs.shipping_progress).map(
+								([size_numcode, { order_qty, shipped_out_qty }]) => {
+									return {
+										size_numcode,
+										order_qty,
+										daily_qty: detail.reduce((acc, curr) => {
+											return acc + (curr.sizes.find((sz) => sz.size_numcode === size_numcode)?.qty ?? 0)
+										}, 0),
+										missing_qty: order_qty - shipped_out_qty
+									}
+								}
+							)
+						: []
+
+				return {
+					po: item.po,
+					factory_shoes_style: item.po_attrs?.factory_shoes_style,
+					cust_shoes_style: item.po_attrs?.cust_shoes_style,
+					color_sn: item.po_attrs?.color_sn,
+					order_qty: item.po_attrs?.order_qty,
+					accumulated_qty: accumulated_qty,
+					missing_qty:
+						typeof item.po_attrs?.order_qty === 'number' ? item.po_attrs?.order_qty - accumulated_qty : 0,
+					daily_outbound_qty: detail.reduce(
+						(acc, curr) => acc + curr.sizes.reduce((_acc, _curr) => _acc + _curr.qty, 0),
+						0
+					),
+					detail,
+					overall
+				}
+			})
+			.filter(
+				(item) =>
+					item.detail.reduce((acc, curr) => acc + curr.sizes.reduce((_acc, _curr) => _acc + _curr.qty, 0), 0) > 0
+			)
 	}
-	public async getOutboundHistory(po: string): Promise<any> {
+	public async getOutboundHistory(po: string) {
 		const data = await this.purchaseOrderModel
 			.findOne({ po })
-			.populate('outbound_history', 'date shipping_progress')
+			.populate({ path: 'outbound_history', select: 'date shipping_progress' })
 			.exec()
 
 		if (!data) return null
 
-		const totalShippedOutQty = Object.values(data?.shipping_progress).reduce(
+		const totalShippedOutQty = Object.values(data?.shipping_progress ?? []).reduce(
 			(acc, curr) => acc + curr.shipped_out_qty,
 			0
 		)
 
-		const result = {
+		return {
 			...data.toObject(),
 			total_shipped_out_qty: totalShippedOutQty,
 			missing_qty: data.order_qty - totalShippedOutQty,
-			outbound_history: Object.entries(groupBy(data.outbound_history, (item) => item.date)).map(([date, items]) => {
-				return {
-					date,
-					data: items.flatMap((i) =>
-						Object.entries(i.shipping_progress).map(([mo_no, sizes]) => ({
-							mo_no,
-							shipping_details: Object.entries(sizes)
-								.sort(([size1], [size2]) => Number.parseFloat(size1) - Number.parseFloat(size2))
-								.map(([size_numcode, shipped_out_qty]) => ({
-									size_numcode,
-									shipped_out_qty
-								}))
-						}))
-					)
-				}
-			}),
+			outbound_history: Object.entries(groupBy(data.outbound_history, (item) => item.date))
+				.map(([date, items]) => {
+					return {
+						date,
+						data: items.flatMap((i) =>
+							Object.entries(i.shipping_progress).map(([mo_no, sizes]) => ({
+								mo_no,
+								shipping_details: Object.entries(sizes)
+									.sort(([size1], [size2]) => Number.parseFloat(size1) - Number.parseFloat(size2))
+									.map(([size_numcode, shipped_out_qty]) => ({
+										size_numcode,
+										shipped_out_qty
+									}))
+							}))
+						)
+					}
+				})
+				.filter((item) =>
+					item.data.every((detail) => detail.shipping_details.every((sd) => sd.shipped_out_qty > 0))
+				),
 			overall: Object.entries(data.shipping_progress)
 				.sort(([size1], [size2]) => Number.parseFloat(size1) - Number.parseFloat(size2))
 				.map(([size_numcode, { order_qty, shipped_out_qty }]) => ({
@@ -123,8 +135,6 @@ export class OutboundReportService {
 				})),
 			progress: ((totalShippedOutQty / data.order_qty) * 100).toFixed(2) + '%'
 		}
-
-		return result
 	}
 
 	// #region Outbound report Excel
