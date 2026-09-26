@@ -1,7 +1,8 @@
 import { RequestUser } from '@common/decorators'
 import { ZodValidationPipe } from '@common/pipes'
-import { DATA_SOURCE_SYSCLOUD } from '@databases/constants'
-import { CACHE_MANAGER } from '@nestjs/cache-manager'
+import { DATA_WAREHOUSE_CONNECTION } from '@databases/constants'
+import { IUserRepository, USER_REPOSITORY } from '@modules/user/application/ports/user.repository.port'
+import { Cache, CACHE_MANAGER } from '@nestjs/cache-manager'
 import {
 	BadRequestException,
 	ForbiddenException,
@@ -11,16 +12,13 @@ import {
 	UsePipes
 } from '@nestjs/common'
 import { JwtService } from '@nestjs/jwt'
-import { InjectDataSource, InjectRepository } from '@nestjs/typeorm'
-import { Cache } from 'cache-manager'
-import { pick } from 'lodash'
+import { InjectModel } from '@nestjs/mongoose'
+import { addDays } from 'date-fns'
 import { I18nContext, I18nService } from 'nestjs-i18n'
+import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
 import { createHash, randomBytes } from 'node:crypto'
-import { DataSource, IsNull, Repository } from 'typeorm'
-import { UserRole } from '../user/constants'
-import { UserService } from '../user/services/user.service'
 import { LoginDTO, loginValidator } from './dto/auth.dto'
-import { RefreshTokenEntity } from './entities/refresh-token.entity'
+import { RefreshToken, RefreshTokenModel } from './schemas/refresh-token.schema'
 
 @Injectable()
 export class AuthService {
@@ -28,52 +26,47 @@ export class AuthService {
 
 	constructor(
 		private readonly jwtService: JwtService,
-		private readonly userService: UserService,
+		@Inject(USER_REPOSITORY)
+		private readonly userRepository: IUserRepository,
 		private readonly i18nService: I18nService,
 		@Inject(CACHE_MANAGER)
 		private readonly cacheManager: Cache,
-		@InjectDataSource(DATA_SOURCE_SYSCLOUD)
-		private readonly dataSource: DataSource,
-		@InjectRepository(RefreshTokenEntity, DATA_SOURCE_SYSCLOUD)
-		private readonly refreshTokenRepository: Repository<RefreshTokenEntity>
+		@InjectPinoLogger(AuthService.name)
+		private readonly logger: PinoLogger,
+		@InjectModel(RefreshToken.name, DATA_WAREHOUSE_CONNECTION) private readonly refreshTokenModel: RefreshTokenModel
 	) {}
 
 	@UsePipes(new ZodValidationPipe(loginValidator))
 	async validateUser(payload: LoginDTO) {
-		const user = await this.userService.findOrCreate(payload.username)
+		const user = await this.userRepository.findOrCreate(payload)
+
 		if (!user)
 			throw new NotFoundException(this.i18nService.t('auth.user_not_found', { lang: I18nContext.current()?.lang }))
 		if (!user.authenticate(payload.password))
 			throw new BadRequestException(
 				this.i18nService.t('auth.incorrect_password', { lang: I18nContext.current()?.lang })
 			)
-		return { ...user, is_admin: user.roles.includes(UserRole.ADMIN) }
+		return user
 	}
 
 	async login(payload: RequestUser) {
-		const queryRunner = this.dataSource.createQueryRunner()
-		await queryRunner.connect()
-		await queryRunner.startTransaction()
-		try {
-			const username = payload.username
-			const user = await this.userService.getProfile(username)
-			const tokenPayload = pick(user, ['id', 'username', 'employee_code', 'display_name', 'roles', 'is_system_user'])
+		const username = payload.username
+		const user = await this.userRepository.findOne({ username })
 
-			const [accessToken, refreshToken] = await Promise.all([
-				this.jwtService.signAsync(tokenPayload),
-				this.signRefreshToken(username)
-			])
+		const [accessToken, refreshToken] = await Promise.all([
+			this.jwtService.signAsync({
+				_id: user._id,
+				username: user.username,
+				display_name: user.display_name,
+				roles: user.roles,
+				is_system_user: user.is_system_user
+			}),
+			this.signRefreshToken(username)
+		])
 
-			await this.cacheManager.set(`token:${username}`, accessToken, this.TOKEN_CACHE_TTL)
-			await queryRunner.commitTransaction()
+		await this.cacheManager.set(`token:${username}`, accessToken, this.TOKEN_CACHE_TTL)
 
-			return { user, accessToken, refreshToken }
-		} catch (error) {
-			if (queryRunner.isTransactionActive) await queryRunner.rollbackTransaction()
-			throw error
-		} finally {
-			if (queryRunner.isReleased === false) await queryRunner.release()
-		}
+		return { accessToken, refreshToken }
 	}
 
 	/**
@@ -87,17 +80,23 @@ export class AuthService {
 		if (!isValidRefreshToken) throw new ForbiddenException('Invalid refresh token')
 
 		// * Generate new access token
-		const user = await this.userService.findOrCreate(username)
+		const user = await this.userRepository.findOne({ username })
 		if (!user) throw new NotFoundException('User could not be found')
 
-		const userPayload = pick(user, ['id', 'username', 'employee_code', 'display_name', 'roles', 'is_system_user'])
-		const newAccessToken = await this.jwtService.signAsync(userPayload)
+		const newAccessToken = await this.jwtService.signAsync({
+			_id: user._id,
+			username: user.username,
+			display_name: user.display_name,
+			roles: user.roles,
+			is_system_user: user.is_system_user
+		})
 
 		// * Rotate refresh token
-		await this.refreshTokenRepository.update(
-			{ username, token_hash: this.createHash(refreshToken), revoked_at: IsNull() },
+		await this.refreshTokenModel.updateOne(
+			{ username, token_hash: this.createHash(refreshToken), revoked_at: null },
 			{ revoked_at: new Date() }
 		)
+
 		const newRefreshToken = await this.signRefreshToken(username)
 
 		// * Cache new access token
@@ -107,30 +106,31 @@ export class AuthService {
 
 	async logout(username: string) {
 		// * Revoke cached token
-		await Promise.all([
-			this.cacheManager.del(`token:${username}`),
-			this.refreshTokenRepository.update({ username, revoked_at: IsNull() }, { revoked_at: new Date() })
-		])
+		await this.cacheManager.del(`token:${username}`)
+
+		await this.refreshTokenModel.updateOne({ username, revoked_at: null }, { revoked_at: new Date() })
+
 		return null
 	}
 
 	async signRefreshToken(username: string): Promise<string> {
 		const opaqueToken = randomBytes(32).toString('base64url')
-		const refreshTokenRepository = this.dataSource.getRepository(RefreshTokenEntity)
-		const newRefreshToken = refreshTokenRepository.create({
+
+		const newRefreshToken = await this.refreshTokenModel.create({
 			username,
 			token_hash: this.createHash(opaqueToken),
-			expires_at: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000) // 30 days
+			expires_at: addDays(new Date(), 30)
 		})
-		await refreshTokenRepository.save(newRefreshToken)
+
+		await newRefreshToken.save()
+
 		return opaqueToken
 	}
 
 	async verifyRefreshToken(username: string, refreshToken: string): Promise<boolean> {
-		const tokenHash = this.createHash(refreshToken)
-		const storedToken = await this.refreshTokenRepository.findOne({
-			where: { username, token_hash: tokenHash, revoked_at: null }
-		})
+		const hashedToken = this.createHash(refreshToken)
+
+		const storedToken = await this.refreshTokenModel.findOne({ username, token_hash: hashedToken, revoked_at: null })
 		if (!storedToken) return false
 		if (storedToken.expires_at < new Date()) return false
 		return true

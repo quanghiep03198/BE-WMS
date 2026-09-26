@@ -1,9 +1,8 @@
 import { IS_PUBLIC_KEY } from '@common/decorators'
-import { CACHE_MANAGER } from '@nestjs/cache-manager'
+import { Cache, CACHE_MANAGER } from '@nestjs/cache-manager'
 import { CanActivate, ExecutionContext, Inject, Injectable, UnauthorizedException } from '@nestjs/common'
 import { Reflector } from '@nestjs/core'
 import { JwtService } from '@nestjs/jwt'
-import { Cache } from 'cache-manager'
 import { FastifyRequest } from 'fastify'
 
 @Injectable()

@@ -3,6 +3,7 @@ import { Cookies, HttpMethod, RequestUser, RequireAuthenticated, RouteHandler, U
 import { CookieSerializeOptions } from '@fastify/cookie'
 import { Controller, Headers, Res, UseGuards } from '@nestjs/common'
 import { FastifyReply } from 'fastify'
+import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
 import { AuthService } from './auth.service'
 import {
 	ACCESS_TOKEN_COOKIE_EXPIRATION,
@@ -21,7 +22,11 @@ export class AuthController {
 		secure: 'auto'
 	}
 
-	constructor(private readonly authService: AuthService) {}
+	constructor(
+		@InjectPinoLogger(AuthController.name)
+		private readonly logger: PinoLogger,
+		private readonly authService: AuthService
+	) {}
 
 	@RouteHandler({
 		endpoint: 'login',
@@ -73,9 +78,9 @@ export class AuthController {
 		method: HttpMethod.POST
 	})
 	@RequireAuthenticated()
-	async logout(@User('username') username: string, @Res({ passthrough: true }) res: FastifyReply) {
+	async logout(@User('_id') id: string, @Res({ passthrough: true }) res: FastifyReply) {
 		res.clearCookie(ACCESS_TOKEN_COOKIE_NAME, this.defaultCookieOptions)
 		res.clearCookie(REFRESH_TOKEN_COOKIE_NAME, this.defaultCookieOptions)
-		return await this.authService.logout(username)
+		return await this.authService.logout(id)
 	}
 }

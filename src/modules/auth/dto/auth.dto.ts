@@ -1,8 +1,8 @@
-import { z } from 'zod'
+import z from 'zod'
 
 export const loginValidator = z.object({
-	username: z.string().min(1, { message: 'Username is required' }),
-	password: z.string().min(1, { message: 'Password is required' })
+	username: z.string().trim().nonempty({ message: 'Username is required' }),
+	password: z.string().trim().nonempty({ message: 'Password is required' })
 })
 export const updateProfileValidator = z.object({
 	display_name: z.string().optional()
