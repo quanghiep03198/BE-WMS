@@ -1,3 +1,3 @@
-import { RFIDListener } from './rfid.listener'
+import { ScannedInboundEpcsListener } from './rfid.listener'
 
-export const FinishedGoodsListeners = [RFIDListener]
+export const FinishedGoodsListeners = [ScannedInboundEpcsListener]

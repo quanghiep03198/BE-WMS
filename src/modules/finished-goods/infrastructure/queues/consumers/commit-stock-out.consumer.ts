@@ -2,7 +2,7 @@ import {
 	FINISHED_GOODS_RMDBS_REPOSITORY,
 	IFinishedGoodsRmdbsRepository
 } from '@modules/finished-goods/application/ports/finished-goods.rmdbs.repository.port'
-import { InventoryStorageType } from '@modules/finished-goods/domain/constants'
+import { StockTransactionPurpose } from '@modules/finished-goods/domain/constants'
 import { Processor, WorkerHost } from '@nestjs/bullmq'
 import { Inject } from '@nestjs/common'
 import { Job } from 'bullmq'
@@ -28,7 +28,7 @@ export class CommitStockOutConsumer extends WorkerHost {
 					size_numcode: string
 					factory_code: string
 					status: string
-					inventory_ledger_type: InventoryStorageType
+					purpose: StockTransactionPurpose
 					station_no: StationNO
 				}>
 			>,

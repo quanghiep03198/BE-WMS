@@ -30,7 +30,7 @@ export class UpsertEpcsMatchHandler implements ICommandHandler<UpsertEpcsMatchCo
 			sizeNumber,
 			quantity
 		})
-		const targetExchangeMo = await this.orderRepository.getRawManufacturingOrder(targetMo, subMo)
+		const targetExchangeMo = await this.orderRepository.getOneRawManufacturingOrder(targetMo, subMo)
 		const upsertEpcInfoTransaction = new UpsertEpcsMatchTransaction(pendingExchangeEpcs, targetExchangeMo, sizeNumber)
 		const tx = upsertEpcInfoTransaction.startTransaction()
 

@@ -1,4 +1,4 @@
-import { InventoryActions, InventoryStorageType } from '@modules/finished-goods/domain/constants'
+import { StockAction, StockTransactionPurpose } from '@modules/finished-goods/domain/constants'
 import { Command } from '@nestjs/cqrs'
 
 export class RecallFromStockCommand extends Command<void> {
@@ -6,8 +6,8 @@ export class RecallFromStockCommand extends Command<void> {
 		public readonly command: {
 			mo_no: string
 			inbound_device_sn: string
-			rfid_status: InventoryActions
-			rfid_use: InventoryStorageType
+			action: StockAction
+			purpose: StockTransactionPurpose
 			quantity: number
 			factory_code_produce: string
 			username: string

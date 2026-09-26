@@ -72,22 +72,27 @@ DailyPoShippingProgressSchema.virtual('po_attrs', {
 DailyPoShippingProgressSchema.set('toObject', { virtuals: true })
 DailyPoShippingProgressSchema.set('toJSON', { virtuals: true })
 
-export type DailyPoShippingProgressDocument = HydratedDocument<DailyPoShippingProgress> & {
-	po_attrs: {
-		factory_shoes_style: string
-		cust_shoes_style: string
-		color_sn: string
-		order_qty: number
-		shipping_type: string
-		shipping_destination: string
-		shipping_progress: Record<
-			string,
-			{
-				order_qty: number
-				shipped_out_qty: number
-			}
-		>
+export type DailyPoShippingProgressDocument = HydratedDocument<
+	DailyPoShippingProgress,
+	{
+		created_at: Date
+		updated_at?: Date
+		po_attrs: {
+			factory_shoes_style: string
+			cust_shoes_style: string
+			color_sn: string
+			order_qty: number
+			shipping_type: string
+			shipping_destination: string
+			shipping_progress: Record<
+				string,
+				{
+					order_qty: number
+					shipped_out_qty: number
+				}
+			>
+		}
 	}
-}
+>
 
 export type DailyPoShippingProgressModel = Model<DailyPoShippingProgressDocument>

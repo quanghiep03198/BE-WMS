@@ -7,8 +7,8 @@ import { RollbackStockCommandFactory } from '@modules/finished-goods/application
 import { StockOutCommand } from '@modules/finished-goods/application/commands/stock-out/stock-out.command'
 import { GetCurrentTxQueryFactory } from '@modules/finished-goods/application/queries/get-current-tx/get-current-tx.factory'
 import { StockFlow } from '@modules/finished-goods/domain/types'
-import { StockBalancesDTO, stockBalancesValidator } from '@modules/finished-goods/presentation/dto/rfid-inbound.dto'
-import { UserRole } from '@modules/user/constants'
+import { StockBalancesDTO, stockBalancesValidator } from '@modules/finished-goods/presentation/dto/inbound.dto'
+import { UserRole } from '@modules/user/domain/constants'
 import {
 	BadRequestException,
 	Body,
@@ -25,7 +25,7 @@ import { CommandBus, QueryBus } from '@nestjs/cqrs'
 import { omit } from 'lodash'
 import { I18n, I18nContext } from 'nestjs-i18n'
 import { StockInCommand } from '../../application/commands/stock-in/stock-in.command'
-import { UpsertStockOutDTO, upsertStockOutValidator } from '../dto/rfid-outbound.dto'
+import { UpsertStockOutDTO, upsertStockOutValidator } from '../dto/outbound.dto'
 import { StockExceptionFilter } from '../filters/stock-exception.filter'
 
 @Controller('finished-goods')
@@ -82,7 +82,7 @@ export class StockController {
 	) {
 		await this.commandBus.execute(
 			new RecallFromStockCommand({
-				...omit(payload, ['dept_code', 'dept_name', 'storage_num', 'storage_name']),
+				...omit(payload, ['assembly_line', 'warehouse', 'storage_location']),
 				factory_code_produce: factoryCode,
 				username: user.username,
 				display_name: user.display_name

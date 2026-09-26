@@ -7,12 +7,12 @@ import {
 	exchangeOrderValidator,
 	UpsertEpcInformationDTO,
 	upsertEpcInformationSchema
-} from '@modules/finished-goods/presentation/dto/rfid-inbound.dto'
+} from '@modules/finished-goods/presentation/dto/inbound.dto'
 import {
 	searchCustomerValidator,
 	SearchCustOrderParamsDTO
 } from '@modules/finished-goods/presentation/dto/rfid-shared.dto'
-import { UserRole } from '@modules/user/constants'
+import { UserRole } from '@modules/user/domain/constants'
 import { Body, Controller, Headers, HttpCode, HttpStatus, Patch, Put, Query, UseFilters } from '@nestjs/common'
 import { CommandBus, QueryBus } from '@nestjs/cqrs'
 import { I18n, I18nContext } from 'nestjs-i18n'

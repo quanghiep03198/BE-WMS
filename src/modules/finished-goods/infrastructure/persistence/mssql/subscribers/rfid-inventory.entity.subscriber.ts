@@ -1,7 +1,7 @@
 import { DATA_SOURCE_DATA_LAKE } from '@databases/constants'
 import { InjectDataSource } from '@nestjs/typeorm'
 import { DataSource, EntitySubscriberInterface, EventSubscriber, InsertEvent } from 'typeorm'
-import { InventoryActions } from '../../../../domain/constants'
+import { StockAction } from '../../../../domain/constants'
 import { BaseRFIDInventoryEntity } from '../entities/rfid-inventory.entity'
 @EventSubscriber()
 export class RFIDInventoryEntitySubscriber implements EntitySubscriberInterface<BaseRFIDInventoryEntity> {
@@ -15,7 +15,7 @@ export class RFIDInventoryEntitySubscriber implements EntitySubscriberInterface<
 
 	beforeInsert(event: InsertEvent<BaseRFIDInventoryEntity>) {
 		if (event.entity.rfid_status) {
-			event.entity.quantity = event.entity.rfid_status === InventoryActions.INBOUND ? 1 : -1
+			event.entity.quantity = event.entity.rfid_status === StockAction.INBOUND ? 1 : -1
 		}
 	}
 }

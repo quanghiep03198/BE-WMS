@@ -1,3 +1,4 @@
+import { env } from '@common/utils'
 import { EXCLUDED_EPC_PREFIX, FALLBACK_VALUE, INTERNAL_EPC_PREFIX } from '../constants'
 import { SizeNumber } from './size-number.vo'
 
@@ -88,7 +89,7 @@ export class ElectronicProductCode {
 		const value = this.attributes?.assembly_line ?? FALLBACK_VALUE
 		if (!value.includes('/')) return FALLBACK_VALUE
 		const [assemblyLineCode, assemblyLineName] = value.split('/')
-		// return { dept_code, dept_name }
+
 		const assemblyName: Readonly<Record<'original' | 'sanitized', string>> = {
 			original: assemblyLineName,
 			sanitized: assemblyLineName.replace(/[^A-Za-z0-9]/g, '')
@@ -104,14 +105,12 @@ export class ElectronicProductCode {
 	public getStorageLocation(prop: 'code' | 'name') {
 		const value = this.attributes?.storage_location ?? FALLBACK_VALUE
 		if (!value.includes('/')) return FALLBACK_VALUE
-		const [storageCode, storageName] = value.split('/')
-		// return { dept_code, dept_name }
-		const assemblyLine = {
-			code: storageCode,
-			name: storageName
+		const [warehouse, location] = value.split('/')
+		const storageLocation = {
+			code: env('APP_TENANCY') + warehouse + location,
+			name: location
 		}
-		return assemblyLine[prop]
-		// return this.attributes?.storage_location ?? FALLBACK_VALUE
+		return storageLocation[prop]
 	}
 
 	public getSize(options?: Partial<{ normalize: boolean }>) {

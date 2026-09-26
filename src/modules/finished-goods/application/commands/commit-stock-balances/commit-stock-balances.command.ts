@@ -4,7 +4,7 @@ import { Command } from '@nestjs/cqrs'
 
 export class CommitStockBalancesCommand extends Command<void> {
 	constructor(
-		public readonly pendingInboundEpcs: Array<ElectronicProductCode>,
+		public readonly pendingCommitEpcs: Array<ElectronicProductCode>,
 		public readonly stockFlow: StockFlow
 	) {
 		super()

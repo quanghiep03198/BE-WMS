@@ -49,7 +49,7 @@ export class MssqlFinishedGoodsRepository implements IFinishedGoodsRmdbsReposito
 				size_numcode: string
 				factory_code: string
 				status: string
-				inventory_ledger_type: string
+				purpose: string
 				station_no: StationNO
 			}>
 		>

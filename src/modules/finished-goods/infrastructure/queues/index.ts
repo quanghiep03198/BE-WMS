@@ -11,7 +11,7 @@ export const ROLLBACK_STOCK_TX_QUEUE = 'ROLLBACK_STOCK_TX_QUEUE'
 
 export const FINISHED_GOODS_JOB_OPTIONS: DefaultJobOptions = {
 	attempts: 10,
-	removeOnComplete: { count: 10 },
-	removeOnFail: { count: 100 },
+	removeOnComplete: { count: 100 },
+	removeOnFail: false,
 	backoff: { type: 'fixed', delay: 3000 }
 }

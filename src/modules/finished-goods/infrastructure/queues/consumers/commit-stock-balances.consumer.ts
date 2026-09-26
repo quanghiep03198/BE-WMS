@@ -25,7 +25,7 @@ export class CommitStockBalancesConsumer extends WorkerHost {
 					size_numcode: string
 					factory_code: string
 					status: string
-					inventory_ledger_type: string
+					purpose: string
 					dept_code: string
 					dept_name: string
 					storage: string

@@ -1,6 +1,6 @@
 // import { IIoMongoRepository as IIoMssqlRepository } from '@modules/finished-goods/application/ports/io-mongo.repository.port'
 import { BULLMQ_JOBS_GAUGE } from '@configs/bullmq.config'
-import { InventoryActions, InventoryStorageType } from '@modules/finished-goods/domain/constants'
+import { StockAction, StockTransactionPurpose } from '@modules/finished-goods/domain/constants'
 import { generateStation, StationNO } from '@modules/finished-goods/domain/utils'
 import { COMMIT_STOCK_OUT_QUEUE } from '@modules/finished-goods/infrastructure/queues'
 import { InjectQueue } from '@nestjs/bullmq'
@@ -26,7 +26,7 @@ export class CommitStockOutHandler implements ICommandHandler<CommitStockOutComm
 					size_numcode: string
 					factory_code: string
 					status: string
-					inventory_ledger_type: InventoryStorageType
+					purpose: StockTransactionPurpose
 					station_no: StationNO
 				}>
 			>
@@ -45,9 +45,9 @@ export class CommitStockOutHandler implements ICommandHandler<CommitStockOutComm
 							po: item.getPurchaseOrder(),
 							size_numcode: item.getSize(),
 							factory_code: item.getFactoryProduce(),
-							status: InventoryActions.OUTBOUND,
+							status: StockAction.OUTBOUND,
 							station_no: generateStation(item.getFactoryProduce(), 'WH103'),
-							inventory_ledger_type: InventoryStorageType.NORMAL_EXPORT
+							purpose: StockTransactionPurpose.NORMAL_EXPORT
 						}
 					})
 			})

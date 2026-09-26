@@ -24,15 +24,18 @@ import { HttpExceptionFilter } from '@common/filters'
 import { CreateEpcChangeStreamCommand } from '@modules/finished-goods/application/commands/create-epc-change-stream/create-epc-change-stream.command'
 import { GetInternalEpcsExistsQuery } from '@modules/finished-goods/application/queries/get-internal-epcs-exists/get-internal-epcs-exists.query'
 import { IEpcChangeStream } from '@modules/finished-goods/domain/interfaces/epc-change-stream.interface'
-import { UserRole } from '@modules/user/constants'
-import { CACHE_MANAGER } from '@nestjs/cache-manager'
+import {
+	UPDATE_LAST_USE_TIME_EVENT,
+	UpdateLastUseTimeEvent
+} from '@modules/rfid-device/domain/events/update-last-use-time.event'
+import { UserRole } from '@modules/user/domain/constants'
+import { Cache, CACHE_MANAGER } from '@nestjs/cache-manager'
 import { CommandBus, QueryBus } from '@nestjs/cqrs'
 import { EventEmitter2 } from '@nestjs/event-emitter'
 import { Throttle } from '@nestjs/throttler'
 import { PubSubService } from '@redis/pubsub.service'
 import { InjectMetric } from '@willsoto/nestjs-prometheus'
 import { Queue } from 'bullmq'
-import { Cache } from 'cache-manager'
 import { format } from 'date-fns'
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
 import { Gauge } from 'prom-client'
@@ -267,13 +270,10 @@ export class RFIDController {
 			this.jobsGauge.set({ queue: this.postInboundDataQueue.name, state }, value)
 		}
 
-		await Promise.all([
-			this.eventEmitter.emitAsync('rfid.reader.post_data', {
-				deviceSeriesNumber: payload.sn,
-				lastUsageTime: format(new Date(), 'yyyy-MM-dd HH:mm:ss.SSS')
-			}),
-			this.eventEmitter.emitAsync('rfid.inbound.check', payload)
-		])
+		this.eventEmitter.emitAsync('rfid.reader.post_data', {
+			deviceSeriesNumber: payload.sn,
+			lastUsageTime: format(new Date(), 'yyyy-MM-dd HH:mm:ss.SSS')
+		})
 
 		return job
 	}
@@ -287,10 +287,7 @@ export class RFIDController {
 		message: 'common.created'
 	})
 	async postOutboundData(@Body(new ZodValidationPipe(readerPostDataValidator)) payload: PostReaderDataDTO) {
-		await this.eventEmitter.emitAsync('rfid.reader.post_data', {
-			deviceSeriesNumber: payload.sn,
-			lastUsageTime: format(new Date(), 'yyyy-MM-dd HH:mm:ss.SSS')
-		})
+		await this.eventEmitter.emitAsync(UPDATE_LAST_USE_TIME_EVENT, new UpdateLastUseTimeEvent(payload.sn))
 
 		const job = await this.postOutboundDataQueue.add('BULK_WRITE_OUTBOUND_DATA', payload)
 		const jobCounts = await this.postOutboundDataQueue.getJobCounts(

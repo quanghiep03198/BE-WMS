@@ -1,3 +1,4 @@
+import { env } from '@common/utils'
 import { DATA_SOURCE_DATA_LAKE, DATA_WAREHOUSE_CONNECTION } from '@databases/constants'
 import { InventoryModule } from '@modules/inventory/inventory.module'
 import { OrderModule } from '@modules/order/order.module'
@@ -9,8 +10,6 @@ import { InjectRedisClient } from '@redis/decorators'
 import Redis from 'ioredis'
 import { PinoLogger } from 'nestjs-pino'
 import { PurchaseOrder } from '../order/schemas/purchase-order.schema'
-import { RFIDDeviceEntity } from '../rfid-device/entities/rfid-device.entity'
-import { TenancyModule } from '../tenancy/tenancy.module'
 import { ThirdPartyApiModule } from '../third-party-api/third-party-api.module'
 import { FinishedGoodsCommandHandlers } from './application/commands'
 import { FINISHED_GOODS_EPC_REPOSITORY } from './application/ports/finished-goods-epc.repository.port'
@@ -74,13 +73,11 @@ import { FinishedGoodsConsumers } from './infrastructure/queues/consumers'
 import { FinsishedGoodsQueueEvents } from './infrastructure/queues/events'
 import { FinishedGoodsControllers } from './presentation/controllers'
 import { FinishedGoodsGateway } from './presentation/gateways/finished-goods.gateway'
-import { FinishedGoodsListeners } from './presentation/listeners'
 
 @Module({
 	imports: [
 		forwardRef(() => InventoryModule),
 		forwardRef(() => OrderModule),
-		TenancyModule,
 		ThirdPartyApiModule,
 		BullModule.registerQueue({ name: BULK_WRITE_INBOUND_EPCS_QUEUE }),
 		BullModule.registerQueue({ name: BULK_WRITE_OUTBOUND_EPCS_QUEUE }),
@@ -106,7 +103,7 @@ import { FinishedGoodsListeners } from './presentation/listeners'
 			defaultJobOptions: FINISHED_GOODS_JOB_OPTIONS
 		}),
 		TypeOrmModule.forFeature(
-			[RFIDInventoryEntity, RFIDInventoryBackupEntity, RFIDMatchEntity, RFIDDeviceEntity],
+			[RFIDInventoryEntity, RFIDInventoryBackupEntity, RFIDMatchEntity],
 			DATA_SOURCE_DATA_LAKE
 		),
 		MongooseModule.forFeature(
@@ -139,14 +136,14 @@ import { FinishedGoodsListeners } from './presentation/listeners'
 	controllers: FinishedGoodsControllers,
 	providers: [
 		...FinishedGoodsConsumers,
-		...FinishedGoodsListeners,
+		// ...FinishedGoodsListeners,
 		...FinishedGoodsQueryHandlers,
 		...FinishedGoodsCommandHandlers,
 		...FinishedGoodsEventHandlers,
 		...FinishedGoodsSagas,
 		...FinishedGoodsEntitySubscribers,
 		...FinsishedGoodsQueueEvents,
-		...FinishedGoodsCdcHandlers,
+		...(env('DB_HOST') !== '10.30.0.18' ? [] : FinishedGoodsCdcHandlers),
 		FinishedGoodsGateway,
 		{
 			provide: FINISHED_GOODS_EPC_REPOSITORY,

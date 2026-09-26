@@ -9,8 +9,6 @@ export class RollbackStockCommandFactory {
 			['outbound', new RollbackOutboundTxCommand(transactionId)]
 		])
 
-		console.log('stockFlow', stockFlow)
-
 		return commandMap.get(stockFlow)
 	}
 }

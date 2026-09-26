@@ -33,8 +33,8 @@ export class StockInHandler implements ICommandHandler<StockInCommand> {
 		const pendingInboundEpcs = await this.finishedGoodsEpcRepository.getPendingStockMoveEpcs(
 			command.inbound_device_sn,
 			command.mo_no,
-			`${command.dept_code}/${command.dept_name}`,
-			`${command.storage_num}/${command.storage_name}`
+			`${command.assembly_line.code}/${command.assembly_line.name}`,
+			`${command.warehouse}/${command.storage_location}`
 		)
 
 		const currentInboundProgress = (await this.orderRepository.getManufacturingOrderInventory(command.mo_no)).map(
@@ -43,8 +43,6 @@ export class StockInHandler implements ICommandHandler<StockInCommand> {
 				size_numcode: new SizeNumber(item.size_numcode)
 			})
 		)
-
-		this.logger.debug(currentInboundProgress)
 
 		// * Start Unit of Work transaction for inbound stock-in process
 		const inboundTransaction = new StockInTransaction(pendingInboundEpcs, currentInboundProgress)

@@ -1,9 +1,9 @@
-export enum InventoryActions {
+export enum StockAction {
 	INBOUND = 'A',
 	OUTBOUND = 'B'
 }
 
-export enum InventoryStorageType {
+export enum StockTransactionPurpose {
 	NORMAL_IMPORT = 'A',
 	NORMAL_EXPORT = 'B',
 	RECYCLING = 'C',

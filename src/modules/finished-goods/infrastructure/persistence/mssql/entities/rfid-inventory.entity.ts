@@ -1,6 +1,6 @@
 import { DATABASE_DATA_LAKE, DATABASE_SCHEMA } from '@databases/constants'
 import { BaseAbstractEntity } from '@modules/_base/base.abstract.entity'
-import { InventoryActions, InventoryStorageType } from '@modules/finished-goods/domain/constants'
+import { StockAction, StockTransactionPurpose } from '@modules/finished-goods/domain/constants'
 import { Column, Entity } from 'typeorm'
 
 /**
@@ -26,11 +26,11 @@ export class BaseRFIDInventoryEntity extends BaseAbstractEntity {
 	@Column({ name: 'mo_no', type: 'nvarchar', length: 20 })
 	mo_no: string
 
-	@Column({ type: 'nvarchar', length: 20, enum: InventoryActions, default: null })
+	@Column({ type: 'nvarchar', length: 20, enum: StockAction, default: null })
 	rfid_status: string
 
-	@Column({ type: 'nvarchar', length: 20, enum: InventoryStorageType, default: null })
-	rfid_use: InventoryStorageType
+	@Column({ type: 'nvarchar', length: 20, enum: StockTransactionPurpose, default: null })
+	rfid_use: StockTransactionPurpose
 
 	@Column({ type: 'datetime' })
 	record_time: Date | string

@@ -105,7 +105,6 @@ export class ShippingProgressMongoRepository implements IShippingProgressReposit
 		const bulkWriteOptions: mongo.BulkWriteOptions & MongooseBulkWriteOptions = {
 			session: this.txHost.tx,
 			ordered: false,
-
 			timestamps: true
 		}
 

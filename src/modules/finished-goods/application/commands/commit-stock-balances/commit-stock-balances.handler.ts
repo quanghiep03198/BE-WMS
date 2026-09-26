@@ -1,4 +1,4 @@
-import { InventoryActions, InventoryStorageType } from '@modules/finished-goods/domain/constants'
+import { StockAction, StockTransactionPurpose } from '@modules/finished-goods/domain/constants'
 import { StockFlow } from '@modules/finished-goods/domain/types'
 import { generateStation, StationNO } from '@modules/finished-goods/domain/utils'
 import { COMMIT_STOCK_BALANCES_QUEUE } from '@modules/finished-goods/infrastructure/queues'
@@ -22,7 +22,7 @@ export class CommitStockBalancesHandler implements ICommandHandler<CommitStockBa
 					size_numcode: string
 					factory_code: string
 					status: string
-					inventory_ledger_type: string
+					purpose: string
 					dept_code: string
 					dept_name: string
 					storage: string
@@ -32,31 +32,29 @@ export class CommitStockBalancesHandler implements ICommandHandler<CommitStockBa
 		>
 	) {}
 
-	public async execute({ pendingInboundEpcs, stockFlow }: CommitStockBalancesCommand): Promise<void> {
+	public async execute({ pendingCommitEpcs, stockFlow }: CommitStockBalancesCommand): Promise<void> {
 		try {
-			const data = chunk(pendingInboundEpcs, 100).map((ck) => {
+			const data = chunk(pendingCommitEpcs, 100).map((ck) => {
 				return ck
 					.filter((item) => item.getIsWritable() && !item.getIsInternal())
 					.map((item) => {
-						const stockFlowMapping: Map<
-							StockFlow,
-							{ status: InventoryActions; inventory_ledger_type: InventoryStorageType }
-						> = new Map([
-							[
-								'inbound',
-								{
-									status: InventoryActions.INBOUND,
-									inventory_ledger_type: InventoryStorageType.NORMAL_IMPORT
-								}
-							],
-							[
-								'outbound',
-								{
-									status: InventoryActions.OUTBOUND,
-									inventory_ledger_type: InventoryStorageType.RECYCLING
-								}
-							]
-						])
+						const stockFlowMapping: Map<StockFlow, { status: StockAction; purpose: StockTransactionPurpose }> =
+							new Map([
+								[
+									'inbound',
+									{
+										status: StockAction.INBOUND,
+										purpose: StockTransactionPurpose.NORMAL_IMPORT
+									}
+								],
+								[
+									'outbound',
+									{
+										status: StockAction.OUTBOUND,
+										purpose: StockTransactionPurpose.RECYCLING
+									}
+								]
+							])
 
 						return {
 							epc: item.getStockKeepingUnit(),

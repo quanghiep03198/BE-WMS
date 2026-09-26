@@ -21,7 +21,7 @@ export class ExchangeMoRmHandler implements ICommandHandler<ExchangeMoRmCommand>
 
 	public async execute({ deviceSerialNumber, sourceMos, targetMo }: ExchangeMoRmCommand): Promise<void> {
 		const pendingExchangeData = await this.epcMongoRepository.getPendingExchangeMos(deviceSerialNumber, sourceMos)
-		const exchangeTargetMo = await this.orderRepository.getRawManufacturingOrder(targetMo)
+		const exchangeTargetMo = await this.orderRepository.getOneRawManufacturingOrder(targetMo)
 
 		// * Create a new instance of MoExchangeTransaction with the pending exchange data and target MO information
 		const moExchangeTransaction = new MoExchangeTransaction(
