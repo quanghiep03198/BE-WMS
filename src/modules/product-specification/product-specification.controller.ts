@@ -1,7 +1,7 @@
 import { HttpMethod, RequireAuthorized, RouteHandler } from '@common/decorators'
+import { UserRole } from '@modules/user/domain/constants'
 import { CacheInterceptor, CacheKey, CacheTTL } from '@nestjs/cache-manager'
 import { Controller, HttpStatus, UseInterceptors } from '@nestjs/common'
-import { UserRole } from '../user/constants'
 import { ProductSpecificationService } from './product-specification.service'
 
 @Controller('product-specification')
