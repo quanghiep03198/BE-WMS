@@ -6,6 +6,7 @@ import { PinoLogger } from 'nestjs-pino'
 import { ORDER_REPOSITORY } from './order.constant'
 import { OrderController } from './order.controller'
 import { OrderRepository } from './order.repository'
+import { OrderTask } from './order.task'
 import {
 	MANUFACTURING_ORDERS_COLLECTION,
 	ManufacturingOrder,
@@ -39,7 +40,7 @@ import {
 		)
 	],
 	controllers: [OrderController],
-	providers: [{ provide: ORDER_REPOSITORY, useClass: OrderRepository }],
+	providers: [{ provide: ORDER_REPOSITORY, useClass: OrderRepository }, OrderTask],
 	exports: [MongooseModule, ORDER_REPOSITORY]
 })
 export class OrderModule {
