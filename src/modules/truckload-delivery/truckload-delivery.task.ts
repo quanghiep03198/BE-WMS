@@ -9,8 +9,8 @@ import { DataSource, QueryFailedError } from 'typeorm'
  * This task is responsible for syncing license plate snapshots with truckload delivery records.
  */
 @Injectable()
-export class SyncLicensePlateSnapshotTask {
-	private readonly logger = new Logger(SyncLicensePlateSnapshotTask.name)
+export class TruckloadDeliveryTask {
+	private readonly logger = new Logger(TruckloadDeliveryTask.name)
 
 	constructor(@InjectDataSource(DATA_SOURCE_DATA_LAKE) private readonly dataSource: DataSource) {}
 
