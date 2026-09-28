@@ -14,8 +14,8 @@ import { AnyBulkWriteOperation, Model } from 'mongoose'
 import { DataSource } from 'typeorm'
 
 @Injectable()
-export class SyncProductSpecificationTask {
-	private readonly logger = new Logger(SyncProductSpecificationTask.name)
+export class ProductSpecificationTask {
+	private readonly logger = new Logger(ProductSpecificationTask.name)
 
 	constructor(
 		@InjectDataSource(DATA_SOURCE_ERP) private readonly dataSourceERP: DataSource,

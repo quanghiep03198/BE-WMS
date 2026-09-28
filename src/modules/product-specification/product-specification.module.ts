@@ -3,6 +3,7 @@ import { Module } from '@nestjs/common'
 import { MongooseModule } from '@nestjs/mongoose'
 import { ProductSpecificationController } from './product-specification.controller'
 import { ProductSpecificationService } from './product-specification.service'
+import { ProductSpecificationTask } from './product-specification.task'
 import {
 	PRODUCT_SPECIFICATION_COLLECTION,
 	ProductSpecification,
@@ -22,7 +23,7 @@ import {
 			DATA_WAREHOUSE_CONNECTION
 		)
 	],
-	providers: [ProductSpecificationService],
+	providers: [ProductSpecificationService, ProductSpecificationTask],
 	controllers: [ProductSpecificationController],
 	exports: [ProductSpecificationService, MongooseModule]
 })
