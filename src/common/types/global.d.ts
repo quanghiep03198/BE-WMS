@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import { DataSourceOptions } from 'typeorm'
 
 export declare global {
 	type RuntimeEnvironment = 'development' | 'production' | 'test'
@@ -21,8 +20,6 @@ export declare global {
 		totalPages: number
 	}
 
-	type DatabaseType<T = 'mssql'> = Extract<DataSourceOptions['type'], T>
-
 	type FactoryCode = 'VA1' | 'VB1' | 'VB2' | 'CA1'
 
 	namespace NodeJS {
@@ -38,13 +35,33 @@ export declare global {
 			ENABLE_LOKI_LOGGER: 'true' | 'false'
 			CORS_ORIGINS: string
 			APP_TENANCY: FactoryCode
+			TZ: TTimezone
 
 			// * Throttler
 			THROTTLER_TTL: string
 			THROTTLER_LIMIT: string
 
 			// * Database
-			DB_TYPE: DataSourceOptions['type']
+			DB_TYPE:
+				| 'aurora-mysql'
+				| 'aurora-postgres'
+				| 'better-sqlite3'
+				| 'capacitor'
+				| 'cockroachdb'
+				| 'cordova'
+				| 'expo'
+				| 'mariadb'
+				| 'mongodb'
+				| 'mssql'
+				| 'mysql'
+				| 'nativescript'
+				| 'oracle'
+				| 'postgres'
+				| 'react-native'
+				| 'sap'
+				| 'spanner'
+				| 'sqlite'
+				| 'sqljs'
 			DB_HOST: string
 			SEEDING_DB_HOST: string
 			MIGRATION_DB_HOST: string
@@ -115,6 +132,8 @@ export declare global {
 	// eslint-disable-next-line unused-imports/no-unused-vars
 	type FirstParameter<T> = T extends (first: infer FirstArgument, ...args: any[]) => infer T ? FirstArgument : never
 
+	type ArrayElement<T> = T extends (infer U)[] ? U : T
+
 	type ProcessEnv = {
 		[K in keyof NodeJS.ProcessEnv as string extends K ? never : number extends K ? never : K]: NodeJS.ProcessEnv[K]
 	}
@@ -125,8 +144,6 @@ export declare global {
 		error: null | string | object
 		metadata: T
 	}
-
-	type QueueJobStatus = 'completed' | 'wait' | 'active' | 'paused' | 'prioritized' | 'delayed' | 'failed'
 
 	type Nullable<T> = T | null | undefined
 
