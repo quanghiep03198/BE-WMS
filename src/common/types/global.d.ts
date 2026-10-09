@@ -87,12 +87,12 @@ export declare global {
 			DECKERS_GL4_CLIENT_ID: string
 			DECKERS_GL4_CLIENT_SECRET: string
 
-			// * Tenancy
-			TENANT_DEV: string
+			// * Tenancy - No longer used
+			// TENANT_DEV: string
 			TENANT_CENTRAL: string
-			TENANT_GL1: string
-			TENANT_GL3: string
-			TENANT_GL4: string
+			// TENANT_GL1: string
+			// TENANT_GL3: string
+			// TENANT_GL4: string
 
 			// * Redis
 			REDIS_HOST: string
