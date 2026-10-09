@@ -66,7 +66,19 @@ export class AuthService {
 
 		await this.cacheManager.set(`token:${username}`, accessToken, this.TOKEN_CACHE_TTL)
 
-		return { accessToken, refreshToken }
+		return {
+			user: {
+				_id: user._id,
+				username: user.username,
+				display_name: user.display_name,
+				email: user.email,
+				avatar: user.avatar,
+				roles: user.roles,
+				is_system_user: user.is_system_user
+			},
+			accessToken,
+			refreshToken
+		}
 	}
 
 	/**
