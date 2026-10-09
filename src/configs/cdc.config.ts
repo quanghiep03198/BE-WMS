@@ -15,16 +15,28 @@ export default registerAs(CDC_CONFIG_TOKEN, (): Array<CdcProvisionConfig> =>
 					dataSourceToken: DATA_SOURCE_DATA_LAKE,
 					capturedColumns: [
 						'keyid',
+						'sync_id',
 						'dispatch_order',
-						'approval_status',
 						'po',
+						'outbound_qty',
+						'factory_code',
+						'approval_status',
 						'isactive',
 						'license_plate',
 						'container_number',
+						'seal_number',
+						'factory_entrance_time',
 						'container_sealing_time',
 						'factory_departure_time',
 						'actual_factory_departure_time'
 					],
+					supportsNetChanges: true
+				},
+				{
+					schema: DATABASE_SCHEMA,
+					sourceName: 'dv_carlicenseplates',
+					dataSourceToken: DATA_SOURCE_DATA_LAKE,
+					capturedColumns: ['keyid', 'plate_name', 'images', 'snap_time'],
 					supportsNetChanges: true
 				},
 				{
