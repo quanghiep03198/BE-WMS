@@ -246,7 +246,7 @@ export class InboundReportService {
 			.findOne({ mo_no: manufacturingOrder })
 			.populate({
 				path: 'daily_inbound_history',
-				select: 'date mo_no size_ledger'
+				select: 'date mo_no size_ledger transaction_history'
 			})
 			.exec()
 			.then((doc) => {
@@ -263,10 +263,12 @@ export class InboundReportService {
 					...normalizedDoc,
 					accumulated_inbound_qty: accumulatedInboundQty,
 					missing_qty: missingQty,
-					daily_inbound_history: normalizedDoc.daily_inbound_history.filter(
-						(item) =>
-							!Object.values(item.size_ledger).every((ledger) => Object.values(ledger).every((v) => v === 0))
-					),
+					daily_inbound_history: normalizedDoc.daily_inbound_history
+						.filter(
+							(item) =>
+								!Object.values(item.size_ledger).every((ledger) => Object.values(ledger).every((v) => v === 0))
+						)
+						.map((item) => ({ ...item, transaction_history: Object.values(item.transaction_history) })),
 					progress: ((accumulatedInboundQty / normalizedDoc.order_qty) * 100).toFixed(2) + '%'
 				}
 			})
