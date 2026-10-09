@@ -1,5 +1,6 @@
 import { DATA_SOURCE_SYSCLOUD } from '@databases/constants'
 import { Injectable } from '@nestjs/common'
+import { ConfigService } from '@nestjs/config'
 import { InjectRepository } from '@nestjs/typeorm'
 import { Like, Or, Repository } from 'typeorm'
 import { DepartmentEntity } from './entities/department.entity'
@@ -8,7 +9,8 @@ import { DepartmentEntity } from './entities/department.entity'
 export class DepartmentService {
 	constructor(
 		@InjectRepository(DepartmentEntity, DATA_SOURCE_SYSCLOUD)
-		private readonly departmentRepository: Repository<DepartmentEntity>
+		private readonly departmentRepository: Repository<DepartmentEntity>,
+		private readonly configService: ConfigService<ProcessEnv>
 	) {}
 
 	/**
@@ -16,7 +18,9 @@ export class DepartmentService {
 	 * @param factoryCode
 	 * @returns
 	 */
-	async getWarehouseDepartments(factoryCode: string) {
+	async getWarehouseDepartments() {
+		const factoryCode = this.configService.get<FactoryCode>('APP_TENANCY')
+
 		return await this.departmentRepository
 			.createQueryBuilder()
 			.select([/* SQL */ `DISTINCT dept_name AS name`, /* SQL */ `MIN(dept_code) AS code`])
@@ -26,7 +30,9 @@ export class DepartmentService {
 			.getRawMany()
 	}
 
-	async getAssemblyDepartments(factoryCode: string) {
+	async getAssemblyDepartments() {
+		const factoryCode = this.configService.get<FactoryCode>('APP_TENANCY')
+
 		const cteQueryBuilder = this.departmentRepository
 			.createQueryBuilder()
 			.select([
@@ -51,14 +57,14 @@ export class DepartmentService {
 			.getRawMany<{ code: string; name: string }>()
 	}
 
-	async getSewingDepartments(factoryCode: string) {
+	async getSewingDepartments() {
 		return await this.departmentRepository
 			.createQueryBuilder()
 			.select([/* SQL */ `DISTINCT dept_name AS name`, /* SQL */ `MIN(dept_code) AS code`])
-			.where({ factory_code: factoryCode })
+			.where({ factory_code: this.configService.get<FactoryCode>('APP_TENANCY') })
 			.andWhere({ dept_name: Or(Like('%針車[0-9]%')) })
 			.groupBy('dept_name')
-			.orderBy('dept_code', 'ASC')
+			.orderBy('dept_name', 'ASC')
 			.getRawMany<{ dept_code: string; dept_name: string }>()
 	}
 }

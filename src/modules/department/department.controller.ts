@@ -1,7 +1,6 @@
-import { CommonRequestHeader } from '@common/constants'
 import { HttpMethod, RequireAuthorized, RouteHandler } from '@common/decorators'
 import { UserRole } from '@modules/user/domain/constants'
-import { BadRequestException, Controller, Headers, UnprocessableEntityException } from '@nestjs/common'
+import { Controller, UnprocessableEntityException } from '@nestjs/common'
 import { FactoryCodeRef } from '../../common/constants/factory'
 import { DepartmentService } from './department.service'
 
@@ -19,10 +18,9 @@ export class DepartmentController {
 		UserRole.FG_WAREHOUSE_STAFF,
 		UserRole.INDUSTRIAL_ENGINEERING_STAFF
 	)
-	async getWarehouseDepartments(@Headers(CommonRequestHeader.FACTORY_CODE) factoryCode: string) {
-		if (!factoryCode) throw new BadRequestException('Factory code is required')
+	async getWarehouseDepartments() {
 		if (!Object.values(FactoryCodeRef).includes) throw new UnprocessableEntityException('Invalid factory code')
-		return await this.departmentService.getWarehouseDepartments(factoryCode)
+		return await this.departmentService.getWarehouseDepartments()
 	}
 
 	@RouteHandler({
@@ -35,8 +33,8 @@ export class DepartmentController {
 		UserRole.FG_WAREHOUSE_STAFF,
 		UserRole.INDUSTRIAL_ENGINEERING_STAFF
 	)
-	async getShapingDepartment(@Headers(CommonRequestHeader.FACTORY_CODE) factoryCode: string) {
-		return await this.departmentService.getAssemblyDepartments(factoryCode)
+	async getShapingDepartment() {
+		return await this.departmentService.getAssemblyDepartments()
 	}
 
 	@RouteHandler({
@@ -49,7 +47,7 @@ export class DepartmentController {
 		UserRole.FG_WAREHOUSE_STAFF,
 		UserRole.INDUSTRIAL_ENGINEERING_STAFF
 	)
-	async getSewingDepartment(@Headers(CommonRequestHeader.FACTORY_CODE) factoryCode: string) {
-		return await this.departmentService.getSewingDepartments(factoryCode)
+	async getSewingDepartment() {
+		return await this.departmentService.getSewingDepartments()
 	}
 }
