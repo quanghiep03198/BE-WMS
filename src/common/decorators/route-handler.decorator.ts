@@ -10,6 +10,7 @@ import {
 	Patch,
 	Post,
 	Put,
+	Type,
 	UseFilters,
 	UseInterceptors
 } from '@nestjs/common'
@@ -32,6 +33,7 @@ interface ApiOptions {
 	method: HttpMethod
 	statusCode?: HttpStatus
 	message?: (I18nPath & string) | PluralI18nPath
+	exceptionFilter?: Type<import('@nestjs/common').ExceptionFilter>
 }
 
 /**
@@ -42,7 +44,13 @@ interface ApiOptions {
  * @param {string | I18nPath} options.message  - Response message. Default is 'common.ok'.
  */
 export const RouteHandler = (options: ApiOptions) => {
-	const { endpoint = '', method, statusCode = HttpStatus.OK, message = 'common.ok' } = options
+	const {
+		endpoint = '',
+		method,
+		statusCode = HttpStatus.OK,
+		message = 'common.ok',
+		exceptionFilter = HttpExceptionFilter
+	} = options
 
 	const HttpRequest = (route: string) => {
 		switch (method) {
@@ -65,7 +73,7 @@ export const RouteHandler = (options: ApiOptions) => {
 
 	return applyDecorators(
 		HttpRequest(endpoint),
-		UseFilters(HttpExceptionFilter),
+		UseFilters(exceptionFilter),
 		UseInterceptors(TransformInterceptor),
 		HttpCode(statusCode),
 		ResponseMessage(message)
