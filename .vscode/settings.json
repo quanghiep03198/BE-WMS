@@ -16,5 +16,6 @@
 	"[yaml]": {
 		"editor.defaultFormatter": "redhat.vscode-yaml"
 	},
-	"js/ts.experimental.useTsgo": true
+	"js/ts.experimental.useTsgo": true,
+	"js/ts.tsdk.path": "node_modules\\@typescript\\native-preview"
 }
