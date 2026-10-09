@@ -1,5 +1,6 @@
 import { Environment, Languages } from '@common/constants'
 import { stringToBoolean } from '@common/utils'
+import { Timezone } from '@common/utils/timezone.util'
 import { z } from 'zod'
 
 export const envConfigDTO = z.object({
@@ -19,7 +20,8 @@ export const envConfigDTO = z.object({
 	ENABLE_PROMETHEUS_METRICS_LOGGER: z.enum(['true', 'false']).transform((value) => stringToBoolean(value)),
 
 	// * Loki
-	GRAFANA_LOKI_URL: z.string().trim().nonempty().url(),
+	GRAFANA_LOKI_URL: z.url(),
+	TZ: z.enum(Timezone.getAllKeys()),
 
 	// * Throttler
 	THROTTLER_TTL: z
@@ -62,7 +64,7 @@ export const envConfigDTO = z.object({
 		.trim()
 		.nonempty()
 		.refine((value) => value === 'mssql'),
-	DB_HOST: z.string().trim().nonempty(),
+	DB_HOST: z.ipv4(),
 	DB_USERNAME: z.string().trim().nonempty(),
 	DB_PASSWORD: z.string().trim().nonempty(),
 	DB_PORT: z
@@ -102,11 +104,11 @@ export const envConfigDTO = z.object({
 	DECKERS_GL4_CLIENT_SECRET: z.string().trim().nonempty(),
 
 	// * Tenancy IPs
-	TENANT_DEV: z.ipv4(),
-	TENANT_CENTRAL: z.ipv4(),
-	TENANT_GL1: z.ipv4(),
-	TENANT_GL3: z.ipv4(),
-	TENANT_GL4: z.ipv4()
+	TENANT_CENTRAL: z.ipv4()
+	// TENANT_DEV: z.ipv4(),
+	// TENANT_GL1: z.ipv4(),
+	// TENANT_GL3: z.ipv4(),
+	// TENANT_GL4: z.ipv4()
 
 	// * Sentry
 	// SENTRY_DSN: z.string().trim().nonempty().url(),
