@@ -24,6 +24,16 @@ export type I18nTranslations = {
         "conflict": string;
         "internal_server_error": string;
         "unavailable_service": string;
+        "truckload_delivery": {
+            "exceptions": {
+                "dispatch_order_not_found": string;
+                "purchase_order_not_found": string;
+                "conflict": string;
+                "sequence_exhausted": string;
+                "empty_dispatch_order": string;
+                "duplicate_purchase_order": string;
+            };
+        };
         "fields": {
             "date": string;
             "remark": string;

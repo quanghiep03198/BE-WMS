@@ -11,6 +11,16 @@
 	"conflict": "Conflict",
 	"internal_server_error": "Internal server error",
 	"unavailable_service": "Unavailable service",
+	"truckload_delivery": {
+		"exceptions": {
+			"dispatch_order_not_found": "Dispatch order was not found.",
+			"purchase_order_not_found": "Purchase order was not found in this dispatch order.",
+			"conflict": "Dispatch order was changed concurrently or already exists. Please retry.",
+			"sequence_exhausted": "The daily dispatch order sequence is exhausted.",
+			"empty_dispatch_order": "A dispatch order must contain at least one purchase order.",
+			"duplicate_purchase_order": "A purchase order can only appear once in a dispatch order."
+		}
+	},
 	"fields": {
 		"date": "Date",
 		"remark": "Remark",

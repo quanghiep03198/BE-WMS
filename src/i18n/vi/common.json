@@ -11,6 +11,16 @@
 	"conflict": "Xung đột dữ liệu",
 	"internal_server_error": "Lỗi Server",
 	"unavailable_service": "Tính năng không khả dụng",
+	"truckload_delivery": {
+		"exceptions": {
+			"dispatch_order_not_found": "Không tìm thấy đơn giao hàng.",
+			"purchase_order_not_found": "Không tìm thấy đơn mua hàng trong đơn giao hàng này.",
+			"conflict": "Đơn giao hàng đã tồn tại hoặc vừa được cập nhật đồng thời. Vui lòng thử lại.",
+			"sequence_exhausted": "Đã hết số thứ tự đơn giao hàng trong ngày.",
+			"empty_dispatch_order": "Đơn giao hàng phải có ít nhất một đơn mua hàng.",
+			"duplicate_purchase_order": "Mỗi đơn mua hàng chỉ được xuất hiện một lần trong đơn giao hàng."
+		}
+	},
 	"fields": {
 		"date": "Ngày",
 		"remark": "Ghi chú",

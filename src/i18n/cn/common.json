@@ -11,6 +11,16 @@
 	"conflict": "冲突",
 	"internal_server_error": "内部服务器错误",
 	"unavailable_service": "服务不可用",
+	"truckload_delivery": {
+		"exceptions": {
+			"dispatch_order_not_found": "未找到整车配送单。",
+			"purchase_order_not_found": "未在此配送单中找到采购订单。",
+			"conflict": "配送单已存在或刚刚被并发修改，请重试。",
+			"sequence_exhausted": "当天的配送单序号已用尽。",
+			"empty_dispatch_order": "配送单必须至少包含一个采购订单。",
+			"duplicate_purchase_order": "同一采购订单在配送单中只能出现一次。"
+		}
+	},
 	"fields": {
 		"date": "日期",
 		"remark": "备注",
