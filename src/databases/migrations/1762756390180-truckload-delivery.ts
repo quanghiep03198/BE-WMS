@@ -1,5 +1,5 @@
 import { BaseAbstractEntity } from '@modules/_base/base.abstract.entity'
-import { TruckloadDeliveryStatus } from '@modules/truckload-delivery/constants'
+import { TruckloadDeliveryStatus } from '@modules/truckload-delivery/domain/constants'
 import { MigrationInterface, QueryRunner, Table, TableIndex } from 'typeorm'
 import { DATABASE_DATA_LAKE, DATABASE_SCHEMA } from '../constants'
 
@@ -125,6 +125,19 @@ export class TruckloadDelivery1762756390180 implements MigrationInterface {
 				type: 'datetime',
 				isNullable: true,
 				comment: 'The departure time from the factory'
+			},
+			{
+				name: 'actual_factory_departure_time',
+				type: 'datetime',
+				isNullable: true,
+				comment: 'The actual departure time captured from the license plate camera'
+			},
+			{
+				name: 'sync_id',
+				type: 'nvarchar',
+				length: '100',
+				isNullable: true,
+				comment: 'MongoDB-to-MSSQL synchronization origin marker'
 			}
 		]
 	})
@@ -141,6 +154,11 @@ export class TruckloadDelivery1762756390180 implements MigrationInterface {
 				name: 'IDX_truckload_delivery_po',
 				columnNames: ['po'],
 				isUnique: false
+			}),
+			new TableIndex({
+				name: 'UQ_dv_truckload_delivery_dispatch_po',
+				columnNames: ['dispatch_order', 'po'],
+				isUnique: true
 			})
 		])
 	}
