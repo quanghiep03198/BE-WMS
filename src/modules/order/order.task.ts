@@ -49,10 +49,11 @@ export class OrderTask {
                   AND br.brand_code IN ('UG', 'KB', 'TV')
       `)
 
-		if (
-			isEqual(currentCheckpoint?.created, lastCheckpoint.created) &&
-			isEqual(currentCheckpoint?.updated, lastCheckpoint.updated)
-		) {
+		const isStale =
+			!isEqual(currentCheckpoint?.created, lastCheckpoint.created) ||
+			!isEqual(currentCheckpoint?.updated, lastCheckpoint.updated)
+
+		if (!isStale) {
 			this.logger.info('No manufacturing order to sync, last checkpoint is equal to result.')
 			return
 		}
@@ -168,12 +169,11 @@ export class OrderTask {
                   AND br.brand_code IN ('UG', 'KB', 'TV')
       `)
 
-		this.logger.debug(lastCheckpoint)
+		const isStale =
+			!isEqual(currentCheckpoint?.created, lastCheckpoint.created) ||
+			!isEqual(currentCheckpoint?.updated, lastCheckpoint.updated)
 
-		if (
-			isEqual(currentCheckpoint?.created, lastCheckpoint.created) &&
-			isEqual(currentCheckpoint?.updated, lastCheckpoint.updated)
-		) {
+		if (!isStale) {
 			this.logger.info('No purchase order to sync, last checkpoint is equal to result.')
 			return
 		}

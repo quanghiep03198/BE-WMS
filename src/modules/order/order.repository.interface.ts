@@ -13,7 +13,16 @@ export interface IOrderRepository {
 	searchPurchaseOrder(
 		searchTerm: string,
 		shouldFilterAllBrands?: boolean
-	): Promise<Array<{ po: string; is_completed: boolean }>>
+	): Promise<
+		Array<{
+			po: string
+			order_qty: number
+			brand_name: string
+			factory_shoes_style: string
+			color_sn: string
+			is_completed: boolean
+		}>
+	>
 
 	/**
 	 * @description Get one raw manufacturing order by its identifier and optional sequence number from MSSQL.
@@ -41,4 +50,15 @@ export interface IOrderRepository {
 	getManufacturingOrderInventory(
 		manufacturingOrder: string
 	): Promise<Array<{ mo_no: string; size_numcode: string; order_qty: number; accumulated_qty: number }>>
+
+	/**
+	 * @description Get multiple purchase orders by their identifiers from MongoDB.
+	 * @param purchaseOrders
+	 */
+	getPurchaseOrders(purchaseOrders: string[]): Promise<LeanDocument<PurchaseOrderDocument>[]>
+	getPurchaseOrderSnapshots(
+		purchaseOrders: string[]
+	): Promise<
+		Array<Pick<PurchaseOrderDocument, 'po' | 'order_qty' | 'brand_name' | 'factory_shoes_style' | 'color_sn'>>
+	>
 }

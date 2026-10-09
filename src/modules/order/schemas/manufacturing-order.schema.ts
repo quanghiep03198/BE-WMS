@@ -69,6 +69,15 @@ export type ManufacturingOrderDocument = HydratedDocument<ManufacturingOrder> & 
 		date: string
 		mo_no: string
 		size_ledger: Record<string, { stocked_in_qty: number; total_recall_tx: number; total_return_tx: number }>
+		transaction_history: Record<
+			string,
+			{
+				time: string
+				assembly_line: string
+				storage_location: string
+				size_ledger: Record<string, { stocked_in_qty: number; total_recall_tx: number; total_return_tx: number }>
+			}
+		>
 	}>
 }
 export type ManufacturingOrderModel = Model<ManufacturingOrderDocument>

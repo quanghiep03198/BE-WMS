@@ -60,7 +60,16 @@ export class OrderRepository implements IOrderRepository {
 	public async searchPurchaseOrder(
 		searchTerm: string,
 		shouldFilterAllBrands?: boolean
-	): Promise<Array<{ po: string; is_completed: boolean }>> {
+	): Promise<
+		Array<{
+			po: string
+			order_qty: number
+			brand_name: string
+			factory_shoes_style: string
+			color_sn: string
+			is_completed: boolean
+		}>
+	> {
 		{
 			const docs = await this.purchaseOrderModel
 				.find({
@@ -69,15 +78,23 @@ export class OrderRepository implements IOrderRepository {
 						typeof shouldFilterAllBrands === 'boolean' && shouldFilterAllBrands ? 'UGG' : { $exists: true }
 				})
 				.lean(true)
-				.select('po shipping_progress')
+				.select('-_id po order_qty brand_name factory_shoes_style color_sn shipping_progress')
 				.limit(5)
 
-			return docs.map((doc) => ({
-				po: doc.po,
-				is_completed: Object.values(doc.shipping_progress).every(
+			return docs.map((doc) => {
+				const isCompleted = Object.values(doc.shipping_progress).every(
 					(sizeLedger) => sizeLedger.order_qty - sizeLedger.shipped_out_qty === 0
 				)
-			}))
+
+				return {
+					po: doc.po,
+					order_qty: doc.order_qty,
+					brand_name: doc.brand_name,
+					factory_shoes_style: doc.factory_shoes_style,
+					color_sn: doc.color_sn,
+					is_completed: isCompleted
+				}
+			})
 		}
 	}
 
@@ -107,5 +124,23 @@ export class OrderRepository implements IOrderRepository {
 		return await this.purchaseOrderModel
 			.findOne({ po_no: purchaseOrder })
 			.lean<LeanDocument<PurchaseOrderDocument>>(true)
+	}
+
+	public async getPurchaseOrders(purchaseOrders: string[]): Promise<LeanDocument<PurchaseOrderDocument>[]> {
+		return await this.purchaseOrderModel
+			.find({ po: { $in: purchaseOrders } })
+			.lean<LeanDocument<PurchaseOrderDocument>[]>(true)
+	}
+
+	public async getPurchaseOrderSnapshots(
+		purchaseOrders: string[]
+	): Promise<
+		Array<Pick<PurchaseOrderDocument, 'po' | 'order_qty' | 'brand_name' | 'factory_shoes_style' | 'color_sn'>>
+	> {
+		if (purchaseOrders.length === 0) return []
+		return await this.purchaseOrderModel
+			.find({ po: { $in: purchaseOrders } })
+			.select('po order_qty brand_name factory_shoes_style color_sn')
+			.lean()
 	}
 }
