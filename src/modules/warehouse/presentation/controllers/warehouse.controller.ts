@@ -73,7 +73,7 @@ export class WarehouseController {
 	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
 	async createWarehouse(
 		@Body(new ZodValidationPipe(createWarehouseValidator)) payload: CreateWarehouseDTO,
-		@User('_id', ParseObjectIdPipe) userId: Types.ObjectId,
+		@User('_id') userId: Types.ObjectId,
 		@User('username') username: string
 	) {
 		const createdWarehouse = await this.warehouseRepository.createOne({ ...payload, created_by: userId })
@@ -95,7 +95,7 @@ export class WarehouseController {
 	async updateWarehouse(
 		@Param('id', ParseObjectIdPipe) id: Types.ObjectId,
 		@Body(new ZodValidationPipe(updateWarehouseValidator)) payload: UpdateWarehouseDTO,
-		@User('_id', ParseObjectIdPipe) userId: Types.ObjectId,
+		@User('_id') userId: Types.ObjectId,
 		@User('username') username: string
 	) {
 		const { prev, update: updated } = await this.warehouseRepository.findOneAndUpdate(id, {

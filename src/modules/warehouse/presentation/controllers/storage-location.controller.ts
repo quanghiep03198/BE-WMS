@@ -53,7 +53,7 @@ export class StorageLocationController {
 	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
 	async createStorageLocation(
 		@Body(new ZodValidationPipe(createBulkStorageLocationValidator)) payload: CreateBulkStorageLocationDTO,
-		@User('_id', ParseObjectIdPipe) userId: Types.ObjectId,
+		@User('_id') userId: Types.ObjectId,
 		@User('username') username: string
 	) {
 		const warehouse = await this.warehouseRepository.findOneById(payload.warehouse)
@@ -74,7 +74,7 @@ export class StorageLocationController {
 	async updateStorageLocation(
 		@Param('id', ParseObjectIdPipe) id: Types.ObjectId,
 		@Body(new ZodValidationPipe(updateStorageLocationValidator)) payload: UpdateStorageLocationDTO,
-		@User('_id', ParseObjectIdPipe) userId: Types.ObjectId,
+		@User('_id') userId: Types.ObjectId,
 		@User('username') username: string
 	) {
 		const result = await this.storageLocationService.findOneAndUpdate(id, { ...payload, updated_by: userId })
