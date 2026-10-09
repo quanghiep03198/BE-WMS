@@ -95,7 +95,7 @@ export class GetScanningMosHandler implements IQueryHandler<GetScanningMosQuery>
 					// * Stage 5: Sort the results
 					{ $sort: { mo_no: 1, color_sn: 1, factory_shoes_style: 1 } }
 				],
-				{ readPreference: 'nearest' }
+				{ readPreference: 'secondary' }
 			)
 			.hint(queryHint[stockFlow])
 			.exec()

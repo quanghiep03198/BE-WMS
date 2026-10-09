@@ -20,7 +20,7 @@ export class RestoreDeletedEpcsHandler implements ICommandHandler<RestoreDeleted
 			{ deleted: false, scannable: true },
 			{
 				writeConcern: { w: 'majority' },
-				readPreference: 'nearest'
+				readPreference: 'secondary'
 			}
 		)
 	}

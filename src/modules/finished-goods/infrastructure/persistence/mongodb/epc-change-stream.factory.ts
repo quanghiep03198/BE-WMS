@@ -34,7 +34,7 @@ export class MongoEpcChangeStreamFactory implements IEpcChangeStreamFactory {
 					}
 				}
 			],
-			{ fullDocument: 'updateLookup', readPreference: 'nearest' }
+			{ fullDocument: 'updateLookup', readPreference: 'secondary' }
 		)
 
 		const wrapper = new EpcChangeStreamWrapper(changeStream)
