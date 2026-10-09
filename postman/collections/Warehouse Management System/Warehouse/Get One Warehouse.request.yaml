@@ -1,5 +1,5 @@
 $kind: http-request
-url: "{{base_url}}/warehouse/storage-detail/VA1PW01"
+url: "{{base_url}}/warehouse/A1"
 method: GET
 headers:
   - key: Accept

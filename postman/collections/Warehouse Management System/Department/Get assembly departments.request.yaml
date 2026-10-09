@@ -1,0 +1,7 @@
+$kind: http-request
+url: "{{base_url}}/department/assembly"
+method: GET
+headers:
+  X-User-Factory: CA1
+settings: {}
+order: 1000

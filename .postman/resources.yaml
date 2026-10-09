@@ -1,8 +1,15 @@
 workspace:
   id: 7314ad39-0426-4afe-8eb1-882d61f296d9
-
-# Each entry here maps a local resource to one or more corresponding objects in Postman Cloud
-
 cloudResources:
   collections:
     ../postman/collections/Warehouse Management System: 24228770-f0799f94-2c6b-47f4-ad6f-d07e0683d9d7
+  environments:
+    ../postman/environments/WMS-LOCAL.environment.yaml: 24228770-7d484b85-6066-4d76-826c-aa143a7b8ef6
+  specs:
+    ../index.json: 060187b0-b060-446f-952a-af8b40b0abc9
+localResources:
+  specs:
+    - ../index.json
+resourceNameMappings:
+  specs:
+    - ../index.json: Warehouse Management System

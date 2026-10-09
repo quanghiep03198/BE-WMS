@@ -9,45 +9,25 @@ values:
   - key: gl4_api_url
     value: 'http://10.50.5.1:3001/api'
   - key: access_token
+    secret: true
+  - key: deckers_api_url
     value: ''
   - key: decker_oauth2_url
     value: 'https://divzen.deckers.com/oauth2/token'
   - key: gl1_decker_client_id
-    value: ''
+    secret: true
   - key: gl1_decker_client_secret
-    value: ''
+    secret: true
   - key: gl3_decker_client_id
-    value: ''
+    secret: true
   - key: gl3_decker_client_secret
-    value: ''
+    secret: true
   - key: gl4_decker_client_id
-    value: ''
+    secret: true
   - key: gl4_decker_client_secret
-    value: ''
-  - key: client_id
-    value: ''
-  - key: header_tenant
-    value: ''
-  - key: header_factory_code
-    value: ''
-  - key: header_api_version
-    value: ''
-  - key: decker_oauth2_token
-    value: ''
-  - key: decker_oauth2_token
-    value: ''
-  - key: tenant_dev
-    value: ''
-  - key: tenant_central
-    value: ''
-  - key: tenant_gl1
-    value: ''
-  - key: tenant_gl3
-    value: ''
-  - key: tenant_gl4
-    value: ''
-  - key: user_factory
-    value: ''
+    secret: true
   - key: refresh_token
+    secret: true
+  - key: client_id
     value: ''
 color: 120

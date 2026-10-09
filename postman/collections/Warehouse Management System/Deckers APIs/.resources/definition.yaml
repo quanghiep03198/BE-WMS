@@ -4,7 +4,7 @@ description: |-
 
   > _Authenticated by OAuth2 token with Decker's credentials_
 auth:
-  - id: 153c6554-64da-4dc0-8d34-7224b4a74941
+  - id: f8cd03df-756a-4163-87af-6af57e5e617e
     type: oauth2
     name: oauth2 auth
     credentials:

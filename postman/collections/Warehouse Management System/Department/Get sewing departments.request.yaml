@@ -1,7 +1,9 @@
 $kind: http-request
-url: "{{base_url}}/department/sewing-product-line"
+url: "{{base_url}}/department/sewing"
 method: GET
 headers:
-  X-User-Company: VA1
+  - key: X-User-Company
+    value: VA1
+    disabled: true
 settings: {}
 order: 2000

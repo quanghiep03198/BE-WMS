@@ -54,14 +54,15 @@ scripts:
     code: |-
       const jsonData = pm.response.json();
 
-      pm.test('Login', function(){
+      pm.test('Login', function () {
           pm.response.to.have.status(200)
-          pm.expect(jsonData.metadata).have.all.keys(['user','token'])
+          pm.expect(jsonData.metadata).have.all.keys(['user', 'accessToken', 'refreshToken'])
       })
 
-      if(pm.response.code === 200){
-          pm.environment.set('access_token', jsonData.metadata.token)
-          pm.environment.set('client_id', jsonData.metadata.user.id)
+      if (pm.response.code === 200) {
+          pm.environment.set('access_token', jsonData.metadata.accessToken)
+          if (jsonData.metadata.user)
+              pm.environment.set('client_id', jsonData.metadata.user._id)
       }
 
       pm.test('Login Success - Status code is 200', function () {
@@ -78,21 +79,21 @@ scripts:
           pm.expect(jsonData).to.have.property('metadata');
       })
 
-      pm.test('Response contains user and token', function () {
+      pm.test('Response contains user and accessToken', function () {
           const jsonData = pm.response.json();
           pm.expect(jsonData.metadata).to.have.property('user');
           pm.expect(jsonData.metadata).to.have.property('accessToken');
           pm.expect(jsonData.metadata).to.have.property('refreshToken');
       })
 
-      pm.test('Store access token in environment', function () {
+      pm.test('Store access accessToken in environment', function () {
           const jsonData = pm.response.json();
           if (jsonData.metadata && jsonData.metadata.accessToken && jsonData.metadata.refreshToken) {
               pm.environment.set('access_token', jsonData.metadata.accessToken);
               pm.environment.set('refresh_token', jsonData.metadata.refreshToken);
           }
-          if (jsonData.metadata && jsonData.metadata.user && jsonData.metadata.user.id) {
-              pm.environment.set('client_id', jsonData.metadata.user.id);
+          if (jsonData.metadata && jsonData.metadata.user && jsonData.metadata.user._id) {
+              pm.environment.set('client_id', jsonData.metadata.user._id);
           }
       })
 

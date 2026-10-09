@@ -1,10 +1,14 @@
 $kind: http-request
-url: "{{base_url}}/inventory/audit?month.eq=2025-10"
+url: "{{base_url}}/inventory/audit?month.eq=2026-09"
 method: GET
 headers:
-  X-User-Company: VA1
-  X-Tenant-Id: "{{tenant_gl1}}"
+  - key: X-User-Company
+    value: VA1
+    disabled: true
+  - key: X-Tenant-Id
+    value: "{{tenant_gl1}}"
+    disabled: true
 queryParams:
-  month.eq: 2025-10
+  month.eq: 2026-09
 settings: {}
 order: 7000

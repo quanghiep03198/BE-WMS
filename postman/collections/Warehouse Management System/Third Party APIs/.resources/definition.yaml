@@ -1,6 +1,6 @@
 $kind: collection
 auth:
-  - id: 47133674-96c7-40f5-a297-e2f191716533
+  - id: e38bc1ac-4152-442b-8573-2a43b66e3924
     type: oauth2
     name: oauth2 auth
     credentials:

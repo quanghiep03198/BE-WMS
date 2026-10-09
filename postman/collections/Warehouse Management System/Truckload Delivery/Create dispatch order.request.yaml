@@ -4,9 +4,11 @@ method: POST
 body:
   type: json
   content: "{\r
-
-    \    \"outbound_purchase_orders\":[]\r
-
-    }"
+    \"license_plate\": \"59A-12345\",\r
+    \"container_number\": \"CONT-2026-001\",\r
+    \"outbound_purchase_orders\": [\r
+      { \"po\": \"523089863\", \"outbound_qty\": 1 }\r
+    ]\r
+  }"
 settings: {}
 order: 4000

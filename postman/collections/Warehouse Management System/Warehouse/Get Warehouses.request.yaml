@@ -1,10 +1,14 @@
 $kind: http-request
-url: "{{base_url}}/warehouse"
+url: "{{base_url}}/warehouse/"
 method: GET
 headers:
-  Accept: application/json
-  Content-Type: application/json
-  X-User-Company: VA1
+  - key: Accept
+    value: application/json
+  - key: Content-Type
+    value: application/json
+  - key: X-User-Company
+    value: VA1
+    disabled: true
 auth:
   type: bearer
   credentials:
@@ -176,5 +180,5 @@ scripts:
       \r\n"
     language: text/javascript
 settings: {}
-examples: ./.resources/Get Warehouse By Company.resources/examples
+examples: ./.resources/Get Warehouses.resources/examples
 order: 1000
