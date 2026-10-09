@@ -2,7 +2,7 @@
 import { UserRole } from '../constants'
 
 export interface IUser {
-	_id: string | TObjectId
+	_id: TObjectId
 	username: string
 	password?: string
 	display_name: string

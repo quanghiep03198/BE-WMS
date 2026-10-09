@@ -45,7 +45,7 @@ export class UserController {
 	})
 	@RequireAuthorized(UserRole.ADMIN)
 	async createOne(
-		@User('_id', new ParseObjectIdPipe()) id: Types.ObjectId,
+		@User('_id') id: Types.ObjectId,
 		@Body(new ZodValidationPipe(createUserValidator)) createUserDTO: CreateUserDTO
 	) {
 		const createdUser = await this.userService.createOne({
@@ -67,20 +67,19 @@ export class UserController {
 	})
 	@RequireAuthorized(UserRole.ADMIN)
 	async updateOne(
-		@User() currentUser: RequestUser,
-		@Param('id', ParseObjectIdPipe) id: Types.ObjectId,
+		@User() updatedBy: RequestUser,
+		@Param('id') id: Types.ObjectId,
 		@Body(new ZodValidationPipe(updateUserValidator)) createUserDTO: UpdateUserDTO
 	) {
 		const updatedUser = await this.userService.updateOneById(id, {
 			...createUserDTO,
-			user_code_updated: currentUser?.username ?? 'sa',
-			user_name_updated: currentUser?.display_name ?? 'sa'
+			updated_by: updatedBy._id
 		})
 		this.eventEmitter.emit(
 			UPDATED_USER_EVENT,
 			new UpdatedUserEvent(updatedUser.username, {
-				user_code_updated: currentUser?.username ?? 'sa',
-				user_name_updated: currentUser?.display_name ?? 'sa'
+				user_code_updated: updatedBy?.username ?? 'sa',
+				user_name_updated: updatedBy?.display_name ?? 'sa'
 			})
 		)
 		return updatedUser
@@ -104,7 +103,7 @@ export class UserController {
 		@Param('id', ParseObjectIdPipe) id: Types.ObjectId,
 		@Body(new ZodValidationPipe(updateUserStatusValidator)) { is_active }: UpdateUserStatusDTO
 	) {
-		if (currentUser._id === id.toString()) {
+		if (currentUser._id.toHexString() === id.toHexString()) {
 			throw new ForbiddenException('You cannot change status your own account')
 		}
 
@@ -127,7 +126,7 @@ export class UserController {
 	// #region Self-Service Profile Management
 	@RouteHandler({ endpoint: 'profile', method: HttpMethod.GET })
 	@RequireAuthenticated()
-	async getProfile(@User('_id', ParseObjectIdPipe) id) {
+	async getProfile(@User('_id') id: Types.ObjectId) {
 		return await this.userService.findOneById(id)
 	}
 
@@ -139,7 +138,7 @@ export class UserController {
 	})
 	@RequireAuthenticated()
 	async updateProfile(
-		@User('_id', ParseObjectIdPipe) id: Types.ObjectId,
+		@User('_id') id: Types.ObjectId,
 		@Body(new ZodValidationPipe(updateProfileValidator)) payload: UpdateProfileDTO
 	) {
 		return await this.userService.updateOneById(id, payload)
@@ -153,7 +152,7 @@ export class UserController {
 	})
 	@RequireAuthenticated()
 	async updatePassword(
-		@User('_id', ParseObjectIdPipe) id: Types.ObjectId,
+		@User('_id') id: Types.ObjectId,
 		@Body(new ZodValidationPipe(changePasswordValidator)) payload: ChangePasswordDTO
 	) {
 		const updatedUser = await this.userService.updatePassword(id, payload.password)

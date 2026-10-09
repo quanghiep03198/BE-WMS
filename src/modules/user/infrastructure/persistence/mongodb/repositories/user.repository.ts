@@ -16,6 +16,10 @@ export class UserRepository extends BaseMongoRepository<UserDocument> implements
 		return await super.findAll({ is_system_user: false })
 	}
 
+	public async findByIds(ids: Types.ObjectId[] | string[]) {
+		return await super.findAll({ _id: { $in: ids } })
+	}
+
 	public async findOrCreate(payload: { username: string; password: string }) {
 		const user = await super.findOne({ username: payload.username })
 		if (user) return user
