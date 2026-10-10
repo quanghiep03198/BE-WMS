@@ -53,8 +53,10 @@ export abstract class BaseMongoRepository<TDocument extends Document> implements
 	async findAll(
 		filter: FilterQuery<TDocument> = {},
 		projection?: ProjectionType<TDocument>,
-		options?: QueryOptions<TDocument>
+		options?: QueryOptions<TDocument>,
+		withDeleted = false
 	): Promise<TDocument[]> {
+		if (withDeleted) return await this.model.findWithDeleted(filter, projection, options)
 		return await this.model.find(filter, projection, options)
 	}
 
@@ -65,7 +67,7 @@ export abstract class BaseMongoRepository<TDocument extends Document> implements
 	 * @returns
 	 */
 	async findOneById(id: string | Types.ObjectId, projection?: ProjectionType<TDocument>): Promise<TDocument | null> {
-		return await this.model.findById(id, projection)
+		return await this.model.findById(id, projection).lean<TDocument>({ virtuals: true })
 	}
 
 	/**
