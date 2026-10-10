@@ -3,6 +3,7 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose'
 import { compareSync, hashSync } from 'bcrypt'
 import { PaginateModel, Types, type HydratedDocument, type ObjectId } from 'mongoose'
 import MongooseDeletePlugin, { SoftDeleteModel } from 'mongoose-delete'
+import MongooseLeanVirtuals from 'mongoose-lean-virtuals'
 import MongoosePaginatePlugin from 'mongoose-paginate-v2'
 import { stringify } from 'node:querystring'
 import { UserRole } from '../../../../domain/constants'
@@ -54,33 +55,30 @@ export class User {
 
 export const UserSchema = SchemaFactory.createForClass(User)
 
+UserSchema.loadClass(User)
+
 UserSchema.pre('save', function (next) {
 	this.password = hashSync(this.password, env<number>('SALT_ROUND', { serialize: (value) => Number.parseInt(value) }))
 	next()
 })
 
 UserSchema.virtual('avatar').get(function () {
-	const BASE_AVATAR_URL = 'https://ui-avatars.com/api/'
-	return (
-		BASE_AVATAR_URL +
-		'?' +
-		stringify({
-			background: '#525252',
-			color: '#fafafa',
-			length: 1,
-			bold: true,
-			format: 'svg',
-			name: this.display_name || this.username
-		})
-	)
+	const BASE_AVATAR_URL = 'https://api.dicebear.com'
+	const avatarURL = new URL(`/10.x/glass/svg`, BASE_AVATAR_URL)
+
+	avatarURL.search = stringify({ seed: this.display_name || this.username })
+
+	return avatarURL.toString()
 })
+
+UserSchema.set('toJSON', { virtuals: true })
+UserSchema.set('toObject', { virtuals: true })
 
 UserSchema.index({ username: 1 }, { unique: true, name: 'idx_username' })
 // * Addon plugins
 UserSchema.plugin(MongoosePaginatePlugin)
 UserSchema.plugin(MongooseDeletePlugin, { overrideMethods: true })
-
-UserSchema.loadClass(User)
+UserSchema.plugin(MongooseLeanVirtuals)
 
 export type UserDocument = HydratedDocument<User>
 

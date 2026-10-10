@@ -13,7 +13,7 @@ export class UserRepository extends BaseMongoRepository<UserDocument> implements
 	}
 
 	override async findAll() {
-		return await super.findAll({ is_system_user: false })
+		return await super.findAll({ is_system_user: false }, null, { lean: { virtuals: true } }, true)
 	}
 
 	public async findByIds(ids: Types.ObjectId[] | string[]) {

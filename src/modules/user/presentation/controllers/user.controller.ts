@@ -10,12 +10,11 @@ import { ZodValidationPipe } from '@common/pipes'
 import { IUserRepository, USER_REPOSITORY } from '@modules/user/application/ports/user.repository.port'
 import { UserRole } from '@modules/user/domain/constants'
 import { CREATED_USER_EVENT, CreatedUserEvent } from '@modules/user/domain/events/created-user.event'
-import { DELETED_USER_EVENT, DeletedUserEvent } from '@modules/user/domain/events/deleted-user.event'
 import { UPDATED_USER_EVENT, UpdatedUserEvent } from '@modules/user/domain/events/updated-user.event'
-import { Body, Controller, ForbiddenException, HttpStatus, Inject, Param } from '@nestjs/common'
+import { Body, Controller, HttpStatus, Inject, Param } from '@nestjs/common'
 import { EventEmitter2 } from '@nestjs/event-emitter'
-import { ParseObjectIdPipe } from '@nestjs/mongoose'
 import { Types } from 'mongoose'
+import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
 import {
 	ChangePasswordDTO,
 	changePasswordValidator,
@@ -24,16 +23,16 @@ import {
 	UpdateProfileDTO,
 	updateProfileValidator,
 	UpdateUserDTO,
-	UpdateUserStatusDTO,
-	updateUserStatusValidator,
 	updateUserValidator
 } from '../../application/dto/user.dto'
 
 @Controller('user')
 export class UserController {
 	constructor(
-		@Inject(USER_REPOSITORY) private readonly userService: IUserRepository,
-		private readonly eventEmitter: EventEmitter2
+		@Inject(USER_REPOSITORY) private readonly userRepository: IUserRepository,
+		private readonly eventEmitter: EventEmitter2,
+		@InjectPinoLogger(UserController.name)
+		private readonly logger: PinoLogger
 	) {}
 	// #region User Management
 
@@ -45,16 +44,16 @@ export class UserController {
 	})
 	@RequireAuthorized(UserRole.ADMIN)
 	async createOne(
-		@User('_id') id: Types.ObjectId,
+		@User() createdBy: RequestUser,
 		@Body(new ZodValidationPipe(createUserValidator)) createUserDTO: CreateUserDTO
 	) {
-		const createdUser = await this.userService.createOne({
+		const createdUser = await this.userRepository.createOne({
 			...createUserDTO,
-			created_by: id
+			created_by: createdBy._id
 		})
 		this.eventEmitter.emit(
 			CREATED_USER_EVENT,
-			new CreatedUserEvent(createUserDTO.username, createUserDTO.password, createUserDTO.created_by)
+			new CreatedUserEvent(createUserDTO.username, createUserDTO.password, createdBy.username)
 		)
 		return createdUser
 	}
@@ -69,15 +68,23 @@ export class UserController {
 	async updateOne(
 		@User() updatedBy: RequestUser,
 		@Param('id') id: Types.ObjectId,
-		@Body(new ZodValidationPipe(updateUserValidator)) createUserDTO: UpdateUserDTO
+		@Body(new ZodValidationPipe(updateUserValidator)) payload: UpdateUserDTO
 	) {
-		const updatedUser = await this.userService.updateOneById(id, {
-			...createUserDTO,
-			updated_by: updatedBy._id
+		if (typeof payload.deleted === 'boolean') {
+			if (payload.deleted) await this.userRepository.softDeleteOneById(id)
+			else await this.userRepository.restoreOneById(id)
+		}
+
+		const updatedUser = await this.userRepository.updateOneById(id, {
+			...payload,
+			updated_by: updatedBy._id,
+			...(typeof payload.deleted === 'boolean' && { deleted_by: payload.deleted ? updatedBy._id : null })
 		})
+
 		this.eventEmitter.emit(
 			UPDATED_USER_EVENT,
-			new UpdatedUserEvent(updatedUser.username, {
+			new UpdatedUserEvent(updatedUser?.username, {
+				is_active: payload.deleted,
 				user_code_updated: updatedBy?.username ?? 'sa',
 				user_name_updated: updatedBy?.display_name ?? 'sa'
 			})
@@ -88,46 +95,14 @@ export class UserController {
 	@RouteHandler({ method: HttpMethod.GET })
 	@RequireAuthorized(UserRole.ADMIN)
 	async getUsers() {
-		return await this.userService.findAll()
-	}
-
-	@RouteHandler({
-		endpoint: 'update-status/:id',
-		method: HttpMethod.PATCH,
-		statusCode: HttpStatus.OK,
-		message: 'common.ok'
-	})
-	@RequireAuthorized(UserRole.ADMIN)
-	async updateUserStatus(
-		@User() currentUser: RequestUser,
-		@Param('id', ParseObjectIdPipe) id: Types.ObjectId,
-		@Body(new ZodValidationPipe(updateUserStatusValidator)) { is_active }: UpdateUserStatusDTO
-	) {
-		if (currentUser._id.toHexString() === id.toHexString()) {
-			throw new ForbiddenException('You cannot change status your own account')
-		}
-
-		const updatedUser = await this.userService.updateOneById(id, {
-			is_active,
-			user_code_updated: currentUser.username,
-			user_name_updated: currentUser.display_name
-		})
-		this.eventEmitter.emit(
-			UPDATED_USER_EVENT,
-			new UpdatedUserEvent(updatedUser.username, {
-				is_active,
-				user_code_updated: currentUser.username,
-				user_name_updated: currentUser.display_name
-			})
-		)
-		return updatedUser
+		return await this.userRepository.findAll()
 	}
 
 	// #region Self-Service Profile Management
 	@RouteHandler({ endpoint: 'profile', method: HttpMethod.GET })
 	@RequireAuthenticated()
-	async getProfile(@User('_id') id: Types.ObjectId) {
-		return await this.userService.findOneById(id)
+	async getProfile(@User('_id') id: TObjectId) {
+		return await this.userRepository.findOneById(id)
 	}
 
 	@RouteHandler({
@@ -138,10 +113,10 @@ export class UserController {
 	})
 	@RequireAuthenticated()
 	async updateProfile(
-		@User('_id') id: Types.ObjectId,
+		@User('_id') id: TObjectId,
 		@Body(new ZodValidationPipe(updateProfileValidator)) payload: UpdateProfileDTO
 	) {
-		return await this.userService.updateOneById(id, payload)
+		return await this.userRepository.updateOneById(id, payload)
 	}
 
 	@RouteHandler({
@@ -152,28 +127,14 @@ export class UserController {
 	})
 	@RequireAuthenticated()
 	async updatePassword(
-		@User('_id') id: Types.ObjectId,
+		@User('_id') id: TObjectId,
 		@Body(new ZodValidationPipe(changePasswordValidator)) payload: ChangePasswordDTO
 	) {
-		const updatedUser = await this.userService.updatePassword(id, payload.password)
+		const updatedUser = await this.userRepository.updatePassword(id, payload.password)
 		this.eventEmitter.emit(
 			UPDATED_USER_EVENT,
 			new UpdatedUserEvent(updatedUser.username, { password: payload.password })
 		)
 		return updatedUser
-	}
-
-	@RouteHandler({
-		endpoint: 'delete/:id',
-		method: HttpMethod.DELETE,
-		statusCode: HttpStatus.NO_CONTENT,
-		message: { i18nKey: 'common.deleted' }
-	})
-	@RequireAuthorized(UserRole.ADMIN)
-	async deleteUser(@Param('id', ParseObjectIdPipe) id: Types.ObjectId) {
-		const user = await this.userService.findOneById(id)
-		if (!user) return
-		await this.userService.softDeleteOneById(id)
-		this.eventEmitter.emit(DELETED_USER_EVENT, new DeletedUserEvent([user.username]))
 	}
 }

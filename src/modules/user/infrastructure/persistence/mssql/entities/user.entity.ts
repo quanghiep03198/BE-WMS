@@ -12,14 +12,6 @@ export class UserEntity extends BaseAbstractEntity {
 	@Column({ name: 'user_password', length: 20 })
 	password: string
 
-	@Index({ unique: true })
-	@Column({ type: 'nvarchar', length: 20 })
-	employee_code: string
-
-	authenticate(password: string) {
-		return this.password === password
-	}
-
 	constructor(user: Partial<UserEntity>) {
 		super()
 		Object.assign(this, user)

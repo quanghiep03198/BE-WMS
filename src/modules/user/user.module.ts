@@ -7,7 +7,6 @@ import { UserListeners } from './infrastructure/listeners'
 import { UserRepository } from './infrastructure/persistence/mongodb/repositories/user.repository'
 import { User, USER_COLLECTION, UserModel, UserSchema } from './infrastructure/persistence/mongodb/schemas/user.schema'
 import { UserEntity } from './infrastructure/persistence/mssql/entities/user.entity'
-import { RmdbsUserRepository } from './infrastructure/persistence/mssql/repositories/rmdbs-user.repository'
 import { UserController } from './presentation/controllers/user.controller'
 
 @Module({
@@ -18,7 +17,7 @@ import { UserController } from './presentation/controllers/user.controller'
 		),
 		TypeOrmModule.forFeature([UserEntity], DATA_SOURCE_SYSCLOUD)
 	],
-	providers: [...UserListeners, { provide: USER_REPOSITORY, useClass: UserRepository }, RmdbsUserRepository],
+	providers: [...UserListeners, { provide: USER_REPOSITORY, useClass: UserRepository }],
 	controllers: [UserController],
 	exports: [USER_REPOSITORY]
 })

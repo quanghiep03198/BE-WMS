@@ -15,7 +15,10 @@ export const createUserValidator = z.object({
 	// authorized_factory_codes: z.array(z.enum(FactoryCode))
 })
 
-export const updateUserValidator = createUserValidator.partial().omit({ password: true })
+export const updateUserValidator = createUserValidator
+	.partial()
+	.omit({ password: true })
+	.extend({ deleted: z.boolean().optional() })
 
 export const updateProfileValidator = z.object({
 	display_name: z.string().trim().nonempty().optional(),
