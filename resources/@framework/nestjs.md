@@ -62,7 +62,7 @@ Tài liệu này cung cấp cho thành viên trong dự án có kiến thức t�
 
 **1. Life cycle trong NestJS**
 
-![NestJS Lifecycle](/docs/@framework/nestjs-life-cycle.png)
+![NestJS Lifecycle](/resources/@framework/nestjs-life-cycle.png)
 
 _Hình ảnh trên sẽ đem lại cho bạn cái nhìn tổng quan về luồng chạy của 1 request trên ứng dụng Rest API với NestJS._
 
