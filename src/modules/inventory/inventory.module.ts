@@ -6,9 +6,11 @@ import { TypeOrmModule } from '@nestjs/typeorm'
 import { OrderModule } from '../order/order.module'
 import { InventoryAuditCommandHandlers } from './application/commands'
 import { INVENTORY_AUDIT_REPOSITORY } from './application/ports/inventory-audit.repository.port'
+import { PRODUCTION_INVENTORY_REPOSITORY } from './application/ports/production-inventory.repository.port'
 import { InventoryAuditQueryHandlers } from './application/queries'
 import { InventoryAuditEventHandlers } from './domain/events'
 import { InventoryAuditRepository } from './infrastructure/persistence/mongodb/repositories/inventory-audit.repository'
+import { ProductInventoryRepository } from './infrastructure/persistence/mongodb/repositories/product-inventory.repository'
 import {
 	MO_INVENTORY_AUDIT_COLLECTION_NAME,
 	MoInventoryAudit,
@@ -52,6 +54,7 @@ import { InventoryController } from './presentation/controllers/inventory.contro
 	providers: [
 		ProductionInventoryService,
 		{ provide: INVENTORY_AUDIT_REPOSITORY, useClass: InventoryAuditRepository },
+		{ provide: PRODUCTION_INVENTORY_REPOSITORY, useClass: ProductInventoryRepository },
 		...InventoryAuditQueryHandlers,
 		...InventoryAuditCommandHandlers,
 		...InventoryAuditEventHandlers
