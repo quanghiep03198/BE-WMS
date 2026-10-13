@@ -26,9 +26,9 @@ import { CheckoutInventoryAuditCommand } from '@modules/inventory/application/co
 import { UpdateInventorySupplementalQtyCommand } from '@modules/inventory/application/commands/update-inventory-supplemental-qty/update-inventory-supplemental-qty.command'
 import { ExportMonthlyInventoryAuditQuery } from '@modules/inventory/application/queries/export-monthly-inventory-audit/export-monthly-inventory-audit.query'
 import { GetMonthlyInventoryAuditQuery } from '@modules/inventory/application/queries/get-monthly-inventory-audit/get-monthly-inventory-audit.query'
+import { GetProductionInventoryQuery } from '@modules/inventory/application/queries/get-production-inventory/get-production-inventory.query'
 import { CommandBus, QueryBus } from '@nestjs/cqrs'
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
-import { ProductionInventoryService } from '../../infrastructure/persistence/mssql/services/product-inventory.service'
 import {
 	bulkUpdateInventoryAuditPayload,
 	BulkUpdateInventoryReportDTO,
@@ -44,8 +44,7 @@ export class InventoryController {
 	constructor(
 		@InjectPinoLogger(InventoryController.name) private readonly logger: PinoLogger,
 		private readonly queryBus: QueryBus,
-		private readonly commandBus: CommandBus,
-		private readonly productionInventoryService: ProductionInventoryService
+		private readonly commandBus: CommandBus
 	) {}
 
 	// #region Inventory Audit
@@ -106,7 +105,14 @@ export class InventoryController {
 	async getProductInventory(
 		@Query(new ZodValidationPipe(productInventoryReportQuery)) filterQueries: ProductInventoryReportQueryDTO
 	) {
-		return await this.productionInventoryService.getLegacyProductInventory(filterQueries)
+		return await this.queryBus.execute(
+			new GetProductionInventoryQuery(
+				filterQueries['brand_name:eq'],
+				filterQueries['factory_shoes_style:eq'],
+				filterQueries['color_sn:eq']
+			)
+		)
+		// return await this.productionInventoryRepository.getLegacyProductInventory(filterQueries)
 	}
 
 	@Get('summary/export')
@@ -116,14 +122,14 @@ export class InventoryController {
 		@Headers(CommonRequestHeader.FACTORY_CODE) factory: string,
 		@Res() reply: FastifyReply
 	) {
-		const buffer = await this.productionInventoryService.exportProductionInventorySummary(factory)
-		return reply.send(buffer)
+		// const buffer = await this.productionInventoryRepository.exportProductionInventorySummary(factory)
+		// return reply.send(buffer)
 	}
 
-	@RouteHandler({ endpoint: 'production-features', method: HttpMethod.GET, statusCode: HttpStatus.OK })
-	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF, UserRole.INDUSTRIAL_ENGINEERING_STAFF)
-	async getProductInventoryFeatures() {
-		return await this.productionInventoryService.getProductionInventoryFeatures()
-	}
+	// @RouteHandler({ endpoint: 'production-features', method: HttpMethod.GET, statusCode: HttpStatus.OK })
+	// @RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF, UserRole.INDUSTRIAL_ENGINEERING_STAFF)
+	// async getProductInventoryFeatures() {
+	// 	return await this.productionInventoryRepository.getProductionInventoryFeatures()
+	// }
 	// #endregion
 }

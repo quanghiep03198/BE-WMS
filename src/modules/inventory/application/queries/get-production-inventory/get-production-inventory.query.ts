@@ -1,8 +1,7 @@
 import { Query } from '@nestjs/cqrs'
+import { IProductionInventory } from '../../ports/production-inventory.repository.port'
 
-export class GetProductionInventoryQuery extends Query<
-	Array<{ mo_no: string; last_inbound_time: Date; order_qty: number; instock_qty: number }>
-> {
+export class GetProductionInventoryQuery extends Query<IProductionInventory> {
 	constructor(
 		public readonly brandName: string,
 		public readonly shoeStyle: string,

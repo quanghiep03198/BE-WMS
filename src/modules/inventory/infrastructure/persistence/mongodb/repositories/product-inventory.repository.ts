@@ -6,6 +6,8 @@ import { ManufacturingOrder, ManufacturingOrderModel } from '@modules/order/sche
 import { PurchaseOrder, PurchaseOrderModel } from '@modules/order/schemas/purchase-order.schema'
 import { Injectable } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
+import isEmpty from 'lodash/isEmpty'
+import isNil from 'lodash/isNil'
 
 @Injectable()
 export class ProductInventoryRepository implements IProductionInventoryRepository {
@@ -16,13 +18,14 @@ export class ProductInventoryRepository implements IProductionInventoryRepositor
 		private readonly purchaseOrderModel: PurchaseOrderModel
 	) {}
 
-	public async getProductionInventory(query: GetProductionInventoryQuery): Promise<any> {
-		const [inbound, outbound] = await Promise.all([
+	public async getProductionInventory(query: GetProductionInventoryQuery) {
+		const [inbound, outbound, sizes] = await Promise.all([
 			this.getInstockManufacturingOrders(query),
-			this.getIncompletePurchaseOrders(query)
+			this.getIncompletePurchaseOrders(query),
+			this.getInstockSizes(query)
 		])
 
-		return { inbound, outbound }
+		return { inbound, outbound, sizes }
 	}
 
 	private buildFilterQueries(query: GetProductionInventoryQuery) {
@@ -31,19 +34,26 @@ export class ProductInventoryRepository implements IProductionInventoryRepositor
 			factory_shoes_style: query.shoeStyle,
 			color_sn: query.color
 		})
-			.omitIf('brand_name', (value) => value.brand_name === 'all')
-			.omitIf('factory_shoes_style', (value) => value.factory_shoes_style === 'all')
-			.omitIf('color_sn', (value) => value.color_sn === 'all')
+			.omitIf('brand_name', (value) => isNil(value.brand_name) || isEmpty(value.brand_name))
+			.omitIf(
+				'factory_shoes_style',
+				(value) => isNil(value.factory_shoes_style) || isEmpty(value.factory_shoes_style)
+			)
+			.omitIf('color_sn', (value) => isNil(value.color_sn) || isEmpty(value.color_sn))
 			.build()
 	}
 
 	private async getInstockManufacturingOrders(query: GetProductionInventoryQuery) {
 		const filterQueries = this.buildFilterQueries(query)
 
-		return await this.manufacturingOrderModel.aggregate([
-			{
-				$match: filterQueries
-			},
+		return await this.manufacturingOrderModel.aggregate<{
+			mo_no: string
+			last_inbound_date?: Date
+			order_qty: number
+			instock_qty: number
+			size_ledger: Array<{ size_numcode: string; qty: number }>
+		}>([
+			{ $match: filterQueries },
 			{
 				$addFields: {
 					size_items: { $objectToArray: '$size_ledger' }
@@ -144,7 +154,7 @@ export class ProductInventoryRepository implements IProductionInventoryRepositor
 						{
 							$project: {
 								_id: 0,
-								last_inbound_time: '$date'
+								last_inbound_date: '$date'
 							}
 						}
 					],
@@ -153,8 +163,8 @@ export class ProductInventoryRepository implements IProductionInventoryRepositor
 			},
 			{
 				$addFields: {
-					last_inbound_time: {
-						$first: '$last_inbound.last_inbound_time'
+					last_inbound_date: {
+						$first: '$last_inbound.last_inbound_date'
 					}
 				}
 			},
@@ -162,7 +172,7 @@ export class ProductInventoryRepository implements IProductionInventoryRepositor
 				$project: {
 					_id: 0,
 					mo_no: 1,
-					last_inbound_time: 1,
+					last_inbound_date: 1,
 					order_qty: 1,
 					instock_qty: 1,
 					size_ledger: 1
@@ -180,7 +190,13 @@ export class ProductInventoryRepository implements IProductionInventoryRepositor
 	private async getIncompletePurchaseOrders(query: GetProductionInventoryQuery) {
 		const filterQueries = this.buildFilterQueries(query)
 
-		return await this.purchaseOrderModel.aggregate([
+		return await this.purchaseOrderModel.aggregate<{
+			po: string
+			order_qty: number
+			outbound_qty: number
+			last_outbound_date: Date
+			size_ledger: Array<{ size_numcode: string; qty: number }>
+		}>([
 			{
 				$match: filterQueries
 			},
@@ -298,32 +314,28 @@ export class ProductInventoryRepository implements IProductionInventoryRepositor
 	private async getInstockSizes(query: GetProductionInventoryQuery) {
 		const filterQueries = this.buildFilterQueries(query)
 
-		return await this.manufacturingOrderModel.aggregate([
+		return await this.manufacturingOrderModel.aggregate<{ size_numcode: string; qty: number }>([
 			{
-				$match: filterQueries
+				$match: { ...filterQueries, brand_name: 'UGG' }
 			},
 			{
 				$project: {
-					size_ledger_arr: { $objectToArray: '$size_ledger' }
+					sizeArray: { $objectToArray: '$size_ledger' }
 				}
 			},
-			{ $unwind: '$size_ledger_arr' },
+			{
+				$unwind: '$sizeArray'
+			},
 			{
 				$project: {
-					size_numcode: '$size_ledger_arr.k',
-					instock_qty: {
+					size: '$sizeArray.k',
+					stock: {
 						$subtract: [
 							{
-								$add: [
-									{ $ifNull: ['$size_ledger_arr.v.stocked_in_qty', 0] },
-									{ $ifNull: ['$size_ledger_arr.v.total_return_tx', 0] }
-								]
+								$add: ['$sizeArray.v.stocked_in_qty', '$sizeArray.v.total_return_tx']
 							},
 							{
-								$add: [
-									{ $ifNull: ['$size_ledger_arr.v.total_recall_tx', 0] },
-									{ $ifNull: ['$size_ledger_arr.v.shipped_out_qty', 0] }
-								]
+								$add: ['$sizeArray.v.total_recall_tx', '$sizeArray.v.shipped_out_qty']
 							}
 						]
 					}
@@ -331,19 +343,19 @@ export class ProductInventoryRepository implements IProductionInventoryRepositor
 			},
 			{
 				$group: {
-					_id: '$size_numcode',
-					instock_qty: { $first: '$instock_qty' }
+					_id: '$size',
+					qty: { $sum: '$stock' }
 				}
 			},
 			{
 				$project: {
 					_id: 0,
 					size_numcode: '$_id',
-					instock_qty: 1
+					qty: 1
 				}
 			},
 			{
-				$sort: { size_numcode: 1 }
+				$sort: { size: 1 }
 			}
 		])
 	}

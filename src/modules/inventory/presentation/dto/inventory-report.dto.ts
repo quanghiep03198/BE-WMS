@@ -15,9 +15,9 @@ const updateInventoryAuditPayload = z.object({
 export const bulkUpdateInventoryAuditPayload = z.array(updateInventoryAuditPayload)
 
 export const productInventoryReportQuery = z.object({
-	'brand_name:eq': z.string().nonempty(),
-	'shoes_style:eq': z.string().nonempty(),
-	'color:eq': z.string().nonempty()
+	'brand_name:eq': z.string().optional(),
+	'factory_shoes_style:eq': z.string().optional(),
+	'color_sn:eq': z.string().optional()
 })
 
 export const syncInventoryAuditValidator = z.object({
