@@ -1,7 +1,7 @@
 import { env } from '@common/utils'
 import { CdcHandler } from '@databases/cdc/decorators'
 import { CdcChangeContext, ICdcHandler } from '@databases/cdc/types'
-import { DATA_SOURCE_SYSCLOUD, DATA_WAREHOUSE_CONNECTION, DATABASE_SCHEMA } from '@databases/constants'
+import { DATA_SOURCE_SYSCLOUD, DATA_WAREHOUSE_CONNECTION, DATABASE_SCHEMA, RecordStatus } from '@databases/constants'
 import { InjectTransactionHost, Transactional, TransactionHost } from '@nestjs-cls/transactional'
 import { TransactionalAdapterMongoose } from '@nestjs-cls/transactional-adapter-mongoose'
 import { InjectModel } from '@nestjs/mongoose'
@@ -35,9 +35,13 @@ export class UserCdcHandler implements ICdcHandler<{
 	}: CdcChangeContext<{
 		usercode: string
 		user_password: string
+		isactive: string
 	}>): Promise<void> {
 		const bulkWriteOps: AnyBulkWriteOperation<UserDocument>[] = changes.flatMap((change) => {
-			if (change.operation === 'delete')
+			if (
+				change.operation === 'delete' ||
+				(change.operation === 'update' && change.data.every((row) => row.isactive === RecordStatus.INACTIVE))
+			)
 				return {
 					updateMany: {
 						filter: { username: { $in: change.data.map((row) => row.usercode) } },
