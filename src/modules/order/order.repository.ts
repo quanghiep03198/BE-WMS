@@ -1,6 +1,5 @@
 import { SuperJson } from '@common/utils'
 import { DATA_SOURCE_ERP, DATA_WAREHOUSE_CONNECTION } from '@databases/constants'
-import { SizeNumber } from '@modules/finished-goods/domain/value-objects/size-number.vo'
 import { Injectable } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
 import { InjectDataSource } from '@nestjs/typeorm'
@@ -32,10 +31,7 @@ export class OrderRepository implements IOrderRepository {
 			.then((records) =>
 				records.map((record) => ({
 					...record,
-					sizes: SuperJson.parse<Array<SizeRun>>(record.sizes).map((size) => ({
-						size_numcode: new SizeNumber(size.size_numcode).normalize('padleft'),
-						size_qty: size.size_qty
-					}))
+					sizes: SuperJson.parse<Array<SizeRun>>(record.sizes)
 				}))
 			)
 
