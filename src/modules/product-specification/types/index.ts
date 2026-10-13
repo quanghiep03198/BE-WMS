@@ -1,6 +1,6 @@
 export type ProductVariant = {
 	color: string
-	sizes: Array<Record<'size', string>>
+	sizes: Array<string>
 }
 
 export type ProductSpecification = {

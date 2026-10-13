@@ -27,6 +27,7 @@ export class ProductSpecificationTask {
 		name: 'SYNC_PRODUCT_SPECIFICATION'
 	})
 	async handleSyncProductSpecification() {
+		// return
 		try {
 			const rawData = await this.dataSourceERP.query<ProductSpecification[]>(productVariantsQuery)
 
