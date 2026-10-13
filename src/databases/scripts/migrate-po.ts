@@ -1,16 +1,15 @@
 import omit from 'lodash/omit'
-import { getArgs } from '../libs/get-args'
-import { MongoManager } from '../libs/mongoose'
-import { MssqlManager } from '../libs/mssql'
-import { Logger } from '../utils/logger'
-import { SizeNumber } from '../utils/size-number'
+import { MongoManager } from './libs/mongoose'
+import { MssqlManager } from './libs/mssql'
+import { getArgs } from './utils/get-args'
+import { Logger } from './utils/logger'
 
 const args = getArgs({
 	host: {
 		type: 'string',
 		short: 'h',
-		description: 'MSSQL host password',
-		default: process.env.DB_PASSWORD
+		description: 'MSSQL host',
+		default: process.env.DB_HOST
 	}
 })
 
@@ -32,9 +31,15 @@ interface IPurchaseOrder {
 }
 
 export async function main() {
+	const logger = new Logger()
+
+	if (typeof args.host !== 'string' || !args.host) {
+		logger.error('MSSQL host is required')
+		process.exit(1)
+	}
+
 	const mssqlManager = new MssqlManager(args.host)
 	const mongoManager = new MongoManager()
-	const logger = new Logger()
 
 	try {
 		await mssqlManager.connect()
@@ -53,9 +58,7 @@ export async function main() {
                         CONCAT(a.shoestyle_codecust, '/', a.shoestyle_namecust) AS cust_shoes_style,
                         a.color_sn,
                         a.XF_Date,
-                        CASE WHEN LEFT(CAST (sr.size_numcode AS NVARCHAR (10)), 1) = '0' THEN sr.size_numcode WHEN ISNUMERIC(sr.size_numcode) = 1
-                                                                                                                     AND sr.size_numcode NOT IN ('', '.', '-', '+') -- Exclude edge cases
-                                                                                                                     AND CAST (sr.size_numcode AS FLOAT) < 10 THEN CAST (CONCAT('0', sr.size_numcode) AS NVARCHAR (10)) ELSE CAST (sr.size_numcode AS NVARCHAR (10)) END AS size_numcode,
+                        wuerp_vnrd.dbo.NORMALIZE_SIZE_NUMBER(sr.size_numcode) AS size_numcode,
                         sr.size_qty,
                         ROW_NUMBER() OVER (PARTITION BY a.po ORDER BY a.keyid DESC) AS row_num
                   FROM   DV_DATA_LAKE.dbo.dv_OrderProcessR05 AS a
@@ -118,11 +121,11 @@ export async function main() {
 
 		const shippedQtyMap = shippedOutQty.getRawMany().reduce(
 			(acc, curr) => {
-				const sizeNumber = new SizeNumber(curr.size_code).normalize('padleft')
+				// const sizeNumber = new SizeNumber(curr.size_code).normalize('padleft')
 				if (!acc[curr.po]) {
 					acc[curr.po] = {}
 				}
-				acc[curr.po][sizeNumber] = curr.shipped_out_qty
+				acc[curr.po][curr.size_code] = curr.shipped_out_qty
 				return acc
 			},
 			{} as Record<string, Record<string, number>>
@@ -136,8 +139,7 @@ export async function main() {
 			const bulkOperations = purchaseOrders.map((item) => {
 				const shippingProgress = Array.isArray(item.shipping_progress)
 					? item.shipping_progress.reduce((acc, curr) => {
-							const sizeNumber = new SizeNumber(curr.size_numcode).normalize('padleft')
-							return { ...acc, [sizeNumber]: curr.order_qty }
+							return { ...acc, [curr.size_numcode]: curr.order_qty }
 						}, {})
 					: {}
 

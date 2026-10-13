@@ -5,13 +5,13 @@ import { Logger } from '../../../../.tmp/utils/logger'
 export class MongoManager {
 	private client: mongoose.Mongoose = new mongoose.Mongoose({ createInitialConnection: false })
 
-	public async connect() {
+	public async connect(db: string = 'data_warehouse') {
 		const logger = new Logger('MongoDB')
 
 		try {
 			logger.info('Connecting to MongoDB...')
 			this.client = await this.client.connect(
-				'mongodb://127.0.0.1:27017,127.0.0.1:27018,127.0.0.1:27019/data_warehouse?replicaSet=rs0'
+				`mongodb://127.0.0.1:27017,127.0.0.1:27018,127.0.0.1:27019/${db}?replicaSet=rs0`
 			)
 			logger.info('Connected to MongoDB')
 		} catch {
