@@ -52,7 +52,8 @@ import { WarehouseController } from './presentation/controllers/warehouse.contro
 		...(env('DB_HOST') !== '10.30.0.18' ? [] : [WarehouseCdcHandler, StorageLocationCdcHandler])
 
 		// StorageLocationSubscriber
-	]
+	],
+	exports: [STORAGE_LOCATION_REPOSITORY]
 })
 export class WarehouseModule implements OnModuleInit {
 	constructor(

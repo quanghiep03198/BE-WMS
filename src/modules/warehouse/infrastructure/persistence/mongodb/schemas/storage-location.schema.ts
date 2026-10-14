@@ -7,6 +7,7 @@ import MongooseAutoPopulate from 'mongoose-autopopulate'
 import MongooseDelete, { type SoftDeleteModel } from 'mongoose-delete'
 import MongooseLeanVirtuals from 'mongoose-lean-virtuals'
 import MongoosePaginate from 'mongoose-paginate-v2'
+import { WarehouseDocument } from './warehouse.schema'
 
 export const STORAGE_LOCATION_COLLECTION = 'storage_locations'
 
@@ -27,8 +28,8 @@ export class StorageLocation extends BaseAbstractSchema {
 	@Prop({ type: String, required: true, uppercase: true, unique: true })
 	name: string
 
-	@Prop({ type: Types.ObjectId, required: true })
-	warehouse: Types.ObjectId
+	@Prop({ type: Types.ObjectId, required: true, ref: 'Warehouse', autopopulate: { select: '_id name' } })
+	warehouse: Types.ObjectId | Pick<WarehouseDocument, '_id' | 'name'>
 
 	@Prop({
 		type: Types.ObjectId,
