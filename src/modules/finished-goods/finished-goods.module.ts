@@ -2,6 +2,7 @@ import { env } from '@common/utils'
 import { DATA_SOURCE_DATA_LAKE, DATA_WAREHOUSE_CONNECTION } from '@databases/constants'
 import { InventoryModule } from '@modules/inventory/inventory.module'
 import { OrderModule } from '@modules/order/order.module'
+import { WarehouseModule } from '@modules/warehouse/warehouse.module'
 import { BullModule } from '@nestjs/bullmq'
 import { forwardRef, Module, OnModuleInit } from '@nestjs/common'
 import { InjectModel, MongooseModule } from '@nestjs/mongoose'
@@ -78,6 +79,7 @@ import { FinishedGoodsGateway } from './presentation/gateways/finished-goods.gat
 	imports: [
 		forwardRef(() => InventoryModule),
 		forwardRef(() => OrderModule),
+		WarehouseModule,
 		ThirdPartyApiModule,
 		BullModule.registerQueue({ name: BULK_WRITE_INBOUND_EPCS_QUEUE }),
 		BullModule.registerQueue({ name: BULK_WRITE_OUTBOUND_EPCS_QUEUE }),

@@ -17,7 +17,7 @@ import { InjectModel } from '@nestjs/mongoose'
 import { InjectRedisClient } from '@redis/decorators'
 import { format } from 'date-fns'
 import Redis from 'ioredis'
-import { AnyBulkWriteOperation, mongo, type FilterQuery, type MongooseBulkWriteOptions } from 'mongoose'
+import { AnyBulkWriteOperation, mongo, Types, type FilterQuery, type MongooseBulkWriteOptions } from 'mongoose'
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
 import { FinishedGoodsEpc, FinishedGoodsEpcDocument, FinishedGoodsEpcModel } from '../schemas/finished-goods-epc.schema'
 import { InventoryLedgerRepository } from './inventory-ledger.repository'
@@ -160,11 +160,8 @@ export class StockTransactionMongoRepository implements IStockTransactionReposit
 								inbound_at: {
 									$cond: [{ $eq: ['$status', FinishedGoodsEpcStatus.SCANNING] }, '$inbound_at', '$$NOW']
 								},
-								assembly_line: {
-									code: epc.getAssemblyLine('code'),
-									name: epc.getAssemblyLine('name', 'sanitized')
-								},
-								storage_location: { code: epc.getStorageLocation('code'), name: epc.getStorageLocation('name') }
+								assembly_line: epc.getAssemblyLine('name', 'sanitized'),
+								storage_location: new Types.ObjectId(epc.getStorageLocation('id'))
 							}
 						},
 						{

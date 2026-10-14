@@ -102,11 +102,12 @@ export class ElectronicProductCode {
 		return assemblyLine[prop]
 	}
 
-	public getStorageLocation(prop: 'code' | 'name') {
+	public getStorageLocation(prop: 'id' | 'code' | 'name') {
 		const value = this.attributes?.storage_location ?? FALLBACK_VALUE
 		if (!value.includes('/')) return FALLBACK_VALUE
-		const [warehouse, location] = value.split('/')
+		const [id, warehouse, location] = value.split('/')
 		const storageLocation = {
+			id,
 			code: env('APP_TENANCY') + warehouse + location,
 			name: location
 		}

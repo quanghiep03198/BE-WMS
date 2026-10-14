@@ -11,30 +11,37 @@ import { StockInTransaction } from '@modules/finished-goods/domain/models/stock-
 import { SizeNumber } from '@modules/finished-goods/domain/value-objects/size-number.vo'
 import { ORDER_REPOSITORY } from '@modules/order/order.constant'
 import { IOrderRepository } from '@modules/order/order.repository.interface'
+import {
+	IStorageLocationRepository,
+	STORAGE_LOCATION_REPOSITORY
+} from '@modules/warehouse/application/ports/storage-location.repository.port'
+import { IStorageLocation } from '@modules/warehouse/domain/interfaces/storage-location.interface'
 import { Inject } from '@nestjs/common'
 import { CommandHandler, EventPublisher, ICommandHandler } from '@nestjs/cqrs'
-import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
 import { StockInCommand } from './stock-in.command'
 
 @CommandHandler(StockInCommand)
 export class StockInHandler implements ICommandHandler<StockInCommand> {
 	constructor(
-		@InjectPinoLogger(StockInHandler.name)
-		private readonly logger: PinoLogger,
+		// @InjectPinoLogger(StockInHandler.name)
+		// private readonly logger: PinoLogger,
 		@Inject(FINISHED_GOODS_EPC_REPOSITORY) private readonly finishedGoodsEpcRepository: IFinishedGoodsEpcRepository,
 		@Inject(ORDER_REPOSITORY)
 		private readonly orderRepository: IOrderRepository,
+		@Inject(STORAGE_LOCATION_REPOSITORY)
+		private readonly storageLocationRepository: IStorageLocationRepository,
 		@Inject(STOCK_TX_REPOSITORY)
 		private readonly stockTransactionMongoRepository: IStockTransactionRepository,
 		private readonly eventPublisher: EventPublisher
 	) {}
 
 	public async execute({ command }: StockInCommand): Promise<void> {
+		const location = await this.storageLocationRepository.findOneById(command.storage_location)
 		const pendingInboundEpcs = await this.finishedGoodsEpcRepository.getPendingStockMoveEpcs(
 			command.inbound_device_sn,
 			command.mo_no,
 			`${command.assembly_line.code}/${command.assembly_line.name}`,
-			`${command.warehouse}/${command.storage_location}`
+			`${location._id}/${(location.warehouse as Exclude<IStorageLocation['warehouse'], TObjectId>)?.name}/${command.storage_location}`
 		)
 
 		const currentInboundProgress = (await this.orderRepository.getManufacturingOrderInventory(command.mo_no)).map(
