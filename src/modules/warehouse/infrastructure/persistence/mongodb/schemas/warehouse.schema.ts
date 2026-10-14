@@ -25,7 +25,7 @@ export const WAREHOUSE_COLLECTION = 'warehouses'
 	writeConcern: { w: 'majority' }
 })
 export class Warehouse extends BaseAbstractSchema {
-	@Prop({ type: String, required: true, uppercase: true })
+	@Prop({ type: String, required: true, trim: true, uppercase: true })
 	name: string
 
 	@Prop({ type: Number, required: true })
