@@ -1,5 +1,5 @@
 import { CommonRequestHeader } from '@common/constants'
-import { HttpMethod, RequireAuthorized, ResponseMessage, RouteHandler } from '@common/decorators'
+import { HttpMethod, RequireAuthorized, RouteHandler } from '@common/decorators'
 import { ZodValidationPipe } from '@common/pipes'
 import { I18nTranslations } from '@generated/i18n.generated'
 import {
@@ -13,7 +13,7 @@ import {
 	SearchCustOrderParamsDTO
 } from '@modules/finished-goods/presentation/dto/rfid-shared.dto'
 import { UserRole } from '@modules/user/domain/constants'
-import { Body, Controller, Headers, HttpCode, HttpStatus, Patch, Put, Query, UseFilters } from '@nestjs/common'
+import { Body, Controller, Headers, HttpStatus, Query } from '@nestjs/common'
 import { CommandBus, QueryBus } from '@nestjs/cqrs'
 import { I18n, I18nContext } from 'nestjs-i18n'
 import { ExchangeMoRmCommand } from '../../application/commands/exchange-mo/impl/exchange-mo-rm.command'
@@ -43,10 +43,13 @@ export class MoExchangeController {
 		return await this.queryBus.execute(new SearchExchangableMoQuery(queries.q, factory_code, queries['color_sn:eq']))
 	}
 
-	@Patch('exchange-manufacturing-order')
-	@HttpCode(HttpStatus.CREATED)
-	@ResponseMessage('common.updated')
-	@UseFilters(MoExchageExceptionFilter)
+	@RouteHandler({
+		endpoint: 'exchange-manufacturing-order',
+		method: HttpMethod.PATCH,
+		statusCode: HttpStatus.CREATED,
+		message: 'common.updated',
+		exceptionFilter: MoExchageExceptionFilter
+	})
 	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
 	async exchangeEpc(
 		@Headers(CommonRequestHeader.RFID_READER_ID) deviceSerialNumber: string,
@@ -62,9 +65,13 @@ export class MoExchangeController {
 		)
 	}
 
-	@Put('upsert-epcs-match')
-	@HttpCode(HttpStatus.CREATED)
-	@UseFilters(MoExchageExceptionFilter)
+	@RouteHandler({
+		endpoint: 'upsert-epcs-match',
+		method: HttpMethod.PUT,
+		statusCode: HttpStatus.CREATED,
+		message: 'common.updated',
+		exceptionFilter: MoExchageExceptionFilter
+	})
 	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
 	async upsertEpcInformation(
 		@Headers(CommonRequestHeader.RFID_READER_ID) deviceSerialNumber: string,

@@ -1,5 +1,5 @@
 import { CommonRequestHeader } from '@common/constants'
-import { HttpMethod, RequestUser, RequireAuthorized, ResponseMessage, RouteHandler, User } from '@common/decorators'
+import { HttpMethod, RequestUser, RequireAuthorized, RouteHandler, User } from '@common/decorators'
 import { ZodValidationPipe } from '@common/pipes'
 import { I18nTranslations } from '@generated/i18n.generated'
 import { RecallFromStockCommand } from '@modules/finished-goods/application/commands/recall-from-stock/recall-from-stock.command'
@@ -14,12 +14,9 @@ import {
 	Body,
 	Controller,
 	Headers,
-	HttpCode,
 	HttpStatus,
 	Param,
-	Put,
-	UnprocessableEntityException,
-	UseFilters
+	UnprocessableEntityException
 } from '@nestjs/common'
 import { CommandBus, QueryBus } from '@nestjs/cqrs'
 import { omit } from 'lodash'
@@ -35,10 +32,13 @@ export class StockController {
 		private readonly queryBus: QueryBus
 	) {}
 
-	@Put('stock-in')
-	@HttpCode(HttpStatus.CREATED)
-	@UseFilters(StockExceptionFilter)
-	@ResponseMessage('inoutbound.notification.stock_in_success')
+	@RouteHandler({
+		endpoint: 'stock-in',
+		method: HttpMethod.PUT,
+		statusCode: HttpStatus.CREATED,
+		message: 'inoutbound.notification.stock_in_success',
+		exceptionFilter: StockExceptionFilter
+	})
 	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
 	async stockIn(
 		@User() user: RequestUser,
@@ -55,10 +55,13 @@ export class StockController {
 		)
 	}
 
-	@Put('stock-out')
-	@HttpCode(HttpStatus.CREATED)
-	@UseFilters(StockExceptionFilter)
-	@ResponseMessage('inoutbound.notification.stock_out_success')
+	@RouteHandler({
+		endpoint: 'stock-out',
+		method: HttpMethod.PUT,
+		statusCode: HttpStatus.CREATED,
+		message: 'inoutbound.notification.stock_out_success',
+		exceptionFilter: StockExceptionFilter
+	})
 	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
 	async stockOut(@Body(new ZodValidationPipe(upsertStockOutValidator)) payload: UpsertStockOutDTO) {
 		await this.commandBus.execute(
@@ -70,10 +73,13 @@ export class StockController {
 		)
 	}
 
-	@Put('recall')
-	@HttpCode(HttpStatus.CREATED)
-	@ResponseMessage('inoutbound.notification.recalled_from_stock')
-	@UseFilters(StockExceptionFilter)
+	@RouteHandler({
+		endpoint: 'recall',
+		method: HttpMethod.PUT,
+		statusCode: HttpStatus.CREATED,
+		message: 'inoutbound.notification.recalled_from_stock',
+		exceptionFilter: StockExceptionFilter
+	})
 	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
 	async recallFromStock(
 		@Headers(CommonRequestHeader.FACTORY_CODE) factoryCode: string,
