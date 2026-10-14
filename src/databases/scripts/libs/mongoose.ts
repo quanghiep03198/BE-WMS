@@ -1,18 +1,21 @@
 import 'dotenv/config'
-import mongoose from 'mongoose'
+import mongoose, { Document } from 'mongoose'
 import { Logger } from '../../../../.tmp/utils/logger'
 
 export class MongoManager {
 	private client: mongoose.Mongoose = new mongoose.Mongoose({ createInitialConnection: false })
 
-	public async connect(db: string = 'data_warehouse') {
+	constructor(private readonly dbName: string = process.env.MONGO_DB_NAME) {}
+
+	public async connect() {
 		const logger = new Logger('MongoDB')
 
 		try {
 			logger.info('Connecting to MongoDB...')
-			this.client = await this.client.connect(
-				`mongodb://127.0.0.1:27017,127.0.0.1:27018,127.0.0.1:27019/${db}?replicaSet=rs0`
-			)
+			this.client = await this.client.connect(`mongodb://127.0.0.1:27017,127.0.0.1:27018,127.0.0.1:27019`, {
+				dbName: this.dbName,
+				replicaSet: 'rs0'
+			})
 			logger.info('Connected to MongoDB')
 		} catch {
 			logger.error('Failed to connect to MongoDB')
@@ -24,10 +27,10 @@ export class MongoManager {
 		if (this.client.connection.readyState === 1) await this.client.disconnect()
 	}
 
-	public getRepository(collection: string) {
+	public getRepository<T = Document>(collection: string) {
 		if (this.client.connection.readyState !== 1) throw new Error('MongoDB is not connected')
 		const database = this.client.connection.db!
-		return database.collection(collection)
+		return database.collection<T>(collection)
 	}
 
 	public async withTransaction(fn: (session: mongoose.ClientSession) => Promise<void>) {

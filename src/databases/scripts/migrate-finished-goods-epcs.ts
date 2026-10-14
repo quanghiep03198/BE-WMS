@@ -1,50 +1,101 @@
 import { FinishedGoodsEpcStatus } from '@modules/finished-goods/domain/constants'
-import { chunk } from 'lodash'
+import { AnyBulkWriteOperation, HydratedDocument } from 'mongoose'
 import { MongoManager } from './libs/mongoose'
 import { MssqlManager } from './libs/mssql'
 import { getArgs } from './utils/get-args'
 import { Logger } from './utils/logger'
 
 const args = getArgs({
-	host: {
+	datasource: {
 		type: 'string',
-		short: 'h',
 		description: 'MSSQL host',
 		default: process.env.DB_HOST
+	},
+	mongodb: {
+		type: 'string',
+		description: 'MongoDB database name',
+		default: process.env.MONGO_DB_NAME
 	}
 })
+
+interface IFinishedGoodsEpc {
+	epc: string
+	mo_no: string
+	po: string | null
+	factory_shoes_style: string
+	color_sn: string
+	size_numcode: string
+	inbound_device_sn: string
+	outbound_device_sn: string | null
+	last_scanned_at: Date
+	inbound_at: Date
+	outbound_at: Date | null
+	storage_location: string
+	assembly_line: string
+	status: FinishedGoodsEpcStatus
+}
+
+type FinishedGoodsEpcDocument = HydratedDocument<IFinishedGoodsEpc>
 
 async function main() {
 	const logger = new Logger('MigrateFinishedGoodsEpcs')
 
-	if (typeof args.host !== 'string') {
+	if (typeof args.datasource !== 'string') {
 		logger.error('MSSQL host is not specified')
 		process.exit(1)
 	}
 
-	const mssqlManager = new MssqlManager(args.host)
-	const mongoManager = new MongoManager()
+	if (typeof args.mongodb !== 'string') {
+		logger.error('MongoDB database name is not specified')
+		process.exit(1)
+	}
 
+	const mssqlManager = new MssqlManager(args.datasource)
+	const mongoManager = new MongoManager(args.mongodb)
+
+	let batch: Array<AnyBulkWriteOperation<FinishedGoodsEpcDocument>> = []
+	const BATCH_SIZE = 1000
+	let totalProcessed = 0
 	try {
 		await mssqlManager.connect()
-		await mongoManager.connect('gl3_data_warehouse')
+		await mongoManager.connect()
 
-		const query = await mssqlManager.query<{
-			epc: string
-			mo_no: string
-			po: string | null
-			factory_shoes_style: string
-			color_sn: string
-			size_numcode: string
-			inbound_device_sn: string
-			outbound_device_sn: string | null
-			last_scanned_at: Date
-			inbound_at: Date
-			outbound_at: Date | null
-			storage_location: string
-			assembly_line: string
-			status: FinishedGoodsEpcStatus
-		}>(/* SQL */ `
+		const request = mssqlManager.pool.request()
+
+		request.stream = true
+
+		request.on('error', (err) => {
+			logger.error(err)
+		})
+
+		request.on('row', async (row: IFinishedGoodsEpc) => {
+			batch.push({
+				updateOne: {
+					filter: { epc: row.epc }, // Thay bằng khóa chính của bạn
+					update: { $set: { ...row, assembly_line: row.assembly_line.replace(/[^A-Za-z0-9]/g, '') } },
+					upsert: true
+				}
+			})
+
+			if (batch.length >= BATCH_SIZE) {
+				request.pause()
+				try {
+					await mongoManager.getRepository<FinishedGoodsEpcDocument>('finished_goods_epcs').bulkWrite(batch)
+					totalProcessed += batch.length
+					logger.info(`Synchronized ${totalProcessed} rows`)
+					batch = [] // Reset batch
+				} catch (error) {
+					logger.error('Error during bulk write: ' + error)
+				}
+				request.resume() // Tiếp tục đọc stream
+			}
+		})
+
+		request.on('done', (result) => {
+			logger.info(`Finished goods EPCs migration completed successfully. ${result.rowsAffected} rows affected.`)
+		})
+
+		await request.query<FinishedGoodsEpcDocument>(/* SQL */ `
          DECLARE @InboundDeviceSn AS NVARCHAR (50) = 'c6a307dc', @OutboundDeviceSn AS NVARCHAR (50) = '4233521261';
 
          WITH     epcs_at_101
@@ -106,23 +157,6 @@ async function main() {
                   ON _101.EPC_Code = _103.EPC_Code
          ORDER BY mo_no DESC;
          `)
-
-		const rows = query.getRawMany()
-
-		const chunks = chunk(rows, 1000)
-
-		for (const chunk of chunks) {
-			await mongoManager.getRepository('finished_goods_epcs').bulkWrite(
-				chunk.map((row) => ({
-					updateOne: {
-						filter: { epc: row.epc },
-						update: { $set: row },
-						upsert: true
-					}
-				}))
-			)
-		}
-		logger.info('Finished goods EPCs migration completed successfully.')
 	} catch (error) {
 		logger.error(error)
 		process.exit(1)

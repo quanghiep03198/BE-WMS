@@ -1,243 +1,265 @@
+import { SuperJson } from '@common/utils'
 import 'dotenv/config'
-import { omit } from 'lodash'
-import { MongoManager } from '../libs/mongoose'
-import { MssqlManager } from '../libs/mssql'
-import { Logger } from '../utils/logger'
-import { SizeNumber } from '../utils/size-number'
+import { AnyBulkWriteOperation, HydratedDocument } from 'mongoose'
+import { MongoManager } from './libs/mongoose'
+import { MssqlManager } from './libs/mssql'
+import { getArgs } from './utils/get-args'
+import { Logger } from './utils/logger'
 
-export type TManufacturingOrder = {
+interface IManufacturingOrder {
 	mo_no: string
-	mo_totalqty: number
 	brand_name: string
-	factory_shoes_style: string
-	color_sn: string
-	size_numcode: string
 	factory_code_produce: string
-	sizes: Array<{ size_numcode: string; size_qty: number }>
+	factory_shoes_style: string
+	cust_shoes_style: string
+	color_sn: string
+	order_qty: number
+	size_ledger: Record<
+		string,
+		Record<'order_qty' | 'stocked_in_qty' | 'total_recall_tx' | 'total_return_tx' | 'shipped_out_qty', number>
+	>
 }
 
+type ManufacturingOrderDocument = HydratedDocument<IManufacturingOrder>
+
+const args = getArgs({
+	datasource: {
+		type: 'string',
+		description: 'MSSQL host',
+		default: process.env.DB_HOST
+	},
+	mongodb: {
+		type: 'string',
+		description: 'MongoDB database name',
+		default: process.env.MONGO_DB_NAME
+	}
+})
+
 async function main() {
-	const mssqlManager = new MssqlManager()
-	const mongoManager = new MongoManager()
 	const logger = new Logger()
+
+	if (typeof args.datasource !== 'string') {
+		logger.error('MSSQL host is not specified')
+		process.exit(1)
+	}
+
+	if (typeof args.mongodb !== 'string') {
+		logger.error('MongoDB database name is not specified')
+		process.exit(1)
+	}
+
+	const mssqlManager = new MssqlManager(args.datasource)
+	const mongoManager = new MongoManager(args.mongodb)
+
+	let batch: Array<AnyBulkWriteOperation<ManufacturingOrderDocument>> = []
+	const BATCH_SIZE = 100
+	let totalProcessed = 0
 
 	try {
 		await mssqlManager.connect()
 		await mongoManager.connect()
-		const moQuery = await mssqlManager.query<TManufacturingOrder>(
-			/* SQL */ `
-				WITH mo_size_source AS (
-					SELECT
-						t.mo_no,
-						t.size_code,
-						t.size_sumqty,
-						REPLACE(
-							TRANSLATE(
-								UPPER(msr.size_numcode), 
-								'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 
-								'                          '
-							),
-								' ',
-								''
-						) AS size_numcode,
-						msr.size_qty
-					FROM wuerp_vnrd.dbo.ta_manufactursizerun t
-					CROSS APPLY (
-					VALUES
-						([size_numcode01], [size_qty01]),
-						([size_numcode02], [size_qty02]),
-						([size_numcode03], [size_qty03]),
-						([size_numcode04], [size_qty04]),
-						([size_numcode05], [size_qty05]),
-						([size_numcode06], [size_qty06]),
-						([size_numcode07], [size_qty07]),
-						([size_numcode08], [size_qty08]),
-						([size_numcode09], [size_qty09]),
-						([size_numcode10], [size_qty10]),
-						([size_numcode11], [size_qty11]),
-						([size_numcode12], [size_qty12]),
-						([size_numcode13], [size_qty13]),
-						([size_numcode14], [size_qty14]),
-						([size_numcode15], [size_qty15]),
-						([size_numcode16], [size_qty16]),
-						([size_numcode17], [size_qty17]),
-						([size_numcode18], [size_qty18]),
-						([size_numcode19], [size_qty19]),
-						([size_numcode20], [size_qty20]),
-						([size_numcode21], [size_qty21]),
-						([size_numcode22], [size_qty22]),
-						([size_numcode23], [size_qty23]),
-						([size_numcode24], [size_qty24]),
-						([size_numcode25], [size_qty25]),
-						([size_numcode26], [size_qty26]),
-						([size_numcode27], [size_qty27]),
-						([size_numcode28], [size_qty28]),
-						([size_numcode29], [size_qty29]),
-						([size_numcode30], [size_qty30]),
-						([size_numcode31], [size_qty31]),
-						([size_numcode32], [size_qty32]),
-						([size_numcode33], [size_qty33]),
-						([size_numcode34], [size_qty34]),
-						([size_numcode35], [size_qty35]),
-						([size_numcode36], [size_qty36]),
-						([size_numcode37], [size_qty37]),
-						([size_numcode38], [size_qty38]),
-						([size_numcode39], [size_qty39]),
-						([size_numcode40], [size_qty40])
-					) msr ([size_numcode], [size_qty])
-					WHERE msr.size_qty > 0
-						AND msr.size_numcode IS NOT NULL
-				)
-				, mo_size_json AS (
-					SELECT
-						d.mo_no,
-						d.size_code,
-						MAX(d.size_sumqty) AS size_sumqty,
-						CONCAT(
-							'[',
-							STRING_AGG(
-								CONCAT('{',  
-									'"size_numcode":', '"',  STRING_ESCAPE(CAST(d.size_numcode AS NVARCHAR(5)), 'json'),  '"',  
-									',', 
-									'"size_qty":' , CAST(d.size_qty AS INT),  '}'),
-								','
-							) WITHIN GROUP (ORDER BY TRY_CAST(d.size_numcode AS FLOAT) ASC, d.size_numcode ASC),
-							']'
-						) AS mo_size_run
-					FROM (
-						SELECT mo_no, size_code, size_numcode, size_qty, size_sumqty
-						FROM mo_size_source
-					) d
-					GROUP BY d.mo_no, d.size_code
-				)
-				SELECT 
-					a.mo_no AS mo_no,
-					a.mo_totalqty AS order_qty,
-					a.cofactory_code AS factory_code_produce,
-					d.brand_name AS brand_name,
-					c.shoestyle_codefactory AS factory_shoes_style,
-					CONCAT(c.shoestyle_codecust, '/', c.shoestyle_namecust) AS cust_shoes_style,
-					b.color_sn AS color_sn,
-					ISNULL(msj.mo_size_run, '[]') AS sizes
-				FROM wuerp_vnrd.dbo.ta_manufacturmst a
-				LEFT JOIN wuerp_vnrd.dbo.ta_manufacturdet aa ON aa.mo_no = a.mo_no AND aa.isactive = 'Y'
-				LEFT JOIN wuerp_vnrd.dbo.ta_productmst b ON b.mat_code= a.mat_code AND b.isactive= 'Y'
-				LEFT JOIN wuerp_vnrd.dbo.ta_shoefactorymst c ON c.shoestyle_systemcodefty = b.shoestyle_systemcodefty AND c.isactive = 'Y'
-				LEFT JOIN wuerp_vnrd.dbo.ta_brand d ON d.custbrand_id = b.custbrand_id
-				LEFT JOIN wuerp_vnrd.dbo.ta_ordermst e ON e.or_no = aa.or_no AND e.isactive = 'Y'
-				LEFT JOIN mo_size_json msj ON msj.mo_no = a.mo_no
-				WHERE
-					LEFT(a.mo_no, 2) >= '13'
-					AND d.brand_code IN ('UG','TV','KB')
-					AND a.cofactory_code = 'VA1'
-					AND aa.mo_noseq = '001'
-					AND msj.mo_size_run IS NOT NULL
-					AND a.isactive = 'Y'
-				ORDER BY a.mo_no;
-			`,
-			{}
-		)
+		const request = mssqlManager.pool.request()
 
-		if (typeof moQuery === 'undefined') {
-			logger.info('No manufacturing orders found to sync.')
-			process.exit(0)
-		}
+		request.stream = true
 
-		const manufacturingOrders = moQuery.getRawMany().map((item) => {
-			const mappedItem = {
-				...item,
-				size_ledger: item.sizes.reduce((acc, curr) => {
-					const sizeKey = new SizeNumber(curr.size_numcode).normalize('padleft')
-					return {
-						...acc,
-						[sizeKey]: {
-							order_qty: curr.size_qty,
-							stocked_in_qty: 0,
-							total_recall_tx: 0,
-							total_return_tx: 0,
-							shipped_out_qty: 0
-						}
-					}
-				}, {})
-			}
-
-			return omit(mappedItem, ['sizes'])
-		})
-
-		if (manufacturingOrders.length === 0) {
-			logger.info('No manufacturing orders found to sync.')
-			process.exit(0)
-		}
-
-		await mongoManager.getRepository('manufacturing_orders').deleteMany()
-
-		const insertMongoResult = await mongoManager
-			.getRepository('manufacturing_orders')
-			.insertMany(manufacturingOrders, { ordered: false })
-
-		logger.info(`Inserted ${insertMongoResult.insertedCount} manufacturing orders into MongoDB`)
-
-		const moInventoryVariationQuery = await mssqlManager.query<{
-			mo_no: string
-			size_code: string
-			stocked_in_qty: number
-			total_recall_tx: number
-			total_return_tx: number
-			shipped_out_qty: number
-		}>(
-			/* SQL */ `
-			WITH cte AS (
-			SELECT * , 
-				ROW_NUMBER() OVER (PARTITION BY EPC_Code, mo_no, rfid_status, station_suffix ORDER BY record_time DESC) AS row_num
-			FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet_backup_Daily
-			),
-			ledger AS (
-				SELECT mo_no, 
-					(SELECT MAX(value) FROM STRING_SPLIT(size_code, '/')) AS size_code, 
-					IIF(rfid_status = 'A' AND station_suffix = '101' AND row_num = 1, ABS(SUM(quantity)), 0) AS stocked_in_qty,
-					IIF(rfid_status = 'B' AND station_suffix = '101', ABS(SUM(quantity)), 0) AS total_recall_tx,
-					IIF(rfid_status = 'A' AND station_suffix = '101' AND row_num > 1, ABS(SUM(quantity)), 0) AS total_return_tx,
-					IIF(rfid_status = 'B' AND station_suffix = '103' AND row_num = 1, ABS(SUM(quantity)), 0) AS shipped_out_qty
-				FROM cte
-				WHERE LEFT(mo_no, 2) >= '13'
-					AND ISNUMERIC(TRY_CAST(LEFT(mo_no, 2) AS INT)) = 1
-					AND size_code IS NOT NULL
-				GROUP BY mo_no, station_suffix, size_code, rfid_status, row_num
-			)
-			SELECT * FROM ledger
-				WHERE stocked_in_qty > 0 OR total_recall_tx > 0 OR total_return_tx > 0 OR shipped_out_qty > 0
-			ORDER BY mo_no, size_code
-			`,
-			{}
-		)
-
-		if (!moInventoryVariationQuery) {
-			logger.info('No inventory ledger data found to sync.')
-			process.exit(0)
-		}
-
-		const bulkUpdateResult = await mongoManager.getRepository('manufacturing_orders').bulkWrite(
-			moInventoryVariationQuery.getRawMany().map((item) => ({
+		request.on('row', async (row) => {
+			batch.push({
 				updateOne: {
-					filter: { mo_no: item.mo_no },
+					filter: { mo_no: row.mo_no },
 					update: {
 						$set: {
-							[`size_ledger.${item.size_code}.stocked_in_qty`]: item.stocked_in_qty,
-							[`size_ledger.${item.size_code}.total_recall_tx`]: item.total_recall_tx,
-							[`size_ledger.${item.size_code}.total_return_tx`]: item.total_return_tx,
-							[`size_ledger.${item.size_code}.shipped_out_qty`]: item.shipped_out_qty
+							mo_no: row.mo_no,
+							brand_name: row.brand_name,
+							factory_shoes_style: row.factory_shoes_style,
+							cust_shoes_style: row.cust_shoes_style,
+							color_sn: row.color_sn,
+							factory_code_produce: row.factory_code_produce,
+							size_ledger: SuperJson.parse(row.size_ledger)
 						}
-					}
+					},
+					upsert: true
 				}
-			})),
-			{ ordered: false }
-		)
+			})
 
-		logger.info(
-			`✅ Updated ${bulkUpdateResult.modifiedCount} manufacturing orders in MongoDB with inventory ledger data`
-		)
+			if (batch.length >= BATCH_SIZE) {
+				request.pause()
+				try {
+					await mongoManager
+						.getRepository<ManufacturingOrderDocument>('manufacturing_orders')
+						.bulkWrite(batch, { ordered: false })
+					logger.info(`Synchronized ${totalProcessed} manufacturing orders so far.`)
+					totalProcessed += batch.length
+					batch = []
+				} catch (error) {
+					logger.error('Error during bulk write:' + error)
+				}
+				request.resume()
+			}
+		})
+
+		request.on('error', (err) => {
+			logger.error(`Error occurred: ${err}`)
+		})
+
+		request.on('done', () => {
+			logger.info(`Synchronized ${totalProcessed} manufacturing orders.`)
+		})
+
+		await request.query<IManufacturingOrder>(/* SQL */ `
+			-- Order size run
+			WITH     target_mo
+			AS       (SELECT DISTINCT a.mo_no
+						FROM   wuerp_vnrd.dbo.ta_manufacturmst AS a
+								INNER JOIN wuerp_vnrd.dbo.ta_productmst AS b
+								ON b.mat_code = a.mat_code
+									AND b.isactive = 'Y'
+								INNER JOIN wuerp_vnrd.dbo.ta_brand AS d
+								ON d.custbrand_id = b.custbrand_id
+						WHERE  (LEFT(a.mo_no, 2) >= '15'
+									OR a.mo_no IN ('14C11B078', '14C11B077', '14C03C009'))
+								AND d.brand_code IN ('UG', 'TV', 'KB')
+								AND a.cofactory_code = 'VB2'
+								AND a.isactive = 'Y'),
+						mo_size_source
+			AS       (SELECT t.mo_no,
+								t.size_code,
+								t.size_sumqty,
+								msr.size_numcode,
+								msr.size_qty
+						FROM   wuerp_vnrd.dbo.ta_manufactursizerun AS t
+								INNER JOIN target_mo AS tm
+								ON tm.mo_no = t.mo_no
+											CROSS APPLY (VALUES ([size_numcode01], [size_qty01]), ([size_numcode02], [size_qty02]), ([size_numcode03], [size_qty03]), ([size_numcode04], [size_qty04]), ([size_numcode05], [size_qty05]), ([size_numcode06], [size_qty06]), ([size_numcode07], [size_qty07]), ([size_numcode08], [size_qty08]), ([size_numcode09], [size_qty09]), ([size_numcode10], [size_qty10]), ([size_numcode11], [size_qty11]), ([size_numcode12], [size_qty12]), ([size_numcode13], [size_qty13]), ([size_numcode14], [size_qty14]), ([size_numcode15], [size_qty15]), ([size_numcode16], [size_qty16]), ([size_numcode17], [size_qty17]), ([size_numcode18], [size_qty18]), ([size_numcode19], [size_qty19]), ([size_numcode20], [size_qty20]), ([size_numcode21], [size_qty21]), ([size_numcode22], [size_qty22]), ([size_numcode23], [size_qty23]), ([size_numcode24], [size_qty24]), ([size_numcode25], [size_qty25]), ([size_numcode26], [size_qty26]), ([size_numcode27], [size_qty27]), ([size_numcode28], [size_qty28]), ([size_numcode29], [size_qty29]), ([size_numcode30], [size_qty30]), ([size_numcode31], [size_qty31]), ([size_numcode32], [size_qty32]), ([size_numcode33], [size_qty33]), ([size_numcode34], [size_qty34]), ([size_numcode35], [size_qty35]), ([size_numcode36], [size_qty36]), ([size_numcode37], [size_qty37]), ([size_numcode38], [size_qty38]), ([size_numcode39], [size_qty39]), ([size_numcode40], [size_qty40])) AS msr([size_numcode], [size_qty])
+								WHERE  msr.size_qty > 0
+											AND msr.size_numcode IS NOT NULL),
+						mo_size_raw
+			AS       (SELECT   mo_no,
+									size_numcode,
+									SUM(size_qty) AS size_qty
+						FROM     mo_size_source
+						GROUP BY mo_no, size_numcode),
+						mo_size_qty
+			AS       (SELECT   mo_no,
+									size_numcode,
+									SUM(size_qty) AS order_qty
+						FROM     (SELECT mo_no,
+												wuerp_vnrd.dbo.NORMALIZE_SIZE_NUMBER(size_numcode) AS size_numcode,
+												size_qty
+									FROM   mo_size_raw) AS n
+						GROUP BY mo_no, size_numcode),
+						-- In/outbound progress
+						epcs
+			AS       (SELECT r.mo_no,
+								r.station_suffix,
+								r.rfid_status,
+								r.quantity,
+								r.size_code,
+								ROW_NUMBER() OVER (PARTITION BY r.EPC_Code, r.mo_no, r.rfid_status, r.station_suffix ORDER BY r.record_time DESC) AS row_num
+						FROM   DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet_backup_Daily AS r
+								INNER JOIN target_mo AS tm
+								ON tm.mo_no = r.mo_no
+						WHERE  ISNUMERIC(TRY_CAST (LEFT(r.mo_no, 2) AS INT)) = 1),
+						normalized
+			AS       (SELECT e.mo_no,
+								e.station_suffix,
+								e.rfid_status,
+								e.row_num,
+								e.quantity,
+								s.size_code
+						FROM   epcs AS e
+								CROSS APPLY (SELECT MAX(value) AS size_code
+													FROM   STRING_SPLIT (e.size_code, '/')) AS s
+						WHERE  e.size_code IS NOT NULL),
+						detail
+			AS       (SELECT   mo_no,
+									size_code,
+									rfid_status,
+									station_suffix,
+									row_num,
+									ABS(SUM(quantity)) AS qty
+						FROM     normalized
+						GROUP BY mo_no, size_code, rfid_status, station_suffix, row_num),
+						ledger
+			AS       (SELECT   mo_no,
+									size_code,
+									SUM(IIF (rfid_status = 'A'
+												AND station_suffix = '101'
+												AND row_num = 1, qty, 0)) AS stocked_in_qty,
+									SUM(IIF (rfid_status = 'B'
+												AND station_suffix = '101', qty, 0)) AS total_recall_tx,
+									SUM(IIF (rfid_status = 'A'
+												AND station_suffix = '101'
+												AND row_num > 1, qty, 0)) AS total_return_tx,
+									SUM(IIF (rfid_status = 'B'
+												AND station_suffix = '103'
+												AND row_num = 1, qty, 0)) AS shipped_out_qty
+						FROM     detail
+						WHERE    size_code IS NOT NULL
+						GROUP BY mo_no, size_code),
+						entries
+			AS       (SELECT mo_no,
+								size_code,
+								stocked_in_qty,
+								total_recall_tx,
+								total_return_tx,
+								shipped_out_qty
+						FROM   ledger
+						WHERE  stocked_in_qty > 0
+								OR total_recall_tx > 0
+								OR total_return_tx > 0
+								OR shipped_out_qty > 0),
+						mo_size_merged
+			AS       (SELECT   COALESCE(q.mo_no, l.mo_no) AS mo_no,
+									COALESCE(q.size_numcode, l.size_code) AS size_key,
+									ISNULL(q.order_qty, 0) AS order_qty,
+									ISNULL(l.stocked_in_qty, 0) AS stocked_in_qty,
+									ISNULL(l.total_recall_tx, 0) AS total_recall_tx,
+									ISNULL(l.total_return_tx, 0) AS total_return_tx,
+									ISNULL(l.shipped_out_qty, 0) AS shipped_out_qty
+						FROM     mo_size_qty AS q
+									FULL OUTER JOIN
+									entries AS l
+									ON l.mo_no = q.mo_no
+										AND l.size_code = q.size_numcode),
+						mo_size_json
+			AS       (SELECT   mo_no,
+									CONCAT('{', STRING_AGG(CAST (CONCAT('"', STRING_ESCAPE(CAST (size_key AS NVARCHAR (50)), 'json'), '":{"order_qty":', order_qty, ',"stocked_in_qty":', stocked_in_qty, ',"total_recall_tx":', total_recall_tx, ',"total_return_tx":', total_return_tx, ',"shipped_out_qty":', shipped_out_qty, '}') AS NVARCHAR (MAX)), ',') WITHIN GROUP (ORDER BY TRY_CAST (size_key AS FLOAT) ASC, size_key ASC), '}') AS sizes
+						FROM     mo_size_merged
+						GROUP BY mo_no)
+			-- Main stage
+			SELECT   DISTINCT a.mo_no AS mo_no,
+									a.mo_totalqty AS order_qty,
+									a.cofactory_code AS factory_code_produce,
+									d.brand_name AS brand_name,
+									c.shoestyle_codefactory AS factory_shoes_style,
+									CONCAT(c.shoestyle_codecust, '/', c.shoestyle_namecust) AS cust_shoes_style,
+									b.color_sn AS color_sn,
+									msj.sizes AS size_ledger
+			FROM     wuerp_vnrd.dbo.ta_manufacturmst AS a
+						LEFT OUTER JOIN
+						wuerp_vnrd.dbo.ta_productmst AS b
+						ON b.mat_code = a.mat_code
+							AND b.isactive = 'Y'
+						LEFT OUTER JOIN
+						wuerp_vnrd.dbo.ta_shoefactorymst AS c
+						ON c.shoestyle_systemcodefty = b.shoestyle_systemcodefty
+							AND c.isactive = 'Y'
+						LEFT OUTER JOIN
+						wuerp_vnrd.dbo.ta_brand AS d
+						ON d.custbrand_id = b.custbrand_id
+						LEFT OUTER JOIN
+						mo_size_json AS msj
+						ON msj.mo_no = a.mo_no
+			WHERE    (LEFT(a.mo_no, 2) >= '15'
+						OR a.mo_no IN ('14C11B078', '14C11B077', '14C03C009'))
+						AND d.brand_code IN ('UG', 'TV', 'KB')
+						AND a.cofactory_code = 'VB2'
+						AND msj.sizes IS NOT NULL
+						AND a.isactive = 'Y'
+			ORDER BY a.mo_no;
+			`)
 	} catch (error) {
-		if (error instanceof Error) logger.error(error)
+		logger.error(error)
 		process.exit(1)
 	} finally {
 		await mssqlManager.disconnect()
