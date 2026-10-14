@@ -25,7 +25,7 @@ export const STORAGE_LOCATION_COLLECTION = 'storage_locations'
 	writeConcern: { w: 'majority' }
 })
 export class StorageLocation extends BaseAbstractSchema {
-	@Prop({ type: String, required: true, uppercase: true, unique: true })
+	@Prop({ type: String, required: true, trim: true, uppercase: true })
 	name: string
 
 	@Prop({ type: Types.ObjectId, required: true, ref: 'Warehouse', autopopulate: { select: '_id name' } })
