@@ -15,7 +15,6 @@ import {
 	IStorageLocationRepository,
 	STORAGE_LOCATION_REPOSITORY
 } from '@modules/warehouse/application/ports/storage-location.repository.port'
-import { IStorageLocation } from '@modules/warehouse/domain/interfaces/storage-location.interface'
 import { Inject } from '@nestjs/common'
 import { CommandHandler, EventPublisher, ICommandHandler } from '@nestjs/cqrs'
 import { StockInCommand } from './stock-in.command'
@@ -37,11 +36,12 @@ export class StockInHandler implements ICommandHandler<StockInCommand> {
 
 	public async execute({ command }: StockInCommand): Promise<void> {
 		const location = await this.storageLocationRepository.findOneById(command.storage_location)
+
 		const pendingInboundEpcs = await this.finishedGoodsEpcRepository.getPendingStockMoveEpcs(
 			command.inbound_device_sn,
 			command.mo_no,
 			`${command.assembly_line.code}/${command.assembly_line.name}`,
-			`${location._id}/${(location.warehouse as Exclude<IStorageLocation['warehouse'], TObjectId>)?.name}/${command.storage_location}`
+			`${location._id}/${location.warehouse?.name}/${command.storage_location}`
 		)
 
 		const currentInboundProgress = (await this.orderRepository.getManufacturingOrderInventory(command.mo_no)).map(
