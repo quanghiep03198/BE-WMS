@@ -1,31 +1,86 @@
-import { MongoManager } from '../libs/mongoose'
-import { MssqlManager } from '../libs/mssql'
-
 import { hashSync } from 'bcrypt'
-import chunk from 'lodash/chunk'
-import { getArgs } from '../libs/get-args'
-import { Logger } from '../utils/logger'
+import type { AnyBulkWriteOperation } from 'mongoose'
+import { isIPv4 } from 'net'
+import { IUser } from '../../modules/user/domain/interfaces'
+import type { UserDocument } from '../../modules/user/infrastructure/persistence/mongodb/schemas/user.schema'
+import { MongoManager } from './libs/mongoose'
+import { MssqlManager } from './libs/mssql'
+import { getArgs } from './utils/get-args'
+import { Logger } from './utils/logger'
 
 const args = getArgs({
-	host: {
-		type: 'string'
+	mssqlHost: {
+		type: 'string',
+		description: 'MSSQL host'
+	},
+	mongoDbName: {
+		type: 'string',
+		description: 'MongoDB database name'
 	}
 })
 
 async function main() {
-	const logger = new Logger('SyncEpcMatch')
-	if (!args.host) {
+	const logger = new Logger('MigrateUserData')
+
+	if (typeof args.mssqlHost !== 'string' || !isIPv4(args.mssqlHost)) {
+		logger.error('Missing required argument: --host <mssql_host>')
+		process.exit(1)
+	}
+	if (typeof args.mongoDbName !== 'string') {
 		logger.error('Missing required argument: --host <mssql_host>')
 		process.exit(1)
 	}
 
-	const mssqlManager = new MssqlManager(args.host)
-	const mongoManager = new MongoManager()
+	const mssqlManager = new MssqlManager(args.mssqlHost)
+	const mongoManager = new MongoManager(args.mongoDbName)
 
 	await mssqlManager.connect()
 	await mongoManager.connect()
 	try {
-		const userQuery = await mssqlManager.query<{
+		const request = mssqlManager.pool.request()
+
+		request.stream = true
+
+		let batch: Array<AnyBulkWriteOperation<UserDocument>> = []
+		let totalProcessed = 0
+		const BATCH_SIZE = 1000
+
+		request.on('row', async (row: IUser) => {
+			batch.push({
+				updateOne: {
+					filter: { username: row.username },
+					update: {
+						$setOnInsert: {
+							username: row.username,
+							display_name: row.display_name,
+							is_system_user: row.username === 'quanghiep'
+						},
+						$set: {
+							password: hashSync(row.password, 10)
+						}
+					},
+					upsert: true
+				}
+			})
+
+			if (batch.length >= BATCH_SIZE) {
+				request.pause()
+				try {
+					await mongoManager.getRepository<UserDocument>('users').bulkWrite(batch)
+					totalProcessed += batch.length
+					logger.info(`Synchronized ${totalProcessed} rows`)
+					batch = [] // Reset batch
+				} catch (error) {
+					logger.error(error)
+				}
+				request.resume()
+			}
+		})
+
+		request.on('error', (error) => logger.error(error))
+		request.on('done', () => logger.info(`Finished processing all rows. Total processed: ${totalProcessed}`))
+
+		await request.query<{
 			username: string
 			password: string
 			display_name: string
@@ -40,46 +95,6 @@ async function main() {
 					ON a.employee_code = b.employee_code
 			WHERE  a.isactive = 'Y';
 		`)
-
-		const users = userQuery.getRawMany()
-
-		const chunkBulkWriteOps = chunk(
-			users.map((item) => {
-				return {
-					updateOne: {
-						filter: { username: item.username },
-						update: {
-							$setOnInsert: {
-								username: item.username,
-								display_name: item.display_name,
-								is_system_user: item.username === 'quanghiep'
-							},
-							$set: {
-								password: hashSync(item.password, 10)
-							}
-						},
-						upsert: true
-					}
-				}
-			}),
-			1000
-		)
-
-		const result = await Promise.all(
-			chunkBulkWriteOps.map(
-				async (bulkWriteOps) =>
-					await mongoManager.getRepository('users').bulkWrite(bulkWriteOps, {
-						ordered: false,
-						readConcern: { level: 'majority' },
-						writeConcern: { w: 'majority' }
-					})
-			)
-		)
-
-		logger.info(
-			'✅',
-			result.reduce((acc, curr) => acc + curr.modifiedCount + curr.upsertedCount, 0) + ' records updated'
-		)
 	} catch (error) {
 		logger.error(error as Error)
 		process.exit(1)

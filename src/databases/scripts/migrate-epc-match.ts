@@ -1,26 +1,26 @@
 import omit from 'lodash/omit'
-import { MongoManager } from '../libs/mongoose'
-import { MssqlManager } from '../libs/mssql'
+import { MongoManager } from './libs/mongoose'
+import { MssqlManager } from './libs/mssql'
 
 import chunk from 'lodash/chunk'
-import { getArgs } from '../libs/get-args'
-import { Logger } from '../utils/logger'
-import { SizeNumber } from '../utils/size-number'
+import { isIPv4 } from 'net'
+import { getArgs } from './utils/get-args'
+import { Logger } from './utils/logger'
 
 const args = getArgs({
-	host: {
+	mssqlHost: {
 		type: 'string'
 	}
 })
 
 async function main() {
 	const logger = new Logger('SyncEpcMatch')
-	if (!args.host) {
-		logger.error('Missing required argument: --host <mssql_host>')
+	if (typeof args.mssqlHost !== 'string' || !isIPv4(args.mssqlHost)) {
+		logger.error('Missing required argument: --mssqlHost <mssql_host>')
 		process.exit(1)
 	}
 
-	const mssqlManager = new MssqlManager(args.host)
+	const mssqlManager = new MssqlManager(args.mssqlHost)
 	const mongoManager = new MongoManager()
 
 	await mssqlManager.connect()
@@ -39,7 +39,7 @@ async function main() {
 		      shoestyle_codefactory AS factory_shoes_style,
 		      cust_shoestyle AS cust_shoes_style,
 		      factory_code_produce,
-		      size_numcode,
+		      wuerp_vnrd.dbo.NORMALIZE_SIZE_NUMBER(size_numcode),
 		      color_sn
 		   FROM DV_DATA_LAKE.dbo.dv_rfidmatchmst_cust
 		   WHERE LEFT(ISNULL(mo_no_actual, mo_no), 2) >= '14'
@@ -53,10 +53,7 @@ async function main() {
 					updateOne: {
 						filter: { epc: item.epc },
 						update: {
-							$set: {
-								...omit(item, ['epc', 'size_numcode']),
-								size_numcode: new SizeNumber(item.size_numcode).normalize('padleft')
-							}
+							$set: omit(item, ['epc'])
 						},
 						upsert: true
 					}

@@ -23,33 +23,38 @@ interface IManufacturingOrder {
 type ManufacturingOrderDocument = HydratedDocument<IManufacturingOrder>
 
 const args = getArgs({
-	datasource: {
+	mssqlHost: {
 		type: 'string',
 		description: 'MSSQL host',
 		default: process.env.DB_HOST
 	},
-	mongodb: {
+	mongoDbName: {
 		type: 'string',
 		description: 'MongoDB database name',
 		default: process.env.MONGO_DB_NAME
+	},
+	factory: {
+		type: 'string',
+		description: 'Factory code',
+		default: process.env.FACTORY_CODE
 	}
 })
 
 async function main() {
 	const logger = new Logger()
 
-	if (typeof args.datasource !== 'string') {
+	if (typeof args.mssqlHost !== 'string') {
 		logger.error('MSSQL host is not specified')
 		process.exit(1)
 	}
 
-	if (typeof args.mongodb !== 'string') {
-		logger.error('MongoDB database name is not specified')
+	if (typeof args.mongoDbName !== 'string') {
+		logger.error('mongoDbName database name is not specified')
 		process.exit(1)
 	}
 
-	const mssqlManager = new MssqlManager(args.datasource)
-	const mongoManager = new MongoManager(args.mongodb)
+	const mssqlManager = new MssqlManager(args.mssqlHost)
+	const mongoManager = new MongoManager(args.mongoDbName)
 
 	let batch: Array<AnyBulkWriteOperation<ManufacturingOrderDocument>> = []
 	const BATCH_SIZE = 100
@@ -115,10 +120,9 @@ async function main() {
 									AND b.isactive = 'Y'
 								INNER JOIN wuerp_vnrd.dbo.ta_brand AS d
 								ON d.custbrand_id = b.custbrand_id
-						WHERE  (LEFT(a.mo_no, 2) >= '15'
-									OR a.mo_no IN ('14C11B078', '14C11B077', '14C03C009'))
+						WHERE  LEFT(a.mo_no, 2) >= '14'
 								AND d.brand_code IN ('UG', 'TV', 'KB')
-								AND a.cofactory_code = 'VB2'
+								AND a.cofactory_code = '${args.factory}'
 								AND a.isactive = 'Y'),
 						mo_size_source
 			AS       (SELECT t.mo_no,
@@ -250,10 +254,9 @@ async function main() {
 						LEFT OUTER JOIN
 						mo_size_json AS msj
 						ON msj.mo_no = a.mo_no
-			WHERE    (LEFT(a.mo_no, 2) >= '15'
-						OR a.mo_no IN ('14C11B078', '14C11B077', '14C03C009'))
+			WHERE    LEFT(a.mo_no, 2) >= '15'
 						AND d.brand_code IN ('UG', 'TV', 'KB')
-						AND a.cofactory_code = 'VB2'
+						AND a.cofactory_code = '${args.factory}'
 						AND msj.sizes IS NOT NULL
 						AND a.isactive = 'Y'
 			ORDER BY a.mo_no;

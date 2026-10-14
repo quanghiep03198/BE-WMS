@@ -6,7 +6,7 @@ import { getArgs } from './utils/get-args'
 import { Logger } from './utils/logger'
 
 const args = getArgs({
-	host: {
+	mssqlHost: {
 		type: 'string',
 		short: 'h',
 		description: 'MSSQL host password',
@@ -17,7 +17,12 @@ const args = getArgs({
 async function main() {
 	const logger = new Logger('SyncTruckloadDelivery')
 
-	const mssqlManager = new MssqlManager(args.host as string)
+	if (typeof args.mssqlHost !== 'string') {
+		logger.error('MSSQL host is not specified')
+		process.exit(1)
+	}
+
+	const mssqlManager = new MssqlManager(args.mssqlHost as string)
 	const mongoManager = new MongoManager()
 
 	try {
