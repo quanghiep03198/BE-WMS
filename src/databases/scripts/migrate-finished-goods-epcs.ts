@@ -1,6 +1,7 @@
-import { FinishedGoodsEpcStatus } from '@modules/finished-goods/domain/constants'
-import { AnyBulkWriteOperation, HydratedDocument } from 'mongoose'
+import { AnyBulkWriteOperation } from 'mongoose'
 import { isIPv4 } from 'net'
+import { FinishedGoodsEpcStatus } from '../../modules/finished-goods/domain/constants'
+import { FinishedGoodsEpcDocument } from '../../modules/finished-goods/infrastructure/persistence/mongodb/schemas/finished-goods-epc.schema'
 import { MongoManager } from './libs/mongoose'
 import { MssqlManager } from './libs/mssql'
 import { getArgs } from './utils/get-args'
@@ -26,6 +27,11 @@ const args = getArgs({
 		type: 'string',
 		description: 'Outbound device SN',
 		default: process.env.OUTBOUND_DEVICE_SN
+	},
+	all: {
+		type: 'boolean',
+		description: 'Whether to migrate all finished goods EPCs',
+		default: false
 	}
 })
 
@@ -46,8 +52,6 @@ interface IFinishedGoodsEpc {
 	status: FinishedGoodsEpcStatus
 }
 
-type FinishedGoodsEpcDocument = HydratedDocument<IFinishedGoodsEpc>
-
 async function main() {
 	const logger = new Logger('MigrateFinishedGoodsEpcs')
 
@@ -61,12 +65,22 @@ async function main() {
 		process.exit(1)
 	}
 
+	if (typeof args.device101 !== 'string' || args.device101.trim() === '') {
+		logger.error('Inbound device SN is not specified')
+		process.exit(1)
+	}
+
+	if (typeof args.device103 !== 'string' || args.device103.trim() === '') {
+		logger.error('Outbound device SN is not specified')
+		process.exit(1)
+	}
+
 	const mssqlManager = new MssqlManager(args.mssqlHost)
 	const mongoManager = new MongoManager(args.mongoDbName)
 
 	let batch: Array<AnyBulkWriteOperation<FinishedGoodsEpcDocument>> = []
-	const BATCH_SIZE = 1000
 	let totalProcessed = 0
+	const BATCH_SIZE = 1000
 
 	try {
 		await mssqlManager.connect()
@@ -98,16 +112,19 @@ async function main() {
 			})
 
 			if (batch.length >= BATCH_SIZE) {
-				request.pause()
 				try {
-					await mongoManager.getRepository<FinishedGoodsEpcDocument>('finished_goods_epcs').bulkWrite(batch)
+					request.pause()
+					await mongoManager
+						.getRepository<FinishedGoodsEpcDocument>('finished_goods_epcs')
+						.bulkWrite(batch, { ordered: false })
 					totalProcessed += batch.length
 					logger.info(`Synchronized ${totalProcessed} rows`)
 					batch = [] // Reset batch
 				} catch (error) {
 					logger.error('Error during bulk write: ' + error)
+				} finally {
+					request.resume() // Tiếp tục đọc stream
 				}
-				request.resume() // Tiếp tục đọc stream
 			}
 		})
 
@@ -130,17 +147,47 @@ async function main() {
 								c.color_sn AS color_sn,
 								a.record_time,
 								row_number() OVER (PARTITION BY a.EPC_Code ORDER BY a.record_time DESC) AS rn
-						FROM   DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet_backup_Daily AS a
+						FROM   DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet AS a
 								LEFT OUTER JOIN
 								DV_DATA_LAKE.dbo.dv_warehouseccodedet AS b
 								ON a.storage = b.storage_num
-								LEFT OUTER JOIN
+								INNER JOIN
 								DV_DATA_LAKE.dbo.dv_rfidmatchmst_cust AS c
 								ON a.EPC_Code = c.EPC_Code
-									AND LEFT(c.mo_no, 2) >= '14'
+									AND LEFT(ISNULL(c.mo_no_actual, c.mo_no), 2) >= '14'
 						WHERE  station_suffix = '101'
 								AND a.EPC_Code NOT LIKE 'E28%'
-								AND LEFT(a.mo_no, 2) >= '14'),
+								AND LEFT(a.mo_no, 2) >= '14'
+						${
+							!args.all
+								? ''
+								: /* SQL */ `
+								UNION
+								SELECT a.EPC_Code,
+										c.size_numcode,
+										c.mo_no,
+										po,
+										rfid_status,
+										b.storage_name AS storage_location,
+										a.dept_name,
+										c.shoestyle_codefactory AS factory_shoes_style,
+										c.color_sn AS color_sn,
+										a.record_time,
+										row_number() OVER (PARTITION BY a.EPC_Code ORDER BY a.record_time DESC) AS rn
+								FROM   DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet_backup_Daily AS a
+										LEFT OUTER JOIN
+										DV_DATA_LAKE.dbo.dv_warehouseccodedet AS b
+										ON a.storage = b.storage_num
+										INNER JOIN
+										DV_DATA_LAKE.dbo.dv_rfidmatchmst_cust AS c
+										ON a.EPC_Code = c.EPC_Code
+											AND LEFT(ISNULL(c.mo_no_actual, c.mo_no), 2) >= '14'
+								WHERE  station_suffix = '101'
+										AND a.EPC_Code NOT LIKE 'E28%'
+										AND LEFT(a.mo_no, 2) >= '14'`
+						}
+
+					),
 						epcs_at_103
 			AS       (SELECT EPC_Code,
 								size_code,

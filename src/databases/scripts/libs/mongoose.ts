@@ -27,7 +27,7 @@ export class MongoManager {
 		if (this.client.connection.readyState === 1) await this.client.disconnect()
 	}
 
-	public getRepository<T = Document>(collection: string) {
+	public getRepository<T extends Document>(collection: string) {
 		if (this.client.connection.readyState !== 1) throw new Error('MongoDB is not connected')
 		const database = this.client.connection.db!
 		return database.collection<T>(collection)

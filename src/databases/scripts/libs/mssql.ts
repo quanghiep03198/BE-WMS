@@ -18,7 +18,7 @@ export class MssqlManager {
 			port: Number(process.env.DB_PORT) || 1433,
 			database: 'DV_DATA_LAKE',
 			connectionTimeout: 30000,
-			requestTimeout: 60000,
+			requestTimeout: 2 * 60000,
 			options: {
 				encrypt: true, // for azure
 				trustServerCertificate: true // change to true for local dev / self-signed certs
