@@ -1,11 +1,21 @@
 import { parseArgs, type ParseArgsConfig } from 'node:util'
 
-export function getArgs<T extends ParseArgsConfig['options']>(options: T): ReturnType<typeof parseArgs>['values'] {
+type ArgValues<T extends ParseArgsConfig['options']> = {
+	[K in keyof T]: T[K] extends { type: 'string' }
+		? string
+		: T[K] extends { type: 'boolean' }
+			? boolean
+			: T[K] extends { type: 'array' }
+				? Array<string | boolean>
+				: undefined
+}
+
+export function getArgs<T extends ParseArgsConfig['options']>(options: T): ArgValues<T> {
 	const { values } = parseArgs({
 		args: process.argv,
 		options,
 		strict: true,
 		allowPositionals: true
-	})
-	return values
+	} as ParseArgsConfig)
+	return values as ArgValues<T>
 }
