@@ -80,11 +80,11 @@ export class InventoryAuditRepository implements IInventoryAuditRepository {
 
 			return {
 				mo_no: item.mo_no,
-				order_qty: item.mo_attrs.order_qty,
-				brand_name: item.mo_attrs.brand_name,
-				factory_shoes_style: item.mo_attrs.factory_shoes_style,
-				cust_shoes_style: item.mo_attrs.cust_shoes_style,
-				color_sn: item.mo_attrs.color_sn,
+				order_qty: item.mo_attrs?.order_qty,
+				brand_name: item.mo_attrs?.brand_name,
+				factory_shoes_style: item.mo_attrs?.factory_shoes_style,
+				cust_shoes_style: item.mo_attrs?.cust_shoes_style,
+				color_sn: item.mo_attrs?.color_sn,
 				inventory_closure_status: item.inventory_closure_status,
 				beginning_inventory_qty: totalBeginningInventoryQty,
 				total_stocked_in_qty: totalStockedInQty,
