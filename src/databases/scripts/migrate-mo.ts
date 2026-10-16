@@ -37,6 +37,11 @@ const args = getArgs({
 		type: 'string',
 		description: 'Factory code',
 		default: process.env.FACTORY_CODE
+	},
+	moPrefix: {
+		type: 'string',
+		description: 'MO prefix',
+		default: process.env.MO_PREFIX
 	}
 })
 
@@ -59,13 +64,50 @@ async function main() {
 	let batch: Array<AnyBulkWriteOperation<ManufacturingOrderDocument>> = []
 	const BATCH_SIZE = 100
 	let totalProcessed = 0
+	let pendingFlush: Promise<void> | undefined
 
 	try {
 		await mssqlManager.connect()
 		await mongoManager.connect()
 		const request = mssqlManager.pool.request()
+		let resolveStream!: () => void
+		let rejectStream!: (error: unknown) => void
+		const streamCompletion = new Promise<void>((resolve, reject) => {
+			resolveStream = resolve
+			rejectStream = reject
+		})
 
 		request.stream = true
+
+		const flushBatch = async (includePartialBatch = false): Promise<void> => {
+			if (pendingFlush) {
+				await pendingFlush
+			}
+
+			while (batch.length >= BATCH_SIZE || (includePartialBatch && batch.length > 0)) {
+				{
+					const operations = batch
+					batch = []
+					const flush = mongoManager
+						.getRepository<ManufacturingOrderDocument>('manufacturing_orders')
+						.bulkWrite(operations, { ordered: false })
+						.then(() => {
+							totalProcessed += operations.length
+							logger.info(`Synchronized ${totalProcessed} manufacturing orders so far.`)
+						})
+
+					pendingFlush = flush
+
+					try {
+						await flush
+					} catch (error) {
+						throw error
+					} finally {
+						pendingFlush = undefined
+					}
+				}
+			}
+		}
 
 		request.on('row', async (row) => {
 			batch.push({
@@ -73,12 +115,7 @@ async function main() {
 					filter: { mo_no: row.mo_no },
 					update: {
 						$set: {
-							mo_no: row.mo_no,
-							brand_name: row.brand_name,
-							factory_shoes_style: row.factory_shoes_style,
-							cust_shoes_style: row.cust_shoes_style,
-							color_sn: row.color_sn,
-							factory_code_produce: row.factory_code_produce,
+							...row,
 							size_ledger: SuperJson.parse(row.size_ledger)
 						}
 					},
@@ -89,29 +126,33 @@ async function main() {
 			if (batch.length >= BATCH_SIZE) {
 				request.pause()
 				try {
-					await mongoManager
-						.getRepository<ManufacturingOrderDocument>('manufacturing_orders')
-						.bulkWrite(batch, { ordered: false })
-					logger.info(`Synchronized ${totalProcessed} manufacturing orders so far.`)
-					totalProcessed += batch.length
-					batch = []
+					await flushBatch()
+					request.resume()
 				} catch (error) {
-					logger.error('Error during bulk write:' + error)
+					logger.error('Error during bulk write: ' + error)
+					rejectStream(error)
 				}
-				request.resume()
 			}
 		})
 
-		request.on('error', (err) => {
-			logger.error(`Error occurred: ${err}`)
+		request.on('error', (error) => {
+			logger.error(error)
+			rejectStream(error)
 		})
 
-		request.on('done', () => {
-			logger.info(`Synchronized ${totalProcessed} manufacturing orders.`)
+		request.on('done', async () => {
+			try {
+				await flushBatch(true)
+				resolveStream()
+				logger.info(`Synchronized ${totalProcessed} manufacturing orders.`)
+			} catch (error) {
+				logger.error('Error during final bulk write: ' + error)
+				rejectStream(error)
+			}
 		})
 
-		await request.query<IManufacturingOrder>(/* SQL */ `
-			DECLARE @FactoryCode NVARCHAR(5) = '${args.factory}';
+		const queryPromise = await request.query<IManufacturingOrder>(/* SQL */ `
+			DECLARE @FactoryCode NVARCHAR(5) = '${args.factory}', @MoPrefix NVARCHAR(2) = '${args.moPrefix}';
 
 			-- Order size run
 			WITH     target_mo
@@ -120,10 +161,11 @@ async function main() {
 								INNER JOIN
 								wuerp_vnrd.dbo.ta_brand AS b
 								ON a.custbrand_id = b.custbrand_id
-						WHERE  LEFT(a.mo_no, 2) >= '15'
+						WHERE  LEFT(a.mo_no, 2) = @MoPrefix
 								AND b.brand_code IN ('UG', 'TV', 'KB')
 								AND a.cofactory_code = @FactoryCode
-								AND a.isactive = 'Y'),
+								AND a.isactive = 'Y'
+			),
 						mo_size_source
 			AS       (SELECT t.mo_no,
 								t.size_code,
@@ -159,7 +201,7 @@ async function main() {
 								quantity,
 								size_code,
 								record_time
-						FROM   DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet a
+						FROM   DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet a  WITH (NOLOCK)
 						INNER JOIN target_mo b ON a.mo_no = b.mo_no
 						UNION
 						SELECT EPC_Code,
@@ -169,7 +211,7 @@ async function main() {
 								quantity,
 								size_code,
 								record_time
-						FROM   DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet_backup_Daily a
+						FROM   DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet_backup_Daily a  WITH (NOLOCK)
 						INNER JOIN target_mo b ON a.mo_no = b.mo_no),
 			-- In/outbound progress
 						epcs
@@ -273,13 +315,16 @@ async function main() {
 						LEFT OUTER JOIN
 						mo_size_json AS msj
 						ON msj.mo_no = a.mo_no
-			WHERE    LEFT(a.mo_no, 2) >= '15'
+			WHERE    LEFT(a.mo_no, 2) = @MoPrefix
 						AND d.brand_code IN ('UG', 'TV', 'KB')
 						AND a.cofactory_code = @FactoryCode
 						AND msj.sizes IS NOT NULL
 						AND a.isactive = 'Y'
-			ORDER BY a.mo_no;
+			ORDER BY a.mo_no
+			OPTION (OPTIMIZE FOR UNKNOWN, MAXDOP 8, FAST 100);
 			`)
+
+		await Promise.all([queryPromise, streamCompletion])
 	} catch (error) {
 		logger.error(error)
 		process.exit(1)

@@ -95,7 +95,7 @@ async function main() {
 					const warehouse = warehouses.find((w) => w.legacy_code === row.warehouse_num)
 					return {
 						updateOne: {
-							filter: { name: row.storage_name },
+							filter: { warehouse: warehouse?._id, name: row.storage_name },
 							update: {
 								$set: {
 									name: row.storage_name,

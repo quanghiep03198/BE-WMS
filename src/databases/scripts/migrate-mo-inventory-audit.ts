@@ -57,7 +57,7 @@ async function main() {
 							year_month: row.year_month,
 							mo_no: row.mo_no,
 							size_ledger: SuperJson.parse(row.size_ledger),
-							storage_locations: row.storage_locations,
+							storage_locations: row.storage_locations ? SuperJson.parse(row.storage_locations) : [],
 							inventory_closure_status: row.year_month < format(new Date(), 'yyyy-MM') ? 'completed' : 'pending'
 						}
 					},

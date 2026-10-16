@@ -32,6 +32,11 @@ const args = getArgs({
 		type: 'boolean',
 		description: 'Whether to migrate all finished goods EPCs',
 		default: false
+	},
+	recentOnly: {
+		type: 'boolean',
+		description: 'Whether to migrate only recent finished goods EPCs',
+		default: false
 	}
 })
 
@@ -81,17 +86,53 @@ async function main() {
 	let batch: Array<AnyBulkWriteOperation<FinishedGoodsEpcDocument>> = []
 	let totalProcessed = 0
 	const BATCH_SIZE = 1000
+	let pendingFlush: Promise<void> | undefined
 
 	try {
 		await mssqlManager.connect()
 		await mongoManager.connect()
 
 		const request = mssqlManager.pool.request()
+		let resolveStream!: () => void
+		let rejectStream!: (error: unknown) => void
+		const streamCompletion = new Promise<void>((resolve, reject) => {
+			resolveStream = resolve
+			rejectStream = reject
+		})
 
 		request.stream = true
 
+		const flushBatch = async (includePartialBatch = false): Promise<void> => {
+			if (pendingFlush) {
+				await pendingFlush
+			}
+
+			while (batch.length >= BATCH_SIZE || (includePartialBatch && batch.length > 0)) {
+				const operations = batch
+				batch = []
+				const flush = mongoManager
+					.getRepository<FinishedGoodsEpcDocument>('finished_goods_epcs')
+					.bulkWrite(operations, { ordered: false })
+					.then(() => {
+						totalProcessed += operations.length
+						logger.info(`Synchronized ${totalProcessed} rows`)
+					})
+				pendingFlush = flush
+
+				try {
+					await flush
+				} catch (error) {
+					batch = [...operations, ...batch]
+					throw error
+				} finally {
+					pendingFlush = undefined
+				}
+			}
+		}
+
 		request.on('error', (err) => {
 			logger.error(err)
+			rejectStream(err)
 		})
 
 		request.on('row', async (row: IFinishedGoodsEpc) => {
@@ -112,28 +153,32 @@ async function main() {
 			})
 
 			if (batch.length >= BATCH_SIZE) {
+				request.pause()
 				try {
-					request.pause()
-					await mongoManager
-						.getRepository<FinishedGoodsEpcDocument>('finished_goods_epcs')
-						.bulkWrite(batch, { ordered: false })
-					totalProcessed += batch.length
-					logger.info(`Synchronized ${totalProcessed} rows`)
-					batch = [] // Reset batch
+					await flushBatch()
+					request.resume()
 				} catch (error) {
 					logger.error('Error during bulk write: ' + error)
-				} finally {
-					request.resume() // Tiếp tục đọc stream
+					rejectStream(error)
 				}
 			}
 		})
 
-		request.on('done', (result) => {
-			logger.info(`Finished goods EPCs migration completed successfully. ${result.rowsAffected} rows affected.`)
+		request.on('done', async () => {
+			try {
+				await flushBatch(true)
+				logger.info(`Finished goods EPCs migration completed successfully. ${totalProcessed} rows affected.`)
+				resolveStream()
+			} catch (error) {
+				logger.error('Error during final bulk write: ' + error)
+				rejectStream(error)
+			}
 		})
 
-		await request.query<FinishedGoodsEpcDocument>(/* SQL */ `
-         DECLARE @InboundDeviceSn AS NVARCHAR (50) = '${args.device101}', @OutboundDeviceSn AS NVARCHAR (50) = '${args.device103}';
+		const queryPromise = request.query<FinishedGoodsEpcDocument>(/* SQL */ `
+         DECLARE @InboundDeviceSn AS NVARCHAR (50) = '${args.device101}', 
+			@OutboundDeviceSn AS NVARCHAR (50) = '${args.device103}', 
+			@Mono AS NVARCHAR (20) = '14C03C009';
 
 			WITH     epcs_at_101
 			AS       (SELECT a.EPC_Code,
@@ -157,7 +202,6 @@ async function main() {
 									AND LEFT(ISNULL(c.mo_no_actual, c.mo_no), 2) >= '14'
 						WHERE  station_suffix = '101'
 								AND a.EPC_Code NOT LIKE 'E28%'
-								AND LEFT(a.mo_no, 2) >= '14'
 						${
 							!args.all
 								? ''
@@ -181,10 +225,13 @@ async function main() {
 										INNER JOIN
 										DV_DATA_LAKE.dbo.dv_rfidmatchmst_cust AS c
 										ON a.EPC_Code = c.EPC_Code
+											--AND ISNULL(c.mo_no_actual, c.mo_no) = @Mono
 											AND LEFT(ISNULL(c.mo_no_actual, c.mo_no), 2) >= '14'
 								WHERE  station_suffix = '101'
 										AND a.EPC_Code NOT LIKE 'E28%'
-										AND LEFT(a.mo_no, 2) >= '14'`
+										AND LEFT(a.mo_no, 2) >= '14'
+										--AND a.mo_no = @Mono
+										${args.recentOnly ? /* SQL */ `AND record_time >= DATEADD(DAY, -2, GETDATE())` : ''}`
 						}
 
 					),
@@ -196,10 +243,31 @@ async function main() {
 								record_time,
 								rfid_status,
 								rfid_use
-						FROM   DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet_backup_Daily
+						FROM   DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet
 						WHERE  station_suffix = '103'
 								AND EPC_Code NOT LIKE 'E28%'
-								AND LEFT(mo_no, 2) >= '14')
+								--AND mo_no = @Mono
+						${
+							!args.all
+								? ''
+								: /* SQL */ `
+								UNION
+								SELECT EPC_Code,
+										size_code,
+										mo_no,
+										po,
+										record_time,
+										rfid_status,
+										rfid_use
+								FROM   DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet_backup_Daily
+								WHERE  station_suffix = '103'
+										AND EPC_Code NOT LIKE 'E28%'
+										AND LEFT(mo_no, 2) >= '14'
+										--AND mo_no = @Mono
+										${args.recentOnly ? /* SQL */ `AND record_time >= DATEADD(DAY, -2, GETDATE())` : ''}
+								`
+						}
+						)
 			SELECT   _101.EPC_Code AS epc,
 						_101.size_numcode AS size_numcode,
 						_101.mo_no AS mo_no,
@@ -221,13 +289,13 @@ async function main() {
 						ON _101.EPC_Code = _103.EPC_Code
 			ORDER BY mo_no DESC;
          `)
+		await Promise.all([queryPromise, streamCompletion])
 	} catch (error) {
 		logger.error(error)
-		process.exit(1)
+		process.exitCode = 1
 	} finally {
-		mongoManager.disconnect()
-		mssqlManager.disconnect()
-		process.exit(1)
+		await Promise.all([mongoManager.disconnect(), mssqlManager.disconnect()])
+		process.exitCode = 0
 	}
 }
 

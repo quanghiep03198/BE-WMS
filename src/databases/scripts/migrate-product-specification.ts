@@ -4,20 +4,27 @@ import { getArgs } from './utils/get-args'
 import { Logger } from './utils/logger'
 
 const args = getArgs({
-	host: {
-		type: 'string'
+	mssqlHost: {
+		type: 'string',
+		description: 'MSSQL host',
+		default: process.env.DB_HOST
+	},
+	mongoDbName: {
+		type: 'string',
+		description: 'MongoDB database name',
+		default: process.env.MONGO_DB_NAME
 	}
 })
 
 async function main() {
 	const logger = new Logger('MigrateProductSpecification')
 
-	if (typeof args.host !== 'string') {
+	if (typeof args.mssqlHost !== 'string') {
 		logger.error('Host argument is missing or invalid')
 		process.exit(1)
 	}
 
-	const mssqlManager = new MssqlManager(args.host)
+	const mssqlManager = new MssqlManager(args.mssqlHost)
 	const mongoManager = new MongoManager()
 
 	try {
@@ -74,8 +81,8 @@ async function main() {
          WHERE    a.isactive = 'Y'
                   AND cl.product_variants IS NOT NULL
                   AND shoestyle_codecust IS NOT NULL
-                  AND -- AND (a.created >= CAST(DATEADD(DAY, -7, GETDATE()) AS DATE) OR a.updated >= CAST(DATEADD(DAY, -7, GETDATE()) AS DATE))
-                  c.brand_code IN ('UG', 'TV', 'KB')
+                  AND c.brand_code IN ('UG', 'TV', 'KB')
+						-- AND (a.created >= CAST(DATEADD(DAY, -7, GETDATE()) AS DATE) OR a.updated >= CAST(DATEADD(DAY, -7, GETDATE()) AS DATE))
          ORDER BY brand_name ASC;
 			`)
 
