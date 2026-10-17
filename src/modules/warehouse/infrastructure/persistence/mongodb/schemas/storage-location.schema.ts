@@ -45,7 +45,7 @@ export class StorageLocation extends BaseAbstractSchema {
 
 export const StorageLocationSchema = SchemaFactory.createForClass(StorageLocation)
 
-StorageLocationSchema.index({ warehouse: 1, name: 1 }, { unique: true })
+StorageLocationSchema.index({ name: 1 }, { unique: true })
 
 // * Addon plugins
 StorageLocationSchema.plugin(MongoosePaginate)
