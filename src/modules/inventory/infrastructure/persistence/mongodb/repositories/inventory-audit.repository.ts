@@ -43,10 +43,7 @@ export class InventoryAuditRepository implements IInventoryAuditRepository {
 				path: 'mo_attrs',
 				select: 'brand_name factory_code_produce factory_shoes_style cust_shoes_style color_sn order_qty'
 			})
-			.populate({
-				path: 'epcs',
-				select: 'storage_location.name'
-			})
+			// .populate('epcs', 'storage_location')
 			.exec()
 
 		return data.map((item) => {
@@ -90,6 +87,7 @@ export class InventoryAuditRepository implements IInventoryAuditRepository {
 				total_stocked_in_qty: totalStockedInQty,
 				total_shipped_out_qty: totalShippedOutQty,
 				total_supplemental_qty: totalSupplementalStockedInQty,
+				// storage_locations: [...new Set(item.epcs.map((epc) => epc.storage_location))],
 				storage_locations: item.storage_locations,
 				final_inventory_qty:
 					totalBeginningInventoryQty + totalStockedInQty - totalShippedOutQty + totalSupplementalStockedInQty,

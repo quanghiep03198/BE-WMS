@@ -1,3 +1,4 @@
+import { FinishedGoodsEpcStatus } from '@modules/finished-goods/domain/constants'
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose'
 import { HydratedDocument, Model } from 'mongoose'
 
@@ -51,6 +52,8 @@ MoInventoryAuditSchema.virtual('epcs', {
 	ref: 'FinishedGoodsEpc',
 	localField: 'mo_no',
 	foreignField: 'mo_no',
+	match: { deleted: false, scannable: true, status: FinishedGoodsEpcStatus.IN_STOCK },
+	options: { hint: 'idx_inbound_active' },
 	applyToArray: true
 })
 
@@ -73,6 +76,7 @@ MoInventoryAuditSchema.set('toObject', { virtuals: true })
 
 export type MoInventoryAuditDocument = HydratedDocument<MoInventoryAudit> & {
 	storage_locations: Array<any>
+	epcs: Array<{ storage_location: string }>
 	mo_attrs: {
 		mo_no: string
 		order_qty: number
