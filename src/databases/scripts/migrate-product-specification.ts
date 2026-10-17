@@ -1,3 +1,4 @@
+import { isIPv4 } from 'net'
 import { MongoManager } from './libs/mongoose'
 import { MssqlManager } from './libs/mssql'
 import { getArgs } from './utils/get-args'
@@ -18,14 +19,15 @@ const args = getArgs({
 
 async function main() {
 	const logger = new Logger('MigrateProductSpecification')
+	let exitCode: number = 0
 
-	if (typeof args.mssqlHost !== 'string') {
+	if (typeof args.mssqlHost !== 'string' || !isIPv4(args.mssqlHost)) {
 		logger.error('Host argument is missing or invalid')
 		process.exit(1)
 	}
 
 	const mssqlManager = new MssqlManager(args.mssqlHost)
-	const mongoManager = new MongoManager()
+	const mongoManager = new MongoManager(args.mongoDbName)
 
 	try {
 		await mssqlManager.connect()
@@ -120,11 +122,11 @@ async function main() {
 		logger.info('Product specifications migrated successfully.')
 	} catch (error) {
 		logger.error(error)
-		process.exit(1)
+		exitCode = 1
 	} finally {
 		await mssqlManager.disconnect()
 		await mongoManager.disconnect()
-		process.exit(0)
+		process.exit(exitCode)
 	}
 }
 

@@ -177,8 +177,7 @@ async function main() {
 
 		const queryPromise = request.query<FinishedGoodsEpcDocument>(/* SQL */ `
          DECLARE @InboundDeviceSn AS NVARCHAR (50) = '${args.device101}', 
-			@OutboundDeviceSn AS NVARCHAR (50) = '${args.device103}', 
-			@Mono AS NVARCHAR (20) = '14C03C009';
+			@OutboundDeviceSn AS NVARCHAR (50) = '${args.device103}';
 
 			WITH     epcs_at_101
 			AS       (SELECT a.EPC_Code,
@@ -199,7 +198,6 @@ async function main() {
 								INNER JOIN
 								DV_DATA_LAKE.dbo.dv_rfidmatchmst_cust AS c
 								ON a.EPC_Code = c.EPC_Code
-									AND LEFT(ISNULL(c.mo_no_actual, c.mo_no), 2) >= '14'
 						WHERE  station_suffix = '101'
 								AND a.EPC_Code NOT LIKE 'E28%'
 						${
@@ -217,7 +215,7 @@ async function main() {
 										c.shoestyle_codefactory AS factory_shoes_style,
 										c.color_sn AS color_sn,
 										a.record_time,
-										row_number() OVER (PARTITION BY a.EPC_Code ORDER BY a.record_time DESC) AS rn
+										row_number() OVER (PARTITION BY a.EPC_Code, a.rfid_status ORDER BY a.record_time DESC) AS rn
 								FROM   DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet_backup_Daily AS a
 										LEFT OUTER JOIN
 										DV_DATA_LAKE.dbo.dv_warehouseccodedet AS b
@@ -225,13 +223,10 @@ async function main() {
 										INNER JOIN
 										DV_DATA_LAKE.dbo.dv_rfidmatchmst_cust AS c
 										ON a.EPC_Code = c.EPC_Code
-											--AND ISNULL(c.mo_no_actual, c.mo_no) = @Mono
-											AND LEFT(ISNULL(c.mo_no_actual, c.mo_no), 2) >= '14'
 								WHERE  station_suffix = '101'
 										AND a.EPC_Code NOT LIKE 'E28%'
-										AND LEFT(a.mo_no, 2) >= '14'
-										--AND a.mo_no = @Mono
-										${args.recentOnly ? /* SQL */ `AND record_time >= DATEADD(DAY, -2, GETDATE())` : ''}`
+										AND LEFT(a.mo_no, 2) >= '15'
+										${args.recentOnly ? /* SQL */ `AND record_time >= DATEADD(DAY, -2, GETDATE())` : /* SQL */ `AND LEFT(a.mo_no, 2) >= '15'`}`
 						}
 
 					),
@@ -246,7 +241,6 @@ async function main() {
 						FROM   DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet
 						WHERE  station_suffix = '103'
 								AND EPC_Code NOT LIKE 'E28%'
-								--AND mo_no = @Mono
 						${
 							!args.all
 								? ''
@@ -262,7 +256,7 @@ async function main() {
 								FROM   DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet_backup_Daily
 								WHERE  station_suffix = '103'
 										AND EPC_Code NOT LIKE 'E28%'
-										AND LEFT(mo_no, 2) >= '14'
+										AND LEFT(mo_no, 2) >= '15'
 										--AND mo_no = @Mono
 										${args.recentOnly ? /* SQL */ `AND record_time >= DATEADD(DAY, -2, GETDATE())` : ''}
 								`
@@ -296,6 +290,7 @@ async function main() {
 	} finally {
 		await Promise.all([mongoManager.disconnect(), mssqlManager.disconnect()])
 		process.exitCode = 0
+		process.exit(process.exitCode)
 	}
 }
 
