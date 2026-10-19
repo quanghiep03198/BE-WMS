@@ -1,36 +1,51 @@
 import 'dotenv/config'
 import mongoose, { Document } from 'mongoose'
-import { Logger } from '../../../../.tmp/utils/logger'
+import { env } from '../../../common/utils'
+import { Logger } from '../utils/logger'
 
 export class MongoManager {
 	private client: mongoose.Mongoose = new mongoose.Mongoose({ createInitialConnection: false })
+	private readonly logger = new Logger('MongoDB')
 
 	constructor(private readonly dbName: string = process.env.MONGO_DB_NAME) {}
 
 	public async connect() {
-		const logger = new Logger('MongoDB')
-
 		try {
-			logger.info('Connecting to MongoDB...')
-			this.client = await this.client.connect(`mongodb://127.0.0.1:27017,127.0.0.1:27018,127.0.0.1:27019`, {
+			this.logger.info('Connecting to MongoDB...')
+			this.client = await this.client.connect(env('MONGO_URI'), {
 				dbName: this.dbName,
 				replicaSet: 'rs0'
 			})
-			logger.info('Connected to MongoDB')
+			this.logger.info('Connected to MongoDB')
 		} catch {
-			logger.error('Failed to connect to MongoDB')
+			this.logger.error('Failed to connect to MongoDB')
 			process.exit(1)
 		}
 	}
 
 	public async disconnect() {
-		if (this.client.connection.readyState === 1) await this.client.disconnect()
+		if (this.client.connection.readyState === 1) {
+			this.logger.info('Disconnecting from MongoDB...')
+			await this.client.disconnect()
+			this.logger.info('Disconnected from MongoDB')
+		}
+	}
+
+	public getDatabase() {
+		if (!this.client.connection.db) throw new Error('MongoDB is not connected')
+		return this.client.connection.db
 	}
 
 	public getRepository<T extends Document>(collection: string) {
 		if (this.client.connection.readyState !== 1) throw new Error('MongoDB is not connected')
 		const database = this.client.connection.db!
 		return database.collection<T>(collection)
+	}
+
+	public getBucket(bucketName: string) {
+		if (this.client.connection.readyState !== 1) throw new Error('MongoDB is not connected')
+		const database = this.client.connection.db!
+		return new mongoose.mongo.GridFSBucket(database, { bucketName })
 	}
 
 	public async withTransaction(fn: (session: mongoose.ClientSession) => Promise<void>) {
@@ -45,4 +60,6 @@ export class MongoManager {
 			}
 		}
 	}
+
+	public
 }
