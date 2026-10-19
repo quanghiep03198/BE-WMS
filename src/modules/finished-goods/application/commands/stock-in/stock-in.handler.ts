@@ -35,13 +35,13 @@ export class StockInHandler implements ICommandHandler<StockInCommand> {
 	) {}
 
 	public async execute({ command }: StockInCommand): Promise<void> {
-		const location = await this.storageLocationRepository.findOneById(command.storage_location)
+		const location = await this.storageLocationRepository.findOne({ name: command.storage_location })
 
 		const pendingInboundEpcs = await this.finishedGoodsEpcRepository.getPendingStockMoveEpcs(
 			command.inbound_device_sn,
 			command.mo_no,
 			`${command.assembly_line.code}/${command.assembly_line.name}`,
-			`${location._id}/${location.warehouse?.name}/${command.storage_location}`
+			`${location._id}/${location.warehouse?.name}/${location.name}`
 		)
 
 		const currentInboundProgress = (await this.orderRepository.getManufacturingOrderInventory(command.mo_no)).map(
