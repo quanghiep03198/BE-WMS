@@ -2,6 +2,11 @@ import { ExcelColorPalette } from '@common/constants/excel-color-palette'
 import { applyCommonStyles, type AutoFitColumnOptions, autoFitColumns } from '@common/helpers'
 import { DATA_WAREHOUSE_CONNECTION } from '@databases/constants'
 import { IPendingInventoryFluctuation } from '@modules/finished-goods/application/ports/inventory-ledger.repository.port'
+import { FinishedGoodsEpcStatus } from '@modules/finished-goods/domain/constants'
+import {
+	FinishedGoodsEpc,
+	FinishedGoodsEpcModel
+} from '@modules/finished-goods/infrastructure/persistence/mongodb/schemas/finished-goods-epc.schema'
 import { IInventoryAuditRepository } from '@modules/inventory/application/ports/inventory-audit.repository.port'
 import { InventoryClosureStatus } from '@modules/inventory/domain/constants'
 import { ManufacturingOrder, ManufacturingOrderModel } from '@modules/order/schemas/manufacturing-order.schema'
@@ -26,6 +31,8 @@ export class InventoryAuditRepository implements IInventoryAuditRepository {
 		private readonly moInventoryAuditModel: MoInventoryAuditModel,
 		@InjectModel(ManufacturingOrder.name, DATA_WAREHOUSE_CONNECTION)
 		private readonly manufacturingOrderModel: ManufacturingOrderModel,
+		@InjectModel(FinishedGoodsEpc.name, DATA_WAREHOUSE_CONNECTION)
+		private readonly finishedGoodsEpcModel: FinishedGoodsEpcModel,
 		private readonly i18nService: I18nService
 	) {}
 
@@ -33,7 +40,12 @@ export class InventoryAuditRepository implements IInventoryAuditRepository {
 		month: string,
 		manufacturingOrders: Array<string> = []
 	): Promise<IInventoryReportResponse> {
-		const data = await this.moInventoryAuditModel
+		let isPlaceholder = false
+		const currentYearMonth = format(new Date(), 'yyyy-MM')
+		const allYearMonths = await this.moInventoryAuditModel.distinct('year_month', {}, { sort: { year_month: -1 } })
+		const latestYearMonth = allYearMonths[0]
+
+		let data = await this.moInventoryAuditModel
 			.find({
 				year_month: month,
 				...(manufacturingOrders.length > 0 && { mo_no: { $in: manufacturingOrders } })
@@ -43,10 +55,24 @@ export class InventoryAuditRepository implements IInventoryAuditRepository {
 				path: 'mo_attrs',
 				select: 'brand_name factory_code_produce factory_shoes_style cust_shoes_style color_sn order_qty'
 			})
-			// .populate('epcs', 'storage_location')
 			.exec()
 
-		return data.map((item) => {
+		if (data.length === 0 && month === currentYearMonth) {
+			isPlaceholder = true
+			data = await this.moInventoryAuditModel
+				.find({
+					year_month: latestYearMonth,
+					...(manufacturingOrders.length > 0 && { mo_no: { $in: manufacturingOrders } })
+				})
+				.lean({ virtuals: true })
+				.populate({
+					path: 'mo_attrs',
+					select: 'brand_name factory_code_produce factory_shoes_style cust_shoes_style color_sn order_qty'
+				})
+				.exec()
+		}
+
+		const mappedData = data.map((item) => {
 			const sizeLedger = Object.entries(item.size_ledger)
 				.sort(([size1], [size2]) => Number.parseFloat(size1) - Number.parseFloat(size2))
 				.map(([size, fluctuation]) => {
@@ -87,13 +113,14 @@ export class InventoryAuditRepository implements IInventoryAuditRepository {
 				total_stocked_in_qty: totalStockedInQty,
 				total_shipped_out_qty: totalShippedOutQty,
 				total_supplemental_qty: totalSupplementalStockedInQty,
-				// storage_locations: [...new Set(item.epcs.map((epc) => epc.storage_location))],
 				storage_locations: item.storage_locations,
 				final_inventory_qty:
 					totalBeginningInventoryQty + totalStockedInQty - totalShippedOutQty + totalSupplementalStockedInQty,
 				size_ledger: sizeLedger
 			}
 		})
+
+		return { values: mappedData, isPlaceholder }
 	}
 
 	public async getInventoryAuditClosureStatus(month: string): Promise<InventoryClosureStatus[]> {
@@ -107,14 +134,30 @@ export class InventoryAuditRepository implements IInventoryAuditRepository {
 		pendingFluctuation:
 			| IPendingInventoryFluctuation
 			| Pick<IPendingInventoryFluctuation, 'mo_no' | 'size_ledger'>
-			| Array<IPendingInventoryFluctuation>,
-		storageLocation?: string
+			| Array<IPendingInventoryFluctuation>
+		// storageLocation?: string
 	) {
 		const fluctuation = Array.isArray(pendingFluctuation) ? pendingFluctuation : [pendingFluctuation]
 
 		const manufacturingOrders = await this.manufacturingOrderModel
 			.find({ mo_no: { $in: fluctuation.map(({ mo_no }) => mo_no) } })
 			.lean()
+
+		// * Lấy danh sách các vị trí lưu kho của thành phẩm theo từng MO
+		const storageLocations = await this.finishedGoodsEpcModel.aggregate<{
+			mo_no: string
+			storage_locations: Array<string>
+		}>([
+			{
+				$match: {
+					scannable: true,
+					status: FinishedGoodsEpcStatus.IN_STOCK,
+					mo_no: { $in: fluctuation.map(({ mo_no }) => mo_no) }
+				}
+			},
+			{ $group: { _id: '$mo_no', storage_locations: { $addToSet: '$storage_location' } } },
+			{ $project: { _id: 0, mo_no: '$_id', storage_locations: 1 } }
+		])
 
 		const manufacturingOrdersMap = new Map(manufacturingOrders.map((mo) => [mo.mo_no, mo]))
 		const yearMonth = format(new Date(), 'yyyy-MM')
@@ -160,16 +203,13 @@ export class InventoryAuditRepository implements IInventoryAuditRepository {
 							mo_no: curr.mo_no,
 							year_month: yearMonth,
 							inventory_closure_status: 'pending',
-							storage_locations: [],
 							...setOnInsertExpression
 						},
-						$inc: incrementExpression,
-						...(typeof storageLocation === 'string' &&
-							storageLocation.length > 0 && {
-								$addToSet: {
-									storage_locations: storageLocation
-								}
-							})
+						$set: {
+							storage_locations:
+								storageLocations.find(({ mo_no }) => mo_no === curr.mo_no)?.storage_locations ?? []
+						},
+						$inc: incrementExpression
 					},
 					upsert: true
 				}
@@ -183,7 +223,6 @@ export class InventoryAuditRepository implements IInventoryAuditRepository {
 				session: this.txHost.tx,
 				writeConcern: { w: 'majority' },
 				ordered: true,
-
 				timestamps: true
 			})
 	}
@@ -286,7 +325,7 @@ export class InventoryAuditRepository implements IInventoryAuditRepository {
 			}
 		].map((item) => ({ ...item, alignment: { vertical: 'middle', horizontal: 'center' } }))
 
-		const data = await this.getMonthlyInventoryAudit(format(new Date(month), 'yyyy-MM'), commandNumbers)
+		const { values: data } = await this.getMonthlyInventoryAudit(format(new Date(month), 'yyyy-MM'), commandNumbers)
 
 		// * Add data to worksheet
 		const filteredData = data.filter(

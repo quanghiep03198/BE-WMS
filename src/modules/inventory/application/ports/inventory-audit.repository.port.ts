@@ -11,8 +11,8 @@ export interface IInventoryAuditRepository {
 		inventoryFluctuationData:
 			| IPendingInventoryFluctuation
 			| Pick<IPendingInventoryFluctuation, 'mo_no' | 'size_ledger'>
-			| Array<IPendingInventoryFluctuation>,
-		storageLocations?: string
+			| Array<IPendingInventoryFluctuation>
+		// storageLocations?: string
 	): Promise<void>
 
 	saveSupplementalQty(
