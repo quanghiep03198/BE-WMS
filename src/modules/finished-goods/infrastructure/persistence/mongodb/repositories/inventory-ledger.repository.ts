@@ -240,7 +240,6 @@ export class InventoryLedgerRepository implements IInventoryLedgerRepository {
 		const bulkWriteConcernSettings: mongo.BulkWriteOptions & MongooseBulkWriteOptions = {
 			session: this.txHost.tx,
 			ordered: false,
-
 			timestamps: true
 		}
 

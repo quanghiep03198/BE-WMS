@@ -1,7 +1,7 @@
 import { VALID_EPC_PATTERN } from '@common/constants/regex'
 import { FinishedGoodsEpcStatus } from '@modules/finished-goods/domain/constants'
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose'
-import mongoose, { HydratedDocument, PaginateModel, Types } from 'mongoose'
+import mongoose, { HydratedDocument, PaginateModel } from 'mongoose'
 import MongooseDeletePlugin, { SoftDeleteModel } from 'mongoose-delete'
 import MongoosePaginatePlugin from 'mongoose-paginate-v2'
 
@@ -63,8 +63,8 @@ export class FinishedGoodsEpc {
 	@Prop({ type: Object })
 	assembly_line: string
 
-	@Prop({ type: Types.ObjectId })
-	storage_location: Types.ObjectId
+	@Prop({ type: String })
+	storage_location: string
 
 	@Prop({ type: Date, default: null })
 	inbound_at: Date | null
