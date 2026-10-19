@@ -18,14 +18,14 @@ const args = getArgs({
 		description: 'MongoDB database name',
 		default: process.env.MONGO_DB_NAME
 	},
-	factory: {
+	tenant: {
 		type: 'string',
 		description: 'Factory code',
 		default: process.env.FACTORY_CODE
 	}
 })
 
-async function main() {
+async function execute() {
 	let exitCode = 0
 	const logger = new Logger('SyncRfidDevices')
 
@@ -39,7 +39,7 @@ async function main() {
 		process.exit(1)
 	}
 
-	if (typeof args.factory !== 'string' || !['VA1', 'VB2', 'CA1'].includes(args.factory.trim())) {
+	if (typeof args.tenant !== 'string' || !['VA1', 'VB2', 'CA1'].includes(args.tenant.trim())) {
 		logger.error('Invalid factory code')
 		process.exit(1)
 	}
@@ -75,7 +75,7 @@ async function main() {
             WHERE  device_name LIKE 'CUS_%_WH%'
                   AND cofactory_code = @factory; 
          `,
-			{ factory: { type: NVarChar(10), value: args.factory } }
+			{ factory: { type: NVarChar(10), value: args.tenant } }
 		)
 
 		const devices = query.getRawMany()
@@ -100,4 +100,4 @@ async function main() {
 	}
 }
 
-main()
+execute()

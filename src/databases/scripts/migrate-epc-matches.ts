@@ -20,7 +20,7 @@ const args = getArgs({
 	}
 })
 
-async function main() {
+async function execute() {
 	const logger = new Logger('SyncEpcMatch')
 
 	if (typeof args.mssqlHost !== 'string' || !isIPv4(args.mssqlHost)) {
@@ -39,9 +39,9 @@ async function main() {
 	await mssqlManager.connect()
 	await mongoManager.connect()
 
+	const BATCH_SIZE = 1000
 	let batch: Array<AnyBulkWriteOperation<FinishedGoodsEpcMatchDocument>> = []
 	let totalProcessed = 0
-	const BATCH_SIZE = 1000
 	let pendingFlush: Promise<void> | undefined
 
 	try {
@@ -121,7 +121,7 @@ async function main() {
 			}
 		})
 
-		await request.query<LeanDocument<FinishedGoodsEpcMatchDocument>>(/* SQL */ `
+		const queryPromise = request.query<LeanDocument<FinishedGoodsEpcMatchDocument>>(/* SQL */ `
 		   SELECT EPC_Code AS epc,
 		      ISNULL(mo_no_actual, mo_no) AS mo_no,
 		      shoestyle_codefactory AS factory_shoes_style,
@@ -132,6 +132,8 @@ async function main() {
 		   FROM DV_DATA_LAKE.dbo.dv_rfidmatchmst_cust
 		   WHERE LEFT(ISNULL(mo_no_actual, mo_no), 2) >= '15'
 		`)
+
+		await Promise.all([queryPromise, streamCompletion])
 	} catch (error) {
 		logger.error(error as Error)
 		process.exit(1)
@@ -142,4 +144,4 @@ async function main() {
 	}
 }
 
-main()
+execute()

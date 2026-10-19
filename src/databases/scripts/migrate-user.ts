@@ -1,6 +1,7 @@
 import { hashSync } from 'bcrypt'
 import type { AnyBulkWriteOperation } from 'mongoose'
 import { isIPv4 } from 'net'
+import { env } from '../../common/utils'
 import { IUser } from '../../modules/user/domain/interfaces'
 import type { UserDocument } from '../../modules/user/infrastructure/persistence/mongodb/schemas/user.schema'
 import { MongoManager } from './libs/mongoose'
@@ -11,11 +12,13 @@ import { Logger } from './utils/logger'
 const args = getArgs({
 	mssqlHost: {
 		type: 'string',
-		description: 'MSSQL host'
+		description: 'MSSQL host',
+		default: env('DB_HOST')
 	},
 	mongoDbName: {
 		type: 'string',
-		description: 'MongoDB database name'
+		description: 'MongoDB database name',
+		default: env('MONGO_DB_NAME')
 	}
 })
 

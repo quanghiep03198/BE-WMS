@@ -1,5 +1,5 @@
 import { AnyBulkWriteOperation, Types } from 'mongoose'
-import { SuperJson } from '../../common/utils'
+import { env, SuperJson } from '../../common/utils'
 import {
 	TruckloadDelivery,
 	TruckloadDeliveryDocument
@@ -12,18 +12,22 @@ import { Logger } from './utils/logger'
 const args = getArgs({
 	mssqlHost: {
 		type: 'string',
-		short: 'h',
-		description: 'MSSQL host password',
-		default: process.env.DB_PASSWORD
+		description: 'MSSQL host',
+		default: env('DB_HOST')
 	},
 	mongoDbName: {
 		type: 'string',
 		description: 'MongoDB database name',
-		default: process.env.DB_NAME
+		default: env('MONGO_DB_NAME')
+	},
+	tenant: {
+		type: 'string',
+		description: 'Factory name',
+		default: env('APP_TENANCY')
 	}
 })
 
-async function main() {
+async function execute() {
 	const logger = new Logger('SyncTruckloadDelivery')
 
 	if (typeof args.mssqlHost !== 'string') {
@@ -136,4 +140,4 @@ async function main() {
 	}
 }
 
-main()
+execute()

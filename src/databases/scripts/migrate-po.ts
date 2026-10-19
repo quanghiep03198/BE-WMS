@@ -1,6 +1,6 @@
 import { AnyBulkWriteOperation } from 'mongoose'
 import { isIPv4 } from 'net'
-import { SuperJson } from '../../common/utils'
+import { env, SuperJson } from '../../common/utils'
 import { PurchaseOrderDocument } from '../../modules/order/schemas/purchase-order.schema'
 import { MongoManager } from './libs/mongoose'
 import { MssqlManager } from './libs/mssql'
@@ -12,12 +12,12 @@ const args = getArgs({
 		type: 'string',
 		short: 'h',
 		description: 'MSSQL host',
-		default: process.env.DB_HOST
+		default: env('DB_HOST')
 	},
 	mongoDbName: {
 		type: 'string',
 		description: 'MongoDB database name',
-		default: process.env.DB_NAME
+		default: env('MONGO_DB_NAME')
 	}
 })
 
@@ -38,7 +38,7 @@ interface IPurchaseOrder {
 	}>
 }
 
-export async function main() {
+export async function execute() {
 	const logger = new Logger()
 
 	if (typeof args.mssqlHost !== 'string' || !isIPv4(args.mssqlHost)) {
@@ -54,9 +54,10 @@ export async function main() {
 	const mssqlManager = new MssqlManager(args.mssqlHost)
 	const mongoManager = new MongoManager()
 
+	const BATCH_SIZE = 100
 	let batch: Array<AnyBulkWriteOperation<PurchaseOrderDocument>> = []
 	let totalProcessed = 0
-	const BATCH_SIZE = 100
+	let pendingFlush: Promise<void> | undefined
 
 	try {
 		await mssqlManager.connect()
@@ -64,7 +65,44 @@ export async function main() {
 
 		const request = mssqlManager.pool.request()
 
+		let resolveStream!: () => void
+		let rejectStream!: (error: unknown) => void
+		const streamCompletion = new Promise<void>((resolve, reject) => {
+			resolveStream = resolve
+			rejectStream = reject
+		})
+
 		request.stream = true
+
+		const flushBatch = async (includePartialBatch = false): Promise<void> => {
+			if (pendingFlush) {
+				await pendingFlush
+			}
+
+			while (batch.length >= BATCH_SIZE || (includePartialBatch && batch.length > 0)) {
+				{
+					const operations = batch
+					batch = []
+					const flush = mongoManager
+						.getRepository<PurchaseOrderDocument>('purchase_orders')
+						.bulkWrite(operations, { ordered: false })
+						.then(() => {
+							totalProcessed += operations.length
+							logger.info(`Synchronized ${totalProcessed} purchased orders so far.`)
+						})
+
+					pendingFlush = flush
+
+					try {
+						await flush
+					} catch (error) {
+						throw error
+					} finally {
+						pendingFlush = undefined
+					}
+				}
+			}
+		}
 
 		request.on('row', async (row) => {
 			batch.push({
@@ -80,26 +118,70 @@ export async function main() {
 					upsert: true
 				}
 			})
+
 			if (batch.length >= BATCH_SIZE) {
+				request.pause()
 				try {
-					request.pause()
-					await mongoManager.getRepository<PurchaseOrderDocument>('purchase_orders').bulkWrite(batch)
-					totalProcessed += batch.length
-					logger.info(`Synchronized ${totalProcessed} purchase orders`)
-					batch = [] // Reset batch
+					await flushBatch()
+					request.resume()
 				} catch (error) {
 					logger.error('Error during bulk write: ' + error)
-				} finally {
-					request.resume() // Continue reading stream
+					rejectStream(error)
 				}
 			}
 		})
+
+		request.on('error', (error) => {
+			logger.error(error)
+			rejectStream(error)
+		})
+
+		request.on('done', async () => {
+			try {
+				await flushBatch(true)
+				resolveStream()
+				logger.info(`Synchronized ${totalProcessed} purchased orders.`)
+			} catch (error) {
+				logger.error('Error during final bulk write: ' + error)
+				rejectStream(error)
+			}
+		})
+
+		// request.on('row', async (row) => {
+		// 	batch.push({
+		// 		updateOne: {
+		// 			filter: { po: row.po },
+		// 			update: {
+		// 				$set: {
+		// 					...row,
+		// 					packing: SuperJson.parse(row.packing),
+		// 					shipping_progress: SuperJson.parse(row.shipping_progress)
+		// 				}
+		// 			},
+		// 			upsert: true
+		// 		}
+		// 	})
+		// 	if (batch.length >= BATCH_SIZE) {
+		// 		try {
+		// 			request.pause()
+		// 			await mongoManager.getRepository<PurchaseOrderDocument>('purchase_orders').bulkWrite(batch)
+		// 			totalProcessed += batch.length
+		// 			logger.info(`Synchronized ${totalProcessed} purchase orders`)
+		// 			batch = [] // Reset batch
+		// 		} catch (error) {
+		// 			logger.error('Error during bulk write: ' + error)
+		// 			process.exitCode = 1
+		// 		} finally {
+		// 			request.resume() // Continue reading stream
+		// 		}
+		// 	}
+		// })
 
 		request.on('done', () =>
 			logger.info(`Finished synchronizing purchase orders. Total processed: ${totalProcessed}`)
 		)
 
-		await request.query<IPurchaseOrder>(/* SQL */ `
+		const queryPromise = request.query<IPurchaseOrder>(/* SQL */ `
 			WITH     CTE
 			AS       (SELECT orp05.po,
 								po_type,
@@ -185,14 +267,16 @@ export async function main() {
 						ON prg.po = pk.po
 			GROUP BY pk.po, pk.order_qty, pk.shipping_method, pk.shipping_destination, pk.brand_name, pk.factory_shoes_style, pk.cust_shoes_style, pk.color_sn;
 		`)
+
+		await Promise.all([queryPromise, streamCompletion])
 	} catch (error) {
 		logger.error(error as Error)
-		process.exit(1)
+		process.exitCode = 1
 	} finally {
 		await mssqlManager.disconnect()
 		await mongoManager.disconnect()
-		process.exit(1)
+		process.exit(process.exitCode ?? 0)
 	}
 }
 
-main()
+execute()

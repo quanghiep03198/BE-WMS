@@ -1,6 +1,6 @@
-import { SuperJson } from '@common/utils'
 import 'dotenv/config'
 import { AnyBulkWriteOperation, HydratedDocument } from 'mongoose'
+import { env, SuperJson } from '../../common/utils'
 import { MongoManager } from './libs/mongoose'
 import { MssqlManager } from './libs/mssql'
 import { getArgs } from './utils/get-args'
@@ -26,26 +26,26 @@ const args = getArgs({
 	mssqlHost: {
 		type: 'string',
 		description: 'MSSQL host',
-		default: process.env.DB_HOST
+		default: env('DB_HOST')
 	},
 	mongoDbName: {
 		type: 'string',
 		description: 'MongoDB database name',
-		default: process.env.MONGO_DB_NAME
+		default: env('MONGO_DB_NAME')
 	},
-	factory: {
+	tenant: {
 		type: 'string',
 		description: 'Factory code',
-		default: process.env.FACTORY_CODE
+		default: env('APP_TENANCY')
 	},
 	moPrefix: {
 		type: 'string',
 		description: 'MO prefix',
-		default: process.env.MO_PREFIX
+		default: '15'
 	}
 })
 
-async function main() {
+async function execute() {
 	const logger = new Logger()
 
 	if (typeof args.mssqlHost !== 'string') {
@@ -152,7 +152,7 @@ async function main() {
 		})
 
 		const queryPromise = await request.query<IManufacturingOrder>(/* SQL */ `
-			DECLARE @FactoryCode NVARCHAR(5) = '${args.factory}', @MoPrefix NVARCHAR(2) = '${args.moPrefix}';
+			DECLARE @FactoryCode NVARCHAR(5) = '${args.tenant}', @MoPrefix NVARCHAR(2) = '${args.moPrefix}';
 
 			-- Order size run
 			WITH     target_mo
@@ -162,7 +162,7 @@ async function main() {
 								wuerp_vnrd.dbo.ta_brand AS b
 								ON a.custbrand_id = b.custbrand_id
 						WHERE  LEFT(a.mo_no, 2) = @MoPrefix
-								AND b.brand_code IN ('UG', 'TV', 'KB')
+								AND b.brand_code IN = 'UG'
 								AND a.cofactory_code = @FactoryCode
 								AND a.isactive = 'Y'
 			),
@@ -316,7 +316,7 @@ async function main() {
 						mo_size_json AS msj
 						ON msj.mo_no = a.mo_no
 			WHERE    LEFT(a.mo_no, 2) = @MoPrefix
-						AND d.brand_code IN ('UG', 'TV', 'KB')
+						AND d.brand_code = 'UG'
 						AND a.cofactory_code = @FactoryCode
 						AND msj.sizes IS NOT NULL
 						AND a.isactive = 'Y'
@@ -335,7 +335,7 @@ async function main() {
 	}
 }
 
-main()
+execute()
 
 // await mongoManager.getRepository('manufacturing_orders').aggregate([
 // 	{

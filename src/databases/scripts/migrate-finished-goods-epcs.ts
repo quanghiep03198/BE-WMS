@@ -1,5 +1,6 @@
 import { AnyBulkWriteOperation } from 'mongoose'
 import { isIPv4 } from 'net'
+import { env } from '../../common/utils'
 import { FinishedGoodsEpcStatus } from '../../modules/finished-goods/domain/constants'
 import { FinishedGoodsEpcDocument } from '../../modules/finished-goods/infrastructure/persistence/mongodb/schemas/finished-goods-epc.schema'
 import { MongoManager } from './libs/mongoose'
@@ -11,31 +12,24 @@ const args = getArgs({
 	mssqlHost: {
 		type: 'string',
 		description: 'MSSQL host',
-		default: process.env.DB_HOST
+		default: env('DB_HOST')
 	},
 	mongoDbName: {
 		type: 'string',
 		description: 'mongoDbName database name',
-		default: process.env.MONGO_DB_NAME
+		default: env('MONGO_DB_NAME')
 	},
 	device101: {
 		type: 'string',
-		description: 'Inbound device SN',
-		default: process.env.INBOUND_DEVICE_SN
+		description: 'Inbound device SN'
 	},
 	device103: {
 		type: 'string',
-		description: 'Outbound device SN',
-		default: process.env.OUTBOUND_DEVICE_SN
+		description: 'Outbound device SN'
 	},
 	all: {
 		type: 'boolean',
 		description: 'Whether to migrate all finished goods EPCs',
-		default: false
-	},
-	recentOnly: {
-		type: 'boolean',
-		description: 'Whether to migrate only recent finished goods EPCs',
 		default: false
 	}
 })
@@ -83,9 +77,9 @@ async function main() {
 	const mssqlManager = new MssqlManager(args.mssqlHost)
 	const mongoManager = new MongoManager(args.mongoDbName)
 
+	const BATCH_SIZE = 1000
 	let batch: Array<AnyBulkWriteOperation<FinishedGoodsEpcDocument>> = []
 	let totalProcessed = 0
-	const BATCH_SIZE = 1000
 	let pendingFlush: Promise<void> | undefined
 
 	try {
@@ -225,10 +219,8 @@ async function main() {
 										ON a.EPC_Code = c.EPC_Code
 								WHERE  station_suffix = '101'
 										AND a.EPC_Code NOT LIKE 'E28%'
-										AND LEFT(a.mo_no, 2) >= '15'
-										${args.recentOnly ? /* SQL */ `AND record_time >= DATEADD(DAY, -2, GETDATE())` : /* SQL */ `AND LEFT(a.mo_no, 2) >= '15'`}`
+										AND LEFT(a.mo_no, 2) >= '15'`
 						}
-
 					),
 						epcs_at_103
 			AS       (SELECT EPC_Code,
@@ -257,8 +249,6 @@ async function main() {
 								WHERE  station_suffix = '103'
 										AND EPC_Code NOT LIKE 'E28%'
 										AND LEFT(mo_no, 2) >= '15'
-										--AND mo_no = @Mono
-										${args.recentOnly ? /* SQL */ `AND record_time >= DATEADD(DAY, -2, GETDATE())` : ''}
 								`
 						}
 						)

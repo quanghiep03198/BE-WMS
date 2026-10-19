@@ -1,8 +1,8 @@
-import { MoInventoryAuditDocument } from '@modules/inventory/infrastructure/persistence/mongodb/schemas/inventory-audit.schema'
 import { format } from 'date-fns'
 import 'dotenv/config'
 import { AnyBulkWriteOperation } from 'mongoose'
-import { SuperJson } from '../../common/utils'
+import { env, SuperJson } from '../../common/utils'
+import { MoInventoryAuditDocument } from '../../modules/inventory/infrastructure/persistence/mongodb/schemas/inventory-audit.schema'
 import { MongoManager } from './libs/mongoose'
 import { MssqlManager } from './libs/mssql'
 import { getArgs } from './utils/get-args'
@@ -12,17 +12,16 @@ const args = getArgs({
 	mssqlHost: {
 		type: 'string',
 		description: 'MSSQL host',
-		default: process.env.DB_HOST
+		default: env('DB_HOST')
 	},
 	mongoDbName: {
 		type: 'string',
 		description: 'MongoDB database name',
-		default: process.env.MONGO_DB_NAME
+		default: env('MONGO_DB_NAME')
 	},
-	factory: {
+	tenant: {
 		type: 'string',
-		description: 'Factory code',
-		default: process.env.FACTORY_CODE
+		description: 'Factory code'
 	}
 })
 
@@ -41,24 +40,58 @@ async function main() {
 
 	let batch: Array<AnyBulkWriteOperation<MoInventoryAuditDocument>> = []
 	let totalProcessed: number = 0
-	const BATCH_SIZE = 1
+	let pendingFlush: Promise<void> | undefined
+	const BATCH_SIZE = 100
 
 	try {
 		const request = mssqlManager.pool.request()
+		let resolveStream!: () => void
+		let rejectStream!: (error: unknown) => void
+		const streamCompletion = new Promise<void>((resolve, reject) => {
+			resolveStream = resolve
+			rejectStream = reject
+		})
 
 		request.stream = true
+
+		const flushBatch = async (includePartialBatch = false): Promise<void> => {
+			if (pendingFlush) {
+				await pendingFlush
+			}
+
+			while (batch.length >= BATCH_SIZE || (includePartialBatch && batch.length > 0)) {
+				{
+					const operations = batch
+					batch = []
+					const flush = mongoManager
+						.getRepository<MoInventoryAuditDocument>('mo_inventory_audit')
+						.bulkWrite(operations, { ordered: false })
+						.then(() => {
+							totalProcessed += operations.length
+							logger.info(`Synchronized ${totalProcessed} documents so far.`)
+						})
+
+					pendingFlush = flush
+
+					try {
+						await flush
+					} catch (error) {
+						throw error
+					} finally {
+						pendingFlush = undefined
+					}
+				}
+			}
+		}
 
 		request.on('row', async (row) => {
 			batch.push({
 				updateOne: {
-					filter: { mo_no: row.mo_no, year_month: row.year_month },
+					filter: { mo_no: row.mo_no },
 					update: {
 						$set: {
-							year_month: row.year_month,
-							mo_no: row.mo_no,
-							size_ledger: SuperJson.parse(row.size_ledger),
-							storage_locations: row.storage_locations ? SuperJson.parse(row.storage_locations) : [],
-							inventory_closure_status: row.year_month < format(new Date(), 'yyyy-MM') ? 'completed' : 'pending'
+							...row,
+							size_ledger: SuperJson.parse(row.size_ledger)
 						}
 					},
 					upsert: true
@@ -66,16 +99,60 @@ async function main() {
 			})
 
 			if (batch.length >= BATCH_SIZE) {
+				request.pause()
 				try {
-					request.pause()
-					await mongoManager.getRepository<MoInventoryAuditDocument>('mo_inventory_audit').bulkWrite(batch)
-					totalProcessed += batch.length
-					batch = []
+					await flushBatch()
 					request.resume()
 				} catch (error) {
-					logger.error(error)
-				} finally {
+					logger.error('Error during bulk write: ' + error)
+					rejectStream(error)
+				}
+			}
+		})
+
+		request.on('error', (error) => {
+			logger.error(error)
+			rejectStream(error)
+		})
+
+		request.on('done', async () => {
+			try {
+				await flushBatch(true)
+				resolveStream()
+				logger.info(`Synchronized ${totalProcessed} documents.`)
+			} catch (error) {
+				logger.error('Error during final bulk write: ' + error)
+				rejectStream(error)
+			}
+		})
+
+		request.on('row', async (row) => {
+			if (row.size_ledger)
+				batch.push({
+					updateOne: {
+						filter: { mo_no: row.mo_no, year_month: row.year_month },
+						update: {
+							$set: {
+								year_month: row.year_month,
+								mo_no: row.mo_no,
+								size_ledger: SuperJson.parse(row.size_ledger),
+								storage_locations: row.storage_locations ? SuperJson.parse(row.storage_locations) : [],
+								inventory_closure_status:
+									row.year_month < format(new Date(), 'yyyy-MM') ? 'completed' : 'pending'
+							}
+						},
+						upsert: true
+					}
+				})
+
+			if (batch.length >= BATCH_SIZE) {
+				request.pause()
+				try {
+					await flushBatch()
 					request.resume()
+				} catch (error) {
+					logger.error('Error during bulk write: ' + error)
+					rejectStream(error)
 				}
 			}
 		})
@@ -84,8 +161,8 @@ async function main() {
 
 		request.on('done', () => logger.info(`Finished processing. Total processed: ${totalProcessed}`))
 
-		await request.query(/* SQL */ `
-         DECLARE @factory NVARCHAR(10) = '${args.factory}';
+		const queryPromise = await request.query(/* SQL */ `
+         DECLARE @factory NVARCHAR(10) = '${args.tenant}';
 
          WITH storage_list_cte
          AS (SELECT   a.mo_no,
@@ -155,7 +232,7 @@ async function main() {
                      AND c.cofactory_code_mes = @factory
                      AND n.size_numcode IS NOT NULL
             GROUP BY c.mo_no, c.inv_yearmonth, c.brand_name, c.inv_type, n.size_numcode),
-            size_json
+            size_ledger
          AS (SELECT   mo_no,
                      inv_yearmonth,
                      brand_name,
@@ -174,20 +251,22 @@ async function main() {
          -- * Main query
          SELECT   a.mo_no,
                   s.storage_locations,
-                  sj.size_ledger,
+                  sl.size_ledger,
                   CONCAT(LEFT(a.inv_yearmonth, 4), '-', RIGHT(a.inv_yearmonth, 2)) AS year_month
          FROM     agg_data AS a
                   LEFT OUTER JOIN storage_list_cte AS s
                   ON s.mo_no = a.mo_no
-                  LEFT OUTER JOIN size_json AS sj
-                  ON sj.mo_no = a.mo_no
-                     AND sj.inv_yearmonth = a.inv_yearmonth
-                     AND sj.brand_name = a.brand_name
-                     AND sj.inv_type = a.inv_type
-         WHERE    LEFT(a.mo_no, 2) >= '14'
+                  LEFT OUTER JOIN size_ledger AS sl
+                  ON sl.mo_no = a.mo_no
+                     AND sl.inv_yearmonth = a.inv_yearmonth
+                     AND sl.brand_name = a.brand_name
+                     AND sl.inv_type = a.inv_type
+         WHERE    LEFT(a.mo_no, 2) >= '15'
          ORDER BY a.inv_yearmonth ASC
-         OPTION (OPTIMIZE FOR UNKNOWN, MAXDOP 8, FAST 100);
+         OPTION (OPTIMIZE FOR UNKNOWN);
          `)
+
+		await Promise.all([queryPromise, streamCompletion])
 	} catch (error) {
 		if (error instanceof Error) logger.error(error)
 	} finally {

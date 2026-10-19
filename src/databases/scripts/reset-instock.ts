@@ -1,22 +1,30 @@
 import 'dotenv/config'
 import { omit } from 'lodash'
 import mssql from 'mssql'
-import { getArgs } from '../../../.tmp/libs/get-args'
-import { Logger } from '../../../.tmp/utils/logger'
+
+import { format } from 'date-fns'
 import { MongoManager } from './libs/mongoose'
 import { MssqlManager } from './libs/mssql'
+import { getArgs } from './utils/get-args'
+import { Logger } from './utils/logger'
 
-const args = getArgs({ mo: { type: 'string' } })
+const args = getArgs({ mongoDbName: { type: 'string' }, mo: { type: 'string' } })
 
 async function main() {
 	const logger = new Logger()
+
+	if (!args.mongoDbName) {
+		logger.error('Missing required argument: --mongoDbName <mongo_db_name>')
+		process.exit(1)
+	}
+
 	if (!args.mo) {
 		logger.error('Missing required argument: --mo <mo_number>')
 		process.exit(1)
 	}
 
 	const mssqlManager = new MssqlManager()
-	const mongoManager = new MongoManager()
+	const mongoManager = new MongoManager(args.mongoDbName)
 
 	await mssqlManager.connect()
 	await mongoManager.connect()
@@ -93,9 +101,10 @@ async function main() {
 			)
 
 			await mongoManager.getRepository('mo_inventory_audit').updateOne(
-				{ mo_no: args.mo },
+				{ mo_no: args.mo, month: format(new Date(), 'yyyy-MM') },
 				{
 					$set: {
+						storage_locations: [],
 						...Object.entries(masterInventoryVariation).reduce(
 							(acc, [size, variation]) => ({
 								...acc,

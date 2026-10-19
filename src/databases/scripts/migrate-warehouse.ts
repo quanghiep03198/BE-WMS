@@ -1,5 +1,6 @@
 import { Types } from 'mongoose'
 import { isIPv4 } from 'net'
+import { env } from '../../common/utils'
 import { UserDocument } from '../../modules/user/infrastructure/persistence/mongodb/schemas/user.schema'
 import { StorageLocationDocument } from '../../modules/warehouse/infrastructure/persistence/mongodb/schemas/storage-location.schema'
 import { WarehouseDocument } from '../../modules/warehouse/infrastructure/persistence/mongodb/schemas/warehouse.schema'
@@ -12,17 +13,17 @@ const args = getArgs({
 	mssqlHost: {
 		type: 'string',
 		description: 'MSSQL host',
-		default: process.env.DB_HOST
+		default: env('DB_HOST')
 	},
 	mongoDbName: {
 		type: 'string',
 		description: 'MongoDB database name',
-		default: process.env.MONGO_DB_NAME
+		default: env('MONGO_DB_NAME')
 	},
-	factory: {
+	tenant: {
 		type: 'string',
 		description: 'Factory name',
-		default: process.env.FACTORY_NAME
+		default: env('APP_TENANCY')
 	}
 })
 
@@ -48,7 +49,7 @@ async function main() {
 
 		const warehouseData = (
 			await mssqlManager.query<{ warehouse_num: string; warehouse_name: string; created: Date }>(
-				/* SQL */ `SELECT * FROM DV_DATA_LAKE.dbo.dv_warehouseccodemst WHERE cofactory_code = '${args.factory}'`
+				/* SQL */ `SELECT * FROM DV_DATA_LAKE.dbo.dv_warehouseccodemst WHERE cofactory_code = '${args.tenant}'`
 			)
 		).getRawMany()
 
@@ -56,7 +57,7 @@ async function main() {
 			await mssqlManager.query<{ warehouse_num: string; storage_name: string; created: Date }>(/* SQL */ `
             SELECT *
             FROM   DV_DATA_LAKE.dbo.dv_warehouseccodedet
-            WHERE  cofactory_code = '${args.factory}'
+            WHERE  cofactory_code = '${args.tenant}'
                   AND warehouse_num IN (${warehouseData.map((w) => `'${w.warehouse_num}'`).join(',')});
             `)
 		).getRawMany()

@@ -17,7 +17,7 @@ const args = getArgs({
 	}
 })
 
-async function main() {
+async function execute() {
 	const logger = new Logger('MigrateProductSpecification')
 	let exitCode: number = 0
 
@@ -130,4 +130,4 @@ async function main() {
 	}
 }
 
-main()
+execute()
