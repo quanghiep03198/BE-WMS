@@ -76,6 +76,7 @@ export declare global {
 
 			MONGO_URI: string
 			MONGO_DB_NAME: string
+			MONGO_REPLICA_SET: string
 
 			// * Third-party API
 			DECKERS_OAUTH_API_URL: string
@@ -146,6 +147,8 @@ export declare global {
 	}
 
 	type Nullable<T> = T | null | undefined
+
+	type ValueOfRecord<T extends Record<string, any>> = T[keyof T]
 
 	type TObjectId = {
 		id: string | Uint8Array
