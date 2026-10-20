@@ -356,7 +356,8 @@ export class ProductInventoryRepository implements IProductionInventoryRepositor
 			},
 			{
 				$sort: { size: 1 }
-			}
+			},
+			{ $match: { qty: { $gt: 0 } } }
 		])
 	}
 }
