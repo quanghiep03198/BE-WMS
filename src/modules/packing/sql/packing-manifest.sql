@@ -8,29 +8,7 @@ DECLARE @TargetFactory NVARCHAR(10) = CASE
    ELSE @0 
 END;
 
-
-WITH po_aggregated AS (
-   -- Optimize CTE with index hints
-   SELECT 
-      e.brand_name,
-      COALESCE(NULLIF(a.or_custpoone, ''), a.or_custpo) AS po,
-      COALESCE(c.shoestyle_codecust + '/' + c.shoestyle_codefactory, c.shoestyle_codefactory) AS shoes_style,
-      b.color_sn + '/' + UPPER(b.mat_ecolor) AS color
-   FROM wuerp_vnrd.dbo.ta_ordermst a WITH(NOLOCK, INDEX(IX_ordermst_active_matcode))
-      LEFT JOIN wuerp_vnrd.dbo.ta_productmst b WITH(NOLOCK, INDEX(IX_productmst_matcode_active)) 
-         ON a.mat_code = b.mat_code AND b.isactive = 'Y'
-      LEFT JOIN wuerp_vnrd.dbo.ta_shoefactorymst c WITH(NOLOCK, INDEX(IX_shoefactory_systemcode_active)) 
-         ON c.shoestyle_systemcodefty = b.shoestyle_systemcodefty AND c.isactive = 'Y'
-      LEFT JOIN wuerp_vnrd.dbo.ta_brand e WITH(NOLOCK, INDEX(IX_brand_custbrand_active)) 
-         ON a.custbrand_id = e.custbrand_id AND e.isactive = 'Y'
-   WHERE a.isactive = 'Y'
-   GROUP BY 
-      e.brand_name,
-      COALESCE(NULLIF(a.or_custpoone, ''), a.or_custpo),
-      COALESCE(c.shoestyle_codecust + '/' + c.shoestyle_codefactory, c.shoestyle_codefactory),
-      b.color_sn + '/' + UPPER(b.mat_ecolor)
-),
-packing_stats AS (
+WITH packing_stats AS (
    -- Pre-aggregate packing statistics
    SELECT 
       po,
@@ -43,9 +21,9 @@ packing_stats AS (
 )
 SELECT 
    pk.po,
-   pl.brand_name,
-   pl.shoes_style,
-   pl.color,
+   pl.brand AS brand_name,
+   pl.shoestyle_codefactory AS factory_shoes_style,
+   pl.color_sn,
    pk.Size AS original_size_data,
    -- Extract only # items and format numbers (remove commas only within parentheses)
    CASE 
@@ -104,7 +82,7 @@ SELECT
    COUNT(DISTINCT pk.Series_number) AS weighed_box_qty,
    (ps.total_boxes - COUNT(DISTINCT pk.Series_number)) AS unweighed_box_qty
 FROM DV_DATA_LAKE.dbo.PackingPlan pk WITH(NOLOCK, INDEX(IX_PackingPlan_factory_po_size))
-   INNER JOIN po_aggregated pl ON pk.po = pl.po
+   INNER JOIN DV_DATA_LAKE.dbo.dv_OrderProcessR05 pl ON pk.po = pl.po
    INNER JOIN packing_stats ps ON pk.po = ps.po AND pk.Size = ps.Size
 WHERE pk.Factory_code = @TargetFactory
 AND pk.Size LIKE '%#%'
@@ -113,11 +91,11 @@ AND pk.Size LIKE '%)%'
 GROUP BY 
    CAST(pk.created AS DATE),
    pk.Factory_code,
-   pl.brand_name,
+   pl.brand,
    pk.po, 
-   pl.shoes_style,
+   pl.shoestyle_codefactory,
    pk.Size,
-   pl.color,
+   pl.color_sn,
    pk.Weight,
    -- pk.Actual_weight_in,
    ps.total_boxes
@@ -125,9 +103,4 @@ ORDER BY
    CAST(pk.created AS DATE), 
    pk.po,
    LEFT(pk.Size, 3)
-OPTION (
-   OPTIMIZE FOR UNKNOWN,
-   USE HINT('ENABLE_PARALLEL_PLAN_PREFERENCE'),
-   MAXDOP 4,
-   RECOMPILE
-);
+OPTION (OPTIMIZE FOR UNKNOWN);
