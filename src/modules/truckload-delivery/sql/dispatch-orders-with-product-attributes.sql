@@ -4,6 +4,7 @@ SELECT
    , a.factory_code
    , a.approval_status
    , a.license_plate
+   , a.seal_number
    , a.container_number
    , a.container_sealing_time
    , a.punctured_container
@@ -11,6 +12,7 @@ SELECT
    , a.moist_container
    , a.factory_departure_time
    , MAX(b.snap_time) AS actual_departure_time
+   , MAX(a.factory_entrance_time) AS factory_entrance_time
    , c.delivery_details
    , MAX(a.ie_signature) AS ie_signature
    , MAX(a.warehouse_officer_signature) AS warehouse_officer_signature
@@ -42,6 +44,7 @@ GROUP BY a.dispatch_order
    , a.factory_code
    , b.plate_name
    , a.license_plate
+   , a.seal_number
    , a.container_number
    , a.container_sealing_time
    , a.factory_departure_time
