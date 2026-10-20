@@ -15,8 +15,6 @@ import packingManifestQuery from './sql/packing-manifest.sql'
 
 @Injectable()
 export class PackingService {
-	private readonly packingManifestQuery: string = packingManifestQuery
-
 	constructor(
 		@InjectRepository(PackingEntity, DATA_SOURCE_DATA_LAKE_CENTRAL)
 		private readonly packingRepository: Repository<PackingEntity>,
@@ -92,7 +90,7 @@ export class PackingService {
 				weighed_box_qty: number
 				unweighed_box_qty: number
 			}>
-		>(this.packingManifestQuery, [factoryCode])
+		>(packingManifestQuery, [factoryCode])
 	}
 
 	async exportPackingManifestToExcel(factoryCode: string) {
