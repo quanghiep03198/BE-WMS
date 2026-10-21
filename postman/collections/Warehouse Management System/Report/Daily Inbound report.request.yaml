@@ -68,7 +68,7 @@ scripts:
 
       \            <td>{{color_sn}}</td>\r
 
-      \            <td>{{shaping_dept_name}}</td>\r
+      \            <td>{{assembly_dept_name}}</td>\r
 
       \            <td>{{storage}}</td>\r
 
