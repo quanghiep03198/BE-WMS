@@ -48,12 +48,12 @@ export class WarehouseController {
 	}
 
 	@RouteHandler({
-		endpoint: ':warehouseName',
+		endpoint: ':id',
 		method: HttpMethod.GET
 	})
 	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF, UserRole.INDUSTRIAL_ENGINEERING_STAFF)
-	async getOneByName(@Param('warehouseName') warehouseName: string) {
-		return await this.warehouseRepository.findOneByName(warehouseName)
+	async getOneByName(@Param('id') id: string) {
+		return await this.warehouseRepository.findOneById(id)
 	}
 
 	@RouteHandler({

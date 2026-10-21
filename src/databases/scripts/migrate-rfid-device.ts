@@ -54,7 +54,7 @@ async function execute() {
 		const query = await mssqlManager.query<{
 			device_sn: string
 			station_no: string
-			'device_name.vn': string
+			'device_name.vi': string
 			'device_name.en': string
 			'device_name.cn': string
 			tcp_ip: string
@@ -64,7 +64,7 @@ async function execute() {
 			/* SQL */ `
             SELECT DISTINCT device_sn,
                            device_name AS station_no,
-                           Vietnamese AS 'device_name.vn',
+                           Vietnamese AS 'device_name.vi',
                            English AS 'device_name.en',
                            TraditionalChinese AS 'device_name.cn',
                            ip_address AS tcp_ip,

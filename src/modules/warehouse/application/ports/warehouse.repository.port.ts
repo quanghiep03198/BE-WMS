@@ -3,7 +3,6 @@ import { IWarehouse } from '@modules/warehouse/domain/interfaces/warehouse.inter
 
 export interface IWarehouseRepository extends IBaseRepository<IWarehouse, string | TObjectId> {
 	findOneAndUpdate(id: TObjectId, payload: Partial<IWarehouse>): Promise<{ prev: IWarehouse; update: IWarehouse }>
-	findOneByName(name: string): Promise<IWarehouse | null>
 	getTotalCapacity(): Promise<{ total_capacity: number; total_storage_locations: number }>
 	deleteMany(ids: Array<string> | Array<TObjectId>): Promise<string[]>
 }

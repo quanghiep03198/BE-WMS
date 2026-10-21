@@ -6,7 +6,7 @@ import { Like, Or, Repository } from 'typeorm'
 import { DepartmentEntity } from './entities/department.entity'
 
 @Injectable()
-export class DepartmentService {
+export class LegacyDepartmentService {
 	constructor(
 		@InjectRepository(DepartmentEntity, DATA_SOURCE_SYSCLOUD)
 		private readonly departmentRepository: Repository<DepartmentEntity>,

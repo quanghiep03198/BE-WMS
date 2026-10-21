@@ -114,8 +114,8 @@ export type I18nTranslations = {
             "container_sealing_time": string;
             "required_date": string;
             "returned_qty": string;
-            "shaping_dept_code": string;
-            "shaping_dept_name": string;
+            "assembly_dept_code": string;
+            "assembly_dept_name": string;
             "ship_order": string;
             "shipping_destination": string;
             "shipment_confirm_date": string;
@@ -163,6 +163,10 @@ export type I18nTranslations = {
         "VA1": string;
         "VB2": string;
         "CA1": string;
+        "departments": {
+            "assembly": string;
+            "sewing": string;
+        };
     };
     "inoutbound": {
         "titles": {

@@ -2,7 +2,10 @@ import { ExcelColorPalette } from '@common/constants/excel-color-palette'
 import { applyCommonStyles, type AutoFitColumnOptions, autoFitColumns } from '@common/helpers'
 import { SuperJson } from '@common/utils'
 import { DATA_SOURCE_DATA_LAKE, DATA_WAREHOUSE_CONNECTION } from '@databases/constants'
-import { DailyMoInventoryLedgerModel } from '@modules/finished-goods/infrastructure/persistence/mongodb/schemas/daily-mo-inventory-ledger.schema'
+import {
+	DailyMoInventoryLedgerDocument,
+	DailyMoInventoryLedgerModel
+} from '@modules/finished-goods/infrastructure/persistence/mongodb/schemas/daily-mo-inventory-ledger.schema'
 import {
 	FinishedGoodsEpc,
 	FinishedGoodsEpcModel
@@ -13,7 +16,9 @@ import { InjectModel } from '@nestjs/mongoose'
 import { InjectDataSource } from '@nestjs/typeorm'
 import { format } from 'date-fns'
 import { Workbook } from 'exceljs'
+import { LeanDocument } from 'mongoose'
 import { I18nContext, I18nService } from 'nestjs-i18n'
+import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
 import { DataSource } from 'typeorm'
 import { DailyMoInventoryLedger } from '../../finished-goods/infrastructure/persistence/mongodb/schemas/daily-mo-inventory-ledger.schema'
 import { IInboundHistory, IInboundReportResponse } from '../interfaces'
@@ -22,6 +27,7 @@ import inboundHistoryQuery from '../sql/inbound-history.sql'
 @Injectable()
 export class InboundReportService {
 	constructor(
+		@InjectPinoLogger(InboundReportService.name) private readonly logger: PinoLogger,
 		@InjectDataSource(DATA_SOURCE_DATA_LAKE) private readonly dataSource: DataSource,
 		@InjectModel(DailyMoInventoryLedger.name, DATA_WAREHOUSE_CONNECTION)
 		private readonly dailyMoInventoryLedgerModel: DailyMoInventoryLedgerModel,
@@ -35,8 +41,23 @@ export class InboundReportService {
 	public async getDailyInventoryLedger(date: string): Promise<IInboundReportResponse> {
 		const docs = await this.dailyMoInventoryLedgerModel
 			.find({ date: date })
-			.lean({ virtuals: true })
-			.populate('mo_attrs', 'factory_shoes_style color_sn factory_code_produce order_qty size_ledger')
+
+			.populate([
+				{
+					path: 'mo_attrs',
+					select: 'factory_shoes_style color_sn factory_code_produce order_qty size_ledger',
+					strictPopulate: false
+				},
+				{
+					path: 'transaction_history.$*.assembly_line',
+					select: 'name'
+				},
+				{
+					path: 'transaction_history.$*.storage_location',
+					select: 'name'
+				}
+			])
+			.lean<Array<LeanDocument<DailyMoInventoryLedgerDocument>>>({ virtuals: true, autopopulate: true })
 			.exec()
 
 		return docs
@@ -60,14 +81,14 @@ export class InboundReportService {
 					assembly_lines: Array.from(
 						new Set(
 							Object.values(doc.transaction_history)
-								.map((tx) => tx.assembly_line)
+								.map((tx) => tx.assembly_line.name)
 								.sort()
 						)
 					),
 					storage_locations: Array.from(
 						new Set(
 							Object.values(doc.transaction_history)
-								.map((tx) => tx.storage_location)
+								.map((tx) => tx.storage_location.name)
 								.sort()
 						)
 					),
@@ -304,7 +325,7 @@ export class InboundReportService {
 				key: 'color_sn'
 			},
 			{
-				header: this.i18nService.t('erp.fields.shaping_dept_name', { lang: currentLanguage }),
+				header: this.i18nService.t('erp.fields.assembly_dept_name', { lang: currentLanguage }),
 				key: reportType === 'daily-productivity' ? 'assembly_lines' : 'assembly_line'
 			},
 			{

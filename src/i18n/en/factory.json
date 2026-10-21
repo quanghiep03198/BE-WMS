@@ -3,5 +3,9 @@
 	"VB1": "Lian Shun 1",
 	"VA1": "Lian Ying",
 	"VB2": "Lian Shun 2",
-	"CA1": "KHRU"
+	"CA1": "KHRU",
+	"departments": {
+		"assembly": "Assembly {name}",
+		"sewing": "Sewing {name}"
+	}
 }

@@ -3,5 +3,9 @@
 	"VB1": "联舜一厂",
 	"VA1": "联盈",
 	"VB2": "联舜二厂",
-	"CA1": "柬埔寨"
+	"CA1": "柬埔寨",
+	"departments": {
+		"assembly": "成型{name}",
+		"sewing": "針車{name}"
+	}
 }

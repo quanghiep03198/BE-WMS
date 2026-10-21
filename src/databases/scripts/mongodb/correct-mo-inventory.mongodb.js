@@ -3,20 +3,12 @@
 // Use Ctrl+Space inside a snippet or a string literal to trigger completions.
 
 // The current database to use.
-use('gl3_data_warehouse')
+use('data_warehouse')
 
 db.manufacturing_orders.updateMany(
 	{
-		$or: [
-			{ brand_name: { $in: ['TEVA', 'KOOLABURRA'] } },
-			{
-				$and: [
-					{ brand_name: 'UGG' },
-					{ mo_no: { $regex: '^14C' } },
-					{ mo_no: { $nin: ['14C11B078', '14C11B077', '14C03C009'] } }
-				]
-			}
-		]
+		// $or: [{ mo_no: { $nin: instockManufacturingOrders } }, { mo_no: { $regex: '^(?![14|16])' } }]
+		mo_no: { $ne: '15A11A001' }
 	},
 	[
 		{
@@ -33,6 +25,8 @@ db.manufacturing_orders.updateMany(
 										'$$sizeItem.v',
 										{
 											stocked_in_qty: '$$sizeItem.v.order_qty',
+											total_recall_tx: 0,
+											total_recall_tx: 0,
 											shipped_out_qty: '$$sizeItem.v.order_qty'
 										}
 									]

@@ -1,5 +1,5 @@
-import { env } from '@common/utils'
 import { DATA_SOURCE_DATA_LAKE, DATA_WAREHOUSE_CONNECTION } from '@databases/constants'
+import { DepartmentModule } from '@modules/department/department.module'
 import { InventoryModule } from '@modules/inventory/inventory.module'
 import { OrderModule } from '@modules/order/order.module'
 import { WarehouseModule } from '@modules/warehouse/warehouse.module'
@@ -80,6 +80,7 @@ import { FinishedGoodsGateway } from './presentation/gateways/finished-goods.gat
 		forwardRef(() => InventoryModule),
 		forwardRef(() => OrderModule),
 		WarehouseModule,
+		DepartmentModule,
 		ThirdPartyApiModule,
 		BullModule.registerQueue({ name: BULK_WRITE_INBOUND_EPCS_QUEUE }),
 		BullModule.registerQueue({ name: BULK_WRITE_OUTBOUND_EPCS_QUEUE }),
@@ -145,7 +146,7 @@ import { FinishedGoodsGateway } from './presentation/gateways/finished-goods.gat
 		...FinishedGoodsSagas,
 		...FinishedGoodsEntitySubscribers,
 		...FinsishedGoodsQueueEvents,
-		...(env('DB_HOST') !== '10.30.0.18' ? [] : FinishedGoodsCdcHandlers),
+		...FinishedGoodsCdcHandlers,
 		FinishedGoodsGateway,
 		{
 			provide: FINISHED_GOODS_EPC_REPOSITORY,

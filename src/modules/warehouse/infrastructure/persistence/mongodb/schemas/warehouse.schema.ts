@@ -26,6 +26,9 @@ export const WAREHOUSE_COLLECTION = 'warehouses'
 })
 export class Warehouse extends BaseAbstractSchema {
 	@Prop({ type: String, required: true, trim: true, uppercase: true })
+	code: string
+
+	@Prop({ type: String, required: true, trim: true, uppercase: true })
 	name: string
 
 	@Prop({ type: Number, required: true })
@@ -35,11 +38,11 @@ export class Warehouse extends BaseAbstractSchema {
 		type: Types.ObjectId,
 		required: true,
 		ref: 'User',
-		autopopulate: { select: '_id username display_name roles' }
+		autopopulate: { select: '_id username display_name roles created_at' }
 	})
 	created_by: User | Types.ObjectId
 
-	@Prop({ type: Types.ObjectId, ref: 'User', autopopulate: { select: '_id username display_name roles' } })
+	@Prop({ type: Types.ObjectId, ref: 'User', autopopulate: { select: '_id username display_name roles created_at' } })
 	updated_by: User | Types.ObjectId
 }
 

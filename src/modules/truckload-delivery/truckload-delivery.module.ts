@@ -1,4 +1,3 @@
-import { env } from '@common/utils'
 import { DATA_SOURCE_DATA_LAKE, DATA_WAREHOUSE_CONNECTION } from '@databases/constants'
 import { OrderModule } from '@modules/order/order.module'
 import { UserModule } from '@modules/user/user.module'
@@ -53,13 +52,13 @@ import { TruckloadDeliveryController } from './presentation/controllers/truckloa
 		...TruckloadDeliveryCommandHandlers,
 		...TruckloadDeliveryQueryHandlers,
 		...TruckloadDeliveryConsumers,
+		...TruckloadDeliveryCdcHandlers,
 		{ provide: SIGNATURE_STORAGE, useClass: SignatureStorage },
 		{ provide: TRUCKLOAD_DELIVERY_REPOSITORY, useClass: TruckloadDeliveryRepository },
 		{ provide: RMDBS_TRUCKLOAD_DELIVERY_REPOSITORY, useClass: RmdbsTruckloadDeliveryRepository },
 		{ provide: CAR_LICENSE_PLATE_REPOSITORY, useClass: CarLicensePlateRepository },
-		TruckloadDeliverySaga,
+		TruckloadDeliverySaga
 		// SyncLicensePlateTask,
-		...(env('DB_HOST') !== '10.30.0.18' ? [] : TruckloadDeliveryCdcHandlers)
 	],
 	controllers: [TruckloadDeliveryController]
 })

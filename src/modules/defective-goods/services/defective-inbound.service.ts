@@ -282,7 +282,7 @@ export class DefectiveGoodsInboundService {
 		// * Auto fit columns
 		autoFitColumns.call(worksheet, {
 			minWidth: 20,
-			excludeColumns: ['shaping_dept_name', 'storage']
+			excludeColumns: ['assembly_dept_name', 'storage']
 		} satisfies AutoFitColumnOptions)
 
 		// * Add title

@@ -3,6 +3,7 @@ import {
 	IFinishedGoodsEpcRepository
 } from '@modules/finished-goods/application/ports/finished-goods-epc.repository.port'
 
+import { DEPARTMENT_REPOSITORY, IDepartmentRepository } from '@modules/department/department.repository.interface'
 import {
 	IStockTransactionRepository,
 	STOCK_TX_REPOSITORY
@@ -27,6 +28,8 @@ export class StockInHandler implements ICommandHandler<StockInCommand> {
 		@Inject(FINISHED_GOODS_EPC_REPOSITORY) private readonly finishedGoodsEpcRepository: IFinishedGoodsEpcRepository,
 		@Inject(ORDER_REPOSITORY)
 		private readonly orderRepository: IOrderRepository,
+		@Inject(DEPARTMENT_REPOSITORY)
+		private readonly departmentRepository: IDepartmentRepository,
 		@Inject(STORAGE_LOCATION_REPOSITORY)
 		private readonly storageLocationRepository: IStorageLocationRepository,
 		@Inject(STOCK_TX_REPOSITORY)
@@ -35,13 +38,14 @@ export class StockInHandler implements ICommandHandler<StockInCommand> {
 	) {}
 
 	public async execute({ command }: StockInCommand): Promise<void> {
-		const location = await this.storageLocationRepository.findOne({ name: command.storage_location })
+		const storageLocation = await this.storageLocationRepository.findOneById(command.storage_location)
+		const assemblyLine = await this.departmentRepository.findOneById(command.assembly_line)
 
 		const pendingInboundEpcs = await this.finishedGoodsEpcRepository.getPendingStockMoveEpcs(
 			command.inbound_device_sn,
 			command.mo_no,
-			`${command.assembly_line.code}/${command.assembly_line.name}`,
-			`${location._id}/${location.warehouse?.name}/${location.name}`
+			assemblyLine,
+			storageLocation
 		)
 
 		const currentInboundProgress = (await this.orderRepository.getManufacturingOrderInventory(command.mo_no)).map(

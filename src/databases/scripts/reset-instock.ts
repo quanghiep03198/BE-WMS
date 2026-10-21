@@ -92,16 +92,14 @@ async function main() {
 				)
 				.toArray()
 
-			await mongoManager.getRepository('manufacturing_orders').updateOne(
-				{ mo_no: args.mo },
-				{
-					$set: { size_ledger: masterInventoryVariation }
-				},
-				{ session }
-			)
+			console.log(masterInventoryVariation)
+
+			await mongoManager
+				.getRepository('manufacturing_orders')
+				.updateOne({ mo_no: args.mo }, { $set: { size_ledger: masterInventoryVariation } }, { session })
 
 			await mongoManager.getRepository('mo_inventory_audit').updateOne(
-				{ mo_no: args.mo, month: format(new Date(), 'yyyy-MM') },
+				{ mo_no: args.mo, year_month: format(new Date(), 'yyyy-MM') },
 				{
 					$set: {
 						storage_locations: [],

@@ -1,4 +1,5 @@
-import { env } from '@common/utils'
+import { IDepartment } from '@modules/department/department.repository.interface'
+import { IStorageLocation } from '@modules/warehouse/domain/interfaces/storage-location.interface'
 import { EXCLUDED_EPC_PREFIX, FALLBACK_VALUE, INTERNAL_EPC_PREFIX } from '../constants'
 import { SizeNumber } from './size-number.vo'
 
@@ -14,8 +15,8 @@ export class ElectronicProductCode {
 			color_sn: string
 			size_numcode: SizeNumber
 			factory_code_produce: string
-			assembly_line?: `${string}/${string}`
-			storage_location?: string
+			assembly_line?: IDepartment
+			storage_location?: IStorageLocation
 			implementor?: string
 			po?: string
 			outbound_type?: 'recall' | 'shipping'
@@ -85,32 +86,25 @@ export class ElectronicProductCode {
 		return this.attributes?.po ?? FALLBACK_VALUE
 	}
 
-	public getAssemblyLine(prop: 'code' | 'name', format: 'original' | 'sanitized' = 'original') {
-		const value = this.attributes?.assembly_line ?? FALLBACK_VALUE
-		if (!value.includes('/')) return FALLBACK_VALUE
-		const [assemblyLineCode, assemblyLineName] = value.split('/')
+	public getAssemblyLine(prop: 'id' | 'code' | 'name', format: 'original' | 'sanitized' = 'original') {
+		const value = this.attributes?.assembly_line
+
+		const { _id: id, code, name } = value
 
 		const assemblyName: Readonly<Record<'original' | 'sanitized', string>> = {
-			original: assemblyLineName,
-			sanitized: assemblyLineName.replace(/[^A-Za-z0-9]/g, '')
+			original: name.cn,
+			sanitized: name.cn.replace(/[^A-Za-z0-9]/g, '')
 		}
 
-		const assemblyLine = {
-			code: assemblyLineCode,
-			name: assemblyName[format]
-		}
+		const assemblyLine = { id, code, name: assemblyName[format] }
 		return assemblyLine[prop]
 	}
 
-	public getStorageLocation(prop: 'id' | 'code' | 'name') {
-		const value = this.attributes?.storage_location ?? FALLBACK_VALUE
-		if (!value.includes('/')) return FALLBACK_VALUE
-		const [id, warehouse, location] = value.split('/')
-		const storageLocation = {
-			id,
-			code: env('APP_TENANCY') + warehouse + location,
-			name: location
-		}
+	public getStorageLocation(prop: 'id' | 'name') {
+		const value = this.attributes?.storage_location
+		if (!value) return FALLBACK_VALUE
+		const { _id: id, name } = value
+		const storageLocation = { id, name }
 		return storageLocation[prop]
 	}
 

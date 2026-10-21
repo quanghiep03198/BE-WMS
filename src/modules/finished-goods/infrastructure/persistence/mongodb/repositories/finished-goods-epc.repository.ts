@@ -1,9 +1,11 @@
 import { DATA_WAREHOUSE_CONNECTION } from '@databases/constants'
+import { IDepartment } from '@modules/department/department.repository.interface'
 import { IFinishedGoodsEpcRepository } from '@modules/finished-goods/application/ports/finished-goods-epc.repository.port'
 import { GetScanningEpcsBySizeQuery } from '@modules/finished-goods/application/queries/get-scanning-epcs-by-size/get-scanning-epcs-by-size.query'
 import { FALLBACK_VALUE, FinishedGoodsEpcStatus } from '@modules/finished-goods/domain/constants'
 import { StockFlow, UpsertEpcsMatchData } from '@modules/finished-goods/domain/types'
 import { ElectronicProductCode } from '@modules/finished-goods/domain/value-objects/epc.vo'
+import { IStorageLocation } from '@modules/warehouse/domain/interfaces/storage-location.interface'
 import { InjectTransactionHost, Transactional, TransactionHost } from '@nestjs-cls/transactional'
 import { TransactionalAdapterMongoose } from '@nestjs-cls/transactional-adapter-mongoose'
 import { Cache, CACHE_MANAGER } from '@nestjs/cache-manager'
@@ -63,8 +65,8 @@ export class FinishedGoodsEpcRepository implements IFinishedGoodsEpcRepository {
 	public async getPendingStockMoveEpcs(
 		deviceSerialNumber: string,
 		manufacturingOrder: string,
-		assemblyLine?: `${string}/${string}`,
-		storageLocation?: `${string}/${string}`
+		assemblyLine?: IDepartment,
+		storageLocation?: IStorageLocation
 	): Promise<ElectronicProductCode[]> {
 		const rawData = await this.finishedGoodsEpcModel
 			.find({

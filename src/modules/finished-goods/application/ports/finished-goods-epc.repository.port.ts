@@ -1,5 +1,7 @@
+import { IDepartment } from '@modules/department/department.repository.interface'
 import { StockFlow, UpsertEpcsMatchData } from '@modules/finished-goods/domain/types'
 import { ElectronicProductCode } from '@modules/finished-goods/domain/value-objects/epc.vo'
+import { IStorageLocation } from '@modules/warehouse/domain/interfaces/storage-location.interface'
 import { GetScanningEpcsBySizeQuery } from '../queries/get-scanning-epcs-by-size/get-scanning-epcs-by-size.query'
 
 export interface IFinishedGoodsEpcRepository {
@@ -24,8 +26,8 @@ export interface IFinishedGoodsEpcRepository {
 	getPendingStockMoveEpcs(
 		deviceSerialNumber: string,
 		manufacturingOrder: string,
-		assemblyLine?: `${string}/${string}`,
-		storageLocation?: `${string}/${string}`
+		assemblyLine?: IDepartment,
+		storageLocation?: IStorageLocation
 	): Promise<ElectronicProductCode[]>
 
 	getEpcsInformation(epcs: Array<string>): Promise<

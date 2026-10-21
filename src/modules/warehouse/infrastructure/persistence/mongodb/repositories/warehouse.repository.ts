@@ -9,36 +9,43 @@ import {
 	WarehouseModel
 } from '@modules/warehouse/infrastructure/persistence/mongodb/schemas/warehouse.schema'
 import { ConflictException, Injectable } from '@nestjs/common'
+import { ConfigService } from '@nestjs/config'
 import { InjectModel } from '@nestjs/mongoose'
-import type { Types } from 'mongoose'
+import { padStart } from 'lodash'
+import type { LeanDocument, Types } from 'mongoose'
 import { I18nContext, I18nService } from 'nestjs-i18n'
 
 @Injectable()
 export class WarehouseRepository extends BaseMongoRepository<WarehouseDocument> implements IWarehouseRepository {
 	constructor(
 		@InjectModel(Warehouse.name, DATA_WAREHOUSE_CONNECTION) private readonly warehouseModel: WarehouseModel,
-		private readonly i18nService: I18nService
+		private readonly i18nService: I18nService,
+		private readonly configService: ConfigService<ProcessEnv>
 	) {
 		super(warehouseModel)
 	}
 
-	public async findOneByName(name: string): Promise<IWarehouse | null> {
+	public override async findOneById(id: string): Promise<Nullable<LeanDocument<WarehouseDocument>>> {
 		return await this.warehouseModel
-			.findOne({ name })
+			.findById(id)
 			.populate({ path: 'storage_locations', populate: 'created_by updated_by' })
-			.lean({ virtuals: true })
+			.lean<Nullable<LeanDocument<WarehouseDocument>>>({ virtuals: true })
 	}
 
 	public override async createOne(
 		payload: Partial<WarehouseDocument> | Partial<Omit<IWarehouse, '_id' | 'id'>>
 	): Promise<WarehouseDocument> {
+		const count = await this.warehouseModel.countDocuments()
+
+		const nextCode = this.configService.get<FactoryCode>('APP_TENANCY') + 'PW' + padStart((count + 1).toString(), 3)
+
 		const existedWarehouse = await this.warehouseModel.exists({ name: payload.name })
 		if (existedWarehouse)
 			throw new ConflictException(
 				this.i18nService.t('warehouse.errors.warehouse_name_conflict', { lang: I18nContext.current()?.lang })
 			)
 
-		return await super.createOne(payload as Partial<WarehouseDocument>)
+		return await super.createOne({ ...payload, code: nextCode } as Partial<WarehouseDocument>)
 	}
 
 	public async findOneAndUpdate(

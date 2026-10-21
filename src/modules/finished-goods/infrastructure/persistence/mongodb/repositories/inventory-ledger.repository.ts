@@ -216,8 +216,8 @@ export class InventoryLedgerRepository implements IInventoryLedgerRepository {
 				$inc: omitBy(incrementExpression, (_, key) => key.endsWith('shipped_out_qty')),
 				[`transaction_history.${transactionId}`]: {
 					time: format(new Date(), 'HH:mm'),
-					assembly_line: pendingStockInEpcs.at(0).getAssemblyLine('name', 'sanitized'),
-					storage_location: pendingStockInEpcs.at(0).getStorageLocation('name'),
+					assembly_line: pendingStockInEpcs.at(0).getAssemblyLine('id'),
+					storage_location: pendingStockInEpcs.at(0).getStorageLocation('id'),
 					size_ledger: txSizeLedger,
 					voided: false
 				}

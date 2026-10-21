@@ -1,8 +1,41 @@
+import { DepartmentDocument } from '@modules/department/schemas/department.schema'
+import { StorageLocationDocument } from '@modules/warehouse/infrastructure/persistence/mongodb/schemas/storage-location.schema'
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose'
-import { HydratedDocument, Model } from 'mongoose'
+import { HydratedDocument, LeanDocument, Model, Types } from 'mongoose'
+import MongooseAutoPopulate from 'mongoose-autopopulate'
 import MongooseLeanVirtuals from 'mongoose-lean-virtuals'
 
 export const DAILY_MO_INVENTORY_LEDGER_COLLECTION = 'daily_mo_inventory_ledger'
+
+@Schema({ _id: false })
+class InventoryLedgerTransaction {
+	@Prop({ type: String, required: true })
+	time: string
+
+	@Prop({ type: Types.ObjectId, required: true, ref: 'Department', autopopulate: { select: 'name' } })
+	assembly_line: Types.ObjectId | Pick<LeanDocument<DepartmentDocument>, 'name'>
+
+	@Prop({ type: Types.ObjectId, ref: 'StorageLocation', autopopulate: { select: 'name' } })
+	storage_location: Types.ObjectId | Pick<LeanDocument<StorageLocationDocument>, 'name'>
+
+	@Prop({ type: Object, required: true })
+	size_ledger: Record<
+		string,
+		{
+			stocked_in_qty: number
+			total_recall_tx: number
+			total_return_tx: number
+		}
+	>
+
+	@Prop({ type: Boolean, default: false })
+	voided: boolean // * Indicates whether the transaction has been voided or not
+}
+
+const InventoryLedgerTransactionSchema = SchemaFactory.createForClass(InventoryLedgerTransaction)
+
+InventoryLedgerTransactionSchema.plugin(MongooseAutoPopulate)
+InventoryLedgerTransactionSchema.plugin(MongooseLeanVirtuals)
 
 @Schema({
 	collection: DAILY_MO_INVENTORY_LEDGER_COLLECTION,
@@ -34,23 +67,10 @@ export class DailyMoInventoryLedger {
 		}
 	>
 
-	@Prop({ type: Object, required: true })
-	transaction_history: Record<
+	@Prop({ type: Map, of: InventoryLedgerTransactionSchema, required: true })
+	transaction_history: Map<
 		string, // * Transaction ID
-		{
-			time: string
-			assembly_line: string
-			storage_location: string
-			size_ledger: Record<
-				string,
-				{
-					stocked_in_qty: number
-					total_recall_tx: number
-					total_return_tx: number
-				}
-			>
-			voided: boolean // * Indicates whether the transaction has been voided or not
-		}
+		InventoryLedgerTransaction
 	>
 }
 

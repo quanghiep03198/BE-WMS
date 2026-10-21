@@ -3,5 +3,9 @@
 	"VB1": "Liên Thuấn 1",
 	"VA1": "Liên Dinh",
 	"VB2": "Liên Thuấn 2",
-	"CA1": "KHRU"
+	"CA1": "KHRU",
+	"departments": {
+		"assembly": "Thành hình {name}",
+		"sewing": "May {name}"
+	}
 }

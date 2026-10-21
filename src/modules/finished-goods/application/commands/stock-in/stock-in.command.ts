@@ -8,10 +8,7 @@ export class StockInCommand extends Command<void> {
 			inbound_device_sn: string
 			action: StockAction
 			purpose: StockTransactionPurpose
-			assembly_line: {
-				name: string
-				code: string
-			}
+			assembly_line: string
 			warehouse: string
 			storage_location: string
 			quantity: number

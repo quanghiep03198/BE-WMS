@@ -5,16 +5,9 @@ export const stockBalancesValidator = z
 	.object({
 		mo_no: z.string(),
 		inbound_device_sn: z.string(),
-
 		action: z.enum(StockAction),
 		purpose: z.enum(StockTransactionPurpose),
-
-		assembly_line: z
-			.object({
-				name: z.string().trim().nonempty(),
-				code: z.string().trim().nonempty()
-			})
-			.optional(),
+		assembly_line: z.string().optional(),
 		warehouse: z.string().optional(),
 		storage_location: z.string().optional(),
 		quantity: z.number().optional()
@@ -27,7 +20,7 @@ export const stockBalancesValidator = z
 			// if (!value.dept_name) {
 			// 	issues.push({ code: 'custom', input: value, path: ['dept_name'], error: 'Required' })
 			// }
-			if (!value.assembly_line && (!value.assembly_line?.name || !value.assembly_line?.code)) {
+			if (!value.assembly_line) {
 				issues.push({ code: 'custom', input: value, path: ['assembly'], error: 'Required' })
 			}
 			if (!value.warehouse) {

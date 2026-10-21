@@ -1,7 +1,10 @@
 import { VALID_EPC_PATTERN } from '@common/constants/regex'
+import { DepartmentDocument } from '@modules/department/schemas/department.schema'
 import { FinishedGoodsEpcStatus } from '@modules/finished-goods/domain/constants'
+import { StorageLocationDocument } from '@modules/warehouse/infrastructure/persistence/mongodb/schemas/storage-location.schema'
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose'
-import mongoose, { HydratedDocument, PaginateModel } from 'mongoose'
+import mongoose, { HydratedDocument, PaginateModel, Types } from 'mongoose'
+import MongooseAutoPopulate from 'mongoose-autopopulate'
 import MongooseDeletePlugin, { SoftDeleteModel } from 'mongoose-delete'
 import MongoosePaginatePlugin from 'mongoose-paginate-v2'
 
@@ -60,11 +63,11 @@ export class FinishedGoodsEpc {
 	@Prop({ type: String, required: true })
 	inbound_device_sn: string
 
-	@Prop({ type: Object })
-	assembly_line: string
+	@Prop({ type: Types.ObjectId, ref: 'Department', autopopulate: { select: 'name' } })
+	assembly_line: Types.ObjectId
 
-	@Prop({ type: String })
-	storage_location: string
+	@Prop({ type: Types.ObjectId, ref: 'StorageLocation', autopopulate: { select: 'name' } })
+	storage_location: Types.ObjectId
 
 	@Prop({ type: Date, default: null })
 	inbound_at: Date | null
@@ -130,10 +133,14 @@ FinishedGoodsEpcSchema.index(
 
 // * Addon plugins
 FinishedGoodsEpcSchema.plugin(MongoosePaginatePlugin)
+FinishedGoodsEpcSchema.plugin(MongooseAutoPopulate)
+FinishedGoodsEpcSchema.plugin(MongooseDeletePlugin, { overrideMethods: true })
 
-FinishedGoodsEpcSchema.plugin(MongooseDeletePlugin, {
-	overrideMethods: true
-})
-
-export type FinishedGoodsEpcDocument = HydratedDocument<FinishedGoodsEpc> & { record_time: string }
+export type FinishedGoodsEpcDocument = HydratedDocument<
+	FinishedGoodsEpc,
+	{
+		storage_location: Pick<StorageLocationDocument, '_id' | 'name'>
+		department: Pick<DepartmentDocument, '_id' | 'name'>
+	}
+>
 export type FinishedGoodsEpcModel = PaginateModel<FinishedGoodsEpcDocument> & SoftDeleteModel<FinishedGoodsEpcDocument>

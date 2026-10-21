@@ -57,7 +57,7 @@ SELECT
 	ric.mo_no,
 	COALESCE(rmc.shoestyle_codefactory,@FallbackValue) AS factory_shoes_style,
 	COALESCE(prod.color_sn, @FallbackValue) AS color_sn,
-	ric.dept_name AS shaping_dept_name,
+	ric.dept_name AS assembly_dept_name,
 	slc.storage_name AS storage,
 	CAST(COALESCE(manf.mo_totalqty, 0) AS INT) AS order_qty,
 	ac.accumulated_qty,

@@ -1,6 +1,7 @@
 import { RFIDDeviceType } from '@modules/rfid-device/domain/constants'
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose'
-import { type HydratedDocument, type PaginateModel } from 'mongoose'
+import { Types, type HydratedDocument, type PaginateModel } from 'mongoose'
+import MongooseAutoPopulate from 'mongoose-autopopulate'
 import MongooseDelete, { type SoftDeleteModel } from 'mongoose-delete'
 import MongoosePaginate from 'mongoose-paginate-v2'
 
@@ -42,6 +43,12 @@ export class RFIDDevice {
 
 	@Prop({ type: Date })
 	last_used_at: Date
+
+	@Prop({ type: Types.ObjectId, ref: 'User', autopopulate: { select: 'username display_name roles created_at' } })
+	created_by: Types.ObjectId
+
+	@Prop({ type: Types.ObjectId, ref: 'User', autopopulate: { select: 'username display_name roles created_at' } })
+	updated_by: Types.ObjectId
 }
 
 export const RFIDDeviceSchema = SchemaFactory.createForClass(RFIDDevice)
@@ -50,6 +57,7 @@ RFIDDeviceSchema.index({ device_sn: 1 }, { unique: true })
 
 RFIDDeviceSchema.plugin(MongooseDelete)
 RFIDDeviceSchema.plugin(MongoosePaginate)
+RFIDDeviceSchema.plugin(MongooseAutoPopulate)
 
 export type RFIDDeviceDocument = HydratedDocument<RFIDDevice, { created_at: Date; updated_at?: Date }>
 

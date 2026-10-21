@@ -25,7 +25,7 @@ export const STORAGE_LOCATION_COLLECTION = 'storage_locations'
 	writeConcern: { w: 'majority' }
 })
 export class StorageLocation extends BaseAbstractSchema {
-	@Prop({ type: String, required: true, trim: true, uppercase: true })
+	@Prop({ type: String, trim: true, uppercase: true })
 	name: string
 
 	@Prop({ type: Types.ObjectId, required: true, ref: 'Warehouse', autopopulate: { select: '_id name' } })
@@ -39,7 +39,7 @@ export class StorageLocation extends BaseAbstractSchema {
 	})
 	created_by: User | Types.ObjectId
 
-	@Prop({ type: Types.ObjectId, ref: 'User', autopopulate: { select: '_id username display_name roles' } })
+	@Prop({ type: Types.ObjectId, ref: 'User', autopopulate: { select: '_id username display_name roles created_at' } })
 	updated_by: User | Types.ObjectId
 }
 

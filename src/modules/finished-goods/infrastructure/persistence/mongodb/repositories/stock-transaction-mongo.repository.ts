@@ -160,8 +160,8 @@ export class StockTransactionMongoRepository implements IStockTransactionReposit
 								inbound_at: {
 									$cond: [{ $eq: ['$status', FinishedGoodsEpcStatus.SCANNING] }, '$inbound_at', '$$NOW']
 								},
-								assembly_line: epc.getAssemblyLine('name', 'sanitized'),
-								storage_location: epc.getStorageLocation('name')
+								assembly_line: epc.getAssemblyLine('id'),
+								storage_location: epc.getStorageLocation('id')
 							}
 						},
 						{
