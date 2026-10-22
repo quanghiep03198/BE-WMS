@@ -1,5 +1,5 @@
 import { CommonRequestHeader } from '@common/constants'
-import { HttpMethod, Public, RequestUser, RequireAuthorized, RouteHandler, User } from '@common/decorators'
+import { HttpMethod, Public, RequestUser, RequireAuthorized, RouteHandler, TRequestUser } from '@common/decorators'
 import { ZodValidationPipe } from '@common/pipes'
 import { UserRole } from '@modules/user/domain/constants'
 import { Body, Controller, Headers, HttpStatus, Param, Query, Res } from '@nestjs/common'
@@ -33,7 +33,7 @@ export class PackingController {
 	})
 	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
 	async bulkUpdatePackingWeight(
-		@User() user: RequestUser,
+		@RequestUser() user: TRequestUser,
 		@Body(new ZodValidationPipe(bulkUpdatePackingWeightValidator)) payload: BulkUpdatePackingWeightDTO
 	) {
 		return await this.packingService.bulkUpdatePackingWeight({

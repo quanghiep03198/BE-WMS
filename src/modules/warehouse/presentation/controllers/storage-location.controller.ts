@@ -1,4 +1,4 @@
-import { HttpMethod, RequireAuthorized, RouteHandler, User } from '@common/decorators'
+import { HttpMethod, RequestUser, RequireAuthorized, RouteHandler } from '@common/decorators'
 import { ZodValidationPipe } from '@common/pipes'
 import { Body, Controller, HttpStatus, Inject, Param } from '@nestjs/common'
 import { ParseObjectIdPipe } from '@nestjs/mongoose'
@@ -53,8 +53,8 @@ export class StorageLocationController {
 	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
 	async createStorageLocation(
 		@Body(new ZodValidationPipe(createBulkStorageLocationValidator)) payload: CreateBulkStorageLocationDTO,
-		@User('_id') userId: Types.ObjectId,
-		@User('username') username: string
+		@RequestUser('_id') userId: Types.ObjectId,
+		@RequestUser('username') username: string
 	) {
 		const warehouse = await this.warehouseRepository.findOneById(payload.warehouse)
 		await this.storageLocationService.createMany(payload, userId)
@@ -74,8 +74,8 @@ export class StorageLocationController {
 	async updateStorageLocation(
 		@Param('id', ParseObjectIdPipe) id: Types.ObjectId,
 		@Body(new ZodValidationPipe(updateStorageLocationValidator)) payload: UpdateStorageLocationDTO,
-		@User('_id') userId: Types.ObjectId,
-		@User('username') username: string
+		@RequestUser('_id') userId: Types.ObjectId,
+		@RequestUser('username') username: string
 	) {
 		const result = await this.storageLocationService.findOneAndUpdate(id, { ...payload, updated_by: userId })
 		this.eventEmitter.emit(

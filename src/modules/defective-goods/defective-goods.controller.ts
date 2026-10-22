@@ -1,5 +1,5 @@
 import { CommonRequestHeader } from '@common/constants'
-import { HttpMethod, RequestUser, RequireAuthorized, RouteHandler, StrictRoles, User } from '@common/decorators'
+import { HttpMethod, RequestUser, RequireAuthorized, RouteHandler, StrictRoles, TRequestUser } from '@common/decorators'
 import { ZodValidationPipe } from '@common/pipes'
 import { UserRole } from '@modules/user/domain/constants'
 import {
@@ -124,7 +124,7 @@ export class DefectiveGoodsController {
 	@StrictRoles()
 	@RequireAuthorized(UserRole.DG_WAREHOUSE_STAFF)
 	public async create(
-		@User() user: RequestUser,
+		@RequestUser() user: TRequestUser,
 		@Body(new ZodValidationPipe(createDefectiveGoodsDTO)) payload: CreateDefectiveGoodsDTO
 	) {
 		if (payload.ri_type === 'uhf' && Array.isArray(payload.epc)) {
@@ -208,7 +208,7 @@ export class DefectiveGoodsController {
 	@StrictRoles()
 	@RequireAuthorized(UserRole.DG_WAREHOUSE_STAFF)
 	public async updateOne(
-		@User() user: RequestUser,
+		@RequestUser() user: TRequestUser,
 		@Param('id', ParseIntPipe) id: number,
 		@Body(new ZodValidationPipe(updateDefectiveGoodsDTO)) payload: UpdateDefectiveGoodsDTO
 	) {

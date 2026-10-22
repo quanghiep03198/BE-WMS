@@ -1,5 +1,5 @@
 import { CommonRequestHeader } from '@common/constants'
-import { HttpMethod, RequestUser, RequireAuthorized, RouteHandler, User } from '@common/decorators'
+import { HttpMethod, RequestUser, RequireAuthorized, RouteHandler, TRequestUser } from '@common/decorators'
 import { ZodValidationPipe } from '@common/pipes'
 import { I18nTranslations } from '@generated/i18n.generated'
 import { RecallFromStockCommand } from '@modules/finished-goods/application/commands/recall-from-stock/recall-from-stock.command'
@@ -41,7 +41,7 @@ export class StockController {
 	})
 	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
 	async stockIn(
-		@User() user: RequestUser,
+		@RequestUser() user: TRequestUser,
 		@Headers(CommonRequestHeader.FACTORY_CODE) factoryCode: string,
 		@Body(new ZodValidationPipe(stockBalancesValidator)) payload: StockBalancesDTO
 	) {
@@ -83,7 +83,7 @@ export class StockController {
 	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
 	async recallFromStock(
 		@Headers(CommonRequestHeader.FACTORY_CODE) factoryCode: string,
-		@User() user: RequestUser,
+		@RequestUser() user: TRequestUser,
 		@Body(new ZodValidationPipe(stockBalancesValidator)) payload: StockBalancesDTO
 	) {
 		await this.commandBus.execute(

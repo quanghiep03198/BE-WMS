@@ -4,7 +4,7 @@ import {
 	RequireAuthenticated,
 	RequireAuthorized,
 	RouteHandler,
-	User
+	TRequestUser
 } from '@common/decorators'
 import { ZodValidationPipe } from '@common/pipes'
 import { IUserRepository, USER_REPOSITORY } from '@modules/user/application/ports/user.repository.port'
@@ -44,7 +44,7 @@ export class UserController {
 	})
 	@RequireAuthorized(UserRole.ADMIN)
 	async createOne(
-		@User() createdBy: RequestUser,
+		@RequestUser() createdBy: TRequestUser,
 		@Body(new ZodValidationPipe(createUserValidator)) createUserDTO: CreateUserDTO
 	) {
 		const createdUser = await this.userRepository.createOne({
@@ -66,7 +66,7 @@ export class UserController {
 	})
 	@RequireAuthorized(UserRole.ADMIN)
 	async updateOne(
-		@User() updatedBy: RequestUser,
+		@RequestUser() updatedBy: TRequestUser,
 		@Param('id') id: Types.ObjectId,
 		@Body(new ZodValidationPipe(updateUserValidator)) payload: UpdateUserDTO
 	) {
@@ -101,7 +101,7 @@ export class UserController {
 	// #region Self-Service Profile Management
 	@RouteHandler({ endpoint: 'profile', method: HttpMethod.GET })
 	@RequireAuthenticated()
-	async getProfile(@User('_id') id: TObjectId) {
+	async getProfile(@RequestUser('_id') id: TObjectId) {
 		return await this.userRepository.findOneById(id)
 	}
 
@@ -113,7 +113,7 @@ export class UserController {
 	})
 	@RequireAuthenticated()
 	async updateProfile(
-		@User('_id') id: TObjectId,
+		@RequestUser('_id') id: TObjectId,
 		@Body(new ZodValidationPipe(updateProfileValidator)) payload: UpdateProfileDTO
 	) {
 		return await this.userRepository.updateOneById(id, payload)
@@ -127,7 +127,7 @@ export class UserController {
 	})
 	@RequireAuthenticated()
 	async updatePassword(
-		@User('_id') id: TObjectId,
+		@RequestUser('_id') id: TObjectId,
 		@Body(new ZodValidationPipe(changePasswordValidator)) payload: ChangePasswordDTO
 	) {
 		const updatedUser = await this.userRepository.updatePassword(id, payload.password)

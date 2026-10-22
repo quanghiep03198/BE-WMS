@@ -4,7 +4,7 @@ import { ParseObjectIdPipe } from '@nestjs/mongoose'
 
 type UserDecoratorProperty = Extract<keyof IUser, '_id' | 'username' | 'display_name' | 'roles'>
 
-export type RequestUser = Pick<IUser, UserDecoratorProperty>
+export type TRequestUser = Pick<IUser, UserDecoratorProperty>
 
 /**
  * @description Decorator to extract user information from the request object.
@@ -14,7 +14,7 @@ export type RequestUser = Pick<IUser, UserDecoratorProperty>
  * @param ctx - The execution context of the request.
  * @returns The user object or the specified property of the user.
  */
-export const User = createParamDecorator(
+export const RequestUser = createParamDecorator(
 	(
 		property: UserDecoratorProperty,
 		ctx: ExecutionContext

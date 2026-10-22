@@ -1,4 +1,4 @@
-import { HttpMethod, RequireAuthorized, RouteHandler, User } from '@common/decorators'
+import { HttpMethod, RequestUser, RequireAuthorized, RouteHandler } from '@common/decorators'
 import { ZodValidationPipe } from '@common/pipes'
 import {
 	IRFIDDeviceRepository,
@@ -59,7 +59,7 @@ export class RFIDDeviceController {
 	@RequireAuthorized(UserRole.MANAGER)
 	async createRFIDDevice(
 		@Body(new ZodValidationPipe(createRFIDDeviceValidator)) payload: CreateRFIDDeviceDTO,
-		@User('username') username: string
+		@RequestUser('username') username: string
 	) {
 		const createdDevice = await this.rfidDeviceRepository.createOne({ ...payload, created_by: username })
 		this.eventEmitter.emit(
@@ -87,7 +87,7 @@ export class RFIDDeviceController {
 	async updateRFIDDevice(
 		@Param('id', ParseObjectIdPipe) id: Types.ObjectId,
 		@Body(new ZodValidationPipe(updateRFIDDeviceValidator)) payload: UpdateRFIDDeviceDTO,
-		@User('username') username: string
+		@RequestUser('username') username: string
 	) {
 		const { prev, update } = await this.rfidDeviceRepository.findOneAndUpdate(id, {
 			...payload,

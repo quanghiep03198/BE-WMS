@@ -1,5 +1,5 @@
 import { CommonRequestHeader } from '@common/constants'
-import { Cookies, HttpMethod, RequestUser, RequireAuthenticated, RouteHandler, User } from '@common/decorators'
+import { Cookies, HttpMethod, RequestUser, RequireAuthenticated, RouteHandler, TRequestUser } from '@common/decorators'
 import { CookieSerializeOptions } from '@fastify/cookie'
 import { Controller, Headers, Res, UseGuards } from '@nestjs/common'
 import { FastifyReply } from 'fastify'
@@ -33,7 +33,7 @@ export class AuthController {
 		method: HttpMethod.POST
 	})
 	@UseGuards(LocalAuthGuard)
-	async login(@User() user: RequestUser, @Res({ passthrough: true }) res: FastifyReply) {
+	async login(@RequestUser() user: TRequestUser, @Res({ passthrough: true }) res: FastifyReply) {
 		const data = await this.authService.login(user)
 		res.setCookie(ACCESS_TOKEN_COOKIE_NAME, data.accessToken, {
 			maxAge: ACCESS_TOKEN_COOKIE_EXPIRATION,
@@ -78,7 +78,7 @@ export class AuthController {
 		method: HttpMethod.POST
 	})
 	@RequireAuthenticated()
-	async logout(@User('_id') id: string, @Res({ passthrough: true }) res: FastifyReply) {
+	async logout(@RequestUser('_id') id: string, @Res({ passthrough: true }) res: FastifyReply) {
 		res.clearCookie(ACCESS_TOKEN_COOKIE_NAME, this.defaultCookieOptions)
 		res.clearCookie(REFRESH_TOKEN_COOKIE_NAME, this.defaultCookieOptions)
 		return await this.authService.logout(id)

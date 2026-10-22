@@ -1,5 +1,5 @@
 import { CommonRequestHeader } from '@common/constants'
-import { HttpMethod, RequestUser, RequireAuthorized, RouteHandler, StrictRoles, User } from '@common/decorators'
+import { HttpMethod, RequestUser, RequireAuthorized, RouteHandler, StrictRoles, TRequestUser } from '@common/decorators'
 import { ZodValidationPipe } from '@common/pipes'
 import { UserRole } from '@modules/user/domain/constants'
 import {
@@ -86,7 +86,7 @@ export class TruckloadDeliveryController {
 	})
 	@RequireAuthorized(UserRole.IE_STAFF, UserRole.FG_WAREHOUSE_STAFF)
 	async create(
-		@User() user: RequestUser,
+		@RequestUser() user: TRequestUser,
 		@Headers(CommonRequestHeader.FACTORY_CODE) factoryCode: string,
 		@Body(new ZodValidationPipe(createDeliveryDTO)) payload: CreateDeliveryDTO
 	) {
@@ -121,7 +121,7 @@ export class TruckloadDeliveryController {
 	})
 	@RequireAuthorized(UserRole.IE_STAFF, UserRole.FG_WAREHOUSE_STAFF)
 	async update(
-		@User() user: RequestUser,
+		@RequestUser() user: TRequestUser,
 		@Param('dispatchOrder') dispatchOrder: string,
 		@Body(new ZodValidationPipe(updateDeliveryDTO)) payload: UpdateDeliveryDTO
 	) {
@@ -137,7 +137,7 @@ export class TruckloadDeliveryController {
 	})
 	@RequireAuthorized(UserRole.IE_STAFF, UserRole.FG_WAREHOUSE_STAFF)
 	async upsert(
-		@User() user: RequestUser,
+		@RequestUser() user: TRequestUser,
 		@Param('dispatchOrder') dispatchOrder: string,
 		@Body(new ZodValidationPipe(upsertPurchaseOrdersDTO)) payload: UpsertPurchaseOrdersDTO
 	) {
@@ -153,7 +153,7 @@ export class TruckloadDeliveryController {
 	})
 	@RequireAuthorized(UserRole.IE_STAFF, UserRole.FG_WAREHOUSE_STAFF)
 	async removePurchaseOrder(
-		@User() user: RequestUser,
+		@RequestUser() user: TRequestUser,
 		@Param('dispatchOrder') dispatchOrder: string,
 		@Param('po') po: string
 	) {
@@ -182,7 +182,7 @@ export class TruckloadDeliveryController {
 	@StrictRoles()
 	@RequireAuthorized(UserRole.IE_STAFF, UserRole.FG_WAREHOUSE_STAFF, UserRole.SECURITY_GUARD)
 	async sign(
-		@User() user: RequestUser,
+		@RequestUser() user: TRequestUser,
 		@Param('dispatchOrder') dispatchOrder: string,
 		@Body(new ZodValidationPipe(updateSignatureDTO)) payload: UpdateSignatureDTO
 	) {
@@ -224,7 +224,7 @@ export class TruckloadDeliveryController {
 	})
 	@RequireAuthorized(UserRole.FG_WAREHOUSE_STAFF)
 	async condition(
-		@User() user: RequestUser,
+		@RequestUser() user: TRequestUser,
 		@Param('dispatchOrder') dispatchOrder: string,
 		@Body(new ZodValidationPipe(updateContainerConditionDTO)) payload: UpdateContainerConditionDTO
 	) {
