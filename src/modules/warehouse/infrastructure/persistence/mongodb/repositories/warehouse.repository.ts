@@ -25,11 +25,11 @@ export class WarehouseRepository extends BaseMongoRepository<WarehouseDocument> 
 		super(warehouseModel)
 	}
 
-	public override async findOneById(id: string): Promise<Nullable<LeanDocument<WarehouseDocument>>> {
+	public override async findOneById(id: string): Promise<Nullish<LeanDocument<WarehouseDocument>>> {
 		return await this.warehouseModel
 			.findById(id)
 			.populate({ path: 'storage_locations', populate: 'created_by updated_by' })
-			.lean<Nullable<LeanDocument<WarehouseDocument>>>({ virtuals: true })
+			.lean<Nullish<LeanDocument<WarehouseDocument>>>({ virtuals: true })
 	}
 
 	public override async createOne(

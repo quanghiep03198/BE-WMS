@@ -1,4 +1,4 @@
-import { RequestUser } from '@common/decorators'
+import { TRequestUser } from '@common/decorators'
 import { ZodValidationPipe } from '@common/pipes'
 import { DATA_WAREHOUSE_CONNECTION } from '@databases/constants'
 import { IUserRepository, USER_REPOSITORY } from '@modules/user/application/ports/user.repository.port'
@@ -49,7 +49,7 @@ export class AuthService {
 		return user
 	}
 
-	async login(payload: RequestUser) {
+	async login(payload: TRequestUser) {
 		const username = payload.username
 		const user = await this.userRepository.findOne({ username })
 

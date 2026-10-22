@@ -63,26 +63,26 @@ export class FinishedGoodsEpc {
 	@Prop({ type: String, required: true })
 	inbound_device_sn: string
 
-	@Prop({ type: Types.ObjectId, ref: 'Department', autopopulate: { select: 'name' } })
+	@Prop({ type: Types.ObjectId, ref: 'Department', autopopulate: true })
 	assembly_line: Types.ObjectId
 
-	@Prop({ type: Types.ObjectId, ref: 'StorageLocation', autopopulate: { select: 'name' } })
+	@Prop({ type: Types.ObjectId, ref: 'StorageLocation', autopopulate: true })
 	storage_location: Types.ObjectId
 
 	@Prop({ type: Date, default: null })
-	inbound_at: Date | null
+	inbound_at: Nullish<Date>
 
 	@Prop({ type: String, default: null })
 	outbound_device_sn: string | null
 
 	@Prop({ type: Date, default: null })
-	outbound_at: Date | null
+	outbound_at: Nullish<Date>
 
 	@Prop({ type: Date, default: null })
-	recalled_at: Date | null
+	recalled_at: Nullish<Date>
 
 	@Prop({ type: Date, default: null })
-	returned_at: Date | null
+	returned_at: Nullish<Date>
 
 	@Prop({ type: Boolean, default: false })
 	deleted: boolean

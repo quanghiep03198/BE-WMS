@@ -1,13 +1,13 @@
 import { BaseAbstractSchema } from '@modules/_base/base.abstract.schema'
-import { User } from '@modules/user/infrastructure/persistence/mongodb/schemas/user.schema'
+import { UserDocument } from '@modules/user/infrastructure/persistence/mongodb/schemas/user.schema'
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose'
-import type { HydratedDocument, PaginateModel } from 'mongoose'
+import type { HydratedDocument, LeanDocument, PaginateModel } from 'mongoose'
 import { Types } from 'mongoose'
 import MongooseAutoPopulate from 'mongoose-autopopulate'
 import MongooseDelete, { type SoftDeleteModel } from 'mongoose-delete'
 import MongooseLeanVirtuals from 'mongoose-lean-virtuals'
 import MongoosePaginate from 'mongoose-paginate-v2'
-import { WarehouseDocument } from './warehouse.schema'
+import type { WarehouseDocument } from './warehouse.schema'
 
 export const STORAGE_LOCATION_COLLECTION = 'storage_locations'
 
@@ -28,7 +28,7 @@ export class StorageLocation extends BaseAbstractSchema {
 	@Prop({ type: String, trim: true, uppercase: true })
 	name: string
 
-	@Prop({ type: Types.ObjectId, required: true, ref: 'Warehouse', autopopulate: { select: '_id name' } })
+	@Prop({ type: Types.ObjectId, required: true, ref: 'Warehouse', autopopulate: true })
 	warehouse: Types.ObjectId | Pick<WarehouseDocument, '_id' | 'name'>
 
 	@Prop({
@@ -37,10 +37,17 @@ export class StorageLocation extends BaseAbstractSchema {
 		ref: 'User',
 		autopopulate: { select: '_id username display_name roles' }
 	})
-	created_by: User | Types.ObjectId
+	created_by: LeanDocument<UserDocument> | Types.ObjectId
 
-	@Prop({ type: Types.ObjectId, ref: 'User', autopopulate: { select: '_id username display_name roles created_at' } })
-	updated_by: User | Types.ObjectId
+	@Prop({
+		type: Types.ObjectId,
+		ref: 'User',
+		autopopulate: { select: '_id username display_name roles created_at' }
+	})
+	updated_by: LeanDocument<UserDocument> | Types.ObjectId
+
+	created_at: Date
+	updated_at?: Nullish<Date>
 }
 
 export const StorageLocationSchema = SchemaFactory.createForClass(StorageLocation)

@@ -1,4 +1,4 @@
-import { RequestUser } from '@common/decorators'
+import { TRequestUser } from '@common/decorators'
 import { IUser } from '@modules/user/domain/interfaces'
 import { AggregateRoot } from '@nestjs/cqrs'
 import { addMinutes, isAfter, isBefore } from 'date-fns'
@@ -101,7 +101,7 @@ export class DispatchOrderModel extends AggregateRoot {
 			po: string
 			outbound_qty: number
 		}>
-		createdBy: RequestUser
+		createdBy: TRequestUser
 	}): DispatchOrderModel {
 		if (params.purchaseOrders.length === 0) throw new EmptyDispatchOrderException()
 		DispatchOrderModel.assertUniquePurchaseOrders(params.purchaseOrders)
@@ -165,7 +165,7 @@ export class DispatchOrderModel extends AggregateRoot {
 		}
 	}
 
-	updateInfo(update: DispatchOrderInfoUpdate, updatedBy?: RequestUser): void {
+	updateInfo(update: DispatchOrderInfoUpdate, updatedBy?: TRequestUser): void {
 		const { license_plate, container_number, seal_number, ...rest } = omitBy(
 			update,
 			isUndefined
@@ -190,7 +190,7 @@ export class DispatchOrderModel extends AggregateRoot {
 			po: string
 			outbound_qty: number
 		}>,
-		updatedBy?: RequestUser
+		updatedBy?: TRequestUser
 	): void {
 		DispatchOrderModel.assertUniquePurchaseOrders(items)
 
@@ -217,7 +217,7 @@ export class DispatchOrderModel extends AggregateRoot {
 	}
 
 	/** @returns `true` when the last purchase order was removed and the dispatch order should be deleted. */
-	removePurchaseOrder(po: string, removedBy?: RequestUser): boolean {
+	removePurchaseOrder(po: string, removedBy?: TRequestUser): boolean {
 		const index = this.state.packing.findIndex((line) => line.po === po)
 		if (index < 0) throw new PurchaseOrderNotFoundException(this.dispatchOrder, po)
 
@@ -239,7 +239,7 @@ export class DispatchOrderModel extends AggregateRoot {
 		field: DispatchOrderSignatureField,
 		signature: string,
 		approvalStatus: TruckloadDeliveryStatus | null | undefined,
-		updatedBy?: RequestUser,
+		updatedBy?: TRequestUser,
 		now: Date = new Date()
 	): void {
 		this.state[field] = signature
@@ -258,7 +258,7 @@ export class DispatchOrderModel extends AggregateRoot {
 
 	updateContainerCondition(
 		condition: Partial<Pick<DispatchOrderProps, 'punctured_container' | 'smelling_container' | 'moist_container'>>,
-		updatedBy?: RequestUser
+		updatedBy?: TRequestUser
 	): void {
 		Object.assign(this.state, omitBy(condition, isUndefined))
 		this.state.updated_by = updatedBy?._id ?? this.state.updated_by

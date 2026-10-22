@@ -1,6 +1,34 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose'
 import { HydratedDocument, Model } from 'mongoose'
 
+@Schema({ _id: false })
+class ManufacturingOrderSizeLedger {
+	@Prop({ type: Number, required: true })
+	order_qty: number
+
+	@Prop({ type: Number, required: true })
+	stocked_in_qty: number
+
+	@Prop({ type: Number, required: true })
+	total_recall_tx: number
+
+	@Prop({ type: Number, required: true })
+	total_return_tx: number
+
+	@Prop({ type: Number, required: true })
+	shipped_out_qty: number
+
+	get instock_qty(): number {
+		return this.stocked_in_qty - this.total_recall_tx + this.total_return_tx - this.shipped_out_qty
+	}
+
+	get missing_qty(): number {
+		return this.order_qty - this.instock_qty
+	}
+}
+
+const ManufacturingOrderSizeLedgerSchema = SchemaFactory.createForClass(ManufacturingOrderSizeLedger)
+
 export const MANUFACTURING_ORDERS_COLLECTION = 'manufacturing_orders'
 
 @Schema({
@@ -38,17 +66,8 @@ export class ManufacturingOrder {
 	@Prop({ type: Number, requried: true })
 	order_qty: number
 
-	@Prop({ type: Object, requried: true })
-	size_ledger: Record<
-		string,
-		{
-			order_qty: number
-			stocked_in_qty: number
-			total_recall_tx: number
-			total_return_tx: number
-			shipped_out_qty: number
-		}
-	>
+	@Prop({ type: Map, of: ManufacturingOrderSizeLedgerSchema, requried: true })
+	size_ledger: Map<string, ManufacturingOrderSizeLedger>
 }
 
 export const ManufacturingOrderSchema = SchemaFactory.createForClass(ManufacturingOrder)

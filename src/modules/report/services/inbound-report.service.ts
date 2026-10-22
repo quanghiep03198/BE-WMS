@@ -44,7 +44,7 @@ export class InboundReportService {
 
 			.populate([
 				{
-					path: 'mo_attrs',
+					path: 'mo_specification',
 					select: 'factory_shoes_style color_sn factory_code_produce order_qty size_ledger',
 					strictPopulate: false
 				},
@@ -62,7 +62,7 @@ export class InboundReportService {
 
 		return docs
 			.map((doc) => {
-				const accumulatedQty = Object.values(doc.mo_attrs.size_ledger).reduce(
+				const accumulatedQty = Object.values(doc.mo_specification.size_ledger).reduce(
 					(acc, fluctuation) =>
 						acc + fluctuation.stocked_in_qty - fluctuation.total_recall_tx + fluctuation.total_return_tx,
 					0
@@ -75,9 +75,9 @@ export class InboundReportService {
 
 				return {
 					mo_no: doc.mo_no,
-					factory_code_produce: doc.mo_attrs.factory_code_produce,
-					factory_shoes_style: doc.mo_attrs.factory_shoes_style,
-					color_sn: doc.mo_attrs.color_sn,
+					factory_code_produce: doc.mo_specification.factory_code_produce,
+					factory_shoes_style: doc.mo_specification.factory_shoes_style,
+					color_sn: doc.mo_specification.color_sn,
 					assembly_lines: Array.from(
 						new Set(
 							Object.values(doc.transaction_history)
@@ -92,10 +92,10 @@ export class InboundReportService {
 								.sort()
 						)
 					),
-					order_qty: doc.mo_attrs.order_qty,
+					order_qty: doc.mo_specification.order_qty,
 					daily_inbound_qty: totalDailyInboundQty,
 					accumulated_qty: accumulatedQty,
-					missing_qty: doc.mo_attrs.order_qty - accumulatedQty,
+					missing_qty: doc.mo_specification.order_qty - accumulatedQty,
 					size_ledger: Object.entries(doc.size_ledger)
 						.map(([size, fluctuation]) => {
 							return {

@@ -13,7 +13,7 @@ export interface IRFIDDevice {
 	device_sn: string
 	device_type: RFIDDeviceType
 	last_used_at?: Date
-	created_by?: string
+	created_by: string
 	updated_by?: string
 	created_at: Date
 	updated_at?: Date

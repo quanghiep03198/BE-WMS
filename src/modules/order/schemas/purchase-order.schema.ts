@@ -2,6 +2,17 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose'
 import type { HydratedDocument, Model } from 'mongoose'
 import { ShippingMethod } from '../types'
 
+@Schema()
+class PurchaseOrderShippingProgress {
+	@Prop({ type: Number, required: true })
+	order_qty: number
+
+	@Prop({ type: Number, required: true })
+	shipped_out_qty: number
+}
+
+const PurchaseOrderShippingProgressSchema = SchemaFactory.createForClass(PurchaseOrderShippingProgress)
+
 export const PURCHASE_ORDER_COLLECTION = 'purchase_orders'
 
 @Schema({
@@ -42,14 +53,8 @@ export class PurchaseOrder {
 	@Prop({ type: String, required: true })
 	shipping_method: ShippingMethod
 
-	@Prop({ type: Object, defautl: {} })
-	shipping_progress: Record<
-		string,
-		{
-			order_qty: number
-			shipped_out_qty: number
-		}
-	>
+	@Prop({ type: Map, of: PurchaseOrderShippingProgressSchema, default: {} })
+	shipping_progress: Map<string, PurchaseOrderShippingProgress>
 }
 
 export const PurchaseOrderSchema = SchemaFactory.createForClass(PurchaseOrder)

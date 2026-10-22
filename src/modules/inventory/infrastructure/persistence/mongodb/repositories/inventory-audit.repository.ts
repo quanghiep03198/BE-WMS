@@ -16,8 +16,9 @@ import { Injectable } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
 import { addMonths, format } from 'date-fns'
 import { Workbook } from 'exceljs'
-import { AnyBulkWriteOperation } from 'mongoose'
+import { AnyBulkWriteOperation, Types } from 'mongoose'
 import { I18nContext, I18nService } from 'nestjs-i18n'
+import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
 import { IInventoryReportResponse } from '../../../../application/interfaces'
 import { InventoryAuditCheckoutPipelineBuilder } from '../builders/inventory-audit-checkout-pipeline.builder'
 import { MoInventoryAudit, MoInventoryAuditDocument, MoInventoryAuditModel } from '../schemas/inventory-audit.schema'
@@ -25,6 +26,8 @@ import { MoInventoryAudit, MoInventoryAuditDocument, MoInventoryAuditModel } fro
 @Injectable()
 export class InventoryAuditRepository implements IInventoryAuditRepository {
 	constructor(
+		@InjectPinoLogger(InventoryAuditRepository.name)
+		private readonly logger: PinoLogger,
 		@InjectTransactionHost(DATA_WAREHOUSE_CONNECTION)
 		private readonly txHost: TransactionHost<TransactionalAdapterMongoose>,
 		@InjectModel(MoInventoryAudit.name, DATA_WAREHOUSE_CONNECTION)
@@ -51,10 +54,12 @@ export class InventoryAuditRepository implements IInventoryAuditRepository {
 				...(manufacturingOrders.length > 0 && { mo_no: { $in: manufacturingOrders } })
 			})
 			.lean({ virtuals: true })
-			.populate({
-				path: 'mo_attrs',
-				select: 'brand_name factory_code_produce factory_shoes_style cust_shoes_style color_sn order_qty'
-			})
+			.populate([
+				{
+					path: 'mo_specification',
+					select: 'brand_name factory_code_produce factory_shoes_style cust_shoes_style color_sn order_qty'
+				}
+			])
 			.exec()
 
 		if (data.length === 0 && month === currentYearMonth) {
@@ -66,7 +71,7 @@ export class InventoryAuditRepository implements IInventoryAuditRepository {
 				})
 				.lean({ virtuals: true })
 				.populate({
-					path: 'mo_attrs',
+					path: 'mo_specification',
 					select: 'brand_name factory_code_produce factory_shoes_style cust_shoes_style color_sn order_qty'
 				})
 				.exec()
@@ -74,7 +79,7 @@ export class InventoryAuditRepository implements IInventoryAuditRepository {
 
 		const mappedData = data.map((item) => {
 			const sizeLedger = Object.entries(item.size_ledger)
-				.sort(([size1], [size2]) => Number.parseFloat(size1) - Number.parseFloat(size2))
+				.sort(([size1], [size2]) => size1.localeCompare(size2, undefined, { numeric: true }))
 				.map(([size, fluctuation]) => {
 					return {
 						size_numcode: size,
@@ -84,12 +89,7 @@ export class InventoryAuditRepository implements IInventoryAuditRepository {
 						shipped_out_qty: fluctuation.shipped_out_qty,
 						supplemental_stocked_in_qty: fluctuation.supplemental_stocked_in_qty,
 						supplemental_shipped_out_qty: fluctuation.supplemental_shipped_out_qty,
-						final_inventory_qty:
-							fluctuation.beginning_inventory_qty +
-							fluctuation.stocked_in_qty +
-							fluctuation.supplemental_stocked_in_qty -
-							fluctuation.shipped_out_qty -
-							fluctuation.supplemental_shipped_out_qty
+						final_inventory_qty: fluctuation.final_inventory_qty
 					}
 				})
 
@@ -103,11 +103,11 @@ export class InventoryAuditRepository implements IInventoryAuditRepository {
 
 			return {
 				mo_no: item.mo_no,
-				order_qty: item.mo_attrs?.order_qty,
-				brand_name: item.mo_attrs?.brand_name,
-				factory_shoes_style: item.mo_attrs?.factory_shoes_style,
-				cust_shoes_style: item.mo_attrs?.cust_shoes_style,
-				color_sn: item.mo_attrs?.color_sn,
+				order_qty: item.mo_specification?.order_qty,
+				brand_name: item.mo_specification?.brand_name,
+				factory_shoes_style: item.mo_specification?.factory_shoes_style,
+				cust_shoes_style: item.mo_specification?.cust_shoes_style,
+				color_sn: item.mo_specification?.color_sn,
 				inventory_closure_status: item.inventory_closure_status,
 				beginning_inventory_qty: totalBeginningInventoryQty,
 				total_stocked_in_qty: totalStockedInQty,
@@ -141,23 +141,30 @@ export class InventoryAuditRepository implements IInventoryAuditRepository {
 
 		const manufacturingOrders = await this.manufacturingOrderModel
 			.find({ mo_no: { $in: fluctuation.map(({ mo_no }) => mo_no) } })
+			.session(this.txHost.tx)
+			.read('primary')
 			.lean()
 
 		// * Lấy danh sách các vị trí lưu kho của thành phẩm theo từng MO
 		const storageLocations = await this.finishedGoodsEpcModel.aggregate<{
 			mo_no: string
-			storage_locations: Array<string>
-		}>([
-			{
-				$match: {
-					scannable: true,
-					status: FinishedGoodsEpcStatus.IN_STOCK,
-					mo_no: { $in: fluctuation.map(({ mo_no }) => mo_no) }
-				}
-			},
-			{ $group: { _id: '$mo_no', storage_locations: { $addToSet: '$storage_location' } } },
-			{ $project: { _id: 0, mo_no: '$_id', storage_locations: 1 } }
-		])
+			storage_locations: Array<Types.ObjectId>
+		}>(
+			[
+				{
+					$match: {
+						scannable: true,
+						status: FinishedGoodsEpcStatus.IN_STOCK,
+						mo_no: { $in: fluctuation.map(({ mo_no }) => mo_no) }
+					}
+				},
+				{ $group: { _id: '$mo_no', storage_locations: { $addToSet: '$storage_location' } } },
+				{ $project: { _id: 0, mo_no: '$_id', storage_locations: 1 } }
+			],
+			{ readPreference: 'primary', session: this.txHost.tx }
+		)
+
+		this.logger.debug(storageLocations)
 
 		const manufacturingOrdersMap = new Map(manufacturingOrders.map((mo) => [mo.mo_no, mo]))
 		const yearMonth = format(new Date(), 'yyyy-MM')

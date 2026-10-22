@@ -1,6 +1,6 @@
 import { DATA_SOURCE_DATA_LAKE, DATA_WAREHOUSE_CONNECTION } from '@databases/constants'
 import { FinishedGoodsModule } from '@modules/finished-goods/finished-goods.module'
-import { forwardRef, Module, OnModuleInit } from '@nestjs/common'
+import { forwardRef, Logger, Module, OnModuleInit } from '@nestjs/common'
 import { InjectModel, MongooseModule } from '@nestjs/mongoose'
 import { TypeOrmModule } from '@nestjs/typeorm'
 import { OrderModule } from '../order/order.module'
@@ -67,7 +67,10 @@ export class InventoryModule implements OnModuleInit {
 		private readonly moInventoryAuditModel: MoInventoryAuditModel
 	) {}
 
-	async onModuleInit() {
-		await this.moInventoryAuditModel.syncIndexes()
+	onModuleInit() {
+		// Không await: createIndexes chờ mọi thành viên replica set, sẽ chặn app start nếu một node đang down/recovering
+		this.moInventoryAuditModel
+			.syncIndexes()
+			.catch((error) => new Logger(InventoryModule.name).error(`Failed to sync indexes: ${error.message}`))
 	}
 }

@@ -302,14 +302,14 @@ export class StatisticService {
 				},
 				{ mo_no: 1, date: 1, size_ledger: 1 }
 			)
-			.populate('mo_attrs', 'brand_name')
-			.select(['date', 'mo_attrs', 'size_ledger'])
+			.populate('mo_specification', 'brand_name')
+			.select(['date', 'mo_specification', 'size_ledger'])
 			.lean({ virtuals: true })
 			.exec()
 
 		return data.map((item) => ({
 			work_date: item.date,
-			brand_name: item.mo_attrs?.brand_name,
+			brand_name: item.mo_specification?.brand_name,
 			volumn: Object.values(item.size_ledger).reduce(
 				(sum, fluctuation) => sum + (fluctuation.stocked_in_qty ?? 0),
 				0

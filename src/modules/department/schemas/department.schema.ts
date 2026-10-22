@@ -40,7 +40,7 @@ DepartmentSchema.index({ code: 1 }, { unique: true })
 
 DepartmentSchema.loadClass(Department)
 
-type DepartmentDocument = HydratedDocument<Department, { created_at: Date; updated_at?: Nullable<Date> }>
+type DepartmentDocument = HydratedDocument<Department, { created_at: Date; updated_at?: Nullish<Date> }>
 
 type DepartmentModel = SoftDeleteModel<DepartmentDocument> & PaginateModel<DepartmentDocument>
 

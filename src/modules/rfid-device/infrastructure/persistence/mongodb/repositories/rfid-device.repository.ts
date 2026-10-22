@@ -9,7 +9,7 @@ import {
 } from '@modules/rfid-device/infrastructure/persistence/mongodb/schemas/rfid-device.schema'
 import { ConflictException, Injectable } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
-import type { Types } from 'mongoose'
+import type { LeanDocument, Types } from 'mongoose'
 import { I18nContext, I18nService } from 'nestjs-i18n'
 
 @Injectable()
@@ -22,19 +22,17 @@ export class RFIDDeviceRepository extends BaseMongoRepository<RFIDDeviceDocument
 	}
 
 	public async findOneByDeviceSn(deviceSn: string): Promise<IRFIDDevice | null> {
-		return await this.rfidDeviceModel.findOne({ device_sn: deviceSn }).lean({ virtuals: true })
+		return await this.rfidDeviceModel.findOne({ device_sn: deviceSn }).lean<IRFIDDevice>({ virtuals: true })
 	}
 
-	public override async createOne(
-		payload: Partial<RFIDDeviceDocument> | Partial<Omit<IRFIDDevice, '_id' | 'id'>>
-	): Promise<RFIDDeviceDocument> {
+	public override async createOne(payload: LeanDocument<RFIDDeviceDocument>) {
 		const existedDevice = await this.rfidDeviceModel.exists({ device_sn: payload.device_sn })
 		if (existedDevice)
 			throw new ConflictException(
 				this.i18nService.t('rfid_device.errors.device_sn_conflict', { lang: I18nContext.current()?.lang })
 			)
 
-		return await super.createOne(payload as Partial<RFIDDeviceDocument>)
+		return await super.createOne(payload)
 	}
 
 	public async findOneAndUpdate(

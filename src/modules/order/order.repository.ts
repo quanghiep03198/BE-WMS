@@ -104,14 +104,14 @@ export class OrderRepository implements IOrderRepository {
 
 		if (!data) return []
 
-		return Object.entries(data.size_ledger).map(([size, balances]: [string, any]) => {
-			const { order_qty, stocked_in_qty, total_recall_tx, total_return_tx, shipped_out_qty } = balances
+		return Object.entries(data.size_ledger).map(([size, balances]) => {
+			const { order_qty, instock_qty } = balances
 
 			return {
 				mo_no: data.mo_no,
 				size_numcode: size,
 				order_qty,
-				accumulated_qty: stocked_in_qty - total_recall_tx + total_return_tx - shipped_out_qty
+				accumulated_qty: instock_qty
 			}
 		})
 	}

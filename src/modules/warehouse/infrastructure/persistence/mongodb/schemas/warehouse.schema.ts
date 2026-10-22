@@ -1,13 +1,13 @@
 import { BaseAbstractSchema } from '@modules/_base/base.abstract.schema'
-import { User } from '@modules/user/infrastructure/persistence/mongodb/schemas/user.schema'
+import { UserDocument } from '@modules/user/infrastructure/persistence/mongodb/schemas/user.schema'
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose'
-import { HydratedDocument, PaginateModel, Types } from 'mongoose'
+import { HydratedDocument, LeanDocument, PaginateModel, Types } from 'mongoose'
 import MongooseAutoPopulate from 'mongoose-autopopulate'
 import MongooseDelete, { SoftDeleteModel } from 'mongoose-delete'
 import MongooseLeanVirtuals from 'mongoose-lean-virtuals'
 import MongoosePaginate from 'mongoose-paginate-v2'
 
-import { StorageLocation } from './storage-location.schema'
+import type { StorageLocation } from './storage-location.schema'
 
 export const WAREHOUSE_COLLECTION = 'warehouses'
 
@@ -40,10 +40,14 @@ export class Warehouse extends BaseAbstractSchema {
 		ref: 'User',
 		autopopulate: { select: '_id username display_name roles created_at' }
 	})
-	created_by: User | Types.ObjectId
+	created_by: LeanDocument<UserDocument> | Types.ObjectId
 
-	@Prop({ type: Types.ObjectId, ref: 'User', autopopulate: { select: '_id username display_name roles created_at' } })
-	updated_by: User | Types.ObjectId
+	@Prop({
+		type: Types.ObjectId,
+		ref: 'User',
+		autopopulate: { select: '_id username display_name roles created_at' }
+	})
+	updated_by: LeanDocument<UserDocument> | Types.ObjectId
 }
 
 export const WarehouseSchema = SchemaFactory.createForClass(Warehouse)

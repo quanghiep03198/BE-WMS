@@ -19,10 +19,18 @@ class TruckloadPacking {
 	@Prop({ type: Number, required: true })
 	outbound_qty: number
 
-	@Prop({ type: Types.ObjectId, ref: 'User', autopopulate: { select: '_id username display_name created_at' } })
+	@Prop({
+		type: Types.ObjectId,
+		ref: 'User',
+		autopopulate: true
+	})
 	created_by: Types.ObjectId | Pick<UserDocument, '_id' | 'username' | 'display_name'>
 
-	@Prop({ type: Types.ObjectId, ref: 'User', autopopulate: { select: '_id username display_name created_at' } })
+	@Prop({
+		type: Types.ObjectId,
+		ref: 'User',
+		autopopulate: true
+	})
 	updated_by?: Types.ObjectId | Pick<UserDocument, '_id' | 'username' | 'display_name'>
 
 	@Prop({ type: Date, default: null })
@@ -45,7 +53,7 @@ TruckloadPackingSchema.virtual('po_info', {
 	localField: 'po',
 	foreignField: 'po',
 	justOne: true,
-	autopopulate: { select: '-packing -shipping_progress' }
+	autopopulate: true
 })
 
 TruckloadPackingSchema.set('toObject', { virtuals: true })
@@ -134,10 +142,18 @@ export class TruckloadDelivery {
 	@Prop({ type: String })
 	remark?: string
 
-	@Prop({ type: Types.ObjectId, ref: 'User', autopopulate: { select: 'username display_name roles created_at' } })
+	@Prop({
+		type: Types.ObjectId,
+		ref: 'User',
+		autopopulate: true
+	})
 	created_by?: Types.ObjectId
 
-	@Prop({ type: Types.ObjectId, ref: 'User', autopopulate: { select: 'username display_name roles created_at' } })
+	@Prop({
+		type: Types.ObjectId,
+		ref: 'User',
+		autopopulate: true
+	})
 	updated_by?: Types.ObjectId
 
 	/** Optimistic lock counter, incremented on every write (application and CDC). */

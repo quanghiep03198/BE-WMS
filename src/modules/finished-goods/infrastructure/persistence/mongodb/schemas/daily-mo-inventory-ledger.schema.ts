@@ -1,5 +1,5 @@
-import { DepartmentDocument } from '@modules/department/schemas/department.schema'
-import { StorageLocationDocument } from '@modules/warehouse/infrastructure/persistence/mongodb/schemas/storage-location.schema'
+import { type DepartmentDocument } from '@modules/department/schemas/department.schema'
+import { type StorageLocationDocument } from '@modules/warehouse/infrastructure/persistence/mongodb/schemas/storage-location.schema'
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose'
 import { HydratedDocument, LeanDocument, Model, Types } from 'mongoose'
 import MongooseAutoPopulate from 'mongoose-autopopulate'
@@ -12,10 +12,10 @@ class InventoryLedgerTransaction {
 	@Prop({ type: String, required: true })
 	time: string
 
-	@Prop({ type: Types.ObjectId, required: true, ref: 'Department', autopopulate: { select: 'name' } })
+	@Prop({ type: Types.ObjectId, required: true, ref: 'Department', autopopulate: true })
 	assembly_line: Types.ObjectId | Pick<LeanDocument<DepartmentDocument>, 'name'>
 
-	@Prop({ type: Types.ObjectId, ref: 'StorageLocation', autopopulate: { select: 'name' } })
+	@Prop({ type: Types.ObjectId, ref: 'StorageLocation', autopopulate: true })
 	storage_location: Types.ObjectId | Pick<LeanDocument<StorageLocationDocument>, 'name'>
 
 	@Prop({ type: Object, required: true })
@@ -80,7 +80,7 @@ DailyMoInventoryLedgerSchema.index({ date: 1, mo_no: 1 }, { name: 'idx_date_mo',
 
 DailyMoInventoryLedgerSchema.plugin(MongooseLeanVirtuals)
 
-DailyMoInventoryLedgerSchema.virtual('mo_attrs', {
+DailyMoInventoryLedgerSchema.virtual('mo_specification', {
 	ref: 'ManufacturingOrder',
 	localField: 'mo_no',
 	foreignField: 'mo_no',
@@ -95,7 +95,7 @@ export type DailyMoInventoryLedgerDocument = HydratedDocument<
 	{
 		created_at: Date
 		updated_at?: Date
-		mo_attrs: {
+		mo_specification: {
 			factory_shoes_style: string
 			color_sn: string
 			factory_code_produce: string

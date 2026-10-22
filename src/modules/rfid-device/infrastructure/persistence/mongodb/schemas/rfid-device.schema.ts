@@ -44,11 +44,15 @@ export class RFIDDevice {
 	@Prop({ type: Date })
 	last_used_at: Date
 
-	@Prop({ type: Types.ObjectId, ref: 'User', autopopulate: { select: 'username display_name roles created_at' } })
+	@Prop({ type: Types.ObjectId, ref: 'User', autopopulate: { select: '_id username display_name roles created_at' } })
 	created_by: Types.ObjectId
 
-	@Prop({ type: Types.ObjectId, ref: 'User', autopopulate: { select: 'username display_name roles created_at' } })
+	@Prop({ type: Types.ObjectId, ref: 'User', autopopulate: { select: '_id username display_name roles created_at' } })
 	updated_by: Types.ObjectId
+
+	created_at: Date
+
+	updated_at?: Date
 }
 
 export const RFIDDeviceSchema = SchemaFactory.createForClass(RFIDDevice)
@@ -59,6 +63,6 @@ RFIDDeviceSchema.plugin(MongooseDelete)
 RFIDDeviceSchema.plugin(MongoosePaginate)
 RFIDDeviceSchema.plugin(MongooseAutoPopulate)
 
-export type RFIDDeviceDocument = HydratedDocument<RFIDDevice, { created_at: Date; updated_at?: Date }>
+export type RFIDDeviceDocument = HydratedDocument<RFIDDevice>
 
 export type RFIDDeviceModel = SoftDeleteModel<RFIDDeviceDocument> & PaginateModel<RFIDDeviceDocument>

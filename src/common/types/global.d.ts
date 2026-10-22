@@ -146,7 +146,9 @@ export declare global {
 		metadata: T
 	}
 
-	type Nullable<T> = T | null | undefined
+	type Boolish = boolean | 'true' | 'false'
+
+	type Nullish<T> = T | null | undefined
 
 	type ValueOfRecord<T extends Record<string, any>> = T[keyof T]
 

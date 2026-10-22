@@ -55,7 +55,7 @@ export class User {
 
 export const UserSchema = SchemaFactory.createForClass(User)
 
-UserSchema.loadClass(User)
+UserSchema.loadClass(User) // * To load the class methods into the schema
 
 UserSchema.pre('save', function (next) {
 	this.password = hashSync(this.password, env<number>('SALT_ROUND', { serialize: (value) => Number.parseInt(value) }))

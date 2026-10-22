@@ -5,6 +5,7 @@
 	"author": "quanghiep03198",
 	"private": true,
 	"license": "GreenLand",
+	"type": "commonjs",
 	"scripts": {
 		"build": "rspack build --mode production",
 		"start": "cross-env NODE_ENV=production node dist/main.cjs",
@@ -129,6 +130,7 @@
 		"@types/multer": "^1.4.13",
 		"@types/node": "^20.19.43",
 		"@types/supertest": "^6.0.3",
+		"@types/webpack-node-externals": "^3.0.4",
 		"@typescript/native-preview": "7.0.0-dev.20260707.2",
 		"cross-env": "^10.1.0",
 		"date-fns-tz": "^3.2.0",
