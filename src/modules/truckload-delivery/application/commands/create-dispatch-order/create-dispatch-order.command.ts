@@ -1,4 +1,4 @@
-import { RequestUser } from '@common/decorators'
+import { TRequestUser } from '@common/decorators'
 
 export class CreateDispatchOrderCommand {
 	constructor(
@@ -8,6 +8,6 @@ export class CreateDispatchOrderCommand {
 		public readonly licensePlate?: string | null,
 		public readonly containerNumber?: string | null,
 		public readonly sealNumber?: string | null,
-		public readonly createdBy?: RequestUser
+		public readonly createdBy?: TRequestUser
 	) {}
 }

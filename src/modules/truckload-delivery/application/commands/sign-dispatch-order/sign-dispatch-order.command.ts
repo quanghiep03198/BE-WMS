@@ -1,4 +1,4 @@
-import { RequestUser } from '@common/decorators'
+import { TRequestUser } from '@common/decorators'
 import { DispatchOrderSignatureField, TruckloadDeliveryStatus } from '../../../domain/constants'
 
 export class SignDispatchOrderCommand {
@@ -7,6 +7,6 @@ export class SignDispatchOrderCommand {
 		public readonly signatureField: DispatchOrderSignatureField,
 		public readonly signature: string,
 		public readonly approvalStatus?: TruckloadDeliveryStatus | null,
-		public readonly updatedBy?: RequestUser
+		public readonly updatedBy?: TRequestUser
 	) {}
 }

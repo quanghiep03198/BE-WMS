@@ -1,4 +1,4 @@
-import { RequestUser } from '@common/decorators'
+import { TRequestUser } from '@common/decorators'
 
 export class UpdateContainerConditionCommand {
 	constructor(
@@ -8,6 +8,6 @@ export class UpdateContainerConditionCommand {
 			smelling_container?: boolean
 			moist_container?: boolean
 		},
-		public readonly updatedBy?: RequestUser
+		public readonly updatedBy?: TRequestUser
 	) {}
 }
