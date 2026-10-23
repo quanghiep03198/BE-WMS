@@ -1,4 +1,3 @@
-import { format } from 'date-fns'
 import 'dotenv/config'
 import { AnyBulkWriteOperation } from 'mongoose'
 import { env, SuperJson } from '../../common/utils'
@@ -84,6 +83,53 @@ async function main() {
 			}
 		}
 
+		const resolveStorageLocations = async ()=> await mongoManager.getRepository<MoInventoryAuditDocument>('mo_inventory_audit').aggregate([
+					// Chỉ xử lý doc mà storage_locations đang là mảng string
+					{ $match: { 'storage_locations.0': { $type: 'string' } } },
+
+					// Chuẩn hoá name (schema StorageLocation đang trim + uppercase)
+					{
+						$set: {
+							storage_locations: {
+								$map: {
+									input: {
+										$filter: {
+											input: '$storage_locations',
+											cond: { $eq: [{ $type: '$$this' }, 'string'] }
+										}
+									},
+									as: 'n',
+									in: { $toUpper: { $trim: { input: '$$n' } } }
+								}
+							}
+						}
+					},
+
+					// Tìm _id tương ứng theo name
+					{
+						$lookup: {
+							from: 'storage_locations',
+							localField: 'storage_locations',
+							foreignField: 'name',
+							as: '_matched'
+						}
+					},
+
+					// Thay mảng name bằng mảng ObjectId
+					{ $set: { storage_locations: '$_matched._id' } },
+					{ $unset: '_matched' },
+
+					// Ghi đè lại vào chính collection
+					{
+						$merge: {
+							into: 'mo_inventory_audit',
+							on: '_id',
+							whenMatched: 'merge',
+							whenNotMatched: 'discard'
+						}
+					}
+				])
+
 		request.on('row', async (row) => {
 			batch.push({
 				updateOne: {
@@ -91,6 +137,7 @@ async function main() {
 					update: {
 						$set: {
 							...row,
+							storage_locations: 
 							size_ledger: SuperJson.parse(row.size_ledger)
 						}
 					},
@@ -118,6 +165,7 @@ async function main() {
 		request.on('done', async () => {
 			try {
 				await flushBatch(true)
+				
 				resolveStream()
 				logger.info(`Synchronized ${totalProcessed} documents.`)
 			} catch (error) {
@@ -125,41 +173,6 @@ async function main() {
 				rejectStream(error)
 			}
 		})
-
-		request.on('row', async (row) => {
-			if (row.size_ledger)
-				batch.push({
-					updateOne: {
-						filter: { mo_no: row.mo_no, year_month: row.year_month },
-						update: {
-							$set: {
-								year_month: row.year_month,
-								mo_no: row.mo_no,
-								size_ledger: SuperJson.parse(row.size_ledger),
-								storage_locations: row.storage_locations ? SuperJson.parse(row.storage_locations) : [],
-								inventory_closure_status:
-									row.year_month < format(new Date(), 'yyyy-MM') ? 'completed' : 'pending'
-							}
-						},
-						upsert: true
-					}
-				})
-
-			if (batch.length >= BATCH_SIZE) {
-				request.pause()
-				try {
-					await flushBatch()
-					request.resume()
-				} catch (error) {
-					logger.error('Error during bulk write: ' + error)
-					rejectStream(error)
-				}
-			}
-		})
-
-		request.on('error', logger.error)
-
-		request.on('done', () => logger.info(`Finished processing. Total processed: ${totalProcessed}`))
 
 		const queryPromise = await request.query(/* SQL */ `
          DECLARE @factory NVARCHAR(10) = '${args.tenant}';
