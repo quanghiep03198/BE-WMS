@@ -56,8 +56,7 @@ export class OrderModule {
 
 	async onModuleInit() {
 		try {
-			await this.purchaseOrderModel.syncIndexes()
-			await this.manufacturingOrderModel.syncIndexes()
+			await Promise.all([this.manufacturingOrderModel.syncIndexes(), this.purchaseOrderModel.syncIndexes()])
 		} catch (error) {
 			this.logger.error(error)
 		}

@@ -64,7 +64,6 @@ export class WarehouseModule implements OnModuleInit {
 	) {}
 
 	async onModuleInit() {
-		await this.warehouseModel.syncIndexes()
-		await this.storageLocationModel.syncIndexes()
+		await Promise.all([this.warehouseModel.syncIndexes(), this.storageLocationModel.syncIndexes()])
 	}
 }
