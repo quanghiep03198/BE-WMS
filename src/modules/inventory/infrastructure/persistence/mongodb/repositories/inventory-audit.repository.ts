@@ -58,6 +58,9 @@ export class InventoryAuditRepository implements IInventoryAuditRepository {
 				{
 					path: 'mo_specification',
 					select: 'brand_name factory_code_produce factory_shoes_style cust_shoes_style color_sn order_qty'
+				},
+				{
+					path: 'storage_locations'
 				}
 			])
 			.exec()

@@ -1,8 +1,9 @@
 import { DATA_SOURCE_DATA_LAKE, DATA_WAREHOUSE_CONNECTION } from '@databases/constants'
 import { FinishedGoodsModule } from '@modules/finished-goods/finished-goods.module'
-import { forwardRef, Logger, Module, OnModuleInit } from '@nestjs/common'
+import { forwardRef, Module, OnModuleInit } from '@nestjs/common'
 import { InjectModel, MongooseModule } from '@nestjs/mongoose'
 import { TypeOrmModule } from '@nestjs/typeorm'
+import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
 import { OrderModule } from '../order/order.module'
 import { InventoryAuditCommandHandlers } from './application/commands'
 import { INVENTORY_AUDIT_REPOSITORY } from './application/ports/inventory-audit.repository.port'
@@ -63,14 +64,15 @@ import { InventoryController } from './presentation/controllers/inventory.contro
 })
 export class InventoryModule implements OnModuleInit {
 	constructor(
+		@InjectPinoLogger(InventoryModule.name) private readonly logger: PinoLogger,
 		@InjectModel(MoInventoryAudit.name, DATA_WAREHOUSE_CONNECTION)
 		private readonly moInventoryAuditModel: MoInventoryAuditModel
 	) {}
 
-	onModuleInit() {
+	async onModuleInit() {
 		// Không await: createIndexes chờ mọi thành viên replica set, sẽ chặn app start nếu một node đang down/recovering
-		this.moInventoryAuditModel
+		await this.moInventoryAuditModel
 			.syncIndexes()
-			.catch((error) => new Logger(InventoryModule.name).error(`Failed to sync indexes: ${error.message}`))
+			.catch((error) => this.logger.error(`Failed to sync indexes: ${error.message}`))
 	}
 }

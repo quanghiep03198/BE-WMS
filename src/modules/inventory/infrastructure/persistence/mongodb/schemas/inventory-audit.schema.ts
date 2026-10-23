@@ -65,7 +65,8 @@ export class MoInventoryAudit {
 
 	@Prop({
 		type: [{ type: Types.ObjectId, ref: 'StorageLocation', autopopulate: true }],
-		default: []
+		default: [],
+		autopopulate: true
 	})
 	storage_locations: Array<Types.ObjectId | LeanDocument<StorageLocationDocument>>
 
