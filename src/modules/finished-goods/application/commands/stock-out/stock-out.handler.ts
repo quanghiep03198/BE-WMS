@@ -16,13 +16,11 @@ import { ORDER_REPOSITORY } from '@modules/order/order.constant'
 import { IOrderRepository } from '@modules/order/order.repository.interface'
 import { Inject } from '@nestjs/common'
 import { CommandHandler, EventPublisher, ICommandHandler } from '@nestjs/cqrs'
-import { InjectPinoLogger } from 'nestjs-pino'
 import { StockOutCommand } from './stock-out.command'
 
 @CommandHandler(StockOutCommand)
 export class StockOutHandler implements ICommandHandler<StockOutCommand> {
 	constructor(
-		@InjectPinoLogger(StockOutHandler.name) private readonly logger,
 		@Inject(FINISHED_GOODS_EPC_REPOSITORY) private readonly epcMongoRepository: IFinishedGoodsEpcRepository,
 		@Inject(ORDER_REPOSITORY)
 		private readonly orderRepository: IOrderRepository,

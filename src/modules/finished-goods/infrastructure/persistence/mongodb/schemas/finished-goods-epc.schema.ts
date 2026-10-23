@@ -99,7 +99,6 @@ export class FinishedGoodsEpc {
 
 export const FinishedGoodsEpcSchema = SchemaFactory.createForClass(FinishedGoodsEpc)
 
-// FinishedGoodsEpcSchema.index({ outbound_at: 1 }, { expires: '60d', name: 'idx_outbound_at' })
 // * Indexes
 FinishedGoodsEpcSchema.index({ epc: 1 }, { unique: true, name: 'idx_epc' })
 FinishedGoodsEpcSchema.index(
@@ -108,9 +107,7 @@ FinishedGoodsEpcSchema.index(
 )
 FinishedGoodsEpcSchema.index(
 	{ scannable: 1, deleted: 1, status: 1, outbound_device_sn: 1, storage_location: 1 },
-	{
-		name: 'idx_outbound_active'
-	}
+	{ name: 'idx_outbound_active' }
 )
 FinishedGoodsEpcSchema.index(
 	{ scannable: 1, deleted: 1, mo_no: 1, factory_shoes_style: 1, size_numcode: 1 },

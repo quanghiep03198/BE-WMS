@@ -38,8 +38,10 @@ export class StockInHandler implements ICommandHandler<StockInCommand> {
 	) {}
 
 	public async execute({ command }: StockInCommand): Promise<void> {
-		const storageLocation = await this.storageLocationRepository.findOneById(command.storage_location)
-		const assemblyLine = await this.departmentRepository.findOneById(command.assembly_line)
+		const [storageLocation, assemblyLine] = await Promise.all([
+			this.storageLocationRepository.findOneById(command.storage_location),
+			this.departmentRepository.findOneById(command.assembly_line)
+		])
 
 		const pendingInboundEpcs = await this.finishedGoodsEpcRepository.getPendingStockMoveEpcs(
 			command.inbound_device_sn,
