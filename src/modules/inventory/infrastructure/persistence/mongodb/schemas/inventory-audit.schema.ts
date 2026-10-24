@@ -85,12 +85,6 @@ MoInventoryAuditSchema.virtual('mo_specification', {
 	justOne: true
 })
 
-MoInventoryAuditSchema.virtual('daily_mo_inv_attrs', {
-	ref: 'DailyMoInventoryLedger',
-	localField: 'mo_no',
-	foreignField: 'mo_no'
-})
-
 MoInventoryAuditSchema.set('toJSON', { virtuals: true })
 
 MoInventoryAuditSchema.set('toObject', { virtuals: true })

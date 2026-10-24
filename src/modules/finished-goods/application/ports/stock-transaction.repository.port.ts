@@ -1,13 +1,11 @@
 import { FinishedGoodsEpcStatus } from '@modules/finished-goods/domain/constants'
-import { StockFlow } from '@modules/finished-goods/domain/types'
 import { ElectronicProductCode } from '@modules/finished-goods/domain/value-objects/epc.vo'
-import { IPendingInventoryFluctuation } from './inventory-ledger.repository.port'
 
 export interface IStockTransactionRepository {
-	getStockTransactionById(
-		stockFlow: StockFlow,
-		transactionId: string
-	): Promise<IPendingInventoryFluctuation | Array<IPendingInventoryFluctuation>>
+	// getStockTransactionById(
+	// 	stockFlow: StockFlow,
+	// 	transactionId: string
+	// ): Promise<IPendingInventoryFluctuation | Array<IPendingInventoryFluctuation>>
 	stockIn(transactionId: string, pendingStockInEpcs: Array<ElectronicProductCode>): Promise<void>
 	stockOut(
 		transactionId: string,

@@ -8,7 +8,7 @@ import MongooseLeanVirtuals from 'mongoose-lean-virtuals'
 export const DAILY_MO_INVENTORY_LEDGER_COLLECTION = 'daily_mo_inventory_ledger'
 
 @Schema({ _id: false })
-class InventoryLedgerTransaction {
+export class InventoryLedgerTransaction {
 	@Prop({ type: String, required: true })
 	time: string
 
@@ -18,8 +18,16 @@ class InventoryLedgerTransaction {
 	@Prop({ type: Types.ObjectId, ref: 'StorageLocation', autopopulate: true })
 	storage_location: Types.ObjectId | Pick<LeanDocument<StorageLocationDocument>, 'name'>
 
-	@Prop({ type: Object, required: true })
-	size_ledger: Record<
+	@Prop({
+		type: Map,
+		of: {
+			stocked_in_qty: { type: Number, default: 0 },
+			total_recall_tx: { type: Number, default: 0 },
+			total_return_tx: { type: Number, default: 0 }
+		},
+		required: true
+	})
+	size_ledger: Map<
 		string,
 		{
 			stocked_in_qty: number
@@ -30,9 +38,17 @@ class InventoryLedgerTransaction {
 
 	@Prop({ type: Boolean, default: false })
 	voided: boolean // * Indicates whether the transaction has been voided or not
+
+	get total_balance() {
+		return this.size_ledger
+			.values()
+			.reduce((acc, curr) => acc + curr.stocked_in_qty - curr.total_recall_tx + curr.total_return_tx, 0)
+	}
 }
 
 const InventoryLedgerTransactionSchema = SchemaFactory.createForClass(InventoryLedgerTransaction)
+
+InventoryLedgerTransactionSchema.loadClass(InventoryLedgerTransaction)
 
 InventoryLedgerTransactionSchema.plugin(MongooseAutoPopulate)
 InventoryLedgerTransactionSchema.plugin(MongooseLeanVirtuals)
@@ -57,8 +73,16 @@ export class DailyMoInventoryLedger {
 	@Prop({ type: String, required: true })
 	mo_no: string
 
-	@Prop({ type: Object, required: true })
-	size_ledger: Record<
+	@Prop({
+		type: Map,
+		of: {
+			stocked_in_qty: { type: Number, default: 0 },
+			total_recall_tx: { type: Number, default: 0 },
+			total_return_tx: { type: Number, default: 0 }
+		},
+		required: true
+	})
+	size_ledger: Map<
 		string,
 		{
 			stocked_in_qty: number

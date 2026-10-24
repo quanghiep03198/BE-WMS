@@ -1,5 +1,6 @@
+import { DailyMoInventoryLedgerDocument } from '@modules/finished-goods/infrastructure/persistence/mongodb/schemas/daily-mo-inventory-ledger.schema'
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose'
-import { HydratedDocument, Model } from 'mongoose'
+import { HydratedDocument, LeanDocument, Model } from 'mongoose'
 
 @Schema({ _id: false })
 class ManufacturingOrderSizeLedger {
@@ -66,7 +67,11 @@ export class ManufacturingOrder {
 	@Prop({ type: Number, requried: true })
 	order_qty: number
 
-	@Prop({ type: Map, of: ManufacturingOrderSizeLedgerSchema, requried: true })
+	@Prop({
+		type: Map,
+		of: ManufacturingOrderSizeLedgerSchema,
+		requried: true
+	})
 	size_ledger: Map<string, ManufacturingOrderSizeLedger>
 }
 
@@ -84,19 +89,6 @@ ManufacturingOrderSchema.set('toObject', { virtuals: true })
 ManufacturingOrderSchema.set('toJSON', { virtuals: true })
 
 export type ManufacturingOrderDocument = HydratedDocument<ManufacturingOrder> & {
-	daily_inbound_history: Array<{
-		date: string
-		mo_no: string
-		size_ledger: Record<string, { stocked_in_qty: number; total_recall_tx: number; total_return_tx: number }>
-		transaction_history: Record<
-			string,
-			{
-				time: string
-				assembly_line: string
-				storage_location: string
-				size_ledger: Record<string, { stocked_in_qty: number; total_recall_tx: number; total_return_tx: number }>
-			}
-		>
-	}>
+	daily_inbound_history: Array<LeanDocument<DailyMoInventoryLedgerDocument>>
 }
 export type ManufacturingOrderModel = Model<ManufacturingOrderDocument>

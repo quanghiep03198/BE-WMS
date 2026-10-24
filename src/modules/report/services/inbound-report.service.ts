@@ -41,7 +41,6 @@ export class InboundReportService {
 	public async getDailyInventoryLedger(date: string): Promise<IInboundReportResponse> {
 		const docs = await this.dailyMoInventoryLedgerModel
 			.find({ date: date })
-
 			.populate([
 				{
 					path: 'mo_specification',
@@ -265,10 +264,22 @@ export class InboundReportService {
 	public async getInboundHistory(manufacturingOrder: string) {
 		return await this.manufacturingOrderModel
 			.findOne({ mo_no: manufacturingOrder })
-			.populate({
-				path: 'daily_inbound_history',
-				select: 'date mo_no size_ledger transaction_history'
-			})
+			.populate([
+				{
+					path: 'daily_inbound_history',
+					select: 'date mo_no size_ledger total_balance transaction_history',
+					populate: [
+						{
+							path: 'transaction_history.$*.assembly_line',
+							select: 'name'
+						},
+						{
+							path: 'transaction_history.$*.storage_location',
+							select: 'name'
+						}
+					]
+				}
+			])
 			.exec()
 			.then((doc) => {
 				if (!doc) return null
@@ -280,16 +291,36 @@ export class InboundReportService {
 				)
 				const missingQty = normalizedDoc.order_qty - accumulatedInboundQty
 
+				console.log('size_ledger', Object.fromEntries(normalizedDoc.size_ledger))
+
+				console.log(
+					normalizedDoc.daily_inbound_history
+						.filter((item) => {
+							return item.transaction_history
+								.values()
+								.toArray()
+								.some((tx) => !tx.voided)
+						})
+						.map((item) => ({ ...item, transaction_history: item.transaction_history.values().toArray() }))
+				)
+
 				return {
 					...normalizedDoc,
+					size_ledger: Object.fromEntries(normalizedDoc.size_ledger),
 					accumulated_inbound_qty: accumulatedInboundQty,
 					missing_qty: missingQty,
 					daily_inbound_history: normalizedDoc.daily_inbound_history
-						.filter(
-							(item) =>
-								!Object.values(item.size_ledger).every((ledger) => Object.values(ledger).every((v) => v === 0))
-						)
-						.map((item) => ({ ...item, transaction_history: Object.values(item.transaction_history) })),
+						.filter((item) => {
+							return item.transaction_history
+								.values()
+								.toArray()
+								.some((tx) => !tx.voided)
+						})
+						.map((item) => ({
+							...item,
+							size_ledger: Object.fromEntries(item.size_ledger),
+							transaction_history: item.transaction_history.values().toArray()
+						})),
 					progress: ((accumulatedInboundQty / normalizedDoc.order_qty) * 100).toFixed(2) + '%'
 				}
 			})

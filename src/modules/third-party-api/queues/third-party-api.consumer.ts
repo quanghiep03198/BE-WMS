@@ -18,6 +18,7 @@ import { TManufacturingOrder } from '@modules/order/types'
 import { Processor, WorkerHost } from '@nestjs/bullmq'
 import { Cache, CACHE_MANAGER } from '@nestjs/cache-manager'
 import { Inject } from '@nestjs/common'
+import { ConfigService } from '@nestjs/config'
 import { Job } from 'bullmq'
 import { format } from 'date-fns'
 import { groupBy } from 'lodash'
@@ -40,7 +41,8 @@ export class ThirdPartyApiConsumer extends WorkerHost {
 		private readonly logger: PinoLogger,
 		private readonly thirdPartyApiService: ThirdPartyApiService,
 		private readonly thirdPartyApiOAuth2Service: DeckersOAuth2Strategy,
-		private readonly eventGateway: FinishedGoodsGateway
+		private readonly eventGateway: FinishedGoodsGateway,
+		private readonly configService: ConfigService<ProcessEnv>
 	) {
 		super()
 		this.initializeProcessState()
@@ -208,6 +210,7 @@ export class ThirdPartyApiConsumer extends WorkerHost {
 				sync_id: syncId,
 				size_numcode: new SizeNumber(sizeNumber).normalize('padleft'),
 				size_qty: sizeQuantity ?? 1,
+				factory_code_produce: matchSpecs.factory_code_produce ?? this.configService.get('APP_TENANCY'),
 				remark: `[${currentTimestamp}] Info: Synchronized from Deckers API with command number "${item.commandNumber}"`
 			}
 		})

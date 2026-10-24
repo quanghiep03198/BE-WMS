@@ -118,7 +118,7 @@ export class OrderRepository implements IOrderRepository {
 
 	public async getOnePurchaseOrder(purchaseOrder: string): Promise<LeanDocument<PurchaseOrderDocument>> {
 		return await this.purchaseOrderModel
-			.findOne({ po_no: purchaseOrder })
+			.findOne({ po: purchaseOrder })
 			.lean<LeanDocument<PurchaseOrderDocument>>(true)
 	}
 

@@ -47,8 +47,12 @@ export class DailyPoShippingProgress {
 	 *   }
 	 * }
 	 */
-	@Prop({ type: Object, required: true })
-	transaction_history: Record<
+	@Prop({
+		type: Map,
+		of: { time: { type: String }, packing: { type: Object }, voided: { type: Boolean } },
+		required: true
+	})
+	transaction_history: Map<
 		string,
 		{
 			time: string

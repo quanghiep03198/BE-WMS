@@ -1,6 +1,6 @@
 import { ExcelColorPalette } from '@common/constants/excel-color-palette'
 import { applyCommonStyles, type AutoFitColumnOptions, autoFitColumns } from '@common/helpers'
-import { DATA_SOURCE_DATA_LAKE, DATA_WAREHOUSE_CONNECTION } from '@databases/constants'
+import { DATA_WAREHOUSE_CONNECTION } from '@databases/constants'
 import {
 	DailyPoShippingProgress,
 	DailyPoShippingProgressModel
@@ -8,13 +8,11 @@ import {
 import { PurchaseOrder, PurchaseOrderModel } from '@modules/order/schemas/purchase-order.schema'
 import { Injectable } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
-import { InjectDataSource } from '@nestjs/typeorm'
 import { format } from 'date-fns'
 import { Workbook, Worksheet } from 'exceljs'
 import { groupBy } from 'lodash'
 import { I18nContext, I18nService } from 'nestjs-i18n'
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
-import { DataSource } from 'typeorm'
 
 @Injectable()
 export class OutboundReportService {
@@ -24,7 +22,6 @@ export class OutboundReportService {
 		private readonly dailyPoShippingProgressModel: DailyPoShippingProgressModel,
 		@InjectModel(PurchaseOrder.name, DATA_WAREHOUSE_CONNECTION)
 		private readonly purchaseOrderModel: PurchaseOrderModel,
-		@InjectDataSource(DATA_SOURCE_DATA_LAKE) private readonly dataSource: DataSource,
 		private readonly i18nService: I18nService
 	) {}
 
@@ -91,41 +88,49 @@ export class OutboundReportService {
 	public async getOutboundHistory(po: string) {
 		const data = await this.purchaseOrderModel
 			.findOne({ po })
-			.populate({ path: 'outbound_history', select: 'date shipping_progress' })
+			.populate({ path: 'outbound_history', select: 'date shipping_progress transaction_history' })
 			.exec()
 
 		if (!data) return null
 
-		const totalShippedOutQty = Object.values(data?.shipping_progress ?? []).reduce(
-			(acc, curr) => acc + curr.shipped_out_qty,
-			0
-		)
+		const totalShippedOutQty = data
+			.get('shipping_progress')
+			.values()
+			.toArray()
+			.reduce((acc, curr) => acc + (curr.shipped_out_qty ?? 0), 0)
 
 		return {
 			...data.toObject(),
 			total_shipped_out_qty: totalShippedOutQty,
-			missing_qty: data.order_qty - totalShippedOutQty,
-			outbound_history: Object.entries(groupBy(data.outbound_history, (item) => item.date))
+			missing_qty: data.get('order_qty') - totalShippedOutQty,
+			outbound_history: Object.entries(groupBy(data.get('outbound_history'), (item) => item.date))
 				.map(([date, items]) => {
 					return {
 						date,
-						data: items.flatMap((i) =>
-							Object.entries(i.shipping_progress).map(([mo_no, sizes]) => ({
-								mo_no,
-								shipping_details: Object.entries(sizes)
-									.sort(([size1], [size2]) => Number.parseFloat(size1) - Number.parseFloat(size2))
-									.map(([size_numcode, shipped_out_qty]) => ({
-										size_numcode,
-										shipped_out_qty
-									}))
-							}))
-						)
+						data: items
+							.filter((transactions) => transactions.transaction_history.values().every((item) => !item.voided))
+							.flatMap((i) =>
+								Object.entries(i.shipping_progress).map(([mo_no, sizes]) => ({
+									mo_no,
+									shipping_details: Object.entries(sizes)
+										.sort(([size1], [size2]) => Number.parseFloat(size1) - Number.parseFloat(size2))
+										.map(([size_numcode, shipped_out_qty]) => ({
+											size_numcode,
+											shipped_out_qty
+										}))
+								}))
+							)
 					}
 				})
-				.filter((item) =>
-					item.data.every((detail) => detail.shipping_details.every((sd) => sd.shipped_out_qty > 0))
+				.filter(
+					(item) =>
+						item.data.length > 0 &&
+						item.data.every((detail) => detail.shipping_details.every((sd) => sd.shipped_out_qty > 0))
 				),
-			overall: Object.entries(data.shipping_progress)
+			overall: data
+				.get('shipping_progress')
+				.entries()
+				.toArray()
 				.sort(([size1], [size2]) => Number.parseFloat(size1) - Number.parseFloat(size2))
 				.map(([size_numcode, { order_qty, shipped_out_qty }]) => ({
 					size_numcode,
@@ -133,7 +138,7 @@ export class OutboundReportService {
 					shipped_out_qty,
 					missing_qty: order_qty - shipped_out_qty
 				})),
-			progress: ((totalShippedOutQty / data.order_qty) * 100).toFixed(2) + '%'
+			progress: ((totalShippedOutQty / data.get('order_qty')) * 100).toFixed(2) + '%'
 		}
 	}
 

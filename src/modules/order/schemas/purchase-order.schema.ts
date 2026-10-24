@@ -74,6 +74,14 @@ export type PurchaseOrderDocument = HydratedDocument<PurchaseOrder> & {
 	outbound_history: Array<{
 		date: string
 		shipping_progress: Record<string, Record<string, number>>
+		transaction_history: Map<
+			string,
+			{
+				time: string
+				packing: Record<string, Record<string, number>>
+				voided: boolean
+			}
+		>
 	}>
 }
 

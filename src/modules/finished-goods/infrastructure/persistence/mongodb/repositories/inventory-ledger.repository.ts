@@ -210,7 +210,7 @@ export class InventoryLedgerRepository implements IInventoryLedgerRepository {
 		}
 
 		await this.dailyMoInventoryLedgerModel.updateOne(
-			pick(pendingInventoryFluctuation, ['mo_no', 'factory_code_produce', 'factory_shoes_style', 'color_sn']),
+			pick(pendingInventoryFluctuation, ['mo_no']),
 			{
 				$setOnInsert: { mo_no: pendingInventoryFluctuation.mo_no, date: format(new Date(), 'yyyy-MM-dd') },
 				$inc: omitBy(incrementExpression, (_, key) => key.endsWith('shipped_out_qty')),
