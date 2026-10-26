@@ -1,5 +1,6 @@
+import { FALLBACK_VALUE } from '@common/constants'
 import { DATA_WAREHOUSE_CONNECTION } from '@databases/constants'
-import { FALLBACK_VALUE, FinishedGoodsEpcStatus } from '@modules/finished-goods/domain/constants'
+import { FinishedGoodsEpcStatus } from '@modules/finished-goods/domain/constants'
 import {
 	FinishedGoodsEpc,
 	FinishedGoodsEpcModel

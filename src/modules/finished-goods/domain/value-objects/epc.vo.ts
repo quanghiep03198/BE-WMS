@@ -1,6 +1,7 @@
+import { FALLBACK_VALUE } from '@common/constants'
 import { IDepartment } from '@modules/department/department.repository.interface'
 import { IStorageLocation } from '@modules/warehouse/domain/interfaces/storage-location.interface'
-import { EXCLUDED_EPC_PREFIX, FALLBACK_VALUE, INTERNAL_EPC_PREFIX } from '../constants'
+import { EXCLUDED_EPC_PREFIX, INTERNAL_EPC_PREFIX } from '../constants'
 import { SizeNumber } from './size-number.vo'
 
 export class ElectronicProductCode {

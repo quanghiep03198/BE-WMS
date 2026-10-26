@@ -1,17 +1,13 @@
 import { DATA_WAREHOUSE_CONNECTION } from '@databases/constants'
 import { IShippingProgressRepository } from '@modules/finished-goods/application/ports/shipping-progress.repository.port'
 import { ElectronicProductCode } from '@modules/finished-goods/domain/value-objects/epc.vo'
+import { PurchaseOrder, PurchaseOrderDocument, PurchaseOrderModel } from '@modules/order/schemas/purchase-order.schema'
 import { InjectTransactionHost, Transactional, TransactionHost } from '@nestjs-cls/transactional'
 import { TransactionalAdapterMongoose } from '@nestjs-cls/transactional-adapter-mongoose'
 import { Injectable } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
 import { format } from 'date-fns'
 import { type AnyBulkWriteOperation, mongo, type MongooseBulkWriteOptions } from 'mongoose'
-import {
-	PurchaseOrder,
-	PurchaseOrderDocument,
-	PurchaseOrderModel
-} from '../../../../../order/schemas/purchase-order.schema'
 import {
 	DailyPoShippingProgress,
 	DailyPoShippingProgressDocument,

@@ -1,8 +1,8 @@
+import { FALLBACK_VALUE } from '@common/constants'
 import { generateShortId } from '@common/utils/short-id.util'
 import { TManufacturingOrder } from '@modules/order/types'
 import { AggregateRoot } from '@nestjs/cqrs'
 import { format } from 'date-fns'
-import { FALLBACK_VALUE } from '../constants'
 import { UpsertedEpcsMatchEvent } from '../events/upserted-epcs-match/upserted-epcs-match.event'
 import {
 	MismatchingMoSpecsException,

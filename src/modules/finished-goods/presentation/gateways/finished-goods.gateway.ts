@@ -1,10 +1,9 @@
+import { FALLBACK_VALUE } from '@common/constants'
 import { UseWebSocketAuthGuard } from '@common/decorators'
 import { WsExceptionsFilter } from '@common/filters'
-
 import { WsZodValidationPipe } from '@common/pipes/ws-validation.pipe'
 import { env, SuperJson } from '@common/utils'
 import { DATA_WAREHOUSE_CONNECTION } from '@databases/constants'
-import { FALLBACK_VALUE } from '@modules/finished-goods/domain/constants'
 import {
 	FinishedGoodsEpc,
 	FinishedGoodsEpcDocument
