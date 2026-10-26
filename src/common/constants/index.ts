@@ -24,3 +24,5 @@ export enum SortDirection {
 	ASC = 'asc',
 	DESC = 'desc'
 }
+
+export const FALLBACK_VALUE: string = 'Unknown'
