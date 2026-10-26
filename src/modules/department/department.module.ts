@@ -19,7 +19,7 @@ import { Department, DEPARTMENT_COLLECTION, DepartmentModel, DepartmentSchema } 
 	],
 	controllers: [DepartmentController],
 	providers: [{ provide: DEPARTMENT_REPOSITORY, useClass: DepartmentService }, DepartmentTask],
-	exports: [DEPARTMENT_REPOSITORY]
+	exports: [MongooseModule, DEPARTMENT_REPOSITORY]
 })
 export class DepartmentModule implements OnModuleInit {
 	constructor(
