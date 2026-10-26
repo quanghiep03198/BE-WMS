@@ -75,7 +75,6 @@ async function execute() {
                                                                         AND sz.size_numcode IS NOT NULL
                                                                         AND sz.size_qty > 0
                                                                         AND p.shoestyle_systemcodefty = a.shoestyle_systemcodefty
-                                                                        AND m.created >= CAST (DATEADD(YEAR, -1, GETDATE()) AS DATE)
                                                                   FOR    JSON PATH) AS sizes) AS s(sizes)
                                        WHERE  b.shoestyle_systemcodefty = a.shoestyle_systemcodefty
                                              AND s.sizes IS NOT NULL
