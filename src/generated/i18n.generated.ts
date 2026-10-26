@@ -43,6 +43,7 @@ export type I18nTranslations = {
     };
     "defective-goods": {
         "active_epcs_recombination_conflict": string;
+        "not_found": string;
         "defective_goods_inventory_report": string;
         "categories": {
             "B": string;
