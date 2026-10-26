@@ -3,7 +3,7 @@ import { DepartmentDocument } from '@modules/department/schemas/department.schem
 import { FinishedGoodsEpcStatus } from '@modules/finished-goods/domain/constants'
 import { StorageLocationDocument } from '@modules/warehouse/infrastructure/persistence/mongodb/schemas/storage-location.schema'
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose'
-import mongoose, { HydratedDocument, PaginateModel, Types } from 'mongoose'
+import { HydratedDocument, PaginateModel, Types } from 'mongoose'
 import MongooseAutoPopulate from 'mongoose-autopopulate'
 import MongooseDeletePlugin, { SoftDeleteModel } from 'mongoose-delete'
 import MongoosePaginatePlugin from 'mongoose-paginate-v2'
@@ -24,9 +24,6 @@ export const FINISHED_GOODS_EPCS_COLLECTION = 'finished_goods_epcs'
 	writeConcern: { w: 'majority' }
 })
 export class FinishedGoodsEpc {
-	@Prop({ type: mongoose.Schema.Types.ObjectId })
-	_id: mongoose.Types.ObjectId
-
 	@Prop({
 		type: String,
 		required: true,
