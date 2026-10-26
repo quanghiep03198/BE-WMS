@@ -5,7 +5,7 @@ import {
 	DefectiveGoodsSource,
 	DefectiveGoodsUnit,
 	DefectiveLocation
-} from '@modules/defective-goods/constants'
+} from '@modules/defective-goods/domain/constants'
 import { MigrationInterface, QueryRunner, Table } from 'typeorm'
 import { DATABASE_DATA_LAKE, DATABASE_SCHEMA } from '../constants'
 
