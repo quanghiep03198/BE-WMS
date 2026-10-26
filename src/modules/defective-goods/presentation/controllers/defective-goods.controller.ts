@@ -1,6 +1,7 @@
 import { CommonRequestHeader } from '@common/constants'
 import { HttpMethod, RequestUser, RequireAuthorized, RouteHandler, StrictRoles, TRequestUser } from '@common/decorators'
 import { ZodValidationPipe } from '@common/pipes'
+import { I18nTranslations } from '@generated/i18n.generated'
 import { DeleteDefectiveGoodsCommand } from '@modules/defective-goods/application/commands/delete-defective-goods/delete-defective-goods.command'
 import { UpdateDefectiveGoodsCommand } from '@modules/defective-goods/application/commands/update-defective-goods/update-defective-goods.command'
 import { UpdateInboundCommand } from '@modules/defective-goods/application/commands/update-inbound/update-inbound.command'
@@ -30,6 +31,7 @@ import { GetDailyOutboundReportQuery } from '@modules/defective-goods/applicatio
 import { GetDefectiveGoodsInventoryQuery } from '@modules/defective-goods/application/queries/get-defective-goods-inventory/get-defective-goods-inventory.query'
 import { GetDefectiveGoodsQuery } from '@modules/defective-goods/application/queries/get-defective-goods/get-defective-goods.query'
 import { DefectiveGoodsService } from '@modules/defective-goods/application/services/defective-goods.service'
+import { IDefectiveGoods } from '@modules/defective-goods/domain/interfaces'
 import { DefectiveGoodsEntity } from '@modules/defective-goods/infrastructure/persistence/mssql/entities/defective-goods.entity'
 import { UserRole } from '@modules/user/domain/constants'
 import {
@@ -48,7 +50,7 @@ import { ParseObjectIdPipe } from '@nestjs/mongoose'
 import { format } from 'date-fns'
 import { FastifyReply } from 'fastify'
 import { isEmpty, isNil, omit, pickBy } from 'lodash'
-import { I18nContext, I18nService } from 'nestjs-i18n'
+import { I18n, I18nContext, I18nService } from 'nestjs-i18n'
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
 import z from 'zod'
 import { EPCGenerator } from '../../application/helpers/epc-generator'
@@ -85,7 +87,7 @@ export class DefectiveGoodsController {
 			cust_shoes_style,
 			po,
 			mo_no,
-			size_code,
+			size_numcode,
 			assembly_line,
 			sewing_line
 		} = filterQueries
@@ -98,7 +100,7 @@ export class DefectiveGoodsController {
 				cust_shoes_style,
 				po,
 				mo_no: mo_no?.toUpperCase(),
-				size_numcode: size_code?.toUpperCase(),
+				size_numcode: size_numcode?.toUpperCase(),
 				assembly_line,
 				sewing_line
 			},
@@ -132,21 +134,19 @@ export class DefectiveGoodsController {
 	@RequireAuthorized(UserRole.DG_WAREHOUSE_STAFF)
 	public async create(
 		@RequestUser() user: TRequestUser,
+		@I18n() i18n: I18nContext<I18nTranslations>,
 		@Body(new ZodValidationPipe(createDefectiveGoodsDTO)) payload: CreateDefectiveGoodsDTO
 	) {
-		if (payload.ri_type === 'uhf' && Array.isArray(payload.epc)) {
+		if (payload.combination_strategy === 'uhf' && Array.isArray(payload.epc)) {
 			const isActiveEpcsExist = await this.queryBus.execute(new CheckActiveEpcsQuery(payload.epc))
 			if (isActiveEpcsExist)
-				throw new ConflictException(
-					this.i18nService.t('defective-goods.active_epcs_recombination_conflict', {
-						lang: I18nContext.current()?.lang
-					})
-				)
+				throw new ConflictException(i18n.t('defective-goods.active_epcs_recombination_conflict'))
+			delete payload.sizes
 			return this.commandBus.execute(
 				new UpsertDefectiveGoodsCommand(
 					payload.epc.map((item) => ({
+						...(payload as unknown as Partial<IDefectiveGoods>),
 						epc: item,
-						...this.toMongoPayload(payload),
 						unit:
 							payload.defective_category === DefectiveCategory.C_GRADE
 								? DefectiveGoodsUnit.PCS
@@ -157,7 +157,7 @@ export class DefectiveGoodsController {
 				)
 			)
 		}
-		if (payload.ri_type === 'usb' && typeof payload.epc === 'string') {
+		if (payload.combination_strategy === 'usb' && typeof payload.epc === 'string') {
 			const isActiveEpcsExist = await this.queryBus.execute(new CheckActiveEpcsQuery([payload.epc]))
 			if (isActiveEpcsExist)
 				throw new ConflictException(
@@ -165,12 +165,12 @@ export class DefectiveGoodsController {
 						lang: I18nContext.current()?.lang
 					})
 				)
+			delete payload.sizes
 			return this.commandBus.execute(
 				new UpsertDefectiveGoodsCommand(
 					[
 						{
-							...this.toMongoPayload(payload),
-							epc: payload.epc,
+							...(payload as unknown as Partial<IDefectiveGoods>),
 							unit:
 								payload.defective_category === DefectiveCategory.C_GRADE
 									? DefectiveGoodsUnit.PCS
@@ -182,13 +182,15 @@ export class DefectiveGoodsController {
 				)
 			)
 		}
-		if (payload.ri_type === 'manually' && Array.isArray(payload.sizes)) {
+		if (payload.combination_strategy === 'manually' && Array.isArray(payload.sizes)) {
 			const generator = new EPCGenerator()
-			const data = payload.sizes.flatMap((size) => {
-				const epcs = generator.generateBatch(size.qty)
+
+			const data = payload.sizes.flatMap(({ size_numcode, qty }) => {
+				const epcs = generator.generateBatch(qty)
 				return epcs.map((epc) => ({
+					created_by: user._id,
 					epc,
-					size_code: size.size_code,
+					size_numcode,
 					unit:
 						payload.defective_category === DefectiveCategory.C_GRADE
 							? DefectiveGoodsUnit.PCS
@@ -198,19 +200,9 @@ export class DefectiveGoodsController {
 			})
 
 			return this.commandBus.execute(
-				new UpsertDefectiveGoodsCommand(
-					data.map((item) => ({
-						...this.toMongoPayload(payload),
-						epc: item.epc,
-						size_numcode: item.size_code,
-						unit: item.unit,
-						created_by: user._id
-					})),
-					user.username
-				)
+				new UpsertDefectiveGoodsCommand(data as unknown as Partial<IDefectiveGoods>[], user.username)
 			)
 		}
-		// Todo: create new resource for defective goods
 	}
 
 	@RouteHandler({
@@ -239,14 +231,7 @@ export class DefectiveGoodsController {
 		@Body(new ZodValidationPipe(updateDefectiveGoodsDTO)) payload: UpdateDefectiveGoodsDTO
 	) {
 		return this.commandBus.execute(
-			new UpdateDefectiveGoodsCommand(
-				id,
-				{
-					...this.toMongoPayload(payload),
-					updated_by: user._id
-				},
-				user.username
-			)
+			new UpdateDefectiveGoodsCommand(id, { ...this.toPayload(payload), updated_by: user._id }, user.username)
 		)
 	}
 
@@ -281,7 +266,7 @@ export class DefectiveGoodsController {
 				cust_shoes_style: ids.cust_shoes_style,
 				factory_shoes_style: ids.factory_shoes_style?.toUpperCase(),
 				color_sn: ids.color_sn,
-				size_numcode: ids.size_code,
+				size_numcode: ids.size_numcode,
 				defective_description: ids.defect_description,
 				created_at: ids.created && {
 					$gte: new Date(new Date(ids.created).setHours(0, 0, 0, 0)),
@@ -426,17 +411,9 @@ export class DefectiveGoodsController {
 		return reply.send(buffer)
 	}
 
-	private toMongoPayload(payload: Partial<CreateDefectiveGoodsDTO | UpdateDefectiveGoodsDTO>) {
+	private toPayload(payload: Partial<CreateDefectiveGoodsDTO | UpdateDefectiveGoodsDTO>): IDefectiveGoods {
 		const data = { ...payload } as Record<string, any>
-		if (data.ri_type) {
-			data.combination_strategy = data.ri_type
-			delete data.ri_type
-		}
-		if (data.size_code) {
-			data.size_numcode = data.size_code
-			delete data.size_code
-		}
 		delete data.sizes
-		return data
+		return data as IDefectiveGoods
 	}
 }

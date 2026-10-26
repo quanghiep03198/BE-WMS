@@ -2,12 +2,11 @@ import {
 	DefectiveCategory,
 	DefectiveGoodsOutboundPurpose,
 	DefectiveGoodsSource,
+	DefectiveGoodsUnit,
 	DefectiveLocation
 } from '@modules/defective-goods/domain/constants'
-import { Department } from '@modules/department/schemas/department.schema'
-import { User } from '@modules/user/infrastructure/persistence/mongodb/schemas/user.schema'
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose'
-import { type HydratedDocument, type ObjectId, type PaginateModel, Types } from 'mongoose'
+import { type HydratedDocument, type PaginateModel, Types } from 'mongoose'
 import MongooseAutoPopulate from 'mongoose-autopopulate'
 import MongooseDelete, { SoftDeleteModel } from 'mongoose-delete'
 import MongooseLeanVirtuals from 'mongoose-lean-virtuals'
@@ -17,18 +16,20 @@ const DEFECTIVE_GOODS_COLLECTION: Readonly<string> = 'defective_goods'
 
 @Schema({
 	collection: DEFECTIVE_GOODS_COLLECTION,
-	id: true,
-	versionKey: false,
 	timestamps: {
 		createdAt: 'created_at',
 		updatedAt: 'updated_at'
 	},
+	versionKey: false,
+	suppressReservedKeysWarning: false,
 	strictQuery: false,
+	readConcern: { level: 'majority' },
+	writeConcern: { w: 'majority' },
 	toJSON: { virtuals: true },
 	toObject: { virtuals: true }
 })
 export class DefectiveGoods {
-	@Prop({ type: String, trim: true, length: 24 })
+	@Prop({ type: String, required: true, length: 24, immutable: true })
 	epc: string
 
 	@Prop({ type: String, trim: true, uppercase: true, default: null })
@@ -64,11 +65,11 @@ export class DefectiveGoods {
 	@Prop({ type: String, default: DefectiveGoodsSource.FINAL_INSPECTION })
 	shoe_source: DefectiveGoodsSource
 
-	@Prop({ type: Types.ObjectId, ref: () => Department.name, autopopulate: true })
-	assembly_line: ObjectId
+	@Prop({ type: Types.ObjectId, ref: 'Department', autopopulate: true })
+	assembly_line: Types.ObjectId
 
-	@Prop({ type: Types.ObjectId, ref: () => Department.name, autopopulate: true })
-	sewing_line: ObjectId
+	@Prop({ type: Types.ObjectId, ref: 'Department', autopopulate: true })
+	sewing_line: Types.ObjectId
 
 	/**
 	 * Tương đương với ri_type trong MSSQL
@@ -79,8 +80,8 @@ export class DefectiveGoods {
 	@Prop({ type: String, enum: DefectiveLocation, required: true })
 	defective_location: DefectiveLocation
 
-	@Prop({ type: String, enum: ['prs', 'pcs'], required: true })
-	unit: 'prs' | 'pcs'
+	@Prop({ type: String, enum: DefectiveGoodsUnit, required: true })
+	unit: DefectiveGoodsUnit
 
 	@Prop({ type: String, trim: true, uppercase: true })
 	storage_location: string
@@ -89,7 +90,7 @@ export class DefectiveGoods {
 	inbound_date?: Date
 
 	@Prop({ type: String, enum: DefectiveGoodsOutboundPurpose })
-	outbound_purpose: DefectiveGoodsOutboundPurpose
+	outbound_purpose?: DefectiveGoodsOutboundPurpose
 
 	@Prop({ type: Date })
 	outbound_date?: Date
@@ -97,10 +98,10 @@ export class DefectiveGoods {
 	@Prop({ type: Date, default: null })
 	deleted_at?: Date | null
 
-	@Prop({ type: Types.ObjectId, ref: () => User.name, autopopulate: true })
+	@Prop({ type: Types.ObjectId, ref: 'User', autopopulate: true })
 	created_by: Types.ObjectId
 
-	@Prop({ type: Types.ObjectId, ref: () => User.name, autopopulate: true })
+	@Prop({ type: Types.ObjectId, ref: 'User', autopopulate: true })
 	updated_by?: Types.ObjectId
 }
 

@@ -3,15 +3,15 @@ import { isEmpty, isNil } from 'lodash'
 import { z } from 'zod'
 
 export const baseDefectiveGoodsDTO = z.object({
-	ri_type: z.enum(['uhf', 'usb', 'manually']),
+	combination_strategy: z.enum(['uhf', 'usb', 'manually']),
 	defective_category: z.enum(DefectiveCategory),
-	po: z.any().nullish().default('PRELOAD'),
-	mo_no: z.any().nullish(),
+	po: z.string().nullish().default('PRELOAD'),
+	mo_no: z.string().nullish(),
 	brand_name: z.string().trim().nonempty(),
 	cust_shoes_style: z.string().trim().nonempty(),
 	factory_shoes_style: z.string().trim().nonempty(),
 	color_sn: z.string().trim().nonempty(),
-	size_code: z.string().nonempty().optional(),
+	size_numcode: z.string().nonempty().optional(),
 	defective_location: z.enum(DefectiveLocation),
 	defective_description: z.string().nonempty(),
 	shoe_source: z.enum(DefectiveGoodsSource).optional(),
@@ -33,7 +33,7 @@ export const createDefectiveGoodsDTO = baseDefectiveGoodsDTO
 		sizes: z
 			.array(
 				z.object({
-					size_code: z.string().nonempty(),
+					size_numcode: z.string().nonempty(),
 					qty: z.number().min(1)
 				})
 			)
@@ -46,7 +46,7 @@ export const createDefectiveGoodsDTO = baseDefectiveGoodsDTO
 		color_sn: true,
 		defective_location: true,
 		defective_description: true,
-		ri_type: true,
+		combination_strategy: true,
 		defective_category: true
 	})
 	.refine(
@@ -57,7 +57,7 @@ export const createDefectiveGoodsDTO = baseDefectiveGoodsDTO
 		{ message: 'Purchase order and Manufacturing order. are required for B Grade category' }
 	)
 	.check(({ issues, value }) => {
-		switch (value.ri_type) {
+		switch (value.combination_strategy) {
 			case 'uhf': {
 				if (!Array.isArray(value.epc) || value.epc.length === 0)
 					issues.push({
@@ -66,7 +66,7 @@ export const createDefectiveGoodsDTO = baseDefectiveGoodsDTO
 						message: 'EPCs are required when combination strategy is UHF',
 						fatal: true
 					})
-				if (isNil(value.size_code) || isEmpty(value.size_code.trim()))
+				if (isNil(value.size_numcode) || isEmpty(value.size_numcode.trim()))
 					issues.push({
 						code: 'custom',
 						input: value,
@@ -84,7 +84,7 @@ export const createDefectiveGoodsDTO = baseDefectiveGoodsDTO
 						message: 'EPCs are required when combination strategy is USB',
 						fatal: true
 					})
-				if (isNil(value.size_code) || isEmpty(value.size_code.trim()))
+				if (isNil(value.size_numcode) || isEmpty(value.size_numcode.trim()))
 					issues.push({
 						code: 'custom',
 						input: value,
@@ -109,15 +109,15 @@ export const createDefectiveGoodsDTO = baseDefectiveGoodsDTO
 		}
 	})
 	.check(({ issues, value }) => {
-		if (Array.isArray(value.sizes) && value.ri_type === 'manually')
+		if (Array.isArray(value.sizes) && value.combination_strategy === 'manually')
 			value.sizes.forEach((item, index) => {
-				if (value.sizes.findIndex((otherItem) => otherItem.size_code === item.size_code) !== index)
+				if (value.sizes.findIndex((otherItem) => otherItem.size_numcode === item.size_numcode) !== index)
 					issues.push({
 						code: 'custom',
 						input: value,
 						message: 'Do not select the same Size',
 						fatal: true,
-						path: [`sizes.${index}.size_code`]
+						path: [`sizes.${index}.size_numcode`]
 					})
 			})
 	})
@@ -146,7 +146,7 @@ export const deleteManyDefectiveGoodsDTO = z.object({
 	cust_shoes_style: z.string().optional(),
 	factory_shoes_style: z.string().optional(),
 	color_sn: z.string().optional(),
-	size_code: z.string().optional(),
+	size_numcode: z.string().optional(),
 	defective_location: z.enum(DefectiveLocation).optional(),
 	defect_description: z.string().optional(),
 	created: z.string().optional()

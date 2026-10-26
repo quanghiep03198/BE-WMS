@@ -11,7 +11,7 @@ export const filterQueryDTO = z
 		cust_shoes_style: z.string().optional(),
 		po: z.string().optional(),
 		mo_no: z.string().toUpperCase().default(''),
-		size_code: z.string().toUpperCase().optional(),
+		size_numcode: z.string().toUpperCase().optional(),
 		assembly_line: z.string().optional(),
 		sewing_line: z.string().optional(),
 		created: z.string().optional()
