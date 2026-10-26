@@ -1,9 +1,9 @@
 import { Injectable } from '@nestjs/common'
 import { DataSource, IsNull, Not } from 'typeorm'
-import { DefectiveCategory } from '../defective-goods/constants'
-import { DefectiveGoodsEntity } from '../defective-goods/entities/defective-goods.entity'
 // import { RFIDInventoryBackupEntity } from '../rfid/infrastructure/entities/rifd-inventory.entity'
 import { DATA_SOURCE_DATA_LAKE, DATA_WAREHOUSE_CONNECTION } from '@databases/constants'
+import { DefectiveCategory } from '@modules/defective-goods/domain/constants'
+import { DefectiveGoodsEntity } from '@modules/defective-goods/infrastructure/persistence/mssql/entities/defective-goods.entity'
 import {
 	DailyMoInventoryLedger,
 	DailyMoInventoryLedgerModel
