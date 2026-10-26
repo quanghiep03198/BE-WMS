@@ -1,6 +1,36 @@
 import { CommonRequestHeader } from '@common/constants'
 import { HttpMethod, RequestUser, RequireAuthorized, RouteHandler, StrictRoles, TRequestUser } from '@common/decorators'
 import { ZodValidationPipe } from '@common/pipes'
+import { DeleteDefectiveGoodsCommand } from '@modules/defective-goods/application/commands/delete-defective-goods/delete-defective-goods.command'
+import { UpdateDefectiveGoodsCommand } from '@modules/defective-goods/application/commands/update-defective-goods/update-defective-goods.command'
+import { UpdateInboundCommand } from '@modules/defective-goods/application/commands/update-inbound/update-inbound.command'
+import { UpdateOutboundCommand } from '@modules/defective-goods/application/commands/update-outbound/update-outbound.command'
+import { UpsertDefectiveGoodsCommand } from '@modules/defective-goods/application/commands/upsert-defective-goods/upsert-defective-goods.command'
+import {
+	CreateDefectiveGoodsDTO,
+	createDefectiveGoodsDTO,
+	DeleteManyDefectiveGoodsDTO,
+	deleteManyDefectiveGoodsDTO,
+	UpdateDefectiveGoodsDTO,
+	updateDefectiveGoodsDTO
+} from '@modules/defective-goods/application/dto/defective-goods.dto'
+import { FilterQueryDTO, filterQueryDTO } from '@modules/defective-goods/application/dto/filter-query.dto'
+import {
+	UpdateInboundStatusDTO,
+	updateInboundStatusDTO,
+	UpdateOutboundStatusDTO,
+	updateOutboundStatusDTO
+} from '@modules/defective-goods/application/dto/inoutbound.dto'
+import { CheckActiveEpcsQuery } from '@modules/defective-goods/application/queries/check-active-epcs/check-active-epcs.query'
+import { ExportDailyInboundReportQuery } from '@modules/defective-goods/application/queries/export-daily-inbound-report/export-daily-inbound-report.query'
+import { ExportDailyOutboundReportQuery } from '@modules/defective-goods/application/queries/export-daily-outbound-report/export-daily-outbound-report.query'
+import { ExportDefectiveGoodsInventoryQuery } from '@modules/defective-goods/application/queries/export-defective-goods-inventory/export-defective-goods-inventory.query'
+import { GetDailyInboundReportQuery } from '@modules/defective-goods/application/queries/get-daily-inbound-report/get-daily-inbound-report.query'
+import { GetDailyOutboundReportQuery } from '@modules/defective-goods/application/queries/get-daily-outbound-report/get-daily-outbound-report.query'
+import { GetDefectiveGoodsInventoryQuery } from '@modules/defective-goods/application/queries/get-defective-goods-inventory/get-defective-goods-inventory.query'
+import { GetDefectiveGoodsQuery } from '@modules/defective-goods/application/queries/get-defective-goods/get-defective-goods.query'
+import { DefectiveGoodsService } from '@modules/defective-goods/application/services/defective-goods.service'
+import { DefectiveGoodsEntity } from '@modules/defective-goods/infrastructure/persistence/mssql/entities/defective-goods.entity'
 import { UserRole } from '@modules/user/domain/constants'
 import {
 	Body,
@@ -10,39 +40,19 @@ import {
 	Headers,
 	HttpStatus,
 	Param,
-	ParseIntPipe,
 	Query,
 	Res
 } from '@nestjs/common'
+import { CommandBus, QueryBus } from '@nestjs/cqrs'
+import { ParseObjectIdPipe } from '@nestjs/mongoose'
 import { format } from 'date-fns'
 import { FastifyReply } from 'fastify'
 import { isEmpty, isNil, omit, pickBy } from 'lodash'
 import { I18nContext, I18nService } from 'nestjs-i18n'
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
-import { Between, Like } from 'typeorm'
 import z from 'zod'
-import { DefectiveCategory, DefectiveGoodsUnit } from './constants'
-import {
-	CreateDefectiveGoodsDTO,
-	createDefectiveGoodsDTO,
-	DeleteManyDefectiveGoodsDTO,
-	deleteManyDefectiveGoodsDTO,
-	UpdateDefectiveGoodsDTO,
-	updateDefectiveGoodsDTO
-} from './dto/defective-goods.dto'
-import { FilterQueryDTO, filterQueryDTO } from './dto/filter-query.dto'
-import {
-	UpdateInboundStatusDTO,
-	updateInboundStatusDTO,
-	UpdateOutboundStatusDTO,
-	updateOutboundStatusDTO
-} from './dto/inoutbound.dto'
-import { DefectiveGoodsEntity } from './entities/defective-goods.entity'
-import { EPCGenerator } from './helpers/epc-generator'
-import { DefectiveGoodsService } from './services/defective-goods.service'
-import { DefectiveGoodsInboundService } from './services/defective-inbound.service'
-import { DefectiveGoodsInventoryService } from './services/defective-inventory.service'
-import { DefectiveGoodsOutboundService } from './services/defective-outbound.service'
+import { EPCGenerator } from '../../application/helpers/epc-generator'
+import { DefectiveCategory, DefectiveGoodsUnit } from '../../domain/constants'
 
 @Controller('defective-goods')
 export class DefectiveGoodsController {
@@ -50,9 +60,8 @@ export class DefectiveGoodsController {
 		@InjectPinoLogger(DefectiveGoodsController.name) private readonly logger: PinoLogger,
 		private readonly i18nService: I18nService,
 		private readonly defectiveGoodsService: DefectiveGoodsService,
-		private readonly defectiveGoodsInboundService: DefectiveGoodsInboundService,
-		private readonly defectiveGoodsOutboundService: DefectiveGoodsOutboundService,
-		private readonly defectiveGoodsInventoryService: DefectiveGoodsInventoryService
+		private readonly commandBus: CommandBus,
+		private readonly queryBus: QueryBus
 	) {}
 
 	// #region CRUD EPC Combination
@@ -89,30 +98,28 @@ export class DefectiveGoodsController {
 				cust_shoes_style,
 				po,
 				mo_no: mo_no?.toUpperCase(),
-				size_code: size_code?.toUpperCase(),
+				size_numcode: size_code?.toUpperCase(),
 				assembly_line,
 				sewing_line
 			},
 			(item) => !isEmpty(item) && !isNil(item)
 		)
 
-		return await this.defectiveGoodsService.paginate(
-			{
-				ri_cancel: false,
-				...filterQuery,
-				...(epc && { epc: Like(`%${epc.toUpperCase()}%`) }),
-				...(created && {
-					created: Between(
-						new Date(new Date(created).setHours(0, 0, 0, 0)),
-						new Date(new Date(created).setHours(23, 59, 59, 999))
-					)
-				})
-			},
-			{
+		return this.queryBus.execute(
+			new GetDefectiveGoodsQuery(
+				{
+					...filterQuery,
+					...(epc && { epc: { $regex: epc.toUpperCase(), $options: 'i' } }),
+					...(created && {
+						created_at: {
+							$gte: new Date(new Date(created).setHours(0, 0, 0, 0)),
+							$lte: new Date(new Date(created).setHours(23, 59, 59, 999))
+						}
+					})
+				},
 				page,
-				limit,
-				order: { created: 'DESC' }
-			}
+				limit
+			)
 		)
 		// Todo: create new resource for defective goods
 	}
@@ -128,42 +135,52 @@ export class DefectiveGoodsController {
 		@Body(new ZodValidationPipe(createDefectiveGoodsDTO)) payload: CreateDefectiveGoodsDTO
 	) {
 		if (payload.ri_type === 'uhf' && Array.isArray(payload.epc)) {
-			const isActiveEpcsExist: Awaited<boolean> = await this.defectiveGoodsService.checkActiveEpcsExist(payload.epc)
+			const isActiveEpcsExist = await this.queryBus.execute(new CheckActiveEpcsQuery(payload.epc))
 			if (isActiveEpcsExist)
 				throw new ConflictException(
 					this.i18nService.t('defective-goods.active_epcs_recombination_conflict', {
 						lang: I18nContext.current()?.lang
 					})
 				)
-			return await this.defectiveGoodsService.insertMany(
-				payload.epc.map((item) => ({
-					epc: item,
-					user_code_created: user.username,
-					unit:
-						payload.defective_category === DefectiveCategory.C_GRADE
-							? DefectiveGoodsUnit.PCS
-							: DefectiveGoodsUnit.PRS,
-					...omit(payload, ['epc'])
-				}))
+			return this.commandBus.execute(
+				new UpsertDefectiveGoodsCommand(
+					payload.epc.map((item) => ({
+						epc: item,
+						...this.toMongoPayload(payload),
+						unit:
+							payload.defective_category === DefectiveCategory.C_GRADE
+								? DefectiveGoodsUnit.PCS
+								: DefectiveGoodsUnit.PRS,
+						created_by: user._id
+					})),
+					user.username
+				)
 			)
 		}
 		if (payload.ri_type === 'usb' && typeof payload.epc === 'string') {
-			const isActiveEpcsExist: Awaited<boolean> = await this.defectiveGoodsService.checkActiveEpcsExist(payload.epc)
+			const isActiveEpcsExist = await this.queryBus.execute(new CheckActiveEpcsQuery([payload.epc]))
 			if (isActiveEpcsExist)
 				throw new ConflictException(
 					this.i18nService.t('defective-goods.active_epcs_recombination_conflict', {
 						lang: I18nContext.current()?.lang
 					})
 				)
-			return await this.defectiveGoodsService.insertOne({
-				...payload,
-				unit:
-					payload.defective_category === DefectiveCategory.C_GRADE
-						? DefectiveGoodsUnit.PCS
-						: DefectiveGoodsUnit.PRS,
-				epc: payload.epc,
-				user_code_created: user.username
-			})
+			return this.commandBus.execute(
+				new UpsertDefectiveGoodsCommand(
+					[
+						{
+							...this.toMongoPayload(payload),
+							epc: payload.epc,
+							unit:
+								payload.defective_category === DefectiveCategory.C_GRADE
+									? DefectiveGoodsUnit.PCS
+									: DefectiveGoodsUnit.PRS,
+							created_by: user._id
+						}
+					],
+					user.username
+				)
+			)
 		}
 		if (payload.ri_type === 'manually' && Array.isArray(payload.sizes)) {
 			const generator = new EPCGenerator()
@@ -172,8 +189,6 @@ export class DefectiveGoodsController {
 				return epcs.map((epc) => ({
 					epc,
 					size_code: size.size_code,
-					user_name_created: user.username,
-					user_code_created: user.username,
 					unit:
 						payload.defective_category === DefectiveCategory.C_GRADE
 							? DefectiveGoodsUnit.PCS
@@ -182,7 +197,18 @@ export class DefectiveGoodsController {
 				}))
 			})
 
-			return await this.defectiveGoodsService.batchInsert(data)
+			return this.commandBus.execute(
+				new UpsertDefectiveGoodsCommand(
+					data.map((item) => ({
+						...this.toMongoPayload(payload),
+						epc: item.epc,
+						size_numcode: item.size_code,
+						unit: item.unit,
+						created_by: user._id
+					})),
+					user.username
+				)
+			)
 		}
 		// Todo: create new resource for defective goods
 	}
@@ -209,10 +235,19 @@ export class DefectiveGoodsController {
 	@RequireAuthorized(UserRole.DG_WAREHOUSE_STAFF)
 	public async updateOne(
 		@RequestUser() user: TRequestUser,
-		@Param('id', ParseIntPipe) id: number,
+		@Param('id', ParseObjectIdPipe) id: string,
 		@Body(new ZodValidationPipe(updateDefectiveGoodsDTO)) payload: UpdateDefectiveGoodsDTO
 	) {
-		return await this.defectiveGoodsService.updateOneById(id, { ...payload, user_code_updated: user.username })
+		return this.commandBus.execute(
+			new UpdateDefectiveGoodsCommand(
+				id,
+				{
+					...this.toMongoPayload(payload),
+					updated_by: user._id
+				},
+				user.username
+			)
+		)
 	}
 
 	@RouteHandler({
@@ -222,8 +257,8 @@ export class DefectiveGoodsController {
 	})
 	@StrictRoles()
 	@RequireAuthorized(UserRole.DG_WAREHOUSE_STAFF)
-	public async deleteOne(@Param('id', ParseIntPipe) id: number) {
-		return await this.defectiveGoodsService.updateOneById(id, { ri_cancel: true, is_active: false })
+	public async deleteOne(@RequestUser() user: TRequestUser, @Param('id', ParseObjectIdPipe) id: string) {
+		return this.commandBus.execute(new DeleteDefectiveGoodsCommand([id], {}, user.username))
 	}
 
 	@RouteHandler({
@@ -233,8 +268,36 @@ export class DefectiveGoodsController {
 	})
 	@StrictRoles()
 	@RequireAuthorized(UserRole.DG_WAREHOUSE_STAFF)
-	public async deleteMany(@Body(new ZodValidationPipe(deleteManyDefectiveGoodsDTO)) ids: DeleteManyDefectiveGoodsDTO) {
-		return await this.defectiveGoodsService.deleteMany(ids)
+	public async deleteMany(
+		@RequestUser() user: TRequestUser,
+		@Body(new ZodValidationPipe(deleteManyDefectiveGoodsDTO)) ids: DeleteManyDefectiveGoodsDTO
+	) {
+		const filter = pickBy(
+			{
+				defective_category: ids.category,
+				po: ids.po,
+				mo_no: ids.mo_no,
+				brand_name: ids.brand_name?.toUpperCase(),
+				cust_shoes_style: ids.cust_shoes_style,
+				factory_shoes_style: ids.factory_shoes_style?.toUpperCase(),
+				color_sn: ids.color_sn,
+				size_numcode: ids.size_code,
+				defective_description: ids.defect_description,
+				created_at: ids.created && {
+					$gte: new Date(new Date(ids.created).setHours(0, 0, 0, 0)),
+					$lte: new Date(new Date(ids.created).setHours(23, 59, 59, 999))
+				},
+				_id: Array.isArray(ids.excluding_ids) && { $nin: ids.excluding_ids }
+			},
+			(value) => value !== undefined && value !== null
+		)
+		return this.commandBus.execute(
+			new DeleteDefectiveGoodsCommand(
+				Array.isArray(ids.including_ids) ? ids.including_ids : [],
+				filter,
+				user.username
+			)
+		)
 	}
 	// #endregion
 
@@ -257,9 +320,10 @@ export class DefectiveGoodsController {
 	@StrictRoles()
 	@RequireAuthorized(UserRole.DG_WAREHOUSE_STAFF)
 	public async updateInboundStatus(
+		@RequestUser() user: TRequestUser,
 		@Body(new ZodValidationPipe(updateInboundStatusDTO.partial())) data: UpdateInboundStatusDTO
 	) {
-		return await this.defectiveGoodsInboundService.updateInboundStatus(data)
+		return this.commandBus.execute(new UpdateInboundCommand(data, user._id, user.username))
 	}
 
 	@RouteHandler({
@@ -272,7 +336,7 @@ export class DefectiveGoodsController {
 		@Query('date:eq', new ZodValidationPipe(z.coerce.date().transform((value) => format(value, 'yyyy-MM-dd'))))
 		date: string
 	) {
-		return await this.defectiveGoodsInboundService.getDailyInboundReport(date)
+		return this.queryBus.execute(new GetDailyInboundReportQuery(date))
 	}
 
 	@RouteHandler({
@@ -287,7 +351,7 @@ export class DefectiveGoodsController {
 		@Headers(CommonRequestHeader.FACTORY_CODE) factoryCode: string,
 		@Res() reply: FastifyReply
 	) {
-		const buffer = await this.defectiveGoodsInboundService.exportDailyInboundToExcel(date, factoryCode)
+		const buffer = await this.queryBus.execute(new ExportDailyInboundReportQuery(date, factoryCode))
 		return reply.send(buffer)
 	}
 	// #endregion
@@ -300,9 +364,10 @@ export class DefectiveGoodsController {
 	})
 	@RequireAuthorized(UserRole.DG_WAREHOUSE_STAFF)
 	public async updateOutboundStatus(
+		@RequestUser() user: TRequestUser,
 		@Body(new ZodValidationPipe(updateOutboundStatusDTO)) data: UpdateOutboundStatusDTO
 	) {
-		return await this.defectiveGoodsOutboundService.updateOutboundStatus(data)
+		return this.commandBus.execute(new UpdateOutboundCommand(data, user._id, user.username))
 	}
 
 	@RouteHandler({
@@ -315,7 +380,7 @@ export class DefectiveGoodsController {
 		@Query('date:eq', new ZodValidationPipe(z.coerce.date().transform((value) => format(value, 'yyyy-MM-dd'))))
 		date: string
 	) {
-		return await this.defectiveGoodsOutboundService.getDailyOutboundReport(date)
+		return this.queryBus.execute(new GetDailyOutboundReportQuery(date))
 	}
 
 	@RouteHandler({
@@ -330,7 +395,7 @@ export class DefectiveGoodsController {
 		@Headers(CommonRequestHeader.FACTORY_CODE) factoryCode: string,
 		@Res() reply: FastifyReply
 	) {
-		const buffer = await this.defectiveGoodsOutboundService.exportDailyOutboundToExcel(date, factoryCode)
+		const buffer = await this.queryBus.execute(new ExportDailyOutboundReportQuery(date, factoryCode))
 		return reply.send(buffer)
 	}
 
@@ -344,7 +409,7 @@ export class DefectiveGoodsController {
 	})
 	@RequireAuthorized(UserRole.MANAGER, UserRole.DG_WAREHOUSE_STAFF, UserRole.INDUSTRIAL_ENGINEERING_STAFF)
 	async getDefectiveGoodsInventory() {
-		return await this.defectiveGoodsInventoryService.getDefectiveGoodsInventory()
+		return this.queryBus.execute(new GetDefectiveGoodsInventoryQuery())
 	}
 
 	@RouteHandler({
@@ -357,7 +422,21 @@ export class DefectiveGoodsController {
 		@Headers(CommonRequestHeader.FACTORY_CODE) factoryCode: string,
 		@Res() reply: FastifyReply
 	) {
-		const buffer = await this.defectiveGoodsInventoryService.exportDefectiveGoodsInventory(factoryCode)
+		const buffer = await this.queryBus.execute(new ExportDefectiveGoodsInventoryQuery(factoryCode))
 		return reply.send(buffer)
+	}
+
+	private toMongoPayload(payload: Partial<CreateDefectiveGoodsDTO | UpdateDefectiveGoodsDTO>) {
+		const data = { ...payload } as Record<string, any>
+		if (data.ri_type) {
+			data.combination_strategy = data.ri_type
+			delete data.ri_type
+		}
+		if (data.size_code) {
+			data.size_numcode = data.size_code
+			delete data.size_code
+		}
+		delete data.sizes
+		return data
 	}
 }

@@ -1,14 +1,14 @@
 import { DATABASE_DATA_LAKE, DATABASE_SCHEMA } from '@databases/constants'
 import { BoolBitTransformer } from '@databases/transformers/bool.transformer'
 import { BaseAbstractEntity } from '@modules/_base/base.abstract.entity'
-import { Column, Entity } from 'typeorm'
 import {
 	DefectiveCategory,
 	DefectiveGoodsOutboundPurpose,
 	DefectiveGoodsSource,
 	DefectiveGoodsUnit,
 	DefectiveLocation
-} from '../constants'
+} from '@modules/defective-goods/domain/constants'
+import { Column, Entity } from 'typeorm'
 
 export type CombinationCombinationStrategy = 'uhf' | 'usb' | 'manually'
 
@@ -20,6 +20,14 @@ export type CombinationCombinationStrategy = 'uhf' | 'usb' | 'manually'
 	comment: 'Defective goods table'
 })
 export class DefectiveGoodsEntity extends BaseAbstractEntity {
+	@Column({
+		name: 'sync_id',
+		type: 'nvarchar',
+		length: 24,
+		nullable: true
+	})
+	sync_id: string | null
+
 	@Column({
 		name: 'epc',
 		nullable: false,

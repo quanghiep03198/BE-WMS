@@ -1,6 +1,6 @@
+import { DefectiveCategory, DefectiveGoodsSource, DefectiveLocation } from '@modules/defective-goods/domain/constants'
 import { isEmpty, isNil } from 'lodash'
 import { z } from 'zod'
-import { DefectiveCategory, DefectiveGoodsSource, DefectiveLocation } from '../constants'
 
 export const baseDefectiveGoodsDTO = z.object({
 	ri_type: z.enum(['uhf', 'usb', 'manually']),
@@ -137,8 +137,8 @@ export const updateDefectiveGoodsDTO = baseDefectiveGoodsDTO
 	)
 
 export const deleteManyDefectiveGoodsDTO = z.object({
-	including_ids: z.literal('all').or(z.array(z.number().int().positive()).nonempty()),
-	excluding_ids: z.array(z.number().int().positive()).optional(),
+	including_ids: z.literal('all').or(z.array(z.string().regex(/^[a-f\d]{24}$/i)).nonempty()),
+	excluding_ids: z.array(z.string().regex(/^[a-f\d]{24}$/i)).optional(),
 	category: z.enum(DefectiveCategory).optional(),
 	po: z.string().optional(),
 	mo_no: z.string().optional(),

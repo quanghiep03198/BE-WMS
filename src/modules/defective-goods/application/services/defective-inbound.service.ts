@@ -2,15 +2,15 @@ import { ExcelColorPalette } from '@common/constants/excel-color-palette'
 import { applyCommonStyles, AutoFitColumnOptions, autoFitColumns } from '@common/helpers'
 import { SuperJson } from '@common/utils'
 import { DATA_SOURCE_DATA_LAKE } from '@databases/constants'
+import { DefectiveGoodsSource } from '@modules/defective-goods/domain/constants'
+import { DefectiveGoodsEntity } from '@modules/defective-goods/infrastructure/persistence/mssql/entities/defective-goods.entity'
 import { Injectable } from '@nestjs/common'
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm'
 import { format } from 'date-fns'
 import { Workbook } from 'exceljs'
 import { I18nContext, I18nService } from 'nestjs-i18n'
 import { DataSource, In, Repository } from 'typeorm'
-import { DefectiveGoodsSource } from '../constants'
 import { UpdateInboundStatusDTO } from '../dto/inoutbound.dto'
-import { DefectiveGoodsEntity } from '../entities/defective-goods.entity'
 
 @Injectable()
 export class DefectiveGoodsInboundService {

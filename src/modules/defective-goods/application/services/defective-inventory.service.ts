@@ -2,14 +2,18 @@ import { ExcelColorPalette } from '@common/constants/excel-color-palette'
 import { applyCommonStyles, AutoFitColumnOptions, autoFitColumns, getLastColumnLetter } from '@common/helpers'
 import { SuperJson } from '@common/utils'
 import { DATA_SOURCE_DATA_LAKE } from '@databases/constants'
+import {
+	DefectiveCategory,
+	DefectiveGoodsSource,
+	FALLBACK_PURCHASE_ORDER
+} from '@modules/defective-goods/domain/constants'
+import { DefectiveGoodsEntity } from '@modules/defective-goods/infrastructure/persistence/mssql/entities/defective-goods.entity'
 import { Injectable } from '@nestjs/common'
 import { InjectDataSource } from '@nestjs/typeorm'
 import { Workbook } from 'exceljs'
 import { omit } from 'lodash'
 import { I18nContext, I18nService } from 'nestjs-i18n'
 import { DataSource } from 'typeorm'
-import { DefectiveCategory, DefectiveGoodsSource, FALLBACK_PURCHASE_ORDER } from '../constants'
-import { DefectiveGoodsEntity } from '../entities/defective-goods.entity'
 import { DefectiveGoodsInboundService } from './defective-inbound.service'
 
 @Injectable()

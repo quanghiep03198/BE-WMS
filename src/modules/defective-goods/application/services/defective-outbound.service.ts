@@ -2,6 +2,8 @@ import { ExcelColorPalette } from '@common/constants/excel-color-palette'
 import { applyCommonStyles, AutoFitColumnOptions, autoFitColumns } from '@common/helpers'
 import { SuperJson } from '@common/utils'
 import { DATA_SOURCE_DATA_LAKE } from '@databases/constants'
+import { DefectiveCategory, DefectiveGoodsOutboundPurpose } from '@modules/defective-goods/domain/constants'
+import { DefectiveGoodsEntity } from '@modules/defective-goods/infrastructure/persistence/mssql/entities/defective-goods.entity'
 import { ConflictException, Injectable } from '@nestjs/common'
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm'
 import { format } from 'date-fns'
@@ -9,9 +11,7 @@ import { Workbook } from 'exceljs'
 import { omit } from 'lodash'
 import { I18nContext, I18nService } from 'nestjs-i18n'
 import { DataSource, In, IsNull, Repository } from 'typeorm'
-import { DefectiveCategory, DefectiveGoodsOutboundPurpose } from '../constants'
 import { UpdateOutboundStatusDTO } from '../dto/inoutbound.dto'
-import { DefectiveGoodsEntity } from '../entities/defective-goods.entity'
 
 @Injectable()
 export class DefectiveGoodsOutboundService {

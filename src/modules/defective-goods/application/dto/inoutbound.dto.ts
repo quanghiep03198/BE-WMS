@@ -1,5 +1,5 @@
+import { DefectiveGoodsOutboundPurpose } from '@modules/defective-goods/domain/constants'
 import z from 'zod'
-import { DefectiveGoodsOutboundPurpose } from '../constants'
 
 export const updateInboundStatusDTO = z.object({
 	epcs: z.array(z.string().trim().nonempty()),
