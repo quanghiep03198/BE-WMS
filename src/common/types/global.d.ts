@@ -155,6 +155,7 @@ export declare global {
 	type TObjectId = {
 		id: string | Uint8Array
 		__id?: string
+		toString(encode?: 'hex' | 'base64'): string
 		toHexString(): string
 	}
 }
