@@ -186,14 +186,23 @@ export class MongoQueryBuilder<T extends Record<string, any>> {
 	 * index if one exists; see sargable filter notes). Regex special
 	 * characters are escaped automatically.
 	 */
-	public whereLike<K extends keyof T>(field: K, pattern?: Nullable<string>, caseInsensitive = true): this {
+	public whereLike<K extends keyof T>(
+		field: K,
+		pattern: Nullable<string> = this.entry[field] as string | undefined,
+		caseInsensitive = true
+	): this {
 		if (!pattern) return this
 		const safe = MongoQueryBuilder.escapeRegex(pattern)
 		return this.setOperator(field, '$regex', new RegExp(`^${safe}`, caseInsensitive ? 'i' : undefined))
 	}
 
 	/** Matches a field that CONTAINS `pattern` anywhere (cannot use an index) */
-	public whereContains<K extends keyof T>(field: K, pattern?: Nullable<string>, caseInsensitive = true): this {
+	public whereContains<K extends keyof T>(
+		field: K,
+		pattern: Nullable<string> = this.entry[field] as string | undefined,
+		caseInsensitive = true
+	): this {
+		pattern ??= this.entry[field] as string | undefined
 		if (!pattern) return this
 		const safe = MongoQueryBuilder.escapeRegex(pattern)
 		return this.setOperator(field, '$regex', new RegExp(safe, caseInsensitive ? 'i' : undefined))
