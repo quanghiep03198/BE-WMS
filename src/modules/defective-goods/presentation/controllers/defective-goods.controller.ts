@@ -3,9 +3,9 @@ import { HttpMethod, RequestUser, RequireAuthorized, RouteHandler, StrictRoles, 
 import { ZodValidationPipe } from '@common/pipes'
 import { I18nTranslations } from '@generated/i18n.generated'
 import { DeleteDefectiveGoodsCommand } from '@modules/defective-goods/application/commands/delete-defective-goods/delete-defective-goods.command'
+import { StockInDefectiveGoodsCommand } from '@modules/defective-goods/application/commands/stock-in/stock-in.command'
+import { StockOutDefectiveGoodsCommand } from '@modules/defective-goods/application/commands/stock-out/stock-out.command'
 import { UpdateDefectiveGoodsCommand } from '@modules/defective-goods/application/commands/update-defective-goods/update-defective-goods.command'
-import { UpdateInboundCommand } from '@modules/defective-goods/application/commands/update-inbound/update-inbound.command'
-import { UpdateOutboundCommand } from '@modules/defective-goods/application/commands/update-outbound/update-outbound.command'
 import { UpsertDefectiveGoodsCommand } from '@modules/defective-goods/application/commands/upsert-defective-goods/upsert-defective-goods.command'
 import {
 	CreateDefectiveGoodsDTO,
@@ -30,9 +30,9 @@ import { GetDailyInboundReportQuery } from '@modules/defective-goods/application
 import { GetDailyOutboundReportQuery } from '@modules/defective-goods/application/queries/get-daily-outbound-report/get-daily-outbound-report.query'
 import { GetDefectiveGoodsInventoryQuery } from '@modules/defective-goods/application/queries/get-defective-goods-inventory/get-defective-goods-inventory.query'
 import { GetDefectiveGoodsQuery } from '@modules/defective-goods/application/queries/get-defective-goods/get-defective-goods.query'
+import { GetInoutboundEpcsQuery } from '@modules/defective-goods/application/queries/get-inoutbound-epcs/get-inoutbound-epcs.query'
 import { DefectiveGoodsService } from '@modules/defective-goods/application/services/defective-goods.service'
 import { IDefectiveGoods } from '@modules/defective-goods/domain/interfaces'
-import { DefectiveGoodsEntity } from '@modules/defective-goods/infrastructure/persistence/mssql/entities/defective-goods.entity'
 import { UserRole } from '@modules/user/domain/constants'
 import {
 	Body,
@@ -42,6 +42,7 @@ import {
 	Headers,
 	HttpStatus,
 	Param,
+	ParseIntPipe,
 	Query,
 	Res
 } from '@nestjs/common'
@@ -206,16 +207,17 @@ export class DefectiveGoodsController {
 	}
 
 	@RouteHandler({
-		endpoint: 'inoutbound-epcs/:type',
+		endpoint: 'inoutbound-epcs/:stockFlow',
 		method: HttpMethod.GET,
 		statusCode: HttpStatus.OK
 	})
 	@RequireAuthorized(UserRole.MANAGER, UserRole.DG_WAREHOUSE_STAFF)
 	public async getCanInboundEpcs(
-		@Param('type') type: 'inbound' | 'outbound',
-		@Query() queries: Partial<DefectiveGoodsEntity> & { take?: number }
+		@Param('stockFlow') stockFlow: 'inbound' | 'outbound',
+		@Query() filters: Partial<IDefectiveGoods>,
+		@Query('take', new DefaultValuePipe(15), ParseIntPipe) take: number
 	) {
-		return await this.defectiveGoodsService.getCanInoutboundEpcs(type, queries)
+		return await this.queryBus.execute(new GetInoutboundEpcsQuery(stockFlow, filters, take))
 	}
 
 	@RouteHandler({
@@ -304,11 +306,11 @@ export class DefectiveGoodsController {
 	})
 	@StrictRoles()
 	@RequireAuthorized(UserRole.DG_WAREHOUSE_STAFF)
-	public async updateInboundStatus(
+	public async stockInDefectiveGoods(
 		@RequestUser() user: TRequestUser,
 		@Body(new ZodValidationPipe(updateInboundStatusDTO.partial())) data: UpdateInboundStatusDTO
 	) {
-		return this.commandBus.execute(new UpdateInboundCommand(data, user._id, user.username))
+		return this.commandBus.execute(new StockInDefectiveGoodsCommand(data, user))
 	}
 
 	@RouteHandler({
@@ -352,7 +354,7 @@ export class DefectiveGoodsController {
 		@RequestUser() user: TRequestUser,
 		@Body(new ZodValidationPipe(updateOutboundStatusDTO)) data: UpdateOutboundStatusDTO
 	) {
-		return this.commandBus.execute(new UpdateOutboundCommand(data, user._id, user.username))
+		return this.commandBus.execute(new StockOutDefectiveGoodsCommand(data, user))
 	}
 
 	@RouteHandler({

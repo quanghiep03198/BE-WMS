@@ -17,7 +17,7 @@ export class UpsertDefectiveGoodsHandler implements ICommandHandler<UpsertDefect
 	async execute({ items, username }: UpsertDefectiveGoodsCommand) {
 		this.logger.debug(items)
 
-		const records = await this.repository.createMany(items)
+		const records = await this.repository.insertMany(items)
 		const event = new DefectiveGoodsChangedEvent(
 			records.map(({ _id }) => _id.toString()),
 			{ userCodeCreated: username }

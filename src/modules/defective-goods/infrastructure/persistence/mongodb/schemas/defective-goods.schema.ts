@@ -6,7 +6,7 @@ import {
 	DefectiveLocation
 } from '@modules/defective-goods/domain/constants'
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose'
-import { type HydratedDocument, type PaginateModel, Types } from 'mongoose'
+import { Types, type HydratedDocument, type PaginateModel } from 'mongoose'
 import MongooseAutoPopulate from 'mongoose-autopopulate'
 import MongooseDelete, { SoftDeleteModel } from 'mongoose-delete'
 import MongooseLeanVirtuals from 'mongoose-lean-virtuals'
