@@ -1,11 +1,17 @@
 import { IDepartment } from '@modules/department/department.repository.interface'
 import { IUser } from '@modules/user/domain/interfaces'
-import { DefectiveCategory, DefectiveGoodsOutboundPurpose, DefectiveGoodsSource, DefectiveLocation } from '../constants'
+import {
+	CombinationStrategy,
+	DefectiveCategory,
+	DefectiveGoodsOutboundPurpose,
+	DefectiveGoodsSource,
+	DefectiveLocation
+} from '../constants'
 
 export interface IDefectiveGoods {
 	_id?: TObjectId
 	epc: string
-	combination_strategy: 'uhf' | 'usb' | 'manually'
+	combination_strategy: CombinationStrategy
 	defective_category: DefectiveCategory
 	po?: Nullish<string>
 	mo_no?: Nullish<string>

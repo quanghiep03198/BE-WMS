@@ -1,4 +1,5 @@
 import {
+	CombinationStrategy,
 	DefectiveCategory,
 	DefectiveGoodsOutboundPurpose,
 	DefectiveGoodsSource,
@@ -74,8 +75,8 @@ export class DefectiveGoods {
 	/**
 	 * Tương đương với ri_type trong MSSQL
 	 */
-	@Prop({ type: String, enum: ['uhf', 'usb', 'manually'], required: true })
-	combination_strategy: 'uhf' | 'usb' | 'manually'
+	@Prop({ type: String, enum: CombinationStrategy, required: true })
+	combination_strategy: CombinationStrategy
 
 	@Prop({ type: String, enum: DefectiveLocation, required: true })
 	defective_location: DefectiveLocation
@@ -107,13 +108,21 @@ export class DefectiveGoods {
 
 export const DefectiveGoodsSchema = SchemaFactory.createForClass(DefectiveGoods)
 
-DefectiveGoodsSchema.index({ deleted_at: 1 }, { expireAfterSeconds: 7 * 24 * 60 * 60 })
+DefectiveGoodsSchema.index({ outbound_at: 1 }, { expireAfterSeconds: 7 * 24 * 60 * 60 })
 DefectiveGoodsSchema.index({ defective_category: 1 })
 
 DefectiveGoodsSchema.plugin(MongoosePaginate)
+DefectiveGoodsSchema.plugin(MongooseDelete, { overrideMethods: true })
 DefectiveGoodsSchema.plugin(MongooseAutoPopulate)
 DefectiveGoodsSchema.plugin(MongooseLeanVirtuals)
-DefectiveGoodsSchema.plugin(MongooseDelete, { overrideMethods: 'all', deletedAt: false })
+
+DefectiveGoodsSchema.loadClass(DefectiveGoods)
+
+for (const op of ['deleteOne', 'deleteMany', 'findOneAndDelete'] as const) {
+	DefectiveGoodsSchema.pre(op, function () {
+		throw new Error(`Hard delete via ${op} is not allowed, use delete()/deleteById()`)
+	})
+}
 
 export type DefectiveGoodsDocument = HydratedDocument<DefectiveGoods>
 

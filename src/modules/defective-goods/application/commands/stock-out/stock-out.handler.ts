@@ -30,6 +30,5 @@ export class StockOutDefectiveGoodsHandler implements ICommandHandler<StockOutDe
 				{ userCodeUpdated: user.username }
 			)
 		)
-		// return { affected: deleted.length }
 	}
 }

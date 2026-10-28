@@ -1,7 +1,7 @@
 import { FALLBACK_VALUE } from '@common/constants'
 import { DATA_SOURCE_DATA_LAKE } from '@databases/constants'
 import { BaseTypeOrmService } from '@modules/_base/services/base-typeorm.abstract.service'
-import { FALLBACK_PURCHASE_ORDER } from '@modules/defective-goods/domain/constants'
+import { CombinationStrategy, FALLBACK_PURCHASE_ORDER } from '@modules/defective-goods/domain/constants'
 import { DefectiveGoodsEntity } from '@modules/defective-goods/infrastructure/persistence/mssql/entities/defective-goods.entity'
 import { BadGatewayException, Injectable } from '@nestjs/common'
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm'
@@ -60,7 +60,7 @@ export class DefectiveGoodsService extends BaseTypeOrmService<DefectiveGoodsEnti
 				outbound_purpose: IsNull(),
 				ri_cancel: false,
 				is_active: true,
-				ri_type: Equal('manually'),
+				ri_type: Equal(CombinationStrategy.MANUALLY),
 				...omit(filterQueries, ['take'])
 			},
 			order: {
@@ -104,6 +104,11 @@ export class DefectiveGoodsService extends BaseTypeOrmService<DefectiveGoodsEnti
 		}
 	}
 
+	/**
+	 * @deprecated
+	 * @param epcList
+	 * @returns
+	 */
 	public async retrieveSizeQty(epcList: string[]) {
 		const data = await this.defectiveGoodRepository.find({
 			select: ['factory_shoes_style', 'color_sn', 'size_code', 'epc'],
@@ -111,7 +116,7 @@ export class DefectiveGoodsService extends BaseTypeOrmService<DefectiveGoodsEnti
 				epc: In(epcList),
 				ri_cancel: false,
 				is_active: true,
-				ri_type: Not(Equal('manually'))
+				ri_type: Not(Equal(CombinationStrategy.MANUALLY))
 			}
 		})
 
@@ -156,10 +161,10 @@ export class DefectiveGoodsService extends BaseTypeOrmService<DefectiveGoodsEnti
 	public async deleteMany(payload: Partial<DeleteManyDefectiveGoodsDTO>) {
 		const filterQuery: FindOptionsWhere<DefectiveGoodsEntity> = {
 			...omit(payload, ['including_ids', 'excluding_ids', 'created']),
-			...(payload.created && {
+			...(payload.created_at && {
 				created: Between(
-					new Date(new Date(payload.created).setHours(0, 0, 0, 0)),
-					new Date(new Date(payload.created).setHours(23, 59, 59, 999))
+					new Date(new Date(payload.created_at).setHours(0, 0, 0, 0)),
+					new Date(new Date(payload.created_at).setHours(23, 59, 59, 999))
 				)
 			}),
 			...(Array.isArray(payload.excluding_ids) &&

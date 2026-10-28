@@ -1,6 +1,7 @@
 import { CdcHandler } from '@databases/cdc/decorators'
 import { CdcChangeContext, ICdcHandler } from '@databases/cdc/types'
 import { DATA_SOURCE_DATA_LAKE, DATA_WAREHOUSE_CONNECTION, DATABASE_SCHEMA, RecordStatus } from '@databases/constants'
+import { CombinationStrategy } from '@modules/defective-goods/domain/constants'
 import { Department, DepartmentModel } from '@modules/department/schemas/department.schema'
 import { InjectModel } from '@nestjs/mongoose'
 import { Types } from 'mongoose'
@@ -28,7 +29,7 @@ type DefectiveGoodsCdcRow = {
 	sewing_line: string | null
 	assembly_line: string | null
 	ri_cancel: boolean | number | string
-	ri_type: 'uhf' | 'usb' | 'manually'
+	ri_type: CombinationStrategy
 	inbound_date: Date | null
 	outbound_date: Date | null
 	outbound_purpose: string | null
@@ -40,7 +41,7 @@ type DefectiveGoodsCdcRow = {
 
 @CdcHandler({
 	schema: DATABASE_SCHEMA,
-	sourceName: DEFECTIVE_GOODS_TABLE,
+	sourceName: 'dv_defective_goods',
 	dataSourceToken: DATA_SOURCE_DATA_LAKE,
 	pollIntervalMs: 1000,
 	originMarkerColumn: 'sync_id'
@@ -53,6 +54,8 @@ export class DefectiveGoodsCdcHandler implements ICdcHandler<DefectiveGoodsCdcRo
 	) {}
 
 	async handle({ changes }: CdcChangeContext<DefectiveGoodsCdcRow>): Promise<void> {
+		console.log(changes)
+
 		const departmentNames = changes
 			.flatMap(({ data }) => data.flatMap(({ assembly_line, sewing_line }) => [assembly_line, sewing_line]))
 			.filter((name): name is string => Boolean(name))
@@ -69,16 +72,15 @@ export class DefectiveGoodsCdcHandler implements ICdcHandler<DefectiveGoodsCdcRo
 				const _id = new Types.ObjectId(row.sync_id)
 				const isCancelled =
 					row.ri_cancel === true ||
-					row.ri_cancel === 1 ||
-					row.ri_cancel === '1' ||
+					Number.parseInt(row.ri_cancel.toString()) === 1 ||
 					row.isactive === RecordStatus.INACTIVE
 				if (change.operation === 'delete' || (change.operation === 'update' && isCancelled)) {
-					await this.model.deleteOne({ _id }).exec()
-					await this.model.collection.updateOne({ _id }, { $set: { deleted_at: new Date() } })
+					// await this.model.deleteOne({ _id, deleted: false }).exec()
+					await this.model.delete({ _id })
 					continue
 				}
 				if (isCancelled) continue
-				await this.model.collection.updateOne(
+				await this.model.updateOne(
 					{ _id },
 					{
 						$set: {

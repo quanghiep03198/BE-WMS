@@ -7,15 +7,17 @@ import { GetDailyOutboundReportHandler } from './get-daily-outbound-report/get-d
 import { GetDefectiveGoodsInventoryHandler } from './get-defective-goods-inventory/get-defective-goods-inventory.handler'
 import { GetDefectiveGoodsHandler } from './get-defective-goods/get-defective-goods.handler'
 import { GetInoutboundEpcsHandler } from './get-inoutbound-epcs/get-inoutbound-epcs.handler'
+import { GetScanningSizeQtyHandler } from './get-scanning-size-qty/get-scanning-size-qty.handler'
 
 export const DefectiveGoodsQueryHandlers = [
-	GetDefectiveGoodsHandler,
 	CheckActiveEpcsHandler,
-	GetDailyInboundReportHandler,
 	ExportDailyInboundReportHandler,
-	GetDailyOutboundReportHandler,
 	ExportDailyOutboundReportHandler,
+	ExportDefectiveGoodsInventoryHandler,
+	GetDailyInboundReportHandler,
+	GetDailyOutboundReportHandler,
+	GetDefectiveGoodsHandler,
 	GetDefectiveGoodsInventoryHandler,
 	GetInoutboundEpcsHandler,
-	ExportDefectiveGoodsInventoryHandler
+	GetScanningSizeQtyHandler
 ]

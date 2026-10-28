@@ -2,11 +2,12 @@ import { CommonRequestHeader } from '@common/constants'
 import { HttpMethod, RequestUser, RequireAuthorized, RouteHandler, StrictRoles, TRequestUser } from '@common/decorators'
 import { ZodValidationPipe } from '@common/pipes'
 import { I18nTranslations } from '@generated/i18n.generated'
-import { DeleteDefectiveGoodsCommand } from '@modules/defective-goods/application/commands/delete-defective-goods/delete-defective-goods.command'
+import { CreateDefectiveGoodsCommand } from '@modules/defective-goods/application/commands/create-defective-goods/create-defective-goods.command'
+import { DeleteManyDefectiveGoodsCommand } from '@modules/defective-goods/application/commands/delete-many/delete-many-defective-goods.command'
+import { DeleteOneDefectiveGoodsCommand } from '@modules/defective-goods/application/commands/delete-one/delete-defective-goods.command'
 import { StockInDefectiveGoodsCommand } from '@modules/defective-goods/application/commands/stock-in/stock-in.command'
 import { StockOutDefectiveGoodsCommand } from '@modules/defective-goods/application/commands/stock-out/stock-out.command'
 import { UpdateDefectiveGoodsCommand } from '@modules/defective-goods/application/commands/update-defective-goods/update-defective-goods.command'
-import { UpsertDefectiveGoodsCommand } from '@modules/defective-goods/application/commands/upsert-defective-goods/upsert-defective-goods.command'
 import {
 	CreateDefectiveGoodsDTO,
 	createDefectiveGoodsDTO,
@@ -31,6 +32,7 @@ import { GetDailyOutboundReportQuery } from '@modules/defective-goods/applicatio
 import { GetDefectiveGoodsInventoryQuery } from '@modules/defective-goods/application/queries/get-defective-goods-inventory/get-defective-goods-inventory.query'
 import { GetDefectiveGoodsQuery } from '@modules/defective-goods/application/queries/get-defective-goods/get-defective-goods.query'
 import { GetInoutboundEpcsQuery } from '@modules/defective-goods/application/queries/get-inoutbound-epcs/get-inoutbound-epcs.query'
+import { GetScanningSizeQtyQuery } from '@modules/defective-goods/application/queries/get-scanning-size-qty/get-scanning-size-qty.query'
 import { DefectiveGoodsService } from '@modules/defective-goods/application/services/defective-goods.service'
 import { IDefectiveGoods } from '@modules/defective-goods/domain/interfaces'
 import { UserRole } from '@modules/user/domain/constants'
@@ -144,7 +146,7 @@ export class DefectiveGoodsController {
 				throw new ConflictException(i18n.t('defective-goods.active_epcs_recombination_conflict'))
 			delete payload.sizes
 			return this.commandBus.execute(
-				new UpsertDefectiveGoodsCommand(
+				new CreateDefectiveGoodsCommand(
 					payload.epc.map((item) => ({
 						...(payload as unknown as Partial<IDefectiveGoods>),
 						epc: item,
@@ -168,7 +170,7 @@ export class DefectiveGoodsController {
 				)
 			delete payload.sizes
 			return this.commandBus.execute(
-				new UpsertDefectiveGoodsCommand(
+				new CreateDefectiveGoodsCommand(
 					[
 						{
 							...(payload as unknown as Partial<IDefectiveGoods>),
@@ -201,7 +203,7 @@ export class DefectiveGoodsController {
 			})
 
 			return this.commandBus.execute(
-				new UpsertDefectiveGoodsCommand(data as unknown as Partial<IDefectiveGoods>[], user.username)
+				new CreateDefectiveGoodsCommand(data as unknown as Partial<IDefectiveGoods>[], user.username)
 			)
 		}
 	}
@@ -245,7 +247,7 @@ export class DefectiveGoodsController {
 	@StrictRoles()
 	@RequireAuthorized(UserRole.DG_WAREHOUSE_STAFF)
 	public async deleteOne(@RequestUser() user: TRequestUser, @Param('id', ParseObjectIdPipe) id: string) {
-		return this.commandBus.execute(new DeleteDefectiveGoodsCommand([id], {}, user.username))
+		return this.commandBus.execute(new DeleteOneDefectiveGoodsCommand(id, user.username))
 	}
 
 	@RouteHandler({
@@ -257,34 +259,9 @@ export class DefectiveGoodsController {
 	@RequireAuthorized(UserRole.DG_WAREHOUSE_STAFF)
 	public async deleteMany(
 		@RequestUser() user: TRequestUser,
-		@Body(new ZodValidationPipe(deleteManyDefectiveGoodsDTO)) ids: DeleteManyDefectiveGoodsDTO
+		@Body(new ZodValidationPipe(deleteManyDefectiveGoodsDTO)) queries: DeleteManyDefectiveGoodsDTO
 	) {
-		const filter = pickBy(
-			{
-				defective_category: ids.category,
-				po: ids.po,
-				mo_no: ids.mo_no,
-				brand_name: ids.brand_name?.toUpperCase(),
-				cust_shoes_style: ids.cust_shoes_style,
-				factory_shoes_style: ids.factory_shoes_style?.toUpperCase(),
-				color_sn: ids.color_sn,
-				size_numcode: ids.size_numcode,
-				defective_description: ids.defect_description,
-				created_at: ids.created && {
-					$gte: new Date(new Date(ids.created).setHours(0, 0, 0, 0)),
-					$lte: new Date(new Date(ids.created).setHours(23, 59, 59, 999))
-				},
-				_id: Array.isArray(ids.excluding_ids) && { $nin: ids.excluding_ids }
-			},
-			(value) => value !== undefined && value !== null
-		)
-		return this.commandBus.execute(
-			new DeleteDefectiveGoodsCommand(
-				Array.isArray(ids.including_ids) ? ids.including_ids : [],
-				filter,
-				user.username
-			)
-		)
+		return this.commandBus.execute(new DeleteManyDefectiveGoodsCommand(queries, user.username))
 	}
 	// #endregion
 
@@ -294,8 +271,8 @@ export class DefectiveGoodsController {
 		statusCode: HttpStatus.OK
 	})
 	@RequireAuthorized(UserRole.MANAGER, UserRole.DG_WAREHOUSE_STAFF)
-	public async retrieveSizeQty(@Body() data: string[]) {
-		return await this.defectiveGoodsService.retrieveSizeQty(data)
+	public async getScanningSizeQty(@Body() data: string[]) {
+		return await this.queryBus.execute(new GetScanningSizeQtyQuery(data))
 	}
 
 	// #region Inbound

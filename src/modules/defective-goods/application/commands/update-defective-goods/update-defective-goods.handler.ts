@@ -19,6 +19,5 @@ export class UpdateDefectiveGoodsHandler implements ICommandHandler<UpdateDefect
 		const updated = await this.repository.updateOneById(current._id, data)
 		const event = new DefectiveGoodsChangedEvent([current._id.toString()], { userCodeUpdated: username })
 		this.eventBus.publish(event)
-		return updated
 	}
 }

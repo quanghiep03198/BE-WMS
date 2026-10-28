@@ -2,6 +2,7 @@ import { DATABASE_DATA_LAKE, DATABASE_SCHEMA } from '@databases/constants'
 import { BoolBitTransformer } from '@databases/transformers/bool.transformer'
 import { BaseAbstractEntity } from '@modules/_base/base.abstract.entity'
 import {
+	CombinationStrategy,
 	DefectiveCategory,
 	DefectiveGoodsOutboundPurpose,
 	DefectiveGoodsSource,
@@ -9,8 +10,6 @@ import {
 	DefectiveLocation
 } from '@modules/defective-goods/domain/constants'
 import { Column, Entity } from 'typeorm'
-
-export type CombinationCombinationStrategy = 'uhf' | 'usb' | 'manually'
 
 @Entity({
 	database: DATABASE_DATA_LAKE,
@@ -159,7 +158,7 @@ export class DefectiveGoodsEntity extends BaseAbstractEntity {
 		enum: ['uhf', 'usb', 'manually'],
 		comment: 'Return Instruction type, including uhf, usb, manually'
 	})
-	ri_type: CombinationCombinationStrategy
+	ri_type: CombinationStrategy
 
 	@Column({
 		name: 'inbound_date',

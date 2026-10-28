@@ -30,4 +30,10 @@ export enum DefectiveGoodsUnit {
 	PCS = 'pcs'
 }
 
+export enum CombinationStrategy {
+	MANUALLY = 'manually',
+	UHF = 'uhf',
+	USB = 'usb'
+}
+
 export const FALLBACK_PURCHASE_ORDER = 'PRELOAD'

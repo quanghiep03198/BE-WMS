@@ -139,7 +139,7 @@ export const updateDefectiveGoodsDTO = baseDefectiveGoodsDTO
 export const deleteManyDefectiveGoodsDTO = z.object({
 	including_ids: z.literal('all').or(z.array(z.string().regex(/^[a-f\d]{24}$/i)).nonempty()),
 	excluding_ids: z.array(z.string().regex(/^[a-f\d]{24}$/i)).optional(),
-	category: z.enum(DefectiveCategory).optional(),
+	defective_category: z.enum(DefectiveCategory).optional(),
 	po: z.string().optional(),
 	mo_no: z.string().optional(),
 	brand_name: z.string().optional(),
@@ -149,7 +149,9 @@ export const deleteManyDefectiveGoodsDTO = z.object({
 	size_numcode: z.string().optional(),
 	defective_location: z.enum(DefectiveLocation).optional(),
 	defect_description: z.string().optional(),
-	created: z.string().optional()
+	assembly_line: z.string().optional(),
+	sewing_line: z.string().optional(),
+	created_at: z.string().optional()
 })
 
 export type CreateDefectiveGoodsDTO = z.infer<typeof createDefectiveGoodsDTO>

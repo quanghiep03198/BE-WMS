@@ -1,6 +1,7 @@
 import { TRequestUser } from '@common/decorators'
 import { IBaseRepository } from '@modules/_base/interfaces/base.abstract.repository.interface'
 import { IDefectiveGoods } from '@modules/defective-goods/domain/interfaces'
+import { DeleteManyDefectiveGoodsDTO } from '../dto/defective-goods.dto'
 import { UpdateInboundStatusDTO, UpdateOutboundStatusDTO } from '../dto/inoutbound.dto'
 
 export const DEFECTIVE_GOODS_REPOSITORY = Symbol('DEFECTIVE_GOODS_REPOSITORY')
@@ -20,13 +21,18 @@ export interface IDefectiveGoodsRepository extends IBaseRepository<IDefectiveGoo
 		stockFlow: 'inbound' | 'outbound',
 		filters?: Partial<IDefectiveGoods> | Record<string, any>
 	): Promise<IDefectiveGoods[]>
+	getScanningSizeQty(epcs: string[]): Promise<
+		{
+			factory_shoes_style: string
+			color_sn: string
+			sizes: {
+				size_code: string
+				qty: number
+			}[]
+		}[]
+	>
 	stockIn(payload: UpdateInboundStatusDTO, user: TRequestUser): Promise<IDefectiveGoods[]>
 	stockOut(payload: UpdateOutboundStatusDTO, user: TRequestUser): Promise<IDefectiveGoods[]>
-	// findById(id: string): Promise<IDefectiveGoods | null>
-	// findOne(filter: FilterQuery<DefectiveGoods>): Promise<IDefectiveGoods | null>
-	// findOneForWrite(filter: FilterQuery<DefectiveGoods>): Promise<IDefectiveGoods | null>
-	// findManyForWrite(filter: FilterQuery<DefectiveGoods>): Promise<IDefectiveGoods[]>
-	// updateById(id: string, data: IDefectiveGoods): Promise<IDefectiveGoods | null>
-	// softDeleteById(id: string): Promise<IDefectiveGoods | null>
-	// softDeleteMany(filter: FilterQuery<DefectiveGoods>): Promise<IDefectiveGoods[]>
+	deleteMany(filter: DeleteManyDefectiveGoodsDTO): Promise<string[]>
+	// deleteMany(filter?: Partial<IDefectiveGoods> | Record<string, any>): Promise<void>
 }

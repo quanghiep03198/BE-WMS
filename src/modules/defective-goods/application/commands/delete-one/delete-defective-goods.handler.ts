@@ -2,16 +2,16 @@ import { Inject } from '@nestjs/common'
 import { CommandHandler, EventBus, ICommandHandler } from '@nestjs/cqrs'
 import { DefectiveGoodsChangedEvent } from '../../../domain/events/defective-goods.events'
 import { DEFECTIVE_GOODS_REPOSITORY, IDefectiveGoodsRepository } from '../../ports/defective-goods.repository.port'
-import { DeleteDefectiveGoodsCommand } from './delete-defective-goods.command'
+import { DeleteOneDefectiveGoodsCommand } from './delete-defective-goods.command'
 
-@CommandHandler(DeleteDefectiveGoodsCommand)
-export class DeleteDefectiveGoodsHandler implements ICommandHandler<DeleteDefectiveGoodsCommand> {
+@CommandHandler(DeleteOneDefectiveGoodsCommand)
+export class DeleteOneDefectiveGoodsHandler implements ICommandHandler<DeleteOneDefectiveGoodsCommand> {
 	constructor(
 		@Inject(DEFECTIVE_GOODS_REPOSITORY) private readonly repository: IDefectiveGoodsRepository,
 		private readonly eventBus: EventBus
 	) {}
-	async execute({ ids, filter, username }: DeleteDefectiveGoodsCommand) {
-		const documents = await this.repository.softDeleteManyByIds(ids)
-		this.eventBus.publish(new DefectiveGoodsChangedEvent(ids, { userCodeUpdated: username }))
+	async execute({ id, username }: DeleteOneDefectiveGoodsCommand) {
+		await this.repository.softDeleteOneById(id)
+		this.eventBus.publish(new DefectiveGoodsChangedEvent([id], { userCodeUpdated: username }))
 	}
 }

@@ -18,6 +18,5 @@ export class StockInDefectiveGoodsHandler implements ICommandHandler<StockInDefe
 				{ userCodeUpdated: user.username }
 			)
 		)
-		return { affected: stockedInEpcs.length }
 	}
 }
