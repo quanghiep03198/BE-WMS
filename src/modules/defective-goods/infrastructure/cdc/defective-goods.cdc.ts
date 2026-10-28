@@ -54,8 +54,6 @@ export class DefectiveGoodsCdcHandler implements ICdcHandler<DefectiveGoodsCdcRo
 	) {}
 
 	async handle({ changes }: CdcChangeContext<DefectiveGoodsCdcRow>): Promise<void> {
-		console.log(changes)
-
 		const departmentNames = changes
 			.flatMap(({ data }) => data.flatMap(({ assembly_line, sewing_line }) => [assembly_line, sewing_line]))
 			.filter((name): name is string => Boolean(name))
@@ -64,6 +62,7 @@ export class DefectiveGoodsCdcHandler implements ICdcHandler<DefectiveGoodsCdcRo
 			.select({ _id: 1, 'name.cn': 1 })
 			.lean()
 			.exec()
+
 		const departmentIds = new Map(departments.map((department) => [department.name.cn, department._id]))
 
 		for (const change of changes) {
@@ -75,7 +74,6 @@ export class DefectiveGoodsCdcHandler implements ICdcHandler<DefectiveGoodsCdcRo
 					Number.parseInt(row.ri_cancel.toString()) === 1 ||
 					row.isactive === RecordStatus.INACTIVE
 				if (change.operation === 'delete' || (change.operation === 'update' && isCancelled)) {
-					// await this.model.deleteOne({ _id, deleted: false }).exec()
 					await this.model.delete({ _id })
 					continue
 				}

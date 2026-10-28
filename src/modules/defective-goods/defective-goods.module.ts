@@ -6,6 +6,7 @@ import { CqrsModule } from '@nestjs/cqrs'
 import { InjectModel, MongooseModule } from '@nestjs/mongoose'
 import { TypeOrmModule } from '@nestjs/typeorm'
 import { DefectiveGoodsCommandHandlers } from './application/commands'
+import { DEFECTIVE_GOODS_REPORT_REPOSITORY } from './application/ports/defective-goods-report.repository.port'
 import { DEFECTIVE_GOODS_REPOSITORY } from './application/ports/defective-goods.repository.port'
 import { DefectiveGoodsQueryHandlers } from './application/queries'
 import { DefectiveGoodsSaga } from './application/sagas/defective-goods.saga'
@@ -14,7 +15,8 @@ import { DefectiveGoodsInboundService } from './application/services/defective-i
 import { DefectiveGoodsInventoryService } from './application/services/defective-inventory.service'
 import { DefectiveGoodsOutboundService } from './application/services/defective-outbound.service'
 import { DefectiveGoodsCdcHandlers } from './infrastructure/cdc'
-import { DefectiveGoodsMongoRepository } from './infrastructure/persistence/mongodb/repositories/defective-goods.repository'
+import { DefectiveGoodsReportRepository } from './infrastructure/persistence/mongodb/repositories/defective-goods-report.repository'
+import { DefectiveGoodsRepository } from './infrastructure/persistence/mongodb/repositories/defective-goods.repository'
 import {
 	DefectiveGoods,
 	DefectiveGoodsModel,
@@ -42,7 +44,8 @@ import { DefectiveGoodsController } from './presentation/controllers/defective-g
 		...DefectiveGoodsQueryHandlers,
 		...DefectiveGoodsCdcHandlers,
 		...DefectiveGoodsConsumers,
-		{ provide: DEFECTIVE_GOODS_REPOSITORY, useClass: DefectiveGoodsMongoRepository },
+		{ provide: DEFECTIVE_GOODS_REPOSITORY, useClass: DefectiveGoodsRepository },
+		{ provide: DEFECTIVE_GOODS_REPORT_REPOSITORY, useClass: DefectiveGoodsReportRepository },
 		DefectiveGoodsSaga,
 		DefectiveGoodsService,
 		DefectiveGoodsInboundService,

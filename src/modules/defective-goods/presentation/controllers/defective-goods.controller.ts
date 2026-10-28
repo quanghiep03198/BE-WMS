@@ -44,6 +44,7 @@ import {
 	Headers,
 	HttpStatus,
 	Param,
+	ParseDatePipe,
 	ParseIntPipe,
 	Query,
 	Res
@@ -297,8 +298,8 @@ export class DefectiveGoodsController {
 	})
 	@RequireAuthorized(UserRole.MANAGER, UserRole.DG_WAREHOUSE_STAFF, UserRole.INDUSTRIAL_ENGINEERING_STAFF)
 	public async getDailyInboundReport(
-		@Query('date:eq', new ZodValidationPipe(z.coerce.date().transform((value) => format(value, 'yyyy-MM-dd'))))
-		date: string
+		@Query('date:eq', new ZodValidationPipe(z.coerce.date()), new ParseDatePipe())
+		date: Date
 	) {
 		return this.queryBus.execute(new GetDailyInboundReportQuery(date))
 	}
@@ -341,8 +342,8 @@ export class DefectiveGoodsController {
 	})
 	@RequireAuthorized(UserRole.MANAGER, UserRole.DG_WAREHOUSE_STAFF, UserRole.INDUSTRIAL_ENGINEERING_STAFF)
 	public async getDailyOutboundReport(
-		@Query('date:eq', new ZodValidationPipe(z.coerce.date().transform((value) => format(value, 'yyyy-MM-dd'))))
-		date: string
+		@Query('date:eq', new ZodValidationPipe(z.coerce.date()), new ParseDatePipe())
+		date: Date
 	) {
 		return this.queryBus.execute(new GetDailyOutboundReportQuery(date))
 	}

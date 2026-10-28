@@ -24,7 +24,7 @@ import { LeanDocument, mongo, Types, type AnyBulkWriteOperation, type QueryOptio
 import { DefectiveGoods, DefectiveGoodsDocument, DefectiveGoodsModel } from '../schemas/defective-goods.schema'
 
 @Injectable()
-export class DefectiveGoodsMongoRepository
+export class DefectiveGoodsRepository
 	extends BaseMongoRepository<DefectiveGoodsDocument>
 	implements IDefectiveGoodsRepository
 {

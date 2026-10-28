@@ -23,6 +23,7 @@ const DEFECTIVE_GOODS_COLLECTION: Readonly<string> = 'defective_goods'
 	},
 	versionKey: false,
 	suppressReservedKeysWarning: false,
+	strict: false,
 	strictQuery: false,
 	readConcern: { level: 'majority' },
 	writeConcern: { w: 'majority' },

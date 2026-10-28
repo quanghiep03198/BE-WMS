@@ -1,3 +1,3 @@
 export class GetDailyOutboundReportQuery {
-	constructor(public readonly date: string) {}
+	constructor(public readonly date: Date) {}
 }
