@@ -94,7 +94,7 @@ export class DefectiveGoodsReportRepository implements IDefectiveGoodsReportRepo
 			},
 			{
 				$lookup: {
-					from: 'department',
+					from: 'departments',
 					localField: '_id.assembly_line',
 					foreignField: '_id',
 					as: 'assembly_line_info'
@@ -102,7 +102,7 @@ export class DefectiveGoodsReportRepository implements IDefectiveGoodsReportRepo
 			},
 			{
 				$lookup: {
-					from: 'department',
+					from: 'departments',
 					localField: '_id.sewing_line',
 					foreignField: '_id',
 					as: 'sewing_line_info'
@@ -125,12 +125,12 @@ export class DefectiveGoodsReportRepository implements IDefectiveGoodsReportRepo
 					factory_shoes_style: '$_id.factory_shoes_style',
 					color_sn: '$_id.color_sn',
 					defective_category: '$_id.defective_category',
+					sewing_line: '$sewing_line_info',
+					assembly_line: '$assembly_line_info',
 					shoe_source: '$_id.shoe_source',
 					storage_location: '$_id.storage_location',
 					size_ledger: 1,
-					total_qty: 1,
-					assembly_line_info: 1,
-					sewing_line_info: 1
+					total_qty: 1
 				}
 			},
 			{
@@ -183,8 +183,6 @@ export class DefectiveGoodsReportRepository implements IDefectiveGoodsReportRepo
 						cust_shoes_style: '$_id.cust_shoes_style',
 						factory_shoes_style: '$_id.factory_shoes_style',
 						color_sn: '$_id.color_sn',
-						sewing_line: '$_id.sewing_line',
-						assembly_line: '$_id.assembly_line',
 						defective_category: '$_id.defective_category',
 						outbound_purpose: '$_id.outbound_purpose'
 					},
@@ -234,7 +232,6 @@ export class DefectiveGoodsReportRepository implements IDefectiveGoodsReportRepo
 			{
 				$group: {
 					_id: {
-						outbound_date: '$outbound_date',
 						brand_name: '$brand_name',
 						po: '$po',
 						mo_no: '$mo_no',
@@ -244,8 +241,9 @@ export class DefectiveGoodsReportRepository implements IDefectiveGoodsReportRepo
 						sewing_line: '$sewing_line',
 						assembly_line: '$assembly_line',
 						defective_category: '$defective_category',
-						size_numcode: '$size_numcode',
-						outbound_purpose: '$outbound_purpose'
+						shoe_source: '$shoe_source',
+						storage_location: '$storage_location',
+						size_numcode: '$size_numcode'
 					},
 					qty: { $sum: 1 }
 				}
@@ -253,7 +251,6 @@ export class DefectiveGoodsReportRepository implements IDefectiveGoodsReportRepo
 			{
 				$group: {
 					_id: {
-						outbound_date: '$_id.outbound_date',
 						brand_name: '$_id.brand_name',
 						po: '$_id.po',
 						mo_no: '$_id.mo_no',
@@ -263,20 +260,45 @@ export class DefectiveGoodsReportRepository implements IDefectiveGoodsReportRepo
 						sewing_line: '$_id.sewing_line',
 						assembly_line: '$_id.assembly_line',
 						defective_category: '$_id.defective_category',
-						outbound_purpose: '$_id.outbound_purpose'
+						shoe_source: '$_id.shoe_source',
+						storage_location: '$_id.storage_location'
 					},
 					size_ledger: {
 						$push: {
 							size_numcode: '$_id.size_numcode',
 							qty: '$qty'
 						}
+					},
+					total_qty: {
+						$sum: '$qty'
 					}
+				}
+			},
+			{
+				$lookup: {
+					from: 'departments',
+					localField: '_id.assembly_line',
+					foreignField: '_id',
+					as: 'assembly_line_info'
+				}
+			},
+			{
+				$lookup: {
+					from: 'departments',
+					localField: '_id.sewing_line',
+					foreignField: '_id',
+					as: 'sewing_line_info'
+				}
+			},
+			{
+				$addFields: {
+					assembly_line_info: { $first: '$assembly_line_info' },
+					sewing_line_info: { $first: '$sewing_line_info' }
 				}
 			},
 			{
 				$project: {
 					_id: 0,
-					date: '$_id.outbound_date',
 					brand_name: '$_id.brand_name',
 					po: '$_id.po',
 					mo_no: '$_id.mo_no',
@@ -284,12 +306,17 @@ export class DefectiveGoodsReportRepository implements IDefectiveGoodsReportRepo
 					factory_shoes_style: '$_id.factory_shoes_style',
 					color_sn: '$_id.color_sn',
 					defective_category: '$_id.defective_category',
-					size_ledger: 1
+					sewing_line: '$sewing_line_info',
+					assembly_line: '$assembly_line_info',
+					shoe_source: '$_id.shoe_source',
+					storage_location: '$_id.storage_location',
+					size_ledger: 1,
+					total_qty: 1
 				}
 			},
 			{
 				$sort: {
-					outbound_date: 1,
+					date: 1,
 					brand_name: 1,
 					po: 1,
 					mo_no: 1

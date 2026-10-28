@@ -19,7 +19,8 @@ export interface IDefectiveGoodsRepository extends IBaseRepository<IDefectiveGoo
 	findOne(filter?: Partial<IDefectiveGoods> | Record<string, any>): Promise<IDefectiveGoods>
 	getInoutboundEpcs(
 		stockFlow: 'inbound' | 'outbound',
-		filters?: Partial<IDefectiveGoods> | Record<string, any>
+		filters?: Partial<IDefectiveGoods> | Record<string, any>,
+		take?: number
 	): Promise<IDefectiveGoods[]>
 	getScanningSizeQty(epcs: string[]): Promise<
 		{

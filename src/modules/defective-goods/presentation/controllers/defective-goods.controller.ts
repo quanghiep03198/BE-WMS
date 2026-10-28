@@ -33,7 +33,6 @@ import { GetDefectiveGoodsInventoryQuery } from '@modules/defective-goods/applic
 import { GetDefectiveGoodsQuery } from '@modules/defective-goods/application/queries/get-defective-goods/get-defective-goods.query'
 import { GetInoutboundEpcsQuery } from '@modules/defective-goods/application/queries/get-inoutbound-epcs/get-inoutbound-epcs.query'
 import { GetScanningSizeQtyQuery } from '@modules/defective-goods/application/queries/get-scanning-size-qty/get-scanning-size-qty.query'
-import { DefectiveGoodsService } from '@modules/defective-goods/application/services/defective-goods.service'
 import { IDefectiveGoods } from '@modules/defective-goods/domain/interfaces'
 import { UserRole } from '@modules/user/domain/constants'
 import {
@@ -45,7 +44,6 @@ import {
 	HttpStatus,
 	Param,
 	ParseDatePipe,
-	ParseIntPipe,
 	Query,
 	Res
 } from '@nestjs/common'
@@ -65,7 +63,6 @@ export class DefectiveGoodsController {
 	constructor(
 		@InjectPinoLogger(DefectiveGoodsController.name) private readonly logger: PinoLogger,
 		private readonly i18nService: I18nService,
-		private readonly defectiveGoodsService: DefectiveGoodsService,
 		private readonly commandBus: CommandBus,
 		private readonly queryBus: QueryBus
 	) {}
@@ -218,7 +215,7 @@ export class DefectiveGoodsController {
 	public async getCanInboundEpcs(
 		@Param('stockFlow') stockFlow: 'inbound' | 'outbound',
 		@Query() filters: Partial<IDefectiveGoods>,
-		@Query('take', new DefaultValuePipe(15), ParseIntPipe) take: number
+		@Query('take') take: Nullish<number>
 	) {
 		return await this.queryBus.execute(new GetInoutboundEpcsQuery(stockFlow, filters, take))
 	}
