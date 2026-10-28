@@ -99,19 +99,21 @@ async function execute() {
 							factory_shoes_style: spec.factory_shoes_style,
 							cust_shoes_style: spec.cust_shoes_style
 						},
-						update: [
-							{
-								$set: {
-									brand_name: spec.brand_name,
-									factory_shoes_style: spec.factory_shoes_style,
-									cust_shoes_style: spec.cust_shoes_style,
-									product_variants: spec.product_variants.map((variant) => ({
+						update: {
+							$setOnInsert: {
+								brand_name: spec.brand_name,
+								factory_shoes_style: spec.factory_shoes_style,
+								cust_shoes_style: spec.cust_shoes_style
+							},
+							$push: {
+								product_variants: {
+									$each: spec.product_variants.map((variant) => ({
 										...variant,
 										sizes: variant.sizes.map((sz) => sz.size_numcode)
 									}))
 								}
 							}
-						],
+						},
 						upsert: true
 					}
 				})),
