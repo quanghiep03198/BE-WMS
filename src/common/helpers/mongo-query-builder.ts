@@ -1,3 +1,4 @@
+import { format } from 'date-fns'
 import { FilterQuery, PipelineStage } from 'mongoose'
 
 /**
@@ -149,6 +150,15 @@ export class MongoQueryBuilder<T extends Record<string, any>> {
 		const resolved = this.resolveValue(field, value)
 		if (!this.isPresent(resolved)) return this
 		return this.setOperator(field, '$lte', resolved) // fixed: was $lt before
+	}
+
+	public whereDateEqual<K extends keyof T>(field: K, value?: Nullable<Date>): this {
+		const resolved = this.resolveValue(field, value)
+		if (!this.isPresent(resolved)) return this
+		return this.setOperator('expr', '$eq', [
+			{ $dateToString: { format: '%Y-%m-%d', date: `$${field as string}` } },
+			{ $dateToString: { format: '%Y-%m-%d', date: format(new Date(resolved), 'yyyy-MM-dd') } }
+		])
 	}
 
 	/**
