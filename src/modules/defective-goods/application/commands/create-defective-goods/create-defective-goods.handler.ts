@@ -1,7 +1,6 @@
-import { DefectiveGoodsModel } from '@modules/defective-goods/domain/models/defective-goods.model'
+import { DefectiveGoodsDomainModel } from '@modules/defective-goods/domain/models/defective-goods.model'
 import { Inject } from '@nestjs/common'
-import { CommandHandler, EventBus, ICommandHandler } from '@nestjs/cqrs'
-import { DefectiveGoodsCreatedEvent } from '../../../domain/events/defective-goods.events'
+import { CommandHandler, EventPublisher, ICommandHandler } from '@nestjs/cqrs'
 import { DEFECTIVE_GOODS_REPOSITORY, IDefectiveGoodsRepository } from '../../ports/defective-goods.repository.port'
 import { CreateDefectiveGoodsCommand } from './create-defective-goods.command'
 
@@ -9,17 +8,19 @@ import { CreateDefectiveGoodsCommand } from './create-defective-goods.command'
 export class CreateDefectiveGoodsHandler implements ICommandHandler<CreateDefectiveGoodsCommand> {
 	constructor(
 		@Inject(DEFECTIVE_GOODS_REPOSITORY) private readonly repository: IDefectiveGoodsRepository,
-		private readonly eventBus: EventBus
+		private readonly eventPublisher: EventPublisher
 	) {}
 
 	async execute({ payload, user }: CreateDefectiveGoodsCommand) {
-		const newMatches = DefectiveGoodsModel.create({ ...payload, created_by: user._id })
-		const records = await this.repository.insertMany(newMatches)
-		this.eventBus.publish(
-			new DefectiveGoodsCreatedEvent(
-				records.map(({ _id }) => _id.toString()),
-				{ userCodeCreated: user.username }
-			)
-		)
+		const models = DefectiveGoodsDomainModel.create({
+			...payload,
+			created_by: user._id
+		} as FirstParameter<typeof DefectiveGoodsDomainModel.create>)
+		models.forEach((model) => model.create())
+		await this.repository.create(models)
+		models.forEach((model) => {
+			this.eventPublisher.mergeObjectContext(model)
+			model.commit()
+		})
 	}
 }

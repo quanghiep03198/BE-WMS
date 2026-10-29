@@ -1,5 +1,5 @@
-import { DefectiveGoodsInboundService } from '../../services/defective-inbound.service'
 import { IQueryHandler, QueryHandler } from '@nestjs/cqrs'
+import { DefectiveGoodsInboundService } from '../../services/defective-inbound.service'
 import { ExportDailyInboundReportQuery } from './export-daily-inbound-report.query'
 
 @QueryHandler(ExportDailyInboundReportQuery)

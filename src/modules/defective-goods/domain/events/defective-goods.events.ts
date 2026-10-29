@@ -2,7 +2,7 @@ import { IEvent } from '@nestjs/cqrs'
 
 export class DefectiveGoodsCreatedEvent implements IEvent {
 	constructor(
-		public readonly createdDocs: string[],
+		public readonly id: string | TObjectId,
 		public readonly audit: { userCodeCreated?: string; userCodeUpdated?: string } = {}
 	) {}
 }
@@ -27,7 +27,7 @@ export class DefectiveGoodsStockedInEvent implements IEvent {
 
 export class DefectiveGoodsChangedEvent implements IEvent {
 	constructor(
-		public readonly documentIds: string[],
+		public readonly documentId: string,
 		public readonly audit: { createdBy?: string; updatedBy?: string } = {}
 	) {}
 }

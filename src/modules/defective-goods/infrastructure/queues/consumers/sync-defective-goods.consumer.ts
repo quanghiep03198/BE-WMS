@@ -13,7 +13,7 @@ import { Types } from 'mongoose'
 import { Repository } from 'typeorm'
 import { DEFECTIVE_GOODS_SYNC_QUEUE } from '..'
 
-@Processor(DEFECTIVE_GOODS_SYNC_QUEUE)
+@Processor(DEFECTIVE_GOODS_SYNC_QUEUE, { concurrency: 5 })
 export class SyncDefectiveGoodsConsumer extends WorkerHost {
 	constructor(
 		@InjectModel(DefectiveGoods.name, DATA_WAREHOUSE_CONNECTION) private readonly model: DefectiveGoodsModel,

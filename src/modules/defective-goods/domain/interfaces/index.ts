@@ -5,6 +5,7 @@ import {
 	DefectiveCategory,
 	DefectiveGoodsOutboundPurpose,
 	DefectiveGoodsSource,
+	DefectiveGoodsUnit,
 	DefectiveLocation
 } from '../constants'
 
@@ -20,7 +21,7 @@ export interface IDefectiveGoods {
 	factory_shoes_style: string
 	color_sn: string
 	size_numcode: string
-	unit: 'prs' | 'pcs'
+	unit: DefectiveGoodsUnit
 	defective_location: DefectiveLocation
 	shoe_source?: DefectiveGoodsSource
 	defective_description: string
@@ -32,7 +33,7 @@ export interface IDefectiveGoods {
 	outbound_purpose?: DefectiveGoodsOutboundPurpose
 	created_by: IUser | TObjectId
 	created_at?: Date
-	updated_by?: IUser | TObjectId
+	updated_by?: Nullish<IUser | TObjectId>
 	updated_at?: Date
 	deleted?: boolean
 	deleted_at?: Date

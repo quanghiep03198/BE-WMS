@@ -14,7 +14,7 @@ export const filterQueryDTO = z
 		size_numcode: z.string().toUpperCase().optional(),
 		assembly_line: z.string().optional(),
 		sewing_line: z.string().optional(),
-		created: z.string().optional()
+		created_at: z.string().optional()
 	})
 	.optional()
 

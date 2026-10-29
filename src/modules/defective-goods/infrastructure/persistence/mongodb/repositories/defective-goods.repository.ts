@@ -17,7 +17,7 @@ import {
 } from '@modules/defective-goods/domain/constants'
 import { IDefectiveGoods } from '@modules/defective-goods/domain/interfaces'
 import {
-	DefectiveGoodsModel as DefectiveGoodsDomainModel,
+	DefectiveGoodsDomainModel,
 	IDefectiveGoodsProps
 } from '@modules/defective-goods/domain/models/defective-goods.model'
 import { Injectable } from '@nestjs/common'
@@ -47,14 +47,18 @@ export class DefectiveGoodsRepository
 		return new DefectiveGoodsDomainModel(defectiveGoods)
 	}
 
-	override async insertMany(documents: Partial<IDefectiveGoods>[]) {
+	async create(documents: DefectiveGoodsDomainModel[]) {
 		const chunks = chunk(documents, 1000)
-		const results = []
-		for (const chunkedDocuments of chunks) {
-			const inserted = await this.defectiveGoodsModel.insertMany(chunkedDocuments)
-			results.push(...inserted.map((doc) => doc._id.toString()))
-		}
-		return results
+
+		const models = await Promise.all(
+			chunks.map(async (chunkedDocuments) => {
+				const inserted = await this.defectiveGoodsModel.insertMany(
+					chunkedDocuments.map((document) => document.toProps())
+				)
+				return inserted.map((document) => new DefectiveGoodsDomainModel(document.toObject<IDefectiveGoodsProps>()))
+			})
+		)
+		return models.flat()
 	}
 
 	override async findAll(filter: Partial<IDefectiveGoods> = {}) {
@@ -110,8 +114,8 @@ export class DefectiveGoodsRepository
 		return result?._id.toString()
 	}
 
-	async deleteMany(filter: DeleteManyDefectiveGoodsDTO & { _id: string }) {
-		const filterQuery = MongoQueryBuilder.from(filter)
+	async deleteMany(filter: DeleteManyDefectiveGoodsDTO) {
+		const filterQuery = MongoQueryBuilder.from(filter as DeleteManyDefectiveGoodsDTO & { _id })
 			.whereFieldsAreEqual(
 				'defective_category',
 				'brand_name',
@@ -124,16 +128,20 @@ export class DefectiveGoodsRepository
 			)
 			.whereDateEqual('created_at')
 			.when(Array.isArray(filter.including_ids), (qb) => qb.whereIn('_id', filter.including_ids as string[]))
-			.when(Array.isArray(filter.excluding_ids), (qb) => qb.whereNotIn('_id', filter.excluding_ids as string[]))
+			.when(Array.isArray(filter.excluding_ids), (qb) => qb.whereNotIn('_id', filter.excluding_ids))
 			.build()
 
-		const pendingDeleteIds = await this.defectiveGoodsModel.distinct('_id', filterQuery, {
-			readPreference: 'primary' satisfies mongo.ReadPreferenceMode
-		})
+		const pendingDeleteItems = await this.defectiveGoodsModel
+			.find(filterQuery, {
+				readPreference: 'primary' satisfies mongo.ReadPreferenceMode
+			})
+			.lean<IDefectiveGoodsProps[]>(true)
+			.then((docs) => docs.map((item) => new DefectiveGoodsDomainModel(item)))
 
-		await super.softDeleteManyByIds(pendingDeleteIds)
+		const chunks = chunk(pendingDeleteItems, 100)
+		await Promise.all(chunks.map(async (chunk) => await super.softDeleteManyByIds(chunk.map((item) => item.id))))
 
-		return pendingDeleteIds.map((id) => id.toString())
+		return pendingDeleteItems
 	}
 
 	async getInoutboundEpcs(stockFlow: 'inbound' | 'outbound', filter: Partial<IDefectiveGoods> = {}, take?: number) {
@@ -184,7 +192,7 @@ export class DefectiveGoodsRepository
 				groupedData.set(groupKey, new Map<string, number>())
 			}
 
-			const sizeMap = groupedData.get(groupKey)!
+			const sizeMap = groupedData.get(groupKey)
 			sizeMap.set(sizeKey, (sizeMap.get(sizeKey) || 0) + 1)
 		})
 

@@ -1,6 +1,5 @@
-import { DefectiveGoodsChangedEvent } from '@modules/defective-goods/domain/events/defective-goods.events'
 import { Inject } from '@nestjs/common'
-import { CommandHandler, EventBus, ICommandHandler } from '@nestjs/cqrs'
+import { CommandHandler, EventPublisher, ICommandHandler } from '@nestjs/cqrs'
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
 import { DEFECTIVE_GOODS_REPOSITORY, IDefectiveGoodsRepository } from '../../ports/defective-goods.repository.port'
 import { DeleteManyDefectiveGoodsCommand } from './delete-many-defective-goods.command'
@@ -12,11 +11,15 @@ export class DeleteManyDefectiveGoodsHandler implements ICommandHandler<DeleteMa
 		private readonly logger: PinoLogger,
 		@Inject(DEFECTIVE_GOODS_REPOSITORY)
 		private readonly defectiveGoodsRepository: IDefectiveGoodsRepository,
-		private readonly eventBus: EventBus
+		private readonly eventPublisher: EventPublisher
 	) {}
 
 	async execute({ filters, username }: DeleteManyDefectiveGoodsCommand) {
-		const deletedIds = await this.defectiveGoodsRepository.deleteMany(filters)
-		this.eventBus.publish(new DefectiveGoodsChangedEvent(deletedIds, { updatedBy: username }))
+		const deletedModels = await this.defectiveGoodsRepository.deleteMany(filters)
+		deletedModels.forEach((model) => model.delete(username))
+		deletedModels.forEach((model) => {
+			this.eventPublisher.mergeObjectContext(model)
+			model.commit()
+		})
 	}
 }

@@ -1,12 +1,14 @@
 import { TRequestUser } from '@common/decorators'
 import { IBaseRepository } from '@modules/_base/interfaces/base.abstract.repository.interface'
 import { IDefectiveGoods } from '@modules/defective-goods/domain/interfaces'
+import { DefectiveGoodsDomainModel } from '@modules/defective-goods/domain/models/defective-goods.model'
 import { DeleteManyDefectiveGoodsDTO } from '../dto/defective-goods.dto'
 import { UpdateInboundStatusDTO, UpdateOutboundStatusDTO } from '../dto/inoutbound.dto'
 
 export const DEFECTIVE_GOODS_REPOSITORY = Symbol('DEFECTIVE_GOODS_REPOSITORY')
 
 export interface IDefectiveGoodsRepository extends IBaseRepository<IDefectiveGoods, string | TObjectId> {
+	create(payload: DefectiveGoodsDomainModel[]): Promise<DefectiveGoodsDomainModel[]>
 	/**
 	 * @override
 	 * @param filter
@@ -17,6 +19,7 @@ export interface IDefectiveGoodsRepository extends IBaseRepository<IDefectiveGoo
 	 * @param filter
 	 */
 	findOne(filter?: Partial<IDefectiveGoods> | Record<string, any>): Promise<IDefectiveGoods>
+	findById(id: string): Promise<DefectiveGoodsDomainModel>
 	updateById(id: string, payload: Partial<IDefectiveGoods> & { updated_by: TObjectId }): Promise<string>
 	getInoutboundEpcs(
 		stockFlow: 'inbound' | 'outbound',
@@ -45,6 +48,6 @@ export interface IDefectiveGoodsRepository extends IBaseRepository<IDefectiveGoo
 		filters?: Partial<IDefectiveGoods> | Record<string, any>,
 		take?: number
 	): Promise<string[]>
-	deleteMany(filter: DeleteManyDefectiveGoodsDTO): Promise<string[]>
+	deleteMany(filter: DeleteManyDefectiveGoodsDTO): Promise<DefectiveGoodsDomainModel[]>
 	// deleteMany(filter?: Partial<IDefectiveGoods> | Record<string, any>): Promise<void>
 }

@@ -1,6 +1,5 @@
 import { Inject } from '@nestjs/common'
-import { CommandHandler, EventBus, ICommandHandler } from '@nestjs/cqrs'
-import { DefectiveGoodsChangedEvent } from '../../../domain/events/defective-goods.events'
+import { CommandHandler, EventPublisher, ICommandHandler } from '@nestjs/cqrs'
 import { DEFECTIVE_GOODS_REPOSITORY, IDefectiveGoodsRepository } from '../../ports/defective-goods.repository.port'
 import { DeleteOneDefectiveGoodsCommand } from './delete-defective-goods.command'
 
@@ -8,10 +7,14 @@ import { DeleteOneDefectiveGoodsCommand } from './delete-defective-goods.command
 export class DeleteOneDefectiveGoodsHandler implements ICommandHandler<DeleteOneDefectiveGoodsCommand> {
 	constructor(
 		@Inject(DEFECTIVE_GOODS_REPOSITORY) private readonly repository: IDefectiveGoodsRepository,
-		private readonly eventBus: EventBus
+		private readonly eventPublisher: EventPublisher
 	) {}
 	async execute({ id, username }: DeleteOneDefectiveGoodsCommand) {
+		const deletedModel = await this.repository.findById(id)
+		// TODO: check if the defective goods exists
+		deletedModel.delete(username)
 		await this.repository.softDeleteOneById(id)
-		this.eventBus.publish(new DefectiveGoodsChangedEvent([id], { updatedBy: username }))
+		this.eventPublisher.mergeObjectContext(deletedModel)
+		deletedModel.commit()
 	}
 }

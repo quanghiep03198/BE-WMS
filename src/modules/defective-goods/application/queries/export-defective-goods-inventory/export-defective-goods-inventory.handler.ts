@@ -1,5 +1,5 @@
-import { DefectiveGoodsInventoryService } from '../../services/defective-inventory.service'
 import { IQueryHandler, QueryHandler } from '@nestjs/cqrs'
+import { DefectiveGoodsInventoryService } from '../../services/defective-inventory.service'
 import { ExportDefectiveGoodsInventoryQuery } from './export-defective-goods-inventory.query'
 
 @QueryHandler(ExportDefectiveGoodsInventoryQuery)

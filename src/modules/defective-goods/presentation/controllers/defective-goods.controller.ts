@@ -78,7 +78,7 @@ export class DefectiveGoodsController {
 			epc,
 			page,
 			limit,
-			created,
+			created_at: created,
 			brand_name,
 			defective_category,
 			factory_shoes_style,

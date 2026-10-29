@@ -11,7 +11,7 @@ export const baseDefectiveGoodsDTO = z.object({
 	combination_strategy: z.enum(CombinationStrategy),
 	defective_category: z.enum(DefectiveCategory),
 	po: z.string().nullish().default('PRELOAD'),
-	mo_no: z.string().nullish(),
+	mo_no: z.string().optional(),
 	brand_name: z.string().trim().nonempty(),
 	cust_shoes_style: z.string().trim().nonempty(),
 	factory_shoes_style: z.string().trim().nonempty(),
@@ -23,12 +23,12 @@ export const baseDefectiveGoodsDTO = z.object({
 	sewing_line: z
 		.string()
 		.trim()
-		.nullish()
+		.optional()
 		.transform((value) => (isEmpty(value) ? null : value)),
 	assembly_line: z
 		.string()
 		.trim()
-		.nullish()
+		.optional()
 		.transform((value) => (isEmpty(value) ? null : value))
 })
 
@@ -114,7 +114,7 @@ export const createDefectiveGoodsDTO = baseDefectiveGoodsDTO
 		}
 	})
 	.check(({ issues, value }) => {
-		if (Array.isArray(value.sizes) && value.combination_strategy === 'manually')
+		if (value.sizes && Array.isArray(value.sizes) && value.combination_strategy === 'manually')
 			value.sizes.forEach((item, index) => {
 				if (value.sizes.findIndex((otherItem) => otherItem.size_numcode === item.size_numcode) !== index)
 					issues.push({
@@ -156,7 +156,7 @@ export const deleteManyDefectiveGoodsDTO = z.object({
 	defect_description: z.string().optional(),
 	assembly_line: z.string().optional(),
 	sewing_line: z.string().optional(),
-	created_at: z.string().optional()
+	created_at: z.coerce.date().optional()
 })
 
 export type CreateDefectiveGoodsDTO = z.infer<typeof createDefectiveGoodsDTO>

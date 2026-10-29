@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common'
 import { ICommand, ofType, Saga } from '@nestjs/cqrs'
-import { map, Observable } from 'rxjs'
+import { bufferTime, filter, map, Observable } from 'rxjs'
 import { DefectiveGoodsChangedEvent } from '../../domain/events/defective-goods.events'
 import { SyncDefectiveGoodsCommand } from '../commands/sync-defective-goods/sync-defective-goods.command'
 
@@ -8,6 +8,17 @@ import { SyncDefectiveGoodsCommand } from '../commands/sync-defective-goods/sync
 export class DefectiveGoodsSaga {
 	@Saga()
 	syncToMssql(events$: Observable<unknown>): Observable<ICommand> {
-		return events$.pipe(ofType(DefectiveGoodsChangedEvent), map(({ documentIds, audit }) => new SyncDefectiveGoodsCommand(documentIds, audit)))
+		return events$.pipe(
+			ofType(DefectiveGoodsChangedEvent),
+			bufferTime(1000, null, 500),
+			filter((events) => events.length > 0),
+			map(
+				(batch) =>
+					new SyncDefectiveGoodsCommand(
+						batch.map((event) => event.documentId),
+						batch[0].audit
+					)
+			)
+		)
 	}
 }

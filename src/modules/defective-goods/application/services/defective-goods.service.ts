@@ -132,7 +132,7 @@ export class DefectiveGoodsService extends BaseTypeOrmService<DefectiveGoodsEnti
 				groupedData.set(groupKey, new Map<string, number>())
 			}
 
-			const sizeMap = groupedData.get(groupKey)!
+			const sizeMap = groupedData.get(groupKey)
 			sizeMap.set(sizeKey, (sizeMap.get(sizeKey) || 0) + 1)
 		})
 
