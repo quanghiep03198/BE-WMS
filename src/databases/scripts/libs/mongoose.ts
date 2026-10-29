@@ -38,13 +38,13 @@ export class MongoManager {
 
 	public getRepository<T extends Document>(collection: string) {
 		if (this.client.connection.readyState !== 1) throw new Error('MongoDB is not connected')
-		const database = this.client.connection.db!
+		const database = this.client.connection.db
 		return database.collection<T>(collection)
 	}
 
 	public getBucket(bucketName: string) {
 		if (this.client.connection.readyState !== 1) throw new Error('MongoDB is not connected')
-		const database = this.client.connection.db!
+		const database = this.client.connection.db
 		return new mongoose.mongo.GridFSBucket(database, { bucketName })
 	}
 
