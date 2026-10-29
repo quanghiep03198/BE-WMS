@@ -269,7 +269,7 @@ export class ExportDispatchOrdersHandler implements IQueryHandler<ExportDispatch
 			if (newRowNumber) {
 				images.forEach(({ colIndex, imageId }) => {
 					worksheet.addImage(imageId, {
-						tl: { col: colIndex - 1, row: newRowNumber } as any,
+						tl: { col: colIndex - 1, row: newRowNumber },
 						br: { col: colIndex, row: newRowNumber + 1 } as any,
 						editAs: 'oneCell'
 					})

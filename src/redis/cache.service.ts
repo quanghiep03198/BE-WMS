@@ -51,7 +51,7 @@ export class CacheService<TSchema extends CacheSchema = CacheSchema> {
 
 		const payload = parsed as Partial<CachePayload<T>>
 		if (payload.__cache_payload__ === true && 'data' in payload) {
-			return payload.data as T
+			return payload.data
 		}
 
 		// Backward compatibility for legacy data previously stored as plain object JSON.
@@ -201,13 +201,7 @@ export class CacheService<TSchema extends CacheSchema = CacheSchema> {
 		const count = options?.count ?? 500
 
 		do {
-			const [nextCursor, batch] = (await this.redisClient.scan(
-				cursor,
-				'MATCH',
-				pattern,
-				'COUNT',
-				String(count)
-			)) as [string, string[]]
+			const [nextCursor, batch] = await this.redisClient.scan(cursor, 'MATCH', pattern, 'COUNT', String(count))
 
 			cursor = nextCursor
 			keys.push(...(batch as TKey[]))

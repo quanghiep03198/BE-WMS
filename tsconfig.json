@@ -1,8 +1,8 @@
 {
 	"compilerOptions": {
 		"types": ["@rspack/core/module", "node", "jest"],
-		"module": "nodenext",
-		"moduleResolution": "nodenext",
+		"module": "esnext",
+		"moduleResolution": "bundler",
 		"declaration": true,
 		"removeComments": true,
 
@@ -16,13 +16,13 @@
 		"incremental": true,
 		/* Strict mode */
 		/* Most of strict mode options are disabled because of slow startup */
-		"strict": false,
+		"strict": true,
+		"skipLibCheck": false,
+		"strictNullChecks": false,
+		"strictBindCallApply": true,
 		"noUnusedParameters": false,
 		"noUnusedLocals": false,
-		"skipLibCheck": true,
-		"strictNullChecks": false,
 		"noImplicitAny": false,
-		"strictBindCallApply": false,
 		"forceConsistentCasingInFileNames": true,
 		"noFallthroughCasesInSwitch": true,
 		/* Path alias */

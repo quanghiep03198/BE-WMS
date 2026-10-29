@@ -67,7 +67,7 @@ export class MongoQueryBuilder<T extends Record<string, any>> {
 	private resolveValue<K extends keyof T, V>(field: K, value: Nullable<V>): Nullable<V> {
 		if (this.isPresent(value)) return value
 		const fallback = this.entry[field]
-		return this.isPresent(fallback) ? (fallback as unknown as V) : undefined
+		return this.isPresent(fallback) ? fallback : undefined
 	}
 
 	/** Merges an operator into the existing field instead of overwriting the whole field (key bug fix) */
@@ -198,7 +198,7 @@ export class MongoQueryBuilder<T extends Record<string, any>> {
 	 */
 	public whereLike<K extends keyof T>(
 		field: K,
-		pattern: Nullable<string> = this.entry[field] as string | undefined,
+		pattern: Nullable<string> = this.entry[field],
 		caseInsensitive = true
 	): this {
 		if (!pattern) return this
@@ -209,7 +209,7 @@ export class MongoQueryBuilder<T extends Record<string, any>> {
 	/** Matches a field that CONTAINS `pattern` anywhere (cannot use an index) */
 	public whereContains<K extends keyof T>(
 		field: K,
-		pattern: Nullable<string> = this.entry[field] as string | undefined,
+		pattern: Nullable<string> = this.entry[field],
 		caseInsensitive = true
 	): this {
 		pattern ??= this.entry[field] as string | undefined
@@ -280,8 +280,8 @@ export class MongoQueryBuilder<T extends Record<string, any>> {
 
 	public build(): FilterQuery<T> {
 		const query: FilterQuery<T> = { ...this.query }
-		if (this.orGroups.length > 0) query.$or = this.orGroups as FilterQuery<T>['$or']
-		if (this.andGroups.length > 0) query.$and = this.andGroups as FilterQuery<T>['$and']
+		if (this.orGroups.length > 0) query.$or = this.orGroups
+		if (this.andGroups.length > 0) query.$and = this.andGroups
 		return query
 	}
 

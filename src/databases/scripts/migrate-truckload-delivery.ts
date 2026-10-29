@@ -40,7 +40,7 @@ async function execute() {
 		process.exit(1)
 	}
 
-	const mssqlManager = new MssqlManager(args.mssqlHost as string)
+	const mssqlManager = new MssqlManager(args.mssqlHost)
 	const mongoManager = new MongoManager()
 
 	let batch: Array<AnyBulkWriteOperation<TruckloadDeliveryDocument>> = []

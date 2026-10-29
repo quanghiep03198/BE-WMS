@@ -85,7 +85,7 @@ export function buildDispatchOrderFilter(where: UnflatedFilterQueryDTO['where'] 
 		}
 	}
 
-	return filter as FilterQuery<TruckloadDelivery>
+	return filter
 }
 
 function buildDateRange(operator: string, value: string): { $gte: Date; $lte: Date } | null {

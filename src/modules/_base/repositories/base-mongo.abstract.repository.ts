@@ -120,7 +120,7 @@ export abstract class BaseMongoRepository<TDocument extends Document> implements
 	 * @returns
 	 */
 	async deleteManyByIds(ids: Array<string | Types.ObjectId>): Promise<MongooseDeleteResult> {
-		const result = await this.model.deleteMany({ _id: { $in: ids } } as FilterQuery<TDocument>)
+		const result = await this.model.deleteMany({ _id: { $in: ids } })
 		return { acknowledged: result.acknowledged, deletedCount: result.deletedCount }
 	}
 
@@ -130,7 +130,7 @@ export abstract class BaseMongoRepository<TDocument extends Document> implements
 	 * @returns
 	 */
 	async softDeleteOneById(id: string | Types.ObjectId): Promise<MongooseDeleteResult> {
-		return (await this.model.deleteById(id)) as unknown as MongooseDeleteResult
+		return await this.model.deleteById(id)
 	}
 
 	/**
@@ -139,7 +139,7 @@ export abstract class BaseMongoRepository<TDocument extends Document> implements
 	 * @returns
 	 */
 	async softDeleteManyByIds(ids: Array<string | Types.ObjectId>): Promise<MongooseDeleteResult> {
-		return (await this.model.delete({ _id: { $in: ids } })) as unknown as MongooseDeleteResult
+		return await this.model.delete({ _id: { $in: ids } })
 	}
 
 	/**
@@ -148,7 +148,7 @@ export abstract class BaseMongoRepository<TDocument extends Document> implements
 	 * @returns
 	 */
 	async restoreOneById(id: string | Types.ObjectId): Promise<MongooseRestoreResult> {
-		return (await this.model.restore({ _id: id })) as unknown as MongooseRestoreResult
+		return await this.model.restore({ _id: id })
 	}
 
 	/**
@@ -157,7 +157,7 @@ export abstract class BaseMongoRepository<TDocument extends Document> implements
 	 * @returns
 	 */
 	async restoreManyByIds(ids: Array<string | Types.ObjectId>): Promise<MongooseRestoreResult> {
-		return (await this.model.restore({ _id: { $in: ids } })) as unknown as MongooseRestoreResult
+		return await this.model.restore({ _id: { $in: ids } })
 	}
 
 	/**

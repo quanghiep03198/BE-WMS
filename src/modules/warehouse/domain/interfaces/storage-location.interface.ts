@@ -7,5 +7,5 @@ export interface IStorageLocation {
 	created_at: Date
 	updated_at?: Date
 	created_by: TObjectId | Partial<IUser>
-	updated_by?: TObjectId | Partial<IUser>
+	updated_by?: Nullish<TObjectId | Partial<IUser>>
 }

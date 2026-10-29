@@ -59,7 +59,7 @@ export class UpsertEpcsMatchTransaction extends AggregateRoot {
 
 		this.apply(new UpsertedEpcsMatchEvent(this.toDataArray.apply(this)))
 
-		return { getPayload: this.toDataArray.bind(this) } as { getPayload: () => UpsertEpcsMatchData }
+		return { getPayload: this.toDataArray.bind(this) }
 	}
 
 	private toDataArray(): UpsertEpcsMatchData {

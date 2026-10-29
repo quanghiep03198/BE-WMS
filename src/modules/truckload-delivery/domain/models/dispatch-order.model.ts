@@ -24,14 +24,14 @@ export interface PurchaseOrderLine {
 	packing_id?: string
 	po: string
 	outbound_qty: number
-	created_by: TObjectId | null | Pick<IUser, '_id' | 'username' | 'display_name'>
-	updated_by?: TObjectId | null | Pick<IUser, '_id' | 'username' | 'display_name'>
-	created_at: Date | null
-	updated_at?: Date | null
-	user_code_created?: string | null
-	user_code_updated?: string | null
-	user_name_created?: string | null
-	user_name_updated?: string | null
+	created_by: Nullish<TObjectId | Pick<IUser, '_id' | 'username' | 'display_name'>>
+	updated_by?: Nullish<TObjectId | Pick<IUser, '_id' | 'username' | 'display_name'>>
+	created_at: Date
+	updated_at?: Nullish<Date>
+	user_code_created?: Nullish<string>
+	user_code_updated?: Nullish<string>
+	user_name_created?: Nullish<string>
+	user_name_updated?: Nullish<string>
 }
 
 export interface DispatchOrderProps {
@@ -180,7 +180,7 @@ export class DispatchOrderModel extends AggregateRoot {
 		if (seal_number !== undefined) this.state.seal_number = normalizeCode(seal_number)
 
 		Object.assign(this.state, rest)
-		this.state.updated_by = updatedBy._id ?? this.state.updated_by
+		this.state.updated_by = updatedBy?._id ?? this.state.updated_by
 
 		this.apply(new DispatchOrderInfoUpdatedEvent(this.dispatchOrder))
 	}
@@ -205,14 +205,14 @@ export class DispatchOrderModel extends AggregateRoot {
 				this.state.packing.push({
 					po: item.po,
 					outbound_qty: item.outbound_qty,
-					created_by: updatedBy._id ?? null,
+					created_by: updatedBy?._id,
 					updated_by: null,
 					created_at: now
 				})
 		}
 
 		this.recalculateTotal()
-		this.state.updated_by = updatedBy._id ?? this.state.updated_by
+		this.state.updated_by = updatedBy?._id ?? this.state.updated_by
 		this.apply(new PurchaseOrdersUpsertedEvent(this.dispatchOrder))
 	}
 

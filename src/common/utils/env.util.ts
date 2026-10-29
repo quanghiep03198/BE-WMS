@@ -7,7 +7,7 @@ export function env<T>(key: keyof ProcessEnv, options?: { serialize?: (value: st
 		return null
 	}
 	if (typeof options?.serialize === 'function') {
-		return options.serialize(value) as T
+		return options.serialize(value)
 	}
 	return value.trim()
 }

@@ -64,7 +64,7 @@ async function execute() {
 					stream.once('error', reject)
 					stream.end(Buffer.from(base64, 'base64'))
 				})
-				$set[field] = stream.id as mongoose.mongo.ObjectId
+				$set[field] = stream.id
 				uploaded++
 			}
 			documents++

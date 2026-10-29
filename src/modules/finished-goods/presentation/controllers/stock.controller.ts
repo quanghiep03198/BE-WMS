@@ -64,13 +64,7 @@ export class StockController {
 	})
 	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
 	async stockOut(@Body(new ZodValidationPipe(upsertStockOutValidator)) payload: UpsertStockOutDTO) {
-		await this.commandBus.execute(
-			new StockOutCommand(
-				payload.po,
-				payload.mo_no,
-				payload.sizes as Array<Required<{ size_numcode: string; qty: number }>> | undefined
-			)
-		)
+		await this.commandBus.execute(new StockOutCommand(payload.po, payload.mo_no, payload.sizes))
 	}
 
 	@RouteHandler({

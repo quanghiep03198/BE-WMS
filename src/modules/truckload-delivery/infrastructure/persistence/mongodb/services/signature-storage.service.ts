@@ -84,7 +84,7 @@ export class SignatureStorage implements ISignatureStorage {
 
 	private remember(id: string, signature: StoredSignature): StoredSignature {
 		this.memory.set(id, signature)
-		if (this.memory.size > MEMORY_MAX_ENTRIES) this.memory.delete(this.memory.keys().next().value as string)
+		if (this.memory.size > MEMORY_MAX_ENTRIES) this.memory.delete(this.memory.keys().next().value)
 		return signature
 	}
 
@@ -93,7 +93,7 @@ export class SignatureStorage implements ISignatureStorage {
 	}
 
 	private getBucket(): mongo.GridFSBucket {
-		this.bucket ??= new mongo.GridFSBucket(this.connection.db as mongo.Db, { bucketName: SIGNATURE_BUCKET_NAME })
+		this.bucket ??= new mongo.GridFSBucket(this.connection.db, { bucketName: SIGNATURE_BUCKET_NAME })
 		return this.bucket
 	}
 }

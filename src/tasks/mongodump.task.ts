@@ -14,7 +14,7 @@ export class MongoDumpTask {
 	@Cron(CronExpression.EVERY_30_MINUTES)
 	handleDump() {
 		// Skip mongodump execution for now.
-		if (1 === 1) return
+		if (process.env.NODE_ENV !== 'production') return
 
 		this.logger.log('Starting mongodump ...')
 

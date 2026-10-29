@@ -57,7 +57,7 @@ export class ShippingProgressMongoRepository implements IShippingProgressReposit
 			size_ledger: Record<string, { shipped_out_qty: number }>
 		}>
 	> {
-		return [] as any
+		return []
 	}
 
 	public async getPoOutboundProgress(
@@ -68,7 +68,7 @@ export class ShippingProgressMongoRepository implements IShippingProgressReposit
 		if (!poShippingProgress) return []
 
 		return Object.entries(poShippingProgress.shipping_progress).map(([size, balances]) => {
-			const { order_qty, shipped_out_qty } = balances as any
+			const { order_qty, shipped_out_qty } = balances
 			return {
 				size_numcode: size,
 				order_qty,
@@ -93,7 +93,7 @@ export class ShippingProgressMongoRepository implements IShippingProgressReposit
 				return {
 					updateOne: {
 						filter: { po: change.po },
-						update: { $inc: this.createShippingProgressIncrementExpression(change as any) }
+						update: { $inc: this.createShippingProgressIncrementExpression(change) }
 					}
 				}
 			})

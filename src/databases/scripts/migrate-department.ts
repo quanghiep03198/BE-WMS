@@ -1,5 +1,5 @@
+import { Languages } from '@common/constants'
 import { env } from '@common/utils'
-import { LeanDocument } from 'mongoose'
 import { isIPv4 } from 'net'
 import { DepartmentDocument } from './../../modules/department/schemas/department.schema'
 import { MongoManager } from './libs/mongoose'
@@ -47,7 +47,11 @@ async function execute() {
 		await mssqlManager.connect()
 		await mongoManager.connect()
 
-		const query = await mssqlManager.query<LeanDocument<DepartmentDocument>>(/* SQL */ `
+		const query = await mssqlManager.query<{
+			group: DepartmentDocument['group']
+			code: string
+			name: string
+		}>(/* SQL */ `
         DECLARE @FactoryCode AS VARCHAR (5) = '${args.tenant}';
 
          WITH   assembly_cte
@@ -97,8 +101,12 @@ async function execute() {
 					filter: { group: dept.group, code: dept.code },
 					update: {
 						$set: {
-							...dept,
-							name: Object.values(Languages).reduce((acc, lang) => ({ ...acc, [lang]: dept.name }), {})
+							group: dept.group,
+							code: dept.code,
+							name: Object.values(Languages).reduce<DepartmentDocument['name']>(
+								(acc, lang) => ({ ...acc, [lang]: dept.name }),
+								{} as DepartmentDocument['name']
+							)
 						}
 					},
 					upsert: true
@@ -109,7 +117,7 @@ async function execute() {
 		logger.info(`Migrated ${result.modifiedCount} departments, upserted ${result.upsertedCount} departments.`)
 	} catch (error) {
 		process.exitCode = 1
-		logger.error(error)
+		logger.error(error as Error)
 	} finally {
 		await mssqlManager.disconnect()
 		await mongoManager.disconnect()

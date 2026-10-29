@@ -90,10 +90,10 @@ export class TruckloadDeliveryController {
 			new CreateDispatchOrderCommand(
 				factoryCode,
 				payload.outbound_purchase_orders,
+				user,
 				payload.license_plate,
 				payload.container_number,
-				payload.seal_number,
-				user
+				payload.seal_number
 			)
 		)
 	}

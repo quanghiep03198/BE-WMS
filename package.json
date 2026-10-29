@@ -5,7 +5,7 @@
 	"author": "quanghiep03198",
 	"private": true,
 	"license": "GreenLand",
-	"type": "commonjs",
+	"type": "module",
 	"scripts": {
 		"build": "rspack build --mode production",
 		"start": "cross-env NODE_ENV=production node dist/main.cjs",

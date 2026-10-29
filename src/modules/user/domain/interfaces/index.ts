@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-empty-object-type */
 import { UserRole } from '../constants'
 
 export interface IUser {

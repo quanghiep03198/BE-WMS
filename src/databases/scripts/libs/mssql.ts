@@ -14,7 +14,7 @@ export class MssqlManager {
 		this.pool = await mssql.connect({
 			user: process.env.DB_USERNAME,
 			password: process.env.DB_PASSWORD,
-			server: this.host ?? process.env.DB_HOST!,
+			server: this.host ?? process.env.DB_HOST,
 			port: Number(process.env.DB_PORT) || 1433,
 			database: 'DV_DATA_LAKE',
 			connectionTimeout: 30000,
