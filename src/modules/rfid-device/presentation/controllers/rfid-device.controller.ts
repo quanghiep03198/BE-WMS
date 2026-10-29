@@ -99,7 +99,7 @@ export class RFIDDeviceController {
 				update.device_sn,
 				{ name: prev.device_name, station_no: prev.station_no, tcp_ip: prev.tcp_ip, type: prev.device_type },
 				{
-					name: payload.device_name ?? update.device_name,
+					name: { ...update.device_name, ...payload.device_name },
 					station_no: payload.station_no ?? update.station_no,
 					tcp_ip: payload.tcp_ip ?? update.tcp_ip,
 					type: payload.device_type ?? update.device_type,
