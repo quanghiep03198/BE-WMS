@@ -18,7 +18,6 @@ import {
 import { CommandBus, QueryBus } from '@nestjs/cqrs'
 import { FastifyReply } from 'fastify'
 import { unflatten } from 'flat'
-import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
 import { CreateDispatchOrderCommand } from '../../application/commands/create-dispatch-order/create-dispatch-order.command'
 import { DeleteDispatchOrderCommand } from '../../application/commands/delete-dispatch-order/delete-dispatch-order.command'
 import { RemovePurchaseOrderCommand } from '../../application/commands/remove-purchase-order/remove-purchase-order.command'
@@ -50,9 +49,6 @@ import { TruckloadDeliveryExceptionFilter } from '../filters/truckload-delivery-
 @Controller('truckload-delivery')
 export class TruckloadDeliveryController {
 	constructor(
-		@InjectPinoLogger(TruckloadDeliveryController.name)
-		private readonly logger: PinoLogger,
-
 		private readonly commandBus: CommandBus,
 		private readonly queryBus: QueryBus
 	) {}
