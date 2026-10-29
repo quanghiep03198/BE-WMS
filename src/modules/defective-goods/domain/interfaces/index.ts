@@ -24,8 +24,8 @@ export interface IDefectiveGoods {
 	defective_location: DefectiveLocation
 	shoe_source?: DefectiveGoodsSource
 	defective_description: string
-	sewing_line?: IDepartment | TObjectId
-	assembly_line?: IDepartment | TObjectId
+	sewing_line?: IDepartment | TObjectId | string
+	assembly_line?: IDepartment | TObjectId | string
 	storage_location?: string
 	inbound_date?: Date
 	outbound_date?: Date

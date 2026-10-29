@@ -1,10 +1,10 @@
-import { IDefectiveGoods } from '@modules/defective-goods/domain/interfaces'
 import { Command } from '@nestjs/cqrs'
+import { UpdateDefectiveGoodsDTO } from '../../dto/defective-goods.dto'
 
 export class UpdateDefectiveGoodsCommand extends Command<void> {
 	constructor(
 		public readonly id: string,
-		public readonly data: IDefectiveGoods,
+		public readonly data: UpdateDefectiveGoodsDTO & { updated_by: TObjectId },
 		public readonly username: string
 	) {
 		super()

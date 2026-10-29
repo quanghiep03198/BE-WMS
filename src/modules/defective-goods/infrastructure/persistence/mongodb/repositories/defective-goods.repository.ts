@@ -16,11 +16,14 @@ import {
 	DefectiveGoodsOutboundPurpose
 } from '@modules/defective-goods/domain/constants'
 import { IDefectiveGoods } from '@modules/defective-goods/domain/interfaces'
-import { InjectTransactionHost, TransactionHost } from '@nestjs-cls/transactional'
-import { TransactionalAdapterMongoose } from '@nestjs-cls/transactional-adapter-mongoose'
+import {
+	DefectiveGoodsModel as DefectiveGoodsDomainModel,
+	IDefectiveGoodsProps
+} from '@modules/defective-goods/domain/models/defective-goods.model'
 import { Injectable } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
-import { LeanDocument, mongo, Types, type AnyBulkWriteOperation, type QueryOptions } from 'mongoose'
+import chunk from 'lodash/chunk'
+import { mongo, Types, type QueryOptions } from 'mongoose'
 import { DefectiveGoods, DefectiveGoodsDocument, DefectiveGoodsModel } from '../schemas/defective-goods.schema'
 
 @Injectable()
@@ -30,15 +33,32 @@ export class DefectiveGoodsRepository
 {
 	constructor(
 		@InjectModel(DefectiveGoods.name, DATA_WAREHOUSE_CONNECTION)
-		private readonly defectiveGoodsModel: DefectiveGoodsModel,
-		@InjectTransactionHost(DATA_WAREHOUSE_CONNECTION)
-		private readonly txHost: TransactionHost<TransactionalAdapterMongoose>
+		private readonly defectiveGoodsModel: DefectiveGoodsModel
 	) {
 		super(defectiveGoodsModel)
 	}
 
-	override async findAll(filter?: Partial<IDefectiveGoods>) {
-		return await super.findAll(filter ?? {}, undefined, {
+	async findById(id: string) {
+		const defectiveGoods = await this.defectiveGoodsModel
+			.findById(id, {
+				readPreference: 'primary' satisfies mongo.ReadPreferenceMode
+			})
+			.lean<IDefectiveGoodsProps>(true)
+		return new DefectiveGoodsDomainModel(defectiveGoods)
+	}
+
+	override async insertMany(documents: Partial<IDefectiveGoods>[]) {
+		const chunks = chunk(documents, 1000)
+		const results = []
+		for (const chunkedDocuments of chunks) {
+			const inserted = await this.defectiveGoodsModel.insertMany(chunkedDocuments)
+			results.push(...inserted.map((doc) => doc._id.toString()))
+		}
+		return results
+	}
+
+	override async findAll(filter: Partial<IDefectiveGoods> = {}) {
+		return await super.findAll({ deleted: false, ...filter }, undefined, {
 			readPreference: 'primary' satisfies mongo.ReadPreferenceMode,
 			lean: { virtuals: true, autopopulate: true }
 		})
@@ -62,12 +82,15 @@ export class DefectiveGoodsRepository
 			.whereDateEqual('created_at', filter?.created_at)
 			.build()
 
-		const result = await this.defectiveGoodsModel.paginate(filterQuery, {
-			page,
-			limit,
-			useCustomCountFn: async () => await this.defectiveGoodsModel.countDocuments(filterQuery),
-			options: { ...options, readPreference: 'secondary' satisfies mongo.ReadPreferenceMode }
-		})
+		const result = await this.defectiveGoodsModel.paginate(
+			{ deleted: false, ...filterQuery },
+			{
+				page,
+				limit,
+				useCustomCountFn: async () => await this.defectiveGoodsModel.countDocuments(filterQuery),
+				options: { ...options, readPreference: 'secondary' satisfies mongo.ReadPreferenceMode }
+			}
+		)
 
 		return {
 			data: result.docs,
@@ -82,7 +105,11 @@ export class DefectiveGoodsRepository
 		} satisfies Pagination<IDefectiveGoods>
 	}
 
-	// @Transactional<TransactionalAdapterMongoose>(DATA_WAREHOUSE_CONNECTION)
+	async updateById(id: string, update: Partial<IDefectiveGoods>) {
+		const result = await this.defectiveGoodsModel.findByIdAndUpdate(id, { $set: update }, { new: true, lean: true })
+		return result?._id.toString()
+	}
+
 	async deleteMany(filter: DeleteManyDefectiveGoodsDTO & { _id: string }) {
 		const filterQuery = MongoQueryBuilder.from(filter)
 			.whereFieldsAreEqual(
@@ -109,7 +136,7 @@ export class DefectiveGoodsRepository
 		return pendingDeleteIds.map((id) => id.toString())
 	}
 
-	async getInoutboundEpcs(stockFlow: 'inbound' | 'outbound', filter?: Partial<IDefectiveGoods>, take?: number) {
+	async getInoutboundEpcs(stockFlow: 'inbound' | 'outbound', filter: Partial<IDefectiveGoods> = {}, take?: number) {
 		const filterQueries = MongoQueryBuilder.from({ ...filter, combination_strategy: 'manually' })
 			.whereEqual('combination_strategy')
 			.whereEqual('unit')
@@ -127,11 +154,15 @@ export class DefectiveGoodsRepository
 			)
 			.build()
 
-		return await this.defectiveGoodsModel
+		const totalDocs = take ?? (await this.defectiveGoodsModel.countDocuments(filterQueries))
+
+		const data = await this.defectiveGoodsModel
 			.find(filterQueries)
 			.lean({ virtuals: true, autopopulate: true })
 			.read('primary' satisfies mongo.ReadPreferenceMode)
-			.limit(take)
+			.limit(take ?? 50)
+
+		return { data, totalDocs }
 	}
 
 	async getScanningSizeQty(epcs: string[]) {
@@ -179,65 +210,77 @@ export class DefectiveGoodsRepository
 		return result
 	}
 
-	async stockIn(payload: UpdateInboundStatusDTO, user: TRequestUser) {
+	async stockIn(
+		payload: UpdateInboundStatusDTO,
+		user: TRequestUser,
+		filters: Partial<IDefectiveGoods> | Record<string, any> = {},
+		take: number = 0
+	) {
 		const inboundDate = new Date()
-		await this.defectiveGoodsModel.bulkWrite(
-			payload.epcs.map<AnyBulkWriteOperation<LeanDocument<DefectiveGoodsDocument>>>((epc) => {
-				return {
-					updateOne: {
-						filter: { epc, deleted: { $ne: true } },
-						update: {
-							$set: {
-								storage_location: payload.storage_location,
-								inbound_date: inboundDate,
-								updated_by: new Types.ObjectId(user._id.toString())
-							}
-						},
-						upsert: false
-					}
-				}
-			})
-		)
+		const epcs =
+			payload.combination_strategy === CombinationStrategy.MANUALLY
+				? await this.getInoutboundEpcs('inbound', filters, take).then((res) => res.data.map((doc) => doc.epc))
+				: payload.epcs
 
-		return await super.findAll({ epc: { $in: payload.epcs } }, undefined, {
-			readPreference: 'primary' satisfies mongo.ReadPreferenceMode,
-			lean: { virtuals: true, autopopulate: true }
-		})
+		const chunks = chunk(epcs, 1000)
+
+		for (const chunkedEpcs of chunks) {
+			await super.updateMany(
+				{ epc: { $in: chunkedEpcs }, deleted: false },
+				{
+					storage_location: payload.storage_location,
+					inbound_date: inboundDate,
+					updated_by: new Types.ObjectId(user._id.toString())
+				}
+			)
+		}
+
+		return await this.defectiveGoodsModel.distinct<string, string>(
+			'_id',
+			{ epc: { $in: payload.epcs } },
+			{ readPreference: 'primary' satisfies mongo.ReadPreferenceMode }
+		)
 	}
 
-	async stockOut(payload: UpdateOutboundStatusDTO, user: TRequestUser) {
+	async stockOut(
+		payload: UpdateOutboundStatusDTO,
+		user: TRequestUser,
+		filters: Partial<IDefectiveGoods> | Record<string, any> = {},
+		take: number = 0
+	) {
 		const outboundDate = new Date()
 
-		await this.defectiveGoodsModel.bulkWrite(
-			payload.epcs.map((epc) => {
-				const shouldDowngrade =
-					payload.outbound_purpose === DefectiveGoodsOutboundPurpose.RUIN ||
-					payload.outbound_purpose === DefectiveGoodsOutboundPurpose.DOWNGRADE
-				const shouldShipOut = payload.outbound_purpose === DefectiveGoodsOutboundPurpose.SHIPPING
+		const epcs =
+			payload.combination_strategy === CombinationStrategy.MANUALLY
+				? await this.getInoutboundEpcs('outbound', filters, take).then((res) => res.data.map((doc) => doc.epc))
+				: payload.epcs
 
-				const shouldDeactivate = payload.outbound_purpose !== DefectiveGoodsOutboundPurpose.DOWNGRADE
+		const chunks = chunk(epcs, 1000)
 
-				return {
-					updateOne: {
-						filter: { epc, deleted: { $ne: true } },
-						update: {
-							$set: {
-								outbound_purpose: payload.outbound_purpose,
-								updated_by: new Types.ObjectId(user._id.toString()),
-								...(!shouldShipOut && { po: payload.po }),
-								...(shouldDowngrade ? { defective_category: DefectiveCategory.C_GRADE } : { po: payload.po }),
-								...(shouldDeactivate && { outbound_date: outboundDate, deleted: true, deleted_at: new Date() })
-							}
-						},
-						upsert: false
-					}
+		const shouldDowngrade =
+			payload.outbound_purpose === DefectiveGoodsOutboundPurpose.RUIN ||
+			payload.outbound_purpose === DefectiveGoodsOutboundPurpose.DOWNGRADE
+		const shouldShipOut = payload.outbound_purpose === DefectiveGoodsOutboundPurpose.SHIPPING
+
+		const shouldDeactivate = payload.outbound_purpose !== DefectiveGoodsOutboundPurpose.DOWNGRADE
+
+		for (const chunkedEpcs of chunks) {
+			await super.updateMany(
+				{ epc: { $in: chunkedEpcs }, deleted: false },
+				{
+					outbound_purpose: payload.outbound_purpose,
+					updated_by: new Types.ObjectId(user._id.toString()),
+					...(!shouldShipOut && { po: payload.po }),
+					...(shouldDowngrade ? { defective_category: DefectiveCategory.C_GRADE } : { po: payload.po }),
+					...(shouldDeactivate && { outbound_date: outboundDate, deleted: true, deleted_at: new Date() })
 				}
-			})
-		)
+			)
+		}
 
-		return await super.findAll({ epc: { $in: payload.epcs } }, undefined, {
-			readPreference: 'primary' satisfies mongo.ReadPreferenceMode,
-			lean: { virtuals: true, autopopulate: true }
-		})
+		return await this.defectiveGoodsModel.distinct<string, string>(
+			'_id',
+			{ epc: { $in: payload.epcs } },
+			{ readPreference: 'primary' satisfies mongo.ReadPreferenceMode }
+		)
 	}
 }

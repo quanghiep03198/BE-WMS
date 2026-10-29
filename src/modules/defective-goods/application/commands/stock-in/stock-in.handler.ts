@@ -10,13 +10,8 @@ export class StockInDefectiveGoodsHandler implements ICommandHandler<StockInDefe
 		@Inject(DEFECTIVE_GOODS_REPOSITORY) private readonly repository: IDefectiveGoodsRepository,
 		private readonly eventBus: EventBus
 	) {}
-	async execute({ data, user }: StockInDefectiveGoodsCommand) {
-		const stockedInEpcs = await this.repository.stockIn(data, user)
-		this.eventBus.publish(
-			new DefectiveGoodsChangedEvent(
-				stockedInEpcs.map((item) => item._id.toHexString()),
-				{ userCodeUpdated: user.username }
-			)
-		)
+	async execute({ data, updatedBy }: StockInDefectiveGoodsCommand) {
+		const updatedIds = await this.repository.stockIn(data, updatedBy)
+		this.eventBus.publish(new DefectiveGoodsChangedEvent(updatedIds, { updatedBy: updatedBy.username }))
 	}
 }

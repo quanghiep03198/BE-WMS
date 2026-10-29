@@ -1,18 +1,23 @@
-import { DefectiveGoodsOutboundPurpose } from '@modules/defective-goods/domain/constants'
+import { CombinationStrategy, DefectiveGoodsOutboundPurpose } from '@modules/defective-goods/domain/constants'
 import z from 'zod'
 
-export const updateInboundStatusDTO = z.object({
-	epcs: z.array(z.string().trim().nonempty()),
-	storage_location: z
-		.string()
-		.trim()
-		.nonempty()
-		.transform((value) => value.toUpperCase())
-})
+export const updateInboundStatusDTO = z
+	.object({
+		combination_strategy: z.enum(CombinationStrategy),
+		epcs: z.array(z.string().trim().nonempty()).optional().default([]),
+		storage_location: z
+			.string()
+			.trim()
+			.nonempty()
+			.nonoptional()
+			.transform((value) => value.toUpperCase())
+	})
+	.required({ combination_strategy: true, storage_location: true })
 
 export const updateOutboundStatusDTO = z
 	.object({
-		epcs: z.array(z.string().trim().nonempty()),
+		combination_strategy: z.enum(CombinationStrategy),
+		epcs: z.array(z.string().trim().nonempty()).optional().default([]),
 		outbound_purpose: z.enum(DefectiveGoodsOutboundPurpose, {
 			message: `Outbound purpose must be one of: ${Object.values(DefectiveGoodsOutboundPurpose).join(', ')}`
 		}),

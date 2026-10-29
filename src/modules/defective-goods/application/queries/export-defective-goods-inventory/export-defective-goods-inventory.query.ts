@@ -1,3 +1,1 @@
-export class ExportDefectiveGoodsInventoryQuery {
-	constructor(public readonly factoryCode: string) {}
-}
+export class ExportDefectiveGoodsInventoryQuery {}

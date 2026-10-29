@@ -4,7 +4,17 @@ import { DEFECTIVE_GOODS_REPOSITORY, IDefectiveGoodsRepository } from '../../por
 import { GetScanningSizeQtyQuery } from './get-scanning-size-qty.query'
 
 @QueryHandler(GetScanningSizeQtyQuery)
-export class GetScanningSizeQtyHandler implements IQueryHandler<GetScanningSizeQtyQuery> {
+export class GetScanningSizeQtyHandler implements IQueryHandler<
+	GetScanningSizeQtyQuery,
+	Array<{
+		factory_shoes_style: string
+		color_sn: string
+		sizes: {
+			size_code: string
+			qty: number
+		}[]
+	}>
+> {
 	constructor(
 		@Inject(DEFECTIVE_GOODS_REPOSITORY)
 		private readonly defectiveGoodsRepository: IDefectiveGoodsRepository

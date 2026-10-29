@@ -109,8 +109,8 @@ export class DefectiveGoods {
 
 export const DefectiveGoodsSchema = SchemaFactory.createForClass(DefectiveGoods)
 
-DefectiveGoodsSchema.index({ outbound_at: 1 }, { expireAfterSeconds: 7 * 24 * 60 * 60 })
-DefectiveGoodsSchema.index({ defective_category: 1 })
+DefectiveGoodsSchema.index({ outbound_date: 1 }, { expireAfterSeconds: 7 * 24 * 60 * 60 })
+DefectiveGoodsSchema.index({ epc: 1 }, { unique: true, partialFilterExpression: { deleted: false } })
 
 DefectiveGoodsSchema.plugin(MongoosePaginate)
 DefectiveGoodsSchema.plugin(MongooseDelete, { overrideMethods: true })

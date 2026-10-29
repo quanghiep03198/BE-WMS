@@ -1,10 +1,11 @@
-import { IDefectiveGoods } from '@modules/defective-goods/domain/interfaces'
+import { TRequestUser } from '@common/decorators'
 import { Command } from '@nestjs/cqrs'
+import { CreateDefectiveGoodsDTO } from '../../dto/defective-goods.dto'
 
-export class CreateDefectiveGoodsCommand extends Command<IDefectiveGoods[]> {
+export class CreateDefectiveGoodsCommand extends Command<void> {
 	constructor(
-		public readonly items: Partial<IDefectiveGoods>[],
-		public readonly username: string
+		public readonly payload: CreateDefectiveGoodsDTO,
+		public readonly user: TRequestUser
 	) {
 		super()
 	}

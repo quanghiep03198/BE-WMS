@@ -17,7 +17,6 @@ export class DeleteManyDefectiveGoodsHandler implements ICommandHandler<DeleteMa
 
 	async execute({ filters, username }: DeleteManyDefectiveGoodsCommand) {
 		const deletedIds = await this.defectiveGoodsRepository.deleteMany(filters)
-		this.logger.debug(deletedIds)
-		this.eventBus.publish(new DefectiveGoodsChangedEvent(deletedIds, { userCodeUpdated: username }))
+		this.eventBus.publish(new DefectiveGoodsChangedEvent(deletedIds, { updatedBy: username }))
 	}
 }

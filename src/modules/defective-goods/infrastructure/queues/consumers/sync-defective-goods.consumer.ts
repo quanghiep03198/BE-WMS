@@ -19,25 +19,25 @@ export class SyncDefectiveGoodsConsumer extends WorkerHost {
 		@InjectModel(DefectiveGoods.name, DATA_WAREHOUSE_CONNECTION) private readonly model: DefectiveGoodsModel,
 		@InjectModel(Department.name, DATA_WAREHOUSE_CONNECTION) private readonly departments: DepartmentModel,
 		@InjectRepository(DefectiveGoodsEntity, DATA_SOURCE_DATA_LAKE)
-		private readonly sql: Repository<DefectiveGoodsEntity>
+		private readonly mssql: Repository<DefectiveGoodsEntity>
 	) {
 		super()
 	}
 
 	async process({
 		data
-	}: Job<{ documentIds: string[]; audit: { userCodeCreated?: string; userCodeUpdated?: string } }>): Promise<void> {
+	}: Job<{ documentIds: string[]; audit: { createdBy?: string; updatedBy?: string } }>): Promise<void> {
 		for (const documentId of data.documentIds) {
 			if (!Types.ObjectId.isValid(documentId)) continue
 			const _id = new Types.ObjectId(documentId)
 			const syncId = _id.toString()
 			const raw = (await this.model.findOneWithDeleted({ _id })) as
 				(DefectiveGoods & { _id: Types.ObjectId; deleted?: boolean }) | null
-			let row = await this.sql.findOneBy({ sync_id: syncId })
+			let row = await this.mssql.findOneBy({ sync_id: syncId })
 			if (!raw) continue
 			if (raw.deleted || raw.deleted_at) {
 				if (row)
-					await this.sql.update(
+					await this.mssql.update(
 						{ sync_id: syncId },
 						{
 							ri_cancel: true,
@@ -46,7 +46,7 @@ export class SyncDefectiveGoodsConsumer extends WorkerHost {
 							outbound_purpose: raw.outbound_purpose,
 							defective_category: raw.defective_category,
 							po: raw.po,
-							user_code_updated: data.audit.userCodeUpdated
+							user_code_updated: data.audit.updatedBy
 						}
 					)
 				continue
@@ -79,11 +79,11 @@ export class SyncDefectiveGoodsConsumer extends WorkerHost {
 				unit: raw.unit,
 				...(assemblyLine !== undefined && { assembly_line: assemblyLine }),
 				...(sewingLine !== undefined && { sewing_line: sewingLine }),
-				...(data.audit.userCodeUpdated && { user_code_updated: data.audit.userCodeUpdated })
+				...(data.audit.updatedBy && { user_code_updated: data.audit.updatedBy })
 			}
-			if (!row) row = this.sql.create({ ...values, user_code_created: data.audit.userCodeCreated })
+			if (!row) row = this.mssql.create({ ...values, user_code_created: data.audit.createdBy })
 			else Object.assign(row, values)
-			await this.sql.save(row)
+			await this.mssql.save(row)
 		}
 	}
 

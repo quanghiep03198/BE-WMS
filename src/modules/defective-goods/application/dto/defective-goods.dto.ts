@@ -1,9 +1,14 @@
-import { DefectiveCategory, DefectiveGoodsSource, DefectiveLocation } from '@modules/defective-goods/domain/constants'
+import {
+	CombinationStrategy,
+	DefectiveCategory,
+	DefectiveGoodsSource,
+	DefectiveLocation
+} from '@modules/defective-goods/domain/constants'
 import { isEmpty, isNil } from 'lodash'
 import { z } from 'zod'
 
 export const baseDefectiveGoodsDTO = z.object({
-	combination_strategy: z.enum(['uhf', 'usb', 'manually']),
+	combination_strategy: z.enum(CombinationStrategy),
 	defective_category: z.enum(DefectiveCategory),
 	po: z.string().nullish().default('PRELOAD'),
 	mo_no: z.string().nullish(),

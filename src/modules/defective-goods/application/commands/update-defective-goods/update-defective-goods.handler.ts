@@ -16,8 +16,7 @@ export class UpdateDefectiveGoodsHandler implements ICommandHandler<UpdateDefect
 		const current = await this.repository.findOneById(id)
 		if (!current)
 			throw new NotFoundException(this.i18n.t('defective-goods.not_found', { lang: I18nContext.current()?.lang }))
-		const updated = await this.repository.updateOneById(current._id, data)
-		const event = new DefectiveGoodsChangedEvent([current._id.toString()], { userCodeUpdated: username })
-		this.eventBus.publish(event)
+		await this.repository.updateById(current._id.toString(), data)
+		this.eventBus.publish(new DefectiveGoodsChangedEvent([current._id.toString()], { updatedBy: username }))
 	}
 }

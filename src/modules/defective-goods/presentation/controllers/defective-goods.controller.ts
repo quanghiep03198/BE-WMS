@@ -23,7 +23,6 @@ import {
 	UpdateOutboundStatusDTO,
 	updateOutboundStatusDTO
 } from '@modules/defective-goods/application/dto/inoutbound.dto'
-import { CheckActiveEpcsQuery } from '@modules/defective-goods/application/queries/check-active-epcs/check-active-epcs.query'
 import { ExportDailyInboundReportQuery } from '@modules/defective-goods/application/queries/export-daily-inbound-report/export-daily-inbound-report.query'
 import { ExportDailyOutboundReportQuery } from '@modules/defective-goods/application/queries/export-daily-outbound-report/export-daily-outbound-report.query'
 import { ExportDefectiveGoodsInventoryQuery } from '@modules/defective-goods/application/queries/export-defective-goods-inventory/export-defective-goods-inventory.query'
@@ -37,13 +36,13 @@ import { IDefectiveGoods } from '@modules/defective-goods/domain/interfaces'
 import { UserRole } from '@modules/user/domain/constants'
 import {
 	Body,
-	ConflictException,
 	Controller,
 	DefaultValuePipe,
 	Headers,
 	HttpStatus,
 	Param,
 	ParseDatePipe,
+	ParseIntPipe,
 	Query,
 	Res
 } from '@nestjs/common'
@@ -51,12 +50,10 @@ import { CommandBus, QueryBus } from '@nestjs/cqrs'
 import { ParseObjectIdPipe } from '@nestjs/mongoose'
 import { format } from 'date-fns'
 import { FastifyReply } from 'fastify'
-import { isEmpty, isNil, omit, pickBy } from 'lodash'
+import { isEmpty, isNil, pickBy } from 'lodash'
 import { I18n, I18nContext, I18nService } from 'nestjs-i18n'
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
 import z from 'zod'
-import { EPCGenerator } from '../../application/helpers/epc-generator'
-import { DefectiveCategory, DefectiveGoodsUnit } from '../../domain/constants'
 
 @Controller('defective-goods')
 export class DefectiveGoodsController {
@@ -138,72 +135,7 @@ export class DefectiveGoodsController {
 		@I18n() i18n: I18nContext<I18nTranslations>,
 		@Body(new ZodValidationPipe(createDefectiveGoodsDTO)) payload: CreateDefectiveGoodsDTO
 	) {
-		if (payload.combination_strategy === 'uhf' && Array.isArray(payload.epc)) {
-			const isActiveEpcsExist = await this.queryBus.execute(new CheckActiveEpcsQuery(payload.epc))
-			if (isActiveEpcsExist)
-				throw new ConflictException(i18n.t('defective-goods.active_epcs_recombination_conflict'))
-			delete payload.sizes
-			return this.commandBus.execute(
-				new CreateDefectiveGoodsCommand(
-					payload.epc.map((item) => ({
-						...(payload as unknown as Partial<IDefectiveGoods>),
-						epc: item,
-						unit:
-							payload.defective_category === DefectiveCategory.C_GRADE
-								? DefectiveGoodsUnit.PCS
-								: DefectiveGoodsUnit.PRS,
-						created_by: user._id
-					})),
-					user.username
-				)
-			)
-		}
-		if (payload.combination_strategy === 'usb' && typeof payload.epc === 'string') {
-			const isActiveEpcsExist = await this.queryBus.execute(new CheckActiveEpcsQuery([payload.epc]))
-			if (isActiveEpcsExist)
-				throw new ConflictException(
-					this.i18nService.t('defective-goods.active_epcs_recombination_conflict', {
-						lang: I18nContext.current()?.lang
-					})
-				)
-			delete payload.sizes
-			return this.commandBus.execute(
-				new CreateDefectiveGoodsCommand(
-					[
-						{
-							...(payload as unknown as Partial<IDefectiveGoods>),
-							unit:
-								payload.defective_category === DefectiveCategory.C_GRADE
-									? DefectiveGoodsUnit.PCS
-									: DefectiveGoodsUnit.PRS,
-							created_by: user._id
-						}
-					],
-					user.username
-				)
-			)
-		}
-		if (payload.combination_strategy === 'manually' && Array.isArray(payload.sizes)) {
-			const generator = new EPCGenerator()
-
-			const data = payload.sizes.flatMap(({ size_numcode, qty }) => {
-				const epcs = generator.generateBatch(qty)
-				return epcs.map((epc) => ({
-					created_by: user._id,
-					epc,
-					size_numcode,
-					unit:
-						payload.defective_category === DefectiveCategory.C_GRADE
-							? DefectiveGoodsUnit.PCS
-							: (DefectiveGoodsUnit.PRS as const),
-					...omit(payload, ['epc', 'sizes'])
-				}))
-			})
-
-			return this.commandBus.execute(
-				new CreateDefectiveGoodsCommand(data as unknown as Partial<IDefectiveGoods>[], user.username)
-			)
-		}
+		return await this.commandBus.execute(new CreateDefectiveGoodsCommand(payload, user))
 	}
 
 	@RouteHandler({
@@ -215,7 +147,7 @@ export class DefectiveGoodsController {
 	public async getCanInboundEpcs(
 		@Param('stockFlow') stockFlow: 'inbound' | 'outbound',
 		@Query() filters: Partial<IDefectiveGoods>,
-		@Query('take') take: Nullish<number>
+		@Query('take', new ParseIntPipe({ optional: true })) take: number
 	) {
 		return await this.queryBus.execute(new GetInoutboundEpcsQuery(stockFlow, filters, take))
 	}
@@ -244,7 +176,7 @@ export class DefectiveGoodsController {
 	})
 	@StrictRoles()
 	@RequireAuthorized(UserRole.DG_WAREHOUSE_STAFF)
-	public async deleteOne(@RequestUser() user: TRequestUser, @Param('id', ParseObjectIdPipe) id: string) {
+	public async deleteOne(@RequestUser() user: TRequestUser, @Param('id', new ParseObjectIdPipe()) id: string) {
 		return this.commandBus.execute(new DeleteOneDefectiveGoodsCommand(id, user.username))
 	}
 
@@ -281,11 +213,13 @@ export class DefectiveGoodsController {
 	})
 	@StrictRoles()
 	@RequireAuthorized(UserRole.DG_WAREHOUSE_STAFF)
-	public async stockInDefectiveGoods(
+	public async stockIn(
 		@RequestUser() user: TRequestUser,
-		@Body(new ZodValidationPipe(updateInboundStatusDTO.partial())) data: UpdateInboundStatusDTO
+		@Body(new ZodValidationPipe(updateInboundStatusDTO.partial())) data: UpdateInboundStatusDTO,
+		@Query() filters: Partial<IDefectiveGoods>,
+		@Query('take', new ParseIntPipe({ optional: true })) take: number
 	) {
-		return this.commandBus.execute(new StockInDefectiveGoodsCommand(data, user))
+		return this.commandBus.execute(new StockInDefectiveGoodsCommand(data, user, filters, take))
 	}
 
 	@RouteHandler({
@@ -325,11 +259,13 @@ export class DefectiveGoodsController {
 		statusCode: HttpStatus.CREATED
 	})
 	@RequireAuthorized(UserRole.DG_WAREHOUSE_STAFF)
-	public async updateOutboundStatus(
+	public async stockOut(
 		@RequestUser() user: TRequestUser,
-		@Body(new ZodValidationPipe(updateOutboundStatusDTO)) data: UpdateOutboundStatusDTO
+		@Body(new ZodValidationPipe(updateOutboundStatusDTO)) data: UpdateOutboundStatusDTO,
+		@Query() filters: Partial<IDefectiveGoods>,
+		@Query('take', new ParseIntPipe({ optional: true })) take: number
 	) {
-		return this.commandBus.execute(new StockOutDefectiveGoodsCommand(data, user))
+		return this.commandBus.execute(new StockOutDefectiveGoodsCommand(data, user, filters, take))
 	}
 
 	@RouteHandler({
@@ -352,12 +288,11 @@ export class DefectiveGoodsController {
 	})
 	@RequireAuthorized(UserRole.MANAGER, UserRole.DG_WAREHOUSE_STAFF, UserRole.INDUSTRIAL_ENGINEERING_STAFF)
 	async exportDailyInboundReport(
-		@Query('date:eq', new ZodValidationPipe(z.coerce.date().transform((value) => format(value, 'yyyy-MM-dd'))))
-		date: string,
-		@Headers(CommonRequestHeader.FACTORY_CODE) factoryCode: string,
+		@Query('date:eq', new ZodValidationPipe(z.coerce.date()), new ParseDatePipe())
+		date: Date,
 		@Res() reply: FastifyReply
 	) {
-		const buffer = await this.queryBus.execute(new ExportDailyOutboundReportQuery(date, factoryCode))
+		const buffer = await this.queryBus.execute(new ExportDailyOutboundReportQuery(date))
 		return reply.send(buffer)
 	}
 
@@ -380,11 +315,8 @@ export class DefectiveGoodsController {
 		statusCode: HttpStatus.OK
 	})
 	@RequireAuthorized(UserRole.MANAGER, UserRole.DG_WAREHOUSE_STAFF, UserRole.INDUSTRIAL_ENGINEERING_STAFF)
-	async exportDefectiveGoodsInventory(
-		@Headers(CommonRequestHeader.FACTORY_CODE) factoryCode: string,
-		@Res() reply: FastifyReply
-	) {
-		const buffer = await this.queryBus.execute(new ExportDefectiveGoodsInventoryQuery(factoryCode))
+	async exportDefectiveGoodsInventory(@Res() reply: FastifyReply) {
+		const buffer = await this.queryBus.execute(new ExportDefectiveGoodsInventoryQuery())
 		return reply.send(buffer)
 	}
 

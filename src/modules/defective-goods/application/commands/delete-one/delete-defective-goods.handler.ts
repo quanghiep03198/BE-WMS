@@ -12,6 +12,6 @@ export class DeleteOneDefectiveGoodsHandler implements ICommandHandler<DeleteOne
 	) {}
 	async execute({ id, username }: DeleteOneDefectiveGoodsCommand) {
 		await this.repository.softDeleteOneById(id)
-		this.eventBus.publish(new DefectiveGoodsChangedEvent([id], { userCodeUpdated: username }))
+		this.eventBus.publish(new DefectiveGoodsChangedEvent([id], { updatedBy: username }))
 	}
 }

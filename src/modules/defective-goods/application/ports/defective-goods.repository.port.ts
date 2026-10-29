@@ -17,11 +17,12 @@ export interface IDefectiveGoodsRepository extends IBaseRepository<IDefectiveGoo
 	 * @param filter
 	 */
 	findOne(filter?: Partial<IDefectiveGoods> | Record<string, any>): Promise<IDefectiveGoods>
+	updateById(id: string, payload: Partial<IDefectiveGoods> & { updated_by: TObjectId }): Promise<string>
 	getInoutboundEpcs(
 		stockFlow: 'inbound' | 'outbound',
 		filters?: Partial<IDefectiveGoods> | Record<string, any>,
 		take?: number
-	): Promise<IDefectiveGoods[]>
+	): Promise<Pick<Pagination<IDefectiveGoods>, 'data' | 'totalDocs'>>
 	getScanningSizeQty(epcs: string[]): Promise<
 		{
 			factory_shoes_style: string
@@ -32,8 +33,18 @@ export interface IDefectiveGoodsRepository extends IBaseRepository<IDefectiveGoo
 			}[]
 		}[]
 	>
-	stockIn(payload: UpdateInboundStatusDTO, user: TRequestUser): Promise<IDefectiveGoods[]>
-	stockOut(payload: UpdateOutboundStatusDTO, user: TRequestUser): Promise<IDefectiveGoods[]>
+	stockIn(
+		payload: UpdateInboundStatusDTO,
+		updatedBy: TRequestUser,
+		filters?: Partial<IDefectiveGoods> | Record<string, any>,
+		take?: number
+	): Promise<string[]>
+	stockOut(
+		payload: UpdateOutboundStatusDTO,
+		updatedBy: TRequestUser,
+		filters?: Partial<IDefectiveGoods> | Record<string, any>,
+		take?: number
+	): Promise<string[]>
 	deleteMany(filter: DeleteManyDefectiveGoodsDTO): Promise<string[]>
 	// deleteMany(filter?: Partial<IDefectiveGoods> | Record<string, any>): Promise<void>
 }

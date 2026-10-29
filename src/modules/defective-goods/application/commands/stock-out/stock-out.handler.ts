@@ -13,22 +13,14 @@ export class StockOutDefectiveGoodsHandler implements ICommandHandler<StockOutDe
 		private readonly i18n: I18nService
 	) {}
 
-	async execute({ data, user }: StockOutDefectiveGoodsCommand) {
+	async execute({ data, updatedBy, filters, take }: StockOutDefectiveGoodsCommand) {
 		const documents = await this.defectiveGoodsRepository.findAll({ epc: { $in: data.epcs } })
 		if (documents.some(({ inbound_date, storage_location }) => !inbound_date || !storage_location)) {
 			throw new ConflictException(
 				this.i18n.t('inoutbound.notification.not_inbound_yet', { lang: I18nContext.current()?.lang })
 			)
 		}
-
-		const updated = await this.defectiveGoodsRepository.stockOut(data, user)
-
-		// const deleted = await this.defectiveGoodsRepository.softDeleteMany({ epc: { $in: data.epcs } })
-		this.eventBus.publish(
-			new DefectiveGoodsChangedEvent(
-				updated.map(({ _id }) => _id.toString()),
-				{ userCodeUpdated: user.username }
-			)
-		)
+		const updatedIds = await this.defectiveGoodsRepository.stockOut(data, updatedBy, filters, take)
+		this.eventBus.publish(new DefectiveGoodsChangedEvent(updatedIds, { updatedBy: updatedBy.username }))
 	}
 }
