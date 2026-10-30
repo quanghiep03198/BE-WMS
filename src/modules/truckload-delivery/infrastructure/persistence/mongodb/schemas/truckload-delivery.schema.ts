@@ -34,10 +34,10 @@ class TruckloadPacking {
 	updated_by?: Types.ObjectId | Pick<UserDocument, '_id' | 'username' | 'display_name'>
 
 	@Prop({ type: Date, default: null })
-	created_at: Date | null
+	created_at: Nullish<Date>
 
 	@Prop({ type: Date, default: null })
-	updated_at: Date | null
+	updated_at?: Nullish<Date>
 
 	po_info?: PurchaseOrder
 }
@@ -128,16 +128,16 @@ export class TruckloadDelivery {
 
 	/** GridFS file ids (bucket `dispatch_order_signatures`) */
 	@Prop({ type: Types.ObjectId, default: null })
-	ie_signature: Types.ObjectId | null
+	ie_signature: Nullish<Types.ObjectId>
 
 	@Prop({ type: Types.ObjectId, default: null })
-	warehouse_officer_signature: Types.ObjectId | null
+	warehouse_officer_signature: Nullish<Types.ObjectId>
 
 	@Prop({ type: Types.ObjectId, default: null })
-	security_1_signature: Types.ObjectId | null
+	security_1_signature: Nullish<Types.ObjectId>
 
 	@Prop({ type: Types.ObjectId, default: null })
-	security_2_signature: Types.ObjectId | null
+	security_2_signature: Nullish<Types.ObjectId>
 
 	@Prop({ type: String })
 	remark?: string

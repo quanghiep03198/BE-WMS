@@ -26,8 +26,8 @@ export class MoExchageExceptionFilter implements ExceptionFilter {
 
 		let message: string = i18n.t('inoutbound.notification.exchange_mo_failed', { lang: i18n.lang }),
 			statusCode: HttpStatus = HttpStatus.INTERNAL_SERVER_ERROR,
-			stack: string | undefined = undefined,
-			cause: unknown = undefined
+			stack: Nullish<string>,
+			cause: unknown
 
 		switch (true) {
 			case exception instanceof NoExchangableEpcException: {

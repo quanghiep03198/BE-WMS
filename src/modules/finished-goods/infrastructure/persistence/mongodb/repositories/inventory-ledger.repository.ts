@@ -71,7 +71,7 @@ export class InventoryLedgerRepository implements IInventoryLedgerRepository {
 			Record<InventoryFluctuationIncrementKey, mongo.NumericType>
 		>(pick(change, 'size_ledger'))
 		for (const field in decrementExpression) {
-			if (decrementExpression.hasOwnProperty(field) && decrementExpression[field] !== 0)
+			if (field in decrementExpression && decrementExpression[field] !== 0)
 				decrementExpression[field] = -decrementExpression[field]
 		}
 		return decrementExpression
