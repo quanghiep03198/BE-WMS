@@ -1,20 +1,12 @@
 import { FALLBACK_VALUE } from '@common/constants'
-import { TRequestUser } from '@common/decorators'
 import { MongoQueryBuilder } from '@common/helpers/mongo-query-builder'
-import { DATA_WAREHOUSE_CONNECTION } from '@databases/constants'
+import { DATA_WAREHOUSE_CONNECTION, DUPLICATE_KEY_ERROR_CODE } from '@databases/constants'
 import { PaginationDTO } from '@modules/_base/dto/pagination.dto'
 import { BaseMongoRepository } from '@modules/_base/repositories/base-mongo.abstract.repository'
 import { DeleteManyDefectiveGoodsDTO } from '@modules/defective-goods/application/dto/defective-goods.dto'
-import {
-	UpdateInboundStatusDTO,
-	UpdateOutboundStatusDTO
-} from '@modules/defective-goods/application/dto/inoutbound.dto'
 import { IDefectiveGoodsRepository } from '@modules/defective-goods/application/ports/defective-goods.repository.port'
-import {
-	CombinationStrategy,
-	DefectiveCategory,
-	DefectiveGoodsOutboundPurpose
-} from '@modules/defective-goods/domain/constants'
+import { CombinationStrategy } from '@modules/defective-goods/domain/constants'
+import { ActiveEpcsRecombinationException } from '@modules/defective-goods/domain/exceptions'
 import { IDefectiveGoods } from '@modules/defective-goods/domain/interfaces'
 import {
 	DefectiveGoodsDomainModel,
@@ -23,7 +15,8 @@ import {
 import { Injectable } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
 import chunk from 'lodash/chunk'
-import { mongo, Types, type QueryOptions } from 'mongoose'
+import pick from 'lodash/pick'
+import { mongo, type QueryOptions } from 'mongoose'
 import { DefectiveGoods, DefectiveGoodsDocument, DefectiveGoodsModel } from '../schemas/defective-goods.schema'
 
 @Injectable()
@@ -38,6 +31,27 @@ export class DefectiveGoodsRepository
 		super(defectiveGoodsModel)
 	}
 
+	async create(documents: DefectiveGoodsDomainModel[]) {
+		try {
+			const chunks = chunk(documents, 1000)
+
+			const models = await Promise.all(
+				chunks.map(async (chunkedDocuments) => {
+					const inserted = await this.defectiveGoodsModel.insertMany(
+						chunkedDocuments.map((document) => document.toProps())
+					)
+					return inserted.map(
+						(document) => new DefectiveGoodsDomainModel(document.toObject<IDefectiveGoodsProps>())
+					)
+				})
+			)
+			return models.flat()
+		} catch (error) {
+			if (error['code'] === DUPLICATE_KEY_ERROR_CODE) throw new ActiveEpcsRecombinationException()
+			throw error
+		}
+	}
+
 	async findById(id: string) {
 		const defectiveGoods = await this.defectiveGoodsModel
 			.findById(id, {
@@ -47,28 +61,15 @@ export class DefectiveGoodsRepository
 		return new DefectiveGoodsDomainModel(defectiveGoods)
 	}
 
-	async create(documents: DefectiveGoodsDomainModel[]) {
-		const chunks = chunk(documents, 1000)
-
-		const models = await Promise.all(
-			chunks.map(async (chunkedDocuments) => {
-				const inserted = await this.defectiveGoodsModel.insertMany(
-					chunkedDocuments.map((document) => document.toProps())
-				)
-				return inserted.map((document) => new DefectiveGoodsDomainModel(document.toObject<IDefectiveGoodsProps>()))
-			})
-		)
-		return models.flat()
+	async findAll(filter: Partial<IDefectiveGoods> | Record<string, any>, take: number = 0) {
+		const documents = await this.defectiveGoodsModel
+			.find({ deleted: false, ...filter })
+			.limit(take)
+			.lean<IDefectiveGoodsProps[]>({ virtuals: true, autopopulate: true })
+		return documents.map((document) => new DefectiveGoodsDomainModel(document))
 	}
 
-	override async findAll(filter: Partial<IDefectiveGoods> = {}) {
-		return await super.findAll({ deleted: false, ...filter }, undefined, {
-			readPreference: 'primary' satisfies mongo.ReadPreferenceMode,
-			lean: { virtuals: true, autopopulate: true }
-		})
-	}
-
-	override async paginate(
+	async paginate(
 		filter: Partial<IDefectiveGoods> = {},
 		{ page, limit, ...options }: PaginationDTO & Omit<QueryOptions<IDefectiveGoods>, 'page' | 'limit'>
 	) {
@@ -139,7 +140,9 @@ export class DefectiveGoodsRepository
 			.then((docs) => docs.map((item) => new DefectiveGoodsDomainModel(item)))
 
 		const chunks = chunk(pendingDeleteItems, 100)
-		await Promise.all(chunks.map(async (chunk) => await super.softDeleteManyByIds(chunk.map((item) => item.id))))
+		await Promise.all(
+			chunks.map(async (chunk) => await super.softDeleteManyByIds(chunk.map((item) => item.id.toString())))
+		)
 
 		return pendingDeleteItems
 	}
@@ -174,7 +177,7 @@ export class DefectiveGoodsRepository
 	}
 
 	async getScanningSizeQty(epcs: string[]) {
-		const data = await super.findAll(
+		const data = await super.find(
 			{ epc: { $in: epcs }, combination_strategy: { $ne: CombinationStrategy.MANUALLY } },
 			{ factory_shoes_style: 1, color_sn: 1, size_code: 1, epc: 1 },
 			{ lean: true }
@@ -218,77 +221,74 @@ export class DefectiveGoodsRepository
 		return result
 	}
 
-	async stockIn(
-		payload: UpdateInboundStatusDTO,
-		user: TRequestUser,
-		filters: Partial<IDefectiveGoods> | Record<string, any> = {},
-		take: number = 0
-	) {
+	async stockIn(models: DefectiveGoodsDomainModel[]) {
 		const inboundDate = new Date()
-		const epcs =
-			payload.combination_strategy === CombinationStrategy.MANUALLY
-				? await this.getInoutboundEpcs('inbound', filters, take).then((res) => res.data.map((doc) => doc.epc))
-				: payload.epcs
 
-		const chunks = chunk(epcs, 1000)
+		const chunks = chunk(models, 1000)
 
-		for (const chunkedEpcs of chunks) {
-			await super.updateMany(
-				{ epc: { $in: chunkedEpcs }, deleted: false },
-				{
-					storage_location: payload.storage_location,
-					inbound_date: inboundDate,
-					updated_by: new Types.ObjectId(user._id.toString())
-				}
+		for (const models of chunks) {
+			await this.defectiveGoodsModel.bulkWrite(
+				models.map((m) => ({
+					updateOne: {
+						filter: { epc: m.epc, deleted: false },
+						update: {
+							inbound_date: inboundDate,
+							...pick(m.toProps(), ['storage_location', 'updated_by'])
+						}
+					}
+				}))
 			)
 		}
-
-		return await this.defectiveGoodsModel.distinct<string, string>(
-			'_id',
-			{ epc: { $in: payload.epcs } },
-			{ readPreference: 'primary' satisfies mongo.ReadPreferenceMode }
-		)
 	}
 
-	async stockOut(
-		payload: UpdateOutboundStatusDTO,
-		user: TRequestUser,
-		filters: Partial<IDefectiveGoods> | Record<string, any> = {},
-		take: number = 0
-	) {
+	async stockOut(models: DefectiveGoodsDomainModel[]) {
 		const outboundDate = new Date()
+		const chunks = chunk(models, 1000)
 
-		const epcs =
-			payload.combination_strategy === CombinationStrategy.MANUALLY
-				? await this.getInoutboundEpcs('outbound', filters, take).then((res) => res.data.map((doc) => doc.epc))
-				: payload.epcs
-
-		const chunks = chunk(epcs, 1000)
-
-		const shouldDowngrade =
-			payload.outbound_purpose === DefectiveGoodsOutboundPurpose.RUIN ||
-			payload.outbound_purpose === DefectiveGoodsOutboundPurpose.DOWNGRADE
-		const shouldShipOut = payload.outbound_purpose === DefectiveGoodsOutboundPurpose.SHIPPING
-
-		const shouldDeactivate = payload.outbound_purpose !== DefectiveGoodsOutboundPurpose.DOWNGRADE
-
-		for (const chunkedEpcs of chunks) {
-			await super.updateMany(
-				{ epc: { $in: chunkedEpcs }, deleted: false },
-				{
-					outbound_purpose: payload.outbound_purpose,
-					updated_by: new Types.ObjectId(user._id.toString()),
-					...(!shouldShipOut && { po: payload.po }),
-					...(shouldDowngrade ? { defective_category: DefectiveCategory.C_GRADE } : { po: payload.po }),
-					...(shouldDeactivate && { outbound_date: outboundDate, deleted: true, deleted_at: new Date() })
-				}
+		for (const models of chunks) {
+			await this.defectiveGoodsModel.bulkWrite(
+				models.map((m) => ({
+					updateOne: {
+						filter: { epc: m.epc, deleted: false },
+						update: {
+							outbound_date: outboundDate,
+							...pick(m.toProps(), ['outbound_purpose', 'updated_by'])
+						}
+					}
+				}))
 			)
 		}
+		// const epcs =
+		// 	payload.combination_strategy === CombinationStrategy.MANUALLY
+		// 		? await this.getInoutboundEpcs('outbound', filters, take).then((res) => res.data.map((doc) => doc.epc))
+		// 		: payload.epcs
 
-		return await this.defectiveGoodsModel.distinct<string, string>(
-			'_id',
-			{ epc: { $in: payload.epcs } },
-			{ readPreference: 'primary' satisfies mongo.ReadPreferenceMode }
-		)
+		// const chunks = chunk(epcs, 1000)
+
+		// const shouldDowngrade =
+		// 	payload.outbound_purpose === DefectiveGoodsOutboundPurpose.RUIN ||
+		// 	payload.outbound_purpose === DefectiveGoodsOutboundPurpose.DOWNGRADE
+		// const shouldShipOut = payload.outbound_purpose === DefectiveGoodsOutboundPurpose.SHIPPING
+
+		// const shouldDeactivate = payload.outbound_purpose !== DefectiveGoodsOutboundPurpose.DOWNGRADE
+
+		// for (const chunkedEpcs of chunks) {
+		// 	await super.updateMany(
+		// 		{ epc: { $in: chunkedEpcs }, deleted: false },
+		// 		{
+		// 			outbound_purpose: payload.outbound_purpose,
+		// 			updated_by: new Types.ObjectId(user._id.toString()),
+		// 			...(!shouldShipOut && { po: payload.po }),
+		// 			...(shouldDowngrade ? { defective_category: DefectiveCategory.C_GRADE } : { po: payload.po }),
+		// 			...(shouldDeactivate && { outbound_date: outboundDate, deleted: true, deleted_at: new Date() })
+		// 		}
+		// 	)
+		// }
+
+		// return await this.defectiveGoodsModel.distinct<string, string>(
+		// 	'_id',
+		// 	{ epc: { $in: payload.epcs } },
+		// 	{ readPreference: 'primary' satisfies mongo.ReadPreferenceMode }
+		// )
 	}
 }

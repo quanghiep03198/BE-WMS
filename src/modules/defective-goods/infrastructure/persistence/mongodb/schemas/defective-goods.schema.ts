@@ -6,6 +6,8 @@ import {
 	DefectiveGoodsUnit,
 	DefectiveLocation
 } from '@modules/defective-goods/domain/constants'
+import { DepartmentDocument } from '@modules/department/schemas/department.schema'
+import { UserDocument } from '@modules/user/infrastructure/persistence/mongodb/schemas/user.schema'
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose'
 import { Types, type HydratedDocument, type PaginateModel } from 'mongoose'
 import MongooseAutoPopulate from 'mongoose-autopopulate'
@@ -125,6 +127,14 @@ for (const op of ['deleteOne', 'deleteMany', 'findOneAndDelete'] as const) {
 	})
 }
 
-export type DefectiveGoodsDocument = HydratedDocument<DefectiveGoods>
+export type DefectiveGoodsDocument = HydratedDocument<
+	DefectiveGoods,
+	{
+		assembly_line: DepartmentDocument
+		sewing_line: DepartmentDocument
+		created_by: UserDocument
+		updated_by: UserDocument
+	}
+>
 
 export type DefectiveGoodsModel = SoftDeleteModel<DefectiveGoodsDocument> & PaginateModel<DefectiveGoodsDocument>

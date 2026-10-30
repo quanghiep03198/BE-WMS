@@ -50,16 +50,15 @@ import { CommandBus, QueryBus } from '@nestjs/cqrs'
 import { ParseObjectIdPipe } from '@nestjs/mongoose'
 import { format } from 'date-fns'
 import { FastifyReply } from 'fastify'
-import { isEmpty, isNil, pickBy } from 'lodash'
-import { I18n, I18nContext, I18nService } from 'nestjs-i18n'
+import { I18n, I18nContext } from 'nestjs-i18n'
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
 import z from 'zod'
+import { DefectiveGoodsExceptionFilter } from '../filters/defective-goods-exception.filter'
 
 @Controller('defective-goods')
 export class DefectiveGoodsController {
 	constructor(
 		@InjectPinoLogger(DefectiveGoodsController.name) private readonly logger: PinoLogger,
-		private readonly i18nService: I18nService,
 		private readonly commandBus: CommandBus,
 		private readonly queryBus: QueryBus
 	) {}
@@ -72,61 +71,16 @@ export class DefectiveGoodsController {
 	@RequireAuthorized(UserRole.MANAGER, UserRole.DG_WAREHOUSE_STAFF)
 	public async get(
 		@Query(new ZodValidationPipe(filterQueryDTO), new DefaultValuePipe({ page: 1, limit: 10 }))
-		filterQueries: FilterQueryDTO
+		filterQueries: FilterQueryDTO,
+		@Query('page', new DefaultValuePipe(1), new ParseIntPipe()) page: number
 	) {
-		const {
-			epc,
-			page,
-			limit,
-			created_at: created,
-			brand_name,
-			defective_category,
-			factory_shoes_style,
-			cust_shoes_style,
-			po,
-			mo_no,
-			size_numcode,
-			assembly_line,
-			sewing_line
-		} = filterQueries
-
-		const filterQuery = pickBy(
-			{
-				brand_name: brand_name?.toUpperCase(),
-				defective_category: defective_category?.toUpperCase(),
-				factory_shoes_style: factory_shoes_style?.toUpperCase(),
-				cust_shoes_style,
-				po,
-				mo_no: mo_no?.toUpperCase(),
-				size_numcode: size_numcode?.toUpperCase(),
-				assembly_line,
-				sewing_line
-			},
-			(item) => !isEmpty(item) && !isNil(item)
-		)
-
-		return this.queryBus.execute(
-			new GetDefectiveGoodsQuery(
-				{
-					...filterQuery,
-					...(epc && { epc: { $regex: epc.toUpperCase(), $options: 'i' } }),
-					...(created && {
-						created_at: {
-							$gte: new Date(new Date(created).setHours(0, 0, 0, 0)),
-							$lte: new Date(new Date(created).setHours(23, 59, 59, 999))
-						}
-					})
-				},
-				page,
-				limit
-			)
-		)
-		// Todo: create new resource for defective goods
+		return this.queryBus.execute(new GetDefectiveGoodsQuery(filterQueries, page, 10))
 	}
 	@RouteHandler({
 		endpoint: 'create',
 		method: HttpMethod.POST,
-		statusCode: HttpStatus.CREATED
+		statusCode: HttpStatus.CREATED,
+		exceptionFilter: DefectiveGoodsExceptionFilter
 	})
 	@StrictRoles()
 	@RequireAuthorized(UserRole.DG_WAREHOUSE_STAFF)
@@ -160,13 +114,11 @@ export class DefectiveGoodsController {
 	@StrictRoles()
 	@RequireAuthorized(UserRole.DG_WAREHOUSE_STAFF)
 	public async updateOne(
-		@RequestUser() user: TRequestUser,
+		@RequestUser() updatedBy: TRequestUser,
 		@Param('id', ParseObjectIdPipe) id: string,
 		@Body(new ZodValidationPipe(updateDefectiveGoodsDTO)) payload: UpdateDefectiveGoodsDTO
 	) {
-		return this.commandBus.execute(
-			new UpdateDefectiveGoodsCommand(id, { ...this.toPayload(payload), updated_by: user._id }, user.username)
-		)
+		return this.commandBus.execute(new UpdateDefectiveGoodsCommand(id, payload, updatedBy))
 	}
 
 	@RouteHandler({
@@ -209,7 +161,8 @@ export class DefectiveGoodsController {
 	@RouteHandler({
 		method: HttpMethod.PATCH,
 		endpoint: 'inbound',
-		statusCode: HttpStatus.CREATED
+		statusCode: HttpStatus.CREATED,
+		exceptionFilter: DefectiveGoodsExceptionFilter
 	})
 	@StrictRoles()
 	@RequireAuthorized(UserRole.DG_WAREHOUSE_STAFF)
@@ -256,7 +209,8 @@ export class DefectiveGoodsController {
 	@RouteHandler({
 		method: HttpMethod.PATCH,
 		endpoint: 'outbound',
-		statusCode: HttpStatus.CREATED
+		statusCode: HttpStatus.CREATED,
+		exceptionFilter: DefectiveGoodsExceptionFilter
 	})
 	@RequireAuthorized(UserRole.DG_WAREHOUSE_STAFF)
 	public async stockOut(

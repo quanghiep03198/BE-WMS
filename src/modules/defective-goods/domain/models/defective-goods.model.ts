@@ -7,7 +7,7 @@ import {
 	DefectiveGoodsUnit,
 	DefectiveLocation
 } from '../constants'
-import { DefectiveGoodsChangedEvent, DefectiveGoodsCreatedEvent } from '../events/defective-goods.events'
+import { DefectiveGoodsChangedEvent } from '../events/defective-goods.events'
 import { IDefectiveGoods } from '../interfaces'
 
 export interface IDefectiveGoodsProps extends Omit<IDefectiveGoods, 'assembly_line' | 'sewing_line'> {
@@ -21,7 +21,11 @@ export class DefectiveGoodsDomainModel extends AggregateRoot {
 	}
 
 	get id() {
-		return this.state._id.toString()
+		return this.state._id
+	}
+
+	get epc() {
+		return this.state.epc
 	}
 
 	static create(payload: {
@@ -48,7 +52,8 @@ export class DefectiveGoodsDomainModel extends AggregateRoot {
 	}): Array<DefectiveGoodsDomainModel> {
 		let models: DefectiveGoodsDomainModel[] = []
 
-		const unit = DefectiveGoodsDomainModel.detectUnit(payload.defective_category)
+		const unit =
+			payload.defective_category === DefectiveCategory.C_GRADE ? DefectiveGoodsUnit.PCS : DefectiveGoodsUnit.PRS
 
 		if (payload.combination_strategy !== CombinationStrategy.MANUALLY) delete payload.sizes
 
@@ -95,17 +100,23 @@ export class DefectiveGoodsDomainModel extends AggregateRoot {
 		return this.state
 	}
 
-	create() {
-		this.apply(new DefectiveGoodsCreatedEvent(this.id))
+	insert() {
+		if (!this.id) throw new Error('Attempted to insert a defective goods model without an ID')
+
+		this.apply(new DefectiveGoodsChangedEvent(this.id.toString()))
 	}
 
-	stockIn() {}
+	stockIn(storageLocation: string, updatedBy: TObjectId) {
+		if (!this.id) throw new Error('Attempted to stock in a defective goods model without an ID')
+
+		this.state.inbound_date = new Date()
+		this.state.storage_location = storageLocation
+		this.state.updated_by = updatedBy
+		this.apply(new DefectiveGoodsChangedEvent(this.id.toString()))
+	}
 
 	delete(deletedBy: string) {
-		this.apply(new DefectiveGoodsChangedEvent(this.id, { updatedBy: deletedBy }))
-	}
-
-	private static detectUnit(category: DefectiveCategory): DefectiveGoodsUnit {
-		return category === DefectiveCategory.C_GRADE ? DefectiveGoodsUnit.PCS : DefectiveGoodsUnit.PRS
+		if (!this.id) throw new Error('Attempted to insert a defective goods model without an ID')
+		this.apply(new DefectiveGoodsChangedEvent(this.id.toString(), { updatedBy: deletedBy }))
 	}
 }

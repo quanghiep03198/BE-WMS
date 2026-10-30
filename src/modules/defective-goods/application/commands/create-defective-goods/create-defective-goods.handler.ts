@@ -12,13 +12,13 @@ export class CreateDefectiveGoodsHandler implements ICommandHandler<CreateDefect
 	) {}
 
 	async execute({ payload, user }: CreateDefectiveGoodsCommand) {
-		const models = DefectiveGoodsDomainModel.create({
+		const defectiveGoods = DefectiveGoodsDomainModel.create({
 			...payload,
 			created_by: user._id
 		} as FirstParameter<typeof DefectiveGoodsDomainModel.create>)
-		models.forEach((model) => model.create())
-		await this.repository.create(models)
-		models.forEach((model) => {
+		const created = await this.repository.create(defectiveGoods)
+		created.forEach((model) => {
+			model.insert()
 			this.eventPublisher.mergeObjectContext(model)
 			model.commit()
 		})

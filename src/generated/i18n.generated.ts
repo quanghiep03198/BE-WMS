@@ -42,14 +42,20 @@ export type I18nTranslations = {
         };
     };
     "defective-goods": {
-        "active_epcs_recombination_conflict": string;
-        "not_found": string;
         "defective_goods_inventory_report": string;
         "categories": {
             "B": string;
             "C": string;
             "RD": string;
         };
+        "exceptions": {
+            "active_epcs_recombination_conflict": string;
+            "not_found": string;
+            "no_defective_goods_to_stock_in": string;
+            "no_defective_goods_to_stock_out": string;
+            "not_stocked_in_yet": string;
+        };
+        "active_epcs_recombination_conflict": string;
     };
     "erp": {
         "fields": {

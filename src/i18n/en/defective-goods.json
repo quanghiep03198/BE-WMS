@@ -1,10 +1,17 @@
 {
 	"active_epcs_recombination_conflict": "Cannot recombined active EPC exists in system",
-	"not_found": "Defective goods not found",
+
 	"defective_goods_inventory_report": "Defective Goods Inventory Report",
 	"categories": {
 		"B": "B Grade",
 		"C": "C Grade",
 		"RD": "Research & Development Samples"
+	},
+	"exceptions": {
+		"active_epcs_recombination_conflict": "Cannot recombined active EPC exists in system",
+		"not_found": "Defective goods not found",
+		"no_defective_goods_to_stock_in": "No defective goods to stock in",
+		"no_defective_goods_to_stock_out": "No defective goods to stock out",
+		"not_stocked_in_yet": "Defective goods have not been stocked in yet"
 	}
 }

@@ -1,6 +1,7 @@
 import { DATA_SOURCE_DATA_LAKE, DATA_WAREHOUSE_CONNECTION } from '@databases/constants'
 import {
 	DefectiveGoods,
+	DefectiveGoodsDocument,
 	DefectiveGoodsModel
 } from '@modules/defective-goods/infrastructure/persistence/mongodb/schemas/defective-goods.schema'
 import { DefectiveGoodsEntity } from '@modules/defective-goods/infrastructure/persistence/mssql/entities/defective-goods.entity'
@@ -9,7 +10,8 @@ import { Processor, WorkerHost } from '@nestjs/bullmq'
 import { InjectModel } from '@nestjs/mongoose'
 import { InjectRepository } from '@nestjs/typeorm'
 import { Job } from 'bullmq'
-import { Types } from 'mongoose'
+import { LeanDocument, Types } from 'mongoose'
+import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
 import { Repository } from 'typeorm'
 import { DEFECTIVE_GOODS_SYNC_QUEUE } from '..'
 
@@ -19,7 +21,8 @@ export class SyncDefectiveGoodsConsumer extends WorkerHost {
 		@InjectModel(DefectiveGoods.name, DATA_WAREHOUSE_CONNECTION) private readonly model: DefectiveGoodsModel,
 		@InjectModel(Department.name, DATA_WAREHOUSE_CONNECTION) private readonly departments: DepartmentModel,
 		@InjectRepository(DefectiveGoodsEntity, DATA_SOURCE_DATA_LAKE)
-		private readonly mssql: Repository<DefectiveGoodsEntity>
+		private readonly mssql: Repository<DefectiveGoodsEntity>,
+		@InjectPinoLogger(SyncDefectiveGoodsConsumer.name) private readonly logger: PinoLogger
 	) {
 		super()
 	}
@@ -27,69 +30,133 @@ export class SyncDefectiveGoodsConsumer extends WorkerHost {
 	async process({
 		data
 	}: Job<{ documentIds: string[]; audit: { createdBy?: string; updatedBy?: string } }>): Promise<void> {
-		for (const documentId of data.documentIds) {
-			if (!Types.ObjectId.isValid(documentId)) continue
-			const _id = new Types.ObjectId(documentId)
-			const syncId = _id.toString()
-			const raw = (await this.model.findOneWithDeleted({ _id })) as
-				(DefectiveGoods & { _id: Types.ObjectId; deleted?: boolean }) | null
-			let row = await this.mssql.findOneBy({ sync_id: syncId })
-			if (!raw) continue
-			if (raw.deleted || raw.deleted_at) {
-				if (row)
-					await this.mssql.update(
-						{ sync_id: syncId },
-						{
-							ri_cancel: true,
-							is_active: false,
-							outbound_date: raw.outbound_date,
-							outbound_purpose: raw.outbound_purpose,
-							defective_category: raw.defective_category,
-							po: raw.po,
-							user_code_updated: data.audit.updatedBy
-						}
-					)
-				continue
-			}
-			const [assemblyLine, sewingLine] = await Promise.all([
-				this.getDepartmentName(raw.assembly_line),
-				this.getDepartmentName(raw.sewing_line)
-			])
-			const values = {
-				sync_id: syncId,
-				epc: raw.epc,
-				brand_name: raw.brand_name,
-				mo_no: raw.mo_no,
-				po: raw.po,
-				factory_shoes_style: raw.factory_shoes_style,
-				cust_shoes_style: raw.cust_shoes_style,
-				color_sn: raw.color_sn,
-				size_code: raw.size_numcode,
-				defective_category: raw.defective_category,
-				defective_location: raw.defective_location,
-				defective_description: raw.defective_description,
-				shoe_source: raw.shoe_source,
-				storage_location: raw.storage_location,
-				ri_cancel: false,
-				is_active: true,
-				ri_type: raw.combination_strategy,
-				inbound_date: raw.inbound_date,
-				outbound_date: raw.outbound_date,
-				outbound_purpose: raw.outbound_purpose,
-				unit: raw.unit,
-				...(assemblyLine !== undefined && { assembly_line: assemblyLine }),
-				...(sewingLine !== undefined && { sewing_line: sewingLine }),
-				...(data.audit.updatedBy && { user_code_updated: data.audit.updatedBy })
-			}
-			if (!row) row = this.mssql.create({ ...values, user_code_created: data.audit.createdBy })
-			else Object.assign(row, values)
-			await this.mssql.save(row)
-		}
-	}
+		const raws = await this.model
+			.find({ _id: { $in: data.documentIds.map((id) => new Types.ObjectId(id)) } })
+			.lean<LeanDocument<DefectiveGoodsDocument>[]>({ virtuals: true, autopopulate: true })
 
-	private async getDepartmentName(id?: Types.ObjectId): Promise<string | null | undefined> {
-		if (!id) return null
-		const department = await this.departments.findById(id).select({ 'name.cn': 1 }).lean().exec()
-		return department?.name?.cn
+		await this.mssql.query(
+			/* SQL */ `
+			WITH CTE AS (
+				SELECT 
+					JSON_VALUE(value, '$._id') AS sync_id, 
+					JSON_VALUE(value, '$.epc') AS epc, 
+					JSON_VALUE(value, '$.combination_strategy') AS ri_type,
+					JSON_VALUE(value, '$.unit') AS unit,
+					JSON_VALUE(value, '$.mo_no') AS mo_no,
+					JSON_VALUE(value, '$.po') AS po,
+					JSON_VALUE(value, '$.brand_name') AS brand_name,
+					JSON_VALUE(value, '$.factory_shoes_style') AS factory_shoes_style,
+					JSON_VALUE(value, '$.cust_shoes_style') AS cust_shoes_style,
+					JSON_VALUE(value, '$.color_sn') AS color_sn,
+					JSON_VALUE(value, '$.size_numcode') AS size_code,
+					JSON_VALUE(value, '$.defective_category') AS defective_category,
+					JSON_VALUE(value, '$.defective_location') AS defective_location,
+					JSON_VALUE(value, '$.defective_description') AS defective_description,
+					JSON_VALUE(value, '$.shoe_source') AS shoe_source,
+					JSON_VALUE(value, '$.assembly_line.name.cn') AS assembly_line,
+					JSON_VALUE(value, '$.sewing_line.name.cn') AS sewing_line,
+					JSON_VALUE(value, '$.inbound_date') AS inbound_date,
+					JSON_VALUE(value, '$.storage_location') AS storage_location,
+					JSON_VALUE(value, '$.outbound_date') AS outbound_date,
+					JSON_VALUE(value, '$.outbound_purpose') AS outbound_purpose,
+					IIF(JSON_VALUE(value, '$.deleted') = 'true', 1, 0) AS ri_cancel,
+					IIF(JSON_VALUE(value, '$.deleted') = 'false', 'N', 'Y') AS isactive,
+					JSON_VALUE(value, '$.created_by.username') AS user_code_created,
+					JSON_VALUE(value, '$.created_by.display_name') AS user_name_created,
+					JSON_VALUE(value, '$.updated_by.username') AS user_code_updated,
+					JSON_VALUE(value, '$.updated_by.display_name') AS user_name_updated
+				FROM OPENJSON(@0)
+			)
+			MERGE INTO DV_DATA_LAKE.dbo.dv_defective_goods AS target
+			USING (SELECT * FROM CTE) AS source
+			ON target.sync_id = source.sync_id
+			WHEN MATCHED THEN
+				UPDATE SET
+					target.unit = source.unit,
+					target.ri_type = source.ri_type,
+					target.brand_name = source.brand_name,
+					target.mo_no = source.mo_no,
+					target.po = source.po,
+					target.factory_shoes_style = source.factory_shoes_style,
+					target.cust_shoes_style = source.cust_shoes_style,
+					target.color_sn = source.color_sn,
+					target.size_code = source.size_code,
+					target.defective_category = source.defective_category,
+					target.defective_location = source.defective_location,
+					target.defective_description = source.defective_description,
+					target.shoe_source = source.shoe_source,
+					target.storage_location = source.storage_location,
+					target.assembly_line = source.assembly_line,
+					target.sewing_line = source.sewing_line,
+					target.ri_cancel = source.ri_cancel,
+					target.isactive = source.isactive,
+					target.user_code_created = source.user_code_created,
+					target.user_name_created = source.user_name_created,
+					target.user_code_updated = source.user_code_updated,
+					target.user_name_updated = source.user_name_updated
+			WHEN NOT MATCHED THEN
+				INSERT (
+					sync_id,
+					epc, 
+					unit,
+					ri_type,
+					mo_no,
+					po,
+					brand_name,
+					factory_shoes_style,
+					cust_shoes_style,
+					color_sn,
+					size_code,
+					defective_category,
+					defective_location,
+					defective_description,
+					shoe_source,
+					assembly_line,
+					sewing_line,
+					inbound_date,
+					storage_location,
+					outbound_date,
+					outbound_purpose,
+					ri_cancel,
+					isactive,
+					user_code_created,
+					user_name_created,
+					user_code_updated,
+					user_name_updated
+				)
+				VALUES (
+					source.sync_id,
+					source.epc, 
+					source.unit,
+					source.ri_type,
+					source.mo_no,
+					source.po,
+					source.brand_name,
+					source.factory_shoes_style,
+					source.cust_shoes_style,
+					source.color_sn,
+					source.size_code,
+					source.defective_category,
+					source.defective_location,
+					source.defective_description,
+					source.shoe_source,
+					source.assembly_line,
+					source.sewing_line,
+					source.inbound_date,
+					source.storage_location,
+					source.outbound_date,
+					source.outbound_purpose,
+					source.ri_cancel,
+					source.isactive,
+					source.user_code_created,
+					source.user_name_created,
+					source.user_code_updated,
+					source.user_name_updated
+				);
+			`,
+			[JSON.stringify(raws)]
+		)
+
+		this.logger.info({ raws }, 'Fetched defective goods raws')
 	}
 }

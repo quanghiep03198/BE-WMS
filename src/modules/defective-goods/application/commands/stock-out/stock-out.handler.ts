@@ -14,7 +14,7 @@ export class StockOutDefectiveGoodsHandler implements ICommandHandler<StockOutDe
 	) {}
 
 	async execute({ data, updatedBy, filters, take }: StockOutDefectiveGoodsCommand) {
-		const documents = await this.defectiveGoodsRepository.findAll({ epc: { $in: data.epcs } })
+		const documents = await this.defectiveGoodsRepository.find({ epc: { $in: data.epcs } })
 		if (documents.some(({ inbound_date, storage_location }) => !inbound_date || !storage_location)) {
 			throw new ConflictException(
 				this.i18n.t('inoutbound.notification.not_inbound_yet', { lang: I18nContext.current()?.lang })

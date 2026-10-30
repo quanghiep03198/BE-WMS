@@ -10,7 +10,7 @@ export class DefectiveGoodsSaga {
 	syncToMssql(events$: Observable<unknown>): Observable<ICommand> {
 		return events$.pipe(
 			ofType(DefectiveGoodsChangedEvent),
-			bufferTime(1000, null, 500),
+			bufferTime(5000, null, 1000),
 			filter((events) => events.length > 0),
 			map(
 				(batch) =>
