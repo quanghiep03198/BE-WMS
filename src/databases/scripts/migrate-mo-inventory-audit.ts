@@ -31,11 +31,8 @@ async function main() {
 		process.exit(1)
 	}
 
-	const mssqlManager = new MssqlManager(args.mssqlHost as string)
+	const mssqlManager = new MssqlManager(args.mssqlHost)
 	const mongoManager = new MongoManager()
-
-	await mssqlManager.connect()
-	await mongoManager.connect()
 
 	let batch: Array<AnyBulkWriteOperation<MoInventoryAuditDocument>> = []
 	let totalProcessed: number = 0
@@ -43,6 +40,8 @@ async function main() {
 	const BATCH_SIZE = 100
 
 	try {
+		await mssqlManager.connect()
+		await mongoManager.connect()
 		const request = mssqlManager.pool.request()
 		let resolveStream!: () => void
 		let rejectStream!: (error: unknown) => void
@@ -72,63 +71,60 @@ async function main() {
 
 					pendingFlush = flush
 
-					try {
-						await flush
-					} catch (error) {
-						throw error
-					} finally {
+					await flush.finally(() => {
 						pendingFlush = undefined
-					}
+					})
 				}
 			}
 		}
 
-		const resolveStorageLocations = async ()=> await mongoManager.getRepository<MoInventoryAuditDocument>('mo_inventory_audit').aggregate([
-					// Chỉ xử lý doc mà storage_locations đang là mảng string
-					{ $match: { 'storage_locations.0': { $type: 'string' } } },
+		const resolveStorageLocations = async () =>
+			await mongoManager.getRepository<MoInventoryAuditDocument>('mo_inventory_audit').aggregate([
+				// Chỉ xử lý doc mà storage_locations đang là mảng string
+				{ $match: { 'storage_locations.0': { $type: 'string' } } },
 
-					// Chuẩn hoá name (schema StorageLocation đang trim + uppercase)
-					{
-						$set: {
-							storage_locations: {
-								$map: {
-									input: {
-										$filter: {
-											input: '$storage_locations',
-											cond: { $eq: [{ $type: '$$this' }, 'string'] }
-										}
-									},
-									as: 'n',
-									in: { $toUpper: { $trim: { input: '$$n' } } }
-								}
+				// Chuẩn hoá name (schema StorageLocation đang trim + uppercase)
+				{
+					$set: {
+						storage_locations: {
+							$map: {
+								input: {
+									$filter: {
+										input: '$storage_locations',
+										cond: { $eq: [{ $type: '$$this' }, 'string'] }
+									}
+								},
+								as: 'n',
+								in: { $toUpper: { $trim: { input: '$$n' } } }
 							}
 						}
-					},
-
-					// Tìm _id tương ứng theo name
-					{
-						$lookup: {
-							from: 'storage_locations',
-							localField: 'storage_locations',
-							foreignField: 'name',
-							as: '_matched'
-						}
-					},
-
-					// Thay mảng name bằng mảng ObjectId
-					{ $set: { storage_locations: '$_matched._id' } },
-					{ $unset: '_matched' },
-
-					// Ghi đè lại vào chính collection
-					{
-						$merge: {
-							into: 'mo_inventory_audit',
-							on: '_id',
-							whenMatched: 'merge',
-							whenNotMatched: 'discard'
-						}
 					}
-				])
+				},
+
+				// Tìm _id tương ứng theo name
+				{
+					$lookup: {
+						from: 'storage_locations',
+						localField: 'storage_locations',
+						foreignField: 'name',
+						as: '_matched'
+					}
+				},
+
+				// Thay mảng name bằng mảng ObjectId
+				{ $set: { storage_locations: '$_matched._id' } },
+				{ $unset: '_matched' },
+
+				// Ghi đè lại vào chính collection
+				{
+					$merge: {
+						into: 'mo_inventory_audit',
+						on: '_id',
+						whenMatched: 'merge',
+						whenNotMatched: 'discard'
+					}
+				}
+			])
 
 		request.on('row', async (row) => {
 			batch.push({
@@ -137,7 +133,7 @@ async function main() {
 					update: {
 						$set: {
 							...row,
-							storage_locations: 
+							storage_locations: row.storage_locations,
 							size_ledger: SuperJson.parse(row.size_ledger)
 						}
 					},
@@ -165,7 +161,7 @@ async function main() {
 		request.on('done', async () => {
 			try {
 				await flushBatch(true)
-				
+
 				resolveStream()
 				logger.info(`Synchronized ${totalProcessed} documents.`)
 			} catch (error) {

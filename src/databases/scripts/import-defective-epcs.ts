@@ -190,7 +190,7 @@ async function execute() {
 		process.exitCode = 0
 	} catch (error) {
 		process.exitCode = 1
-		logger.error(error)
+		logger.error(error as Error)
 	} finally {
 		await mssqlManager.disconnect()
 		process.exit(process.exitCode ?? 0)
