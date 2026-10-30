@@ -33,7 +33,7 @@ export class MssqlManager {
 	}
 
 	public async disconnect() {
-		if (this.pool) {
+		if (this.pool instanceof mssql.ConnectionPool) {
 			this.logger.info('Disconnecting from MSSQL ...')
 			await this.pool.close()
 			this.logger.info('Disconnected from MSSQL')
