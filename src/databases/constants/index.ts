@@ -26,3 +26,5 @@ export enum LinkedServer {
 
 // #region MongoDB Database Constants
 export const DATA_WAREHOUSE_CONNECTION = 'DATA_WAREHOUSE' as const
+
+export const DUPLICATE_KEY_ERROR_CODE = 11000 as const
