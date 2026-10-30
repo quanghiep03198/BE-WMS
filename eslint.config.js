@@ -9,14 +9,13 @@ export default defineConfig(
 	{
 		ignores: [
 			'dist',
-			'ecosystem.config.cjs',
-			'src/generated/i18n.generated.ts',
-			'deprecated',
 			'.tmp',
 			'src/**/.tmp/*',
-			'hmr.config.js',
-			'webpack.config.js',
-			'eslint.config.js'
+			'deprecated',
+			'ecosystem.config.js',
+			'src/generated/i18n.generated.ts',
+			'eslint.config.js',
+			'rspack.config.ts'
 		]
 	},
 	js.configs.recommended,
@@ -45,9 +44,9 @@ export default defineConfig(
 			'@typescript-eslint/no-unused-vars': 'warn',
 			'@typescript-eslint/no-require-imports': 'off',
 			'@typescript-eslint/no-non-null-assertion': 'warn', // cản việc lạm dụng `!`
-			'@typescript-eslint/no-unnecessary-condition': 'warn', // báo check null thừa
+			'@typescript-eslint/no-unnecessary-condition': 'off', // báo check null thừa
 			'@typescript-eslint/prefer-optional-chain': 'warn', // auto-fix: a && a.b -> a?.b
-			'@typescript-eslint/prefer-nullish-coalescing': 'warn', // auto-fix: || -> ??
+			'@typescript-eslint/prefer-nullish-coalescing': 'off', // auto-fix: || -> ??
 			'@typescript-eslint/no-unnecessary-type-assertion': 'warn', // auto-fix: bỏ `as`/`!` thừa
 			'unused-imports/no-unused-imports': 'off',
 			'no-useless-escape': 'off',
