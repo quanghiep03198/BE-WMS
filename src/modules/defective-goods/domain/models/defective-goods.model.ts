@@ -3,11 +3,13 @@ import { AggregateRoot } from '@nestjs/cqrs'
 import {
 	CombinationStrategy,
 	DefectiveCategory,
+	DefectiveGoodsOutboundPurpose,
 	DefectiveGoodsSource,
 	DefectiveGoodsUnit,
 	DefectiveLocation
 } from '../constants'
 import { DefectiveGoodsChangedEvent } from '../events/defective-goods.events'
+import { NotStockedInYetException, StockInDeactivatedException } from '../exceptions'
 import { IDefectiveGoods } from '../interfaces'
 
 export interface IDefectiveGoodsProps extends Omit<IDefectiveGoods, 'assembly_line' | 'sewing_line'> {
@@ -21,11 +23,16 @@ export class DefectiveGoodsDomainModel extends AggregateRoot {
 	}
 
 	get id() {
-		return this.state._id
+		if (!this.state._id) throw new Error('Attempted to stock in a defective goods model without an ID')
+		return this.state._id.toString()
 	}
 
 	get epc() {
 		return this.state.epc
+	}
+
+	toProps() {
+		return this.state
 	}
 
 	static create(payload: {
@@ -54,7 +61,6 @@ export class DefectiveGoodsDomainModel extends AggregateRoot {
 
 		const unit =
 			payload.defective_category === DefectiveCategory.C_GRADE ? DefectiveGoodsUnit.PCS : DefectiveGoodsUnit.PRS
-
 		if (payload.combination_strategy !== CombinationStrategy.MANUALLY) delete payload.sizes
 
 		if (
@@ -65,7 +71,6 @@ export class DefectiveGoodsDomainModel extends AggregateRoot {
 			models = payload.epc.map(
 				(epc) => new DefectiveGoodsDomainModel({ ...payload, epc, size_numcode: payload.size_numcode, unit })
 			)
-			// models.forEach((model) => model.apply(new DefectiveGoodsChangedEvent(model.id)))
 			return models
 		}
 		if (
@@ -79,7 +84,6 @@ export class DefectiveGoodsDomainModel extends AggregateRoot {
 				size_numcode: payload.size_numcode,
 				unit
 			})
-			// model.apply(new DefectiveGoodsCreatedEvent(model.id))
 			models.push(model)
 			return models
 		}
@@ -90,33 +94,55 @@ export class DefectiveGoodsDomainModel extends AggregateRoot {
 				const epcs = generator.generateBatch(qty)
 				return epcs.map((epc) => new DefectiveGoodsDomainModel({ ...payload, epc, size_numcode, unit }))
 			})
-			// models.forEach((model) => model.apply(new DefectiveGoodsCreatedEvent(model.id)))
 			return models
 		}
 		return models
 	}
 
-	toProps() {
-		return this.state
+	insert() {
+		this.apply(new DefectiveGoodsChangedEvent(this.id))
 	}
 
-	insert() {
-		if (!this.id) throw new Error('Attempted to insert a defective goods model without an ID')
-
-		this.apply(new DefectiveGoodsChangedEvent(this.id.toString()))
+	update(update: Partial<IDefectiveGoodsProps>, updatedBy: TObjectId) {
+		Object.assign(this.state, { ...update, updated_by: updatedBy })
+		this.apply(new DefectiveGoodsChangedEvent(this.id))
 	}
 
 	stockIn(storageLocation: string, updatedBy: TObjectId) {
-		if (!this.id) throw new Error('Attempted to stock in a defective goods model without an ID')
+		if (this.state.deleted) throw new StockInDeactivatedException()
 
 		this.state.inbound_date = new Date()
 		this.state.storage_location = storageLocation
 		this.state.updated_by = updatedBy
-		this.apply(new DefectiveGoodsChangedEvent(this.id.toString()))
+		this.apply(new DefectiveGoodsChangedEvent(this.id))
 	}
 
-	delete(deletedBy: string) {
+	stockOut(
+		outboundPurpose: DefectiveGoodsOutboundPurpose,
+		updatedBy: TObjectId,
+		po: string = undefined,
+		outboundDate: Date = new Date()
+	) {
+		if (!this.state.inbound_date || !this.state.storage_location) throw new NotStockedInYetException()
+		const shouldDowngrade =
+			outboundPurpose === DefectiveGoodsOutboundPurpose.RUIN ||
+			outboundPurpose === DefectiveGoodsOutboundPurpose.DOWNGRADE
+		const shouldShipOut = outboundPurpose === DefectiveGoodsOutboundPurpose.SHIPPING
+
+		const shouldDeactivate = outboundPurpose !== DefectiveGoodsOutboundPurpose.DOWNGRADE
+
+		this.state.updated_by = updatedBy
+		this.state.po = shouldShipOut ? po : this.state.po
+		this.state.defective_category = shouldDowngrade ? DefectiveCategory.C_GRADE : this.state.defective_category
+		this.state.outbound_date = shouldDeactivate ? outboundDate : this.state.outbound_date
+
+		this.apply(new DefectiveGoodsChangedEvent(this.id))
+	}
+
+	delete(deletedBy: TObjectId) {
 		if (!this.id) throw new Error('Attempted to insert a defective goods model without an ID')
-		this.apply(new DefectiveGoodsChangedEvent(this.id.toString(), { updatedBy: deletedBy }))
+		this.state.updated_by = deletedBy
+		this.state.deleted_by = deletedBy
+		this.apply(new DefectiveGoodsChangedEvent(this.id))
 	}
 }

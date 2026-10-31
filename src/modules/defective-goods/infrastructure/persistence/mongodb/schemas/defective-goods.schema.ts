@@ -25,12 +25,10 @@ const DEFECTIVE_GOODS_COLLECTION: Readonly<string> = 'defective_goods'
 	},
 	versionKey: false,
 	suppressReservedKeysWarning: false,
-	strict: false,
+	// strict: true,
 	strictQuery: false,
 	readConcern: { level: 'majority' },
-	writeConcern: { w: 'majority' },
-	toJSON: { virtuals: true },
-	toObject: { virtuals: true }
+	writeConcern: { w: 'majority' }
 })
 export class DefectiveGoods {
 	@Prop({ type: String, required: true, length: 24, immutable: true })
@@ -107,6 +105,9 @@ export class DefectiveGoods {
 
 	@Prop({ type: Types.ObjectId, ref: 'User', autopopulate: true })
 	updated_by?: Types.ObjectId
+
+	@Prop({ type: Types.ObjectId, ref: 'User', autopopulate: true })
+	deleted_by?: Types.ObjectId
 }
 
 export const DefectiveGoodsSchema = SchemaFactory.createForClass(DefectiveGoods)
@@ -115,7 +116,7 @@ DefectiveGoodsSchema.index({ outbound_date: 1 }, { expireAfterSeconds: 7 * 24 * 
 DefectiveGoodsSchema.index({ epc: 1 }, { unique: true, partialFilterExpression: { deleted: false } })
 
 DefectiveGoodsSchema.plugin(MongoosePaginate)
-DefectiveGoodsSchema.plugin(MongooseDelete, { overrideMethods: true })
+DefectiveGoodsSchema.plugin(MongooseDelete, { overrideMethods: true, indexFields: ['deleted'] })
 DefectiveGoodsSchema.plugin(MongooseAutoPopulate)
 DefectiveGoodsSchema.plugin(MongooseLeanVirtuals)
 

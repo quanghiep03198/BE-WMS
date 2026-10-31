@@ -4,6 +4,10 @@ import { DATA_WAREHOUSE_CONNECTION, DUPLICATE_KEY_ERROR_CODE } from '@databases/
 import { PaginationDTO } from '@modules/_base/dto/pagination.dto'
 import { BaseMongoRepository } from '@modules/_base/repositories/base-mongo.abstract.repository'
 import { DeleteManyDefectiveGoodsDTO } from '@modules/defective-goods/application/dto/defective-goods.dto'
+import {
+	DEFECTIVE_GOODS_CACHE_REPOSITORY,
+	IDefectiveGoodsCacheRepository
+} from '@modules/defective-goods/application/ports/defective-goods-cache.port'
 import { IDefectiveGoodsRepository } from '@modules/defective-goods/application/ports/defective-goods.repository.port'
 import { CombinationStrategy } from '@modules/defective-goods/domain/constants'
 import { ActiveEpcsRecombinationException } from '@modules/defective-goods/domain/exceptions'
@@ -12,11 +16,11 @@ import {
 	DefectiveGoodsDomainModel,
 	IDefectiveGoodsProps
 } from '@modules/defective-goods/domain/models/defective-goods.model'
-import { Injectable } from '@nestjs/common'
+import { Inject, Injectable, Logger } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
 import chunk from 'lodash/chunk'
 import pick from 'lodash/pick'
-import { mongo, type QueryOptions } from 'mongoose'
+import { type FilterQuery, mongo, ProjectionType, type QueryOptions } from 'mongoose'
 import { DefectiveGoods, DefectiveGoodsDocument, DefectiveGoodsModel } from '../schemas/defective-goods.schema'
 
 @Injectable()
@@ -24,18 +28,22 @@ export class DefectiveGoodsRepository
 	extends BaseMongoRepository<DefectiveGoodsDocument>
 	implements IDefectiveGoodsRepository
 {
+	private readonly logger = new Logger(DefectiveGoodsRepository.name)
+
 	constructor(
 		@InjectModel(DefectiveGoods.name, DATA_WAREHOUSE_CONNECTION)
-		private readonly defectiveGoodsModel: DefectiveGoodsModel
+		private readonly defectiveGoodsModel: DefectiveGoodsModel,
+		@Inject(DEFECTIVE_GOODS_CACHE_REPOSITORY)
+		private readonly defectiveGoodsCacheRepository: IDefectiveGoodsCacheRepository
 	) {
 		super(defectiveGoodsModel)
 	}
 
-	async create(documents: DefectiveGoodsDomainModel[]) {
+	async create(models: DefectiveGoodsDomainModel[]) {
 		try {
-			const chunks = chunk(documents, 1000)
+			const chunks = chunk(models, 1000)
 
-			const models = await Promise.all(
+			const created = await Promise.all(
 				chunks.map(async (chunkedDocuments) => {
 					const inserted = await this.defectiveGoodsModel.insertMany(
 						chunkedDocuments.map((document) => document.toProps())
@@ -45,7 +53,7 @@ export class DefectiveGoodsRepository
 					)
 				})
 			)
-			return models.flat()
+			return created.flat()
 		} catch (error) {
 			if (error['code'] === DUPLICATE_KEY_ERROR_CODE) throw new ActiveEpcsRecombinationException()
 			throw error
@@ -61,58 +69,82 @@ export class DefectiveGoodsRepository
 		return new DefectiveGoodsDomainModel(defectiveGoods)
 	}
 
-	async findAll(filter: Partial<IDefectiveGoods> | Record<string, any>, take: number = 0) {
-		const documents = await this.defectiveGoodsModel
-			.find({ deleted: false, ...filter })
-			.limit(take)
-			.lean<IDefectiveGoodsProps[]>({ virtuals: true, autopopulate: true })
-		return documents.map((document) => new DefectiveGoodsDomainModel(document))
+	async find(
+		filter: FilterQuery<DefectiveGoodsDocument>,
+		projection: ProjectionType<DefectiveGoodsDocument> = null,
+		options: QueryOptions<DefectiveGoodsDocument> = { lean: { virtuals: true, autopopulate: true } },
+		queryFn: 'find' | 'findWithDeleted' | 'findDeleted' = 'find'
+	) {
+		const findFn = this.defectiveGoodsModel[queryFn]
+
+		const documents = await findFn(filter, projection, options).lean<IDefectiveGoodsProps[]>({
+			virtuals: true,
+			autopopulate: true
+		})
+		return documents.map((document: IDefectiveGoodsProps) => new DefectiveGoodsDomainModel(document))
 	}
 
-	async paginate(
-		filter: Partial<IDefectiveGoods> = {},
-		{ page, limit, ...options }: PaginationDTO & Omit<QueryOptions<IDefectiveGoods>, 'page' | 'limit'>
+	override async paginate(
+		filter: Partial<IDefectiveGoodsProps>,
+		{ page, limit = 10 }: PaginationDTO & Omit<QueryOptions<IDefectiveGoods>, 'page' | 'limit'>
 	) {
 		const filterQuery = MongoQueryBuilder.from(filter)
-			.whereFieldsAreEqual(
-				'defective_category',
-				'brand_name',
-				'factory_shoes_style',
-				'cust_shoes_style',
-				'color_sn',
-				'size_numcode',
-				'sewing_line',
-				'assembly_line'
-			)
-			.whereDateEqual('created_at', filter?.created_at)
+			.whereEqual('defective_category')
+			.whereEqual('brand_name')
+			.whereEqual('factory_shoes_style')
+			.whereEqual('cust_shoes_style')
+			.whereEqual('color_sn')
+			.whereEqual('size_numcode')
+			.whereEqual('sewing_line')
+			.whereEqual('assembly_line')
+			.whereEqual('deleted', false)
+			.whereDateEqual('created_at')
 			.build()
 
-		const result = await this.defectiveGoodsModel.paginate(
-			{ deleted: false, ...filterQuery },
-			{
-				page,
-				limit,
-				useCustomCountFn: async () => await this.defectiveGoodsModel.countDocuments(filterQuery),
-				options: { ...options, readPreference: 'secondary' satisfies mongo.ReadPreferenceMode }
+		const countDocuments = async (): Promise<number> => {
+			const cachedCount = this.defectiveGoodsCacheRepository.getCount(filter)
+			if (!isNaN(+cachedCount)) {
+				const totalDocs = await this.defectiveGoodsModel.countDocuments(filterQuery)
+				return await this.defectiveGoodsCacheRepository.setCount(filter, totalDocs)
 			}
-		)
+			return cachedCount
+		}
+
+		const [data, totalDocs] = await Promise.all([
+			this.defectiveGoodsModel
+				.find(filterQuery)
+				.sort({ created_at: -1 })
+				.skip((page - 1) * limit)
+				.limit(limit)
+				.read('primary' satisfies mongo.ReadPreferenceMode)
+				.lean({ virtuals: true, autopopulate: true }),
+			countDocuments()
+		])
+
+		const totalPages = Math.ceil(totalDocs / limit)
+		const nextPage = page === totalPages ? null : page + 1
+		const prevPage = page === 1 ? null : page - 1
+		const hasNextPage = nextPage <= totalPages
+		const hasPrevPage = page > 1
 
 		return {
-			data: result.docs,
-			totalDocs: result.totalDocs,
-			totalPages: result.totalPages,
-			hasNextPage: result.hasNextPage,
-			hasPrevPage: result.hasPrevPage,
-			nextPage: result.nextPage ?? null,
-			prevPage: result.prevPage ?? null,
-			limit: result.limit,
-			page: result.page ?? page
+			data,
+			totalDocs,
+			totalPages,
+			hasNextPage,
+			hasPrevPage,
+			nextPage,
+			prevPage,
+			limit,
+			page
 		} satisfies Pagination<IDefectiveGoods>
 	}
 
-	async updateById(id: string, update: Partial<IDefectiveGoods>) {
-		const result = await this.defectiveGoodsModel.findByIdAndUpdate(id, { $set: update }, { new: true, lean: true })
-		return result?._id.toString()
+	async updateById(id: string, update: DefectiveGoodsDomainModel) {
+		const result = await this.defectiveGoodsModel
+			.findByIdAndUpdate(id, update.toProps())
+			.lean<IDefectiveGoodsProps>({ virtuals: true, autopopulate: true })
+		return new DefectiveGoodsDomainModel(result)
 	}
 
 	async deleteMany(filter: DeleteManyDefectiveGoodsDTO) {
@@ -177,7 +209,7 @@ export class DefectiveGoodsRepository
 	}
 
 	async getScanningSizeQty(epcs: string[]) {
-		const data = await super.find(
+		const data = await super.findAll(
 			{ epc: { $in: epcs }, combination_strategy: { $ne: CombinationStrategy.MANUALLY } },
 			{ factory_shoes_style: 1, color_sn: 1, size_code: 1, epc: 1 },
 			{ lean: true }
@@ -224,71 +256,32 @@ export class DefectiveGoodsRepository
 	async stockIn(models: DefectiveGoodsDomainModel[]) {
 		const inboundDate = new Date()
 
-		const chunks = chunk(models, 1000)
-
-		for (const models of chunks) {
-			await this.defectiveGoodsModel.bulkWrite(
-				models.map((m) => ({
-					updateOne: {
-						filter: { epc: m.epc, deleted: false },
-						update: {
-							inbound_date: inboundDate,
-							...pick(m.toProps(), ['storage_location', 'updated_by'])
-						}
+		await this.defectiveGoodsModel.bulkWrite(
+			models.map((m) => ({
+				updateOne: {
+					filter: { epc: m.epc, deleted: false },
+					update: {
+						inbound_date: inboundDate,
+						...pick(m.toProps(), ['storage_location', 'updated_by'])
 					}
-				}))
-			)
-		}
+				}
+			}))
+		)
 	}
 
 	async stockOut(models: DefectiveGoodsDomainModel[]) {
 		const outboundDate = new Date()
-		const chunks = chunk(models, 1000)
 
-		for (const models of chunks) {
-			await this.defectiveGoodsModel.bulkWrite(
-				models.map((m) => ({
-					updateOne: {
-						filter: { epc: m.epc, deleted: false },
-						update: {
-							outbound_date: outboundDate,
-							...pick(m.toProps(), ['outbound_purpose', 'updated_by'])
-						}
+		await this.defectiveGoodsModel.bulkWrite(
+			models.map((m) => ({
+				updateOne: {
+					filter: { epc: m.epc, deleted: false },
+					update: {
+						outbound_date: outboundDate,
+						...pick(m.toProps(), ['outbound_purpose', 'updated_by'])
 					}
-				}))
-			)
-		}
-		// const epcs =
-		// 	payload.combination_strategy === CombinationStrategy.MANUALLY
-		// 		? await this.getInoutboundEpcs('outbound', filters, take).then((res) => res.data.map((doc) => doc.epc))
-		// 		: payload.epcs
-
-		// const chunks = chunk(epcs, 1000)
-
-		// const shouldDowngrade =
-		// 	payload.outbound_purpose === DefectiveGoodsOutboundPurpose.RUIN ||
-		// 	payload.outbound_purpose === DefectiveGoodsOutboundPurpose.DOWNGRADE
-		// const shouldShipOut = payload.outbound_purpose === DefectiveGoodsOutboundPurpose.SHIPPING
-
-		// const shouldDeactivate = payload.outbound_purpose !== DefectiveGoodsOutboundPurpose.DOWNGRADE
-
-		// for (const chunkedEpcs of chunks) {
-		// 	await super.updateMany(
-		// 		{ epc: { $in: chunkedEpcs }, deleted: false },
-		// 		{
-		// 			outbound_purpose: payload.outbound_purpose,
-		// 			updated_by: new Types.ObjectId(user._id.toString()),
-		// 			...(!shouldShipOut && { po: payload.po }),
-		// 			...(shouldDowngrade ? { defective_category: DefectiveCategory.C_GRADE } : { po: payload.po }),
-		// 			...(shouldDeactivate && { outbound_date: outboundDate, deleted: true, deleted_at: new Date() })
-		// 		}
-		// 	)
-		// }
-
-		// return await this.defectiveGoodsModel.distinct<string, string>(
-		// 	'_id',
-		// 	{ epc: { $in: payload.epcs } },
-		// 	{ readPreference: 'primary' satisfies mongo.ReadPreferenceMode }
-		// )
+				}
+			}))
+		)
 	}
 }

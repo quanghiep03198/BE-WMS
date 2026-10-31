@@ -1,4 +1,6 @@
 import { format } from 'date-fns'
+import isEmpty from 'lodash/isEmpty'
+import isNil from 'lodash/isNil'
 import { FilterQuery, PipelineStage } from 'mongoose'
 
 /**
@@ -52,7 +54,7 @@ export class MongoQueryBuilder<T extends Record<string, any>> {
 	// ==================== Internal helpers ====================
 
 	private isPresent(value: unknown): boolean {
-		return typeof value !== 'undefined' && value !== null
+		return !isNil(value) && !isEmpty(value)
 	}
 
 	/** Escapes special characters so the string is safe to use in a RegExp (prevents regex injection) */

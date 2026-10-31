@@ -152,10 +152,14 @@ export declare global {
 
 	type ValueOfRecord<T extends Record<string, any>> = T[keyof T]
 
-	type TObjectId = {
-		id: string | Uint8Array
-		__id?: string
-		toString(encode?: 'hex' | 'base64'): string
-		toHexString(): string
-	}
+	type Chunk<T> = T[][]
+
+	type TObjectId =
+		| {
+				id: string | Uint8Array
+				__id?: string
+				toString(encode?: 'hex' | 'base64'): string
+				toHexString(): string
+		  }
+		| string
 }

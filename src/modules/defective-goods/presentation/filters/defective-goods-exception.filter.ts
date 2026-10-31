@@ -2,6 +2,7 @@ import { IResponseBody } from '@common/helpers'
 import { I18nTranslations } from '@generated/i18n.generated'
 import {
 	ActiveEpcsRecombinationException,
+	DefectiveGoodsNotFound,
 	NoDefectiveGoodsToStockInException,
 	NoDefectiveGoodsToStockOutExcpetion,
 	NotStockedInYetException
@@ -43,6 +44,10 @@ export class DefectiveGoodsExceptionFilter implements ExceptionFilter {
 			case exception instanceof NoDefectiveGoodsToStockInException:
 				statusCode = HttpStatus.BAD_REQUEST
 				key = 'defective-goods.exceptions.no_defective_goods_to_stock_in'
+				break
+			case exception instanceof DefectiveGoodsNotFound:
+				statusCode = HttpStatus.NOT_FOUND
+				key = 'defective-goods.exceptions.not_found'
 				break
 			case exception instanceof NoDefectiveGoodsToStockOutExcpetion:
 				statusCode = HttpStatus.BAD_REQUEST

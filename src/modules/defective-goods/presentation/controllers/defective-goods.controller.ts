@@ -1,13 +1,12 @@
 import { CommonRequestHeader } from '@common/constants'
 import { HttpMethod, RequestUser, RequireAuthorized, RouteHandler, StrictRoles, TRequestUser } from '@common/decorators'
 import { ZodValidationPipe } from '@common/pipes'
-import { I18nTranslations } from '@generated/i18n.generated'
-import { CreateDefectiveGoodsCommand } from '@modules/defective-goods/application/commands/create-defective-goods/create-defective-goods.command'
+import { CreateDefectiveGoodsCommand } from '@modules/defective-goods/application/commands/create/create-defective-goods.command'
 import { DeleteManyDefectiveGoodsCommand } from '@modules/defective-goods/application/commands/delete-many/delete-many-defective-goods.command'
 import { DeleteOneDefectiveGoodsCommand } from '@modules/defective-goods/application/commands/delete-one/delete-defective-goods.command'
 import { StockInDefectiveGoodsCommand } from '@modules/defective-goods/application/commands/stock-in/stock-in.command'
 import { StockOutDefectiveGoodsCommand } from '@modules/defective-goods/application/commands/stock-out/stock-out.command'
-import { UpdateDefectiveGoodsCommand } from '@modules/defective-goods/application/commands/update-defective-goods/update-defective-goods.command'
+import { UpdateDefectiveGoodsCommand } from '@modules/defective-goods/application/commands/update-one/update-defective-goods.command'
 import {
 	CreateDefectiveGoodsDTO,
 	createDefectiveGoodsDTO,
@@ -50,7 +49,9 @@ import { CommandBus, QueryBus } from '@nestjs/cqrs'
 import { ParseObjectIdPipe } from '@nestjs/mongoose'
 import { format } from 'date-fns'
 import { FastifyReply } from 'fastify'
-import { I18n, I18nContext } from 'nestjs-i18n'
+import isEmpty from 'lodash/isEmpty'
+import isNil from 'lodash/isNil'
+import omitBy from 'lodash/omitBy'
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
 import z from 'zod'
 import { DefectiveGoodsExceptionFilter } from '../filters/defective-goods-exception.filter'
@@ -74,7 +75,13 @@ export class DefectiveGoodsController {
 		filterQueries: FilterQueryDTO,
 		@Query('page', new DefaultValuePipe(1), new ParseIntPipe()) page: number
 	) {
-		return this.queryBus.execute(new GetDefectiveGoodsQuery(filterQueries, page, 10))
+		return this.queryBus.execute(
+			new GetDefectiveGoodsQuery(
+				omitBy(filterQueries, (value) => isNil(value) || isEmpty(value)),
+				page,
+				10
+			)
+		)
 	}
 	@RouteHandler({
 		endpoint: 'create',
@@ -85,11 +92,10 @@ export class DefectiveGoodsController {
 	@StrictRoles()
 	@RequireAuthorized(UserRole.DG_WAREHOUSE_STAFF)
 	public async create(
-		@RequestUser() user: TRequestUser,
-		@I18n() i18n: I18nContext<I18nTranslations>,
+		@RequestUser('_id') createdBy: TObjectId,
 		@Body(new ZodValidationPipe(createDefectiveGoodsDTO)) payload: CreateDefectiveGoodsDTO
 	) {
-		return await this.commandBus.execute(new CreateDefectiveGoodsCommand(payload, user))
+		return await this.commandBus.execute(new CreateDefectiveGoodsCommand(payload, createdBy))
 	}
 
 	@RouteHandler({
@@ -109,12 +115,13 @@ export class DefectiveGoodsController {
 	@RouteHandler({
 		endpoint: 'update/:id',
 		method: HttpMethod.PATCH,
-		statusCode: HttpStatus.CREATED
+		statusCode: HttpStatus.CREATED,
+		exceptionFilter: DefectiveGoodsExceptionFilter
 	})
 	@StrictRoles()
 	@RequireAuthorized(UserRole.DG_WAREHOUSE_STAFF)
 	public async updateOne(
-		@RequestUser() updatedBy: TRequestUser,
+		@RequestUser('_id') updatedBy: TObjectId,
 		@Param('id', ParseObjectIdPipe) id: string,
 		@Body(new ZodValidationPipe(updateDefectiveGoodsDTO)) payload: UpdateDefectiveGoodsDTO
 	) {
@@ -167,12 +174,12 @@ export class DefectiveGoodsController {
 	@StrictRoles()
 	@RequireAuthorized(UserRole.DG_WAREHOUSE_STAFF)
 	public async stockIn(
-		@RequestUser() user: TRequestUser,
+		@RequestUser('_id') updatedBy: TObjectId,
 		@Body(new ZodValidationPipe(updateInboundStatusDTO.partial())) data: UpdateInboundStatusDTO,
 		@Query() filters: Partial<IDefectiveGoods>,
 		@Query('take', new ParseIntPipe({ optional: true })) take: number
 	) {
-		return this.commandBus.execute(new StockInDefectiveGoodsCommand(data, user, filters, take))
+		return this.commandBus.execute(new StockInDefectiveGoodsCommand(data, updatedBy, filters, take))
 	}
 
 	@RouteHandler({
@@ -214,12 +221,12 @@ export class DefectiveGoodsController {
 	})
 	@RequireAuthorized(UserRole.DG_WAREHOUSE_STAFF)
 	public async stockOut(
-		@RequestUser() user: TRequestUser,
+		@RequestUser('_id') updatedBy: TObjectId,
 		@Body(new ZodValidationPipe(updateOutboundStatusDTO)) data: UpdateOutboundStatusDTO,
 		@Query() filters: Partial<IDefectiveGoods>,
 		@Query('take', new ParseIntPipe({ optional: true })) take: number
 	) {
-		return this.commandBus.execute(new StockOutDefectiveGoodsCommand(data, user, filters, take))
+		return this.commandBus.execute(new StockOutDefectiveGoodsCommand(data, updatedBy, filters, take))
 	}
 
 	@RouteHandler({
@@ -272,11 +279,5 @@ export class DefectiveGoodsController {
 	async exportDefectiveGoodsInventory(@Res() reply: FastifyReply) {
 		const buffer = await this.queryBus.execute(new ExportDefectiveGoodsInventoryQuery())
 		return reply.send(buffer)
-	}
-
-	private toPayload(payload: Partial<CreateDefectiveGoodsDTO | UpdateDefectiveGoodsDTO>): IDefectiveGoods {
-		const data = { ...payload } as Record<string, any>
-		delete data.sizes
-		return data as IDefectiveGoods
 	}
 }

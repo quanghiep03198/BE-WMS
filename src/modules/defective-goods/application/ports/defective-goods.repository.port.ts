@@ -7,10 +7,14 @@ export const DEFECTIVE_GOODS_REPOSITORY = Symbol('DEFECTIVE_GOODS_REPOSITORY')
 
 export interface IDefectiveGoodsRepository extends IBaseRepository<IDefectiveGoods, string | TObjectId> {
 	create(payload: DefectiveGoodsDomainModel[]): Promise<DefectiveGoodsDomainModel[]>
-	findAll(filter?: Partial<IDefectiveGoods> | Record<string, any>, take?: number): Promise<DefectiveGoodsDomainModel[]>
+	find(
+		filter?: Partial<IDefectiveGoods> | Record<string, any>,
+		projection?: Nullish<Record<string, any> | string>,
+		options?: Partial<{ read: 'primary' | 'secondary'; limit: number; skip: number; sort: any }>
+	): Promise<DefectiveGoodsDomainModel[]>
 	findOne(filter?: Partial<IDefectiveGoods> | Record<string, any>): Promise<IDefectiveGoods>
-	findById(id: string): Promise<DefectiveGoodsDomainModel>
-	updateById(id: string, payload: Partial<IDefectiveGoods> & { updated_by: TObjectId }): Promise<string>
+	findById(id: string | TObjectId): Promise<DefectiveGoodsDomainModel>
+	updateById(id: string | TObjectId, payload: DefectiveGoodsDomainModel): Promise<DefectiveGoodsDomainModel>
 	getInoutboundEpcs(
 		stockFlow: 'inbound' | 'outbound',
 		filters?: Partial<IDefectiveGoods> | Record<string, any>,

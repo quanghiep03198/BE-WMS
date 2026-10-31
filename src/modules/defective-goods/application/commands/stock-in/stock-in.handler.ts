@@ -3,6 +3,8 @@ import { CombinationStrategy } from '@modules/defective-goods/domain/constants'
 import { NoDefectiveGoodsToStockInException } from '@modules/defective-goods/domain/exceptions'
 import { Inject } from '@nestjs/common'
 import { CommandHandler, EventPublisher, ICommandHandler } from '@nestjs/cqrs'
+import chunk from 'lodash/chunk'
+import { setImmediate } from 'node:timers/promises'
 import { DEFECTIVE_GOODS_REPOSITORY, IDefectiveGoodsRepository } from '../../ports/defective-goods.repository.port'
 import { StockInDefectiveGoodsCommand } from './stock-in.command'
 
@@ -27,13 +29,18 @@ export class StockInDefectiveGoodsHandler implements ICommandHandler<StockInDefe
 					.whereContains('size_numcode')
 			)
 			.build()
-		const pendingStockInItems = await this.repository.findAll(filterQuery, take)
+		const pendingStockInItems = await this.repository.find(filterQuery, null, { limit: take })
 		if (pendingStockInItems.length === 0) throw new NoDefectiveGoodsToStockInException()
-		pendingStockInItems.forEach((model) => {
-			model.stockIn(data.storage_location, updatedBy._id)
-			this.eventPublisher.mergeObjectContext(model)
-		})
-		await this.repository.stockIn(pendingStockInItems)
-		pendingStockInItems.forEach((model) => model.commit())
+		const CHUNK_SIZE = 1000
+		for (const part of chunk(pendingStockInItems, CHUNK_SIZE)) {
+			part.forEach((model) => {
+				model.stockIn(data.storage_location, updatedBy)
+				this.eventPublisher.mergeObjectContext(model)
+			})
+			await this.repository.stockIn(part)
+			part.forEach((model) => model.commit())
+
+			await setImmediate()
+		}
 	}
 }

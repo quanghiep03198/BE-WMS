@@ -37,4 +37,5 @@ export interface IDefectiveGoods {
 	updated_at?: Date
 	deleted?: boolean
 	deleted_at?: Date
+	deleted_by?: Nullish<IUser | TObjectId>
 }

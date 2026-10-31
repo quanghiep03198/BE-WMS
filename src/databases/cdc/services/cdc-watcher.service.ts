@@ -26,11 +26,25 @@ const DEFAULT_LOCK_TTL_MS = 60_000
 /** Thời gian cache cờ supports_net_changes (tránh query cdc.change_tables mỗi giây). */
 const NET_CHANGES_CACHE_TTL_MS = 60_000
 
+/**
+ * Số dòng CDC tối đa (xấp xỉ) cho mỗi lượt đọc. Một transaction lớn hơn ngưỡng này vẫn được đọc nguyên vẹn.
+ * Giới hạn này chặn đỉnh bộ nhớ khi backlog lớn, phần còn lại được đọc ở lượt kế tiếp.
+ */
+const WINDOW_ROWS = 20_000
+
 /** Chỉ xóa lock nếu mình vẫn là chủ sở hữu. */
 const RELEASE_LOCK_SCRIPT = `if redis.call('get', KEYS[1]) == ARGV[1] then return redis.call('del', KEYS[1]) end return 0`
 
-/** Chỉ gia hạn lock nếu mình vẫn là chủ sở hữu. */
-const RENEW_LOCK_SCRIPT = `if redis.call('get', KEYS[1]) == ARGV[1] then return redis.call('pexpire', KEYS[1], ARGV[2]) end return 0`
+/**
+ * Gia hạn lock nếu mình vẫn là chủ sở hữu. Nếu lock đã hết hạn và chưa ai lấy (query đọc lâu hơn TTL)
+ * thì lấy lại luôn thay vì bỏ lượt poll, tránh vòng lặp "đọc xong -> mất lock -> bỏ -> đọc lại".
+ * Lock đang do instance khác giữ thì trả về 0.
+ */
+const RENEW_LOCK_SCRIPT = `
+local current = redis.call('get', KEYS[1])
+if current == ARGV[1] then return redis.call('pexpire', KEYS[1], ARGV[2]) end
+if not current then redis.call('set', KEYS[1], ARGV[1], 'PX', ARGV[2]) return 1 end
+return 0`
 
 interface FilteredRecord {
 	operation: CdcOperation
@@ -44,6 +58,15 @@ interface PollLock {
 	token: string
 	ttlMs: number
 }
+
+/**
+ * Kết quả một lượt poll, để scheduler quyết định bao giờ poll tiếp:
+ * - idle: hết dữ liệu mới, chờ đủ pollIntervalMs
+ * - more: còn backlog, poll tiếp ngay
+ * - busy: bảng đang được xử lý (ở process này hoặc instance khác), chờ đủ pollIntervalMs
+ * - error: lượt poll lỗi, scheduler lùi dần (backoff)
+ */
+export type CdcPollOutcome = 'idle' | 'more' | 'busy' | 'error'
 
 @Injectable()
 export class CdcWatcherService {
@@ -61,7 +84,7 @@ export class CdcWatcherService {
 		@InjectModel(CdcQuarantine.name, DATA_WAREHOUSE_CONNECTION) private readonly quarantineModel: CdcQuarantineModel
 	) {}
 
-	async watchTable(handler: DiscoveredCdcHandler): Promise<void> {
+	async watchTable(handler: DiscoveredCdcHandler, signal?: AbortSignal): Promise<CdcPollOutcome> {
 		const { options } = handler
 		const lock: PollLock = {
 			key: `cdc:lock:${options.dataSourceToken}:${options.schema}.${options.sourceName}`,
@@ -70,21 +93,22 @@ export class CdcWatcherService {
 		}
 
 		// Lượt poll trước của bảng này chưa xong thì bỏ qua tick này.
-		if (this.inFlight.has(lock.key)) return
+		if (this.inFlight.has(lock.key)) return 'busy'
 		this.inFlight.add(lock.key)
 
 		let acquired = false
 		try {
 			acquired = (await this.redis.set(lock.key, lock.token, 'PX', lock.ttlMs, 'NX')) === 'OK'
-			if (!acquired) return
+			if (!acquired) return 'busy'
 
-			await this.poll(handler, lock)
+			return await this.poll(handler, lock, signal)
 		} catch (err) {
 			const errorMessage = err instanceof Error ? err.message : String(err)
 			const stackTrace = err instanceof Error ? err.stack : undefined
 			const tableLabel = buildTableLabel(options.schema, options.sourceName)
 
 			this.logger.error(`CDC watch failed for ${options.dataSourceToken}.${tableLabel}: ${errorMessage}`, stackTrace)
+			return 'error'
 		} finally {
 			if (acquired) {
 				await this.releaseLock(lock).catch((err) =>
@@ -96,11 +120,17 @@ export class CdcWatcherService {
 	}
 
 	/**
-	 * @description Một lượt poll: đọc toàn bộ thay đổi trong khoảng (checkpoint, max_lsn], rồi xử lý theo từng batch.
-	 * Checkpoint chỉ được lưu sau khi mọi batch đã xử lý xong. Nếu lượt poll dừng giữa chừng (lỗi hoặc mất lock),
-	 * lượt sau sẽ đọc lại từ checkpoint cũ, nên handler phải idempotent (upsert theo khóa).
+	 * @description Một lượt poll: đọc một cửa sổ thay đổi (checkpoint, to_lsn] gồm khoảng WINDOW_ROWS dòng,
+	 * rồi xử lý theo từng batch. Checkpoint chỉ được lưu sau khi mọi batch trong cửa sổ đã xử lý xong.
+	 * Nếu lượt poll dừng giữa chừng (lỗi, mất lock, shutdown), lượt sau sẽ đọc lại từ checkpoint cũ,
+	 * nên handler phải idempotent (upsert theo khóa).
+	 * @returns 'more' nếu còn backlog phía sau cửa sổ này
 	 */
-	private async poll({ options, instance }: DiscoveredCdcHandler, lock: PollLock): Promise<void> {
+	private async poll(
+		{ options, instance }: DiscoveredCdcHandler,
+		lock: PollLock,
+		signal?: AbortSignal
+	): Promise<CdcPollOutcome> {
 		const startedAt = Date.now()
 		const captureInstance = buildCaptureInstanceName(options.schema, options.sourceName)
 		const tableLabel = buildTableLabel(options.schema, options.sourceName)
@@ -113,8 +143,10 @@ export class CdcWatcherService {
 			captureInstance,
 			lastLsnHex ? Buffer.from(lastLsnHex, 'hex') : null
 		)
-		if (!range) return // chưa có thay đổi mới
-		const { fromLsn, maxLsn } = range
+		if (!range) return 'idle' // chưa có thay đổi mới
+		const { fromLsn } = range
+		const { toLsn, hasMore } = await this.resolveWindow(dataSource, captureInstance, fromLsn, range.maxLsn)
+		const outcome: CdcPollOutcome = hasMore ? 'more' : 'idle'
 
 		const supportsNetChanges = await this.getSupportsNetChanges(dataSource, options.dataSourceToken, captureInstance)
 
@@ -126,17 +158,20 @@ export class CdcWatcherService {
 
 		const rawChanges: Record<string, any>[] = await dataSource.query(
 			`SELECT ${originColumnSelect} FROM cdc.fn_cdc_get_${changeFunction}_${captureInstance}(@0, @1, '${rowFilterOption}')`,
-			[fromLsn, maxLsn]
+			[fromLsn, toLsn]
 		)
 
 		let skippedEchoes = 0
 		let handled = 0
 
 		for (let offset = 0; offset < rawChanges.length; offset += BATCH_SIZE) {
+			// Đang shutdown: dừng ngay, không lưu checkpoint (lượt sau đọc lại, handler idempotent).
+			if (signal?.aborted) return 'idle'
+
 			// Mất lock (hết hạn hoặc bị lấy mất) thì dừng, không lưu checkpoint.
 			if (!(await this.renewLock(lock))) {
 				this.logger.warn(`Lost CDC lock for ${options.dataSourceToken}.${tableLabel}, aborting this poll`)
-				return
+				return 'busy'
 			}
 
 			const slice = rawChanges.slice(offset, offset + BATCH_SIZE)
@@ -149,13 +184,15 @@ export class CdcWatcherService {
 			}
 		}
 
-		await this.redis.set(checkpointKey, maxLsn.toString('hex'))
+		await this.redis.set(checkpointKey, toLsn.toString('hex'))
 
 		if (rawChanges.length > 0) {
 			this.logger.debug(
-				`${tableLabel}: read ${rawChanges.length} row(s), skipped ${skippedEchoes} echo(es), handled ${handled} in ${Date.now() - startedAt}ms`
+				`${tableLabel}: read ${rawChanges.length} row(s), skipped ${skippedEchoes} echo(es), handled ${handled} in ${Date.now() - startedAt}ms${hasMore ? ' (backlog remains)' : ''}`
 			)
 		}
+
+		return outcome
 	}
 
 	/**
@@ -285,6 +322,35 @@ export class CdcWatcherService {
 
 		if (Buffer.compare(fromLsn, maxLsn) > 0) return null
 		return { fromLsn, maxLsn }
+	}
+
+	/**
+	 * @description Giới hạn `to_lsn` để một lượt đọc chứa khoảng WINDOW_ROWS dòng. Lấy WINDOW_ROWS dòng đầu của bảng
+	 * thay đổi (`cdc.<capture_instance>_CT`) theo thứ tự LSN rồi lấy LSN lớn nhất trong đó làm `to_lsn`
+	 * (đọc trọn transaction chứa nó). Nếu số dòng trong khoảng ít hơn ngưỡng thì đọc đến max LSN.
+	 * Truy vấn chỉ quét tối đa WINDOW_ROWS dòng trên khóa cụm của bảng CT nên rẻ, kể cả khi backlog rất lớn.
+	 */
+	private async resolveWindow(
+		dataSource: DataSource,
+		captureInstance: string,
+		fromLsn: Buffer,
+		maxLsn: Buffer
+	): Promise<{ toLsn: Buffer; hasMore: boolean }> {
+		const [row] = await dataSource.query(
+			`SELECT MAX(__$start_lsn) AS to_lsn, COUNT_BIG(*) AS cnt FROM (
+				SELECT TOP (${WINDOW_ROWS}) __$start_lsn
+				FROM cdc.${captureInstance}_CT
+				WHERE __$start_lsn >= @0 AND __$start_lsn <= @1
+				ORDER BY __$start_lsn, __$seqval
+			) AS w`,
+			[fromLsn, maxLsn]
+		)
+
+		const count = Number(row?.cnt ?? 0)
+		const windowEnd: Buffer | null = row?.to_lsn ?? null
+		if (!windowEnd || count < WINDOW_ROWS) return { toLsn: maxLsn, hasMore: false }
+
+		return { toLsn: windowEnd, hasMore: Buffer.compare(windowEnd, maxLsn) < 0 }
 	}
 
 	private async renewLock({ key, token, ttlMs }: PollLock): Promise<boolean> {

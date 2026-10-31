@@ -14,6 +14,14 @@ export class StockInDeactivatedException extends Error {
 	}
 }
 
+export class DefectiveGoodsNotFound extends Error {
+	constructor() {
+		super('Cannot find defective goods')
+		this.name = 'DefectiveGoodsNotFound'
+		Object.setPrototypeOf(this, new.target.prototype)
+	}
+}
+
 export class NoDefectiveGoodsToStockInException extends Error {
 	constructor() {
 		super(`No defective goods available to stock in`)
