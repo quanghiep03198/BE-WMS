@@ -17,8 +17,9 @@ export class RemovePurchaseOrderHandler implements ICommandHandler<RemovePurchas
 		const model = this.eventPublisher.mergeObjectContext(await this.repository.getByDispatchOrder(dispatchOrder))
 		const isEmptied = model.removePurchaseOrder(po, removedBy)
 
-		if (isEmptied) await this.repository.deleteByDispatchOrder(dispatchOrder)
-		else await this.repository.save(model)
+		if (isEmptied) {
+			await this.repository.deleteByDispatchOrder(dispatchOrder)
+		} else await this.repository.save(model)
 
 		model.commit()
 	}

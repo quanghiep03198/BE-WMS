@@ -1,6 +1,10 @@
 import { DATA_WAREHOUSE_CONNECTION } from '@databases/constants'
+import {
+	ITruckloadDeliveryCacheRepository,
+	TRUCKLOAD_DELIVERY_CACHE_REPOSITORY
+} from '@modules/truckload-delivery/application/ports/truckload-delivery.cache.repository.port'
 import { UserDocument } from '@modules/user/infrastructure/persistence/mongodb/schemas/user.schema'
-import { Injectable } from '@nestjs/common'
+import { Inject, Injectable } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
 import { subMinutes } from 'date-fns'
 import { escapeRegExp } from 'lodash'
@@ -30,6 +34,8 @@ export class TruckloadDeliveryRepository implements ITruckloadDeliveryRepository
 	constructor(
 		@InjectModel(TruckloadDelivery.name, DATA_WAREHOUSE_CONNECTION)
 		private readonly truckloadDeliveryModel: TruckloadDeliveryModel,
+		@Inject(TRUCKLOAD_DELIVERY_CACHE_REPOSITORY)
+		private readonly truckloadDeliveryCacheRepository: ITruckloadDeliveryCacheRepository,
 		@InjectPinoLogger(TruckloadDeliveryRepository.name)
 		private readonly logger: PinoLogger
 	) {}
@@ -141,12 +147,24 @@ export class TruckloadDeliveryRepository implements ITruckloadDeliveryRepository
 	async paginate(query: UnflatedFilterQueryDTO) {
 		const { page, limit } = query
 
-		const paginateResult = await this.truckloadDeliveryModel.paginate(buildDispatchOrderFilter(query.where), {
+		const matchPipelineExpression = buildDispatchOrderFilter(query.where)
+		const sortPipelineExpression = buildDispatchOrderSort(query.sort)
+
+		const countDocuments = async (): Promise<number> => {
+			const cachedCount = await this.truckloadDeliveryCacheRepository.getCount(matchPipelineExpression)
+			if (Number.isNaN(+cachedCount)) return cachedCount
+
+			const totalDocs = await this.truckloadDeliveryModel.countDocuments(matchPipelineExpression)
+			return await this.truckloadDeliveryCacheRepository.setCount(matchPipelineExpression, totalDocs)
+		}
+
+		const paginateResult = await this.truckloadDeliveryModel.paginate(matchPipelineExpression, {
 			page,
 			limit,
-			sort: buildDispatchOrderSort(query.sort),
+			sort: sortPipelineExpression,
 			// * paginate-v2 ignores `lean` objects when `leanWithVirtuals` is set, which would skip autopopulate
 			leanWithVirtuals: true,
+			useCustomCountFn: countDocuments,
 			options: {
 				lean: { autopopulate: true },
 				readPreference: 'secondaryPreferred' satisfies mongo.ReadPreferenceMode

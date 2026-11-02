@@ -1,5 +1,13 @@
 import { CommonRequestHeader } from '@common/constants'
-import { HttpMethod, RequestUser, RequireAuthorized, RouteHandler, StrictRoles, TRequestUser } from '@common/decorators'
+import {
+	FlushCache,
+	HttpMethod,
+	RequestUser,
+	RequireAuthorized,
+	RouteHandler,
+	StrictRoles,
+	TRequestUser
+} from '@common/decorators'
 import { ZodValidationPipe } from '@common/pipes'
 import { UserRole } from '@modules/user/domain/constants'
 import {
@@ -80,6 +88,7 @@ export class TruckloadDeliveryController {
 		message: 'common.created',
 		exceptionFilter: TruckloadDeliveryExceptionFilter
 	})
+	@FlushCache('cached:total:dispatch_order:*')
 	@RequireAuthorized(UserRole.IE_STAFF, UserRole.FG_WAREHOUSE_STAFF)
 	async create(
 		@RequestUser() user: TRequestUser,
@@ -147,6 +156,7 @@ export class TruckloadDeliveryController {
 		message: 'common.deleted',
 		exceptionFilter: TruckloadDeliveryExceptionFilter
 	})
+	@FlushCache('cached:total:dispatch_order:*')
 	@RequireAuthorized(UserRole.IE_STAFF, UserRole.FG_WAREHOUSE_STAFF)
 	async removePurchaseOrder(
 		@RequestUser() user: TRequestUser,
@@ -163,6 +173,7 @@ export class TruckloadDeliveryController {
 		message: 'common.deleted',
 		exceptionFilter: TruckloadDeliveryExceptionFilter
 	})
+	@FlushCache('cached:total:dispatch_order:*')
 	@RequireAuthorized(UserRole.IE_STAFF, UserRole.FG_WAREHOUSE_STAFF)
 	async delete(@Param('dispatchOrder') dispatchOrder: string) {
 		return await this.commandBus.execute(new DeleteDispatchOrderCommand(dispatchOrder))
