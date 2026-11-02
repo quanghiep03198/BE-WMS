@@ -13,6 +13,7 @@ export interface MongooseRestoreResult {
 	modifiedCount: number
 }
 
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
 export interface IBaseMongoRepository<TDocument extends Document> extends IBaseRepository<
 	TDocument,
 	string | Types.ObjectId,
@@ -23,7 +24,8 @@ export interface IBaseMongoRepository<TDocument extends Document> extends IBaseR
 	TDocument | null,
 	MongooseDeleteResult,
 	MongooseDeleteResult,
-	MongooseRestoreResult
+	MongooseRestoreResult,
+	Pagination<TDocument>
 > {
 	// createOne(payload: Partial<TDocument>): Promise<TDocument>
 	// insertMany(payload: Partial<TDocument>[]): Promise<TDocument[]>

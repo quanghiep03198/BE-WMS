@@ -170,18 +170,43 @@ export abstract class BaseMongoRepository<TDocument extends Document> implements
 		filter: FilterQuery<TDocument>,
 		{ page, limit, ...options }: PaginationDTO & Omit<QueryOptions<TDocument>, 'page' | 'limit'>
 	): Promise<Pagination<TDocument>> {
-		const result = await this.model.paginate(filter, { page, limit, ...options })
+		if ('paginate' in this.model && typeof this.model.paginate === 'function') {
+			const result = await this.model.paginate(filter, {
+				page,
+				limit,
+				customLabels: { docs: 'data' },
+				...options
+			})
+			return {
+				data: result.docs,
+				hasNextPage: result.hasNextPage,
+				hasPrevPage: result.hasPrevPage,
+				nextPage: result.nextPage,
+				prevPage: result.prevPage,
+				totalDocs: result.totalDocs,
+				totalPages: result.totalPages,
+				page: result.page,
+				limit: result.limit
+			} satisfies Pagination<TDocument>
+		}
+		const data = await this.model.find(filter, null, { skip: (page - 1) * limit, limit, ...options })
+		const totalDocs = await this.model.countDocuments(filter)
+		const totalPages = Math.ceil(totalDocs / limit)
+		const hasNextPage = page < totalPages
+		const hasPrevPage = page > 1
+		const nextPage = hasNextPage ? page + 1 : null
+		const prevPage = hasPrevPage ? page - 1 : null
 
 		return {
-			data: result.docs,
-			totalDocs: result.totalDocs,
-			totalPages: result.totalPages,
-			hasNextPage: result.hasNextPage,
-			hasPrevPage: result.hasPrevPage,
-			nextPage: result.nextPage ?? null,
-			prevPage: result.prevPage ?? null,
-			limit: result.limit,
-			page: result.page ?? page
+			data,
+			totalDocs,
+			totalPages,
+			page,
+			limit,
+			hasNextPage,
+			hasPrevPage,
+			nextPage,
+			prevPage
 		} satisfies Pagination<TDocument>
 	}
 }

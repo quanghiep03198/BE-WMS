@@ -9,6 +9,9 @@ import { BaseAbstractEntity } from '../base.abstract.entity'
 import { PaginationDTO } from '../dto/pagination.dto'
 import { IBaseRepository } from './base.abstract.repository.interface'
 
+type PaginateResult<Entity extends BaseAbstractEntity> = Pagination<Entity>
+
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
 export interface IBaseTypeOrmRepository<Entity extends BaseAbstractEntity> extends IBaseRepository<
 	Entity,
 	number,
@@ -19,7 +22,8 @@ export interface IBaseTypeOrmRepository<Entity extends BaseAbstractEntity> exten
 	DeleteResult,
 	DeleteResult,
 	DeleteResult,
-	UpdateResult
+	UpdateResult,
+	PaginateResult<Entity>
 > {
 	// insertOne(payload: DeepPartial<Entity>): Promise<Entity>
 	// insertMany(payload: DeepPartial<Entity>[]): Promise<InsertResult>

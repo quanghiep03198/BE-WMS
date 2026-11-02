@@ -10,7 +10,8 @@ export interface IBaseRepository<
 	TDeleteOneResult = unknown,
 	TDeleteManyResult = TDeleteOneResult,
 	TSoftDeleteResult = TDeleteManyResult,
-	TRestoreResult = TUpdateResult
+	TRestoreResult = TUpdateResult,
+	TPaginateResult = Pagination<TEntity>
 > {
 	createOne(payload: Partial<Omit<TEntity, '_id' | 'id'>>): Promise<TEntity>
 	insertMany(payload: Partial<Omit<TEntity, '_id' | 'id'>>[]): Promise<TCreateManyResult>
@@ -24,5 +25,5 @@ export interface IBaseRepository<
 	softDeleteManyByIds(ids: TId[]): Promise<TSoftDeleteResult>
 	restoreOneById(id: TId): Promise<TRestoreResult>
 	restoreManyByIds(ids: TId[]): Promise<TRestoreResult>
-	paginate(filter: TFilter, options: TPaginationOptions): Promise<Pagination<TEntity>>
+	paginate(filter: TFilter, options: TPaginationOptions): Promise<TPaginateResult>
 }
