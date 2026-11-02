@@ -154,6 +154,8 @@ export declare global {
 
 	type Chunk<T> = T[][]
 
+	type AnyObject = Record<string, any>
+
 	type TObjectId =
 		| {
 				id: string | Uint8Array
