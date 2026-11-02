@@ -3,7 +3,6 @@ import { Inject } from '@nestjs/common'
 import { CommandHandler, EventPublisher, ICommandHandler } from '@nestjs/cqrs'
 import chunk from 'lodash/chunk'
 import { setImmediate } from 'node:timers/promises'
-import { DEFECTIVE_GOODS_CACHE_REPOSITORY } from '../../ports/defective-goods-cache.port'
 import { DEFECTIVE_GOODS_REPOSITORY, IDefectiveGoodsRepository } from '../../ports/defective-goods.repository.port'
 import { CreateDefectiveGoodsCommand } from './create-defective-goods.command'
 
@@ -11,8 +10,6 @@ import { CreateDefectiveGoodsCommand } from './create-defective-goods.command'
 export class CreateDefectiveGoodsHandler implements ICommandHandler<CreateDefectiveGoodsCommand> {
 	constructor(
 		@Inject(DEFECTIVE_GOODS_REPOSITORY) private readonly repository: IDefectiveGoodsRepository,
-		@Inject(DEFECTIVE_GOODS_CACHE_REPOSITORY)
-		private readonly cacheRepository: any,
 		private readonly eventPublisher: EventPublisher
 	) {}
 
@@ -29,6 +26,5 @@ export class CreateDefectiveGoodsHandler implements ICommandHandler<CreateDefect
 			}
 			await setImmediate()
 		}
-		await this.cacheRepository.flushCount()
 	}
 }

@@ -1,6 +1,5 @@
 import { Inject } from '@nestjs/common'
 import { CommandHandler, EventPublisher, ICommandHandler } from '@nestjs/cqrs'
-import { DEFECTIVE_GOODS_CACHE_REPOSITORY } from '../../ports/defective-goods-cache.port'
 import { DEFECTIVE_GOODS_REPOSITORY, IDefectiveGoodsRepository } from '../../ports/defective-goods.repository.port'
 import { DeleteManyDefectiveGoodsCommand } from './delete-many-defective-goods.command'
 
@@ -9,8 +8,6 @@ export class DeleteManyDefectiveGoodsHandler implements ICommandHandler<DeleteMa
 	constructor(
 		@Inject(DEFECTIVE_GOODS_REPOSITORY)
 		private readonly repository: IDefectiveGoodsRepository,
-		@Inject(DEFECTIVE_GOODS_CACHE_REPOSITORY)
-		private readonly cacheRepository: any,
 		private readonly eventPublisher: EventPublisher
 	) {}
 
@@ -21,6 +18,5 @@ export class DeleteManyDefectiveGoodsHandler implements ICommandHandler<DeleteMa
 			this.eventPublisher.mergeObjectContext(model)
 			model.commit()
 		})
-		await this.cacheRepository.flushCount()
 	}
 }

@@ -8,7 +8,11 @@ import {
 	DEFECTIVE_GOODS_CACHE_REPOSITORY,
 	IDefectiveGoodsCacheRepository
 } from '@modules/defective-goods/application/ports/defective-goods-cache.port'
-import { IDefectiveGoodsRepository } from '@modules/defective-goods/application/ports/defective-goods.repository.port'
+import {
+	IDefectiveGoodsRepository,
+	IKeysetPagination,
+	IKeysetParams
+} from '@modules/defective-goods/application/ports/defective-goods.repository.port'
 import { CombinationStrategy } from '@modules/defective-goods/domain/constants'
 import { ActiveEpcsRecombinationException } from '@modules/defective-goods/domain/exceptions'
 import { IDefectiveGoods } from '@modules/defective-goods/domain/interfaces'
@@ -20,7 +24,7 @@ import { Inject, Injectable, Logger } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
 import chunk from 'lodash/chunk'
 import pick from 'lodash/pick'
-import { type FilterQuery, mongo, ProjectionType, type QueryOptions } from 'mongoose'
+import { type FilterQuery, mongo, ProjectionType, type QueryOptions, Types } from 'mongoose'
 import { DefectiveGoods, DefectiveGoodsDocument, DefectiveGoodsModel } from '../schemas/defective-goods.schema'
 
 @Injectable()
@@ -85,10 +89,11 @@ export class DefectiveGoodsRepository
 	}
 
 	override async paginate(
-		filter: Partial<IDefectiveGoodsProps>,
-		{ page, limit = 10 }: PaginationDTO & Omit<QueryOptions<IDefectiveGoods>, 'page' | 'limit'>
+		filter: FilterQuery<DefectiveGoodsDocument>,
+		{ page, limit = 10 }: PaginationDTO & Omit<QueryOptions<DefectiveGoodsDocument>, 'page' | 'limit'>
 	) {
 		const filterQuery = MongoQueryBuilder.from(filter)
+			.whereEqual('deleted', false)
 			.whereEqual('defective_category')
 			.whereEqual('brand_name')
 			.whereEqual('factory_shoes_style')
@@ -97,46 +102,36 @@ export class DefectiveGoodsRepository
 			.whereEqual('size_numcode')
 			.whereEqual('sewing_line')
 			.whereEqual('assembly_line')
-			.whereEqual('deleted', false)
 			.whereDateEqual('created_at')
 			.build()
 
 		const countDocuments = async (): Promise<number> => {
-			const cachedCount = this.defectiveGoodsCacheRepository.getCount(filter)
-			if (!isNaN(+cachedCount)) {
-				const totalDocs = await this.defectiveGoodsModel.countDocuments(filterQuery)
-				return await this.defectiveGoodsCacheRepository.setCount(filter, totalDocs)
-			}
-			return cachedCount
+			const cachedCount = await this.defectiveGoodsCacheRepository.getCount(filter)
+			this.logger.debug(`Cached count for filter: ${JSON.stringify(filter)} is ${cachedCount}`)
+			if (Number.isNaN(+cachedCount)) return cachedCount
+
+			const totalDocs = await this.defectiveGoodsModel.countDocuments(filterQuery)
+			return await this.defectiveGoodsCacheRepository.setCount(filter, totalDocs)
 		}
 
-		const [data, totalDocs] = await Promise.all([
-			this.defectiveGoodsModel
-				.find(filterQuery)
-				.sort({ created_at: -1 })
-				.skip((page - 1) * limit)
-				.limit(limit)
-				.read('primary' satisfies mongo.ReadPreferenceMode)
-				.lean({ virtuals: true, autopopulate: true }),
-			countDocuments()
-		])
-
-		const totalPages = Math.ceil(totalDocs / limit)
-		const nextPage = page === totalPages ? null : page + 1
-		const prevPage = page === 1 ? null : page - 1
-		const hasNextPage = nextPage <= totalPages
-		const hasPrevPage = page > 1
+		const result = await this.defectiveGoodsModel.paginate(filterQuery, {
+			page,
+			limit,
+			leanWithVirtuals: true,
+			autopopulate: true,
+			useCustomCountFn: countDocuments
+		})
 
 		return {
-			data,
-			totalDocs,
-			totalPages,
-			hasNextPage,
-			hasPrevPage,
-			nextPage,
-			prevPage,
-			limit,
-			page
+			data: result.docs,
+			page: result.page,
+			limit: result.limit,
+			totalDocs: result.totalDocs,
+			totalPages: result.totalPages,
+			hasNextPage: result.hasNextPage,
+			hasPrevPage: result.hasPrevPage,
+			nextPage: result.nextPage,
+			prevPage: result.prevPage
 		} satisfies Pagination<IDefectiveGoods>
 	}
 
@@ -179,7 +174,11 @@ export class DefectiveGoodsRepository
 		return pendingDeleteItems
 	}
 
-	async getInoutboundEpcs(stockFlow: 'inbound' | 'outbound', filter: Partial<IDefectiveGoods> = {}, take?: number) {
+	async getInoutboundEpcs(
+		stockFlow: 'inbound' | 'outbound',
+		filter: Partial<IDefectiveGoods> = {},
+		{ limit = 50, page = 1, cursor, direction = 'next' }: IKeysetParams = {}
+	) {
 		const filterQueries = MongoQueryBuilder.from({ ...filter, combination_strategy: 'manually' })
 			.whereEqual('combination_strategy')
 			.whereEqual('unit')
@@ -197,15 +196,57 @@ export class DefectiveGoodsRepository
 			)
 			.build()
 
-		const totalDocs = take ?? (await this.defectiveGoodsModel.countDocuments(filterQueries))
+		// direction chỉ có nghĩa khi có cursor
+		const isPrev = !!cursor && direction === 'prev'
 
-		const data = await this.defectiveGoodsModel
-			.find(filterQueries)
-			.lean({ virtuals: true, autopopulate: true })
-			.read('primary' satisfies mongo.ReadPreferenceMode)
-			.limit(take ?? 50)
+		// Điều kiện keyset: sort _id giảm dần -> next lấy _id < cursor, prev lấy _id > cursor
+		const keysetQuery = cursor
+			? { $and: [filterQueries, { _id: { [isPrev ? '$gt' : '$lt']: this.decodeCursor(cursor) } }] }
+			: filterQueries
 
-		return { data, totalDocs }
+		const [totalDocs, rows] = await Promise.all([
+			// Đếm theo filter gốc, KHÔNG kèm điều kiện cursor
+			this.defectiveGoodsModel.countDocuments(filterQueries),
+			this.defectiveGoodsModel
+				.find(keysetQuery)
+				.sort({ _id: isPrev ? 1 : -1 })
+				.limit(limit + 1) // lấy dư 1 bản ghi để biết còn trang tiếp theo hay không
+				.lean({ virtuals: true, autopopulate: true })
+				.read('secondary' satisfies mongo.ReadPreferenceMode)
+		])
+
+		const hasMore = rows.length > limit
+		const data = hasMore ? rows.slice(0, limit) : rows
+		if (isPrev) data.reverse() // trả về đúng thứ tự hiển thị (giảm dần)
+
+		// Đi tới (next): "còn nữa" = hasMore, "có trang trước" = đã có cursor
+		// Đi lùi (prev): ngược lại, và chắc chắn còn trang sau vì mình vừa từ đó quay lại
+		const hasNextPage = isPrev ? true : hasMore
+		const hasPrevPage = isPrev ? hasMore : !!cursor
+
+		return {
+			data,
+			hasNextPage,
+			hasPrevPage,
+			limit,
+			page,
+			nextPage: hasNextPage ? page + 1 : null,
+			prevPage: hasPrevPage ? Math.max(page - 1, 1) : null,
+			totalDocs,
+			totalPages: Math.ceil(totalDocs / limit),
+			nextCursor: hasNextPage && data.length ? this.encodeCursor(data[data.length - 1]._id) : null,
+			prevCursor: hasPrevPage && data.length ? this.encodeCursor(data[0]._id) : null
+		} satisfies IKeysetPagination<ArrayElement<typeof rows>>
+	}
+
+	private encodeCursor(id: unknown): string {
+		return Buffer.from(String(id)).toString('base64url')
+	}
+
+	private decodeCursor(cursor: string): Types.ObjectId {
+		const id = Buffer.from(cursor, 'base64url').toString()
+		// if (!Types.ObjectId.isValid(id)) throw new BadRequestException('Invalid cursor')
+		return new Types.ObjectId(id)
 	}
 
 	async getScanningSizeQty(epcs: string[]) {

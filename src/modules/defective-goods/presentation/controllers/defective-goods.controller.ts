@@ -1,5 +1,13 @@
 import { CommonRequestHeader } from '@common/constants'
-import { HttpMethod, RequestUser, RequireAuthorized, RouteHandler, StrictRoles, TRequestUser } from '@common/decorators'
+import {
+	FlushCache,
+	HttpMethod,
+	RequestUser,
+	RequireAuthorized,
+	RouteHandler,
+	StrictRoles,
+	TRequestUser
+} from '@common/decorators'
 import { ZodValidationPipe } from '@common/pipes'
 import { CreateDefectiveGoodsCommand } from '@modules/defective-goods/application/commands/create/create-defective-goods.command'
 import { DeleteManyDefectiveGoodsCommand } from '@modules/defective-goods/application/commands/delete-many/delete-many-defective-goods.command'
@@ -71,7 +79,7 @@ export class DefectiveGoodsController {
 	})
 	@RequireAuthorized(UserRole.MANAGER, UserRole.DG_WAREHOUSE_STAFF)
 	public async get(
-		@Query(new ZodValidationPipe(filterQueryDTO), new DefaultValuePipe({ page: 1, limit: 10 }))
+		@Query(new ZodValidationPipe(filterQueryDTO), new DefaultValuePipe({ page: 1, limit: 25 }))
 		filterQueries: FilterQueryDTO,
 		@Query('page', new DefaultValuePipe(1), new ParseIntPipe()) page: number
 	) {
@@ -83,12 +91,14 @@ export class DefectiveGoodsController {
 			)
 		)
 	}
+
 	@RouteHandler({
 		endpoint: 'create',
 		method: HttpMethod.POST,
 		statusCode: HttpStatus.CREATED,
 		exceptionFilter: DefectiveGoodsExceptionFilter
 	})
+	@FlushCache('cached:total:defective_goods:*')
 	@StrictRoles()
 	@RequireAuthorized(UserRole.DG_WAREHOUSE_STAFF)
 	public async create(
@@ -107,9 +117,10 @@ export class DefectiveGoodsController {
 	public async getCanInboundEpcs(
 		@Param('stockFlow') stockFlow: 'inbound' | 'outbound',
 		@Query() filters: Partial<IDefectiveGoods>,
-		@Query('take', new ParseIntPipe({ optional: true })) take: number
+		@Query('take', new ParseIntPipe({ optional: true })) take: number,
+		@Query('cursor', new DefaultValuePipe(null)) cursor: string | null
 	) {
-		return await this.queryBus.execute(new GetInoutboundEpcsQuery(stockFlow, filters, take))
+		return await this.queryBus.execute(new GetInoutboundEpcsQuery(stockFlow, filters, take, cursor))
 	}
 
 	@RouteHandler({
@@ -134,6 +145,7 @@ export class DefectiveGoodsController {
 		statusCode: HttpStatus.NO_CONTENT
 	})
 	@StrictRoles()
+	@FlushCache('cached:total:defective_goods:*')
 	@RequireAuthorized(UserRole.DG_WAREHOUSE_STAFF)
 	public async deleteOne(@RequestUser() user: TRequestUser, @Param('id', new ParseObjectIdPipe()) id: string) {
 		return this.commandBus.execute(new DeleteOneDefectiveGoodsCommand(id, user.username))
@@ -145,6 +157,7 @@ export class DefectiveGoodsController {
 		statusCode: HttpStatus.NO_CONTENT
 	})
 	@StrictRoles()
+	@FlushCache('cached:total:defective_goods:*')
 	@RequireAuthorized(UserRole.DG_WAREHOUSE_STAFF)
 	public async deleteMany(
 		@RequestUser() user: TRequestUser,

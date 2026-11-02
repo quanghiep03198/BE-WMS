@@ -5,7 +5,8 @@ export class GetInoutboundEpcsQuery extends Query<Pick<Pagination<IDefectiveGood
 	constructor(
 		public readonly stockFlow: 'inbound' | 'outbound',
 		public readonly filters: Partial<IDefectiveGoods>,
-		public readonly take: number
+		public readonly take: number,
+		public readonly cursor: string | null
 	) {
 		super()
 	}

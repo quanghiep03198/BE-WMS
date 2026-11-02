@@ -4,6 +4,17 @@ import { DefectiveGoodsDomainModel } from '@modules/defective-goods/domain/model
 import { DeleteManyDefectiveGoodsDTO } from '../dto/defective-goods.dto'
 
 export const DEFECTIVE_GOODS_REPOSITORY = Symbol('DEFECTIVE_GOODS_REPOSITORY')
+export interface IKeysetParams {
+	limit?: number
+	page?: number // chỉ để hiển thị, không ảnh hưởng truy vấn
+	cursor?: string // _id của item cuối (next) hoặc đầu (prev) trang hiện tại
+	direction?: 'next' | 'prev'
+}
+
+export interface IKeysetPagination<T> extends Pagination<T> {
+	nextCursor: string | null
+	prevCursor: string | null
+}
 
 export interface IDefectiveGoodsRepository extends IBaseRepository<IDefectiveGoods, string | TObjectId> {
 	create(payload: DefectiveGoodsDomainModel[]): Promise<DefectiveGoodsDomainModel[]>
@@ -18,7 +29,7 @@ export interface IDefectiveGoodsRepository extends IBaseRepository<IDefectiveGoo
 	getInoutboundEpcs(
 		stockFlow: 'inbound' | 'outbound',
 		filters?: Partial<IDefectiveGoods> | Record<string, any>,
-		take?: number
+		options?: IKeysetParams
 	): Promise<Pick<Pagination<IDefectiveGoods>, 'data' | 'totalDocs'>>
 	getScanningSizeQty(epcs: string[]): Promise<
 		{
