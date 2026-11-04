@@ -2,8 +2,8 @@ import { FLUSH_CACHE_PATTERNS, FlushCacheInterceptor } from '@common/interceptor
 import { applyDecorators, SetMetadata, UseInterceptors } from '@nestjs/common'
 
 /**
- * Gắn lên controller hoặc handler.
- * @example @FlushCache('cached:total:defective_goods:*')
+ * Add this decorator to a controller or handler to flush cache patterns specified.
+ * @example @FlushCache('something:*')
  */
 export const FlushCache = (...patterns: string[]) =>
 	applyDecorators(SetMetadata(FLUSH_CACHE_PATTERNS, patterns), UseInterceptors(FlushCacheInterceptor))
