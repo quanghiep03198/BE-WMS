@@ -1,4 +1,3 @@
-import { format } from 'date-fns'
 import isEmpty from 'lodash/isEmpty'
 import isNil from 'lodash/isNil'
 import { FilterQuery, PipelineStage } from 'mongoose'
@@ -157,10 +156,27 @@ export class MongoQueryBuilder<T extends Record<string, any>> {
 	public whereDateEqual<K extends keyof T>(field: K, value?: Nullable<Date>): this {
 		const resolved = this.resolveValue(field, value)
 		if (!this.isPresent(resolved)) return this
-		return this.setOperator('expr', '$eq', [
-			{ $dateToString: { format: '%Y-%m-%d', date: `$${field as string}` } },
-			{ $dateToString: { format: '%Y-%m-%d', date: format(new Date(resolved), 'yyyy-MM-dd') } }
-		])
+
+		const parsedDate =
+			resolved instanceof Date
+				? resolved
+				: typeof resolved === 'string' || typeof resolved === 'number'
+					? new Date(resolved)
+					: null
+
+		if (!parsedDate || Number.isNaN(parsedDate.getTime())) {
+			throw new TypeError(`Invalid date value for "${String(field)}"`)
+		}
+
+		const startOfDay = new Date(parsedDate)
+		startOfDay.setHours(0, 0, 0, 0)
+
+		const endOfDay = new Date(startOfDay)
+		endOfDay.setDate(endOfDay.getDate() + 1)
+
+		this.setOperator(field, '$gte', startOfDay)
+		this.setOperator(field, '$lt', endOfDay)
+		return this
 	}
 
 	/**
@@ -212,7 +228,7 @@ export class MongoQueryBuilder<T extends Record<string, any>> {
 	public whereContains<K extends keyof T>(
 		field: K,
 		pattern: Nullable<string> = this.entry[field],
-		caseInsensitive = true
+		caseInsensitive = false
 	): this {
 		pattern ??= this.entry[field] as string | undefined
 		if (!pattern) return this
