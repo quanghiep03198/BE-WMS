@@ -114,9 +114,48 @@ export const DefectiveGoodsSchema = SchemaFactory.createForClass(DefectiveGoods)
 
 DefectiveGoodsSchema.index({ outbound_date: 1 }, { expireAfterSeconds: 7 * 24 * 60 * 60 })
 DefectiveGoodsSchema.index({ epc: 1 }, { unique: true, partialFilterExpression: { deleted: false } })
+DefectiveGoodsSchema.index(
+	{ combination_strategy: 1, inbound_date: 1, storage_location: 1, _id: -1 },
+	{
+		name: 'idx_inbound_keyset',
+		partialFilterExpression: {
+			deleted: false,
+			inbound_date: null,
+			storage_location: null
+		}
+	}
+)
+DefectiveGoodsSchema.index(
+	{ combination_strategy: 1, outbound_date: 1, _id: -1 },
+	{
+		name: 'idx_outbound_keyset',
+		partialFilterExpression: {
+			deleted: false,
+			outbound_date: null
+		}
+	}
+)
+DefectiveGoodsSchema.index(
+	{
+		deleted: 1,
+		defective_category: 1,
+		brand_name: 1,
+		mo_no: 1,
+		po: 1,
+		factory_shoes_style: 1,
+		cust_shoes_style: 1,
+		color_sn: 1,
+		size_numcode: 1,
+		sewing_line: 1,
+		assembly_line: 1,
+		created_at: -1,
+		_id: -1
+	},
+	{ name: 'idx_defective_goods_filters' }
+)
 
 DefectiveGoodsSchema.plugin(MongoosePaginate)
-DefectiveGoodsSchema.plugin(MongooseDelete, { overrideMethods: true, indexFields: ['deleted'] })
+DefectiveGoodsSchema.plugin(MongooseDelete, { overrideMethods: true })
 DefectiveGoodsSchema.plugin(MongooseAutoPopulate)
 DefectiveGoodsSchema.plugin(MongooseLeanVirtuals)
 

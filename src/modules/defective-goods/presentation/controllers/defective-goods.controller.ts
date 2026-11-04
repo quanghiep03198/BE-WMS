@@ -23,7 +23,12 @@ import {
 	UpdateDefectiveGoodsDTO,
 	updateDefectiveGoodsDTO
 } from '@modules/defective-goods/application/dto/defective-goods.dto'
-import { FilterQueryDTO, filterQueryDTO } from '@modules/defective-goods/application/dto/filter-query.dto'
+import {
+	FilterQueryDTO,
+	filterQueryDTO,
+	InoutboundEpcQueryDTO,
+	inoutboundEpcQueryDTO
+} from '@modules/defective-goods/application/dto/filter-query.dto'
 import {
 	UpdateInboundStatusDTO,
 	updateInboundStatusDTO,
@@ -116,11 +121,15 @@ export class DefectiveGoodsController {
 	@RequireAuthorized(UserRole.MANAGER, UserRole.DG_WAREHOUSE_STAFF)
 	public async getCanInboundEpcs(
 		@Param('stockFlow') stockFlow: 'inbound' | 'outbound',
-		@Query() filters: Partial<IDefectiveGoods>,
-		@Query('take', new ParseIntPipe({ optional: true })) take: number,
-		@Query('cursor', new DefaultValuePipe(null)) cursor: string | null
+		@Query(new ZodValidationPipe(inoutboundEpcQueryDTO)) query: InoutboundEpcQueryDTO
 	) {
-		return await this.queryBus.execute(new GetInoutboundEpcsQuery(stockFlow, filters, take, cursor))
+		const { cursor, direction = 'next', page, limit = 20, take, ...filter } = query
+
+		this.logger.debug(query)
+
+		return await this.queryBus.execute(
+			new GetInoutboundEpcsQuery(stockFlow, filter, { cursor, direction, page, limit, take })
+		)
 	}
 
 	@RouteHandler({
@@ -188,7 +197,7 @@ export class DefectiveGoodsController {
 	@RequireAuthorized(UserRole.DG_WAREHOUSE_STAFF)
 	public async stockIn(
 		@RequestUser('_id') updatedBy: TObjectId,
-		@Body(new ZodValidationPipe(updateInboundStatusDTO.partial())) data: UpdateInboundStatusDTO,
+		@Body(new ZodValidationPipe(updateInboundStatusDTO)) data: UpdateInboundStatusDTO,
 		@Query() filters: Partial<IDefectiveGoods>,
 		@Query('take', new ParseIntPipe({ optional: true })) take: number
 	) {

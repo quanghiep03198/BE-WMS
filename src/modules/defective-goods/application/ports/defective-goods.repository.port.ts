@@ -6,6 +6,7 @@ import { DeleteManyDefectiveGoodsDTO } from '../dto/defective-goods.dto'
 export const DEFECTIVE_GOODS_REPOSITORY = Symbol('DEFECTIVE_GOODS_REPOSITORY')
 export interface IKeysetParams {
 	limit?: number
+	take?: number
 	page?: number // chỉ để hiển thị, không ảnh hưởng truy vấn
 	cursor?: string // _id của item cuối (next) hoặc đầu (prev) trang hiện tại
 	direction?: 'next' | 'prev'
@@ -30,7 +31,23 @@ export interface IDefectiveGoodsRepository extends IBaseRepository<IDefectiveGoo
 		stockFlow: 'inbound' | 'outbound',
 		filters?: Partial<IDefectiveGoods> | Record<string, any>,
 		options?: IKeysetParams
-	): Promise<Pick<Pagination<IDefectiveGoods>, 'data' | 'totalDocs'>>
+	): Promise<
+		Pagination<
+			Pick<
+				IDefectiveGoods,
+				| '_id'
+				| 'epc'
+				| 'defective_category'
+				| 'brand_name'
+				| 'po'
+				| 'mo_no'
+				| 'factory_shoes_style'
+				| 'color_sn'
+				| 'size_numcode'
+				| 'unit'
+			>
+		>
+	>
 	getScanningSizeQty(epcs: string[]): Promise<
 		{
 			factory_shoes_style: string

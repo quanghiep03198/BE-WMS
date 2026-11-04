@@ -108,12 +108,12 @@ export class DefectiveGoodsDomainModel extends AggregateRoot {
 		this.apply(new DefectiveGoodsChangedEvent(this.id))
 	}
 
-	stockIn(storageLocation: string, updatedBy: TObjectId) {
+	stockIn(storageLocation: string, updatedBy: TObjectId, stockedInAt: Date) {
 		if (this.state.deleted) throw new StockInDeactivatedException()
 
-		this.state.inbound_date = new Date()
 		this.state.storage_location = storageLocation
 		this.state.updated_by = updatedBy
+		this.state.inbound_date = stockedInAt
 		this.apply(new DefectiveGoodsChangedEvent(this.id))
 	}
 

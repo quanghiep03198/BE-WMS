@@ -10,7 +10,7 @@ export class GetInoutboundEpcsHandler implements IQueryHandler<GetInoutboundEpcs
 		private readonly defectiveGoodsRepository: IDefectiveGoodsRepository
 	) {}
 
-	public async execute({ stockFlow, filters, take, cursor }: GetInoutboundEpcsQuery) {
-		return await this.defectiveGoodsRepository.getInoutboundEpcs(stockFlow, filters, { limit: take, cursor })
+	public async execute({ stockFlow, filters, options }: GetInoutboundEpcsQuery) {
+		return await this.defectiveGoodsRepository.getInoutboundEpcs(stockFlow, filters, options)
 	}
 }

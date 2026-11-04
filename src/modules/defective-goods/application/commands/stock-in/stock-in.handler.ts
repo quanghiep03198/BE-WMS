@@ -15,26 +15,31 @@ export class StockInDefectiveGoodsHandler implements ICommandHandler<StockInDefe
 		private readonly eventPublisher: EventPublisher
 	) {}
 	async execute({ data, updatedBy, filters = {}, take = 0 }: StockInDefectiveGoodsCommand) {
+		const useVirtualEpcs = data.combination_strategy !== CombinationStrategy.MANUALLY
+
 		const filterQuery = MongoQueryBuilder.from({ ...filters, combination_strategy: data.combination_strategy })
-			.when(data.combination_strategy !== CombinationStrategy.MANUALLY, (qb) => qb.whereIn('epc', data.epcs))
-			.when(data.combination_strategy === CombinationStrategy.MANUALLY, (qb) =>
+			.when(!useVirtualEpcs, (qb) => qb.whereIn('epc', data.epcs))
+			.when(useVirtualEpcs, (qb) =>
 				qb
 					.whereEqual('brand_name')
 					.whereEqual('defective_category')
-					.whereContains('epc')
-					.whereContains('po')
-					.whereContains('mo_no')
-					.whereContains('factory_shoes_style')
-					.whereContains('color_sn')
-					.whereContains('size_numcode')
+					.whereEqual('epc')
+					.whereEqual('po')
+					.whereEqual('mo_no')
+					.whereEqual('factory_shoes_style')
+					.whereEqual('color_sn')
+					.whereEqual('size_numcode')
 			)
 			.build()
 		const pendingStockInItems = await this.repository.find(filterQuery, null, { limit: take })
 		if (pendingStockInItems.length === 0) throw new NoDefectiveGoodsToStockInException()
+
 		const CHUNK_SIZE = 1000
+		const stockedInAt = new Date()
+
 		for (const part of chunk(pendingStockInItems, CHUNK_SIZE)) {
 			part.forEach((model) => {
-				model.stockIn(data.storage_location, updatedBy)
+				model.stockIn(data.storage_location, updatedBy, stockedInAt)
 				this.eventPublisher.mergeObjectContext(model)
 			})
 			await this.repository.stockIn(part)

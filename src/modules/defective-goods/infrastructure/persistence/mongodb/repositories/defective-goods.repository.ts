@@ -4,6 +4,7 @@ import { DATA_WAREHOUSE_CONNECTION, DUPLICATE_KEY_ERROR_CODE } from '@databases/
 import { PaginationDTO } from '@modules/_base/dto/pagination.dto'
 import { BaseMongoRepository } from '@modules/_base/repositories/base-mongo.abstract.repository'
 import { DeleteManyDefectiveGoodsDTO } from '@modules/defective-goods/application/dto/defective-goods.dto'
+import { InoutboundEpcQueryDTO } from '@modules/defective-goods/application/dto/filter-query.dto'
 import {
 	DEFECTIVE_GOODS_CACHE_REPOSITORY,
 	IDefectiveGoodsCacheRepository
@@ -24,7 +25,7 @@ import { Inject, Injectable, Logger } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
 import chunk from 'lodash/chunk'
 import pick from 'lodash/pick'
-import { type FilterQuery, mongo, ProjectionType, type QueryOptions, Types } from 'mongoose'
+import { type FilterQuery, LeanDocument, mongo, ProjectionType, type QueryOptions, Types } from 'mongoose'
 import { DefectiveGoods, DefectiveGoodsDocument, DefectiveGoodsModel } from '../schemas/defective-goods.schema'
 
 @Injectable()
@@ -77,11 +78,11 @@ export class DefectiveGoodsRepository
 		filter: FilterQuery<DefectiveGoodsDocument>,
 		projection: ProjectionType<DefectiveGoodsDocument> = null,
 		options: QueryOptions<DefectiveGoodsDocument> = { lean: { virtuals: true, autopopulate: true } },
-		queryFn: 'find' | 'findWithDeleted' | 'findDeleted' = 'find'
+		queryFn: Extract<keyof DefectiveGoodsModel, 'find' | 'findWithDeleted' | 'findDeleted'> = 'find' as const
 	) {
-		const findFn = this.defectiveGoodsModel[queryFn]
-
-		const documents = await findFn(filter, projection, options).lean<IDefectiveGoodsProps[]>({
+		const documents = await this.defectiveGoodsModel[queryFn](filter, projection, options).lean<
+			IDefectiveGoodsProps[]
+		>({
 			virtuals: true,
 			autopopulate: true
 		})
@@ -107,9 +108,7 @@ export class DefectiveGoodsRepository
 
 		const countDocuments = async (): Promise<number> => {
 			const cachedCount = await this.defectiveGoodsCacheRepository.getCount(filter)
-			this.logger.debug(`Cached count for filter: ${JSON.stringify(filter)} is ${cachedCount}`)
-			if (Number.isNaN(+cachedCount)) return cachedCount
-
+			if (typeof cachedCount === 'number') return cachedCount
 			const totalDocs = await this.defectiveGoodsModel.countDocuments(filterQuery)
 			return await this.defectiveGoodsCacheRepository.setCount(filter, totalDocs)
 		}
@@ -176,51 +175,78 @@ export class DefectiveGoodsRepository
 
 	async getInoutboundEpcs(
 		stockFlow: 'inbound' | 'outbound',
-		filter: Partial<IDefectiveGoods> = {},
-		{ limit = 50, page = 1, cursor, direction = 'next' }: IKeysetParams = {}
+		filter: Omit<InoutboundEpcQueryDTO, 'cursor' | 'direction' | 'page' | 'limit' | 'take'>,
+		{ limit = 20, page = 1, take, cursor, direction = 'next' }: IKeysetParams
 	) {
-		const filterQueries = MongoQueryBuilder.from({ ...filter, combination_strategy: 'manually' })
+		const filterQueries = MongoQueryBuilder.from({
+			...filter,
+			combination_strategy: CombinationStrategy.MANUALLY,
+			inbound_date: null,
+			outbound_date: null,
+			storage_location: null
+		})
 			.whereEqual('combination_strategy')
 			.whereEqual('unit')
 			.whereEqual('defective_category')
-			.whereContains('epc')
-			.whereContains('brand_name')
-			.whereContains('factory_shoes_style')
-			.whereContains('po')
-			.whereContains('mo_no')
-			.whereContains('color_sn')
-			.whereContains('size_numcode')
+			.whereEqual('brand_name')
+			.whereEqual('epc')
+			.whereEqual('factory_shoes_style')
+			.whereEqual('po')
+			.whereEqual('mo_no')
+			.whereEqual('color_sn')
+			.whereEqual('size_numcode')
 			.when(stockFlow === 'inbound', (qb) => qb.whereFieldsAreNull('inbound_date', 'storage_location'))
 			.when(stockFlow === 'outbound', (qb) =>
 				qb.whereFieldsAreNotNull('inbound_date', 'storage_location').whereFieldsAreNull('outbound_date')
 			)
 			.build()
 
-		// direction chỉ có nghĩa khi có cursor
 		const isPrev = !!cursor && direction === 'prev'
 
-		// Điều kiện keyset: sort _id giảm dần -> next lấy _id < cursor, prev lấy _id > cursor
 		const keysetQuery = cursor
 			? { $and: [filterQueries, { _id: { [isPrev ? '$gt' : '$lt']: this.decodeCursor(cursor) } }] }
 			: filterQueries
 
-		const [totalDocs, rows] = await Promise.all([
-			// Đếm theo filter gốc, KHÔNG kèm điều kiện cursor
-			this.defectiveGoodsModel.countDocuments(filterQueries),
+		const countDocuments = async () => {
+			const cachedCount = await this.defectiveGoodsCacheRepository.getCount(filterQueries)
+			if (typeof cachedCount === 'number') return take && take < cachedCount ? take : cachedCount
+			const totalDocs = await this.defectiveGoodsModel.countDocuments(filterQueries)
+			await this.defectiveGoodsCacheRepository.setCount(filterQueries, totalDocs)
+			return take && take < totalDocs ? take : totalDocs
+		}
+
+		const _limit = take && take < limit ? take : limit
+
+		const [rows, totalDocs] = await Promise.all([
 			this.defectiveGoodsModel
 				.find(keysetQuery)
+				.select('_id epc defective_category brand_name po mo_no factory_shoes_style color_sn size_code unit')
 				.sort({ _id: isPrev ? 1 : -1 })
-				.limit(limit + 1) // lấy dư 1 bản ghi để biết còn trang tiếp theo hay không
-				.lean({ virtuals: true, autopopulate: true })
-				.read('secondary' satisfies mongo.ReadPreferenceMode)
+				.limit(_limit + 1)
+				.lean<
+					Pick<
+						LeanDocument<DefectiveGoodsDocument>,
+						| '_id'
+						| 'epc'
+						| 'defective_category'
+						| 'brand_name'
+						| 'po'
+						| 'mo_no'
+						| 'factory_shoes_style'
+						| 'color_sn'
+						| 'size_numcode'
+						| 'unit'
+					>[]
+				>(),
+			countDocuments()
 		])
 
-		const hasMore = rows.length > limit
-		const data = hasMore ? rows.slice(0, limit) : rows
-		if (isPrev) data.reverse() // trả về đúng thứ tự hiển thị (giảm dần)
+		const hasMore = take > limit ? rows.length > limit : false
+		const data = hasMore ? rows.slice(0, _limit) : rows
+		if (isPrev) data.reverse() // reverse to maintain correct display order for previous page
 
-		// Đi tới (next): "còn nữa" = hasMore, "có trang trước" = đã có cursor
-		// Đi lùi (prev): ngược lại, và chắc chắn còn trang sau vì mình vừa từ đó quay lại
+		// Go to next page: "has more" = hasMore, "has previous page" = already has cursor
+		// Go to previous page: opposite, and there is definitely a next page because we just came from there
 		const hasNextPage = isPrev ? true : hasMore
 		const hasPrevPage = isPrev ? hasMore : !!cursor
 
@@ -228,12 +254,12 @@ export class DefectiveGoodsRepository
 			data,
 			hasNextPage,
 			hasPrevPage,
-			limit,
+			limit: _limit,
 			page,
 			nextPage: hasNextPage ? page + 1 : null,
 			prevPage: hasPrevPage ? Math.max(page - 1, 1) : null,
 			totalDocs,
-			totalPages: Math.ceil(totalDocs / limit),
+			totalPages: take <= limit ? 1 : Math.ceil(totalDocs / limit),
 			nextCursor: hasNextPage && data.length ? this.encodeCursor(data[data.length - 1]._id) : null,
 			prevCursor: hasPrevPage && data.length ? this.encodeCursor(data[0]._id) : null
 		} satisfies IKeysetPagination<ArrayElement<typeof rows>>

@@ -12,7 +12,16 @@ export const updateInboundStatusDTO = z
 			.nonoptional()
 			.transform((value) => value.toUpperCase())
 	})
-	.required({ combination_strategy: true, storage_location: true })
+	.check(({ issues, value }) => {
+		if (value.combination_strategy !== CombinationStrategy.MANUALLY && !value.epcs?.length) {
+			issues.push({
+				code: 'custom',
+				input: value,
+				path: ['epcs'],
+				message: 'ns_validation:required'
+			})
+		}
+	})
 
 export const updateOutboundStatusDTO = z
 	.object({
@@ -29,6 +38,14 @@ export const updateOutboundStatusDTO = z
 				code: 'custom',
 				input: value,
 				path: ['po'],
+				message: 'ns_validation:required'
+			})
+		}
+		if (value.combination_strategy !== CombinationStrategy.MANUALLY && !value.epcs?.length) {
+			issues.push({
+				code: 'custom',
+				input: value,
+				path: ['epcs'],
 				message: 'ns_validation:required'
 			})
 		}
