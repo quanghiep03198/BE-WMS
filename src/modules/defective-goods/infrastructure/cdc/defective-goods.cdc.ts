@@ -85,7 +85,7 @@ export class DefectiveGoodsCdcHandler implements ICdcHandler<DefectiveGoodsCdcRo
 				ops.push({
 					updateOne: {
 						filter: { _id },
-						update: { $set: this.toDocument(row, departmentIds) },
+						update: { $set: this.toDocument(row, departmentIds) as unknown as Partial<DefectiveGoods> },
 						upsert: true
 					}
 				})
@@ -141,8 +141,8 @@ export class DefectiveGoodsCdcHandler implements ICdcHandler<DefectiveGoodsCdcRo
 			...this.departmentField('assembly_line', row.assembly_line, departmentIds),
 			...this.departmentField('sewing_line', row.sewing_line, departmentIds),
 			combination_strategy: row.ri_type,
-			inbound_date: row.inbound_date,
-			outbound_date: row.outbound_date,
+			inbound_at: row.inbound_date,
+			outbound_at: row.outbound_date,
 			outbound_purpose: row.outbound_purpose,
 			unit: row.unit,
 			deleted: false,

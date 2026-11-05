@@ -149,7 +149,7 @@ export class DefectiveGoodsReportRepository implements IDefectiveGoodsReportRepo
 			{
 				$match: {
 					$expr: {
-						$eq: [{ $dateToString: { date: '$outbound_date', format: '%Y-%m-%d' } }, format(date, 'yyyy-MM-dd')]
+						$eq: [{ $dateToString: { date: '$outbound_at', format: '%Y-%m-%d' } }, format(date, 'yyyy-MM-dd')]
 					},
 					outbound_purpose: { $ne: null }
 				}
@@ -157,7 +157,7 @@ export class DefectiveGoodsReportRepository implements IDefectiveGoodsReportRepo
 			{
 				$group: {
 					_id: {
-						outbound_date: '$outbound_date',
+						outbound_at: '$outbound_at',
 						brand_name: '$brand_name',
 						po: '$po',
 						mo_no: '$mo_no',
@@ -176,7 +176,7 @@ export class DefectiveGoodsReportRepository implements IDefectiveGoodsReportRepo
 			{
 				$group: {
 					_id: {
-						outbound_date: '$_id.outbound_date',
+						outbound_at: '$_id.outbound_at',
 						brand_name: '$_id.brand_name',
 						po: '$_id.po',
 						mo_no: '$_id.mo_no',
@@ -197,7 +197,7 @@ export class DefectiveGoodsReportRepository implements IDefectiveGoodsReportRepo
 			{
 				$project: {
 					_id: 0,
-					date: '$_id.outbound_date',
+					date: '$_id.outbound_at',
 					brand_name: '$_id.brand_name',
 					po: '$_id.po',
 					mo_no: '$_id.mo_no',
@@ -210,7 +210,7 @@ export class DefectiveGoodsReportRepository implements IDefectiveGoodsReportRepo
 			},
 			{
 				$sort: {
-					outbound_date: 1,
+					outbound_at: 1,
 					brand_name: 1,
 					po: 1,
 					mo_no: 1
@@ -225,7 +225,7 @@ export class DefectiveGoodsReportRepository implements IDefectiveGoodsReportRepo
 				$match: {
 					inbound_date: { $ne: null },
 					storage_location: { $ne: null },
-					outbound_date: null,
+					outbound_at: null,
 					outbound_purpose: null
 				}
 			},

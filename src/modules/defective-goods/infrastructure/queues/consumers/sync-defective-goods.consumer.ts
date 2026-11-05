@@ -1,5 +1,5 @@
 import { CdcEchoRegistryService } from '@databases/cdc/services/cdc-echo-registery.service'
-import { DATA_SOURCE_DATA_LAKE, DATA_WAREHOUSE_CONNECTION } from '@databases/constants'
+import { DATA_SOURCE_DATA_LAKE, DATA_WAREHOUSE_CONNECTION, DATABASE_SCHEMA } from '@databases/constants'
 import { SyncDefectiveGoodsCommand } from '@modules/defective-goods/application/commands/sync-defective-goods/sync-defective-goods.command'
 import {
 	DefectiveGoods,
@@ -50,12 +50,12 @@ export class SyncDefectiveGoodsConsumer extends WorkerHost {
 			if (raws.length === 0) continue
 
 			// Đăng ký marker echo TRƯỚC khi ghi MSSQL, để CDC (poll mỗi giây) không đọc thấy dòng trước khi marker tồn tại.
-			// await this.echoRegistry.registerOrigins(
-			// 	DATA_SOURCE_DATA_LAKE,
-			// 	DATABASE_SCHEMA,
-			// 	CDC_SOURCE_NAME,
-			// 	raws.map((raw) => String(raw._id))
-			// )
+			await this.echoRegistry.registerOrigins(
+				DATA_SOURCE_DATA_LAKE,
+				DATABASE_SCHEMA,
+				CDC_SOURCE_NAME,
+				raws.map((raw) => String(raw._id))
+			)
 
 			await this.mssql.query(syncDefectiveGoodsSql, [JSON.stringify(raws)])
 			synced += raws.length

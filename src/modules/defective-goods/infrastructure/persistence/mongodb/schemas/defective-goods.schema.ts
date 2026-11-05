@@ -88,14 +88,14 @@ export class DefectiveGoods {
 	@Prop({ type: String, trim: true, uppercase: true })
 	storage_location: string
 
-	@Prop({ type: Date })
-	inbound_date?: Date
+	@Prop({ type: Date, default: null })
+	inbound_at: Nullish<Date>
 
 	@Prop({ type: String, enum: DefectiveGoodsOutboundPurpose })
 	outbound_purpose?: DefectiveGoodsOutboundPurpose
 
-	@Prop({ type: Date })
-	outbound_date?: Date
+	@Prop({ type: Date, default: null })
+	outbound_at: Nullish<Date>
 
 	@Prop({ type: Date, default: null })
 	deleted_at?: Date | null
@@ -112,26 +112,26 @@ export class DefectiveGoods {
 
 export const DefectiveGoodsSchema = SchemaFactory.createForClass(DefectiveGoods)
 
-DefectiveGoodsSchema.index({ outbound_date: 1 }, { expireAfterSeconds: 7 * 24 * 60 * 60 })
+DefectiveGoodsSchema.index({ outbound_at: 1 }, { expireAfterSeconds: 7 * 24 * 60 * 60 })
 DefectiveGoodsSchema.index({ epc: 1 }, { unique: true, partialFilterExpression: { deleted: false } })
 DefectiveGoodsSchema.index(
-	{ combination_strategy: 1, inbound_date: 1, storage_location: 1, _id: -1 },
+	{ combination_strategy: 1, inbound_at: 1, storage_location: 1, _id: -1 },
 	{
 		name: 'idx_inbound_keyset',
 		partialFilterExpression: {
 			deleted: false,
-			inbound_date: null,
+			inbound_at: null,
 			storage_location: null
 		}
 	}
 )
 DefectiveGoodsSchema.index(
-	{ combination_strategy: 1, outbound_date: 1, _id: -1 },
+	{ combination_strategy: 1, outbound_at: 1, _id: -1 },
 	{
 		name: 'idx_outbound_keyset',
 		partialFilterExpression: {
 			deleted: false,
-			outbound_date: null
+			outbound_at: null
 		}
 	}
 )

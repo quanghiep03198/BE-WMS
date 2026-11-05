@@ -1,4 +1,5 @@
 import { EPCGenerator } from '@modules/defective-goods/application/helpers/epc-generator'
+import { Logger } from '@nestjs/common'
 import { AggregateRoot } from '@nestjs/cqrs'
 import {
 	CombinationStrategy,
@@ -18,6 +19,8 @@ export interface IDefectiveGoodsProps extends Omit<IDefectiveGoods, 'assembly_li
 }
 
 export class DefectiveGoodsDomainModel extends AggregateRoot {
+	private readonly logger = new Logger(DefectiveGoodsDomainModel.name)
+
 	constructor(private readonly state: IDefectiveGoodsProps) {
 		super()
 	}
@@ -108,12 +111,13 @@ export class DefectiveGoodsDomainModel extends AggregateRoot {
 		this.apply(new DefectiveGoodsChangedEvent(this.id))
 	}
 
-	stockIn(storageLocation: string, updatedBy: TObjectId, stockedInAt: Date) {
+	stockIn(storageLocation: string, updatedBy: TObjectId) {
 		if (this.state.deleted) throw new StockInDeactivatedException()
 
 		this.state.storage_location = storageLocation
 		this.state.updated_by = updatedBy
-		this.state.inbound_date = stockedInAt
+		this.state.inbound_at = new Date()
+
 		this.apply(new DefectiveGoodsChangedEvent(this.id))
 	}
 
@@ -123,7 +127,7 @@ export class DefectiveGoodsDomainModel extends AggregateRoot {
 		po: string = undefined,
 		outboundDate: Date = new Date()
 	) {
-		if (!this.state.inbound_date || !this.state.storage_location) throw new NotStockedInYetException()
+		if (!this.state.inbound_at || !this.state.storage_location) throw new NotStockedInYetException()
 		const shouldDowngrade =
 			outboundPurpose === DefectiveGoodsOutboundPurpose.RUIN ||
 			outboundPurpose === DefectiveGoodsOutboundPurpose.DOWNGRADE
@@ -134,7 +138,7 @@ export class DefectiveGoodsDomainModel extends AggregateRoot {
 		this.state.updated_by = updatedBy
 		this.state.po = shouldShipOut ? po : this.state.po
 		this.state.defective_category = shouldDowngrade ? DefectiveCategory.C_GRADE : this.state.defective_category
-		this.state.outbound_date = shouldDeactivate ? outboundDate : this.state.outbound_date
+		this.state.outbound_at = shouldDeactivate ? outboundDate : this.state.outbound_at
 
 		this.apply(new DefectiveGoodsChangedEvent(this.id))
 	}
@@ -143,6 +147,7 @@ export class DefectiveGoodsDomainModel extends AggregateRoot {
 		if (!this.id) throw new Error('Attempted to insert a defective goods model without an ID')
 		this.state.updated_by = deletedBy
 		this.state.deleted_by = deletedBy
+		this.state.deleted_at = new Date()
 		this.apply(new DefectiveGoodsChangedEvent(this.id))
 	}
 }

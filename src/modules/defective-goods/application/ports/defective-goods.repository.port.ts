@@ -13,8 +13,8 @@ export interface IKeysetParams {
 }
 
 export interface IKeysetPagination<T> extends Pagination<T> {
-	nextCursor: string | null
-	prevCursor: string | null
+	nextCursor: Nullish<string>
+	prevCursor: Nullish<string>
 }
 
 export interface IDefectiveGoodsRepository extends IBaseRepository<IDefectiveGoods, string | TObjectId> {
@@ -32,7 +32,7 @@ export interface IDefectiveGoodsRepository extends IBaseRepository<IDefectiveGoo
 		filters?: Partial<IDefectiveGoods> | Record<string, any>,
 		options?: IKeysetParams
 	): Promise<
-		Pagination<
+		IKeysetPagination<
 			Pick<
 				IDefectiveGoods,
 				| '_id'

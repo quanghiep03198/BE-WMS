@@ -44,7 +44,7 @@ export class DefectiveGoodsRepository
 		super(defectiveGoodsModel)
 	}
 
-	async create(models: DefectiveGoodsDomainModel[]) {
+	public async create(models: DefectiveGoodsDomainModel[]) {
 		try {
 			const chunks = chunk(models, 1000)
 
@@ -65,7 +65,7 @@ export class DefectiveGoodsRepository
 		}
 	}
 
-	async findById(id: string) {
+	public async findById(id: string) {
 		const defectiveGoods = await this.defectiveGoodsModel
 			.findById(id, {
 				readPreference: 'primary' satisfies mongo.ReadPreferenceMode
@@ -74,7 +74,7 @@ export class DefectiveGoodsRepository
 		return new DefectiveGoodsDomainModel(defectiveGoods)
 	}
 
-	async find(
+	public async find(
 		filter: FilterQuery<DefectiveGoodsDocument>,
 		projection: ProjectionType<DefectiveGoodsDocument> = null,
 		options: QueryOptions<DefectiveGoodsDocument> = { lean: { virtuals: true, autopopulate: true } },
@@ -134,14 +134,14 @@ export class DefectiveGoodsRepository
 		} satisfies Pagination<IDefectiveGoods>
 	}
 
-	async updateById(id: string, update: DefectiveGoodsDomainModel) {
+	public async updateById(id: string, update: DefectiveGoodsDomainModel) {
 		const result = await this.defectiveGoodsModel
 			.findByIdAndUpdate(id, update.toProps())
 			.lean<IDefectiveGoodsProps>({ virtuals: true, autopopulate: true })
 		return new DefectiveGoodsDomainModel(result)
 	}
 
-	async deleteMany(filter: DeleteManyDefectiveGoodsDTO) {
+	public async deleteMany(filter: DeleteManyDefectiveGoodsDTO) {
 		const filterQuery = MongoQueryBuilder.from(filter as DeleteManyDefectiveGoodsDTO & { _id })
 			.whereFieldsAreEqual(
 				'defective_category',
@@ -173,55 +173,70 @@ export class DefectiveGoodsRepository
 		return pendingDeleteItems
 	}
 
-	async getInoutboundEpcs(
+	public async getInoutboundEpcs(
 		stockFlow: 'inbound' | 'outbound',
 		filter: Omit<InoutboundEpcQueryDTO, 'cursor' | 'direction' | 'page' | 'limit' | 'take'>,
 		{ limit = 20, page = 1, take, cursor, direction = 'next' }: IKeysetParams
 	) {
-		const filterQueries = MongoQueryBuilder.from({
-			...filter,
-			combination_strategy: CombinationStrategy.MANUALLY,
-			inbound_date: null,
-			outbound_date: null,
-			storage_location: null
-		})
-			.whereEqual('combination_strategy')
-			.whereEqual('unit')
-			.whereEqual('defective_category')
-			.whereEqual('brand_name')
-			.whereEqual('epc')
-			.whereEqual('factory_shoes_style')
-			.whereEqual('po')
-			.whereEqual('mo_no')
-			.whereEqual('color_sn')
-			.whereEqual('size_numcode')
-			.when(stockFlow === 'inbound', (qb) => qb.whereFieldsAreNull('inbound_date', 'storage_location'))
-			.when(stockFlow === 'outbound', (qb) =>
-				qb.whereFieldsAreNotNull('inbound_date', 'storage_location').whereFieldsAreNull('outbound_date')
-			)
-			.build()
-
 		const isPrev = !!cursor && direction === 'prev'
 
-		const keysetQuery = cursor
-			? { $and: [filterQueries, { _id: { [isPrev ? '$gt' : '$lt']: this.decodeCursor(cursor) } }] }
-			: filterQueries
+		const queryBuilder = MongoQueryBuilder.from({
+			...filter,
+			_id: cursor ? this.decodeCursor(cursor) : null,
+			deleted: false,
+			combination_strategy: CombinationStrategy.MANUALLY,
+			inbound_at: null,
+			outbound_at: null,
+			storage_location: null
+		})
+			.whereFieldsAreEqual(
+				'defective_category',
+				'brand_name',
+				'po',
+				'mo_no',
+				'factory_shoes_style',
+				'color_sn',
+				'size_numcode',
+				'unit'
+			)
+			.when(stockFlow === 'inbound', (qb) => qb.whereFieldsAreNull('inbound_at', 'storage_location'))
+			.when(stockFlow === 'outbound', (qb) =>
+				qb.whereFieldsAreNotNull('inbound_at', 'storage_location').whereFieldsAreNull('outbound_at')
+			)
 
-		const countDocuments = async () => {
-			const cachedCount = await this.defectiveGoodsCacheRepository.getCount(filterQueries)
+		const _queryBuilder = queryBuilder // Make a copy for keyset filtering to avoid modifying the original query builder
+
+		const keysetFilterQueries = _queryBuilder
+			.when(isPrev, (qb) => qb.whereLessThan('_id'))
+			.when(!isPrev && !!cursor, (qb) => qb.whereGreaterThan('_id'))
+			.build()
+
+		this.logger.debug(
+			`'Getting inoutbound EPCs with stockFlow: "${stockFlow}" and filter: ${JSON.stringify(keysetFilterQueries, null, 2)}`
+		)
+
+		/**
+		 * @description Get the total count of documents matching the query, using the cache if available. Respect the 'take' limit if provided.
+		 * * If we have a cached count, use it directly
+		 * * In case `take` is available and less than the cached count, use `take` primarily (Frontend will likely request fewer items than the total count).
+		 */
+		const countDocuments = async (): Promise<number> => {
+			const queries = queryBuilder.build()
+			const cachedCount = await this.defectiveGoodsCacheRepository.getCount(queries)
 			if (typeof cachedCount === 'number') return take && take < cachedCount ? take : cachedCount
-			const totalDocs = await this.defectiveGoodsModel.countDocuments(filterQueries)
-			await this.defectiveGoodsCacheRepository.setCount(filterQueries, totalDocs)
+			const totalDocs = await this.defectiveGoodsModel.countDocuments(queries)
+			await this.defectiveGoodsCacheRepository.setCount(queries, totalDocs)
 			return take && take < totalDocs ? take : totalDocs
 		}
 
 		const _limit = take && take < limit ? take : limit
+		const sortingDirection = isPrev ? 1 : -1
 
 		const [rows, totalDocs] = await Promise.all([
 			this.defectiveGoodsModel
-				.find(keysetQuery)
-				.select('_id epc defective_category brand_name po mo_no factory_shoes_style color_sn size_code unit')
-				.sort({ _id: isPrev ? 1 : -1 })
+				.find(keysetFilterQueries)
+				.select('_id epc defective_category brand_name po mo_no factory_shoes_style color_sn size_numcode unit')
+				.sort({ _id: sortingDirection })
 				.limit(_limit + 1)
 				.lean<
 					Pick<
@@ -271,11 +286,11 @@ export class DefectiveGoodsRepository
 
 	private decodeCursor(cursor: string): Types.ObjectId {
 		const id = Buffer.from(cursor, 'base64url').toString()
-		// if (!Types.ObjectId.isValid(id)) throw new BadRequestException('Invalid cursor')
+		if (!Types.ObjectId.isValid(id)) throw new Error('Invalid cursor')
 		return new Types.ObjectId(id)
 	}
 
-	async getScanningSizeQty(epcs: string[]) {
+	public async getScanningSizeQty(epcs: string[]) {
 		const data = await super.findAll(
 			{ epc: { $in: epcs }, combination_strategy: { $ne: CombinationStrategy.MANUALLY } },
 			{ factory_shoes_style: 1, color_sn: 1, size_code: 1, epc: 1 },
@@ -320,23 +335,18 @@ export class DefectiveGoodsRepository
 		return result
 	}
 
-	async stockIn(models: DefectiveGoodsDomainModel[]) {
-		const inboundDate = new Date()
-
+	public async stockIn(models: DefectiveGoodsDomainModel[]) {
 		await this.defectiveGoodsModel.bulkWrite(
 			models.map((m) => ({
 				updateOne: {
 					filter: { epc: m.epc, deleted: false },
-					update: {
-						inbound_date: inboundDate,
-						...pick(m.toProps(), ['storage_location', 'updated_by'])
-					}
+					update: pick(m.toProps(), ['storage_location', 'updated_by'])
 				}
 			}))
 		)
 	}
 
-	async stockOut(models: DefectiveGoodsDomainModel[]) {
+	public async stockOut(models: DefectiveGoodsDomainModel[]) {
 		const outboundDate = new Date()
 
 		await this.defectiveGoodsModel.bulkWrite(
@@ -344,7 +354,7 @@ export class DefectiveGoodsRepository
 				updateOne: {
 					filter: { epc: m.epc, deleted: false },
 					update: {
-						outbound_date: outboundDate,
+						outbound_at: outboundDate,
 						...pick(m.toProps(), ['outbound_purpose', 'updated_by'])
 					}
 				}

@@ -28,8 +28,8 @@ export interface IDefectiveGoods {
 	sewing_line?: IDepartment | TObjectId | string
 	assembly_line?: IDepartment | TObjectId | string
 	storage_location?: string
-	inbound_date?: Date
-	outbound_date?: Date
+	inbound_at?: Date
+	outbound_at?: Date
 	outbound_purpose?: DefectiveGoodsOutboundPurpose
 	created_by: IUser | TObjectId
 	created_at?: Date

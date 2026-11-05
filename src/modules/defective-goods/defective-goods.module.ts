@@ -11,7 +11,6 @@ import { DEFECTIVE_GOODS_REPORT_REPOSITORY } from './application/ports/defective
 import { DEFECTIVE_GOODS_REPOSITORY } from './application/ports/defective-goods.repository.port'
 import { DefectiveGoodsQueryHandlers } from './application/queries'
 import { DefectiveGoodsSaga } from './application/sagas/defective-goods.saga'
-import { DefectiveGoodsService } from './application/services/defective-goods.service'
 import { DefectiveGoodsInboundService } from './application/services/defective-inbound.service'
 import { DefectiveGoodsInventoryService } from './application/services/defective-inventory.service'
 import { DefectiveGoodsOutboundService } from './application/services/defective-outbound.service'
@@ -50,7 +49,7 @@ import { DefectiveGoodsController } from './presentation/controllers/defective-g
 		{ provide: DEFECTIVE_GOODS_REPORT_REPOSITORY, useClass: DefectiveGoodsReportRepository },
 		{ provide: DEFECTIVE_GOODS_CACHE_REPOSITORY, useClass: DefectiveGoodsCacheRepository },
 		DefectiveGoodsSaga,
-		DefectiveGoodsService,
+		// DefectiveGoodsService,
 		DefectiveGoodsInboundService,
 		DefectiveGoodsOutboundService,
 		DefectiveGoodsInventoryService
