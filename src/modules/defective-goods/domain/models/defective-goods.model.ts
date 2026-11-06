@@ -1,6 +1,7 @@
 import { EPCGenerator } from '@modules/defective-goods/application/helpers/epc-generator'
 import { Logger } from '@nestjs/common'
 import { AggregateRoot } from '@nestjs/cqrs'
+import pick from 'lodash/pick'
 import {
 	CombinationStrategy,
 	DefectiveCategory,
@@ -34,7 +35,8 @@ export class DefectiveGoodsDomainModel extends AggregateRoot {
 		return this.state.epc
 	}
 
-	toProps() {
+	toProps(...props: Array<keyof IDefectiveGoodsProps>) {
+		if (props) return pick(this.state, props)
 		return this.state
 	}
 

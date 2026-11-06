@@ -125,8 +125,6 @@ export class DefectiveGoodsController {
 	) {
 		const { cursor, direction = 'next', page, limit = 20, take, ...filter } = query
 
-		this.logger.debug(query)
-
 		return await this.queryBus.execute(
 			new GetInoutboundEpcsQuery(stockFlow, filter, { cursor, direction, page, limit, take })
 		)

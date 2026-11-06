@@ -96,7 +96,7 @@ export class DefectiveGoodsCdcHandler implements ICdcHandler<DefectiveGoodsCdcRo
 			await this.model.bulkWrite(ops.slice(i, i + BULK_CHUNK_SIZE), { ordered: true })
 		}
 
-		this.logger.debug(
+		this.logger.info(
 			`Processed ${changes.reduce((total, group) => total + group.data.length, 0)} defective goods CDC rows (${ops.length} write ops)`
 		)
 	}

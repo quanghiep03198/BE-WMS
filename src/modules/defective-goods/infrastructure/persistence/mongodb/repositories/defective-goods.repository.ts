@@ -24,7 +24,6 @@ import {
 import { Inject, Injectable, Logger } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
 import chunk from 'lodash/chunk'
-import pick from 'lodash/pick'
 import { type FilterQuery, LeanDocument, mongo, ProjectionType, type QueryOptions, Types } from 'mongoose'
 import { DefectiveGoods, DefectiveGoodsDocument, DefectiveGoodsModel } from '../schemas/defective-goods.schema'
 
@@ -211,10 +210,6 @@ export class DefectiveGoodsRepository
 			.when(!isPrev && !!cursor, (qb) => qb.whereGreaterThan('_id'))
 			.build()
 
-		this.logger.debug(
-			`'Getting inoutbound EPCs with stockFlow: "${stockFlow}" and filter: ${JSON.stringify(keysetFilterQueries, null, 2)}`
-		)
-
 		/**
 		 * @description Get the total count of documents matching the query, using the cache if available. Respect the 'take' limit if provided.
 		 * * If we have a cached count, use it directly
@@ -340,23 +335,18 @@ export class DefectiveGoodsRepository
 			models.map((m) => ({
 				updateOne: {
 					filter: { epc: m.epc, deleted: false },
-					update: pick(m.toProps(), ['storage_location', 'updated_by'])
+					update: m.toProps('storage_location', 'inbound_at', 'updated_by')
 				}
 			}))
 		)
 	}
 
 	public async stockOut(models: DefectiveGoodsDomainModel[]) {
-		const outboundDate = new Date()
-
 		await this.defectiveGoodsModel.bulkWrite(
 			models.map((m) => ({
 				updateOne: {
 					filter: { epc: m.epc, deleted: false },
-					update: {
-						outbound_at: outboundDate,
-						...pick(m.toProps(), ['outbound_purpose', 'updated_by'])
-					}
+					update: m.toProps('outbound_purpose', 'outbound_at', 'updated_by')
 				}
 			}))
 		)

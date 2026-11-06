@@ -6,7 +6,6 @@ import {
 } from '@modules/defective-goods/application/ports/defective-goods-report.repository.port'
 import { Injectable } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
-import { format } from 'date-fns'
 import { DefectiveGoods, DefectiveGoodsModel } from '../schemas/defective-goods.schema'
 
 @Injectable()
@@ -17,22 +16,16 @@ export class DefectiveGoodsReportRepository implements IDefectiveGoodsReportRepo
 	) {}
 
 	async getDailyInboundReport(date: Date) {
+		const from = new Date(date)
+		from.setHours(0, 0, 0, 0)
+		const to = new Date(date)
+		to.setHours(23, 59, 59, 999)
+
 		return await this.defectiveGoodsModel.aggregateWithDeleted<IDailyInboundDefectiveGoodsReport>([
 			{
 				$match: {
-					$expr: {
-						$and: [
-							{
-								$eq: [
-									{ $dateToString: { date: '$inbound_date', format: '%Y-%m-%d' } },
-									format(date, 'yyyy-MM-dd')
-								]
-							},
-							{
-								$ne: ['$storage_location', null]
-							}
-						]
-					}
+					storage_location: { $ne: null },
+					inbound_at: { $gte: from, $lt: to }
 				}
 			},
 			{
@@ -40,7 +33,7 @@ export class DefectiveGoodsReportRepository implements IDefectiveGoodsReportRepo
 					inbound_date_str: {
 						$dateToString: {
 							format: '%Y-%m-%d',
-							date: '$inbound_date'
+							date: '$inbound_at'
 						}
 					}
 				}
@@ -48,7 +41,7 @@ export class DefectiveGoodsReportRepository implements IDefectiveGoodsReportRepo
 			{
 				$group: {
 					_id: {
-						inbound_date: '$inbound_date_str',
+						inbound_at: '$inbound_date_str',
 						brand_name: '$brand_name',
 						po: '$po',
 						mo_no: '$mo_no',
@@ -68,7 +61,7 @@ export class DefectiveGoodsReportRepository implements IDefectiveGoodsReportRepo
 			{
 				$group: {
 					_id: {
-						inbound_date: '$_id.inbound_date',
+						inbound_at: '$_id.inbound_at',
 						brand_name: '$_id.brand_name',
 						po: '$_id.po',
 						mo_no: '$_id.mo_no',
@@ -117,7 +110,7 @@ export class DefectiveGoodsReportRepository implements IDefectiveGoodsReportRepo
 			{
 				$project: {
 					_id: 0,
-					date: '$_id.inbound_date',
+					date: '$_id.inbound_at',
 					brand_name: '$_id.brand_name',
 					po: '$_id.po',
 					mo_no: '$_id.mo_no',
@@ -145,12 +138,15 @@ export class DefectiveGoodsReportRepository implements IDefectiveGoodsReportRepo
 	}
 
 	async getDailyOutboundReport(date: Date) {
+		const from = new Date(date)
+		from.setHours(0, 0, 0, 0)
+		const to = new Date(date)
+		to.setHours(23, 59, 59, 999)
+
 		return await this.defectiveGoodsModel.aggregateWithDeleted<IDailyOutboundDefectiveGoodsReport>([
 			{
 				$match: {
-					$expr: {
-						$eq: [{ $dateToString: { date: '$outbound_at', format: '%Y-%m-%d' } }, format(date, 'yyyy-MM-dd')]
-					},
+					outbound_at: { $gte: from, $lt: to },
 					outbound_purpose: { $ne: null }
 				}
 			},
@@ -223,7 +219,7 @@ export class DefectiveGoodsReportRepository implements IDefectiveGoodsReportRepo
 		return await this.defectiveGoodsModel.aggregate([
 			{
 				$match: {
-					inbound_date: { $ne: null },
+					inbound_at: { $ne: null },
 					storage_location: { $ne: null },
 					outbound_at: null,
 					outbound_purpose: null
