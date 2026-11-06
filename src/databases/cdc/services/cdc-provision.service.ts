@@ -76,7 +76,7 @@ export class CdcProvisionerService {
 		const existingSignature = this.buildSignature(existing.columns, existing.supportsNetChanges)
 
 		if (desiredSignature === existingSignature) {
-			this.logger.debug(`CDC config for ${captureInstance} is already up to date, skipping`)
+			this.logger.log(`CDC config for ${captureInstance} is already up to date, skipping`)
 			return
 		}
 
@@ -187,8 +187,8 @@ export class CdcProvisionerService {
 		} catch (err) {
 			if (this.isMissingPkForNetChangesError(err)) {
 				throw new Error(
-					`Table ${buildTableLabel(cfg.schema, cfg.sourceName)} has no Primary Key — cannot enable supportsNetChanges=true. ` +
-						`Add a PK to the table, or set supportsNetChanges=false in the config.`
+					`Table ${buildTableLabel(cfg.schema, cfg.sourceName)} has no Primary Key — cannot enable supportsNetChanges=true. Add a PK to the table, or set supportsNetChanges=false in the config.`,
+					{ cause: err }
 				)
 			}
 			throw err

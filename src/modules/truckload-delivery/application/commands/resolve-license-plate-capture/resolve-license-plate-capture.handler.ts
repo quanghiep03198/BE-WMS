@@ -23,7 +23,6 @@ export class ResolveLicensePlateCaptureHandler implements ICommandHandler<Resolv
 
 		const { license_plate } = found.toProps()
 		const window = found.captureWindow
-		this.logger.debug({ license_plate, window })
 		if (!license_plate || !window || window.from > window.to) return
 
 		const snapshot = await this.carLicensePlateRepository.findLatestSnapshot(license_plate, window.from, window.to)

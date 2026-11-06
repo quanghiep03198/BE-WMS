@@ -35,7 +35,10 @@ export default defineConfig((): Configuration => {
 		},
 		output: {
 			clean: true,
-			filename: '[name].cjs'
+			filename: '[name].cjs',
+			chunkFilename: '[id].[contenthash].cjs',
+			hotUpdateChunkFilename: '[id].[fullhash].hot-update.cjs',
+			hotUpdateMainFilename: '[runtime].[fullhash].hot-update.json'
 		},
 		resolve: {
 			extensions: ['...', '.ts', '.tsx', '.jsx'],

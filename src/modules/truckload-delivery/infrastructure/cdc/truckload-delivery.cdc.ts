@@ -91,7 +91,7 @@ export class TruckloadDeliveryCdcHandler implements ICdcHandler<TruckloadDeliver
 		}
 
 		await this.refreshAggregates(uniq(touched))
-		this.logger.debug(`Processed ${touched.length} truckload delivery CDC rows`)
+		this.logger.info(`Processed ${touched.length} truckload delivery CDC rows`)
 	}
 
 	private async upsertPurchaseOrder(row: TruckloadDeliveryCdcRow, packingId?: string): Promise<void> {

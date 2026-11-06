@@ -47,8 +47,6 @@ export class FinishedGoodsEpcMatchCdcHandler implements ICdcHandler {
 		factory_code_produce: string
 		size_numcode: string
 	}>): Promise<void> {
-		this.logger.debug(`Handling ${changes.length} changes for dv_rfidmatchmst_cust`)
-
 		for (const change of changes) {
 			switch (change.operation) {
 				case 'insert': {

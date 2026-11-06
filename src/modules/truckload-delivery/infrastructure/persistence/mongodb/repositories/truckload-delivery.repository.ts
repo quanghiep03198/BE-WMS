@@ -324,7 +324,6 @@ export class TruckloadDeliveryRepository implements ITruckloadDeliveryRepository
 	}
 
 	private toSignatureUrl(id: { toString(): string } | null | undefined): string | null {
-		this.logger.debug(id)
 		return id ? `${SIGNATURE_ENDPOINT}/${id.toString()}` : null
 	}
 

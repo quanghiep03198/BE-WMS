@@ -187,7 +187,7 @@ export class CdcWatcherService {
 		await this.redis.set(checkpointKey, toLsn.toString('hex'))
 
 		if (rawChanges.length > 0) {
-			this.logger.debug(
+			this.logger.log(
 				`${tableLabel}: read ${rawChanges.length} row(s), skipped ${skippedEchoes} echo(es), handled ${handled} in ${Date.now() - startedAt}ms${hasMore ? ' (backlog remains)' : ''}`
 			)
 		}

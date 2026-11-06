@@ -167,8 +167,6 @@ export class InventoryAuditRepository implements IInventoryAuditRepository {
 			{ readPreference: 'primary', session: this.txHost.tx }
 		)
 
-		this.logger.debug(storageLocations)
-
 		const manufacturingOrdersMap = new Map(manufacturingOrders.map((mo) => [mo.mo_no, mo]))
 		const yearMonth = format(new Date(), 'yyyy-MM')
 
