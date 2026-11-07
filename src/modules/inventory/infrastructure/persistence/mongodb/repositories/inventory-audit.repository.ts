@@ -45,8 +45,12 @@ export class InventoryAuditRepository implements IInventoryAuditRepository {
 	): Promise<IInventoryReportResponse> {
 		let isPlaceholder = false
 		const currentYearMonth = format(new Date(), 'yyyy-MM')
-		const allYearMonths = await this.moInventoryAuditModel.distinct('year_month', {}, { sort: { year_month: -1 } })
-		const latestYearMonth = allYearMonths[0]
+		const allYearMonths = await this.moInventoryAuditModel.findOne(
+			{},
+			{ _id: 0, year_month: 1 },
+			{ sort: { year_month: -1 }, lean: true }
+		)
+		const latestYearMonth = allYearMonths?.year_month
 
 		let data = await this.moInventoryAuditModel
 			.find({
