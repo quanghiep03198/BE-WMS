@@ -17,7 +17,7 @@
 		/* Strict mode */
 		/* Most of strict mode options are disabled because of slow startup */
 		"strict": true,
-		"skipLibCheck": false,
+		"skipLibCheck": true,
 		"strictNullChecks": false,
 		"strictBindCallApply": true,
 		"noUnusedParameters": false,
