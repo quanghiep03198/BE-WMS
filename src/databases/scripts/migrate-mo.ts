@@ -98,13 +98,8 @@ async function execute() {
 
 					pendingFlush = flush
 
-					try {
-						await flush
-					} catch (error) {
-						throw error
-					} finally {
-						pendingFlush = undefined
-					}
+					await flush
+					pendingFlush = undefined
 				}
 			}
 		}
@@ -162,7 +157,7 @@ async function execute() {
 								wuerp_vnrd.dbo.ta_brand AS b
 								ON a.custbrand_id = b.custbrand_id
 						WHERE  LEFT(a.mo_no, 2) = @MoPrefix
-								AND b.brand_code IN = 'UG'
+								AND b.brand_code = 'UG'
 								AND a.cofactory_code = @FactoryCode
 								AND a.isactive = 'Y'
 			),
@@ -326,7 +321,7 @@ async function execute() {
 
 		await Promise.all([queryPromise, streamCompletion])
 	} catch (error) {
-		logger.error(error)
+		logger.error(error as Error)
 		process.exit(1)
 	} finally {
 		await mssqlManager.disconnect()
