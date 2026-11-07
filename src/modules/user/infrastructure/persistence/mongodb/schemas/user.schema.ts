@@ -5,7 +5,6 @@ import { PaginateModel, Types, type HydratedDocument, type ObjectId } from 'mong
 import MongooseDeletePlugin, { SoftDeleteModel } from 'mongoose-delete'
 import MongooseLeanVirtuals from 'mongoose-lean-virtuals'
 import MongoosePaginatePlugin from 'mongoose-paginate-v2'
-import { stringify } from 'node:querystring'
 import { UserRole } from '../../../../domain/constants'
 
 export const USER_COLLECTION = 'users'
@@ -64,9 +63,13 @@ UserSchema.pre('save', function (next) {
 
 UserSchema.virtual('avatar').get(function () {
 	const BASE_AVATAR_URL = 'https://api.dicebear.com'
-	const avatarURL = new URL(`/10.x/glass/svg`, BASE_AVATAR_URL)
+	const avatarURL = new URL(`/10.x/voxel-bot/svg`, BASE_AVATAR_URL)
 
-	avatarURL.search = stringify({ seed: this.display_name || this.username })
+	avatarURL.searchParams.set('backgroundColor', 'e4e4e7')
+	avatarURL.searchParams.set('tags', 'animation')
+	avatarURL.searchParams.set('seed', this.display_name || this.username)
+
+	// backgroundColor=0f0f12&bodyColor=e9ecef,ced4da&accentColor=23262b&screenColor=07070a&glowColor=ff2e88,00e5ff,7cff00,ffe600,b400ff
 
 	return avatarURL.toString()
 })
