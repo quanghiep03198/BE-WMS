@@ -17,6 +17,7 @@ export class GetInoutboundEpcsQuery extends Query<
 			| 'color_sn'
 			| 'size_numcode'
 			| 'unit'
+			| 'inbound_at'
 		>
 	>
 > {

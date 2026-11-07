@@ -16,28 +16,31 @@ export class StockOutDefectiveGoodsHandler implements ICommandHandler<StockOutDe
 	) {}
 
 	async execute({ data, updatedBy, filters, take }: StockOutDefectiveGoodsCommand) {
+		const useVirtualEpcs = data.combination_strategy !== CombinationStrategy.MANUALLY
+
 		const filterQuery = MongoQueryBuilder.from({ ...filters, combination_strategy: data.combination_strategy })
-			.when(data.combination_strategy !== CombinationStrategy.MANUALLY, (qb) => qb.whereIn('epc', data.epcs))
-			.when(data.combination_strategy === CombinationStrategy.MANUALLY, (qb) =>
+			.when(!useVirtualEpcs, (qb) => qb.whereIn('epc', data.epcs))
+			.when(useVirtualEpcs, (qb) =>
 				qb
 					.whereEqual('brand_name')
 					.whereEqual('defective_category')
-					.whereContains('epc')
-					.whereContains('po')
-					.whereContains('mo_no')
-					.whereContains('factory_shoes_style')
-					.whereContains('color_sn')
-					.whereContains('size_numcode')
+					.whereEqual('epc')
+					.whereEqual('po')
+					.whereEqual('mo_no')
+					.whereEqual('factory_shoes_style')
+					.whereEqual('color_sn')
+					.whereEqual('size_numcode')
 			)
+			.whereFieldsAreNotNull('inbound_at', 'storage_location')
 			.build()
-		const limit = data.combination_strategy !== CombinationStrategy.MANUALLY ? take : undefined
-		const pendingStockOutItems = await this.defectiveGoodsRepository.find(filterQuery, null, { limit })
+		const options = useVirtualEpcs ? { limit: take } : {}
+
+		const pendingStockOutItems = await this.defectiveGoodsRepository.find(filterQuery, null, options)
 		if (pendingStockOutItems.length === 0) throw new DefectiveGoodsNotFound()
-		const outboundDate = new Date()
 		const CHUNK_SIZE = 1000
 		for (const part of chunk(pendingStockOutItems, CHUNK_SIZE)) {
 			part.forEach((model) => {
-				model.stockOut(data.outbound_purpose, updatedBy, data.po, outboundDate)
+				model.stockOut(data.outbound_purpose, data.po, updatedBy)
 				this.eventPublisher.mergeObjectContext(model)
 			})
 			await this.defectiveGoodsRepository.stockOut(part)

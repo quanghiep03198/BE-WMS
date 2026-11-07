@@ -230,7 +230,9 @@ export class DefectiveGoodsRepository
 		const [rows, totalDocs] = await Promise.all([
 			this.defectiveGoodsModel
 				.find(keysetFilterQueries)
-				.select('_id epc defective_category brand_name po mo_no factory_shoes_style color_sn size_numcode unit')
+				.select(
+					'_id epc defective_category brand_name po mo_no factory_shoes_style color_sn size_numcode unit inbound_at'
+				)
 				.sort({ _id: sortingDirection })
 				.limit(_limit + 1)
 				.lean<
@@ -246,6 +248,7 @@ export class DefectiveGoodsRepository
 						| 'color_sn'
 						| 'size_numcode'
 						| 'unit'
+						| 'inbound_at'
 					>[]
 				>(),
 			countDocuments()
@@ -346,7 +349,7 @@ export class DefectiveGoodsRepository
 			models.map((m) => ({
 				updateOne: {
 					filter: { epc: m.epc, deleted: false },
-					update: m.toProps('outbound_purpose', 'outbound_at', 'updated_by')
+					update: m.toProps('outbound_purpose', 'outbound_at', 'po', 'deleted', 'updated_by')
 				}
 			}))
 		)

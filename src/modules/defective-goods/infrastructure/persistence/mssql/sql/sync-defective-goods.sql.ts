@@ -22,7 +22,7 @@ WITH CTE AS (
       IIF(JSON_VALUE(value, '$.inbound_at') IS NOT NULL, CAST(JSON_VALUE(value, '$.inbound_at') AS DATETIME), NULL) AS inbound_date,
       IIF(JSON_VALUE(value, '$.outbound_at') IS NOT NULL, CAST(JSON_VALUE(value, '$.outbound_at') AS DATETIME), NULL) AS outbound_date,
       JSON_VALUE(value, '$.outbound_purpose') AS outbound_purpose,
-      IIF(JSON_VALUE(value, '$.deleted') = 'true', 1, 0) AS ri_cancel,
+      CAST(IIF(JSON_VALUE(value, '$.deleted') = 'true', 1, 0) AS BIT) AS ri_cancel,
       IIF(JSON_VALUE(value, '$.deleted') = 'false' OR JSON_VALUE(value, '$.deleted') IS NULL, 'Y', 'N') AS isactive,
       JSON_VALUE(value, '$.created_by.username') AS user_code_created,
       JSON_VALUE(value, '$.created_by.display_name') AS user_name_created,
@@ -35,6 +35,8 @@ USING (SELECT * FROM CTE) AS source
 ON target.sync_id = source.sync_id
 WHEN MATCHED THEN
    UPDATE SET
+      target.isactive = source.isactive,
+      target.inbound_date = source.inbound_date,
       target.unit = source.unit,
       target.ri_type = source.ri_type,
       target.brand_name = source.brand_name,
@@ -51,8 +53,6 @@ WHEN MATCHED THEN
       target.assembly_line = source.assembly_line,
       target.sewing_line = source.sewing_line,
       target.ri_cancel = source.ri_cancel,
-      target.isactive = source.isactive,
-      target.inbound_date = source.inbound_date,
       target.storage_location = source.storage_location,
       target.outbound_purpose = source.outbound_purpose,
       target.outbound_date = source.outbound_date,

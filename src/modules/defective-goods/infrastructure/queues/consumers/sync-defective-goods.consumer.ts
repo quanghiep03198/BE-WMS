@@ -28,7 +28,6 @@ export class SyncDefectiveGoodsConsumer extends WorkerHost {
 	constructor(
 		@InjectPinoLogger(SyncDefectiveGoodsConsumer.name) private readonly logger: PinoLogger,
 		@InjectModel(DefectiveGoods.name, DATA_WAREHOUSE_CONNECTION) private readonly model: DefectiveGoodsModel,
-
 		@InjectRepository(DefectiveGoodsEntity, DATA_SOURCE_DATA_LAKE)
 		private readonly mssql: Repository<DefectiveGoodsEntity>,
 		private readonly echoRegistry: CdcEchoRegistryService
@@ -44,7 +43,7 @@ export class SyncDefectiveGoodsConsumer extends WorkerHost {
 			const ids = data.syncIds.slice(i, i + SYNC_BATCH_SIZE)
 
 			const raws = await this.model
-				.find({ _id: { $in: ids.map((id) => new Types.ObjectId(id)) } })
+				.findWithDeleted({ _id: { $in: ids.map((id) => new Types.ObjectId(id)) } })
 				.lean<LeanDocument<DefectiveGoodsDocument>[]>({ virtuals: true, autopopulate: true })
 
 			if (raws.length === 0) continue

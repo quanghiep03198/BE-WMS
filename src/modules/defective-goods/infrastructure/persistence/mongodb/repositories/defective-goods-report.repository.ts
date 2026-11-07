@@ -151,9 +151,19 @@ export class DefectiveGoodsReportRepository implements IDefectiveGoodsReportRepo
 				}
 			},
 			{
+				$addFields: {
+					outbound_date_str: {
+						$dateToString: {
+							format: '%Y-%m-%d',
+							date: '$outbound_at'
+						}
+					}
+				}
+			},
+			{
 				$group: {
 					_id: {
-						outbound_at: '$outbound_at',
+						outbound_at: '$outbound_date_str',
 						brand_name: '$brand_name',
 						po: '$po',
 						mo_no: '$mo_no',
@@ -164,6 +174,7 @@ export class DefectiveGoodsReportRepository implements IDefectiveGoodsReportRepo
 						assembly_line: '$assembly_line',
 						defective_category: '$defective_category',
 						size_numcode: '$size_numcode',
+						shoe_source: '$shoe_source',
 						outbound_purpose: '$outbound_purpose'
 					},
 					qty: { $sum: 1 }
@@ -179,7 +190,10 @@ export class DefectiveGoodsReportRepository implements IDefectiveGoodsReportRepo
 						cust_shoes_style: '$_id.cust_shoes_style',
 						factory_shoes_style: '$_id.factory_shoes_style',
 						color_sn: '$_id.color_sn',
+						sewing_line: '$_id.sewing_line',
+						assembly_line: '$_id.assembly_line',
 						defective_category: '$_id.defective_category',
+						shoe_source: '$_id.shoe_source',
 						outbound_purpose: '$_id.outbound_purpose'
 					},
 					size_ledger: {
@@ -188,6 +202,28 @@ export class DefectiveGoodsReportRepository implements IDefectiveGoodsReportRepo
 							qty: '$qty'
 						}
 					}
+				}
+			},
+			{
+				$lookup: {
+					from: 'departments',
+					localField: '_id.assembly_line',
+					foreignField: '_id',
+					as: 'assembly_line_info'
+				}
+			},
+			{
+				$lookup: {
+					from: 'departments',
+					localField: '_id.sewing_line',
+					foreignField: '_id',
+					as: 'sewing_line_info'
+				}
+			},
+			{
+				$addFields: {
+					assembly_line_info: { $first: '$assembly_line_info' },
+					sewing_line_info: { $first: '$sewing_line_info' }
 				}
 			},
 			{
@@ -200,13 +236,16 @@ export class DefectiveGoodsReportRepository implements IDefectiveGoodsReportRepo
 					cust_shoes_style: '$_id.cust_shoes_style',
 					factory_shoes_style: '$_id.factory_shoes_style',
 					color_sn: '$_id.color_sn',
+					assembly_line: '$assembly_line_info',
+					sewing_line: '$sewing_line_info',
 					defective_category: '$_id.defective_category',
+					shoe_source: '$_id.shoe_source',
+					outbound_purpose: '$_id.outbound_purpose',
 					size_ledger: 1
 				}
 			},
 			{
 				$sort: {
-					outbound_at: 1,
 					brand_name: 1,
 					po: 1,
 					mo_no: 1

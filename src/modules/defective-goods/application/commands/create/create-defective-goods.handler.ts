@@ -1,5 +1,5 @@
 import { DefectiveGoodsDomainModel } from '@modules/defective-goods/domain/models/defective-goods.model'
-import { Inject } from '@nestjs/common'
+import { Inject, Logger } from '@nestjs/common'
 import { CommandHandler, EventPublisher, ICommandHandler } from '@nestjs/cqrs'
 import chunk from 'lodash/chunk'
 import { setImmediate } from 'node:timers/promises'
@@ -8,6 +8,8 @@ import { CreateDefectiveGoodsCommand } from './create-defective-goods.command'
 
 @CommandHandler(CreateDefectiveGoodsCommand)
 export class CreateDefectiveGoodsHandler implements ICommandHandler<CreateDefectiveGoodsCommand> {
+	private readonly logger = new Logger(CreateDefectiveGoodsHandler.name)
+
 	constructor(
 		@Inject(DEFECTIVE_GOODS_REPOSITORY) private readonly repository: IDefectiveGoodsRepository,
 		private readonly eventPublisher: EventPublisher
@@ -18,12 +20,13 @@ export class CreateDefectiveGoodsHandler implements ICommandHandler<CreateDefect
 			...payload,
 			created_by: createdBy
 		} as FirstParameter<typeof DefectiveGoodsDomainModel.create>)
+
 		for (const part of chunk(defectiveGoods)) {
 			const created = await this.repository.create(part)
-			for (const model of created) {
+			created.forEach((model) => {
 				model.insert()
 				this.eventPublisher.mergeObjectContext(model).commit()
-			}
+			})
 			await setImmediate()
 		}
 	}

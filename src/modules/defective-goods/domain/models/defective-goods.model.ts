@@ -20,7 +20,7 @@ export interface IDefectiveGoodsProps extends Omit<IDefectiveGoods, 'assembly_li
 }
 
 export class DefectiveGoodsDomainModel extends AggregateRoot {
-	private readonly logger = new Logger(DefectiveGoodsDomainModel.name)
+	private static readonly generator = new EPCGenerator()
 
 	constructor(private readonly state: IDefectiveGoodsProps) {
 		super()
@@ -36,8 +36,9 @@ export class DefectiveGoodsDomainModel extends AggregateRoot {
 	}
 
 	toProps(...props: Array<keyof IDefectiveGoodsProps>) {
-		if (props) return pick(this.state, props)
-		return this.state
+		if (props.length === 0) return this.state
+
+		return pick(this.state, props)
 	}
 
 	static create(payload: {
@@ -92,13 +93,14 @@ export class DefectiveGoodsDomainModel extends AggregateRoot {
 			models.push(model)
 			return models
 		}
-		if (payload.combination_strategy === 'manually' && Array.isArray(payload.sizes)) {
+		if (payload.combination_strategy === CombinationStrategy.MANUALLY && Array.isArray(payload.sizes)) {
 			delete payload.epc
-			const generator = new EPCGenerator()
 			models = payload.sizes.flatMap(({ size_numcode, qty }) => {
-				const epcs = generator.generateBatch(qty)
+				const epcs = this.generator.generateBatch(qty)
 				return epcs.map((epc) => new DefectiveGoodsDomainModel({ ...payload, epc, size_numcode, unit }))
 			})
+			const logger = new Logger(DefectiveGoodsDomainModel.name)
+			logger.debug(models.slice(0, 10).map((model) => model.toProps()))
 			return models
 		}
 		return models
@@ -123,13 +125,9 @@ export class DefectiveGoodsDomainModel extends AggregateRoot {
 		this.apply(new DefectiveGoodsChangedEvent(this.id))
 	}
 
-	stockOut(
-		outboundPurpose: DefectiveGoodsOutboundPurpose,
-		updatedBy: TObjectId,
-		po: string = undefined,
-		outboundDate: Date = new Date()
-	) {
+	stockOut(outboundPurpose: DefectiveGoodsOutboundPurpose, po: Nullish<string>, updatedBy: TObjectId) {
 		if (!this.state.inbound_at || !this.state.storage_location) throw new NotStockedInYetException()
+
 		const shouldDowngrade =
 			outboundPurpose === DefectiveGoodsOutboundPurpose.RUIN ||
 			outboundPurpose === DefectiveGoodsOutboundPurpose.DOWNGRADE
@@ -137,11 +135,12 @@ export class DefectiveGoodsDomainModel extends AggregateRoot {
 
 		const shouldDeactivate = outboundPurpose !== DefectiveGoodsOutboundPurpose.DOWNGRADE
 
-		this.state.updated_by = updatedBy
-		this.state.po = shouldShipOut ? po : this.state.po
+		this.state.outbound_purpose = outboundPurpose
+		this.state.po = shouldShipOut && po ? po : this.state.po
 		this.state.defective_category = shouldDowngrade ? DefectiveCategory.C_GRADE : this.state.defective_category
-		this.state.outbound_at = shouldDeactivate ? outboundDate : this.state.outbound_at
-
+		this.state.outbound_at = shouldDeactivate ? new Date() : this.state.outbound_at
+		this.state.deleted = shouldDeactivate // Only deactivate if outbound purpose is not `DOWNGRADE`
+		this.state.updated_by = updatedBy
 		this.apply(new DefectiveGoodsChangedEvent(this.id))
 	}
 

@@ -31,7 +31,10 @@ export class StockInDefectiveGoodsHandler implements ICommandHandler<StockInDefe
 					.whereEqual('size_numcode')
 			)
 			.build()
-		const pendingStockInItems = await this.repository.find(filterQuery, null, { limit: take })
+
+		const options = useVirtualEpcs ? { limit: take } : {}
+
+		const pendingStockInItems = await this.repository.find(filterQuery, null, options)
 		if (pendingStockInItems.length === 0) throw new NoDefectiveGoodsToStockInException()
 
 		const CHUNK_SIZE = 1000
