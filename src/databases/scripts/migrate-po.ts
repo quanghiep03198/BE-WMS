@@ -92,14 +92,8 @@ export async function execute() {
 						})
 
 					pendingFlush = flush
-
-					try {
-						await flush
-					} catch (error) {
-						throw error
-					} finally {
-						pendingFlush = undefined
-					}
+					await flush
+					pendingFlush = undefined
 				}
 			}
 		}
@@ -141,45 +135,12 @@ export async function execute() {
 				await flushBatch(true)
 				resolveStream()
 				logger.info(`Synchronized ${totalProcessed} purchased orders.`)
+				logger.info(`Finished synchronizing purchase orders. Total processed: ${totalProcessed}`)
 			} catch (error) {
 				logger.error('Error during final bulk write: ' + error)
 				rejectStream(error)
 			}
 		})
-
-		// request.on('row', async (row) => {
-		// 	batch.push({
-		// 		updateOne: {
-		// 			filter: { po: row.po },
-		// 			update: {
-		// 				$set: {
-		// 					...row,
-		// 					packing: SuperJson.parse(row.packing),
-		// 					shipping_progress: SuperJson.parse(row.shipping_progress)
-		// 				}
-		// 			},
-		// 			upsert: true
-		// 		}
-		// 	})
-		// 	if (batch.length >= BATCH_SIZE) {
-		// 		try {
-		// 			request.pause()
-		// 			await mongoManager.getRepository<PurchaseOrderDocument>('purchase_orders').bulkWrite(batch)
-		// 			totalProcessed += batch.length
-		// 			logger.info(`Synchronized ${totalProcessed} purchase orders`)
-		// 			batch = [] // Reset batch
-		// 		} catch (error) {
-		// 			logger.error('Error during bulk write: ' + error)
-		// 			process.exitCode = 1
-		// 		} finally {
-		// 			request.resume() // Continue reading stream
-		// 		}
-		// 	}
-		// })
-
-		request.on('done', () =>
-			logger.info(`Finished synchronizing purchase orders. Total processed: ${totalProcessed}`)
-		)
 
 		const queryPromise = request.query<IPurchaseOrder>(/* SQL */ `
 			WITH     CTE
