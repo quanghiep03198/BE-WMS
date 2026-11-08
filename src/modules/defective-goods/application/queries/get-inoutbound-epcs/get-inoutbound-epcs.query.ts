@@ -28,8 +28,8 @@ export class GetInoutboundEpcsQuery extends Query<
 			readonly cursor: string | null
 			readonly direction: 'next' | 'prev'
 			readonly page: number
-			readonly limit: number
-			readonly take: number | null
+			readonly take: Nullish<number>
+			// readonly limit: number
 		}
 	) {
 		super()

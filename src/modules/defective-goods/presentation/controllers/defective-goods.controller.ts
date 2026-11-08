@@ -123,10 +123,10 @@ export class DefectiveGoodsController {
 		@Param('stockFlow') stockFlow: 'inbound' | 'outbound',
 		@Query(new ZodValidationPipe(inoutboundEpcQueryDTO)) query: InoutboundEpcQueryDTO
 	) {
-		const { cursor, direction = 'next', page, limit = 20, take, ...filter } = query
+		const { cursor, direction = 'next', page, take, ...filter } = query
 
 		return await this.queryBus.execute(
-			new GetInoutboundEpcsQuery(stockFlow, filter, { cursor, direction, page, limit, take })
+			new GetInoutboundEpcsQuery(stockFlow, filter, { cursor, direction, page, take })
 		)
 	}
 

@@ -175,8 +175,9 @@ export class DefectiveGoodsRepository
 	public async getInoutboundEpcs(
 		stockFlow: 'inbound' | 'outbound',
 		filter: Omit<InoutboundEpcQueryDTO, 'cursor' | 'direction' | 'page' | 'limit' | 'take'>,
-		{ limit = 20, page = 1, take, cursor, direction = 'next' }: IKeysetParams
+		{ page = 1, take, cursor, direction = 'next' }: IKeysetParams
 	) {
+		const PER_PAGE = 50
 		const isPrev = !!cursor && direction === 'prev'
 
 		const queryBuilder = MongoQueryBuilder.from({
@@ -203,9 +204,8 @@ export class DefectiveGoodsRepository
 				qb.whereFieldsAreNotNull('inbound_at', 'storage_location').whereFieldsAreNull('outbound_at')
 			)
 
-		const _queryBuilder = queryBuilder // Make a copy for keyset filtering to avoid modifying the original query builder
-
-		const keysetFilterQueries = _queryBuilder
+		const filterQueries = queryBuilder.build()
+		const keysetFilterQueries = queryBuilder
 			.when(isPrev, (qb) => qb.whereLessThan('_id'))
 			.when(!isPrev && !!cursor, (qb) => qb.whereGreaterThan('_id'))
 			.build()
@@ -216,15 +216,14 @@ export class DefectiveGoodsRepository
 		 * * In case `take` is available and less than the cached count, use `take` primarily (Frontend will likely request fewer items than the total count).
 		 */
 		const countDocuments = async (): Promise<number> => {
-			const queries = queryBuilder.build()
-			const cachedCount = await this.defectiveGoodsCacheRepository.getCount(queries)
+			const cachedCount = await this.defectiveGoodsCacheRepository.getCount(filterQueries)
 			if (typeof cachedCount === 'number') return take && take < cachedCount ? take : cachedCount
-			const totalDocs = await this.defectiveGoodsModel.countDocuments(queries)
-			await this.defectiveGoodsCacheRepository.setCount(queries, totalDocs)
+			const totalDocs = await this.defectiveGoodsModel.countDocuments(filterQueries)
+			await this.defectiveGoodsCacheRepository.setCount(filterQueries, totalDocs)
 			return take && take < totalDocs ? take : totalDocs
 		}
 
-		const _limit = take && take < limit ? take : limit
+		const _limit = typeof take === 'number' && take < PER_PAGE ? take : PER_PAGE
 		const sortingDirection = isPrev ? 1 : -1
 
 		const [rows, totalDocs] = await Promise.all([
@@ -254,14 +253,12 @@ export class DefectiveGoodsRepository
 			countDocuments()
 		])
 
-		const hasMore = take > limit ? rows.length > limit : false
-		const data = hasMore ? rows.slice(0, _limit) : rows
-		if (isPrev) data.reverse() // reverse to maintain correct display order for previous page
+		const totalPages = Math.ceil(totalDocs / _limit)
+		const hasNextPage = page < totalPages
+		const data = hasNextPage ? rows.slice(0, _limit) : rows
+		const hasPrevPage = isPrev ? page < totalPages && page > 1 : !!cursor
 
-		// Go to next page: "has more" = hasMore, "has previous page" = already has cursor
-		// Go to previous page: opposite, and there is definitely a next page because we just came from there
-		const hasNextPage = isPrev ? true : hasMore
-		const hasPrevPage = isPrev ? hasMore : !!cursor
+		if (isPrev) data.reverse() // reverse to maintain correct display order for previous page
 
 		return {
 			data,
@@ -272,7 +269,7 @@ export class DefectiveGoodsRepository
 			nextPage: hasNextPage ? page + 1 : null,
 			prevPage: hasPrevPage ? Math.max(page - 1, 1) : null,
 			totalDocs,
-			totalPages: take <= limit ? 1 : Math.ceil(totalDocs / limit),
+			totalPages,
 			nextCursor: hasNextPage && data.length ? this.encodeCursor(data[data.length - 1]._id) : null,
 			prevCursor: hasPrevPage && data.length ? this.encodeCursor(data[0]._id) : null
 		} satisfies IKeysetPagination<ArrayElement<typeof rows>>
