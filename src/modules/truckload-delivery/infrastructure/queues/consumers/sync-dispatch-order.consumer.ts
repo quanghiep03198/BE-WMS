@@ -8,8 +8,8 @@ import {
 	TRUCKLOAD_DELIVERY_REPOSITORY
 } from '../../../application/ports/truckload-delivery.repository.port'
 import {
-	IRmdbsTruckloadDeliveryRepository,
-	RMDBS_TRUCKLOAD_DELIVERY_REPOSITORY
+	ITruckloadDeliveryAuditRepository,
+	TRUCKLOAD_DELIVERY_AUDIT_REPOSITORY
 } from '../../../application/ports/truckload-delivery.rmdbs.repository.port'
 
 // * Single worker concurrency: jobs run one at a time, so a stale snapshot can never overwrite a newer one
@@ -18,8 +18,8 @@ export class SyncDispatchOrderConsumer extends WorkerHost {
 	constructor(
 		@InjectPinoLogger(SyncDispatchOrderConsumer.name) private readonly logger: PinoLogger,
 		@Inject(TRUCKLOAD_DELIVERY_REPOSITORY) private readonly truckloadDeliveryRepository: ITruckloadDeliveryRepository,
-		@Inject(RMDBS_TRUCKLOAD_DELIVERY_REPOSITORY)
-		private readonly rmdbsTruckloadDeliveryRepository: IRmdbsTruckloadDeliveryRepository
+		@Inject(TRUCKLOAD_DELIVERY_AUDIT_REPOSITORY)
+		private readonly rmdbsTruckloadDeliveryRepository: ITruckloadDeliveryAuditRepository
 	) {
 		super()
 	}

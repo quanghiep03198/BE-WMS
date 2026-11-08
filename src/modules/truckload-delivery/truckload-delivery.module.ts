@@ -10,7 +10,7 @@ import { CAR_LICENSE_PLATE_REPOSITORY } from './application/ports/car-license-pl
 import { SIGNATURE_STORAGE } from './application/ports/signature-storage.port'
 import { TRUCKLOAD_DELIVERY_CACHE_REPOSITORY } from './application/ports/truckload-delivery.cache.repository.port'
 import { TRUCKLOAD_DELIVERY_REPOSITORY } from './application/ports/truckload-delivery.repository.port'
-import { RMDBS_TRUCKLOAD_DELIVERY_REPOSITORY } from './application/ports/truckload-delivery.rmdbs.repository.port'
+import { TRUCKLOAD_DELIVERY_AUDIT_REPOSITORY } from './application/ports/truckload-delivery.rmdbs.repository.port'
 import { TruckloadDeliveryQueryHandlers } from './application/queries'
 import { TruckloadDeliverySaga } from './application/sagas/truckload-delivery.saga'
 import { TruckloadDeliveryCdcHandlers } from './infrastructure/cdc'
@@ -24,7 +24,7 @@ import { SignatureStorage } from './infrastructure/persistence/mongodb/services/
 import { CarLicenseSnapshotEntity } from './infrastructure/persistence/mssql/entities/car-license.entity'
 import { TruckloadDeliveryEntity } from './infrastructure/persistence/mssql/entities/truckload-delivery.entity'
 import { CarLicensePlateRepository } from './infrastructure/persistence/mssql/repositories/car-license-plate.repository'
-import { RmdbsTruckloadDeliveryRepository } from './infrastructure/persistence/mssql/repositories/rmdbs-truckload-delivery.repository'
+import { TruckloadDeliveryAuditRepository } from './infrastructure/persistence/mssql/repositories/truckload-delivery-audit.repository'
 import { TruckloadDeliveryCacheRepository } from './infrastructure/persistence/redis/truckload-delivery-cache.repository'
 import { SYNC_DISPATCH_ORDER_QUEUE, TRUCKLOAD_DELIVERY_JOB_OPTIONS } from './infrastructure/queues'
 import { TruckloadDeliveryConsumers } from './infrastructure/queues/consumers'
@@ -57,7 +57,7 @@ import { TruckloadDeliveryController } from './presentation/controllers/truckloa
 		...TruckloadDeliveryCdcHandlers,
 		{ provide: SIGNATURE_STORAGE, useClass: SignatureStorage },
 		{ provide: TRUCKLOAD_DELIVERY_REPOSITORY, useClass: TruckloadDeliveryRepository },
-		{ provide: RMDBS_TRUCKLOAD_DELIVERY_REPOSITORY, useClass: RmdbsTruckloadDeliveryRepository },
+		{ provide: TRUCKLOAD_DELIVERY_AUDIT_REPOSITORY, useClass: TruckloadDeliveryAuditRepository },
 		{ provide: CAR_LICENSE_PLATE_REPOSITORY, useClass: CarLicensePlateRepository },
 		{ provide: TRUCKLOAD_DELIVERY_CACHE_REPOSITORY, useClass: TruckloadDeliveryCacheRepository },
 		TruckloadDeliverySaga

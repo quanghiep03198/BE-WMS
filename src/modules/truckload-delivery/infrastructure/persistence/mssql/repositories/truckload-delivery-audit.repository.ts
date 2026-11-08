@@ -4,7 +4,7 @@ import { Inject, Injectable } from '@nestjs/common'
 import { InjectRepository } from '@nestjs/typeorm'
 import { In, Repository } from 'typeorm'
 import { ISignatureStorage, SIGNATURE_STORAGE } from '../../../../application/ports/signature-storage.port'
-import { IRmdbsTruckloadDeliveryRepository } from '../../../../application/ports/truckload-delivery.rmdbs.repository.port'
+import { ITruckloadDeliveryAuditRepository } from '../../../../application/ports/truckload-delivery.rmdbs.repository.port'
 import { DISPATCH_ORDER_SIGNATURE_FIELDS } from '../../../../domain/constants'
 import { DispatchOrderProps } from '../../../../domain/models/dispatch-order.model'
 import { TruckloadDeliveryEntity } from '../entities/truckload-delivery.entity'
@@ -17,7 +17,7 @@ const getPackingIdFromSyncId = (dispatchOrder: string, syncId: string | null): s
 }
 
 @Injectable()
-export class RmdbsTruckloadDeliveryRepository implements IRmdbsTruckloadDeliveryRepository {
+export class TruckloadDeliveryAuditRepository implements ITruckloadDeliveryAuditRepository {
 	constructor(
 		@InjectRepository(TruckloadDeliveryEntity, DATA_SOURCE_DATA_LAKE)
 		private readonly repository: Repository<TruckloadDeliveryEntity>,
