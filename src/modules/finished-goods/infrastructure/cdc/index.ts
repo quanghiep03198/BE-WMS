@@ -1,3 +1,5 @@
-import { FinishedGoodsEpcMatchCdcHandler } from './epc-match.cdc'
+// import { FinishedGoodsEpcMatchCdcHandler } from './epc-match.cdc'
 
-export const FinishedGoodsCdcHandlers = [FinishedGoodsEpcMatchCdcHandler]
+export const FinishedGoodsCdcHandlers = [
+	// FinishedGoodsEpcMatchCdcHandler
+]

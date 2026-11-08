@@ -2,8 +2,8 @@ import { CdcEchoRegistryService } from '@databases/cdc/services/cdc-echo-registe
 import { DATA_SOURCE_DATA_LAKE } from '@databases/constants'
 import {
 	FINISHED_GOODS_RMDBS_REPOSITORY,
-	IFinishedGoodsRmdbsRepository
-} from '@modules/finished-goods/application/ports/finished-goods.rmdbs.repository.port'
+	IFinishedGoodsAuditRepository
+} from '@modules/finished-goods/application/ports/finished-goods-audit.repository.port'
 import { UpsertEpcsMatchData } from '@modules/finished-goods/domain/types'
 import { Processor, WorkerHost } from '@nestjs/bullmq'
 import { Inject } from '@nestjs/common'
@@ -14,7 +14,7 @@ import { COMMIT_UPSERT_EPC_MATCH_QUEUE as COMMIT_UPSERT_EPCS_MATCH_QUEUE } from 
 export class CommitUpsertEpcsMatchConsumer extends WorkerHost {
 	constructor(
 		@Inject(FINISHED_GOODS_RMDBS_REPOSITORY)
-		private readonly mssqlFinishedGoodsRepository: IFinishedGoodsRmdbsRepository,
+		private readonly repository: IFinishedGoodsAuditRepository,
 		private readonly cdcEchoRegisterService: CdcEchoRegistryService
 	) {
 		super()
@@ -28,6 +28,6 @@ export class CommitUpsertEpcsMatchConsumer extends WorkerHost {
 			job.id.toString(),
 			60_000
 		)
-		await this.mssqlFinishedGoodsRepository.upsertEpcsMatch(job.data, false)
+		await this.repository.upsertEpcsMatch(job.data, false)
 	}
 }

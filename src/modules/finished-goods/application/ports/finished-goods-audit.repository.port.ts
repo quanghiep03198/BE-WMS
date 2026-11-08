@@ -4,7 +4,7 @@ import { StationNO } from '@modules/finished-goods/domain/utils'
 /**
  * @description This interface defines methods for retrieving raw data from SQL Server for business operations related to inventory management.
  */
-export interface IFinishedGoodsRmdbsRepository {
+export interface IFinishedGoodsAuditRepository {
 	commitStockFluctuation(
 		data: Array<
 			Array<{

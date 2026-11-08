@@ -20,7 +20,6 @@ import { InjectTransactionHost, TransactionHost } from '@nestjs-cls/transactiona
 import { TransactionalAdapterMongoose } from '@nestjs-cls/transactional-adapter-mongoose'
 import { format } from 'date-fns'
 import { AnyBulkWriteOperation, MongooseBulkWriteOptions } from 'mongoose'
-import { InjectPinoLogger } from 'nestjs-pino'
 import {
 	ManufacturingOrder,
 	ManufacturingOrderDocument,
@@ -37,7 +36,6 @@ type InventoryFluctuationIncrementKey =
 @Injectable()
 export class InventoryLedgerRepository implements IInventoryLedgerRepository {
 	constructor(
-		@InjectPinoLogger(InventoryLedgerRepository.name) private readonly logger,
 		@InjectModel(FinishedGoodsEpc.name, DATA_WAREHOUSE_CONNECTION)
 		private readonly finishedGoodsEpcModel: FinishedGoodsEpcModel,
 		@InjectModel(ManufacturingOrder.name, DATA_WAREHOUSE_CONNECTION)
@@ -200,15 +198,11 @@ export class InventoryLedgerRepository implements IInventoryLedgerRepository {
 		const pendingInventoryFluctuation = (await this.getPendingInventoryFluctuation(
 			pendingStockInEpcs
 		)) as IPendingInventoryFluctuation
-
 		const incrementExpression = this.createInventoryIncrementExpression(pendingInventoryFluctuation)
-
 		const txSizeLedger = pendingInventoryFluctuation.size_ledger
-
 		for (const size in txSizeLedger) {
 			delete txSizeLedger[size].shipped_out_qty
 		}
-
 		await this.dailyMoInventoryLedgerModel.updateOne(
 			pick(pendingInventoryFluctuation, ['mo_no']),
 			{
@@ -230,7 +224,6 @@ export class InventoryLedgerRepository implements IInventoryLedgerRepository {
 			{ upsert: true, session: this.txHost.tx }
 		)
 		await this.inventoryAuditRepository.updateInventoryAuditFluctuation(pendingInventoryFluctuation)
-
 		return pendingInventoryFluctuation
 	}
 

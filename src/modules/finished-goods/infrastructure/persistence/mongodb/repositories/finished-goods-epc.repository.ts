@@ -286,7 +286,7 @@ export class FinishedGoodsEpcRepository implements IFinishedGoodsEpcRepository {
 
 		const bulkWriteOptions = payload.epcs.map((item) => ({
 			updateOne: {
-				filter: { epc: item.epc, scannable: true },
+				filter: { scannable: true, epc: item.epc },
 				update: {
 					epc: item.epc,
 					mo_no: item.mo_no,
@@ -314,7 +314,6 @@ export class FinishedGoodsEpcRepository implements IFinishedGoodsEpcRepository {
 		await this.finishedGoodsEpcModel.bulkWrite(bulkWriteOptions, {
 			writeConcern: { w: 'majority' },
 			ordered: false,
-
 			timestamps: true
 		})
 	}

@@ -74,8 +74,6 @@ export class MoExchageExceptionFilter implements ExceptionFilter {
 		}
 		if (statusCode === HttpStatus.INTERNAL_SERVER_ERROR) this.logger.error(exception)
 
-		// this.finishedGoodsGateway.server.emit('finished_goods:upserted_epcs_match:failed', message)
-
 		httpAdapter.reply(ctx.getResponse(), responseBody, statusCode)
 	}
 }

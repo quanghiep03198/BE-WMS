@@ -72,9 +72,6 @@ export class StockExceptionFilter implements ExceptionFilter {
 
 		if (statusCode === HttpStatus.INTERNAL_SERVER_ERROR) this.logger.error(exception)
 
-		// const event = responseBody.path.includes('stock-in') ? 'stock:in:failed' : 'stock:recall:failed'
-		// this.finishedGoodsGateway.server.emit(event, message)
-
 		httpAdapter.reply(ctx.getResponse(), responseBody, statusCode)
 	}
 }

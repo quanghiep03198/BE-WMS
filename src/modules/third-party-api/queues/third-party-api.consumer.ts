@@ -2,13 +2,13 @@ import { FactoryCodeRef } from '@common/constants/factory'
 import { SuperJson } from '@common/utils'
 import { generateShortId } from '@common/utils/short-id.util'
 import {
+	FINISHED_GOODS_RMDBS_REPOSITORY,
+	IFinishedGoodsAuditRepository
+} from '@modules/finished-goods/application/ports/finished-goods-audit.repository.port'
+import {
 	FINISHED_GOODS_EPC_REPOSITORY,
 	IFinishedGoodsEpcRepository
 } from '@modules/finished-goods/application/ports/finished-goods-epc.repository.port'
-import {
-	FINISHED_GOODS_RMDBS_REPOSITORY,
-	IFinishedGoodsRmdbsRepository
-} from '@modules/finished-goods/application/ports/finished-goods.rmdbs.repository.port'
 import { UpsertEpcsMatchData } from '@modules/finished-goods/domain/types'
 import { SizeNumber } from '@modules/finished-goods/domain/value-objects/size-number.vo'
 import { FinishedGoodsGateway } from '@modules/finished-goods/presentation/gateways/finished-goods.gateway'
@@ -36,7 +36,7 @@ export class ThirdPartyApiConsumer extends WorkerHost {
 		@Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
 		@Inject(FINISHED_GOODS_EPC_REPOSITORY) private readonly epcRepository: IFinishedGoodsEpcRepository,
 		@Inject(FINISHED_GOODS_RMDBS_REPOSITORY)
-		private readonly mssqlFinishedGoodsRepository: IFinishedGoodsRmdbsRepository,
+		private readonly finishedGoodsAuditRepository: IFinishedGoodsAuditRepository,
 		@Inject(ORDER_REPOSITORY) private readonly orderRepository: IOrderRepository,
 		private readonly logger: PinoLogger,
 		private readonly thirdPartyApiService: ThirdPartyApiService,
@@ -215,7 +215,7 @@ export class ThirdPartyApiConsumer extends WorkerHost {
 			}
 		})
 		await this.epcRepository.upsertEpcsMatch(payload, true)
-		await this.mssqlFinishedGoodsRepository.upsertEpcsMatch(payload, true)
+		await this.finishedGoodsAuditRepository.upsertEpcsMatch(payload, true)
 	}
 
 	private async executeSync(data: string[], accessToken: string) {

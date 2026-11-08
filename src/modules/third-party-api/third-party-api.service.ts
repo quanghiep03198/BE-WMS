@@ -1,8 +1,8 @@
 import { generateShortId } from '@common/utils/short-id.util'
 import {
 	FINISHED_GOODS_RMDBS_REPOSITORY,
-	IFinishedGoodsRmdbsRepository
-} from '@modules/finished-goods/application/ports/finished-goods.rmdbs.repository.port'
+	IFinishedGoodsAuditRepository
+} from '@modules/finished-goods/application/ports/finished-goods-audit.repository.port'
 import { UpsertEpcsMatchData } from '@modules/finished-goods/domain/types'
 import { SizeNumber } from '@modules/finished-goods/domain/value-objects/size-number.vo'
 import { ORDER_REPOSITORY } from '@modules/order/order.constant'
@@ -21,7 +21,7 @@ export class ThirdPartyApiService {
 		private readonly logger: PinoLogger,
 		@Inject(ORDER_REPOSITORY) private readonly orderRepository: IOrderRepository,
 		@Inject(FINISHED_GOODS_RMDBS_REPOSITORY)
-		private readonly mssqlFinishedGoodsRepository: IFinishedGoodsRmdbsRepository,
+		private readonly finishedGoodsAuditRepository: IFinishedGoodsAuditRepository,
 		private readonly httpService: HttpService
 	) {}
 
@@ -92,7 +92,7 @@ export class ThirdPartyApiService {
 			}
 		})
 
-		await this.mssqlFinishedGoodsRepository.upsertEpcsMatch(sourceData)
+		await this.finishedGoodsAuditRepository.upsertEpcsMatch(sourceData)
 	}
 
 	public async upsertByEpc(accessToken: string, epc: string) {
@@ -137,6 +137,6 @@ export class ThirdPartyApiService {
 			remark: `[${currentTimestamp}] Info: Synchronized from Deckers API with command number "${data.commandNumber}"`
 		}
 
-		await this.mssqlFinishedGoodsRepository.upsertEpcsMatch([upsertPayload])
+		await this.finishedGoodsAuditRepository.upsertEpcsMatch([upsertPayload])
 	}
 }

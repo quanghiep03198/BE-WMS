@@ -14,7 +14,6 @@ import { InjectRedisClient } from '@redis/decorators'
 import { format } from 'date-fns'
 import Redis from 'ioredis'
 import { AnyBulkWriteOperation, mongo, type MongooseBulkWriteOptions } from 'mongoose'
-import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
 import { FinishedGoodsEpc, FinishedGoodsEpcDocument, FinishedGoodsEpcModel } from '../schemas/finished-goods-epc.schema'
 import { InventoryLedgerRepository } from './inventory-ledger.repository'
 import { ShippingProgressMongoRepository } from './shipping-progress-mongo.repository'
@@ -22,7 +21,6 @@ import { ShippingProgressMongoRepository } from './shipping-progress-mongo.repos
 @Injectable()
 export class StockTransactionMongoRepository implements IStockTransactionRepository {
 	constructor(
-		@InjectPinoLogger(StockTransactionMongoRepository.name) private readonly logger: PinoLogger,
 		@InjectModel(FinishedGoodsEpc.name, DATA_WAREHOUSE_CONNECTION)
 		private readonly finishedGoodsEpcModel: FinishedGoodsEpcModel,
 		@Inject(INVENTORY_LEDGER_REPOSITORY)
@@ -34,100 +32,6 @@ export class StockTransactionMongoRepository implements IStockTransactionReposit
 		@InjectRedisClient()
 		private readonly redisClient: Redis
 	) {}
-
-	// public async getStockTransactionById(
-	// 	stockFlow: StockFlow,
-	// 	transactionId: string
-	// ): Promise<IPendingInventoryFluctuation | Array<IPendingInventoryFluctuation>> {
-	// 	const filterQueryMap: Map<StockFlow, FilterQuery<FinishedGoodsEpcDocument>> = new Map([
-	// 		['inbound', { status: { $in: [FinishedGoodsEpcStatus.IN_STOCK, FinishedGoodsEpcStatus.RECALLED] } }],
-	// 		['outbound', { status: { $eq: FinishedGoodsEpcStatus.SHIPPED } }]
-	// 	])
-
-	// 	const data = await this.finishedGoodsEpcModel.aggregate<IPendingInventoryFluctuation>([
-	// 		{ $match: { last_tx: transactionId, ...filterQueryMap.get(stockFlow) } },
-	// 		{
-	// 			$group: {
-	// 				_id: {
-	// 					mo_no: '$mo_no',
-	// 					factory_shoes_style: '$factory_shoes_style',
-	// 					color_sn: '$color_sn',
-	// 					size_numcode: '$size_numcode'
-	// 				},
-	// 				po: { $first: '$po' },
-	// 				stocked_in_qty: {
-	// 					$sum: {
-	// 						$cond: [
-	// 							{
-	// 								$and: [{ $eq: ['$status', FinishedGoodsEpcStatus.IN_STOCK] }, { $eq: ['$inbound_times', 1] }]
-	// 							},
-	// 							1,
-	// 							0
-	// 						]
-	// 					}
-	// 				},
-	// 				total_recall_tx: {
-	// 					$sum: {
-	// 						$cond: [{ $eq: ['$status', FinishedGoodsEpcStatus.RECALLED] }, 1, 0]
-	// 					}
-	// 				},
-	// 				total_return_tx: {
-	// 					$sum: {
-	// 						$cond: [
-	// 							{
-	// 								$and: [{ $eq: ['$status', FinishedGoodsEpcStatus.IN_STOCK] }, { $gt: ['$inbound_times', 1] }]
-	// 							},
-	// 							1,
-	// 							0
-	// 						]
-	// 					}
-	// 				},
-	// 				shipped_out_qty: {
-	// 					$sum: {
-	// 						$cond: [{ $eq: ['$status', FinishedGoodsEpcStatus.SHIPPED] }, 1, 0]
-	// 					}
-	// 				}
-	// 			}
-	// 		},
-	// 		{
-	// 			$group: {
-	// 				_id: {
-	// 					mo_no: '$_id.mo_no',
-	// 					factory_shoes_style: '$_id.factory_shoes_style',
-	// 					color_sn: '$_id.color_sn'
-	// 				},
-	// 				po: { $first: '$po' },
-	// 				size_ledger: {
-	// 					$push: {
-	// 						k: '$_id.size_numcode',
-	// 						v: {
-	// 							stocked_in_qty: '$stocked_in_qty',
-	// 							total_recall_tx: '$total_recall_tx',
-	// 							total_return_tx: '$total_return_tx',
-	// 							shipped_out_qty: '$shipped_out_qty'
-	// 						}
-	// 					}
-	// 				}
-	// 			}
-	// 		},
-	// 		{
-	// 			$project: {
-	// 				_id: 0,
-	// 				mo_no: '$_id.mo_no',
-	// 				po: {
-	// 					$cond: {
-	// 						if: { $eq: ['$po', null] },
-	// 						then: '$$REMOVE',
-	// 						else: '$po'
-	// 					}
-	// 				},
-	// 				size_ledger: { $arrayToObject: '$size_ledger' }
-	// 			}
-	// 		}
-	// 	])
-
-	// 	return data.length === 1 ? data[0] : data
-	// }
 
 	@Transactional<TransactionalAdapterMongoose>(DATA_WAREHOUSE_CONNECTION)
 	public async stockIn(transactionId: string, pendingStockInEpcs: Array<ElectronicProductCode>): Promise<void> {
@@ -333,7 +237,7 @@ export class StockTransactionMongoRepository implements IStockTransactionReposit
 	): Promise<Array<{ epc: string; status: FinishedGoodsEpcStatus }>> {
 		const transactionHistory = await this.redisClient.lrange('transactions:inbound', 0, -1)
 		const inboundStockTransactions = transactionHistory.find((item) => {
-			const parsedItem = SuperJson.parse(item) as IInoutboundTransaction<'inbound'>
+			const parsedItem = SuperJson.parse<IInoutboundTransaction<'inbound'>>(item)
 			return parsedItem.id === transactionId
 		})
 
@@ -399,7 +303,7 @@ export class StockTransactionMongoRepository implements IStockTransactionReposit
 	public async rollbackOutboundTransaction(transactionId: string) {
 		const transactionHistory = await this.redisClient.lrange('transactions:outbound', 0, -1)
 		const inboundStockTransactions = transactionHistory.find((item) => {
-			const parsedItem = SuperJson.parse(item) as IInoutboundTransaction<'outbound'>
+			const parsedItem = SuperJson.parse<IInoutboundTransaction<'outbound'>>(item)
 			return parsedItem.id === transactionId
 		})
 
@@ -432,3 +336,97 @@ export class StockTransactionMongoRepository implements IStockTransactionReposit
 		return epcsToRollback
 	}
 }
+
+// public async getStockTransactionById(
+// 	stockFlow: StockFlow,
+// 	transactionId: string
+// ): Promise<IPendingInventoryFluctuation | Array<IPendingInventoryFluctuation>> {
+// 	const filterQueryMap: Map<StockFlow, FilterQuery<FinishedGoodsEpcDocument>> = new Map([
+// 		['inbound', { status: { $in: [FinishedGoodsEpcStatus.IN_STOCK, FinishedGoodsEpcStatus.RECALLED] } }],
+// 		['outbound', { status: { $eq: FinishedGoodsEpcStatus.SHIPPED } }]
+// 	])
+
+// 	const data = await this.finishedGoodsEpcModel.aggregate<IPendingInventoryFluctuation>([
+// 		{ $match: { last_tx: transactionId, ...filterQueryMap.get(stockFlow) } },
+// 		{
+// 			$group: {
+// 				_id: {
+// 					mo_no: '$mo_no',
+// 					factory_shoes_style: '$factory_shoes_style',
+// 					color_sn: '$color_sn',
+// 					size_numcode: '$size_numcode'
+// 				},
+// 				po: { $first: '$po' },
+// 				stocked_in_qty: {
+// 					$sum: {
+// 						$cond: [
+// 							{
+// 								$and: [{ $eq: ['$status', FinishedGoodsEpcStatus.IN_STOCK] }, { $eq: ['$inbound_times', 1] }]
+// 							},
+// 							1,
+// 							0
+// 						]
+// 					}
+// 				},
+// 				total_recall_tx: {
+// 					$sum: {
+// 						$cond: [{ $eq: ['$status', FinishedGoodsEpcStatus.RECALLED] }, 1, 0]
+// 					}
+// 				},
+// 				total_return_tx: {
+// 					$sum: {
+// 						$cond: [
+// 							{
+// 								$and: [{ $eq: ['$status', FinishedGoodsEpcStatus.IN_STOCK] }, { $gt: ['$inbound_times', 1] }]
+// 							},
+// 							1,
+// 							0
+// 						]
+// 					}
+// 				},
+// 				shipped_out_qty: {
+// 					$sum: {
+// 						$cond: [{ $eq: ['$status', FinishedGoodsEpcStatus.SHIPPED] }, 1, 0]
+// 					}
+// 				}
+// 			}
+// 		},
+// 		{
+// 			$group: {
+// 				_id: {
+// 					mo_no: '$_id.mo_no',
+// 					factory_shoes_style: '$_id.factory_shoes_style',
+// 					color_sn: '$_id.color_sn'
+// 				},
+// 				po: { $first: '$po' },
+// 				size_ledger: {
+// 					$push: {
+// 						k: '$_id.size_numcode',
+// 						v: {
+// 							stocked_in_qty: '$stocked_in_qty',
+// 							total_recall_tx: '$total_recall_tx',
+// 							total_return_tx: '$total_return_tx',
+// 							shipped_out_qty: '$shipped_out_qty'
+// 						}
+// 					}
+// 				}
+// 			}
+// 		},
+// 		{
+// 			$project: {
+// 				_id: 0,
+// 				mo_no: '$_id.mo_no',
+// 				po: {
+// 					$cond: {
+// 						if: { $eq: ['$po', null] },
+// 						then: '$$REMOVE',
+// 						else: '$po'
+// 					}
+// 				},
+// 				size_ledger: { $arrayToObject: '$size_ledger' }
+// 			}
+// 		}
+// 	])
+
+// 	return data.length === 1 ? data[0] : data
+// }

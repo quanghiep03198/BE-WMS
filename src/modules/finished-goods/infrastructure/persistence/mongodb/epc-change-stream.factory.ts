@@ -38,7 +38,7 @@ export class MongoEpcChangeStreamFactory implements IEpcChangeStreamFactory {
 		)
 
 		const wrapper = new EpcChangeStreamWrapper(changeStream)
-		wrapper.onChange(throttle(onChange, 200, { leading: true, trailing: true }))
+		wrapper.onChange(throttle(onChange, 500, { leading: true, trailing: true }))
 		return wrapper
 	}
 }

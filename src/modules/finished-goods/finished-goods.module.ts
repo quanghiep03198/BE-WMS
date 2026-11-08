@@ -13,8 +13,8 @@ import { PinoLogger } from 'nestjs-pino'
 import { PurchaseOrder } from '../order/schemas/purchase-order.schema'
 import { ThirdPartyApiModule } from '../third-party-api/third-party-api.module'
 import { FinishedGoodsCommandHandlers } from './application/commands'
+import { FINISHED_GOODS_RMDBS_REPOSITORY } from './application/ports/finished-goods-audit.repository.port'
 import { FINISHED_GOODS_EPC_REPOSITORY } from './application/ports/finished-goods-epc.repository.port'
-import { FINISHED_GOODS_RMDBS_REPOSITORY } from './application/ports/finished-goods.rmdbs.repository.port'
 import { INVENTORY_LEDGER_REPOSITORY } from './application/ports/inventory-ledger.repository.port'
 import { SHIPPING_PROGRESS_REPOSITORY } from './application/ports/shipping-progress.repository.port'
 import { STOCK_TX_REPOSITORY } from './application/ports/stock-transaction.repository.port'
@@ -57,7 +57,7 @@ import {
 	RFIDInventoryEntity
 } from './infrastructure/persistence/mssql/entities/rfid-inventory.entity'
 import { RFIDMatchEntity } from './infrastructure/persistence/mssql/entities/rfid-match.entity'
-import { MssqlFinishedGoodsRepository } from './infrastructure/persistence/mssql/repositories/mssql-finished-goods.repository'
+import { FinishedGoodsAuditRepository } from './infrastructure/persistence/mssql/repositories/finished-goods-audit.repository'
 import { FinishedGoodsEntitySubscribers } from './infrastructure/persistence/mssql/subscribers'
 import {
 	BULK_WRITE_INBOUND_EPCS_QUEUE,
@@ -170,7 +170,7 @@ import { FinishedGoodsGateway } from './presentation/gateways/finished-goods.gat
 		},
 		{
 			provide: FINISHED_GOODS_RMDBS_REPOSITORY,
-			useClass: MssqlFinishedGoodsRepository
+			useClass: FinishedGoodsAuditRepository
 		}
 	],
 	exports: [

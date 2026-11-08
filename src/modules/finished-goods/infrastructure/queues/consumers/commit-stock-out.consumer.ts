@@ -1,7 +1,7 @@
 import {
 	FINISHED_GOODS_RMDBS_REPOSITORY,
-	IFinishedGoodsRmdbsRepository
-} from '@modules/finished-goods/application/ports/finished-goods.rmdbs.repository.port'
+	IFinishedGoodsAuditRepository
+} from '@modules/finished-goods/application/ports/finished-goods-audit.repository.port'
 import { StockTransactionPurpose } from '@modules/finished-goods/domain/constants'
 import { Processor, WorkerHost } from '@nestjs/bullmq'
 import { Inject } from '@nestjs/common'
@@ -13,7 +13,7 @@ import { StationNO } from '../../../domain/utils'
 export class CommitStockOutConsumer extends WorkerHost {
 	constructor(
 		@Inject(FINISHED_GOODS_RMDBS_REPOSITORY)
-		private readonly mssqlFinishedGoodsRepository: IFinishedGoodsRmdbsRepository
+		private readonly repository: IFinishedGoodsAuditRepository
 	) {
 		super()
 	}
@@ -35,6 +35,6 @@ export class CommitStockOutConsumer extends WorkerHost {
 			void
 		>
 	) {
-		await this.mssqlFinishedGoodsRepository.commitStockOut(job.data)
+		await this.repository.commitStockOut(job.data)
 	}
 }
