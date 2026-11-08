@@ -20,7 +20,7 @@ export class GetScanningEpcsHandler implements IQueryHandler<GetScanningEpcsQuer
 	) {}
 
 	public async execute({ stockFlow, pagination, filterQuery }: GetScanningEpcsQuery) {
-		const queryHint: Record<StockFlow, mongo.Hint> = {
+		const respectQueryHint: Record<StockFlow, mongo.Hint> = {
 			inbound: 'idx_inbound_active',
 			outbound: 'idx_outbound_active'
 		}
@@ -46,14 +46,10 @@ export class GetScanningEpcsHandler implements IQueryHandler<GetScanningEpcsQuer
 			page: pagination.page,
 			limit: pagination.limit,
 			customLabels: { docs: 'data' },
-			projection: {
-				_id: 0,
-				epc: 1,
-				mo_no: 1
-			},
+			select: 'epc mo_no',
 			options: {
-				readPreference: 'nearest' satisfies mongo.ReadPreferenceMode,
-				hint: queryHint[stockFlow]
+				readPreference: 'secondary' satisfies mongo.ReadPreferenceMode,
+				hint: respectQueryHint[stockFlow]
 			}
 		})
 
