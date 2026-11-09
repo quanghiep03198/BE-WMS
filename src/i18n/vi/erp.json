@@ -19,6 +19,7 @@
 		"dept_name": "Bộ phận cập nhật",
 		"employee_name": "Nhân viên tạo đơn",
 		"export_num": "Số đã xuất kho",
+		"factory_entrance_time": "Thời gian nhập xưởng",
 		"factory_departure_time": "Thời gian xuất xưởng",
 		"actual_departure_time": "Thời gian xuất xưởng thực tế",
 		"license_plate": "Biển số xe",

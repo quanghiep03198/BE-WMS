@@ -3,7 +3,7 @@ import { type AutoFitColumnOptions, autoFitColumns } from '@common/helpers'
 import { Inject } from '@nestjs/common'
 import { IQueryHandler, QueryHandler } from '@nestjs/cqrs'
 import { format } from 'date-fns'
-import { Workbook } from 'exceljs'
+import { ImageRange, Workbook } from 'exceljs'
 import { I18nContext, I18nService } from 'nestjs-i18n'
 import { DISPATCH_ORDER_SIGNATURE_FIELDS } from '../../../domain/constants'
 import { ISignatureStorage, SIGNATURE_STORAGE, StoredSignature } from '../../ports/signature-storage.port'
@@ -75,11 +75,14 @@ export class ExportDispatchOrdersHandler implements IQueryHandler<ExportDispatch
 				outbound_qty: line.outbound_qty
 			})),
 			actual_departure_time: dispatchOrder.license_plate_capture_time,
-			punctured_container: dispatchOrder.punctured_container ? '✕' : '',
-			smelling_container: dispatchOrder.smelling_container ? '✕' : '',
-			moist_container: dispatchOrder.moist_container ? '✕' : '',
+			punctured_container: dispatchOrder.punctured_container ? 'Y' : 'N',
+			smelling_container: dispatchOrder.smelling_container ? 'Y' : 'N',
+			moist_container: dispatchOrder.moist_container ? 'Y' : 'N',
 			factory_departure_time: dispatchOrder.factory_departure_time
 				? format(new Date(dispatchOrder.factory_departure_time), 'yyyy-MM-dd HH:mm:ss')
+				: '',
+			factory_entrance_time: dispatchOrder.factory_entrance_time
+				? format(new Date(dispatchOrder.factory_entrance_time), 'yyyy-MM-dd HH:mm:ss')
 				: ''
 		}))
 
@@ -90,6 +93,10 @@ export class ExportDispatchOrdersHandler implements IQueryHandler<ExportDispatch
 			{
 				header: this.i18nService.t('erp.fields.container_number', { lang: currentLanguage }),
 				key: 'container_number'
+			},
+			{
+				header: this.i18nService.t('erp.fields.factory_entrance_time', { lang: currentLanguage }),
+				key: 'factory_entrance_time'
 			},
 			{
 				header: this.i18nService.t('erp.fields.factory_departure_time', { lang: currentLanguage }),
@@ -147,10 +154,10 @@ export class ExportDispatchOrdersHandler implements IQueryHandler<ExportDispatch
 
 			// * Store signature images for later rendering
 			const signatureColumns = [
-				{ key: 'ie_signature', colIndex: 9 },
-				{ key: 'warehouse_officer_signature', colIndex: 10 },
-				{ key: 'security_1_signature', colIndex: 11 },
-				{ key: 'security_2_signature', colIndex: 12 }
+				{ key: 'ie_signature', colIndex: 10 },
+				{ key: 'warehouse_officer_signature', colIndex: 11 },
+				{ key: 'security_1_signature', colIndex: 12 },
+				{ key: 'security_2_signature', colIndex: 13 }
 			]
 
 			const rowImages: Array<{ colIndex: number; imageId: number }> = []
@@ -270,16 +277,16 @@ export class ExportDispatchOrdersHandler implements IQueryHandler<ExportDispatch
 				images.forEach(({ colIndex, imageId }) => {
 					worksheet.addImage(imageId, {
 						tl: { col: colIndex - 1, row: newRowNumber },
-						br: { col: colIndex, row: newRowNumber + 1 } as any,
+						br: { col: colIndex, row: newRowNumber + 1 },
 						editAs: 'oneCell'
-					})
+					} as unknown as ImageRange & { editAs?: string })
 				})
 			}
 		})
 
 		// * Add header title
 		worksheet.insertRow(1, null)
-		worksheet.mergeCells('A1:M1')
+		worksheet.mergeCells('A1:N1')
 		worksheet.getRow(1).height = 30
 		worksheet.getRow(1).alignment = { vertical: 'middle', horizontal: 'center' }
 		worksheet.getRow(1).font = { size: 14, bold: true }

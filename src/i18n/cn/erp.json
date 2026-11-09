@@ -21,6 +21,7 @@
 		"dept_name": "更新部門",
 		"employee_name": "建檔人姓名",
 		"export_num": "已出库量",
+		"factory_entrance_time": "工厂进货时间",
 		"factory_departure_time": "工厂出货时间",
 		"actual_departure_time": "实际工厂出货时间",
 		"final_inventory_qty": "期末库存",

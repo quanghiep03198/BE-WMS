@@ -20,6 +20,7 @@
 		"dept_name": "Department",
 		"employee_name": "Employee's name",
 		"export_num": "Qty. of goods shipped",
+		"factory_entrance_time": "Factory entrance time",
 		"factory_departure_time": "Factory departure time",
 		"actual_departure_time": "Actual factory departure time",
 		"punctured_container": "Punctured container",
