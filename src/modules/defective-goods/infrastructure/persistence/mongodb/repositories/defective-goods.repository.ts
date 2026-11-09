@@ -21,10 +21,19 @@ import {
 	DefectiveGoodsDomainModel,
 	IDefectiveGoodsProps
 } from '@modules/defective-goods/domain/models/defective-goods.model'
+import { decodeDescription } from '@modules/files/description-codec'
 import { Inject, Injectable, Logger } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
 import chunk from 'lodash/chunk'
-import { type FilterQuery, LeanDocument, mongo, ProjectionType, type QueryOptions, Types } from 'mongoose'
+import {
+	ClientSession,
+	type FilterQuery,
+	LeanDocument,
+	mongo,
+	ProjectionType,
+	type QueryOptions,
+	Types
+} from 'mongoose'
 import { DefectiveGoods, DefectiveGoodsDocument, DefectiveGoodsModel } from '../schemas/defective-goods.schema'
 
 @Injectable()
@@ -43,20 +52,20 @@ export class DefectiveGoodsRepository
 		super(defectiveGoodsModel)
 	}
 
-	public async create(models: DefectiveGoodsDomainModel[]) {
+	public async create(models: DefectiveGoodsDomainModel[], session?: ClientSession) {
 		try {
 			const chunks = chunk(models, 1000)
 
-			const created = await Promise.all(
-				chunks.map(async (chunkedDocuments) => {
-					const inserted = await this.defectiveGoodsModel.insertMany(
-						chunkedDocuments.map((document) => document.toProps())
-					)
-					return inserted.map(
-						(document) => new DefectiveGoodsDomainModel(document.toObject<IDefectiveGoodsProps>())
-					)
-				})
-			)
+			const created = []
+			for (const chunkedDocuments of chunks) {
+				const inserted = await this.defectiveGoodsModel.insertMany(
+					chunkedDocuments.map((document) => document.toProps()),
+					{ session }
+				)
+				created.push(
+					inserted.map((document) => new DefectiveGoodsDomainModel(document.toObject<IDefectiveGoodsProps>()))
+				)
+			}
 			return created.flat()
 		} catch (error) {
 			if (error['code'] === DUPLICATE_KEY_ERROR_CODE) throw new ActiveEpcsRecombinationException()
@@ -64,13 +73,13 @@ export class DefectiveGoodsRepository
 		}
 	}
 
-	public async findById(id: string) {
+	public async findById(id: string, session?: ClientSession) {
 		const defectiveGoods = await this.defectiveGoodsModel
-			.findById(id, {
-				readPreference: 'primary' satisfies mongo.ReadPreferenceMode
-			})
+			.findById(id)
+			.read('primary')
+			.session(session ?? null)
 			.lean<IDefectiveGoodsProps>(true)
-		return new DefectiveGoodsDomainModel(defectiveGoods)
+		return defectiveGoods ? new DefectiveGoodsDomainModel(defectiveGoods) : null
 	}
 
 	public async find(
@@ -120,6 +129,11 @@ export class DefectiveGoodsRepository
 			useCustomCountFn: countDocuments
 		})
 
+		await Promise.all(
+			result.docs.map(async (doc) => {
+				doc.defective_description = await decodeDescription(doc.defective_description)
+			})
+		)
 		return {
 			data: result.docs,
 			page: result.page,
@@ -133,9 +147,9 @@ export class DefectiveGoodsRepository
 		} satisfies Pagination<IDefectiveGoods>
 	}
 
-	public async updateById(id: string, update: DefectiveGoodsDomainModel) {
+	public async updateById(id: string, update: DefectiveGoodsDomainModel, session?: ClientSession) {
 		const result = await this.defectiveGoodsModel
-			.findByIdAndUpdate(id, update.toProps())
+			.findByIdAndUpdate(id, update.toProps(), { session })
 			.lean<IDefectiveGoodsProps>({ virtuals: true, autopopulate: true })
 		return new DefectiveGoodsDomainModel(result)
 	}

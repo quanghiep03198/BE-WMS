@@ -14,7 +14,7 @@ WITH CTE AS (
       JSON_VALUE(value, '$.size_numcode') AS size_code,
       JSON_VALUE(value, '$.defective_category') AS defective_category,
       JSON_VALUE(value, '$.defective_location') AS defective_location,
-      JSON_VALUE(value, '$.defective_description') AS defective_description,
+      description.defective_description AS defective_description,
       JSON_VALUE(value, '$.shoe_source') AS shoe_source,
       JSON_VALUE(value, '$.assembly_line.name.cn') AS assembly_line,
       JSON_VALUE(value, '$.sewing_line.name.cn') AS sewing_line,
@@ -29,6 +29,7 @@ WITH CTE AS (
       JSON_VALUE(value, '$.updated_by.username') AS user_code_updated,
       JSON_VALUE(value, '$.updated_by.display_name') AS user_name_updated
    FROM OPENJSON(@0)
+   CROSS APPLY OPENJSON(value) WITH (defective_description nvarchar(max) '$.defective_description') AS description
 )
 MERGE INTO DV_DATA_LAKE.dbo.dv_defective_goods AS target
 USING (SELECT * FROM CTE) AS source

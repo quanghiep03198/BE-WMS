@@ -1,6 +1,7 @@
 import { IBaseRepository } from '@modules/_base/interfaces/base.abstract.repository.interface'
 import { IDefectiveGoods } from '@modules/defective-goods/domain/interfaces'
 import { DefectiveGoodsDomainModel } from '@modules/defective-goods/domain/models/defective-goods.model'
+import { ClientSession } from 'mongoose'
 import { DeleteManyDefectiveGoodsDTO } from '../dto/defective-goods.dto'
 
 export const DEFECTIVE_GOODS_REPOSITORY = Symbol('DEFECTIVE_GOODS_REPOSITORY')
@@ -18,15 +19,19 @@ export interface IKeysetPagination<T> extends Pagination<T> {
 }
 
 export interface IDefectiveGoodsRepository extends IBaseRepository<IDefectiveGoods, string | TObjectId> {
-	create(payload: DefectiveGoodsDomainModel[]): Promise<DefectiveGoodsDomainModel[]>
+	create(payload: DefectiveGoodsDomainModel[], session?: ClientSession): Promise<DefectiveGoodsDomainModel[]>
 	find(
 		filter?: Partial<IDefectiveGoods> | Record<string, any>,
 		projection?: Nullish<Record<string, any> | string>,
 		options?: Partial<{ read: 'primary' | 'secondary'; limit: number; skip: number; sort: any }>
 	): Promise<DefectiveGoodsDomainModel[]>
 	findOne(filter?: Partial<IDefectiveGoods> | Record<string, any>): Promise<IDefectiveGoods>
-	findById(id: string | TObjectId): Promise<DefectiveGoodsDomainModel>
-	updateById(id: string | TObjectId, payload: DefectiveGoodsDomainModel): Promise<DefectiveGoodsDomainModel>
+	findById(id: string | TObjectId, session?: ClientSession): Promise<DefectiveGoodsDomainModel>
+	updateById(
+		id: string | TObjectId,
+		payload: DefectiveGoodsDomainModel,
+		session?: ClientSession
+	): Promise<DefectiveGoodsDomainModel>
 	getInoutboundEpcs(
 		stockFlow: 'inbound' | 'outbound',
 		filters?: Partial<IDefectiveGoods> | Record<string, any>,

@@ -85,6 +85,8 @@ async function bootstrap() {
 		app.setGlobalPrefix('/api', {
 			exclude: [
 				{ path: '/', method: RequestMethod.GET },
+				{ path: '/files/:id', method: RequestMethod.GET },
+				{ path: '/uploads/images', method: RequestMethod.POST },
 				{ path: '/metrics', method: RequestMethod.GET }
 			]
 		})
@@ -106,7 +108,7 @@ async function bootstrap() {
 		await app.register(import('@fastify/helmet'), { global: true })
 		await app.register(import('@fastify/compress'), {
 			global: true,
-			encodings: ['gzip', 'deflate'],
+			encodings: ['br', 'gzip', 'deflate'],
 			threshold: 10 * 1024
 		})
 		await app.register(import('@fastify/cookie'), { secret: configService.get<string>('COOKIE_SECRET') })

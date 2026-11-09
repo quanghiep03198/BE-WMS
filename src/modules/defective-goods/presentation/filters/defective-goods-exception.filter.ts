@@ -87,8 +87,6 @@ export class DefectiveGoodsExceptionFilter implements ExceptionFilter {
 		const responseBody: IResponseBody = {
 			message,
 			statusCode,
-			stack: exception instanceof Error ? exception.stack : undefined,
-			cause: exception instanceof Error ? exception.cause : undefined,
 			timestamp: new Date().toISOString(),
 			path: httpAdapter.getRequestUrl(ctx.getRequest())
 		}

@@ -51,6 +51,7 @@ import {
 	DATA_WAREHOUSE_CONNECTION
 } from './databases/constants'
 import { MetricsModule } from './metrics/metrics.module'
+import { FilesModule } from './modules/files/files.module'
 import { RFIDDeviceModule } from './modules/rfid-device/rfid-device.module'
 import { ScheduleTasks } from './tasks'
 
@@ -148,6 +149,7 @@ import { ScheduleTasks } from './tasks'
 		}),
 
 		// * Feature modules
+		FilesModule,
 		AuthModule,
 		DepartmentModule,
 		OrderModule,

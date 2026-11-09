@@ -61,6 +61,12 @@ export class DefectiveGoods {
 	@Prop({ type: String, required: true })
 	defective_description: string
 
+	@Prop({ type: [String], default: undefined })
+	description_image_ids?: string[]
+
+	@Prop({ type: String, select: false })
+	description_legacy_hash?: string
+
 	/**
 	 * Tương ứng với cột shoe_source trong mssql
 	 */

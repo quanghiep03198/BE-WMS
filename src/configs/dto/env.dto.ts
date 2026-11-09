@@ -40,6 +40,9 @@ export const envConfigDTO = z.object({
 	// * MongoDB
 	MONGO_URI: z.string().trim().nonempty(),
 	MONGO_DB_NAME: z.string().trim().nonempty(),
+	FILES_CLEANUP_CRON: z.string().trim().nonempty().default('0 2 * * *'),
+	FILES_PENDING_HOURS: z.coerce.number().positive().default(24),
+	FILES_ORPHAN_DAYS: z.coerce.number().positive().default(7),
 
 	// * Redis
 	REDIS_HOST: z.ipv4(),

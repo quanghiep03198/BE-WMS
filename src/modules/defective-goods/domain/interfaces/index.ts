@@ -25,6 +25,7 @@ export interface IDefectiveGoods {
 	defective_location: DefectiveLocation
 	shoe_source?: DefectiveGoodsSource
 	defective_description: string
+	description_image_ids?: string[]
 	sewing_line?: IDepartment | TObjectId | string
 	assembly_line?: IDepartment | TObjectId | string
 	storage_location?: string

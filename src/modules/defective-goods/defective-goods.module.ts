@@ -1,5 +1,6 @@
 import { DATA_SOURCE_DATA_LAKE, DATA_WAREHOUSE_CONNECTION } from '@databases/constants'
 import { DepartmentModule } from '@modules/department/department.module'
+import { FilesModule } from '@modules/files/files.module'
 import { BullModule } from '@nestjs/bullmq'
 import { Module, OnModuleInit } from '@nestjs/common'
 import { CqrsModule } from '@nestjs/cqrs'
@@ -31,6 +32,7 @@ import { DefectiveGoodsController } from './presentation/controllers/defective-g
 @Module({
 	imports: [
 		CqrsModule,
+		FilesModule,
 		DepartmentModule,
 		BullModule.registerQueue({ name: DEFECTIVE_GOODS_SYNC_QUEUE, defaultJobOptions: DEFECTIVE_GOODS_JOB_OPTIONS }),
 		MongooseModule.forFeature(

@@ -21,14 +21,12 @@ export class HttpExceptionFilter implements ExceptionFilter {
 		const ctx = host.switchToHttp()
 		const httpStatus = exception instanceof HttpException ? exception.getStatus() : HttpStatus.INTERNAL_SERVER_ERROR
 		const responseBody: IResponseBody = {
-			message: exception.message,
+			message: httpStatus >= HttpStatus.INTERNAL_SERVER_ERROR ? 'Internal server error' : exception.message,
 			statusCode: httpStatus,
-			stack: exception.stack,
-			cause: exception.cause,
 			timestamp: new Date().toISOString(),
 			path: httpAdapter.getRequestUrl(ctx.getRequest())
 		}
-		if (httpStatus === HttpStatus.INTERNAL_SERVER_ERROR) this.logger.error(exception)
+		if (httpStatus >= HttpStatus.INTERNAL_SERVER_ERROR) this.logger.error(exception)
 		httpAdapter.reply(ctx.getResponse(), responseBody, httpStatus)
 	}
 }

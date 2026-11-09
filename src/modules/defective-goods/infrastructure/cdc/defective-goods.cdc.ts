@@ -3,15 +3,16 @@ import { CdcChangeContext, ICdcHandler } from '@databases/cdc/types'
 import { DATA_SOURCE_DATA_LAKE, DATA_WAREHOUSE_CONNECTION, DATABASE_SCHEMA, RecordStatus } from '@databases/constants'
 import { CombinationStrategy } from '@modules/defective-goods/domain/constants'
 import { Department, DepartmentModel } from '@modules/department/schemas/department.schema'
-import { InjectModel } from '@nestjs/mongoose'
-import { AnyBulkWriteOperation, Types } from 'mongoose'
+import { decodeDescription } from '@modules/files/description-codec'
+import { FilesService } from '@modules/files/files.service'
+import { HtmlSanitizerService } from '@modules/files/html-sanitizer.service'
+import { InjectConnection, InjectModel } from '@nestjs/mongoose'
+import { Connection, Types } from 'mongoose'
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
+import { createHash } from 'node:crypto'
 import { DefectiveGoods, DefectiveGoodsModel } from '../persistence/mongodb/schemas/defective-goods.schema'
 
 export const DEFECTIVE_GOODS_TABLE = 'dv_defective_goods'
-
-/** Số thao tác tối đa mỗi lần bulkWrite. */
-const BULK_CHUNK_SIZE = 1000
 
 type DefectiveGoodsCdcRow = {
 	keyid: number
@@ -54,14 +55,16 @@ export class DefectiveGoodsCdcHandler implements ICdcHandler<DefectiveGoodsCdcRo
 	constructor(
 		@InjectModel(DefectiveGoods.name, DATA_WAREHOUSE_CONNECTION) private readonly model: DefectiveGoodsModel,
 		@InjectModel(Department.name, DATA_WAREHOUSE_CONNECTION) private readonly departments: DepartmentModel,
+		@InjectConnection(DATA_WAREHOUSE_CONNECTION) private readonly connection: Connection,
+		private readonly files: FilesService,
+		private readonly sanitizer: HtmlSanitizerService,
 		@InjectPinoLogger(DefectiveGoodsCdcHandler.name) private readonly logger: PinoLogger
 	) {}
 
 	async handle({ changes }: CdcChangeContext<DefectiveGoodsCdcRow>): Promise<void> {
 		const departmentIds = await this.loadDepartmentIds(changes)
 
-		// Giữ nguyên thứ tự thay đổi để cùng một document (xóa rồi tạo lại, update liên tiếp) không bị đảo.
-		const ops: AnyBulkWriteOperation<DefectiveGoods>[] = []
+		let processed = 0
 
 		for (const change of changes) {
 			for (const row of change.data) {
@@ -75,29 +78,48 @@ export class DefectiveGoodsCdcHandler implements ICdcHandler<DefectiveGoodsCdcRo
 
 				if (change.operation === 'delete' || (change.operation === 'update' && isCancelled)) {
 					// Tương đương model.delete({ _id }) của mongoose-delete. Phải khớp tên field mà plugin đang ghi.
-					ops.push({
-						updateOne: { filter: { _id }, update: { $set: { deleted: true, deleted_at: new Date() } } }
-					})
+					await this.model.collection.updateOne({ _id }, { $set: { deleted: true, deleted_at: new Date() } })
+					processed++
 					continue
 				}
 				if (isCancelled) continue
 
-				ops.push({
-					updateOne: {
-						filter: { _id },
-						update: { $set: this.toDocument(row, departmentIds) as unknown as Partial<DefectiveGoods> },
-						upsert: true
-					}
-				})
+				const session = await this.connection.startSession()
+				try {
+					await session.withTransaction(
+						async () => {
+							const existing = await this.model.collection.findOne({ _id }, { session })
+							const decoded = await decodeDescription(row.defective_description)
+							const legacy = decoded !== row.defective_description || /data:image\//i.test(decoded)
+							const document = this.toDocument(row, departmentIds)
+							const sourceHash = createHash('sha256').update(row.defective_description).digest('hex')
+							if (existing?.description_legacy_hash === sourceHash) {
+								delete document.defective_description
+							} else if (legacy && existing?.description_image_ids !== undefined) {
+								throw new Error(`CDC contains an unmigrated description for ${_id}`)
+							} else if (!legacy) {
+								const { html, imageIds } = this.sanitizer.sanitize(decoded)
+								await this.files.syncImageRefs(
+									`defective-goods:${_id}`,
+									existing?.description_image_ids ?? [],
+									imageIds,
+									session
+								)
+								Object.assign(document, { defective_description: html, description_image_ids: imageIds })
+							}
+							await this.model.collection.updateOne({ _id }, { $set: document }, { upsert: true, session })
+						},
+						{ readPreference: 'primary' }
+					)
+				} finally {
+					await session.endSession()
+				}
+				processed++
 			}
 		}
 
-		for (let i = 0; i < ops.length; i += BULK_CHUNK_SIZE) {
-			await this.model.bulkWrite(ops.slice(i, i + BULK_CHUNK_SIZE), { ordered: true })
-		}
-
 		this.logger.info(
-			`Processed ${changes.reduce((total, group) => total + group.data.length, 0)} defective goods CDC rows (${ops.length} write ops)`
+			`Processed ${changes.reduce((total, group) => total + group.data.length, 0)} defective goods CDC rows (${processed} write ops)`
 		)
 	}
 
@@ -120,7 +142,7 @@ export class DefectiveGoodsCdcHandler implements ICdcHandler<DefectiveGoodsCdcRo
 			.lean()
 			.exec()
 
-		return new Map(departments.map((department) => [department.name.cn, department._id as Types.ObjectId]))
+		return new Map(departments.map((department) => [department.name.cn, department._id]))
 	}
 
 	private toDocument(row: DefectiveGoodsCdcRow, departmentIds: Map<string, Types.ObjectId>) {
