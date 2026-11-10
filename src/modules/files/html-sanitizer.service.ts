@@ -101,7 +101,7 @@ export class HtmlSanitizerService {
 			exclusiveFilter: (frame) =>
 				(frame.tag === 'img' && !IMAGE_SRC.test(frame.attribs.src ?? '')) ||
 				(frame.tag === 'input' && frame.attribs.type !== 'checkbox')
-		})
+		}).normalize('NFC')
 		return { html, imageIds: [...imageIds] }
 	}
 }
