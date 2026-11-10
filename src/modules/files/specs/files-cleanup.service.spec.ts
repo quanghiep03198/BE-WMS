@@ -1,4 +1,4 @@
-import { cleanupEligibility } from './files-cleanup.service'
+import { cleanupEligibility } from '../files-cleanup.service'
 
 describe('cleanupEligibility', () => {
 	it('requires no refs and applies configured pending and orphan thresholds', () => {

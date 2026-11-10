@@ -1,7 +1,7 @@
 import { ConfigService } from '@nestjs/config'
 import mongoose, { Connection, Model, Types } from 'mongoose'
-import { FilesCleanupProcessor } from './files-cleanup.service'
-import { StoredFile, StoredFileSchema } from './stored-file.schema'
+import { FilesCleanupProcessor } from '../files-cleanup.service'
+import { StoredFile, StoredFileSchema } from '../stored-file.schema'
 
 const mongoUri = process.env.FILES_TEST_MONGO_URI
 const integration = mongoUri ? describe : describe.skip

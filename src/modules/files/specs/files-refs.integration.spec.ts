@@ -1,6 +1,6 @@
 import mongoose, { Connection, Model, Types } from 'mongoose'
-import { FilesService } from './files.service'
-import { StoredFile, StoredFileSchema } from './stored-file.schema'
+import { FilesService } from '../files.service'
+import { StoredFile, StoredFileSchema } from '../stored-file.schema'
 
 jest.mock('file-type/node', () => ({ fileTypeStream: jest.fn() }))
 

@@ -1,8 +1,8 @@
 import { BadRequestException } from '@nestjs/common'
 import mongoose, { Connection, Model, Types } from 'mongoose'
 import { Readable } from 'node:stream'
-import { FilesService, MAX_IMAGE_SIZE } from './files.service'
-import { StoredFile, StoredFileSchema } from './stored-file.schema'
+import { FilesService, MAX_IMAGE_SIZE } from '../files.service'
+import { StoredFile, StoredFileSchema } from '../stored-file.schema'
 
 jest.mock('file-type/node', () => ({
 	fileTypeStream: jest.fn(async (stream: Readable) =>

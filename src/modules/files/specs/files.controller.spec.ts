@@ -4,8 +4,8 @@ import { JwtService } from '@nestjs/jwt'
 import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify'
 import { Test } from '@nestjs/testing'
 import { Readable } from 'node:stream'
-import { FilesController } from './files.controller'
-import { FilesService } from './files.service'
+import { FilesController } from '../files.controller'
+import { FilesService } from '../files.service'
 
 jest.mock('file-type/node', () => ({ fileTypeStream: jest.fn() }))
 

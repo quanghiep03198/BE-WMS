@@ -1,5 +1,5 @@
 import { BadRequestException } from '@nestjs/common'
-import { FilesService } from './files.service'
+import { FilesService } from '../files.service'
 
 jest.mock('file-type/node', () => ({ fileTypeStream: jest.fn() }))
 

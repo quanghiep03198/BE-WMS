@@ -2,6 +2,8 @@ import { Injectable } from '@nestjs/common'
 import sanitizeHtml from 'sanitize-html'
 
 const IMAGE_SRC = /^\/files\/([a-f0-9]{24})$/
+const SAFE_FONT_FAMILY =
+	/^\s*(?:(?:"[\p{L}\p{N}\s._-]+"|'[\p{L}\p{N}\s._-]+'|[\p{L}_-][\p{L}\p{N}._-]*)(?:\s*,\s*(?:"[\p{L}\p{N}\s._-]+"|'[\p{L}\p{N}\s._-]+'|[\p{L}_-][\p{L}\p{N}._-]*))*)\s*$/u
 
 @Injectable()
 export class HtmlSanitizerService {
@@ -76,6 +78,10 @@ export class HtmlSanitizerService {
 					color: [/^#[a-f0-9]{3,8}$/i, /^rgba?\([\d.,%\s]+\)$/i, /^[a-z]+$/i],
 					'background-color': [/^#[a-f0-9]{3,8}$/i, /^rgba?\([\d.,%\s]+\)$/i, /^[a-z]+$/i],
 					'font-size': [/^\d+(?:\.\d+)?(?:px|pt|em|rem|%)$/],
+					'font-family': [SAFE_FONT_FAMILY],
+					'font-weight': [/^(?:normal|bold|bolder|lighter|[1-9]00)$/],
+					'font-style': [/^(?:normal|italic|oblique)$/],
+					'text-decoration': [/^(?:none|underline|line-through|overline)$/],
 					width: [/^\d+(?:\.\d+)?(?:px|%)$/],
 					height: [/^\d+(?:\.\d+)?(?:px|%)$/]
 				}

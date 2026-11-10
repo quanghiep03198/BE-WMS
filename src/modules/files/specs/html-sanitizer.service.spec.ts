@@ -1,7 +1,7 @@
 import { promisify } from 'node:util'
 import { gzip } from 'node:zlib'
-import { decodeDescription } from './description-codec'
-import { HtmlSanitizerService } from './html-sanitizer.service'
+import { decodeDescription } from '../description-codec'
+import { HtmlSanitizerService } from '../html-sanitizer.service'
 
 describe('HtmlSanitizerService', () => {
 	const sanitizer = new HtmlSanitizerService()
@@ -36,6 +36,28 @@ describe('HtmlSanitizerService', () => {
 		expect(result.html).toContain('<figure data-type="figure">')
 		expect(result.html).toContain('<figcaption>Caption</figcaption>')
 		expect(result.imageIds).toEqual([id])
+	})
+
+	it('preserves Vietnamese and Chinese text and safe font formatting', () => {
+		const input =
+			'<p style="text-align: center"><span style="font-family: Arial, \'Noto Sans CJK SC\', sans-serif; font-size: 16px; color: #123456">Tiếng Việt có dấu — 中文字符</span></p>'
+		const result = sanitizer.sanitize(input)
+
+		expect(result.html).toContain('Tiếng Việt có dấu — 中文字符')
+		expect(result.html).toContain("font-family:Arial, 'Noto Sans CJK SC', sans-serif")
+		expect(result.html).toContain('font-size:16px')
+		expect(result.html).toContain('color:#123456')
+		expect(result.html).toContain('text-align:center')
+	})
+
+	it('rejects unsafe font-family CSS while preserving text', () => {
+		const result = sanitizer.sanitize(
+			'<p><span style="font-family: url(javascript:alert(1)); background-image: url(javascript:alert(1))">Xin chào 中文</span></p>'
+		)
+
+		expect(result.html).toContain('Xin chào 中文')
+		expect(result.html).not.toContain('font-family')
+		expect(result.html).not.toContain('background-image')
 	})
 })
 
