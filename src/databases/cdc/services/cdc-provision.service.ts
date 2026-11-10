@@ -11,7 +11,13 @@ import { buildCaptureInstanceName, buildTableLabel, getCdcCheckpointKey } from '
 
 interface ExistingCaptureConfig {
 	supportsNetChanges: boolean
-	columns: string[]
+	columns: CdcColumn[]
+}
+
+interface CdcColumn {
+	name: string
+	type: string
+	maxLength: number
 }
 
 const SQL_ERROR_MISSING_PK_FOR_NET_CHANGES = 22942 as const
@@ -72,7 +78,13 @@ export class CdcProvisionerService {
 			return
 		}
 
-		const desiredSignature = this.buildSignature(cfg.capturedColumns, cfg.supportsNetChanges)
+		const sourceColumns = await this.getSourceColumns(dataSource, cfg.schema, cfg.sourceName)
+		const desiredColumns = cfg.capturedColumns.map((name) => {
+			const column = sourceColumns.find((sourceColumn) => sourceColumn.name === name)
+			if (!column) throw new Error(`CDC column ${cfg.schema}.${cfg.sourceName}.${name} does not exist`)
+			return column
+		})
+		const desiredSignature = this.buildSignature(desiredColumns, cfg.supportsNetChanges)
 		const existingSignature = this.buildSignature(existing.columns, existing.supportsNetChanges)
 
 		if (desiredSignature === existingSignature) {
@@ -143,9 +155,10 @@ export class CdcProvisionerService {
 
 		const columnRows = await dataSource.query(
 			/* SQL */ `
-      SELECT cc.column_name
+      SELECT cc.column_name, cc.column_type, c.max_length
       FROM cdc.captured_columns cc
       JOIN cdc.change_tables ct ON ct.object_id = cc.object_id
+      JOIN sys.columns c ON c.object_id = ct.object_id AND c.name = cc.column_name
       WHERE ct.capture_instance = @0
       ORDER BY cc.column_ordinal
       `,
@@ -154,8 +167,32 @@ export class CdcProvisionerService {
 
 		return {
 			supportsNetChanges: !!changeTableRows[0].supports_net_changes,
-			columns: columnRows.map((r: any) => r.column_name)
+			columns: columnRows.map((row: any) => ({
+				name: row.column_name,
+				type: row.column_type,
+				maxLength: Number(row.max_length)
+			}))
 		}
+	}
+
+	private async getSourceColumns(dataSource: DataSource, schema: string, sourceName: string): Promise<CdcColumn[]> {
+		const rows = await dataSource.query(
+			/* SQL */ `
+      SELECT c.name AS column_name, ty.name AS column_type, c.max_length
+      FROM sys.columns c
+      JOIN sys.tables t ON t.object_id = c.object_id
+      JOIN sys.schemas s ON s.schema_id = t.schema_id
+      JOIN sys.types ty ON ty.user_type_id = c.user_type_id
+      WHERE s.name = @0 AND t.name = @1
+      `,
+			[schema, sourceName]
+		)
+
+		return rows.map((row: any) => ({
+			name: row.column_name,
+			type: row.column_type,
+			maxLength: Number(row.max_length)
+		}))
 	}
 
 	/**
@@ -166,7 +203,7 @@ export class CdcProvisionerService {
 	 * @param captureInstance
 	 */
 	private async enableTable(dataSource: DataSource, cfg: CdcProvisionConfig, captureInstance: string): Promise<void> {
-		const { schema, sourceName, capturedColumns, roleName, indexName, supportsNetChanges } = cfg
+		const { schema, sourceName, roleName, indexName, supportsNetChanges } = cfg
 
 		const roleNameSql = roleName ? `N'${roleName}'` : 'NULL'
 		const indexNameSql = indexName ? `N'${indexName}'` : 'NULL'
@@ -216,9 +253,9 @@ export class CdcProvisionerService {
 		await this.redis.sadd(CDC_CHECKPOINT_REGISTRY_KEY, checkpointKey)
 	}
 
-	private buildSignature(columns: string[], supportsNetChanges: boolean): string {
+	private buildSignature(columns: CdcColumn[], supportsNetChanges: boolean): string {
 		const normalized = [...columns]
-			.map((c) => c.toLowerCase())
+			.map(({ name, type, maxLength }) => `${name.toLowerCase()}:${type.toLowerCase()}:${maxLength}`)
 			.sort()
 			.join(',')
 		return `${normalized}|${supportsNetChanges}`
