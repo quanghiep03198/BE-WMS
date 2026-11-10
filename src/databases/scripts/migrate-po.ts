@@ -2,6 +2,7 @@ import { AnyBulkWriteOperation } from 'mongoose'
 import { isIPv4 } from 'net'
 import { env, SuperJson } from '../../common/utils'
 import { PurchaseOrderDocument } from '../../modules/order/schemas/purchase-order.schema'
+import { orderSearchGrams } from '../../modules/order/order-search-grams'
 import { MongoManager } from './libs/mongoose'
 import { MssqlManager } from './libs/mssql'
 import { getArgs } from './utils/get-args'
@@ -105,6 +106,7 @@ export async function execute() {
 					update: {
 						$set: {
 							...row,
+							search_ngrams: orderSearchGrams(row.po),
 							packing: SuperJson.parse(row.packing),
 							shipping_progress: SuperJson.parse(row.shipping_progress)
 						}

@@ -17,6 +17,7 @@ import pick from 'lodash/pick'
 import { AnyBulkWriteOperation } from 'mongoose'
 import { InjectPinoLogger } from 'nestjs-pino'
 import { DataSource } from 'typeorm'
+import { orderSearchGrams } from './order-search-grams'
 
 /**
  * @description - This task is responsible for syncing ERP orders into the system.
@@ -124,7 +125,7 @@ export class OrderTask {
 					updateOne: {
 						filter: { mo_no: update.mo_no },
 						update: {
-							$set: flatten(update),
+							$set: { ...flatten(update), search_ngrams: orderSearchGrams(item.mo_no) },
 							$inc: Object.keys(sizeLedger).reduce(
 								(acc, size) => ({
 									...acc,
@@ -281,6 +282,7 @@ export class OrderTask {
 							shipping_destination: item.shipping_destination
 						},
 						$set: {
+							search_ngrams: orderSearchGrams(item.po),
 							...flatten(pick(item, 'shipping_progress')),
 							...flatten(pick(item, 'packing'))
 						},

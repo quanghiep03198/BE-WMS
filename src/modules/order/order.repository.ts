@@ -5,6 +5,7 @@ import { InjectModel } from '@nestjs/mongoose'
 import { InjectDataSource } from '@nestjs/typeorm'
 import { LeanDocument, mongo } from 'mongoose'
 import { DataSource } from 'typeorm'
+import { orderSearchFilter } from './order-search-grams'
 import { IOrderRepository } from './order.repository.interface'
 import {
 	ManufacturingOrder,
@@ -45,12 +46,10 @@ export class OrderRepository implements IOrderRepository {
 	}
 
 	public async searchManufacturingOrder(searchTerm: string): Promise<Array<Record<'mo_no', string>>> {
-		return await this.manufacturingOrderModel
-			.find({ mo_no: { $regex: searchTerm, $options: 'i' } })
-			.select('mo_no')
-			.sort({ mo_no: -1 })
-			.lean<Array<{ mo_no: string }>>(true)
-			.limit(5)
+		const indexed = process.env.ORDER_NGRAM_SEARCH_ENABLED === 'true'
+		const query = this.manufacturingOrderModel.find(orderSearchFilter('mo_no', searchTerm, indexed))
+		if (indexed) query.hint(searchTerm ? 'mo_search_ngrams_idx' : 'idx_mo')
+		return await query.select('mo_no').sort({ mo_no: -1 }).lean<Array<{ mo_no: string }>>(true).limit(5)
 	}
 
 	public async searchPurchaseOrder(
@@ -67,12 +66,13 @@ export class OrderRepository implements IOrderRepository {
 		}>
 	> {
 		{
-			const docs = await this.purchaseOrderModel
-				.find({
-					po: { $regex: searchTerm, $options: 'i' },
-					brand_name:
-						typeof shouldFilterAllBrands === 'boolean' && shouldFilterAllBrands ? 'UGG' : { $exists: true }
-				})
+			const indexed = process.env.ORDER_NGRAM_SEARCH_ENABLED === 'true'
+			const query = this.purchaseOrderModel.find({
+				...orderSearchFilter('po', searchTerm, indexed),
+				brand_name: typeof shouldFilterAllBrands === 'boolean' && shouldFilterAllBrands ? 'UGG' : { $exists: true }
+			})
+			if (indexed) query.hint(searchTerm ? 'po_search_ngrams_idx' : 'po_idx')
+			const docs = await query
 				.lean(true)
 				.select('-_id po order_qty brand_name factory_shoes_style color_sn shipping_progress')
 				.limit(5)

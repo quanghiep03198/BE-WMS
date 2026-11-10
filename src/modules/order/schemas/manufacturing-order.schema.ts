@@ -1,6 +1,7 @@
 import { DailyMoInventoryLedgerDocument } from '@modules/finished-goods/infrastructure/persistence/mongodb/schemas/daily-mo-inventory-ledger.schema'
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose'
 import { HydratedDocument, LeanDocument, Model } from 'mongoose'
+import { orderSearchPlugin } from '../order-search-grams'
 
 @Schema({ _id: false })
 class ManufacturingOrderSizeLedger {
@@ -49,6 +50,9 @@ export class ManufacturingOrder {
 	@Prop({ type: String, requried: true })
 	mo_no: string
 
+	@Prop({ type: [String], select: false })
+	search_ngrams: string[]
+
 	@Prop({ type: String, requried: true })
 	brand_name: string
 
@@ -78,6 +82,8 @@ export class ManufacturingOrder {
 export const ManufacturingOrderSchema = SchemaFactory.createForClass(ManufacturingOrder)
 
 ManufacturingOrderSchema.index({ mo_no: 1 }, { name: 'idx_mo', unique: true })
+ManufacturingOrderSchema.index({ search_ngrams: 1, mo_no: -1 }, { name: 'mo_search_ngrams_idx' })
+ManufacturingOrderSchema.plugin(orderSearchPlugin, { field: 'mo_no' })
 
 ManufacturingOrderSchema.virtual('daily_inbound_history', {
 	ref: 'DailyMoInventoryLedger',

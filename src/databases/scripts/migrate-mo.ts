@@ -1,5 +1,6 @@
 import 'dotenv/config'
 import { AnyBulkWriteOperation, HydratedDocument } from 'mongoose'
+import { orderSearchGrams } from '../../modules/order/order-search-grams'
 import { env, SuperJson } from '../../common/utils'
 import { MongoManager } from './libs/mongoose'
 import { MssqlManager } from './libs/mssql'
@@ -111,6 +112,7 @@ async function execute() {
 					update: {
 						$set: {
 							...row,
+							search_ngrams: orderSearchGrams(row.mo_no),
 							size_ledger: SuperJson.parse(row.size_ledger)
 						}
 					},

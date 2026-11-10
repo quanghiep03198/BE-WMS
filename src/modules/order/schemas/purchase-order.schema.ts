@@ -1,5 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose'
 import type { HydratedDocument, Model } from 'mongoose'
+import { orderSearchPlugin } from '../order-search-grams'
 import { ShippingMethod } from '../types'
 
 @Schema()
@@ -28,6 +29,9 @@ export const PURCHASE_ORDER_COLLECTION = 'purchase_orders'
 export class PurchaseOrder {
 	@Prop({ type: String, required: true })
 	po: string
+
+	@Prop({ type: [String], select: false })
+	search_ngrams: string[]
 
 	@Prop({ type: Number, required: true })
 	order_qty: number
@@ -60,6 +64,8 @@ export class PurchaseOrder {
 export const PurchaseOrderSchema = SchemaFactory.createForClass(PurchaseOrder)
 
 PurchaseOrderSchema.index({ po: 1 }, { unique: true, name: 'po_idx' })
+PurchaseOrderSchema.index({ search_ngrams: 1, po: 1 }, { name: 'po_search_ngrams_idx' })
+PurchaseOrderSchema.plugin(orderSearchPlugin, { field: 'po' })
 
 PurchaseOrderSchema.virtual('outbound_history', {
 	ref: 'DailyPoShippingProgress',

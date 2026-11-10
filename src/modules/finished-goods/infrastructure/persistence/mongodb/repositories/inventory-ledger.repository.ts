@@ -26,6 +26,7 @@ import {
 	ManufacturingOrderModel
 } from '../../../../../order/schemas/manufacturing-order.schema'
 import { PurchaseOrder, PurchaseOrderModel } from '../../../../../order/schemas/purchase-order.schema'
+import { orderSearchGrams } from '../../../../../order/order-search-grams'
 import { DailyMoInventoryLedger, DailyMoInventoryLedgerModel } from '../schemas/daily-mo-inventory-ledger.schema'
 import { DailyPoShippingProgress, DailyPoShippingProgressModel } from '../schemas/daily-po-shipping-progress.schema'
 import { FinishedGoodsEpc, FinishedGoodsEpcModel } from '../schemas/finished-goods-epc.schema'
@@ -255,7 +256,10 @@ export class InventoryLedgerRepository implements IInventoryLedgerRepository {
 							factory_shoes_style: mo.factory_shoes_style,
 							color_sn: mo.color_sn
 						},
-						update: { $inc: incrementExpression },
+						update: {
+							$inc: incrementExpression,
+							$setOnInsert: { search_ngrams: orderSearchGrams(mo.mo_no) }
+						},
 						upsert: true
 					}
 				}
