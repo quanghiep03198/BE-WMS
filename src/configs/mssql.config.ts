@@ -3,6 +3,7 @@ import { DATABASE_SCHEMA } from '@databases/constants'
 import { InvDefectiveGoods1757390824605 } from '@databases/migrations/1757390824605-inv_defective_goods'
 import { TruckloadDelivery1762756390180 } from '@databases/migrations/1762756390180-truckload-delivery'
 import { TruckloadDeliveryDdd1790726400000 } from '@databases/migrations/1790726400000-truckload-delivery-ddd'
+import { DefectiveDescriptionUnicode1790726400001 } from '@databases/migrations/1790726400001-defective-description-unicode'
 // import { DefectiveGoodsSyncId1793011200000 } from '@databases/migrations/1793011200000-defective-goods-sync-id'
 
 import { registerAs } from '@nestjs/config'
@@ -18,7 +19,12 @@ export default registerAs(MSSQL_CONFIG_TOKEN, (): TypeOrmModuleOptions => ({
 	username: env('DB_USERNAME'),
 	password: env('DB_PASSWORD'),
 	schema: DATABASE_SCHEMA,
-	migrations: [InvDefectiveGoods1757390824605, TruckloadDelivery1762756390180, TruckloadDeliveryDdd1790726400000],
+	migrations: [
+		InvDefectiveGoods1757390824605,
+		TruckloadDelivery1762756390180,
+		TruckloadDeliveryDdd1790726400000,
+		DefectiveDescriptionUnicode1790726400001
+	],
 	autoLoadEntities: true,
 	synchronize: false,
 	logging: ['error'],

@@ -114,7 +114,8 @@ export class InvDefectiveGoods1757390824605 implements MigrationInterface {
 			},
 			{
 				name: 'defective_description',
-				type: 'text',
+				type: 'nvarchar',
+				length: 'MAX',
 				isNullable: false,
 				comment:
 					'Raw text from editor, do not update this column manually, it will be updated by editor from Front-end'

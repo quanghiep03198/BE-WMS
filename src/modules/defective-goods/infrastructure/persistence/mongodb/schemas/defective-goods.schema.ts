@@ -58,7 +58,7 @@ export class DefectiveGoods {
 	@Prop({ type: String, enum: DefectiveCategory, required: true })
 	defective_category: DefectiveCategory
 
-	@Prop({ type: String, required: true })
+	@Prop({ type: String, required: true, transform: (v: string) => (typeof v === 'string' ? v.normalize('NFC') : v) })
 	defective_description: string
 
 	@Prop({ type: [String], default: undefined })

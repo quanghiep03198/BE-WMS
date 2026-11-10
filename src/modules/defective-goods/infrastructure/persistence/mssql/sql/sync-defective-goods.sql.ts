@@ -36,6 +36,7 @@ USING (SELECT * FROM CTE) AS source
 ON target.sync_id = source.sync_id
 WHEN MATCHED THEN
    UPDATE SET
+      target.sync_id = source.sync_id,
       target.isactive = source.isactive,
       target.inbound_date = source.inbound_date,
       target.unit = source.unit,

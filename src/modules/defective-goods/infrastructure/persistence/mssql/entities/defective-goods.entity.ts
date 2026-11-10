@@ -97,7 +97,8 @@ export class DefectiveGoodsEntity extends BaseAbstractEntity {
 
 	@Column({
 		name: 'defective_description',
-		type: 'text',
+		type: 'nvarchar',
+		length: 'MAX',
 		nullable: false,
 		comment: 'Raw text from editor, do not update this column manually, it will be updated by editor from Front-end'
 	})
