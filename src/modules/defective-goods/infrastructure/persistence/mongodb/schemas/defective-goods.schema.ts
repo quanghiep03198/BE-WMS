@@ -11,7 +11,7 @@ import { UserDocument } from '@modules/user/infrastructure/persistence/mongodb/s
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose'
 import { Types, type HydratedDocument, type PaginateModel } from 'mongoose'
 import MongooseAutoPopulate from 'mongoose-autopopulate'
-import MongooseDelete, { SoftDeleteModel } from 'mongoose-delete'
+import MongooseDelete, { SoftDeleteDocument, SoftDeleteModel } from 'mongoose-delete'
 import MongooseLeanVirtuals from 'mongoose-lean-virtuals'
 import MongoosePaginate from 'mongoose-paginate-v2'
 
@@ -176,11 +176,14 @@ for (const op of ['deleteOne', 'deleteMany', 'findOneAndDelete'] as const) {
 export type DefectiveGoodsDocument = HydratedDocument<
 	DefectiveGoods,
 	{
+		created_at: Date
+		updated_at?: Nullish<Date>
 		assembly_line: DepartmentDocument
 		sewing_line: DepartmentDocument
 		created_by: UserDocument
 		updated_by: UserDocument
 	}
->
+> &
+	SoftDeleteDocument
 
 export type DefectiveGoodsModel = SoftDeleteModel<DefectiveGoodsDocument> & PaginateModel<DefectiveGoodsDocument>

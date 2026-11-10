@@ -22,13 +22,11 @@ export const filterQueryDTO = z
 		size_numcode: z.string().toUpperCase().optional(),
 		assembly_line: z.string().optional(),
 		sewing_line: z.string().optional(),
-		created_at: z.coerce
-			.date()
-			.or(
-				z.string().refine((value) => !isNaN(Date.parse(value)), {
-					message: 'Invalid date string'
-				})
-			)
+		created_at: z
+			.string()
+			.refine((value) => !isNaN(Date.parse(value)), {
+				message: 'Invalid date string'
+			})
 			.optional(),
 		unit: z.enum(DefectiveGoodsUnit).optional(),
 		deleted: z.literal(false).default(false)
