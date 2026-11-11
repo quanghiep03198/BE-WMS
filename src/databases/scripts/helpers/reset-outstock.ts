@@ -1,9 +1,9 @@
 import 'dotenv/config'
 import mssql from 'mssql'
-import { MongoManager } from './libs/mongoose'
-import { MssqlManager } from './libs/mssql'
-import { getArgs } from './utils/get-args'
-import { Logger } from './utils/logger'
+import { MongoManager } from '../libs/mongoose'
+import { MssqlManager } from '../libs/mssql'
+import { getArgs } from '../utils/get-args'
+import { Logger } from '../utils/logger'
 
 const args = getArgs({ po: { type: 'string' }, date: { type: 'string' } })
 

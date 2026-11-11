@@ -17,6 +17,11 @@ const args = getArgs({
 		type: 'string',
 		description: 'MongoDB database name',
 		default: process.env.MONGO_DB_NAME
+	},
+	moPrefix: {
+		type: 'string',
+		description: 'MO prefix',
+		default: '15'
 	}
 })
 
@@ -130,7 +135,7 @@ async function execute() {
 		      wuerp_vnrd.dbo.NORMALIZE_SIZE_NUMBER(size_numcode) AS size_numcode,
 		      color_sn
 		   FROM DV_DATA_LAKE.dbo.dv_rfidmatchmst_cust
-		   WHERE LEFT(ISNULL(mo_no_actual, mo_no), 2) >= '15'
+		   WHERE LEFT(ISNULL(mo_no_actual, mo_no), 2) >= '${args.moPrefix}'
 		`)
 
 		await Promise.all([queryPromise, streamCompletion])

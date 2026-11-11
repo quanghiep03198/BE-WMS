@@ -3,10 +3,10 @@ import { omit } from 'lodash'
 import mssql from 'mssql'
 
 import { format } from 'date-fns'
-import { MongoManager } from './libs/mongoose'
-import { MssqlManager } from './libs/mssql'
-import { getArgs } from './utils/get-args'
-import { Logger } from './utils/logger'
+import { MongoManager } from '../libs/mongoose'
+import { MssqlManager } from '../libs/mssql'
+import { getArgs } from '../utils/get-args'
+import { Logger } from '../utils/logger'
 
 const args = getArgs({ mongoDbName: { type: 'string' }, mo: { type: 'string' } })
 
