@@ -27,8 +27,8 @@ SELECT
    pk.po,
    pl.brand AS brand_name,
    pl.shoestyle_codefactory AS factory_shoes_style,
+   CONCAT(pl.shoestyle_codecust, '/',pl.shoestyle_namecust) AS cust_shoes_style,
    pl.color_sn,
-   pk.Size AS original_size_data,
    -- Extract only # items and format numbers (remove commas only within parentheses)
    CASE 
       WHEN CHARINDEX('#', pk.Size) > 0 THEN 
@@ -49,7 +49,7 @@ SELECT
       AND LTRIM(RTRIM(value)) LIKE '%(%'
          )
       ELSE pk.Size
-   END AS size_data,
+   END AS packing_standard,
    @0 AS factory_code_produce,
    ROUND(pk.Weight, 2) AS standard_weight,
    ROUND(AVG(pk.Actual_weight_in), 2) AS actual_avg_weight,
@@ -98,6 +98,7 @@ GROUP BY
    pl.brand,
    pk.po, 
    pl.shoestyle_codefactory,
+   CONCAT(pl.shoestyle_codecust, '/',pl.shoestyle_namecust),
    pk.Size,
    pl.color_sn,
    pk.Weight,

@@ -2,7 +2,7 @@ import { CommonRequestHeader } from '@common/constants'
 import { HttpMethod, Public, RequestUser, RequireAuthorized, RouteHandler, TRequestUser } from '@common/decorators'
 import { ZodValidationPipe } from '@common/pipes'
 import { UserRole } from '@modules/user/domain/constants'
-import { Body, Controller, Headers, HttpStatus, Param, Query, Res } from '@nestjs/common'
+import { Body, Controller, Headers, HttpStatus, Param, Query, Res, Version, VERSION_NEUTRAL } from '@nestjs/common'
 import { FastifyReply } from 'fastify'
 import {
 	BulkUpdatePackingWeightDTO,
@@ -20,9 +20,10 @@ export class PackingController {
 		endpoint: 'manifest',
 		method: HttpMethod.GET
 	})
+	@Version([VERSION_NEUTRAL, '1'])
 	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF, UserRole.INDUSTRIAL_ENGINEERING_STAFF)
-	async getPackingManifest(@Headers(CommonRequestHeader.FACTORY_CODE) factoryCode: string) {
-		return await this.packingService.getPackingManifest(factoryCode)
+	async getLegacy(@Headers(CommonRequestHeader.FACTORY_CODE) factoryCode: string) {
+		return await this.packingService.getLegacy(factoryCode)
 	}
 
 	@RouteHandler({
@@ -47,6 +48,7 @@ export class PackingController {
 		endpoint: 'manifest/export',
 		method: HttpMethod.GET
 	})
+	@Version([VERSION_NEUTRAL, '1'])
 	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF, UserRole.INDUSTRIAL_ENGINEERING_STAFF)
 	async exportPackingManifest(
 		@Headers(CommonRequestHeader.FACTORY_CODE) factoryCode: string,

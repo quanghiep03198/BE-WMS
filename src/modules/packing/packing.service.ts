@@ -74,14 +74,14 @@ export class PackingService {
 		)
 	}
 
-	async getPackingManifest(factoryCode: string) {
+	async getLegacy(factoryCode: string) {
 		return await this.packingRepository.query<
 			Array<{
 				po: string
 				brand_name: string
 				shoes_style: string
 				color: string
-				size_data: string
+				packing_standard: string
 				factory_code_produce: string
 				standard_weight: number
 				actual_weight: number
@@ -160,12 +160,12 @@ export class PackingService {
 		]
 
 		// Get data and add to worksheet
-		const data = await this.getPackingManifest(factoryCode)
+		const data = await this.getLegacy(factoryCode)
 
 		data.forEach((record) => {
 			worksheet.addRow({
 				...record,
-				size_data: record.size_data
+				size_data: record.packing_standard
 					.split(';')
 					.map((item) => item.replace(/\((\d+)\)/, ' ($1 prs)'))
 					.join('; ')
