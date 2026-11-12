@@ -2,7 +2,7 @@ import { ConfigService } from '@nestjs/config'
 import { mkdtemp, readdir, rm, utimes, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { ExportStorageService } from '../manifest/export-storage.service'
+import { ExportStorageService } from '../services/export-storage.service'
 
 describe('export storage', () => {
 	it('rejects export directories beneath public or static folders', () => {

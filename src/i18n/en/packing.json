@@ -4,6 +4,7 @@
 		"manifest_report": "Packing Manifest Report {factory} - {date}"
 	},
 	"fields": {
+		"packing_standard": "Packing Standard",
 		"standard_weight": "Standard Weight (kg)",
 		"actual_weight": "Actual Weight (kg)",
 		"actual_avg_weight": "Actual Average Weight (kg)",

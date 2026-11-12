@@ -4,6 +4,7 @@
 		"manifest_report": "{factory}包裝清單報表 - {date}"
 	},
 	"fields": {
+		"packing_standard": "包裝標準",
 		"standard_weight": "標準重量 (kg)",
 		"actual_weight": "實際重量 (kg)",
 		"actual_avg_weight": "实测平均重量 (kg)",

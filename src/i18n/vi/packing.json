@@ -4,6 +4,7 @@
 		"manifest_report": "Báo cáo đóng hàng {factory} - {date}"
 	},
 	"fields": {
+		"packing_standard": "Tiêu chuẩn đóng hàng",
 		"standard_weight": "Trọng lượng chuẩn (kg)",
 		"actual_weight": "Trọng lượng thực tế (kg)",
 		"actual_avg_weight": "Trọng lượng TB thực tế (kg)",

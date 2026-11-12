@@ -1,7 +1,29 @@
 import { ConflictException, GoneException, NotFoundException } from '@nestjs/common'
-import { ManifestExportService } from '../manifest/manifest-export.service'
+import { Readable } from 'node:stream'
+import { ManifestExportService } from '../services/manifest-export.service'
 
 describe('manifest export jobs', () => {
+	it('returns the owned job language and creation date with the download stream', async () => {
+		const stream = Readable.from(['xlsx'])
+		const job = {
+			data: { userId: 'u1', factoryCode: 'VA1', language: 'vi' },
+			timestamp: Date.UTC(2026, 0, 2),
+			progress: 0,
+			returnvalue: { expiresAt: new Date(Date.now() + 60000).toISOString() },
+			getState: jest.fn().mockResolvedValue('completed')
+		}
+		const service = new ManifestExportService(
+			{ getJob: jest.fn().mockResolvedValue(job) } as never,
+			{ exists: jest.fn().mockResolvedValue(true), getReadStream: jest.fn().mockResolvedValue(stream) } as never
+		)
+		await expect(service.download('u1', 'id')).resolves.toEqual({
+			stream,
+			factoryCode: 'VA1',
+			language: 'vi',
+			timestamp: Date.UTC(2026, 0, 2)
+		})
+	})
+
 	it('reuses the existing job for the same user and filter and rejects a different filter', async () => {
 		const existing = {
 			id: 'existing',

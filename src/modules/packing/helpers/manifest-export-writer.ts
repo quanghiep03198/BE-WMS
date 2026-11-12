@@ -1,7 +1,8 @@
+import { ExcelColorPalette } from '@common/constants/excel-color-palette'
 import { stream, Worksheet } from 'exceljs'
 import { EventEmitter } from 'node:events'
 import type { WriteStream } from 'node:fs'
-import type { ManifestRow } from './manifest.repository'
+import type { ManifestRow } from '../repositories/manifest.repository'
 
 const SHEET_ROWS = 5000
 const fields = [
@@ -46,7 +47,7 @@ export class ManifestExportWriter {
 
 	constructor(
 		private readonly output: WriteStream,
-		private readonly labels?: { headers: string[]; summary: string }
+		private readonly labels?: { headers: string[]; summary: string; title?: string }
 	) {
 		this.workbook = new stream.xlsx.WorkbookWriter({ stream: output, useStyles: true, useSharedStrings: false })
 		if (!('zip' in this.workbook) || !(this.workbook.zip instanceof EventEmitter)) {
@@ -98,17 +99,40 @@ export class ManifestExportWriter {
 		}
 		this.names.add(name.toLocaleLowerCase('en-US'))
 		this.sheetCount++
-		this.worksheet = this.workbook.addWorksheet(name, { views: [{ state: 'frozen', ySplit: 1 }] })
-		this.worksheet.columns = fields.map((field, index) => ({
-			header: this.labels?.headers[index] ?? field,
+		this.worksheet = this.workbook.addWorksheet(name, { views: [{ state: 'frozen', ySplit: 2 }] })
+		this.worksheet.columns = fields.map((field) => ({
 			key: field,
 			width: 24
 		}))
-		this.worksheet.getRow(1).font = { bold: true }
-		this.worksheet.getRow(1).commit()
+		this.worksheet.mergeCells('A1:L1')
+		const title = this.worksheet.getRow(1)
+		title.getCell(1).value = this.labels?.title ?? 'Packing Manifest'
+		title.getCell(1).alignment = { vertical: 'middle', horizontal: 'center' }
+		title.getCell(1).fill = {
+			type: 'pattern',
+			pattern: 'solid',
+			fgColor: { argb: ExcelColorPalette.BG_LIGHT_NEUTRAL }
+		}
+		title.font = { name: 'Calibri', family: 1, size: 14, bold: true }
+		title.height = 30
+		title.commit()
+		const header = this.worksheet.addRow(fields.map((field, index) => this.labels?.headers[index] ?? field))
+		header.height = 30
+		header.eachCell((cell, column) => {
+			cell.font = { name: 'Calibri', family: 1, bold: true }
+			cell.alignment = { vertical: 'middle', horizontal: column <= 6 ? 'left' : 'right' }
+			cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: ExcelColorPalette.BG_LIGHT_BLUE } }
+			cell.border = this.border()
+		})
+		header.commit()
 		this.currentStyle = style
 		this.sheetRows = 0
 		this.totals = [0, 0, 0, 0]
+	}
+
+	private border() {
+		const edge = { style: 'thin' as const, color: { argb: ExcelColorPalette.BORDER } }
+		return { top: edge, left: edge, bottom: edge, right: edge }
 	}
 
 	private async closeSheet() {
@@ -124,9 +148,20 @@ export class ManifestExportWriter {
 			null,
 			null,
 			null,
-			...this.totals
+			...this.totals.map((result, index) => {
+				const column = String.fromCharCode('I'.charCodeAt(0) + index)
+				return { formula: this.sheetRows ? `SUM(${column}3:${column}${this.sheetRows + 2})` : '0', result }
+			})
 		])
-		summary.font = { bold: true }
+		sheet.mergeCells(`A${summary.number}:H${summary.number}`)
+		summary.height = 30
+		summary.alignment = { vertical: 'middle', horizontal: 'right' }
+		summary.eachCell({ includeEmpty: true }, (cell) => {
+			cell.font = { name: 'Calibri', family: 1, bold: true }
+			cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: ExcelColorPalette.BG_LIGHT_YELLOW } }
+			cell.border = this.border()
+		})
+		summary.getCell(1).alignment = { vertical: 'middle', horizontal: 'center' }
 		summary.commit()
 		// ExcelJS does not expose row backpressure; wait for its ZIP entry before opening the next bounded sheet.
 		let onEntry: (entry: { name: string }) => void
@@ -153,7 +188,13 @@ export class ManifestExportWriter {
 				await this.closeSheet()
 				this.openSheet(row.cust_shoes_style)
 			}
-			this.worksheet.addRow(fields.map((field) => safeCell(row[field] ?? null))).commit()
+			const dataRow = this.worksheet.addRow(fields.map((field) => safeCell(row[field] ?? null)))
+			dataRow.eachCell({ includeEmpty: true }, (cell, column) => {
+				cell.font = { name: 'Calibri', family: 1 }
+				cell.border = this.border()
+				if (column > 6) cell.alignment = { vertical: 'middle', horizontal: 'right' }
+			})
+			dataRow.commit()
 			this.totals[0] += row.target_box_qty ?? 0
 			this.totals[1] += row.target_item_qty ?? 0
 			this.totals[2] += row.weighed_box_qty ?? 0

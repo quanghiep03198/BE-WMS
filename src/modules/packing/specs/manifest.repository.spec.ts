@@ -1,6 +1,6 @@
 import 'reflect-metadata'
-import type { ManifestRow } from '../manifest/manifest.repository'
-import { ManifestRepository } from '../manifest/manifest.repository'
+import type { ManifestRow } from '../repositories/manifest.repository'
+import { ManifestRepository } from '../repositories/manifest.repository'
 
 describe('manifest repository', () => {
 	it('uses the same parameterized filters for counts, pages and export batches', async () => {

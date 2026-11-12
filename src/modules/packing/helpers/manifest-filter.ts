@@ -1,4 +1,4 @@
-import type { ManifestFilterDto } from './manifest-filter.dto'
+import type { ManifestFilterDto } from '../dto/manifest-filter.dto'
 
 const STRING_FIELDS = [
 	'po',
@@ -41,12 +41,22 @@ export function buildManifestFilter(filter: ManifestFilterDto, startIndex: numbe
 		if (value !== undefined && value !== null) {
 			add(field, 'LIKE', `%${value.replace(/[~%_\[]/g, '~$&')}%`, " ESCAPE '~'")
 		}
+		const exact = filter[`${field}Eq`]
+		if (exact !== undefined) add(field, '=', exact)
 	}
 	for (const field of NUMBER_FIELDS) {
+		const exact = filter[`${field}Eq`]
 		const from = filter[`${field}From`]
 		const to = filter[`${field}To`]
+		if (exact !== undefined) add(field, '=', exact)
 		if (from !== undefined && from !== null) add(field, '>=', from)
 		if (to !== undefined && to !== null) add(field, '<=', to)
+	}
+	if (filter.q !== undefined) {
+		const index = startIndex + parameters.length
+		const search = STRING_FIELDS.map((field) => `${manifestSortColumn(field)} LIKE @${index} ESCAPE '~'`).join(' OR ')
+		clauses.push(`(${search})`)
+		parameters.push(`%${filter.q.replace(/[~%_\[]/g, '~$&')}%`)
 	}
 	return { sql: clauses.length ? clauses.join(' AND ') : '1 = 1', parameters }
 }

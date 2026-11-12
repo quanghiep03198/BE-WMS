@@ -223,6 +223,7 @@ export type I18nTranslations = {
             "manifest_report": string;
         };
         "fields": {
+            "packing_standard": string;
             "standard_weight": string;
             "actual_weight": string;
             "actual_avg_weight": string;

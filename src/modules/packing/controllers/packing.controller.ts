@@ -1,30 +1,18 @@
-import { CommonRequestHeader } from '@common/constants'
 import { HttpMethod, Public, RequestUser, RequireAuthorized, RouteHandler, TRequestUser } from '@common/decorators'
 import { ZodValidationPipe } from '@common/pipes'
 import { UserRole } from '@modules/user/domain/constants'
-import { Body, Controller, Headers, HttpStatus, Param, Query, Res, Version, VERSION_NEUTRAL } from '@nestjs/common'
-import { FastifyReply } from 'fastify'
+import { Body, Controller, HttpStatus, Param, Query } from '@nestjs/common'
 import {
 	BulkUpdatePackingWeightDTO,
 	bulkUpdatePackingWeightValidator,
 	UpdatePackingWeightDTO,
 	updatePackingWeightValidator
-} from './dto/update-packing.dto'
-import { PackingService } from './packing.service'
+} from '../dto/update-packing.dto'
+import { PackingService } from '../services/packing.service'
 
 @Controller('packing')
 export class PackingController {
 	constructor(private readonly packingService: PackingService) {}
-
-	@RouteHandler({
-		endpoint: 'manifest',
-		method: HttpMethod.GET
-	})
-	@Version([VERSION_NEUTRAL, '1'])
-	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF, UserRole.INDUSTRIAL_ENGINEERING_STAFF)
-	async getLegacy(@Headers(CommonRequestHeader.FACTORY_CODE) factoryCode: string) {
-		return await this.packingService.getLegacy(factoryCode)
-	}
 
 	@RouteHandler({
 		endpoint: 'manifest',
@@ -42,20 +30,6 @@ export class PackingController {
 			user_code_updated: user.username,
 			user_name_updated: user.display_name
 		})
-	}
-
-	@RouteHandler({
-		endpoint: 'manifest/export',
-		method: HttpMethod.GET
-	})
-	@Version([VERSION_NEUTRAL, '1'])
-	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF, UserRole.INDUSTRIAL_ENGINEERING_STAFF)
-	async exportPackingManifest(
-		@Headers(CommonRequestHeader.FACTORY_CODE) factoryCode: string,
-		@Res() res: FastifyReply
-	) {
-		const buffer = await this.packingService.exportPackingManifestToExcel(factoryCode)
-		return res.send(buffer)
 	}
 
 	@Public()

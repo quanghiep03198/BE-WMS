@@ -1,10 +1,11 @@
 import { Processor, WorkerHost } from '@nestjs/bullmq'
 import { Job } from 'bullmq'
 import { I18nService } from 'nestjs-i18n'
-import { ExportStorageService } from './export-storage.service'
-import { ManifestExportWriter } from './manifest-export-writer'
-import { MANIFEST_EXPORT_QUEUE, ManifestExportData, ManifestExportResult } from './manifest-export.service'
-import { ManifestRepository, ManifestRow } from './manifest.repository'
+import { ManifestExportWriter } from '../helpers/manifest-export-writer'
+import { manifestTitle } from '../helpers/manifest-title'
+import { ManifestRepository, ManifestRow } from '../repositories/manifest.repository'
+import { ExportStorageService } from '../services/export-storage.service'
+import { MANIFEST_EXPORT_QUEUE, ManifestExportData, ManifestExportResult } from '../services/manifest-export.service'
 
 @Processor(MANIFEST_EXPORT_QUEUE, { concurrency: 1 })
 export class ManifestExportWorker extends WorkerHost {
@@ -30,7 +31,7 @@ export class ManifestExportWorker extends WorkerHost {
 				'erp.fields.shoestyle_codefactory',
 				'erp.fields.cust_shoes_style',
 				'erp.fields.color_sn',
-				'erp.fields.size',
+				'packing.fields.packing_standard',
 				'packing.fields.standard_weight',
 				'packing.fields.actual_avg_weight',
 				'packing.fields.target_box_qty',
@@ -40,7 +41,8 @@ export class ManifestExportWorker extends WorkerHost {
 			] as const
 			writer = new ManifestExportWriter(output, {
 				headers: keys.map((key) => this.i18n.t(key, { lang })),
-				summary: this.i18n.t('common.fields.summary', { lang })
+				summary: this.i18n.t('common.fields.summary', { lang }),
+				title: manifestTitle(this.i18n, factoryCode, lang, job.timestamp ?? Date.now())
 			})
 			const totalRows = await this.repository.count(factoryCode, filter)
 			let processedRows = 0

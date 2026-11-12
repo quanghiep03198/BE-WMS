@@ -2,9 +2,9 @@ import { mkdtemp, readdir, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { Writable } from 'node:stream'
-import { ExportStorageService } from '../manifest/export-storage.service'
-import { ManifestExportWorker } from '../manifest/manifest-export.worker'
-import type { ManifestRow } from '../manifest/manifest.repository'
+import { ManifestExportWorker } from '../consumers/manifest-export.consumer'
+import type { ManifestRow } from '../repositories/manifest.repository'
+import { ExportStorageService } from '../services/export-storage.service'
 
 describe('manifest export worker', () => {
 	it('writes batches using the same filter as count and reports progress', async () => {

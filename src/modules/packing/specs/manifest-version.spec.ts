@@ -6,8 +6,8 @@ import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify
 import { Test } from '@nestjs/testing'
 import { PinoLogger } from 'nestjs-pino'
 import 'reflect-metadata'
-import { PackingController } from '../packing.controller'
-import { PackingService } from '../packing.service'
+import { PackingController } from '../controllers/packing.controller'
+import { PackingService } from '../services/packing.service'
 
 @Controller('version-probe')
 class VersionProbeController {
@@ -50,18 +50,27 @@ describe('Fastify header version routing', () => {
 		}
 	})
 
-	it('keeps the existing manifest and synchronous export available without a header and with v1', async () => {
+	it('removes legacy GET endpoints while preserving the weight update endpoint', async () => {
 		const getLegacy = jest.fn().mockResolvedValue([{ po: 'PO123' }])
-		const exportPackingManifestToExcel = jest.fn().mockResolvedValue(Buffer.from('legacy-export'))
+		const bulkUpdatePackingWeight = jest.fn().mockResolvedValue({ affected: 1 })
 		const module = await Test.createTestingModule({
 			controllers: [PackingController],
 			providers: [
-				{ provide: PackingService, useValue: { getLegacy, exportPackingManifestToExcel } },
+				{ provide: PackingService, useValue: { getLegacy, bulkUpdatePackingWeight } },
 				{ provide: PinoLogger, useValue: { error: jest.fn() } }
 			]
 		})
 			.overrideGuard(JwtAuthGuard)
-			.useValue({ canActivate: () => true })
+			.useValue({
+				canActivate: (context) => {
+					context.switchToHttp().getRequest().user = {
+						_id: '507f1f77bcf86cd799439011',
+						username: 'test',
+						display_name: 'Test'
+					}
+					return true
+				}
+			})
 			.overrideGuard(RolesGuard)
 			.useValue({ canActivate: () => true })
 			.overrideInterceptor(TransformInterceptor)
@@ -75,14 +84,18 @@ describe('Fastify header version routing', () => {
 			for (const version of ['', '1']) {
 				const headers = { 'x-user-factory': 'VA1', ...(version ? { 'x-api-version': version } : {}) }
 				const list = await app.inject({ method: 'GET', url: '/packing/manifest', headers })
-				expect(list.statusCode).toBe(200)
-				expect(list.json()).toEqual([{ po: 'PO123' }])
+				expect(list.statusCode).toBe(404)
 				const download = await app.inject({ method: 'GET', url: '/packing/manifest/export', headers })
-				expect(download.statusCode).toBe(200)
-				expect(download.body).toBe('legacy-export')
+				expect(download.statusCode).toBe(404)
 			}
-			expect(getLegacy).toHaveBeenCalledTimes(2)
-			expect(exportPackingManifestToExcel).toHaveBeenCalledTimes(2)
+			expect(getLegacy).not.toHaveBeenCalled()
+			const patch = await app.inject({
+				method: 'PATCH',
+				url: '/packing/manifest',
+				payload: { po: 'PO123', size: '40', actual_weight_in: 12 }
+			})
+			expect(patch.statusCode).toBe(201)
+			expect(bulkUpdatePackingWeight).toHaveBeenCalledTimes(1)
 		} finally {
 			await app.close()
 		}

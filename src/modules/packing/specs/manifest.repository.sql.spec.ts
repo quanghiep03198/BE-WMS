@@ -1,6 +1,6 @@
 import { config } from 'dotenv'
 import sql from 'mssql'
-import { ManifestRepository, ManifestRow } from '../manifest/manifest.repository'
+import { ManifestRepository, ManifestRow } from '../repositories/manifest.repository'
 
 const integration = process.env.RUN_MANIFEST_SQL_TESTS === '1' ? it : it.skip
 
@@ -51,8 +51,10 @@ describe('manifest query on local SQL Server', () => {
 					const adapted = statement
 						.replaceAll('DV_DATA_LAKE.dbo.PackingPlan', '#PackingPlan')
 						.replaceAll('DV_DATA_LAKE.dbo.dv_OrderProcessR05', '#OrderProcess')
-						.replaceAll('WITH(NOLOCK, INDEX(IX_PackingPlan_po_size_factory))', '')
-						.replaceAll('WITH(NOLOCK, INDEX(IX_PackingPlan_factory_po_size))', '')
+						.replace(
+							/WITH\s*\(\s*NOLOCK\s*,\s*INDEX\s*\(\s*IX_PackingPlan_(?:po_size_factory|factory_po_size)\s*\)\s*\)/g,
+							''
+						)
 					return (await request.query(adapted)).recordset
 				}
 				const repository = new ManifestRepository({ query } as never)
@@ -66,6 +68,8 @@ describe('manifest query on local SQL Server', () => {
 				}
 				expect(await repository.count('VA1', { po: '%_[' })).toBe(1)
 				expect(await repository.count('VA1', { cust_shoes_style: 'B/Style', target_box_qtyFrom: 1 })).toBe(1)
+				expect(await repository.count('VA1', { poEq: 'P00001', target_box_qtyEq: 1 })).toBe(2)
+				expect(await repository.count('VA1', { q: 'P%_[' })).toBe(1)
 				const listed: ManifestRow[] = []
 				for (let page = 1; page <= Math.ceil(total / 100); page++) {
 					listed.push(

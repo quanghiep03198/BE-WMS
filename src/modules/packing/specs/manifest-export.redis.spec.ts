@@ -4,10 +4,10 @@ import { randomUUID } from 'node:crypto'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { ExportStorageService } from '../manifest/export-storage.service'
-import { ManifestExportService } from '../manifest/manifest-export.service'
-import { ManifestExportWorker } from '../manifest/manifest-export.worker'
-import type { ManifestRow } from '../manifest/manifest.repository'
+import { ManifestExportWorker } from '../consumers/manifest-export.consumer'
+import type { ManifestRow } from '../repositories/manifest.repository'
+import { ExportStorageService } from '../services/export-storage.service'
+import { ManifestExportService } from '../services/manifest-export.service'
 
 const integration = process.env.RUN_MANIFEST_REDIS_TESTS === '1' ? it : it.skip
 

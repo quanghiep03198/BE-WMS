@@ -18,19 +18,19 @@ import {
 	Version,
 	VERSION_NEUTRAL
 } from '@nestjs/common'
-import { ConfigService } from '@nestjs/config'
 import { FastifyReply } from 'fastify'
 import { Types } from 'mongoose'
-import { I18nContext } from 'nestjs-i18n'
+import { I18nService } from 'nestjs-i18n'
 import { z } from 'zod'
-import { ManifestExportService } from './manifest-export.service'
 import {
 	ManifestFilterDto,
-	ManifestListDto,
 	manifestFilterValidator,
+	ManifestListDto,
 	manifestListValidator
-} from './manifest-filter.dto'
-import { ManifestService } from './manifest.service'
+} from '../dto/manifest-filter.dto'
+import { manifestTitle } from '../helpers/manifest-title'
+import { ManifestExportService } from '../services/manifest-export.service'
+import { ManifestService } from '../services/manifest.service'
 
 function validateFactory(factoryCode: string) {
 	const factory = z.string().trim().min(1).max(10).safeParse(factoryCode)
@@ -44,7 +44,7 @@ export class ManifestController {
 	constructor(
 		private readonly service: ManifestService,
 		private readonly exports: ManifestExportService,
-		private readonly config: ConfigService
+		private readonly i18n: I18nService
 	) {}
 
 	@Get()
@@ -71,9 +71,7 @@ export class ManifestController {
 		if (requestedLanguage !== undefined && !header.success) {
 			throw new UnprocessableEntityException('X-Language must be vi, en or cn')
 		}
-		const language = header.success
-			? header.data
-			: (I18nContext.current()?.lang ?? this.config.get<string>('FALLBACK_LANGUAGE', 'en'))
+		const language = header.success ? header.data : 'en'
 		return this.exports.create(userId.toString(), validateFactory(factoryCode), filter, language)
 	}
 
@@ -93,8 +91,14 @@ export class ManifestController {
 		@Res() reply: FastifyReply
 	) {
 		const file = await this.exports.download(userId.toString(), jobId)
-		const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
-		const encoded = encodeURIComponent(`Danh sách đóng gói ${timestamp}.xlsx`).replace(
+		const timestamp = new Date(file.timestamp).toISOString().replace(/[:.]/g, '-')
+		const title = Array.from(
+			manifestTitle(this.i18n, file.factoryCode, file.language, file.timestamp),
+			(character) => (character.charCodeAt(0) < 32 || '\\/:*?"<>|'.includes(character) ? ' ' : character)
+		)
+			.join('')
+			.trim()
+		const encoded = encodeURIComponent(`${title}.xlsx`).replace(
 			/['()*]/g,
 			(char) => `%${char.charCodeAt(0).toString(16).toUpperCase()}`
 		)
@@ -103,6 +107,6 @@ export class ManifestController {
 			'Content-Disposition',
 			`attachment; filename="packing-manifest-${timestamp}.xlsx"; filename*=UTF-8''${encoded}`
 		)
-		return reply.send(file)
+		return reply.send(file.stream)
 	}
 }

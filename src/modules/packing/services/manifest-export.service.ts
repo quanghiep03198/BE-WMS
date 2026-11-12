@@ -2,8 +2,8 @@ import { InjectQueue } from '@nestjs/bullmq'
 import { ConflictException, GoneException, Injectable, NotFoundException, OnModuleInit } from '@nestjs/common'
 import { Job, Queue } from 'bullmq'
 import { createHash, randomUUID } from 'node:crypto'
+import type { ManifestFilterDto } from '../dto/manifest-filter.dto'
 import { ExportStorageService } from './export-storage.service'
-import type { ManifestFilterDto } from './manifest-filter.dto'
 
 export const MANIFEST_EXPORT_QUEUE = 'packing-manifest-exports'
 export interface ManifestExportData {
@@ -111,7 +111,12 @@ export class ManifestExportService implements OnModuleInit {
 		if (state.status === 'expired') throw new GoneException('Export has expired')
 		if (state.status !== 'done') throw new ConflictException('Export is not complete')
 		try {
-			return await this.storage.getReadStream(jobId)
+			return {
+				stream: await this.storage.getReadStream(jobId),
+				factoryCode: job.data.factoryCode,
+				language: job.data.language ?? 'en',
+				timestamp: job.timestamp
+			}
 		} catch (error) {
 			if ((error as NodeJS.ErrnoException).code === 'ENOENT') throw new GoneException('Export has expired')
 			throw error

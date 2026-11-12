@@ -1,7 +1,7 @@
 import type { WriteStream } from 'node:fs'
 import { Writable } from 'node:stream'
-import { ManifestExportWriter } from '../manifest/manifest-export-writer'
-import type { ManifestRow } from '../manifest/manifest.repository'
+import { ManifestExportWriter } from '../helpers/manifest-export-writer'
+import type { ManifestRow } from '../repositories/manifest.repository'
 
 const benchmark = process.env.RUN_MANIFEST_MEMORY_TESTS === '1' ? it : it.skip
 
