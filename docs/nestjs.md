@@ -62,7 +62,7 @@ Tài liệu này cung cấp cho thành viên trong dự án có kiến thức t�
 
 **1. Life cycle trong NestJS**
 
-![NestJS Lifecycle](/resources/@framework/nestjs-life-cycle.png)
+![NestJS Lifecycle](/docs/assets/nestjs-life-cycle.gif)
 
 _Hình ảnh trên sẽ đem lại cho bạn cái nhìn tổng quan về luồng chạy của 1 request trên ứng dụng Rest API với NestJS._
 
@@ -199,39 +199,39 @@ Trong kiến trúc đa tầng, lập trình viên sẽ viết code và liên k�
 /project-root
 |-- /src
 |   |-- /controllers
-|   |   |-- userController.js
-|   |   |-- productController.js
+|   |   |-- user.controller.js
+|   |   |-- product.controller.js
 |   |
 |   |-- /services
-|   |   |-- userService.js
-|   |   |-- productService.js
+|   |   |-- user.service.js
+|   |   |-- product.service.js
 |   |
 |   |-- /repositories
-|   |   |-- userRepository.js
-|   |   |-- productRepository.js
+|   |   |-- user.repository.js
+|   |   |-- product.repository.js
 |   |
 |   |-- /models
-|   |   |-- userModel.js
-|   |   |-- productModel.js
+|   |   |-- user.model.js
+|   |   |-- product.model.js
 |   |
 |   |-- /middlewares
-|   |   |-- authMiddleware.js
-|   |   |-- errorMiddleware.js
+|   |   |-- auth.middleware.js
+|   |   |-- error.middleware.js
 |   |
 |   |-- /routes
-|   |   |-- userRoutes.js
-|   |   |-- productRoutes.js
+|   |   |-- user.routes.js
+|   |   |-- product.routes.js
 |   |
 |   |-- /config
-|   |   |-- dbConfig.js
-|   |   |-- appConfig.js
+|   |   |-- database.config.js
+|   |   |-- app.config.js
 |   |
 |   |-- app.js
 |   |-- server.js
 |
 |-- /tests
-|   |-- userController.test.js
-|   |-- productController.test.js
+|   |-- user.controller.test.js
+|   |-- product.controller.test.js
 |
 |-- package.json
 |-- README.md
