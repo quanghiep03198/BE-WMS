@@ -27,11 +27,10 @@ function optionalDate(value: unknown, field: string): Date | null {
 function sql(includeBackups: boolean): string {
 	const inboundBackup = includeBackups
 		? `
-		UNION
+		UNION ALL
 		SELECT a.EPC_Code, c.size_numcode, c.mo_no, a.po, a.rfid_status,
 			b.storage_name AS storage_location, a.dept_name,
-			c.shoestyle_codefactory AS factory_shoes_style, c.color_sn, a.record_time,
-			ROW_NUMBER() OVER (PARTITION BY a.EPC_Code, a.rfid_status ORDER BY a.record_time DESC) AS rn
+			c.shoestyle_codefactory AS factory_shoes_style, c.color_sn, a.record_time
 		FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet_backup_Daily AS a
 		LEFT OUTER JOIN DV_DATA_LAKE.dbo.dv_warehouseccodedet AS b ON a.storage = b.storage_num
 		INNER JOIN DV_DATA_LAKE.dbo.dv_rfidmatchmst_cust AS c ON a.EPC_Code = c.EPC_Code
@@ -48,22 +47,40 @@ function sql(includeBackups: boolean): string {
 		: ''
 
 	return `
-		WITH epcs_at_101 AS (
+		WITH epcs_at_101_history AS (
 			SELECT a.EPC_Code, c.size_numcode, c.mo_no, a.po, a.rfid_status,
 				b.storage_name AS storage_location, a.dept_name,
-				c.shoestyle_codefactory AS factory_shoes_style, c.color_sn, a.record_time,
-				ROW_NUMBER() OVER (PARTITION BY a.EPC_Code ORDER BY a.record_time DESC) AS rn
+				c.shoestyle_codefactory AS factory_shoes_style, c.color_sn, a.record_time
 			FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet AS a
 			LEFT OUTER JOIN DV_DATA_LAKE.dbo.dv_warehouseccodedet AS b ON a.storage = b.storage_num
 			INNER JOIN DV_DATA_LAKE.dbo.dv_rfidmatchmst_cust AS c ON a.EPC_Code = c.EPC_Code
 			WHERE a.station_suffix = '101' AND a.EPC_Code NOT LIKE 'E28%'
 			${inboundBackup}
 		),
-		epcs_at_103 AS (
+		epcs_at_101_ranked AS (
+			SELECT *, ROW_NUMBER() OVER (PARTITION BY EPC_Code ORDER BY record_time DESC) AS rn
+			FROM epcs_at_101_history
+		),
+		epcs_at_101 AS (
+			SELECT EPC_Code, size_numcode, mo_no, po, rfid_status, storage_location,
+				dept_name, factory_shoes_style, color_sn, record_time
+			FROM epcs_at_101_ranked
+			WHERE rn = 1
+		),
+		epcs_at_103_history AS (
 			SELECT EPC_Code, size_code, mo_no, po, record_time, rfid_status, rfid_use
 			FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet
 			WHERE station_suffix = '103' AND EPC_Code NOT LIKE 'E28%'
 			${outboundBackup}
+		),
+		epcs_at_103_ranked AS (
+			SELECT *, ROW_NUMBER() OVER (PARTITION BY EPC_Code ORDER BY record_time DESC) AS rn
+			FROM epcs_at_103_history
+		),
+		epcs_at_103 AS (
+			SELECT EPC_Code, size_code, mo_no, po, record_time, rfid_status, rfid_use
+			FROM epcs_at_103_ranked
+			WHERE rn = 1
 		)
 		SELECT _101.EPC_Code AS epc, _101.size_numcode, _101.mo_no,
 			_103.po, _101.factory_shoes_style, _101.color_sn,

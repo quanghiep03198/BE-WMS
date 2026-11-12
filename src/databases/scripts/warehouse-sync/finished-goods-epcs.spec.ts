@@ -148,6 +148,43 @@ describe('runFinishedGoodsEpcStep', () => {
 		})
 	})
 
+	it('deduplicates inbound and outbound history to the latest scan before joining', async () => {
+		const latestInboundAndOutbound = {
+			...inbound,
+			po: 'LATEST-OUTBOUND-PO',
+			inbound_at: '2026-11-11T03:30:00.000Z',
+			outbound_device_sn: 'OUTBOUND-DEVICE',
+			outbound_at: '2026-11-11T04:30:00.000Z',
+			last_scanned_at: '2026-11-11T04:30:00.000Z',
+			status: 'shipped'
+		}
+		const fake = harness([latestInboundAndOutbound])
+
+		await expect(
+			runFinishedGoodsEpcStep(fake.pool, fake.database as never, {
+				inboundDeviceSn: 'INBOUND-DEVICE',
+				outboundDeviceSn: 'OUTBOUND-DEVICE'
+			})
+		).resolves.toEqual({ epcs: 1 })
+
+		expect(
+			fake.sql.match(/ROW_NUMBER\(\) OVER \(PARTITION BY EPC_Code ORDER BY record_time DESC\) AS rn/g)
+		).toHaveLength(2)
+		expect(fake.sql.match(/WHERE rn = 1/g)).toHaveLength(2)
+		expect(fake.operations).toHaveLength(1)
+		const operation = fake.operations[0] as {
+			updateOne: { update: { $set: Record<string, unknown> } }
+		}
+		expect(operation.updateOne.update.$set).toMatchObject({
+			epc: inbound.epc,
+			po: 'LATEST-OUTBOUND-PO',
+			inbound_at: new Date('2026-11-11T03:30:00.000Z'),
+			outbound_at: new Date('2026-11-11T04:30:00.000Z'),
+			last_scanned_at: new Date('2026-11-11T04:30:00.000Z'),
+			status: 'shipped'
+		})
+	})
+
 	it('includes backup rows only when requested', async () => {
 		const fake = harness([])
 
