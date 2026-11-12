@@ -1,5 +1,5 @@
 export type ProductVariant = {
-	color: string
+	color_sn: string
 	sizes: Array<string>
 }
 
