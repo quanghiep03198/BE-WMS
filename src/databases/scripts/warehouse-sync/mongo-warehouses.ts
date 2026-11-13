@@ -132,7 +132,7 @@ export async function syncMongoWarehouses(
 					updateOne: {
 						filter: { warehouse, name: row.name },
 						update: {
-							$set: { warehouse, created_by: creatorId(row.creator), updated_at: now },
+							$set: { warehouse, storage_num: row.storage_num, created_by: creatorId(row.creator), updated_at: now },
 							$setOnInsert: { created_at: row.created_at, deleted: false }
 						},
 						upsert: true

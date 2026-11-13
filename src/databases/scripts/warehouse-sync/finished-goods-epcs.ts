@@ -1,4 +1,4 @@
-import { type mongo } from 'mongoose'
+import { Types, type mongo } from 'mongoose'
 import { streamMssqlRows, type MssqlStreamRequest } from './mssql-stream'
 
 const BATCH_SIZE = 1000
@@ -26,13 +26,12 @@ function optionalDate(value: unknown, field: string): Date | null {
 
 function sql(includeBackups: boolean): string {
 	const inboundBackup = includeBackups
-		? `
+		? /* SQL */ `
 		UNION ALL
 		SELECT a.EPC_Code, c.size_numcode, c.mo_no, a.po, a.rfid_status,
-			b.storage_name AS storage_location, a.dept_name,
+			a.storage AS storage_location, a.dept_code AS assembly_line,
 			c.shoestyle_codefactory AS factory_shoes_style, c.color_sn, a.record_time
 		FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet_backup_Daily AS a
-		LEFT OUTER JOIN DV_DATA_LAKE.dbo.dv_warehouseccodedet AS b ON a.storage = b.storage_num
 		INNER JOIN DV_DATA_LAKE.dbo.dv_rfidmatchmst_cust AS c ON a.EPC_Code = c.EPC_Code
 		WHERE a.station_suffix = '101' AND a.EPC_Code NOT LIKE 'E28%'
 			AND LEFT(a.mo_no, 2) >= '15'`
@@ -49,10 +48,9 @@ function sql(includeBackups: boolean): string {
 	return `
 		WITH epcs_at_101_history AS (
 			SELECT a.EPC_Code, c.size_numcode, c.mo_no, a.po, a.rfid_status,
-				b.storage_name AS storage_location, a.dept_name,
+				a.storage AS storage_location, a.dept_code AS assembly_line,
 				c.shoestyle_codefactory AS factory_shoes_style, c.color_sn, a.record_time
 			FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet AS a
-			LEFT OUTER JOIN DV_DATA_LAKE.dbo.dv_warehouseccodedet AS b ON a.storage = b.storage_num
 			INNER JOIN DV_DATA_LAKE.dbo.dv_rfidmatchmst_cust AS c ON a.EPC_Code = c.EPC_Code
 			WHERE a.station_suffix = '101' AND a.EPC_Code NOT LIKE 'E28%'
 			${inboundBackup}
@@ -63,7 +61,7 @@ function sql(includeBackups: boolean): string {
 		),
 		epcs_at_101 AS (
 			SELECT EPC_Code, size_numcode, mo_no, po, rfid_status, storage_location,
-				dept_name, factory_shoes_style, color_sn, record_time
+				assembly_line, factory_shoes_style, color_sn, record_time
 			FROM epcs_at_101_ranked
 			WHERE rn = 1
 		),
@@ -88,7 +86,7 @@ function sql(includeBackups: boolean): string {
 			IIF(_103.EPC_Code IS NOT NULL, @outboundDeviceSn, NULL) AS outbound_device_sn,
 			IIF(_103.record_time > _101.record_time, _103.record_time, _101.record_time) AS last_scanned_at,
 			_101.record_time AS inbound_at, _103.record_time AS outbound_at,
-			_101.storage_location, _101.dept_name AS assembly_line,
+			_101.storage_location, _101.assembly_line,
 			1 AS inbound_times,
 			CASE WHEN _103.EPC_Code IS NOT NULL THEN 'shipped'
 				WHEN _101.rfid_status = 'B' THEN 'recalled'
@@ -111,10 +109,16 @@ type FinishedGoodsEpc = {
 	last_scanned_at: Date
 	inbound_at: Date
 	outbound_at: Date | null
-	storage_location: string
-	assembly_line: string
+	storage_location: string | null
+	assembly_line: string | null
 	inbound_times: 1
 	status: 'shipped' | 'recalled' | 'instock'
+}
+
+function referenceCode(value: unknown, field: string): string | null {
+	if (value === null) return null
+	if (typeof value !== 'string') throw new Error(`Invalid finished goods EPC ${field}`)
+	return value.trim() || null
 }
 
 function mapFinishedGoodsEpc(row: unknown): FinishedGoodsEpc {
@@ -142,7 +146,6 @@ function mapFinishedGoodsEpc(row: unknown): FinishedGoodsEpc {
 	if (status !== 'shipped' && status !== 'recalled' && status !== 'instock') {
 		throw new Error('Invalid finished goods EPC status')
 	}
-	const assemblyLine = requiredText(source.assembly_line, 'assembly_line')
 	return {
 		epc: requiredText(source.epc, 'epc'),
 		mo_no: requiredText(source.mo_no, 'mo_no'),
@@ -155,10 +158,60 @@ function mapFinishedGoodsEpc(row: unknown): FinishedGoodsEpc {
 		last_scanned_at: requiredDate(source.last_scanned_at, 'last_scanned_at'),
 		inbound_at: requiredDate(source.inbound_at, 'inbound_at'),
 		outbound_at: optionalDate(source.outbound_at, 'outbound_at'),
-		storage_location: requiredText(source.storage_location, 'storage_location'),
-		assembly_line: assemblyLine.replace(/[^A-Za-z0-9]/g, ''),
+		storage_location: referenceCode(source.storage_location, 'storage_location')?.toUpperCase() ?? null,
+		assembly_line: referenceCode(source.assembly_line, 'assembly_line'),
 		inbound_times: 1,
 		status
+	}
+}
+
+function referenceLookup(
+	rows: Array<{ _id: Types.ObjectId; key: unknown }>,
+	collection: string,
+	normalize: (key: string) => string
+): { ids: Map<string, Types.ObjectId>; fallback: Types.ObjectId } {
+	if (!rows.length) throw new Error(`Empty ${collection} reference collection`)
+	for (const row of rows) {
+		if (!(row._id instanceof Types.ObjectId)) throw new Error(`Invalid ${collection} reference ObjectId`)
+		if (row.key != null && typeof row.key !== 'string') throw new Error(`Invalid ${collection} reference code`)
+	}
+	rows.sort((left, right) => left._id.toHexString().localeCompare(right._id.toHexString()))
+	const ids = new Map<string, Types.ObjectId>()
+	const duplicates = new Set<string>()
+	for (const row of rows) {
+		if (typeof row.key !== 'string' || !row.key.trim()) continue
+		const key = normalize(row.key.trim())
+		if (ids.has(key)) duplicates.add(key)
+		else ids.set(key, row._id)
+	}
+	if (duplicates.size) {
+		console.warn(`Duplicate ${collection} reference codes: ${duplicates.size}; using lowest ObjectId`)
+	}
+	return { ids, fallback: rows[0]._id }
+}
+
+async function loadReferences(database: mongo.Db) {
+	const [locations, departments] = await Promise.all([
+		database
+			.collection<{ storage_num?: unknown }>('storage_locations')
+			.find({}, { projection: { _id: 1, storage_num: 1 } })
+			.toArray(),
+		database
+			.collection<{ code?: unknown }>('departments')
+			.find({}, { projection: { _id: 1, code: 1 } })
+			.toArray()
+	])
+	return {
+		locations: referenceLookup(
+			locations.map((row) => ({ _id: row._id, key: row.storage_num })),
+			'storage_locations',
+			(key) => key.toUpperCase()
+		),
+		departments: referenceLookup(
+			departments.map((row) => ({ _id: row._id, key: row.code })),
+			'departments',
+			(key) => key
+		)
 	}
 }
 
@@ -177,6 +230,9 @@ export async function runFinishedGoodsEpcStep(
 	const seen = new Set<string>()
 	let operations: mongo.AnyBulkWriteOperation[] = []
 	let epcs = 0
+	let references: Awaited<ReturnType<typeof loadReferences>> | undefined
+	let fallbackLocations = 0
+	let fallbackDepartments = 0
 
 	async function flush(): Promise<void> {
 		if (!operations.length) return
@@ -187,26 +243,44 @@ export async function runFinishedGoodsEpcStep(
 		epcs += batch.length
 	}
 
-	for await (const row of streamMssqlRows(pool.request(), sql(includeBackups), {
-		inboundDeviceSn,
-		outboundDeviceSn
-	})) {
-		const epc = mapFinishedGoodsEpc(row)
-		if (seen.has(epc.epc)) throw new Error(`Duplicate finished goods EPC ${epc.epc}`)
-		seen.add(epc.epc)
-		const now = new Date()
-		operations.push({
-			updateOne: {
-				filter: { epc: epc.epc },
-				update: {
-					$set: { ...epc, updated_at: now },
-					$setOnInsert: { created_at: now, scannable: true, deleted: false }
-				},
-				upsert: true
-			}
-		})
-		if (operations.length >= BATCH_SIZE) await flush()
+	try {
+		for await (const row of streamMssqlRows(pool.request(), sql(includeBackups), {
+			inboundDeviceSn,
+			outboundDeviceSn
+		})) {
+			const epc = mapFinishedGoodsEpc(row)
+			if (seen.has(epc.epc)) throw new Error(`Duplicate finished goods EPC ${epc.epc}`)
+			seen.add(epc.epc)
+			if (!references) references = await loadReferences(database)
+			const location = epc.storage_location ? references.locations.ids.get(epc.storage_location) : undefined
+			const department = epc.assembly_line ? references.departments.ids.get(epc.assembly_line) : undefined
+			if (!location) fallbackLocations++
+			if (!department) fallbackDepartments++
+			const now = new Date()
+			operations.push({
+				updateOne: {
+					filter: { epc: epc.epc },
+					update: {
+						$set: {
+							...epc,
+							storage_location: location ?? references.locations.fallback,
+							assembly_line: department ?? references.departments.fallback,
+							updated_at: now
+						},
+						$setOnInsert: { created_at: now, scannable: true, deleted: false }
+					},
+					upsert: true
+				}
+			})
+			if (operations.length >= BATCH_SIZE) await flush()
+		}
+		await flush()
+	} finally {
+		if (fallbackLocations || fallbackDepartments) {
+			console.warn(
+				`Finished goods EPC fallback references: storage_location ${fallbackLocations}, assembly_line ${fallbackDepartments}`
+			)
+		}
 	}
-	await flush()
 	return { epcs }
 }

@@ -3,6 +3,18 @@
 This Bun CLI synchronizes warehouse-related source data from MSSQL into MongoDB,
 then writes an Excel report from the MongoDB data and a reference workbook.
 
+## Tests
+
+Keep warehouse sync unit and integration specs in the `specs` directory. Run
+them from the repository root with:
+
+```powershell
+node node_modules\jest\bin\jest.js --runInBand --testPathPattern=warehouse-sync
+```
+
+MongoDB integration tests require `WAREHOUSE_SYNC_TEST_MONGO_URI`; otherwise
+they are skipped.
+
 ## Run
 
 From the repository root:
@@ -37,7 +49,34 @@ bun run src/databases/scripts/warehouse-sync/run.ts --help
 | `--reference-sheet <name>` | `ngày 12` |
 | `--output-filename <file>` | `.tmp/warehouse-sync-<timestamp>.xlsx` |
 | `--log-filename <file>` | `.tmp/warehouse-sync.log` |
+| `--step <collection>` | Run only the step for the named collection |
+| `--from-step <collection>` | Run from the named collection's step through the report |
 | `--help` | Print usage and exit without connecting to databases |
+
+`--step` and `--from-step` cannot be combined. Without either option, all
+steps run in this order:
+
+1. `users`
+2. `warehouses` (also synchronizes `storage_locations`; either name selects this step)
+3. `departments`
+4. `product_specifications`
+5. `purchase_orders`
+6. `manufacturing_orders`
+7. `daily_po_shipping_progress`
+8. `rfid_devices`
+9. `finished_goods_epcs_match`
+10. `finished_goods_epcs`
+11. `mo_inventory_audit`
+12. `daily_mo_inventory_ledger`
+13. `truckload_delivery`
+14. `defective_goods`
+15. `excel_report` (writes the Excel report; not a MongoDB collection)
+
+For example, append `--step storage_locations` to run only the warehouse and
+storage location step, or `--from-step mo_inventory_audit` to resume from the
+inventory audit through the report. Required options still apply. Skipped
+steps are not run automatically: ensure their prerequisite data already
+exists in MongoDB. Resuming calculates a new cutoff from the current day.
 
 `DB_HOST`, `MONGO_DB_NAME`, and `APP_TENANCY` must be set unless their
 corresponding command-line options are supplied. Command-line values override
@@ -75,6 +114,13 @@ locations by name alone must be updated before using duplicate names safely;
 in particular, inventory audit matching and MSSQL location update/delete are
 not warehouse-scoped.
 
+Finished-goods EPC scans resolve `storage` against `storage_locations.storage_num`
+and `dept_code` against `departments.code`, storing their MongoDB ObjectIds.
+If a source code is missing or unmatched, the lowest-ObjectId document from
+the corresponding collection is used and the fallback count is reported. An
+empty collection fails the step when an EPC needs a reference. Duplicate
+codes are reported and resolve to the lowest ObjectId.
+
 Purchase orders insert a `null` shipping method or destination when the source
 has no value; a null source value does not overwrite an existing value.
 Non-null shipping methods must be `AIR` or `OCEAN`.
@@ -105,8 +151,12 @@ manufacturing-order quantities with MongoDB data. It writes these worksheets:
   quantities.
 
 The report is written to the output path only after it has been built
-successfully. The workflow logs each stage to the configured log file and
-stops at the first failed stage.
+successfully. The workflow logs each stage to the configured log file. If a
+stage fails and another stage remains, an interactive terminal prompts `y/n`:
+`y` skips the failed stage and continues, while `n` stops. Without an
+interactive terminal the workflow stops on failure. Continuing may cause
+later stages to fail or use incomplete data; the command exits with a nonzero
+status even if the remaining stages succeed.
 
 ## Database safety
 

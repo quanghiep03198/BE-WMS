@@ -1,5 +1,6 @@
+import { generateShortId } from '@common/utils/short-id.util'
 import type { mongo } from 'mongoose'
-import { createHash, randomUUID } from 'node:crypto'
+import { createHash } from 'node:crypto'
 import { getVietnamDayCutoff } from './cutoff'
 import { runDailyMoInventoryLedgerStep } from './daily-mo-inventory-ledger'
 import { runDefectiveGoodsStep } from './defective-goods'
@@ -18,6 +19,9 @@ import { runSteps, type WarehouseSyncStep } from './run-steps'
 import { runUserStep } from './run-user-step'
 import { runWarehouseStep } from './run-warehouse-step'
 import { runTruckloadDeliveryStep } from './truckload-delivery'
+import { selectWarehouseSyncStages, type WarehouseSyncStageName } from './warehouse-sync-stages'
+
+export type { WarehouseSyncStageName } from './warehouse-sync-stages'
 
 export interface WarehouseSyncConfig {
 	factoryCode: string
@@ -30,42 +34,9 @@ export interface WarehouseSyncConfig {
 	referenceSheet: string
 	outputFilename: string
 	logFilename: string
+	step?: string
+	fromStep?: string
 }
-
-export type WarehouseSyncStageName =
-	| 'users'
-	| 'warehouses'
-	| 'departments'
-	| 'product specifications'
-	| 'purchase orders'
-	| 'manufacturing orders'
-	| 'daily PO progress'
-	| 'RFID devices'
-	| 'EPC matches'
-	| 'finished goods EPCs'
-	| 'inventory audit'
-	| 'daily MO inventory ledger'
-	| 'truckload deliveries'
-	| 'defective goods'
-	| 'Excel report'
-
-const warehouseSyncStageNames: readonly WarehouseSyncStageName[] = [
-	'users',
-	'warehouses',
-	'departments',
-	'product specifications',
-	'purchase orders',
-	'manufacturing orders',
-	'daily PO progress',
-	'RFID devices',
-	'EPC matches',
-	'finished goods EPCs',
-	'inventory audit',
-	'daily MO inventory ledger',
-	'truckload deliveries',
-	'defective goods',
-	'Excel report'
-]
 
 export interface WarehouseSyncPool {
 	request(): MssqlStreamRequest & {
@@ -119,7 +90,8 @@ const defaultDependencies: WarehouseSyncDependencies = {
 
 export function createWarehouseSyncRunner(
 	dependencies: WarehouseSyncDependencies,
-	writeTerminal?: (line: string) => void
+	writeTerminal?: (line: string) => void,
+	shouldContinue?: (step: WarehouseSyncStep, error: unknown) => Promise<boolean>
 ): (pool: WarehouseSyncPool, database: mongo.Db, config: WarehouseSyncConfig, now?: Date) => Promise<void> {
 	return async (pool, database, config, now = new Date()) => {
 		const context: WarehouseSyncContext = {
@@ -128,14 +100,14 @@ export function createWarehouseSyncRunner(
 			config,
 			now,
 			cutoff: getVietnamDayCutoff(now),
-			generateId: randomUUID,
+			generateId: generateShortId,
 			generateLedgerId: (signature) => createHash('sha256').update(signature).digest('hex')
 		}
-		const steps: WarehouseSyncStep[] = warehouseSyncStageNames.map((name) => ({
+		const steps: WarehouseSyncStep[] = selectWarehouseSyncStages(config.step, config.fromStep).map((name) => ({
 			name,
 			run: () => dependencies[name](context).then(() => undefined)
 		}))
-		await runSteps(steps, config.logFilename, writeTerminal)
+		await runSteps(steps, config.logFilename, writeTerminal, shouldContinue)
 	}
 }
 
@@ -143,7 +115,8 @@ export async function runWarehouseSync(
 	pool: WarehouseSyncPool,
 	database: mongo.Db,
 	config: WarehouseSyncConfig,
-	now?: Date
+	now?: Date,
+	shouldContinue?: (step: WarehouseSyncStep, error: unknown) => Promise<boolean>
 ): Promise<void> {
-	await createWarehouseSyncRunner(defaultDependencies)(pool, database, config, now)
+	await createWarehouseSyncRunner(defaultDependencies, undefined, shouldContinue)(pool, database, config, now)
 }

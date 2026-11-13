@@ -1,4 +1,5 @@
 import { resolve } from 'node:path'
+import { createInterface } from 'node:readline/promises'
 import { fileURLToPath } from 'node:url'
 import { MongoManager } from '../libs/mongoose'
 import { MssqlManager } from '../libs/mssql'
@@ -21,6 +22,32 @@ export interface WarehouseSyncManagers {
 export type WarehouseSyncManagerFactory = (
 	options: WarehouseSyncCliOptions
 ) => WarehouseSyncManagers | Promise<WarehouseSyncManagers>
+
+export async function askContinueAfterFailure(
+	input: NodeJS.ReadableStream = process.stdin,
+	output: NodeJS.WritableStream = process.stdout
+): Promise<boolean> {
+	const reader = createInterface({ input, output })
+	const controller = new AbortController()
+	reader.once('close', () => controller.abort())
+	try {
+		while (true) {
+			let answer: string
+			try {
+				answer = await reader.question('Step failed. Continue to the next step? (y/n) ', {
+					signal: controller.signal
+				})
+			} catch (error) {
+				if (controller.signal.aborted) return false
+				throw error
+			}
+			if (answer.trim().toLowerCase() === 'y') return true
+			if (answer.trim().toLowerCase() === 'n') return false
+		}
+	} finally {
+		reader.close()
+	}
+}
 
 export async function runWarehouseSyncCli(
 	argv: string[],
@@ -50,7 +77,14 @@ export async function runWarehouseSyncCli(
 		mongoConnectAttempted = true
 		await managers.mongo.connect()
 		if (!managers.mssql.pool) throw new Error('MSSQL manager did not provide a connected pool')
-		await runWarehouseSync(managers.mssql.pool as unknown as WarehouseSyncPool, managers.mongo.getDatabase(), options)
+		const shouldContinue = process.stdin.isTTY && process.stdout.isTTY ? () => askContinueAfterFailure() : undefined
+		await runWarehouseSync(
+			managers.mssql.pool as unknown as WarehouseSyncPool,
+			managers.mongo.getDatabase(),
+			options,
+			undefined,
+			shouldContinue
+		)
 	} catch (error) {
 		console.error(`Warehouse sync failed: ${error instanceof Error ? error.message : String(error)}`)
 		result = 1

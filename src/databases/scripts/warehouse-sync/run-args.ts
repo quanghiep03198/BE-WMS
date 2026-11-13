@@ -1,4 +1,5 @@
 import type { WarehouseSyncConfig } from './run-warehouse-sync'
+import { selectWarehouseSyncStages, warehouseSyncStages } from './warehouse-sync-stages'
 
 export interface WarehouseSyncCliOptions extends WarehouseSyncConfig {
 	dbHost: string
@@ -17,7 +18,9 @@ const valueOptions = new Set([
 	'--reference-workbook',
 	'--reference-sheet',
 	'--output-filename',
-	'--log-filename'
+	'--log-filename',
+	'--step',
+	'--from-step'
 ])
 
 export const warehouseSyncUsage = `Usage: bun run src/databases/scripts/warehouse-sync/run.ts --mo-prefix <prefix> --inbound-device-sn <serial> --outbound-device-sn <serial> [options]
@@ -35,7 +38,12 @@ Options:
   --reference-sheet <name>          Workbook sheet (default: ngày 12)
   --output-filename <file>          Report file (default: .tmp/warehouse-sync-<timestamp>.xlsx)
   --log-filename <file>             Log file (default: .tmp/warehouse-sync.log)
-  --help                            Show this help without connecting to databases`
+  --step <collection>               Run only the selected step
+  --from-step <collection>          Run from the selected step to the end
+  --help                            Show this help without connecting to databases
+
+Steps (in order): ${warehouseSyncStages.map(({ collection }) => collection).join(', ')}
+  storage_locations is an alias for warehouses; excel_report is the report step.`
 
 export function parseWarehouseSyncArgs(argv: string[]): WarehouseSyncCliOptions {
 	const values = new Map<string, string>()
@@ -82,10 +90,13 @@ export function parseWarehouseSyncArgs(argv: string[]): WarehouseSyncCliOptions 
 		referenceSheet: get('--reference-sheet', 'ngày 12'),
 		outputFilename: get('--output-filename', `.tmp/warehouse-sync-${timestamp}.xlsx`),
 		logFilename: get('--log-filename', '.tmp/warehouse-sync.log'),
-		help
+		help,
+		step: values.get('--step')?.trim(),
+		fromStep: values.get('--from-step')?.trim()
 	}
 
 	if (help) return options
+	selectWarehouseSyncStages(options.step, options.fromStep)
 	for (const [option, value] of [
 		['--db-host', options.dbHost],
 		['--mongo-db-name', options.mongoDbName],
