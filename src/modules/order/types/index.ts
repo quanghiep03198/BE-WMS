@@ -26,8 +26,8 @@ export type TPurchaseOrder = {
 	factory_shoes_style: string
 	cust_shoes_style: string
 	color_sn: string
-	shipping_method: ShippingMethod
-	shipping_destination: string
+	shipping_method: ShippingMethod | null
+	shipping_destination: string | null
 	packing: Record<string, Record<string, number>>
 	shipping_progress: Record<string, { order_qty: number; shipped_out_qty: number }>
 }

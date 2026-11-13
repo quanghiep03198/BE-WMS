@@ -2,6 +2,22 @@ import ExcelJS from 'exceljs'
 import { buildMissingQuantityWorkbook } from './missing-quantity-report'
 
 describe('missing quantity report', () => {
+	it('includes orders with negative discrepancies even when no size is positive', async () => {
+		const workbook = await buildMissingQuantityWorkbook(
+			[
+				{
+					mo_no: '14003',
+					size_ledger: {
+						'8': { order_qty: 1, stocked_in_qty: 2, total_recall_tx: 0, total_return_tx: 0, shipped_out_qty: 0 }
+					}
+				}
+			],
+			[{ po: 'PO3', shipping_progress: { '8': { order_qty: 1, shipped_out_qty: 2 } } }]
+		)
+		expect(workbook.getWorksheet('manufacturing_orders').getCell('H2').value).toBe(-1)
+		expect(workbook.getWorksheet('purchase_orders').getCell('E2').value).toBe(-1)
+	})
+
 	it('includes orders with at least one missing size and calculates each document total from all sizes', async () => {
 		const workbook = await buildMissingQuantityWorkbook(
 			[

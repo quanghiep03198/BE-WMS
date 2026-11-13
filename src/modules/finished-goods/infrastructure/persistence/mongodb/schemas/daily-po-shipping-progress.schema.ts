@@ -87,7 +87,7 @@ export type DailyPoShippingProgressDocument = HydratedDocument<
 			color_sn: string
 			order_qty: number
 			shipping_type: string
-			shipping_destination: string
+			shipping_destination: string | null
 			shipping_progress: Record<
 				string,
 				{

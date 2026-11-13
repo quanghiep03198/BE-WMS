@@ -113,7 +113,10 @@ describeMongo('order search on local MongoDB', () => {
 		const values = ['Σ', 'ς', 'σ', 'İ', 'I', 'ı', 'i', 'k', 'K', 'ß', 'ẞ', 'ſ', 's', '😀']
 		await mo.insertMany(values.map((value) => ({ mo_no: `Unicode-${value}` })))
 		for (const value of values) {
-			const baseline = await mo.find({ mo_no: { $regex: value, $options: 'i' } }).select('mo_no').lean()
+			const baseline = await mo
+				.find({ mo_no: { $regex: value, $options: 'i' } })
+				.select('mo_no')
+				.lean()
 			const indexed = await mo
 				.find(orderSearchFilter('mo_no', value, true))
 				.hint('mo_search_ngrams_idx')

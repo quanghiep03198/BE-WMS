@@ -76,8 +76,20 @@ export function groupDailyPoProgress(
 		let id = minutes.get(scan.time)
 		if (!id) {
 			const previousId = oldIds.get(key)?.get(scan.time)
-			id = previousId ?? generateId()
-			if (!previousId && reservedIds.get(key)?.has(id)) throw new Error(`Reserved transaction id: ${id}`)
+			id = previousId
+			if (!id) {
+				for (let attempt = 0; attempt < 100; attempt++) {
+					const candidate = generateId()
+					if (
+						candidate &&
+						!reservedIds.get(key)?.has(candidate) &&
+						!Object.hasOwn(document.transaction_history, candidate)
+					) {
+						id = candidate
+						break
+					}
+				}
+			}
 			if (!id || Object.hasOwn(document.transaction_history, id)) throw new Error(`Duplicate transaction id: ${id}`)
 			Object.defineProperty(document.transaction_history, id, {
 				value: { time: scan.time, packing: {}, voided: false },

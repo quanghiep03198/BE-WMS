@@ -25,6 +25,7 @@ import { FastifyReply } from 'fastify'
 import { CheckoutInventoryAuditCommand } from '@modules/inventory/application/commands/checkout-inventory-audit/checkout-inventory-audit.command'
 import { UpdateInventorySupplementalQtyCommand } from '@modules/inventory/application/commands/update-inventory-supplemental-qty/update-inventory-supplemental-qty.command'
 import { ExportMonthlyInventoryAuditQuery } from '@modules/inventory/application/queries/export-monthly-inventory-audit/export-monthly-inventory-audit.query'
+import { ExportProductionInventoryQuery } from '@modules/inventory/application/queries/export-production-inventory/export-production-inventory.query'
 import { GetMonthlyInventoryAuditQuery } from '@modules/inventory/application/queries/get-monthly-inventory-audit/get-monthly-inventory-audit.query'
 import { GetProductionInventoryQuery } from '@modules/inventory/application/queries/get-production-inventory/get-production-inventory.query'
 import { CommandBus, QueryBus } from '@nestjs/cqrs'
@@ -119,11 +120,17 @@ export class InventoryController {
 	@UseFilters(HttpExceptionFilter)
 	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF, UserRole.INDUSTRIAL_ENGINEERING_STAFF)
 	async exportInventorySummary(
-		@Headers(CommonRequestHeader.FACTORY_CODE) factory: string,
+		@Query(new ZodValidationPipe(productInventoryReportQuery)) filterQueries: ProductInventoryReportQueryDTO,
 		@Res() reply: FastifyReply
 	) {
-		// const buffer = await this.productionInventoryRepository.exportProductionInventorySummary(factory)
-		// return reply.send(buffer)
+		const buffer = await this.queryBus.execute(
+			new ExportProductionInventoryQuery(
+				filterQueries['brand_name:eq'],
+				filterQueries['factory_shoes_style:eq'],
+				filterQueries['color_sn:eq']
+			)
+		)
+		return reply.send(buffer)
 	}
 
 	// @RouteHandler({ endpoint: 'production-features', method: HttpMethod.GET, statusCode: HttpStatus.OK })

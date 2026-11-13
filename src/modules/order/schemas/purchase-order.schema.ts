@@ -51,11 +51,11 @@ export class PurchaseOrder {
 	@Prop({ type: Object, required: true })
 	packing: Record<string, Record<string, number>>
 
-	@Prop({ type: String, requried: true })
-	shipping_destination: string
+	@Prop({ type: String, default: null })
+	shipping_destination: string | null
 
-	@Prop({ type: String, required: true })
-	shipping_method: ShippingMethod
+	@Prop({ type: String, default: null })
+	shipping_method: ShippingMethod | null
 
 	@Prop({ type: Map, of: PurchaseOrderShippingProgressSchema, default: {} })
 	shipping_progress: Map<string, PurchaseOrderShippingProgress>

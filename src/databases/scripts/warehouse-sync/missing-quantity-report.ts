@@ -77,7 +77,7 @@ export async function buildMissingQuantityWorkbook(
 				missing: orderQty - (stocked - recall + returned)
 			}
 		})
-		if (!sizes.some((size) => size.missing > 0)) continue
+		if (!sizes.some((size) => size.missing !== 0)) continue
 		const total = sizes.reduce((sum, size) => sum + size.missing, 0)
 		for (const size of sizes) {
 			moSheet.addRow([
@@ -101,7 +101,7 @@ export async function buildMissingQuantityWorkbook(
 			const shipped = quantity(value.shipped_out_qty, order.po, 'shipped_out_qty')
 			return { size, orderQty, shipped, missing: orderQty - shipped }
 		})
-		if (!sizes.some((size) => size.missing > 0)) continue
+		if (!sizes.some((size) => size.missing !== 0)) continue
 		const total = sizes.reduce((sum, size) => sum + size.missing, 0)
 		for (const size of sizes) poSheet.addRow([order.po, size.size, size.orderQty, size.shipped, size.missing, total])
 	}

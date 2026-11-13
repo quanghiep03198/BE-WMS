@@ -17,14 +17,14 @@ export class MongoManager {
 				replicaSet: 'rs0'
 			})
 			this.logger.info('Connected to MongoDB')
-		} catch {
-			this.logger.error('Failed to connect to MongoDB')
-			process.exit(1)
+		} catch (error) {
+			this.logger.error(error instanceof Error ? error : 'Failed to connect to MongoDB')
+			throw error
 		}
 	}
 
 	public async disconnect() {
-		if (this.client.connection.readyState === 1) {
+		if (this.client.connection.readyState === 1 || this.client.connection.readyState === 2) {
 			this.logger.info('Disconnecting from MongoDB...')
 			await this.client.disconnect()
 			this.logger.info('Disconnected from MongoDB')

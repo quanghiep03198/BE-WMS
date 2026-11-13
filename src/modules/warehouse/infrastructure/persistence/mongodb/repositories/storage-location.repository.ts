@@ -25,6 +25,10 @@ export class StorageLocationRepository
 		super(storageLocationModel)
 	}
 
+	override async createOne(payload: { warehouse: Types.ObjectId; name: string; created_by: Types.ObjectId }) {
+		return (await super.createOne(payload)) as unknown as ReturnType<IStorageLocationRepository['createOne']>
+	}
+
 	public async createMany(
 		payload: CreateBulkStorageLocationDTO,
 		createdBy: Types.ObjectId

@@ -31,7 +31,7 @@ export abstract class BaseMongoRepository<TDocument extends Document> implements
 	 */
 	async createOne(payload: Partial<TDocument>): Promise<TDocument> {
 		const newRecord = new this.model(payload)
-		return await newRecord.save()
+		return (await newRecord.save()) as unknown as TDocument
 	}
 
 	/**

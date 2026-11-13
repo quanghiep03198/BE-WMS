@@ -43,7 +43,7 @@ export class ProductInventoryRepository implements IProductionInventoryRepositor
 			.build()
 	}
 
-	private async getInstockManufacturingOrders(query: GetProductionInventoryQuery) {
+	async getInstockManufacturingOrders(query: GetProductionInventoryQuery) {
 		const filterQueries = this.buildFilterQueries(query)
 
 		return await this.manufacturingOrderModel.aggregate<{

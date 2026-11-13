@@ -1,3 +1,3 @@
-import { Query } from '@nestjs/cqrs'
+import { GetProductionInventoryQuery } from '../get-production-inventory/get-production-inventory.query'
 
-export class ExportProductionInventoryQuery extends Query<{}> {}
+export class ExportProductionInventoryQuery extends GetProductionInventoryQuery {}

@@ -17,5 +17,5 @@ export function getArgs<T extends ParseArgsConfig['options']>(options: T): ArgVa
 		strict: true,
 		allowPositionals: true
 	})
-	return values as unknown as ArgValues<T>
+	return values as ArgValues<T>
 }

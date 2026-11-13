@@ -34,7 +34,7 @@ describe('groupDailyPoProgress', () => {
 		expect(() => groupDailyPoProgress([row, { ...row, time: '10:25' }], () => '123456')).toThrow()
 	})
 
-	it('rejects a new id that is reserved for a previously imported minute', () => {
+	it('retries when a newly generated id is reserved for a previously imported minute', () => {
 		const row = { po: 'PO1', date: '2026-11-10', time: '10:24', mo_no: '14001', size: '08', quantity: 1 }
 		const existing = [
 			{
@@ -44,6 +44,16 @@ describe('groupDailyPoProgress', () => {
 				transaction_history: { '123456': { time: '10:25', packing: {}, voided: false } }
 			}
 		]
-		expect(() => groupDailyPoProgress([row], () => '123456', existing)).toThrow()
+		const ids = ['123456', '654321']
+		const result = groupDailyPoProgress(
+			[row],
+			() => {
+				const id = ids.shift()
+				if (!id) throw new Error('No more test transaction ids')
+				return id
+			},
+			existing
+		)
+		expect(result[0].transaction_history['654321'].time).toBe('10:24')
 	})
 })

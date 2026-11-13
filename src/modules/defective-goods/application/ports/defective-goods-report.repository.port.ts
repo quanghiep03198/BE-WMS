@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-empty-object-type */
 import { DefectiveGoodsSource } from '@modules/defective-goods/domain/constants'
 
 export const DEFECTIVE_GOODS_REPORT_REPOSITORY = Symbol('DEFECTIVE_GOODS_REPORT_REPOSITORY')
