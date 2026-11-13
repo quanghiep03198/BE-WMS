@@ -5,6 +5,10 @@ import {
 
 import { DEPARTMENT_REPOSITORY, IDepartmentRepository } from '@modules/department/department.repository.interface'
 import {
+	IStockTransactionIdGenerator,
+	STOCK_TRANSACTION_ID_GENERATOR
+} from '@modules/finished-goods/application/ports/stock-transaction-id-generator.port'
+import {
 	IStockTransactionRepository,
 	STOCK_TX_REPOSITORY
 } from '@modules/finished-goods/application/ports/stock-transaction.repository.port'
@@ -34,7 +38,9 @@ export class StockInHandler implements ICommandHandler<StockInCommand> {
 		private readonly storageLocationRepository: IStorageLocationRepository,
 		@Inject(STOCK_TX_REPOSITORY)
 		private readonly stockTransactionMongoRepository: IStockTransactionRepository,
-		private readonly eventPublisher: EventPublisher
+		private readonly eventPublisher: EventPublisher,
+		@Inject(STOCK_TRANSACTION_ID_GENERATOR)
+		private readonly transactionIdGenerator: IStockTransactionIdGenerator
 	) {}
 
 	public async execute({ command }: StockInCommand): Promise<void> {
@@ -58,7 +64,8 @@ export class StockInHandler implements ICommandHandler<StockInCommand> {
 		)
 
 		// * Start Unit of Work transaction for inbound stock-in process
-		const inboundTransaction = new StockInTransaction(pendingInboundEpcs, currentInboundProgress)
+		const id = await this.transactionIdGenerator.nextId('stock_in')
+		const inboundTransaction = new StockInTransaction(pendingInboundEpcs, currentInboundProgress, id)
 		const transactionId = inboundTransaction.startTransaction()
 
 		await this.stockTransactionMongoRepository.stockIn(transactionId, pendingInboundEpcs)

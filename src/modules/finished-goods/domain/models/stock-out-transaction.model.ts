@@ -1,4 +1,3 @@
-import { generateShortId } from '@common/utils/short-id.util'
 import { AggregateRoot } from '@nestjs/cqrs'
 import { entries, groupBy } from 'lodash'
 import join from 'lodash/join'
@@ -15,8 +14,6 @@ import { SizeNumber } from '../value-objects/size-number.vo'
  * @tutorial
  */
 export class StockOutTransaction extends AggregateRoot {
-	private readonly id: string = generateShortId()
-
 	constructor(
 		private readonly pendingShipOutEpcs: Array<ElectronicProductCode>,
 		private readonly poOutboundProgress: Array<{
@@ -29,7 +26,8 @@ export class StockOutTransaction extends AggregateRoot {
 			size_numcode: SizeNumber
 			order_qty: number
 			accumulated_qty: number
-		}>
+		}>,
+		private readonly id: string
 	) {
 		super()
 	}

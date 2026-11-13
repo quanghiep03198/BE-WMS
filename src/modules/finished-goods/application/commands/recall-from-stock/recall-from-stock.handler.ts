@@ -3,6 +3,10 @@ import {
 	IFinishedGoodsEpcRepository
 } from '@modules/finished-goods/application/ports/finished-goods-epc.repository.port'
 import {
+	IStockTransactionIdGenerator,
+	STOCK_TRANSACTION_ID_GENERATOR
+} from '@modules/finished-goods/application/ports/stock-transaction-id-generator.port'
+import {
 	IStockTransactionRepository,
 	STOCK_TX_REPOSITORY
 } from '@modules/finished-goods/application/ports/stock-transaction.repository.port'
@@ -22,7 +26,9 @@ export class RecallFromStockHandler implements ICommandHandler<RecallFromStockCo
 		private readonly orderRepository: IOrderRepository,
 		@Inject(STOCK_TX_REPOSITORY)
 		private readonly stockTransactionMongoRepository: IStockTransactionRepository,
-		private readonly eventPublisher: EventPublisher
+		private readonly eventPublisher: EventPublisher,
+		@Inject(STOCK_TRANSACTION_ID_GENERATOR)
+		private readonly transactionIdGenerator: IStockTransactionIdGenerator
 	) {}
 
 	public async execute({ command }: RecallFromStockCommand): Promise<void> {
@@ -36,7 +42,8 @@ export class RecallFromStockHandler implements ICommandHandler<RecallFromStockCo
 			size_numcode: new SizeNumber(item.size_numcode)
 		}))
 
-		const recallTransaction = new RecallFromStockTransaction(pendingRecallEpcs, moInventory)
+		const id = await this.transactionIdGenerator.nextId('recall')
+		const recallTransaction = new RecallFromStockTransaction(pendingRecallEpcs, moInventory, id)
 
 		const transactionId = recallTransaction.startTransaction()
 

@@ -7,6 +7,10 @@ import {
 	SHIPPING_PROGRESS_REPOSITORY
 } from '@modules/finished-goods/application/ports/shipping-progress.repository.port'
 import {
+	IStockTransactionIdGenerator,
+	STOCK_TRANSACTION_ID_GENERATOR
+} from '@modules/finished-goods/application/ports/stock-transaction-id-generator.port'
+import {
 	IStockTransactionRepository,
 	STOCK_TX_REPOSITORY
 } from '@modules/finished-goods/application/ports/stock-transaction.repository.port'
@@ -28,7 +32,9 @@ export class StockOutHandler implements ICommandHandler<StockOutCommand> {
 		private readonly shippingProgressMongoRepository: IShippingProgressRepository,
 		@Inject(STOCK_TX_REPOSITORY)
 		private readonly stockTransactionMongoRepository: IStockTransactionRepository,
-		private readonly eventPublisher: EventPublisher
+		private readonly eventPublisher: EventPublisher,
+		@Inject(STOCK_TRANSACTION_ID_GENERATOR)
+		private readonly transactionIdGenerator: IStockTransactionIdGenerator
 	) {}
 
 	public async execute({ manufacturingOrders, purchaseOrder, sizes }: StockOutCommand): Promise<void> {
@@ -55,7 +61,8 @@ export class StockOutHandler implements ICommandHandler<StockOutCommand> {
 			(item) => ({ ...item, size_numcode: new SizeNumber(item.size_numcode) })
 		)
 
-		const stockOutTransaction = new StockOutTransaction(pendingOutboundEpcs, outboundProgress, moInventories)
+		const id = await this.transactionIdGenerator.nextId('stock_out')
+		const stockOutTransaction = new StockOutTransaction(pendingOutboundEpcs, outboundProgress, moInventories, id)
 
 		const transactionId = stockOutTransaction.startTransaction()
 

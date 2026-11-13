@@ -17,6 +17,7 @@ import { FINISHED_GOODS_RMDBS_REPOSITORY } from './application/ports/finished-go
 import { FINISHED_GOODS_EPC_REPOSITORY } from './application/ports/finished-goods-epc.repository.port'
 import { INVENTORY_LEDGER_REPOSITORY } from './application/ports/inventory-ledger.repository.port'
 import { SHIPPING_PROGRESS_REPOSITORY } from './application/ports/shipping-progress.repository.port'
+import { STOCK_TRANSACTION_ID_GENERATOR } from './application/ports/stock-transaction-id-generator.port'
 import { STOCK_TX_REPOSITORY } from './application/ports/stock-transaction.repository.port'
 import { FinishedGoodsQueryHandlers } from './application/queries'
 import { FinishedGoodsSagas } from './application/sagas'
@@ -27,6 +28,7 @@ import { MongoEpcChangeStreamFactory } from './infrastructure/persistence/mongod
 import { FinishedGoodsEpcRepository } from './infrastructure/persistence/mongodb/repositories/finished-goods-epc.repository'
 import { InventoryLedgerRepository } from './infrastructure/persistence/mongodb/repositories/inventory-ledger.repository'
 import { ShippingProgressMongoRepository } from './infrastructure/persistence/mongodb/repositories/shipping-progress-mongo.repository'
+import { StockTransactionIdMongoGenerator } from './infrastructure/persistence/mongodb/repositories/stock-transaction-id-mongo.generator'
 import { StockTransactionMongoRepository } from './infrastructure/persistence/mongodb/repositories/stock-transaction-mongo.repository'
 import {
 	DAILY_MO_INVENTORY_LEDGER_COLLECTION,
@@ -52,6 +54,11 @@ import {
 	FinishedGoodsEpcModel,
 	FinishedGoodsEpcSchema
 } from './infrastructure/persistence/mongodb/schemas/finished-goods-epc.schema'
+import {
+	STOCK_TRANSACTION_SEQUENCE_COLLECTION,
+	StockTransactionSequence,
+	StockTransactionSequenceSchema
+} from './infrastructure/persistence/mongodb/schemas/stock-transaction-sequence.schema'
 import {
 	RFIDInventoryBackupEntity,
 	RFIDInventoryEntity
@@ -131,6 +138,11 @@ import { FinishedGoodsGateway } from './presentation/gateways/finished-goods.gat
 					name: DailyPoShippingProgress.name,
 					collection: DAILY_PO_SHIPPING_PROGRESS_COLLECTION,
 					schema: DailyPoShippingProgressSchema
+				},
+				{
+					name: StockTransactionSequence.name,
+					collection: STOCK_TRANSACTION_SEQUENCE_COLLECTION,
+					schema: StockTransactionSequenceSchema
 				}
 			],
 			DATA_WAREHOUSE_CONNECTION
@@ -163,6 +175,10 @@ import { FinishedGoodsGateway } from './presentation/gateways/finished-goods.gat
 		{
 			provide: STOCK_TX_REPOSITORY,
 			useClass: StockTransactionMongoRepository
+		},
+		{
+			provide: STOCK_TRANSACTION_ID_GENERATOR,
+			useClass: StockTransactionIdMongoGenerator
 		},
 		{
 			provide: MONGO_EPC_CHANGE_STREAM_FACTORY,

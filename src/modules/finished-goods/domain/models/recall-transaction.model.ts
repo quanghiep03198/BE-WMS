@@ -1,4 +1,3 @@
-import { generateShortId } from '@common/utils/short-id.util'
 import { AggregateRoot } from '@nestjs/cqrs'
 import { entries, groupBy } from 'lodash'
 import { RecalledFromStockEvent } from '../events/recalled-from-stock/recalled-from-stock.event'
@@ -7,15 +6,14 @@ import { ElectronicProductCode } from '../value-objects/epc.vo'
 import { SizeNumber } from '../value-objects/size-number.vo'
 
 export class RecallFromStockTransaction extends AggregateRoot {
-	private readonly id: string = generateShortId()
-
 	constructor(
 		public readonly pendingRecallEpcs: Array<ElectronicProductCode>,
 		public readonly moInventory: Array<{
 			size_numcode: SizeNumber
 			order_qty: number
 			accumulated_qty: number
-		}> = []
+		}> = [],
+		private readonly id: string
 	) {
 		super()
 	}
