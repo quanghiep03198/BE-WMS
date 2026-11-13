@@ -1,7 +1,7 @@
 import 'dotenv/config'
 import mssql from 'mssql'
-import { Logger } from '../../../../.tmp/utils/logger'
 import { SuperJson } from '../../../common/utils/json.util'
+import { Logger } from '../utils/logger'
 
 export class MssqlManager {
 	public pool: mssql.ConnectionPool | undefined
