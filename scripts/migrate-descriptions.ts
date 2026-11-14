@@ -1,14 +1,11 @@
 import { Queue } from 'bullmq'
 import 'dotenv/config'
-import { fileTypeFromBuffer } from 'file-type/node'
 import mongoose, { Types } from 'mongoose'
 import { createHash } from 'node:crypto'
-import { Readable } from 'node:stream'
-import sanitizeHtml from 'sanitize-html'
 import { DEFECTIVE_GOODS_SYNC_QUEUE } from '../src/modules/defective-goods/infrastructure/queues'
-import { decodeDescription } from '../src/modules/files/description-codec'
-import { FilesService, MAX_IMAGE_SIZE } from '../src/modules/files/files.service'
+import { FilesService } from '../src/modules/files/files.service'
 import { HtmlSanitizerService } from '../src/modules/files/html-sanitizer.service'
+import { migrateLegacyDescription } from '../src/modules/files/legacy-description'
 import { StoredFileSchema } from '../src/modules/files/stored-file.schema'
 
 async function run() {
@@ -72,57 +69,23 @@ async function run() {
 			if (typeof description !== 'string' && !Buffer.isBuffer(description)) {
 				throw new Error(`Invalid description for ${document._id}`)
 			}
-			const html = await decodeDescription(description)
-			const sources = new Set<string>()
-			sanitizeHtml(html, {
-				allowedTags: false,
-				allowedAttributes: false,
-				allowVulnerableTags: true,
-				transformTags: {
-					img: (tagName, attribs) => {
-						if (/^data:/i.test(attribs.src ?? '')) sources.add(attribs.src)
-						return { tagName, attribs }
-					}
-				}
-			})
-			const replacements = new Map<string, string>()
-			for (const source of sources) {
-				const match = /^data:image\/(?:png|jpeg|webp|gif);base64,([a-z0-9+/]+={0,2})$/i.exec(source)
-				if (!match || match[1].length % 4 !== 0) throw new Error(`Unsupported embedded image in ${document._id}`)
-				const image = Buffer.from(match[1], 'base64')
-				if (!image.length || image.length > MAX_IMAGE_SIZE || image.toString('base64') !== match[1]) {
-					throw new Error(`Invalid or oversized embedded image in ${document._id}`)
-				}
-				const detected = await fileTypeFromBuffer(image)
-				if (!detected || !['image/png', 'image/jpeg', 'image/webp', 'image/gif'].includes(detected.mime)) {
-					throw new Error(`Unsupported embedded image in ${document._id}`)
-				}
-				const owner =
-					document.created_by instanceof Types.ObjectId
-						? document.created_by
-						: typeof document.created_by === 'string' && /^[a-f0-9]{24}$/i.test(document.created_by)
-							? new Types.ObjectId(document.created_by)
-							: ownerArgument && new Types.ObjectId(ownerArgument)
-				if (!owner) throw new Error(`Missing created_by for ${document._id}; provide --owner-id`)
-				if (dryRun) {
-					replacements.set(source, '/files/000000000000000000000000')
-				} else {
-					const uploaded = await files.upload(Readable.from(image), owner)
-					replacements.set(source, uploaded.url)
-				}
+			const owner =
+				document.created_by instanceof Types.ObjectId
+					? document.created_by
+					: typeof document.created_by === 'string' && /^[a-f0-9]{24}$/i.test(document.created_by)
+						? new Types.ObjectId(document.created_by)
+						: ownerArgument
+							? new Types.ObjectId(ownerArgument)
+							: null
+			let result: { html: string; imageIds: string[] }
+			try {
+				result = await migrateLegacyDescription(description, owner, files, sanitizer, dryRun)
+			} catch (error) {
+				throw new Error(
+					`Failed to migrate description for ${document._id}: ${error instanceof Error ? error.message : String(error)}`,
+					{ cause: error }
+				)
 			}
-			const replaced = sanitizeHtml(html, {
-				allowedTags: false,
-				allowedAttributes: false,
-				allowVulnerableTags: true,
-				transformTags: {
-					img: (tagName, attribs) => ({
-						tagName,
-						attribs: { ...attribs, src: replacements.get(attribs.src) ?? attribs.src }
-					})
-				}
-			})
-			const result = sanitizer.sanitize(replaced)
 			if (!dryRun) {
 				const session = await connection.startSession()
 				try {
