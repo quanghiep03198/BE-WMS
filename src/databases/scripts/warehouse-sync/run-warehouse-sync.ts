@@ -1,6 +1,6 @@
-import { generateShortId } from '@common/utils/short-id.util'
+import { StockTransactionIdMongoGenerator } from '@modules/finished-goods/infrastructure/persistence/mongodb/repositories/stock-transaction-id-mongo.generator'
+import { format } from 'date-fns'
 import type { mongo } from 'mongoose'
-import { createHash } from 'node:crypto'
 import { getVietnamDayCutoff } from './cutoff'
 import { runDailyMoInventoryLedgerStep } from './daily-mo-inventory-ledger'
 import { runDefectiveGoodsStep } from './defective-goods'
@@ -25,7 +25,6 @@ export type { WarehouseSyncStageName } from './warehouse-sync-stages'
 
 export interface WarehouseSyncConfig {
 	factoryCode: string
-	moPrefix: string
 	inboundDeviceSn: string
 	outboundDeviceSn: string
 	includeBackups: boolean
@@ -50,8 +49,8 @@ export interface WarehouseSyncContext {
 	config: WarehouseSyncConfig
 	now: Date
 	cutoff: Date
-	generateId: () => string
-	generateLedgerId: (signature: string) => string
+	generateId: (date: string) => Promise<string>
+	generateLedgerId: (date: string) => Promise<string>
 }
 
 export type WarehouseSyncDependencies = Record<
@@ -67,7 +66,7 @@ const defaultDependencies: WarehouseSyncDependencies = {
 	'product specifications': ({ pool, database }) => runProductSpecificationStep(pool, database),
 	'purchase orders': ({ pool, database, cutoff }) => runPurchaseOrderStep(pool, database, cutoff),
 	'manufacturing orders': ({ pool, database, config, cutoff }) =>
-		runManufacturingOrderStep(pool, database, config.factoryCode, cutoff, config.moPrefix),
+		runManufacturingOrderStep(pool, database, config.factoryCode, cutoff),
 	'daily PO progress': ({ pool, database, config, generateId, cutoff }) =>
 		runDailyPoStep(pool, database, config.factoryCode, generateId, cutoff),
 	'RFID devices': ({ pool, database, config }) => runRfidStep(pool, database, config.factoryCode),
@@ -79,11 +78,12 @@ const defaultDependencies: WarehouseSyncDependencies = {
 			includeBackups: config.includeBackups
 		}),
 	'inventory audit': ({ pool, database, config }) => runMoInventoryAuditStep(pool, database, config.factoryCode),
-	'daily MO inventory ledger': ({ pool, database, config, generateLedgerId }) =>
-		runDailyMoInventoryLedgerStep(pool, database, config.moPrefix, generateLedgerId),
+	'daily MO inventory ledger': ({ pool, database, generateLedgerId }) =>
+		runDailyMoInventoryLedgerStep(pool, database, generateLedgerId),
 	'truckload deliveries': ({ pool, database, config }) =>
 		runTruckloadDeliveryStep(pool, database, config.creatorUsername),
-	'defective goods': ({ pool, database }) => runDefectiveGoodsStep(pool, database),
+	'defective goods': ({ pool, database, config }) =>
+		runDefectiveGoodsStep(pool, database, undefined, config.creatorUsername),
 	'Excel report': ({ database, config }) =>
 		exportWarehouseSyncReport(database, config.referenceWorkbook, config.referenceSheet, config.outputFilename)
 }
@@ -94,14 +94,23 @@ export function createWarehouseSyncRunner(
 	shouldContinue?: (step: WarehouseSyncStep, error: unknown) => Promise<boolean>
 ): (pool: WarehouseSyncPool, database: mongo.Db, config: WarehouseSyncConfig, now?: Date) => Promise<void> {
 	return async (pool, database, config, now = new Date()) => {
+		let generator: StockTransactionIdMongoGenerator | undefined
+		const nextId = (type: 'stock_in' | 'stock_out', date: string) => {
+			const transactionDate = new Date(`${date}T12:00:00`)
+			if (!Number.isFinite(transactionDate.getTime()) || format(transactionDate, 'yyyy-MM-dd') !== date) {
+				throw new Error(`Invalid stock transaction date: ${date}`)
+			}
+			generator ??= StockTransactionIdMongoGenerator.fromDatabase(database)
+			return generator.nextId(type, transactionDate)
+		}
 		const context: WarehouseSyncContext = {
 			pool,
 			database,
 			config,
 			now,
 			cutoff: getVietnamDayCutoff(now),
-			generateId: generateShortId,
-			generateLedgerId: (signature) => createHash('sha256').update(signature).digest('hex')
+			generateId: (date) => nextId('stock_out', date),
+			generateLedgerId: (date) => nextId('stock_in', date)
 		}
 		const steps: WarehouseSyncStep[] = selectWarehouseSyncStages(config.step, config.fromStep).map((name) => ({
 			name,

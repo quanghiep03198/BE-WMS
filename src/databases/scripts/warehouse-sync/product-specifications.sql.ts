@@ -1,4 +1,4 @@
-export const PRODUCT_SPECIFICATIONS_SQL = `
+export const PRODUCT_SPECIFICATIONS_SQL = /* SQL */ `
 			SELECT   DISTINCT brand_name,
                   CAST (ISNULL(shoestyle_codecust, '') + '/' + ISNULL(shoestyle_namecust, '') AS NVARCHAR (255)) AS cust_shoes_style,
                   shoestyle_codefactory AS factory_shoes_style,

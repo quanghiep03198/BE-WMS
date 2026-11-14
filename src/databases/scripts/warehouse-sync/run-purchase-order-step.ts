@@ -1,5 +1,5 @@
 import type { mongo } from 'mongoose'
-import { orderSearchGrams } from '../../../modules/order/order-search-grams'
+import { orderSearchGrams } from '../../../modules/order/schemas/order-search-grams.plugin'
 import { getVietnamCutoffSqlDate } from './cutoff'
 import { streamMssqlRows, type MssqlStreamRequest } from './mssql-stream'
 import { PURCHASE_ORDERS_SQL } from './purchase-orders.sql'

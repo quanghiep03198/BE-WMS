@@ -275,7 +275,7 @@ async function main() {
          `)
 		await Promise.all([queryPromise, streamCompletion])
 	} catch (error) {
-		logger.error(error)
+		logger.error(error as Error)
 		process.exitCode = 1
 	} finally {
 		await Promise.all([mongoManager.disconnect(), mssqlManager.disconnect()])

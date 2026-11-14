@@ -20,14 +20,13 @@ they are skipped.
 From the repository root:
 
 ```powershell
-bun run src/databases/scripts/warehouse-sync/run.ts --mo-prefix 15 --inbound-device-sn INBOUND_DEVICE_SERIAL --outbound-device-sn OUTBOUND_DEVICE_SERIAL
+bun run src/databases/scripts/warehouse-sync/run.ts --inbound-device-sn INBOUND_DEVICE_SERIAL --outbound-device-sn OUTBOUND_DEVICE_SERIAL
 ```
 
-Replace `15` with the required two-digit manufacturing-order prefix and replace
-both serial placeholders with the actual inbound and outbound RFID device
-serials. Both serial options are required; they have no environment-variable
-fallback. Use `--help` to display the command usage without connecting to either
-database:
+Replace both serial placeholders with the actual inbound and outbound RFID
+device serials. Both serial options are required; they have no
+environment-variable fallback. Use `--help` to display the command usage
+without connecting to either database:
 
 ```sh
 bun run src/databases/scripts/warehouse-sync/run.ts --help
@@ -40,7 +39,6 @@ bun run src/databases/scripts/warehouse-sync/run.ts --help
 | `--db-host <host>` | `DB_HOST` environment variable |
 | `--mongo-db-name <name>` | `MONGO_DB_NAME` environment variable |
 | `--factory-code <code>` | `APP_TENANCY` environment variable |
-| `--mo-prefix <prefix>` | Required; exactly two digits |
 | `--inbound-device-sn <serial>` | Required inbound RFID device serial |
 | `--outbound-device-sn <serial>` | Required outbound RFID device serial |
 | `--include-backups` | Include daily backup scans; off unless specified |
@@ -89,10 +87,19 @@ exclusive cutoff: midnight in Vietnam on the day the sync starts. Scans from
 that time onward are excluded from these stages.
 Daily PO progress skips outbound scans whose PO is null or blank and reports
 the number skipped; other invalid scan fields still fail the stage.
-The `--mo-prefix` option selects the two-digit prefix for both manufacturing
-orders and the daily MO inventory ledger; other prefixes are not imported by
-these stages. If no manufacturing orders match the prefix, factory and source
+New daily PO and MO transaction IDs use the application's shared MongoDB
+sequence collection: stock-out IDs start with `XF` and stock-in IDs with `SI`,
+followed by the source date and a per-type, per-day increasing sequence.
+Existing matching transaction IDs are retained on reruns, including older ID
+formats; this sync does not replace them or migrate their references. Deleting
+ledger data does not reset the shared sequences, and failed writes may leave
+gaps in the sequence.
+Manufacturing orders and the daily MO inventory ledger include only rows whose
+first two MO characters are numeric and at least `14`; no prefix option is
+needed. If no manufacturing orders match the threshold, factory and source
 filters, the manufacturing-order stage reports a warning.
+Daily MO inventory transactions use `UNKNOWN` for a null assembly line.
+Null assembly lines and an actual source line named `UNKNOWN` share a group.
 
 For duplicate source usernames (after trimming), the user sync keeps the active
 `ts_user` row with the smallest `keyid`. If that row joins multiple employee
@@ -114,12 +121,34 @@ locations by name alone must be updated before using duplicate names safely;
 in particular, inventory audit matching and MSSQL location update/delete are
 not warehouse-scoped.
 
-Finished-goods EPC scans resolve `storage` against `storage_locations.storage_num`
-and `dept_code` against `departments.code`, storing their MongoDB ObjectIds.
+Finished-goods EPC scans are fetched without joining the MSSQL RFID match or
+warehouse code tables. Raw scans are upserted into
+`finished_goods_epcs_staging`, keyed by EPC, before a batch aggregation looks
+up `finished_goods_epcs_match` by EPC and merges complete records into
+`finished_goods_epcs`. The raw staging records are retained for subsequent
+runs. A scan without an EPC match remains in staging, is not merged, and is
+counted in a warning; rerun the step after synchronizing EPC matches.
+The aggregation requires MongoDB 4.2 or later for `$merge` and a unique
+`finished_goods_epcs.epc` index. The step creates the index if needed; duplicate
+destination EPCs must be resolved first. Do not run multiple instances of this
+step concurrently because they share the staging collection.
+The aggregation resolves `storage` against `storage_locations.storage_num`
+and `dept_code` against `departments.code`, storing their MongoDB ObjectIds in
+`storage_location` and `assembly_line` respectively.
 If a source code is missing or unmatched, the lowest-ObjectId document from
 the corresponding collection is used and the fallback count is reported. An
 empty collection fails the step when an EPC needs a reference. Duplicate
 codes are reported and resolve to the lowest ObjectId.
+The EPC stage filters scans by the `mo_no` on the scan itself, to orders already present in
+`manufacturing_orders` with a numeric two-digit prefix of `14` or higher. It
+passes the eligible MO list as JSON and joins it with `OPENJSON` before scan
+ranking. This requires SQL Server 2016 or later and database compatibility
+level 130 or later. If no eligible MO exists, the MSSQL scan is skipped. On
+success, the stage logs `elapsedMs`, `epcs`,
+`batches`, `epcsPerSecond`, and cumulative Mongo bulk-write wait
+(`mongoBulkWriteMs` measures staging writes only); the latter can overlap with
+SQL stream time. `epcs` counts merged records, and `batches` counts staged
+batches, including batches with missing matches.
 
 Purchase orders insert a `null` shipping method or destination when the source
 has no value; a null source value does not overwrite an existing value.
@@ -137,6 +166,41 @@ duplicates may vary between runs.
 Department names are generated from the `factory.departments` translations
 after removing Chinese characters from the source name. A source name with no
 remaining characters is rejected.
+
+For defective goods, assembly and sewing lines match department `name.cn`
+without filtering by group. An exact match takes precedence; otherwise, the
+longest department name contained in the SQL line name is used. A name ending
+in a digit cannot match the prefix of a longer number. If multiple names match,
+or departments share the same name, a warning is emitted; ties use the lowest
+ObjectId. Null or blank source lines do not overwrite existing references;
+unmatched nonblank names fail the step.
+
+The defective-goods import reads SQL Server `keyid` without selecting
+`sync_id`, and stores it in MongoDB as `source_keyid` with a unique partial
+index. New records get new MongoDB ObjectIds; repeat runs reuse those IDs.
+Existing MongoDB documents without `source_keyid` cannot be matched
+automatically, and may cause duplicate EPC errors. The import does not write
+to SQL Server or populate `sync_id`. Before using CDC or Mongo-to-SQL sync,
+populate SQL `sync_id` from the corresponding MongoDB `_id`; otherwise CDC
+skips those rows and the reverse sync may insert duplicates.
+
+Defective-goods descriptions are decoded from legacy gzip/base64 or plain HTML,
+sanitized, and embedded PNG, JPEG, WebP and GIF images are uploaded to the
+`images` GridFS bucket. `created_by` and `updated_by` resolve their respective
+SQL usernames against MongoDB users; absent or unmatched users become null,
+with a warning for unmatched usernames. When the creator is missing, embedded
+images use the user specified by `--creator-username` as their owner; the step
+fails if that fallback user is also missing. Images are limited to 5 MB each.
+Invalid images stop the step. File references and the
+document are updated in a MongoDB transaction, requiring a replica set.
+Unchanged source descriptions reuse existing images and preserve later edits;
+unattached uploads from interrupted runs are handled by the file cleanup job.
+
+Truckload delivery signatures are uploaded to the `dispatch_order_signatures`
+GridFS bucket before the delivery is written. Empty signatures become null;
+unchanged signatures uploaded by the scripts are reused on subsequent runs.
+Invalid base64 or an upload failure stops the step. Older GridFS files are not
+automatically deleted.
 
 ## Output workbook
 

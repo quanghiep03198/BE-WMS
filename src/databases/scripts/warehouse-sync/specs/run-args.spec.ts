@@ -23,21 +23,12 @@ describe('parseWarehouseSyncArgs', () => {
 	})
 
 	it('requires inbound and outbound device serials', () => {
-		expect(() => parseWarehouseSyncArgs(['--mo-prefix', '15'])).toThrow(/--inbound-device-sn/)
-		expect(() => parseWarehouseSyncArgs(['--mo-prefix', '15', '--inbound-device-sn', 'in-1'])).toThrow(
-			/--outbound-device-sn/
-		)
+		expect(() => parseWarehouseSyncArgs([])).toThrow(/--inbound-device-sn/)
+		expect(() => parseWarehouseSyncArgs(['--inbound-device-sn', 'in-1'])).toThrow(/--outbound-device-sn/)
 	})
 
 	it('applies workbook and generated output defaults', () => {
-		const options = parseWarehouseSyncArgs([
-			'--inbound-device-sn',
-			'in-1',
-			'--outbound-device-sn',
-			'out-1',
-			'--mo-prefix',
-			'15'
-		])
+		const options = parseWarehouseSyncArgs(['--inbound-device-sn', 'in-1', '--outbound-device-sn', 'out-1'])
 
 		expect(options.referenceWorkbook).toBe('.tmp/gl3-inventory.xlsx')
 		expect(options.referenceSheet).toBe('ngày 12')
@@ -52,8 +43,6 @@ describe('parseWarehouseSyncArgs', () => {
 		const options = parseWarehouseSyncArgs([
 			'--factory-code',
 			'VN2',
-			'--mo-prefix',
-			'16',
 			'--inbound-device-sn',
 			'in-2',
 			'--outbound-device-sn',
@@ -77,7 +66,6 @@ describe('parseWarehouseSyncArgs', () => {
 
 		expect(options).toMatchObject({
 			factoryCode: 'VN2',
-			moPrefix: '16',
 			inboundDeviceSn: 'in-2',
 			outboundDeviceSn: 'out-2',
 			includeBackups: true,
@@ -92,13 +80,15 @@ describe('parseWarehouseSyncArgs', () => {
 	})
 
 	it('accepts collection names for a single step or a starting step', () => {
-		const args = ['--mo-prefix', '15', '--inbound-device-sn', 'in', '--outbound-device-sn', 'out']
+		const args = ['--inbound-device-sn', 'in', '--outbound-device-sn', 'out']
 		expect(parseWarehouseSyncArgs([...args, '--step', 'storage_locations']).step).toBe('storage_locations')
-		expect(parseWarehouseSyncArgs([...args, '--from-step', 'daily_po_shipping_progress']).fromStep)
-			.toBe('daily_po_shipping_progress')
+		expect(parseWarehouseSyncArgs([...args, '--from-step', 'daily_po_shipping_progress']).fromStep).toBe(
+			'daily_po_shipping_progress'
+		)
 		expect(() => parseWarehouseSyncArgs([...args, '--step', 'unknown'])).toThrow(/step/i)
-		expect(() => parseWarehouseSyncArgs([...args, '--step', 'users', '--from-step', 'warehouses']))
-			.toThrow(/--step.*--from-step|--from-step.*--step/i)
+		expect(() => parseWarehouseSyncArgs([...args, '--step', 'users', '--from-step', 'warehouses'])).toThrow(
+			/--step.*--from-step|--from-step.*--step/i
+		)
 	})
 
 	it('provides a help path and rejects malformed or unknown arguments', () => {
@@ -109,22 +99,19 @@ describe('parseWarehouseSyncArgs', () => {
 				'in-1',
 				'--outbound-device-sn',
 				'out-1',
-				'--mo-prefix',
-				'15',
 				'--include-backups',
 				'false'
 			])
 		).toThrow(/does not accept a value/i)
 		expect(() =>
-			parseWarehouseSyncArgs([
-				'--inbound-device-sn',
-				'in-1',
-				'--outbound-device-sn',
-				'out-1',
-				'--mo-prefix',
-				'15',
-				'--unknown'
-			])
+			parseWarehouseSyncArgs(['--inbound-device-sn', 'in-1', '--outbound-device-sn', 'out-1', '--unknown'])
 		).toThrow(/unknown/i)
+	})
+
+	it('rejects the removed MO prefix option', () => {
+		expect(() =>
+			parseWarehouseSyncArgs(['--inbound-device-sn', 'in-1', '--outbound-device-sn', 'out-1', '--mo-prefix', '15'])
+		).toThrow(/unknown argument/i)
+		expect(parseWarehouseSyncArgs(['--help']).help).toBe(true)
 	})
 })

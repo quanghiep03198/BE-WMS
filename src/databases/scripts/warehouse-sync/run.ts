@@ -116,7 +116,11 @@ if (isEntrypoint) {
 		mssql: new MssqlManager(options.dbHost),
 		mongo: new MongoManager(options.mongoDbName)
 	})
-	void runWarehouseSyncCli(process.argv.slice(2), createManagers).then((result) => {
-		process.exitCode = result
-	})
+	void runWarehouseSyncCli(process.argv.slice(2), createManagers)
+		.then((result) => {
+			process.exitCode = result
+		})
+		.finally(() => {
+			process.exit(process.exitCode)
+		})
 }

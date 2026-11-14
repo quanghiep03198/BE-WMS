@@ -23,7 +23,7 @@ export async function runEpcMatchStep(
 		const placeholders = Object.keys(parameters)
 			.map((key) => `@${key}`)
 			.join(', ')
-		const sql = `
+		const sql = /* SQL */ `
 			SELECT EPC_Code AS epc, ISNULL(mo_no_actual, mo_no) AS mo_no,
 				shoestyle_codefactory AS factory_shoes_style, cust_shoestyle AS cust_shoes_style,
 				factory_code_produce, wuerp_vnrd.dbo.NORMALIZE_SIZE_NUMBER(size_numcode) AS size_numcode, color_sn

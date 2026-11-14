@@ -6,14 +6,15 @@
  */
 import 'dotenv/config'
 import mongoose from 'mongoose'
+import {
+	DISPATCH_ORDER_SIGNATURE_FIELDS,
+	SIGNATURE_BUCKET_NAME
+} from '../../modules/truckload-delivery/domain/constants'
 import { TruckloadDeliveryDocument } from '../../modules/truckload-delivery/infrastructure/persistence/mongodb/schemas/truckload-delivery.schema'
 import { MongoManager } from './libs/mongoose'
+import { decodeTruckloadSignature, uploadTruckloadSignature } from './libs/truckload-signatures'
 import { getArgs } from './utils/get-args'
 import { Logger } from './utils/logger'
-
-const FIELDS = ['ie_signature', 'warehouse_officer_signature', 'security_1_signature', 'security_2_signature']
-const BUCKET_NAME = 'dispatch_order_signatures'
-const DATA_URL_PATTERN = /^data:(image\/[\w.+-]+);base64,/
 
 const args = getArgs({
 	mongoDbName: {
@@ -32,40 +33,33 @@ async function execute() {
 		await mongoManager.connect()
 		const dryRun = process.argv.includes('--dry-run')
 		const collection = mongoManager.getRepository<TruckloadDeliveryDocument>('truckload_delivery')
-		const bucket = mongoManager.getBucket(BUCKET_NAME)
+		const bucket = mongoManager.getBucket(SIGNATURE_BUCKET_NAME)
 
 		const cursor = collection.find(
-			{ $or: FIELDS.map((field) => ({ [field]: { $type: 'string' } })) },
-			{ projection: Object.fromEntries(['dispatch_order', ...FIELDS].map((f) => [f, 1])) }
+			{ $or: DISPATCH_ORDER_SIGNATURE_FIELDS.map((field) => ({ [field]: { $type: 'string' } })) },
+			{ projection: Object.fromEntries(['dispatch_order', ...DISPATCH_ORDER_SIGNATURE_FIELDS].map((f) => [f, 1])) }
 		)
 
 		let documents = 0
-		let uploaded = 0
+		let migrated = 0
 		let cleared = 0
 		for await (const doc of cursor) {
 			const $set: Record<string, mongoose.mongo.ObjectId | null> = {}
-			for (const field of FIELDS) {
+			for (const field of DISPATCH_ORDER_SIGNATURE_FIELDS) {
 				const value = doc[field]
 				if (typeof value !== 'string') continue
-				const base64 = value.replace(DATA_URL_PATTERN, '')
-				if (!base64.trim()) {
+				const signature = decodeTruckloadSignature(value, `${doc.dispatch_order}.${field}`)
+				if (!signature) {
 					$set[field] = null
 					cleared++
 					continue
 				}
-				const contentType = DATA_URL_PATTERN.exec(value)?.[1] ?? 'image/png'
 				if (dryRun) {
-					uploaded++
+					migrated++
 					continue
 				}
-				const stream = bucket.openUploadStream(`${doc.dispatch_order}.${field}`, { metadata: { contentType } })
-				await new Promise<void>((resolve, reject) => {
-					stream.once('finish', () => resolve())
-					stream.once('error', reject)
-					stream.end(Buffer.from(base64, 'base64'))
-				})
-				$set[field] = stream.id
-				uploaded++
+				$set[field] = await uploadTruckloadSignature(bucket, `${doc.dispatch_order}.${field}`, signature)
+				migrated++
 			}
 			documents++
 			// * Written only after every upload of the document succeeded; the string check keeps reruns safe
@@ -73,13 +67,13 @@ async function execute() {
 		}
 
 		logger.info(
-			`${dryRun ? '[dry-run] ' : ''}documents: ${documents}, uploaded: ${uploaded}, cleared empty: ${cleared}`
+			`${dryRun ? '[dry-run] ' : ''}documents: ${documents}, migrated signatures: ${migrated}, cleared empty: ${cleared}`
 		)
-		await mongoose.disconnect()
 	} catch (error) {
+		logger.error(error instanceof Error ? error : 'Failed to migrate truckload signatures')
 		process.exitCode = 1
 	} finally {
-		await mongoose.disconnect()
+		await mongoManager.disconnect()
 	}
 }
 

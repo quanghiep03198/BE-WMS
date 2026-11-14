@@ -1,7 +1,7 @@
 import type { mongo } from 'mongoose'
 import { streamMssqlRows, type MssqlStreamRequest } from './mssql-stream'
 
-const MO_INVENTORY_AUDIT_SQL = `
+const MO_INVENTORY_AUDIT_SQL = /* SQL */ `
 	WITH storage_list_cte AS (
 		SELECT a.mo_no,
 			CONCAT('[', STRING_AGG(CAST(CONCAT('"', STRING_ESCAPE(b.storage_name, 'json'), '"') AS NVARCHAR(MAX)), ',')

@@ -1,6 +1,5 @@
 import type { mongo } from 'mongoose'
 import { Types } from 'mongoose'
-import { createHash } from 'node:crypto'
 import { Readable } from 'node:stream'
 import { runDailyMoInventoryLedgerStep } from '../daily-mo-inventory-ledger'
 
@@ -96,17 +95,47 @@ function row(overrides: Partial<LedgerRow> = {}): LedgerRow {
 }
 
 describe('runDailyMoInventoryLedgerStep', () => {
+	it('allocates asynchronous transaction IDs using the ledger date across documents', async () => {
+		const source = createPool([row(), row({ mo_no: '14DEF' }), row({ mo_no: '14GHI', date: '2026-11-12' })])
+		const target = createDatabase()
+		const counters = new Map<string, number>()
+		await runDailyMoInventoryLedgerStep(source.pool, target.database, async (date: string) => {
+			const sequence = (counters.get(date) ?? 0) + 1
+			counters.set(date, sequence)
+			return `SI-${date}-${sequence}`
+		})
+		expect(Object.keys(target.documents.get('14ABC:2026-11-11')?.transaction_history as object)).toEqual([
+			'SI-2026-11-11-1'
+		])
+		expect(Object.keys(target.documents.get('14DEF:2026-11-11')?.transaction_history as object)).toEqual([
+			'SI-2026-11-11-2'
+		])
+		expect(Object.keys(target.documents.get('14GHI:2026-11-12')?.transaction_history as object)).toEqual([
+			'SI-2026-11-12-1'
+		])
+	})
+
+	it('propagates ID allocation failures without writing a ledger', async () => {
+		const target = createDatabase()
+		await expect(
+			runDailyMoInventoryLedgerStep(createPool([row()]).pool, target.database, async () => {
+				throw new Error('counter unavailable')
+			})
+		).rejects.toThrow('counter unavailable')
+		expect(target.getBulkWrites()).toBe(0)
+	})
+
 	it('stores parsed ledgers and generated transaction keys using a read-only parameterized query', async () => {
 		const source = createPool([row()])
 		const target = createDatabase()
 
-		await expect(runDailyMoInventoryLedgerStep(source.pool, target.database, '14', () => 'tx-1')).resolves.toEqual({
+		await expect(runDailyMoInventoryLedgerStep(source.pool, target.database, () => 'tx-1')).resolves.toEqual({
 			ledgers: 1
 		})
 
-		expect(source.parameters).toEqual({ MoPrefix: '14' })
+		expect(source.parameters).toEqual({})
 		expect(source.queries).toHaveLength(1)
-		expect(source.queries[0]).toMatch(/WHERE\s+LEFT\(mo_no,\s*2\)\s*=\s*@MoPrefix/i)
+		expect(source.queries[0]).toMatch(/TRY_CONVERT\(int,\s*LEFT\(mo_no,\s*2\)\)\s*>=\s*14/i)
 		expect(source.queries[0]).not.toMatch(/\b(?:INSERT|UPDATE|DELETE|MERGE|EXEC(?:UTE)?)\b/i)
 		expect(target.documents.get('14ABC:2026-11-11')).toEqual({
 			mo_no: '14ABC',
@@ -125,11 +154,68 @@ describe('runDailyMoInventoryLedgerStep', () => {
 		})
 	})
 
+	it.each(['13ABC', 'A4ABC'])('rejects ledger rows outside numeric prefix 14+: %s', async (moNo) => {
+		const target = createDatabase()
+		await expect(
+			runDailyMoInventoryLedgerStep(createPool([row({ mo_no: moNo })]).pool, target.database, () => 'unused')
+		).rejects.toThrow(/ineligible|invalid/i)
+		expect(target.getBulkWrites()).toBe(0)
+	})
+
+	it.each([null, undefined])(
+		'uses a stable fallback for a null or omitted assembly line: %p',
+		async (assemblyLine) => {
+			const transaction = {
+				time: '10:24',
+				assembly_line: assemblyLine,
+				storage_location: null,
+				size_ledger: { '07': { stocked_in_qty: 2 } }
+			}
+			const source = createPool([row({ transaction_history: JSON.stringify([transaction]) })])
+			const target = createDatabase()
+			const generateId = jest.fn(() => 'tx-1')
+
+			await runDailyMoInventoryLedgerStep(source.pool, target.database, generateId)
+			await runDailyMoInventoryLedgerStep(source.pool, target.database, generateId)
+
+			expect(target.documents.get('14ABC:2026-11-11')?.transaction_history).toEqual({
+				'tx-1': { ...transaction, assembly_line: 'UNKNOWN', voided: false }
+			})
+			expect(generateId).toHaveBeenCalledTimes(1)
+		}
+	)
+
+	it('normalizes null assembly lines before grouping and includes null JSON values', async () => {
+		const source = createPool([])
+		await runDailyMoInventoryLedgerStep(source.pool, createDatabase().database, () => 'unused')
+
+		expect(source.queries[0]).toMatch(/COALESCE\(s\.dept_name,\s*'UNKNOWN'\)\s+AS\s+assembly_line/i)
+		expect(source.queries[0]).toMatch(/FOR JSON PATH,\s*INCLUDE_NULL_VALUES/i)
+	})
+
+	it.each(['', '---', 123])('rejects invalid non-null assembly lines: %p', async (assemblyLine) => {
+		const transaction = {
+			time: '10:24',
+			assembly_line: assemblyLine,
+			storage_location: null,
+			size_ledger: { '07': { stocked_in_qty: 2 } }
+		}
+		const target = createDatabase()
+		await expect(
+			runDailyMoInventoryLedgerStep(
+				createPool([row({ transaction_history: JSON.stringify([transaction]) })]).pool,
+				target.database,
+				() => 'unused'
+			)
+		).rejects.toThrow(/assembly_line/)
+		expect(target.getBulkWrites()).toBe(0)
+	})
+
 	it('skips records with an empty ledger or transaction history', async () => {
 		const source = createPool([row({ size_ledger: '{}' }), row({ transaction_history: '[]' })])
 		const target = createDatabase()
 
-		await expect(runDailyMoInventoryLedgerStep(source.pool, target.database, '14', () => 'unused')).resolves.toEqual({
+		await expect(runDailyMoInventoryLedgerStep(source.pool, target.database, () => 'unused')).resolves.toEqual({
 			ledgers: 0
 		})
 
@@ -141,7 +227,7 @@ describe('runDailyMoInventoryLedgerStep', () => {
 		const malformed = createPool([row({ size_ledger: '{' })])
 		const malformedTarget = createDatabase()
 		await expect(
-			runDailyMoInventoryLedgerStep(malformed.pool, malformedTarget.database, '14', () => 'tx-1')
+			runDailyMoInventoryLedgerStep(malformed.pool, malformedTarget.database, () => 'tx-1')
 		).rejects.toThrow()
 
 		const incomplete = createPool([
@@ -153,7 +239,7 @@ describe('runDailyMoInventoryLedgerStep', () => {
 		])
 		const incompleteTarget = createDatabase()
 		await expect(
-			runDailyMoInventoryLedgerStep(incomplete.pool, incompleteTarget.database, '14', () => 'tx-1')
+			runDailyMoInventoryLedgerStep(incomplete.pool, incompleteTarget.database, () => 'tx-1')
 		).rejects.toThrow()
 		expect(incompleteTarget.documents.size).toBe(0)
 	})
@@ -163,8 +249,8 @@ describe('runDailyMoInventoryLedgerStep', () => {
 		const target = createDatabase()
 		const generateId = () => 'stable-id'
 
-		await runDailyMoInventoryLedgerStep(source.pool, target.database, '14', generateId)
-		await runDailyMoInventoryLedgerStep(source.pool, target.database, '14', generateId)
+		await runDailyMoInventoryLedgerStep(source.pool, target.database, generateId)
+		await runDailyMoInventoryLedgerStep(source.pool, target.database, generateId)
 
 		expect(target.documents.size).toBe(1)
 		expect(target.documents.get('14ABC:2026-11-11')?.transaction_history).toEqual({
@@ -179,7 +265,7 @@ describe('runDailyMoInventoryLedgerStep', () => {
 	})
 
 	it.each(['object', 'map'])(
-		'reuses legacy IDs from %s history and assigns deterministic IDs to new transactions on reruns',
+		'reuses legacy IDs from %s history and keeps new IDs on reruns',
 		async (representation) => {
 			const target = createDatabase()
 			const existing = {
@@ -212,11 +298,11 @@ describe('runDailyMoInventoryLedgerStep', () => {
 					transaction_history: JSON.stringify([transaction, { ...transaction, time: '10:25' }])
 				})
 			])
-			const generateId = jest.fn((signature: string) => createHash('sha256').update(signature).digest('hex'))
-			const expectedNewId = '6684e0aef10abee816232c699de4912c451262358aed4703d5ff12dd0a4828e2'
+			const generateId = jest.fn(() => 'SI-261111-001')
+			const expectedNewId = 'SI-261111-001'
 
 			for (let run = 0; run < 3; run++) {
-				await runDailyMoInventoryLedgerStep(source.pool, target.database, '14', generateId)
+				await runDailyMoInventoryLedgerStep(source.pool, target.database, generateId)
 				const history = target.documents.get('14ABC:2026-11-11')?.transaction_history as Record<string, unknown>
 				expect(Object.keys(history)).toEqual(['legacy-random-id', expectedNewId])
 			}
@@ -244,7 +330,7 @@ describe('runDailyMoInventoryLedgerStep', () => {
 		})
 		const generateId = jest.fn(() => 'new-id')
 
-		await runDailyMoInventoryLedgerStep(createPool([row()]).pool, target.database, '14', generateId)
+		await runDailyMoInventoryLedgerStep(createPool([row()]).pool, target.database, generateId)
 
 		expect(Object.keys(target.documents.get('14ABC:2026-11-11')?.transaction_history as object)).toEqual([
 			'legacy-object-id'
@@ -268,7 +354,7 @@ describe('runDailyMoInventoryLedgerStep', () => {
 			}
 		})
 
-		await runDailyMoInventoryLedgerStep(createPool([row()]).pool, target.database, '14', () => 'new-id')
+		await runDailyMoInventoryLedgerStep(createPool([row()]).pool, target.database, () => 'new-id')
 
 		expect(Object.keys(target.documents.get('14ABC:2026-11-11')?.transaction_history as object)).toEqual([
 			'legacy-code-id'
@@ -293,7 +379,7 @@ describe('runDailyMoInventoryLedgerStep', () => {
 		})
 
 		await expect(
-			runDailyMoInventoryLedgerStep(createPool([row()]).pool, target.database, '14', () => 'new-id')
+			runDailyMoInventoryLedgerStep(createPool([row()]).pool, target.database, () => 'new-id')
 		).rejects.toThrow(
 			`14ABC on 2026-11-11: ${field} ObjectId ${referenceId.toHexString()} (${collection} lookup failed)`
 		)
@@ -311,7 +397,7 @@ describe('runDailyMoInventoryLedgerStep', () => {
 		})
 
 		await expect(
-			runDailyMoInventoryLedgerStep(createPool([row()]).pool, target.database, '14', () => 'new-id')
+			runDailyMoInventoryLedgerStep(createPool([row()]).pool, target.database, () => 'new-id')
 		).rejects.toThrow(`14ABC on 2026-11-11: ${field} ObjectId ${reference.toHexString()}`)
 
 		expect(target.getBulkWrites()).toBe(0)
@@ -328,7 +414,7 @@ describe('runDailyMoInventoryLedgerStep', () => {
 		target.documents.set('14ABC:2026-11-11', {
 			transaction_history: { 'other-id': { ...transaction, ...change } }
 		})
-		await runDailyMoInventoryLedgerStep(createPool([row()]).pool, target.database, '14', () => 'new-id')
+		await runDailyMoInventoryLedgerStep(createPool([row()]).pool, target.database, () => 'new-id')
 		expect(Object.keys(target.documents.get('14ABC:2026-11-11')?.transaction_history as object)).toEqual(['new-id'])
 	})
 
@@ -340,7 +426,7 @@ describe('runDailyMoInventoryLedgerStep', () => {
 		target.documents.set('14XYZ:2026-11-11', {
 			transaction_history: { 'other-mo-id': JSON.parse(row().transaction_history)[0] }
 		})
-		await runDailyMoInventoryLedgerStep(createPool([row()]).pool, target.database, '14', () => 'new-id')
+		await runDailyMoInventoryLedgerStep(createPool([row()]).pool, target.database, () => 'new-id')
 		expect(Object.keys(target.documents.get('14ABC:2026-11-11')?.transaction_history as object)).toEqual(['new-id'])
 	})
 
@@ -351,7 +437,7 @@ describe('runDailyMoInventoryLedgerStep', () => {
 			transaction_history: { 'legacy-1': transaction, 'legacy-2': transaction }
 		})
 		await expect(
-			runDailyMoInventoryLedgerStep(createPool([row()]).pool, target.database, '14', () => 'new-id')
+			runDailyMoInventoryLedgerStep(createPool([row()]).pool, target.database, () => 'new-id')
 		).rejects.toThrow(/duplicate.*signature/i)
 		expect(target.getBulkWrites()).toBe(0)
 	})
@@ -361,31 +447,25 @@ describe('runDailyMoInventoryLedgerStep', () => {
 		target.documents.set('14ABC:2026-11-11', {
 			transaction_history: { invalid: null, partial: { time: '10:24' } }
 		})
-		await runDailyMoInventoryLedgerStep(createPool([row()]).pool, target.database, '14', () => 'new-id')
+		await runDailyMoInventoryLedgerStep(createPool([row()]).pool, target.database, () => 'new-id')
 		expect(Object.keys(target.documents.get('14ABC:2026-11-11')?.transaction_history as object)).toEqual(['new-id'])
 	})
 
 	it.each([null, [], 'invalid'])('handles non-map stored history safely: %p', async (history) => {
 		const target = createDatabase()
 		target.documents.set('14ABC:2026-11-11', { transaction_history: history })
-		await runDailyMoInventoryLedgerStep(createPool([row()]).pool, target.database, '14', () => 'new-id')
+		await runDailyMoInventoryLedgerStep(createPool([row()]).pool, target.database, () => 'new-id')
 		expect(Object.keys(target.documents.get('14ABC:2026-11-11')?.transaction_history as object)).toEqual(['new-id'])
 	})
 
-	it('generates stable canonical signatures from all normalized transaction identity fields', async () => {
+	it('matches existing IDs using all normalized transaction identity fields', async () => {
 		const transaction = {
 			time: ' 10:24 ',
 			assembly_line: 'Line A-1',
 			storage_location: ' WH A ',
 			size_ledger: { '08': { stocked_in_qty: 3 }, '07': { stocked_in_qty: 2 } }
 		}
-		const signatures: Array<string | undefined> = []
-		const generateId = (signature?: string) => {
-			signatures.push(signature)
-			return `id-${signatures.length}`
-		}
 		const rows = [
-			row({ mo_no: ' 14ABC ', transaction_history: JSON.stringify([transaction]) }),
 			row({
 				transaction_history: JSON.stringify([
 					{
@@ -407,10 +487,12 @@ describe('runDailyMoInventoryLedgerStep', () => {
 			].map((change) => row({ transaction_history: JSON.stringify([{ ...transaction, ...change }]) }))
 		]
 
-		await runDailyMoInventoryLedgerStep(createPool(rows).pool, createDatabase().database, '14', generateId)
-
-		expect(signatures[0]).toEqual(expect.any(String))
-		expect(signatures[1]).toBe(signatures[0])
-		expect(new Set([signatures[0], ...signatures.slice(2)]).size).toBe(7)
+		for (const [index, sourceRow] of rows.entries()) {
+			const target = createDatabase()
+			target.documents.set('14ABC:2026-11-11', { transaction_history: { 'existing-id': transaction } })
+			await runDailyMoInventoryLedgerStep(createPool([sourceRow]).pool, target.database, () => 'new-id')
+			const stored = target.documents.get(`${sourceRow.mo_no.trim()}:${sourceRow.date}`)
+			expect(Object.keys(stored?.transaction_history as object)).toEqual([index === 0 ? 'existing-id' : 'new-id'])
+		}
 	})
 })

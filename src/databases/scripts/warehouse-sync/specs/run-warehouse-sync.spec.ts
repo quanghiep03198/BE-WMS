@@ -1,3 +1,4 @@
+import { StockTransactionIdMongoGenerator } from '@modules/finished-goods/infrastructure/persistence/mongodb/repositories/stock-transaction-id-mongo.generator'
 import { readFile, rm } from 'node:fs/promises'
 import { Readable } from 'node:stream'
 import * as dailyPoStep from '../run-daily-po-step'
@@ -39,7 +40,6 @@ const stageNames: WarehouseSyncStageName[] = [
 
 const config: WarehouseSyncConfig = {
 	factoryCode: 'GL3',
-	moPrefix: '15',
 	inboundDeviceSn: 'INBOUND',
 	outboundDeviceSn: 'OUTBOUND',
 	includeBackups: true,
@@ -55,78 +55,66 @@ function fakeDependencies(runStage: (stage: WarehouseSyncStageName) => Promise<v
 }
 
 describe('runWarehouseSync', () => {
-	it.each(['15', '09'])(
-		'uses requested prefix %s for manufacturing orders without discovering prefixes',
-		async (prefix) => {
-			const requests: Record<string, string>[] = []
-			const writes: unknown[] = []
-			const pool = {
-				request: () => {
-					const parameters: Record<string, string> = {}
-					return {
-						input: (name: string, value: string) => {
-							parameters[name] = value
-						},
-						toReadableStream: () =>
-							Readable.from(
-								parameters.MoPrefix === prefix
-									? [
-											{
-												mo_no: `${prefix}ABC`,
-												brand_name: 'UGG',
-												factory_code_produce: 'GL3',
-												factory_shoes_style: 'F1',
-												cust_shoes_style: 'C1',
-												color_sn: 'BLACK',
-												order_qty: 5,
-												size_ledger: JSON.stringify({
-													'7': {
-														order_qty: 5,
-														stocked_in_qty: 2,
-														total_recall_tx: 0,
-														total_return_tx: 0,
-														shipped_out_qty: 1
-													}
-												})
-											}
-										]
-									: []
-							),
-						query: async () => {
-							requests.push({ ...parameters })
-						},
-						cancel: () => true
-					}
+	it('uses the fixed numeric 14+ MO rule without a prefix parameter', async () => {
+		const requests: Record<string, string>[] = []
+		const queries: string[] = []
+		const writes: unknown[] = []
+		const sizeLedger = JSON.stringify({
+			'7': {
+				order_qty: 5,
+				stocked_in_qty: 2,
+				total_recall_tx: 0,
+				total_return_tx: 0,
+				shipped_out_qty: 1
+			}
+		})
+		const rows = ['14ABC', '99XYZ'].map((mo_no) => ({
+			mo_no,
+			brand_name: 'UGG',
+			factory_code_produce: 'GL3',
+			factory_shoes_style: 'F1',
+			cust_shoes_style: 'C1',
+			color_sn: 'BLACK',
+			order_qty: 5,
+			size_ledger: sizeLedger
+		}))
+		const pool = {
+			request: () => {
+				const parameters: Record<string, string> = {}
+				return {
+					input: (name: string, value: string) => {
+						parameters[name] = value
+					},
+					toReadableStream: () => Readable.from(rows),
+					query: async (sql: string) => {
+						requests.push({ ...parameters })
+						queries.push(sql)
+					},
+					cancel: () => true
 				}
 			}
-			const database = {
-				collection: () => ({
-					createIndex: async () => undefined,
-					bulkWrite: async (operations: unknown[]) => {
-						writes.push(...operations)
-						return { isOk: () => true }
-					}
-				})
-			}
-			const stepsSpy = jest.mocked(stepsRunner.runSteps).mockImplementation(async (steps) => {
-				for (const step of steps) if (step.name === 'manufacturing orders') await step.run()
-			})
-			try {
-				await runWarehouseSync(
-					pool as never,
-					database as never,
-					{ ...config, moPrefix: prefix },
-					new Date('2026-11-12T00:00:00Z')
-				)
-				expect(requests).toEqual([{ FactoryCode: 'GL3', MoPrefix: prefix, cutoff: '2026-11-12' }])
-				expect(writes).toEqual([
-					expect.objectContaining({ updateOne: expect.objectContaining({ filter: { mo_no: `${prefix}ABC` } }) })
-				])
-			} finally {
-				stepsSpy.mockImplementation(jest.requireActual<typeof import('../run-steps')>('../run-steps').runSteps)
-			}
 		}
-	)
+		const database = {
+			collection: () => ({
+				createIndex: async () => undefined,
+				bulkWrite: async (operations: unknown[]) => {
+					writes.push(...operations)
+					return { isOk: () => true }
+				}
+			})
+		}
+		const stepsSpy = jest.mocked(stepsRunner.runSteps).mockImplementation(async (steps) => {
+			for (const step of steps) if (step.name === 'manufacturing orders') await step.run()
+		})
+		try {
+			await runWarehouseSync(pool as never, database as never, config, new Date('2026-11-12T00:00:00Z'))
+			expect(requests).toEqual([{ FactoryCode: 'GL3', cutoff: '2026-11-12' }])
+			expect(queries[0]).toMatch(/TRY_CONVERT\(int,\s*LEFT\(a\.mo_no,\s*2\)\)\s*>=\s*14/i)
+			expect(writes).toHaveLength(2)
+		} finally {
+			stepsSpy.mockImplementation(jest.requireActual<typeof import('../run-steps')>('../run-steps').runSteps)
+		}
+	})
 
 	it('runs every stage in order and writes the Excel report last', async () => {
 		const calls: WarehouseSyncStageName[] = []
@@ -230,8 +218,7 @@ describe('runWarehouseSync', () => {
 					input: (name: string, value: string) => {
 						parameters[name] = value
 					},
-					toReadableStream: () =>
-						Readable.from(parameters.FactoryCode && !parameters.MoPrefix ? [{ prefix: '15' }] : []),
+					toReadableStream: () => Readable.from([]),
 					query: async () => {
 						if (parameters.cutoff) cutoffs.push(parameters.cutoff)
 					},
@@ -255,7 +242,7 @@ describe('runWarehouseSync', () => {
 		}
 	})
 
-	it('uses deterministic ledger IDs across runs while retaining random PO IDs', async () => {
+	it('allocates PO and MO IDs by transaction type and source date through the shared generator', async () => {
 		const ledgerIds: string[][] = []
 		const poIds: string[] = []
 		const transaction = {
@@ -295,21 +282,31 @@ describe('runWarehouseSync', () => {
 				if (step.name === 'daily PO progress' || step.name === 'daily MO inventory ledger') await step.run()
 			}
 		})
+		const sequences = new Map<string, number>()
+		const generatorSpy = jest.spyOn(StockTransactionIdMongoGenerator, 'fromDatabase').mockReturnValue({
+			nextId: async (type, date) => {
+				const key = `${type}-${date?.getFullYear()}-${date ? date.getMonth() + 1 : ''}-${date?.getDate()}`
+				const sequence = (sequences.get(key) ?? 0) + 1
+				sequences.set(key, sequence)
+				return `${key}-${sequence}`
+			}
+		} as StockTransactionIdMongoGenerator)
 		const poSpy = jest
 			.mocked(dailyPoStep.runDailyPoStep)
 			.mockImplementation(async (_pool, _db, _tenant, generateId) => {
-				poIds.push(generateId())
+				poIds.push(await generateId('2026-11-11'))
 				return { scans: 0, documents: 0, quantity: 0 }
 			})
 		try {
 			await runWarehouseSync(pool as never, database as never, config)
 			await runWarehouseSync(pool as never, database as never, config)
-			expect(ledgerIds[0]).toEqual(ledgerIds[1])
-			expect(ledgerIds[0][0]).toBe('0f20f56640ad3f832d0423e09be164a22a3a11f92faf5f1c876e40c76480d211')
-			expect(ledgerIds[0][0]).not.toBe(ledgerIds[0][1])
-			expect(poIds[0]).toMatch(/^[a-f0-9-]{36}$/)
-			expect(poIds[0]).not.toBe(poIds[1])
+			expect(ledgerIds).toEqual([
+				['stock_in-2026-11-11-1', 'stock_in-2026-11-11-2'],
+				['stock_in-2026-11-11-3', 'stock_in-2026-11-11-4']
+			])
+			expect(poIds).toEqual(['stock_out-2026-11-11-1', 'stock_out-2026-11-11-2'])
 		} finally {
+			generatorSpy.mockRestore()
 			stepsSpy.mockImplementation(jest.requireActual<typeof import('../run-steps')>('../run-steps').runSteps)
 			poSpy.mockImplementation(
 				jest.requireActual<typeof import('../run-daily-po-step')>('../run-daily-po-step').runDailyPoStep

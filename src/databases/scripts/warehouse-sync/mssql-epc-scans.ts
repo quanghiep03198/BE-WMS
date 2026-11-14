@@ -37,7 +37,7 @@ export async function* readMssqlEpcScans(
 	for (const [index, order] of orders.entries()) parameters[`mo${index}`] = text(order, 'mo_no')
 	parameters.cutoff = formatInTimeZone(cutoff, 'Asia/Ho_Chi_Minh', "yyyy-MM-dd'T'HH:mm:ss")
 	const placeholders = orders.map((_, index) => `@mo${index}`).join(', ')
-	const sql = `
+	const sql = /* SQL */ `
 		WITH scans AS (
 			SELECT EPC_Code, stationNO, station_suffix, rfid_status, record_time, po, storage, dept_code
 			FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet

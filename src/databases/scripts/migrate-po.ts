@@ -1,7 +1,7 @@
 import { AnyBulkWriteOperation } from 'mongoose'
 import { isIPv4 } from 'net'
 import { env, SuperJson } from '../../common/utils'
-import { orderSearchGrams } from '../../modules/order/order-search-grams'
+import { orderSearchGrams } from '../../modules/order/schemas/order-search-grams.plugin'
 import { PurchaseOrderDocument } from '../../modules/order/schemas/purchase-order.schema'
 import { MongoManager } from './libs/mongoose'
 import { MssqlManager } from './libs/mssql'

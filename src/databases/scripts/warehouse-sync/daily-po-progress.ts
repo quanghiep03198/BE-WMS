@@ -31,11 +31,11 @@ function addQuantity(packing: Record<string, Record<string, number>>, mo: string
 	})
 }
 
-export function groupDailyPoProgress(
+export async function groupDailyPoProgress(
 	scans: Iterable<OutboundScan>,
-	generateId: () => string,
+	generateId: (date: string) => string | Promise<string>,
 	existing: Iterable<DailyPoProgress> = []
-): DailyPoProgress[] {
+): Promise<DailyPoProgress[]> {
 	const oldIds = new Map<string, Map<string, string>>()
 	const reservedIds = new Map<string, Set<string>>()
 	for (const document of existing) {
@@ -79,7 +79,7 @@ export function groupDailyPoProgress(
 			id = previousId
 			if (!id) {
 				for (let attempt = 0; attempt < 100; attempt++) {
-					const candidate = generateId()
+					const candidate = await generateId(scan.date)
 					if (
 						candidate &&
 						!reservedIds.get(key)?.has(candidate) &&

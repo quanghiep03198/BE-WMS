@@ -4,7 +4,7 @@ import en from '../../../i18n/en/factory.json'
 import vi from '../../../i18n/vi/factory.json'
 import { streamMssqlRows, type MssqlStreamRequest } from './mssql-stream'
 
-const DEPARTMENTS_SQL = `
+const DEPARTMENTS_SQL = /* SQL */ `
 	WITH assembly_cte AS (
 		SELECT 'ASBL' AS [group],
 			CASE WHEN dept_name LIKE N'成型%' THEN REPLACE(LEFT(dept_name, 4), N'線', N'')

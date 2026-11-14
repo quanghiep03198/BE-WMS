@@ -13,7 +13,7 @@ type StoredDailyPoProgress = DailyPoProgress & {
 export async function syncMongoDailyPoProgress(
 	database: mongo.Db,
 	scans: Iterable<OutboundScan> | AsyncIterable<OutboundScan>,
-	generateId: () => string
+	generateId: (date: string) => string | Promise<string>
 ) {
 	const ledgers = database.collection<StoredDailyPoProgress>('daily_po_shipping_progress')
 	const purchaseOrders = database.collection<{ po: string }>('purchase_orders')

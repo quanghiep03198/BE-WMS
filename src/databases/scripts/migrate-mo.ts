@@ -1,7 +1,7 @@
 import 'dotenv/config'
 import { AnyBulkWriteOperation, HydratedDocument } from 'mongoose'
 import { env, SuperJson } from '../../common/utils'
-import { orderSearchGrams } from '../../modules/order/order-search-grams'
+import { orderSearchGrams } from '../../modules/order/schemas/order-search-grams.plugin'
 import { MongoManager } from './libs/mongoose'
 import { MssqlManager } from './libs/mssql'
 import { getArgs } from './utils/get-args'

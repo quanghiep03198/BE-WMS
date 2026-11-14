@@ -17,7 +17,7 @@ describe('runWarehouseSyncCli', () => {
 	let errorSpy: jest.SpyInstance
 	let logSpy: jest.SpyInstance
 
-	const validArgs = ['--mo-prefix', '15', '--inbound-device-sn', 'in-1', '--outbound-device-sn', 'out-1']
+	const validArgs = ['--inbound-device-sn', 'in-1', '--outbound-device-sn', 'out-1']
 
 	beforeEach(() => {
 		process.env.DB_HOST = 'mssql.local'
@@ -57,7 +57,13 @@ describe('runWarehouseSyncCli', () => {
 	})
 
 	it('validates required input before constructing managers', async () => {
-		await expect(runWarehouseSyncCli(['--mo-prefix', '15'], createManagers)).resolves.toBe(1)
+		await expect(runWarehouseSyncCli([], createManagers)).resolves.toBe(1)
+		expect(createManagers).not.toHaveBeenCalled()
+		expect(errorSpy).toHaveBeenCalled()
+	})
+
+	it('rejects the removed MO prefix option before connecting', async () => {
+		await expect(runWarehouseSyncCli([...validArgs, '--mo-prefix', '15'], createManagers)).resolves.toBe(1)
 		expect(createManagers).not.toHaveBeenCalled()
 		expect(errorSpy).toHaveBeenCalled()
 	})

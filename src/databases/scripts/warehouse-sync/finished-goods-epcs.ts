@@ -1,4 +1,6 @@
 import { Types, type mongo } from 'mongoose'
+import { performance } from 'node:perf_hooks'
+import { isEligibleMoNo } from './mo-no'
 import { streamMssqlRows, type MssqlStreamRequest } from './mssql-stream'
 
 const BATCH_SIZE = 1000
@@ -28,30 +30,33 @@ function sql(includeBackups: boolean): string {
 	const inboundBackup = includeBackups
 		? /* SQL */ `
 		UNION ALL
-		SELECT a.EPC_Code, c.size_numcode, c.mo_no, a.po, a.rfid_status,
-			a.storage AS storage_location, a.dept_code AS assembly_line,
-			c.shoestyle_codefactory AS factory_shoes_style, c.color_sn, a.record_time
+		SELECT a.EPC_Code, a.mo_no, a.po, a.rfid_status,
+			a.storage AS storage_location, a.dept_code AS assembly_line, a.record_time
 		FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet_backup_Daily AS a
-		INNER JOIN DV_DATA_LAKE.dbo.dv_rfidmatchmst_cust AS c ON a.EPC_Code = c.EPC_Code
+		INNER JOIN eligible_mos AS m ON m.mo_no = a.mo_no
 		WHERE a.station_suffix = '101' AND a.EPC_Code NOT LIKE 'E28%'
-			AND LEFT(a.mo_no, 2) >= '15'`
+			AND LEFT(a.mo_no, 2) >= '14'`
 		: ''
 	const outboundBackup = includeBackups
-		? `
+		? /* SQL */ `
 		UNION
-		SELECT EPC_Code, size_code, mo_no, po, record_time, rfid_status, rfid_use
-		FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet_backup_Daily
-		WHERE station_suffix = '103' AND EPC_Code NOT LIKE 'E28%'
-			AND LEFT(mo_no, 2) >= '15'`
+		SELECT a.EPC_Code, a.size_code, a.mo_no, a.po, a.record_time, a.rfid_status, a.rfid_use
+		FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet_backup_Daily AS a
+		INNER JOIN eligible_mos AS m ON m.mo_no = a.mo_no
+		WHERE a.station_suffix = '103' AND a.EPC_Code NOT LIKE 'E28%'
+			AND LEFT(a.mo_no, 2) >= '14'`
 		: ''
 
-	return `
-		WITH epcs_at_101_history AS (
-			SELECT a.EPC_Code, c.size_numcode, c.mo_no, a.po, a.rfid_status,
-				a.storage AS storage_location, a.dept_code AS assembly_line,
-				c.shoestyle_codefactory AS factory_shoes_style, c.color_sn, a.record_time
+	return /* SQL */ `
+		WITH eligible_mos AS (
+			SELECT [value] AS mo_no
+			FROM OPENJSON(@moNos)
+		),
+		epcs_at_101_history AS (
+			SELECT a.EPC_Code, a.mo_no, a.po, a.rfid_status,
+				a.storage AS storage_location, a.dept_code AS assembly_line, a.record_time
 			FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet AS a
-			INNER JOIN DV_DATA_LAKE.dbo.dv_rfidmatchmst_cust AS c ON a.EPC_Code = c.EPC_Code
+			INNER JOIN eligible_mos AS m ON m.mo_no = a.mo_no
 			WHERE a.station_suffix = '101' AND a.EPC_Code NOT LIKE 'E28%'
 			${inboundBackup}
 		),
@@ -60,15 +65,15 @@ function sql(includeBackups: boolean): string {
 			FROM epcs_at_101_history
 		),
 		epcs_at_101 AS (
-			SELECT EPC_Code, size_numcode, mo_no, po, rfid_status, storage_location,
-				assembly_line, factory_shoes_style, color_sn, record_time
+			SELECT EPC_Code, mo_no, po, rfid_status, storage_location, assembly_line, record_time
 			FROM epcs_at_101_ranked
 			WHERE rn = 1
 		),
 		epcs_at_103_history AS (
-			SELECT EPC_Code, size_code, mo_no, po, record_time, rfid_status, rfid_use
-			FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet
-			WHERE station_suffix = '103' AND EPC_Code NOT LIKE 'E28%'
+			SELECT a.EPC_Code, a.size_code, a.mo_no, a.po, a.record_time, a.rfid_status, a.rfid_use
+			FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet AS a
+			INNER JOIN eligible_mos AS m ON m.mo_no = a.mo_no
+			WHERE a.station_suffix = '103' AND a.EPC_Code NOT LIKE 'E28%'
 			${outboundBackup}
 		),
 		epcs_at_103_ranked AS (
@@ -80,8 +85,7 @@ function sql(includeBackups: boolean): string {
 			FROM epcs_at_103_ranked
 			WHERE rn = 1
 		)
-		SELECT _101.EPC_Code AS epc, _101.size_numcode, _101.mo_no,
-			_103.po, _101.factory_shoes_style, _101.color_sn,
+		SELECT _101.EPC_Code AS epc, _101.mo_no, _103.po,
 			@inboundDeviceSn AS inbound_device_sn,
 			IIF(_103.EPC_Code IS NOT NULL, @outboundDeviceSn, NULL) AS outbound_device_sn,
 			IIF(_103.record_time > _101.record_time, _103.record_time, _101.record_time) AS last_scanned_at,
@@ -93,17 +97,13 @@ function sql(includeBackups: boolean): string {
 				ELSE 'instock' END AS status
 		FROM epcs_at_101 AS _101
 		LEFT OUTER JOIN epcs_at_103 AS _103 ON _101.EPC_Code = _103.EPC_Code
-		ORDER BY _101.mo_no DESC;
 	`
 }
 
 type FinishedGoodsEpc = {
 	epc: string
 	mo_no: string
-	size_numcode: string
 	po: string | null
-	factory_shoes_style: string
-	color_sn: string
 	inbound_device_sn: string
 	outbound_device_sn: string | null
 	last_scanned_at: Date
@@ -126,10 +126,7 @@ function mapFinishedGoodsEpc(row: unknown): FinishedGoodsEpc {
 	const fields = [
 		'epc',
 		'mo_no',
-		'size_numcode',
 		'po',
-		'factory_shoes_style',
-		'color_sn',
 		'inbound_device_sn',
 		'outbound_device_sn',
 		'last_scanned_at',
@@ -149,10 +146,7 @@ function mapFinishedGoodsEpc(row: unknown): FinishedGoodsEpc {
 	return {
 		epc: requiredText(source.epc, 'epc'),
 		mo_no: requiredText(source.mo_no, 'mo_no'),
-		size_numcode: requiredText(source.size_numcode, 'size_numcode'),
 		po: optionalText(source.po, 'po'),
-		factory_shoes_style: requiredText(source.factory_shoes_style, 'factory_shoes_style'),
-		color_sn: requiredText(source.color_sn, 'color_sn'),
 		inbound_device_sn: requiredText(source.inbound_device_sn, 'inbound_device_sn'),
 		outbound_device_sn: optionalText(source.outbound_device_sn, 'outbound_device_sn'),
 		last_scanned_at: requiredDate(source.last_scanned_at, 'last_scanned_at'),
@@ -215,59 +209,237 @@ async function loadReferences(database: mongo.Db) {
 	}
 }
 
+function enrichmentPipeline(epcs: string[], references: Awaited<ReturnType<typeof loadReferences>>): mongo.Document[] {
+	return [
+		{ $match: { _id: { $in: epcs } } },
+		{
+			$lookup: {
+				from: 'finished_goods_epcs_match',
+				let: { epc: '$epc' },
+				pipeline: [{ $match: { $expr: { $eq: ['$epc', '$$epc'] } } }, { $sort: { _id: 1 } }, { $limit: 1 }],
+				as: '_match'
+			}
+		},
+		{
+			$lookup: {
+				from: 'departments',
+				let: { code: '$assembly_line' },
+				pipeline: [
+					{
+						$match: {
+							$expr: {
+								$and: [
+									{ $ne: ['$$code', null] },
+									{ $eq: [{ $trim: { input: { $ifNull: ['$code', ''] } } }, '$$code'] }
+								]
+							}
+						}
+					},
+					{ $sort: { _id: 1 } },
+					{ $limit: 1 }
+				],
+				as: '_department'
+			}
+		},
+		{
+			$lookup: {
+				from: 'storage_locations',
+				let: { code: '$storage_location' },
+				pipeline: [
+					{
+						$match: {
+							$expr: {
+								$and: [
+									{ $ne: ['$$code', null] },
+									{ $eq: [{ $toUpper: { $trim: { input: { $ifNull: ['$storage_num', ''] } } } }, '$$code'] }
+								]
+							}
+						}
+					},
+					{ $sort: { _id: 1 } },
+					{ $limit: 1 }
+				],
+				as: '_location'
+			}
+		},
+		{
+			$set: {
+				_match: { $arrayElemAt: ['$_match', 0] },
+				_department: { $arrayElemAt: ['$_department._id', 0] },
+				_location: { $arrayElemAt: ['$_location._id', 0] }
+			}
+		},
+		{
+			$set: {
+				factory_shoes_style: '$_match.factory_shoes_style',
+				color_sn: '$_match.color_sn',
+				size_numcode: '$_match.size_numcode',
+				assembly_line: { $ifNull: ['$_department', references.departments.fallback] },
+				storage_location: { $ifNull: ['$_location', references.locations.fallback] }
+			}
+		}
+	]
+}
+
 export async function runFinishedGoodsEpcStep(
 	pool: { request(): MssqlStreamRequest },
 	database: mongo.Db,
 	options: { inboundDeviceSn: string; outboundDeviceSn: string; includeBackups?: boolean }
 ): Promise<{ epcs: number }> {
+	const startedAt = performance.now()
 	const inboundDeviceSn = requiredText(options.inboundDeviceSn, 'inbound device SN')
 	const outboundDeviceSn = requiredText(options.outboundDeviceSn, 'outbound device SN')
 	if (options.includeBackups !== undefined && typeof options.includeBackups !== 'boolean') {
 		throw new Error('Invalid finished goods EPC includeBackups option')
 	}
 	const includeBackups = options.includeBackups ?? false
-	const collection = database.collection('finished_goods_epcs')
+	const manufacturingOrders = await database
+		.collection<{ mo_no?: unknown }>('manufacturing_orders')
+		.find({}, { projection: { _id: 0, mo_no: 1 } })
+		.toArray()
+	const moNos = [
+		...new Set(
+			manufacturingOrders.flatMap(({ mo_no }) => (typeof mo_no === 'string' && isEligibleMoNo(mo_no) ? [mo_no] : []))
+		)
+	]
+	const staging = database.collection<{ _id: string; epc: string }>('finished_goods_epcs_staging')
 	const seen = new Set<string>()
-	let operations: mongo.AnyBulkWriteOperation[] = []
+	let operations: mongo.AnyBulkWriteOperation<{ _id: string; epc: string }>[] = []
 	let epcs = 0
+	let batches = 0
+	let mongoBulkWriteMs = 0
 	let references: Awaited<ReturnType<typeof loadReferences>> | undefined
 	let fallbackLocations = 0
 	let fallbackDepartments = 0
+	let missingMatches = 0
+	let targetIndexReady = false
+
+	function logMetrics(): void {
+		const elapsedMs = Math.max(0, performance.now() - startedAt)
+		console.info('Finished goods EPC sync metrics', {
+			elapsedMs,
+			epcs,
+			batches,
+			epcsPerSecond: elapsedMs > 0 ? (epcs * 1000) / elapsedMs : 0,
+			mongoBulkWriteMs
+		})
+	}
+
+	if (!moNos.length) {
+		logMetrics()
+		return { epcs: 0 }
+	}
 
 	async function flush(): Promise<void> {
 		if (!operations.length) return
 		const batch = operations
 		operations = []
-		const result = await collection.bulkWrite(batch)
-		if (!result.isOk()) throw new Error('Failed finished goods EPC bulk write')
-		epcs += batch.length
+		const bulkWriteStartedAt = performance.now()
+		const result = await staging.bulkWrite(batch, { ordered: false })
+		mongoBulkWriteMs += Math.max(0, performance.now() - bulkWriteStartedAt)
+		if (!result.isOk()) throw new Error('Failed finished goods EPC staging bulk write')
+		if (!references) references = await loadReferences(database)
+		const batchEpcs = batch.map((operation) => {
+			if (!('updateOne' in operation) || typeof operation.updateOne.filter._id !== 'string') {
+				throw new Error('Invalid finished goods EPC staging operation')
+			}
+			return operation.updateOne.filter._id
+		})
+		const pipeline = enrichmentPipeline(batchEpcs, references)
+		const resolved = await staging.aggregate(pipeline).toArray()
+		if (resolved.length !== batch.length) throw new Error('Incomplete finished goods EPC staging batch')
+		let matched = 0
+		for (const row of resolved) {
+			if (!row._match) {
+				missingMatches++
+				continue
+			}
+			requiredText(row.factory_shoes_style, 'factory_shoes_style')
+			requiredText(row.color_sn, 'color_sn')
+			requiredText(row.size_numcode, 'size_numcode')
+			if (!row._location) fallbackLocations++
+			if (!row._department) fallbackDepartments++
+			matched++
+		}
+		if (matched) {
+			if (!targetIndexReady) {
+				const collection = database.collection('finished_goods_epcs')
+				const exists = await database.listCollections({ name: 'finished_goods_epcs' }).hasNext()
+				const indexes = exists ? await collection.indexes() : []
+				const hasUniqueEpc = indexes.some(
+					(index) =>
+						index.unique &&
+						!index.partialFilterExpression &&
+						Object.keys(index.key).length === 1 &&
+						index.key.epc === 1
+				)
+				if (!hasUniqueEpc) await collection.createIndex({ epc: 1 }, { name: 'idx_epc', unique: true })
+				targetIndexReady = true
+			}
+			const fields = [
+				'epc',
+				'mo_no',
+				'po',
+				'factory_shoes_style',
+				'color_sn',
+				'size_numcode',
+				'inbound_device_sn',
+				'outbound_device_sn',
+				'last_scanned_at',
+				'inbound_at',
+				'outbound_at',
+				'storage_location',
+				'assembly_line',
+				'inbound_times',
+				'status',
+				'updated_at'
+			]
+			await staging
+				.aggregate([
+					...pipeline,
+					{ $match: { _match: { $exists: true, $ne: null } } },
+					{
+						$set: {
+							factory_shoes_style: { $trim: { input: '$factory_shoes_style' } },
+							color_sn: { $trim: { input: '$color_sn' } },
+							size_numcode: { $trim: { input: '$size_numcode' } }
+						}
+					},
+					{ $set: { created_at: '$updated_at', scannable: true, deleted: false } },
+					{ $unset: ['_id', '_match', '_department', '_location'] },
+					{
+						$merge: {
+							into: 'finished_goods_epcs',
+							on: 'epc',
+							whenMatched: [{ $set: Object.fromEntries(fields.map((field) => [field, `$$new.${field}`])) }],
+							whenNotMatched: 'insert'
+						}
+					}
+				])
+				.toArray()
+		}
+		epcs += matched
+		batches++
 	}
 
 	try {
 		for await (const row of streamMssqlRows(pool.request(), sql(includeBackups), {
 			inboundDeviceSn,
-			outboundDeviceSn
+			outboundDeviceSn,
+			moNos: JSON.stringify(moNos)
 		})) {
 			const epc = mapFinishedGoodsEpc(row)
 			if (seen.has(epc.epc)) throw new Error(`Duplicate finished goods EPC ${epc.epc}`)
 			seen.add(epc.epc)
-			if (!references) references = await loadReferences(database)
-			const location = epc.storage_location ? references.locations.ids.get(epc.storage_location) : undefined
-			const department = epc.assembly_line ? references.departments.ids.get(epc.assembly_line) : undefined
-			if (!location) fallbackLocations++
-			if (!department) fallbackDepartments++
 			const now = new Date()
 			operations.push({
 				updateOne: {
-					filter: { epc: epc.epc },
+					filter: { _id: epc.epc },
 					update: {
 						$set: {
 							...epc,
-							storage_location: location ?? references.locations.fallback,
-							assembly_line: department ?? references.departments.fallback,
 							updated_at: now
-						},
-						$setOnInsert: { created_at: now, scannable: true, deleted: false }
+						}
 					},
 					upsert: true
 				}
@@ -276,11 +448,13 @@ export async function runFinishedGoodsEpcStep(
 		}
 		await flush()
 	} finally {
+		if (missingMatches) console.warn(`Finished goods EPC missing match: ${missingMatches}; retained in staging`)
 		if (fallbackLocations || fallbackDepartments) {
 			console.warn(
 				`Finished goods EPC fallback references: storage_location ${fallbackLocations}, assembly_line ${fallbackDepartments}`
 			)
 		}
 	}
+	logMetrics()
 	return { epcs }
 }

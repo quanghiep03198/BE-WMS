@@ -1,7 +1,8 @@
 import type { mongo } from 'mongoose'
-import { orderSearchGrams } from '../../../modules/order/order-search-grams'
+import { orderSearchGrams } from '../../../modules/order/schemas/order-search-grams.plugin'
 import { getVietnamCutoffSqlDate } from './cutoff'
 import { MANUFACTURING_ORDERS_SQL } from './manufacturing-orders.sql'
+import { isEligibleMoNo } from './mo-no'
 import { streamMssqlRows, type MssqlStreamRequest } from './mssql-stream'
 
 function requiredText(value: unknown, name: string): string {
@@ -35,11 +36,9 @@ export async function runManufacturingOrderStep(
 	pool: { request(): MssqlStreamRequest },
 	database: mongo.Db,
 	factoryCode: string,
-	cutoff: Date,
-	prefix: string
+	cutoff: Date
 ): Promise<{ manufacturingOrders: number }> {
 	if (!factoryCode.trim()) throw new Error('Factory code is required')
-	if (!/^\d{2}$/.test(prefix)) throw new Error('Manufacturing order prefix must be a two-digit number')
 	const cutoffDate = getVietnamCutoffSqlDate(cutoff)
 	const collection = database.collection('manufacturing_orders')
 	await collection.createIndex({ mo_no: 1 }, { name: 'idx_mo', unique: true })
@@ -49,7 +48,6 @@ export async function runManufacturingOrderStep(
 	let batch: mongo.AnyBulkWriteOperation[] = []
 	for await (const row of streamMssqlRows(pool.request(), MANUFACTURING_ORDERS_SQL, {
 		FactoryCode: factoryCode,
-		MoPrefix: prefix,
 		cutoff: cutoffDate
 	})) {
 		if (!row || typeof row !== 'object') throw new Error('Invalid manufacturing order row')
@@ -65,7 +63,7 @@ export async function runManufacturingOrderStep(
 		))
 			throw new Error('Incomplete manufacturing order row')
 		const mo_no = requiredText(row.mo_no, 'mo_no')
-		if (!mo_no.startsWith(prefix) || seen.has(mo_no)) throw new Error(`Unexpected or duplicate MO ${mo_no}`)
+		if (!isEligibleMoNo(mo_no) || seen.has(mo_no)) throw new Error(`Unexpected or duplicate MO ${mo_no}`)
 		seen.add(mo_no)
 		if (typeof row.order_qty !== 'number' || !Number.isFinite(row.order_qty)) {
 			throw new Error(`Invalid order_qty for ${mo_no}`)
@@ -93,18 +91,18 @@ export async function runManufacturingOrderStep(
 		})
 		if (batch.length >= 100) {
 			const result = await collection.bulkWrite(batch)
-			if (!result.isOk()) throw new Error(`Failed MO batch for prefix ${prefix}`)
+			if (!result.isOk()) throw new Error('Failed manufacturing order batch')
 			batch = []
 		}
 		manufacturingOrders++
 	}
 	if (batch.length) {
 		const result = await collection.bulkWrite(batch)
-		if (!result.isOk()) throw new Error(`Failed MO batch for prefix ${prefix}`)
+		if (!result.isOk()) throw new Error('Failed manufacturing order batch')
 	}
 	if (!manufacturingOrders) {
 		console.warn(
-			`No manufacturing orders matched prefix ${prefix} and factory ${factoryCode}; check source data and filters`
+			`No manufacturing orders with numeric prefix 14 or higher matched factory ${factoryCode}; check source data and filters`
 		)
 	}
 	return { manufacturingOrders }

@@ -1,4 +1,4 @@
-import { Types } from 'mongoose'
+import { Types, type mongo } from 'mongoose'
 import { Readable } from 'node:stream'
 import { runFinishedGoodsEpcStep } from '../finished-goods-epcs'
 
@@ -34,31 +34,53 @@ const inbound = {
 	rfid_status: 'A'
 }
 
-function harness(rows: unknown[], writeError?: Error, streamError?: Error, references = { locations, departments }) {
+function harness(
+	rows: unknown[],
+	writeError?: Error,
+	streamError?: Error,
+	references = { locations, departments },
+	manufacturingOrders: Array<{ mo_no?: unknown }> = [{ mo_no: '15MO-1' }],
+	manufacturingOrdersError?: Error
+) {
 	const parameters: Record<string, string> = {}
 	let sql = ''
+	let requestCount = 0
 	const operations: unknown[] = []
 	const referenceReads: string[] = []
+	const staged = new Map<string, Record<string, unknown>>()
 	const pool = {
-		request: () => ({
-			input: (name: string, value: string) => {
-				parameters[name] = value
-			},
-			toReadableStream: () =>
-				Readable.from(
-					(async function* () {
-						yield* rows
-						if (streamError) throw streamError
-					})()
-				),
-			query: async (query: string) => {
-				sql = query
-			},
-			cancel: () => true
-		})
+		request: () => {
+			requestCount++
+			return {
+				input: (name: string, value: string) => {
+					parameters[name] = value
+				},
+				toReadableStream: () =>
+					Readable.from(
+						(async function* () {
+							yield* rows
+							if (streamError) throw streamError
+						})()
+					),
+				query: async (query: string) => {
+					sql = query
+				},
+				cancel: () => true
+			}
+		}
 	}
 	const database = {
 		collection: (name: string) => {
+			if (name === 'manufacturing_orders') {
+				return {
+					find: () => ({
+						toArray: async () => {
+							if (manufacturingOrdersError) throw manufacturingOrdersError
+							return manufacturingOrders
+						}
+					})
+				}
+			}
 			if (name === 'storage_locations' || name === 'departments') {
 				const documents = name === 'storage_locations' ? references.locations : references.departments
 				return {
@@ -68,15 +90,71 @@ function harness(rows: unknown[], writeError?: Error, streamError?: Error, refer
 					}
 				}
 			}
-			expect(name).toBe('finished_goods_epcs')
-			return {
-				bulkWrite: async (batch: unknown[]) => {
-					operations.push(...batch)
-					if (writeError) throw writeError
-					return { isOk: () => true }
-				}
+			if (name === 'finished_goods_epcs') {
+				return { createIndex: async () => 'idx_epc' }
 			}
-		}
+			expect(name).toBe('finished_goods_epcs_staging')
+			return {
+				bulkWrite: async (batch: Array<{ updateOne: { filter: { _id: string }; update: { $set: object } } }>) => {
+					if (writeError) throw writeError
+					for (const { updateOne } of batch) staged.set(updateOne.filter._id, updateOne.update.$set)
+					return { isOk: () => true }
+				},
+				aggregate: (pipeline: mongo.Document[]) => ({
+					toArray: async () => {
+						const ids: string[] = pipeline[0].$match._id.$in
+						const resolved = ids.map((id) => {
+							const raw = staged.get(id)
+							if (!raw) throw new Error(`Missing staged EPC ${id}`)
+							const location = references.locations
+								.filter((item) => item.storage_num.trim().toUpperCase() === raw.storage_location)
+								.sort((a, b) => a._id.toHexString().localeCompare(b._id.toHexString()))[0]?._id
+							const department = references.departments
+								.filter((item) => item.code.trim() === raw.assembly_line)
+								.sort((a, b) => a._id.toHexString().localeCompare(b._id.toHexString()))[0]?._id
+							return {
+								...raw,
+								_match: inbound,
+								_location: location,
+								_department: department,
+								factory_shoes_style: inbound.factory_shoes_style,
+								color_sn: inbound.color_sn,
+								size_numcode: inbound.size_numcode,
+								storage_location:
+									location ??
+									[...references.locations].sort((a, b) =>
+										a._id.toHexString().localeCompare(b._id.toHexString())
+									)[0]._id,
+								assembly_line:
+									department ??
+									[...references.departments].sort((a, b) =>
+										a._id.toHexString().localeCompare(b._id.toHexString())
+									)[0]._id
+							}
+						})
+						if (!pipeline.some((step) => '$merge' in step)) return resolved
+						for (const row of resolved) {
+							const value: Record<string, unknown> = { ...row }
+							delete value._match
+							delete value._location
+							delete value._department
+							operations.push({
+								updateOne: {
+									filter: { epc: value.epc },
+									update: {
+										$set: value,
+										$setOnInsert: { created_at: value.updated_at, scannable: true, deleted: false }
+									},
+									upsert: true
+								}
+							})
+						}
+						return []
+					}
+				})
+			}
+		},
+		listCollections: () => ({ hasNext: async () => false })
 	}
 	return {
 		pool,
@@ -84,6 +162,9 @@ function harness(rows: unknown[], writeError?: Error, streamError?: Error, refer
 		parameters,
 		operations,
 		referenceReads,
+		get requestCount() {
+			return requestCount
+		},
 		get sql() {
 			return sql
 		}
@@ -91,6 +172,88 @@ function harness(rows: unknown[], writeError?: Error, streamError?: Error, refer
 }
 
 describe('runFinishedGoodsEpcStep', () => {
+	it('filters Mongo MO values and joins them into every scan source before ranking', async () => {
+		const fake = harness([], undefined, undefined, undefined, [
+			{ mo_no: '13MO-1' },
+			{ mo_no: '14MO-1' },
+			{ mo_no: '15MO-1' },
+			{ mo_no: 'A4MO-1' },
+			{ mo_no: 14001 }
+		])
+
+		await runFinishedGoodsEpcStep(fake.pool, fake.database as never, {
+			inboundDeviceSn: 'INBOUND-DEVICE',
+			outboundDeviceSn: 'OUTBOUND-DEVICE',
+			includeBackups: true
+		})
+
+		expect(fake.parameters.moNos).toBe(JSON.stringify(['14MO-1', '15MO-1']))
+		expect(fake.sql.match(/INNER JOIN eligible_mos AS/g)).toHaveLength(4)
+		const inboundHistory = fake.sql.slice(
+			fake.sql.indexOf('epcs_at_101_history AS ('),
+			fake.sql.indexOf('epcs_at_101_ranked AS')
+		)
+		const outboundHistory = fake.sql.slice(
+			fake.sql.indexOf('epcs_at_103_history AS ('),
+			fake.sql.indexOf('epcs_at_103_ranked AS')
+		)
+		const inboundSources = inboundHistory.split(/\bUNION(?:\s+ALL)?\b/i)
+		const outboundSources = outboundHistory.split(/\bUNION(?:\s+ALL)?\b/i)
+		expect(inboundSources).toHaveLength(2)
+		expect(outboundSources).toHaveLength(2)
+		for (const source of [...inboundSources, ...outboundSources]) {
+			expect(source).toMatch(/INNER JOIN eligible_mos AS/)
+		}
+		expect(fake.sql.match(/ON m\.mo_no = a\.mo_no/g)).toHaveLength(4)
+		const inboundRanking = fake.sql.indexOf('epcs_at_101_ranked AS')
+		const outboundRanking = fake.sql.indexOf('epcs_at_103_ranked AS')
+		expect(fake.sql.slice(0, inboundRanking).match(/INNER JOIN eligible_mos AS/g)).toHaveLength(2)
+		expect(fake.sql.slice(inboundRanking, outboundRanking).match(/INNER JOIN eligible_mos AS/g)).toHaveLength(2)
+		expect(fake.sql.slice(outboundRanking)).not.toMatch(/INNER JOIN eligible_mos AS/)
+		expect(fake.sql).not.toContain('dv_rfidmatchmst_cust')
+		expect(fake.sql).toContain('OPENJSON(@moNos)')
+	})
+
+	it('skips MSSQL and reports zero metrics when Mongo has no eligible MOs', async () => {
+		const fake = harness([], undefined, undefined, undefined, [{ mo_no: '13MO-1' }, { mo_no: 'ABMO-1' }])
+		const info = jest.spyOn(console, 'info').mockImplementation(() => {})
+		try {
+			await expect(
+				runFinishedGoodsEpcStep(fake.pool, fake.database as never, {
+					inboundDeviceSn: 'INBOUND-DEVICE',
+					outboundDeviceSn: 'OUTBOUND-DEVICE'
+				})
+			).resolves.toEqual({ epcs: 0 })
+
+			expect(fake.requestCount).toBe(0)
+			expect(info).toHaveBeenCalledWith(
+				'Finished goods EPC sync metrics',
+				expect.objectContaining({ epcs: 0, batches: 0, epcsPerSecond: 0, mongoBulkWriteMs: 0 })
+			)
+			expect(Number.isFinite((info.mock.calls[0][1] as Record<string, number>).elapsedMs)).toBe(true)
+		} finally {
+			info.mockRestore()
+		}
+	})
+
+	it('propagates manufacturing-order Mongo read errors without success metrics', async () => {
+		const error = new Error('MO read failed')
+		const fake = harness([], undefined, undefined, undefined, [], error)
+		const info = jest.spyOn(console, 'info').mockImplementation(() => {})
+		try {
+			await expect(
+				runFinishedGoodsEpcStep(fake.pool, fake.database as never, {
+					inboundDeviceSn: 'INBOUND-DEVICE',
+					outboundDeviceSn: 'OUTBOUND-DEVICE'
+				})
+			).rejects.toBe(error)
+			expect(fake.requestCount).toBe(0)
+			expect(info).not.toHaveBeenCalled()
+		} finally {
+			info.mockRestore()
+		}
+	})
+
 	it('maps inbound-only EPC rows and upserts them by EPC', async () => {
 		const fake = harness([inbound])
 
@@ -103,7 +266,8 @@ describe('runFinishedGoodsEpcStep', () => {
 
 		expect(fake.parameters).toEqual({
 			inboundDeviceSn: 'INBOUND-DEVICE',
-			outboundDeviceSn: 'OUTBOUND-DEVICE'
+			outboundDeviceSn: 'OUTBOUND-DEVICE',
+			moNos: JSON.stringify(['15MO-1'])
 		})
 		expect(fake.sql).toContain('@inboundDeviceSn')
 		expect(fake.sql).toContain('@outboundDeviceSn')
@@ -299,6 +463,55 @@ describe('runFinishedGoodsEpcStep', () => {
 		})
 	})
 
+	it('reports elapsed, batch, throughput, and Mongo write metrics after successful synchronization', async () => {
+		const rows = Array.from({ length: 1001 }, (_, index) => ({ ...inbound, epc: `epc-${index}` }))
+		const fake = harness(rows)
+		const info = jest.spyOn(console, 'info').mockImplementation(() => {})
+		try {
+			await expect(
+				runFinishedGoodsEpcStep(fake.pool, fake.database as never, {
+					inboundDeviceSn: 'INBOUND-DEVICE',
+					outboundDeviceSn: 'OUTBOUND-DEVICE'
+				})
+			).resolves.toEqual({ epcs: 1001 })
+
+			expect(info).toHaveBeenCalledTimes(1)
+			expect(info).toHaveBeenCalledWith(
+				'Finished goods EPC sync metrics',
+				expect.objectContaining({ epcs: 1001, batches: 2 })
+			)
+			const metrics = info.mock.calls[0][1] as Record<string, unknown>
+			for (const field of ['elapsedMs', 'epcsPerSecond', 'mongoBulkWriteMs']) {
+				expect(typeof metrics[field]).toBe('number')
+				expect(Number.isFinite(metrics[field])).toBe(true)
+				expect(metrics[field]).toBeGreaterThanOrEqual(0)
+			}
+			expect(metrics.epcsPerSecond).toBeGreaterThan(0)
+		} finally {
+			info.mockRestore()
+		}
+	})
+
+	it('reports zero throughput when the source has no EPC rows', async () => {
+		const fake = harness([])
+		const info = jest.spyOn(console, 'info').mockImplementation(() => {})
+		try {
+			await expect(
+				runFinishedGoodsEpcStep(fake.pool, fake.database as never, {
+					inboundDeviceSn: 'INBOUND-DEVICE',
+					outboundDeviceSn: 'OUTBOUND-DEVICE'
+				})
+			).resolves.toEqual({ epcs: 0 })
+
+			expect(info).toHaveBeenCalledWith(
+				'Finished goods EPC sync metrics',
+				expect.objectContaining({ epcs: 0, batches: 0, epcsPerSecond: 0, mongoBulkWriteMs: 0 })
+			)
+		} finally {
+			info.mockRestore()
+		}
+	})
+
 	it.each([
 		{ locations: [], departments },
 		{ locations, departments: [] }
@@ -328,24 +541,36 @@ describe('runFinishedGoodsEpcStep', () => {
 	it('propagates Mongo bulk-write errors', async () => {
 		const error = new Error('bulk write failed')
 		const fake = harness([inbound], error)
+		const info = jest.spyOn(console, 'info').mockImplementation(() => {})
 
-		await expect(
-			runFinishedGoodsEpcStep(fake.pool, fake.database as never, {
-				inboundDeviceSn: 'INBOUND-DEVICE',
-				outboundDeviceSn: 'OUTBOUND-DEVICE'
-			})
-		).rejects.toBe(error)
+		try {
+			await expect(
+				runFinishedGoodsEpcStep(fake.pool, fake.database as never, {
+					inboundDeviceSn: 'INBOUND-DEVICE',
+					outboundDeviceSn: 'OUTBOUND-DEVICE'
+				})
+			).rejects.toBe(error)
+			expect(info).not.toHaveBeenCalled()
+		} finally {
+			info.mockRestore()
+		}
 	})
 
 	it('propagates MSSQL stream errors', async () => {
 		const error = new Error('stream failed')
 		const fake = harness([], undefined, error)
+		const info = jest.spyOn(console, 'info').mockImplementation(() => {})
 
-		await expect(
-			runFinishedGoodsEpcStep(fake.pool, fake.database as never, {
-				inboundDeviceSn: 'INBOUND-DEVICE',
-				outboundDeviceSn: 'OUTBOUND-DEVICE'
-			})
-		).rejects.toBe(error)
+		try {
+			await expect(
+				runFinishedGoodsEpcStep(fake.pool, fake.database as never, {
+					inboundDeviceSn: 'INBOUND-DEVICE',
+					outboundDeviceSn: 'OUTBOUND-DEVICE'
+				})
+			).rejects.toBe(error)
+			expect(info).not.toHaveBeenCalled()
+		} finally {
+			info.mockRestore()
+		}
 	})
 })

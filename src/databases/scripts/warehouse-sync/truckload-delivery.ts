@@ -1,7 +1,12 @@
-import { Types, type mongo } from 'mongoose'
+import { Types, mongo } from 'mongoose'
+import {
+	DISPATCH_ORDER_SIGNATURE_FIELDS,
+	SIGNATURE_BUCKET_NAME
+} from '../../../modules/truckload-delivery/domain/constants'
+import { decodeTruckloadSignature, uploadTruckloadSignature } from '../libs/truckload-signatures'
 import { streamMssqlRows, type MssqlStreamRequest } from './mssql-stream'
 
-const TRUCKLOAD_DELIVERIES_SQL = `
+const TRUCKLOAD_DELIVERIES_SQL = /* SQL */ `
 	SELECT   a.dispatch_order,
 				MIN(a.created) AS created_at,
 				a.factory_code,
@@ -161,11 +166,24 @@ export async function runTruckloadDeliveryStep(
 	if (!creator) throw new Error(`Truckload delivery creator ${createdByUsername} was not found`)
 	const createdById = objectId(String(creator._id), 'creator')
 	const collection = database.collection('truckload_delivery')
+	let bucket: mongo.GridFSBucket | undefined
 	let operations: mongo.AnyBulkWriteOperation[] = []
 	let deliveries = 0
 	let pendingDelivery: ReturnType<typeof mapDelivery> | undefined
 
 	const writePendingDelivery = async (item: ReturnType<typeof mapDelivery>) => {
+		for (const field of DISPATCH_ORDER_SIGNATURE_FIELDS) {
+			const value = item.delivery[field]
+			if (value === undefined || value === null) continue
+			if (typeof value !== 'string') throw new Error(`Invalid truckload delivery ${field} for ${item.dispatchOrder}`)
+			const signature = decodeTruckloadSignature(value, `${item.dispatchOrder}.${field}`)
+			if (!signature) {
+				item.delivery[field] = null
+				continue
+			}
+			bucket ??= new mongo.GridFSBucket(database, { bucketName: SIGNATURE_BUCKET_NAME })
+			item.delivery[field] = await uploadTruckloadSignature(bucket, `${item.dispatchOrder}.${field}`, signature)
+		}
 		operations.push({
 			updateOne: {
 				filter: { dispatch_order: item.dispatchOrder },

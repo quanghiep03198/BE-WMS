@@ -8,7 +8,7 @@ interface DailyPoProgressStore {
 export async function syncDailyPoProgress(
 	scans: Iterable<OutboundScan> | AsyncIterable<OutboundScan>,
 	store: DailyPoProgressStore,
-	generateId: () => string
+	generateId: (date: string) => string | Promise<string>
 ): Promise<{ scans: number; documents: number; quantity: number }> {
 	let pending: OutboundScan[] = []
 	let currentKey: string | undefined
@@ -19,7 +19,7 @@ export async function syncDailyPoProgress(
 		if (!pending.length || currentKey === undefined) return
 		const { po, date } = pending[0]
 		const existing = await store.find(po, date)
-		const [document] = groupDailyPoProgress(pending, generateId, existing ? [existing] : [])
+		const [document] = await groupDailyPoProgress(pending, generateId, existing ? [existing] : [])
 		if (!document) throw new Error(`Failed to group outbound scans for ${po} ${date}`)
 		await store.save(document)
 		completed.add(currentKey)

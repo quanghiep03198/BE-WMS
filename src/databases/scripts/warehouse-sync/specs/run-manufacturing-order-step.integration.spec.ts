@@ -7,7 +7,7 @@ const uri = process.env.WAREHOUSE_SYNC_TEST_MONGO_URI
 const integration = uri ? describe : describe.skip
 
 integration('runManufacturingOrderStep', () => {
-	it('streams the requested prefix and stores searchable orders without changing IDs', async () => {
+	it('streams eligible orders without a prefix parameter and preserves IDs', async () => {
 		const client = new mongoose.mongo.MongoClient(uri)
 		const databaseName = `warehouse_sync_test_${randomUUID().replaceAll('-', '')}`
 		let connected = false
@@ -15,7 +15,7 @@ integration('runManufacturingOrderStep', () => {
 			await client.connect()
 			connected = true
 			const database = client.db(databaseName)
-			const requestedPrefixes: string[] = []
+			const requests: Record<string, string>[] = []
 			const cutoffParameters: string[] = []
 			const queries: string[] = []
 			const pool = {
@@ -26,11 +26,11 @@ integration('runManufacturingOrderStep', () => {
 							parameters[name] = value
 						},
 						toReadableStream: () => {
-							requestedPrefixes.push(parameters.MoPrefix)
+							requests.push({ ...parameters })
 							cutoffParameters.push(parameters.cutoff)
 							return Readable.from([
 								{
-									mo_no: `${parameters.MoPrefix}ABC`,
+									mo_no: '14ABC',
 									brand_name: 'UGG',
 									factory_code_produce: 'VB2',
 									factory_shoes_style: 'F1',
@@ -50,24 +50,25 @@ integration('runManufacturingOrderStep', () => {
 							])
 						},
 						query: async (sql: string) => {
-							if (parameters.MoPrefix) queries.push(sql)
+							queries.push(sql)
 						},
 						cancel: () => true
 					}
 				}
 			}
 			const cutoff = new Date('2026-11-11T17:00:00Z')
-			expect(await runManufacturingOrderStep(pool, database, 'VB2', cutoff, '15')).toEqual({
+			expect(await runManufacturingOrderStep(pool, database, 'VB2', cutoff)).toEqual({
 				manufacturingOrders: 1
 			})
-			expect(requestedPrefixes).toEqual(['15'])
+			expect(requests).toEqual([{ FactoryCode: 'VB2', cutoff: '2026-11-12' }])
 			expect(cutoffParameters).toEqual(['2026-11-12'])
 			expect(queries[0].match(/record_time\s*<\s*@cutoff/g)).toHaveLength(2)
+			expect(queries[0]).toMatch(/TRY_CONVERT\(int,\s*LEFT\(a\.mo_no,\s*2\)\)\s*>=\s*14/i)
 			const collection = database.collection('manufacturing_orders')
 			const first = await collection.findOne({ mo_no: '15ABC' })
 			expect(first.size_ledger['7']).toMatchObject({ order_qty: 5, stocked_in_qty: 2 })
-			expect(first.search_ngrams).toEqual(expect.arrayContaining(['15', 'abc']))
-			await runManufacturingOrderStep(pool, database, 'VB2', cutoff, '15')
+			expect(first.search_ngrams).toEqual(expect.arrayContaining(['14', 'abc']))
+			await runManufacturingOrderStep(pool, database, 'VB2', cutoff)
 			expect(await collection.countDocuments()).toBe(1)
 			expect((await collection.findOne({ mo_no: '15ABC' }))._id).toEqual(first._id)
 		} finally {

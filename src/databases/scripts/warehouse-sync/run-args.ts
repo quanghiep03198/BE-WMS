@@ -1,3 +1,4 @@
+import { env } from '@common/utils'
 import type { WarehouseSyncConfig } from './run-warehouse-sync'
 import { selectWarehouseSyncStages, warehouseSyncStages } from './warehouse-sync-stages'
 
@@ -11,7 +12,6 @@ const valueOptions = new Set([
 	'--db-host',
 	'--mongo-db-name',
 	'--factory-code',
-	'--mo-prefix',
 	'--inbound-device-sn',
 	'--outbound-device-sn',
 	'--creator-username',
@@ -23,17 +23,16 @@ const valueOptions = new Set([
 	'--from-step'
 ])
 
-export const warehouseSyncUsage = `Usage: bun run src/databases/scripts/warehouse-sync/run.ts --mo-prefix <prefix> --inbound-device-sn <serial> --outbound-device-sn <serial> [options]
+export const warehouseSyncUsage = `Usage: bun run src/databases/scripts/warehouse-sync/run.ts --inbound-device-sn <serial> --outbound-device-sn <serial> [options]
 
 Options:
   --db-host <host>                  MSSQL host (default: DB_HOST)
   --mongo-db-name <name>            MongoDB database (default: MONGO_DB_NAME)
   --factory-code <code>             Factory/tenant code (default: APP_TENANCY)
-  --mo-prefix <prefix>              Two-digit manufacturing order prefix
   --inbound-device-sn <serial>      Inbound RFID device serial (required)
   --outbound-device-sn <serial>     Outbound RFID device serial (required)
   --include-backups                 Include daily backup scans
-  --creator-username <username>     Creator for warehouse/delivery records (default: 1009006)
+  --creator-username <username>     Creator for warehouse/delivery records and fallback image owner (default: 1009006)
   --reference-workbook <file>       Reference workbook (default: .tmp/gl3-inventory.xlsx)
   --reference-sheet <name>          Workbook sheet (default: ngày 12)
   --output-filename <file>          Report file (default: .tmp/warehouse-sync-<timestamp>.xlsx)
@@ -74,14 +73,12 @@ export function parseWarehouseSyncArgs(argv: string[]): WarehouseSyncCliOptions 
 		index++
 	}
 
-	const envValue = (name: string) => process.env[name]?.trim() ?? ''
 	const get = (option: string, fallback = '') => values.get(option)?.trim() ?? fallback
 	const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
 	const options: WarehouseSyncCliOptions = {
-		dbHost: get('--db-host', envValue('DB_HOST')),
-		mongoDbName: get('--mongo-db-name', envValue('MONGO_DB_NAME')),
-		factoryCode: get('--factory-code', envValue('APP_TENANCY')),
-		moPrefix: get('--mo-prefix'),
+		dbHost: get('--db-host', env('DB_HOST')),
+		mongoDbName: get('--mongo-db-name', env('MONGO_DB_NAME')),
+		factoryCode: get('--factory-code', env('APP_TENANCY')),
 		inboundDeviceSn: get('--inbound-device-sn'),
 		outboundDeviceSn: get('--outbound-device-sn'),
 		includeBackups,
@@ -89,7 +86,7 @@ export function parseWarehouseSyncArgs(argv: string[]): WarehouseSyncCliOptions 
 		referenceWorkbook: get('--reference-workbook', '.tmp/gl3-inventory.xlsx'),
 		referenceSheet: get('--reference-sheet', 'ngày 12'),
 		outputFilename: get('--output-filename', `.tmp/warehouse-sync-${timestamp}.xlsx`),
-		logFilename: get('--log-filename', '.tmp/warehouse-sync.log'),
+		logFilename: get('--log-filename', 'logs/warehouse-sync.log'),
 		help,
 		step: values.get('--step')?.trim(),
 		fromStep: values.get('--from-step')?.trim()
@@ -101,7 +98,6 @@ export function parseWarehouseSyncArgs(argv: string[]): WarehouseSyncCliOptions 
 		['--db-host', options.dbHost],
 		['--mongo-db-name', options.mongoDbName],
 		['--factory-code', options.factoryCode],
-		['--mo-prefix', options.moPrefix],
 		['--inbound-device-sn', options.inboundDeviceSn],
 		['--outbound-device-sn', options.outboundDeviceSn],
 		['--creator-username', options.creatorUsername],
@@ -112,6 +108,5 @@ export function parseWarehouseSyncArgs(argv: string[]): WarehouseSyncCliOptions 
 	] as const) {
 		if (!value) throw new Error(`A value is required for ${option}; provide it as an option or environment variable`)
 	}
-	if (!/^\d{2}$/.test(options.moPrefix)) throw new Error('--mo-prefix must be a two-digit number')
 	return options
 }

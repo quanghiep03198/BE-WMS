@@ -1,12 +1,15 @@
 import { Types, type mongo } from 'mongoose'
+import { isEligibleMoNo } from './mo-no'
 import { streamMssqlRows, type MssqlStreamRequest } from './mssql-stream'
+
+const UNKNOWN_ASSEMBLY_LINE = 'UNKNOWN'
 
 const DAILY_MO_INVENTORY_LEDGER_SQL = `
 	WITH src AS (
 		SELECT EPC_Code, mo_no, size_code, rfid_status, station_suffix,
 			storage, quantity, record_time, dept_name, isactive
 		FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet WITH (NOLOCK)
-		WHERE LEFT(mo_no, 2) = @MoPrefix AND isactive = 'Y' AND rfid_status = 'A'
+		WHERE TRY_CONVERT(int, LEFT(mo_no, 2)) >= 14 AND isactive = 'Y' AND rfid_status = 'A'
 			AND station_suffix IN ('101', '102')
 			AND EPC_Code NOT LIKE '303429%' AND EPC_Code NOT LIKE 'E28%'
 			AND mo_no NOT IN ('13D05B006', '13A08C003')
@@ -14,7 +17,7 @@ const DAILY_MO_INVENTORY_LEDGER_SQL = `
 		SELECT EPC_Code, mo_no, size_code, rfid_status, station_suffix,
 			storage, quantity, record_time, dept_name, isactive
 		FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet_backup_Daily WITH (NOLOCK)
-		WHERE LEFT(mo_no, 2) = @MoPrefix AND isactive = 'Y' AND rfid_status = 'A'
+		WHERE TRY_CONVERT(int, LEFT(mo_no, 2)) >= 14 AND isactive = 'Y' AND rfid_status = 'A'
 			AND station_suffix IN ('101', '102')
 			AND EPC_Code NOT LIKE '303429%' AND EPC_Code NOT LIKE 'E28%'
 			AND mo_no NOT IN ('13D05B006', '13A08C003')
@@ -23,7 +26,7 @@ const DAILY_MO_INVENTORY_LEDGER_SQL = `
 		SELECT s.EPC_Code, s.mo_no, s.size_code,
 			CONVERT(DATE, s.record_time) AS rec_date,
 			CONVERT(VARCHAR(5), s.record_time, 108) AS rec_time,
-			s.dept_name AS assembly_line, w.storage_name AS storage_location
+			COALESCE(s.dept_name, '${UNKNOWN_ASSEMBLY_LINE}') AS assembly_line, w.storage_name AS storage_location
 		FROM src AS s
 		LEFT JOIN DV_DATA_LAKE.dbo.dv_warehouseccodedet AS w WITH (NOLOCK)
 			ON w.storage_num = s.storage
@@ -67,7 +70,7 @@ const DAILY_MO_INVENTORY_LEDGER_SQL = `
 				FROM tx_slot AS slot
 				WHERE slot.rec_date = day.rec_date AND slot.mo_no = day.mo_no
 				ORDER BY slot.rec_time, slot.assembly_line, slot.storage_location
-				FOR JSON PATH
+				FOR JSON PATH, INCLUDE_NULL_VALUES
 			) AS transaction_history
 		FROM (SELECT DISTINCT rec_date, mo_no FROM base) AS day
 	)
@@ -131,7 +134,10 @@ function parseTransaction(item: unknown, moNo: string): InventoryTransaction {
 	if (!isRecord(item)) throw new Error(`Invalid transaction_history entry for ${moNo}`)
 	const time = requiredText(item.time, 'transaction time')
 	if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(time)) throw new Error(`Invalid transaction time for ${moNo}`)
-	const assemblyLine = requiredText(item.assembly_line, 'assembly_line').replace(/[^A-Za-z0-9]/g, '')
+	const assemblyLine = requiredText(item.assembly_line ?? UNKNOWN_ASSEMBLY_LINE, 'assembly_line').replace(
+		/[^A-Za-z0-9]/g,
+		''
+	)
 	if (!assemblyLine) throw new Error(`Invalid transaction assembly_line for ${moNo}`)
 	if (!('storage_location' in item) || (item.storage_location !== null && typeof item.storage_location !== 'string')) {
 		throw new Error(`Invalid transaction storage_location for ${moNo}`)
@@ -307,10 +313,8 @@ function formatDate(value: unknown): string {
 export async function runDailyMoInventoryLedgerStep(
 	pool: { request(): MssqlStreamRequest },
 	database: mongo.Db,
-	moPrefix: string,
-	generateId: (signature: string) => string
+	generateId: (date: string) => string | Promise<string>
 ): Promise<{ ledgers: number }> {
-	if (!moPrefix.trim()) throw new Error('MO prefix is required')
 	const collection = database.collection('daily_mo_inventory_ledger')
 	const batch: mongo.AnyBulkWriteOperation[] = []
 	let ledgers = 0
@@ -322,12 +326,13 @@ export async function runDailyMoInventoryLedgerStep(
 		ledgers += operations.length
 	}
 
-	for await (const row of streamMssqlRows(pool.request(), DAILY_MO_INVENTORY_LEDGER_SQL, { MoPrefix: moPrefix })) {
+	for await (const row of streamMssqlRows(pool.request(), DAILY_MO_INVENTORY_LEDGER_SQL)) {
 		if (!isRecord(row)) throw new Error('Invalid daily MO inventory ledger row')
 		if (!('mo_no' in row && 'date' in row && 'size_ledger' in row && 'transaction_history' in row)) {
 			throw new Error('Incomplete daily MO inventory ledger row')
 		}
 		const moNo = requiredText(row.mo_no, 'mo_no')
+		if (!isEligibleMoNo(moNo)) throw new Error(`Invalid daily MO inventory ledger MO ${moNo}`)
 		const date = formatDate(row.date)
 		const sizeLedger = parseSizeLedger(row.size_ledger, 'size_ledger', true)
 		const transactionHistory = parseTransactionHistory(row.transaction_history, moNo)
@@ -342,7 +347,7 @@ export async function runDailyMoInventoryLedgerStep(
 			if (seenSignatures.has(signature))
 				throw new Error(`Duplicate daily MO transaction signature for ${moNo} on ${date}`)
 			seenSignatures.add(signature)
-			const id = existingIds.get(signature) ?? requiredText(generateId(signature), 'transaction id')
+			const id = existingIds.get(signature) ?? requiredText(await generateId(date), 'transaction id')
 			if (Object.hasOwn(keyedHistory, id)) throw new Error(`Duplicate daily MO transaction id ${id}`)
 			Object.defineProperty(keyedHistory, id, {
 				value: transaction,
