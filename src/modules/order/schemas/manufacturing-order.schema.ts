@@ -1,7 +1,8 @@
 import { DailyMoInventoryLedgerDocument } from '@modules/finished-goods/infrastructure/persistence/mongodb/schemas/daily-mo-inventory-ledger.schema'
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose'
 import { HydratedDocument, LeanDocument, Model } from 'mongoose'
-import { orderSearchPlugin } from '../order-search-grams'
+import MongooseLeanVirtuals from 'mongoose-lean-virtuals'
+import { orderSearchPlugin } from './order-search-grams.plugin'
 
 @Schema({ _id: false })
 class ManufacturingOrderSizeLedger {
@@ -20,16 +21,23 @@ class ManufacturingOrderSizeLedger {
 	@Prop({ type: Number, required: true })
 	shipped_out_qty: number
 
-	get instock_qty(): number {
-		return this.stocked_in_qty - this.total_recall_tx + this.total_return_tx - this.shipped_out_qty
-	}
+	instock_qty: number
 
-	get missing_qty(): number {
-		return this.order_qty - this.instock_qty
-	}
+	missing_qty: number
 }
 
 const ManufacturingOrderSizeLedgerSchema = SchemaFactory.createForClass(ManufacturingOrderSizeLedger)
+
+ManufacturingOrderSizeLedgerSchema.virtual('instock_qty').get(function () {
+	return this.stocked_in_qty - this.total_recall_tx + this.total_return_tx - this.shipped_out_qty
+})
+
+ManufacturingOrderSizeLedgerSchema.virtual('missing_qty').get(function () {
+	return this.order_qty - (this.stocked_in_qty - this.total_recall_tx + this.total_return_tx - this.shipped_out_qty)
+})
+
+ManufacturingOrderSizeLedgerSchema.set('toObject', { virtuals: true })
+ManufacturingOrderSizeLedgerSchema.set('toJSON', { virtuals: true })
 
 export const MANUFACTURING_ORDERS_COLLECTION = 'manufacturing_orders'
 
@@ -81,9 +89,11 @@ export class ManufacturingOrder {
 
 export const ManufacturingOrderSchema = SchemaFactory.createForClass(ManufacturingOrder)
 
+ManufacturingOrderSchema.plugin(MongooseLeanVirtuals)
+ManufacturingOrderSchema.plugin(orderSearchPlugin, { field: 'mo_no' })
+
 ManufacturingOrderSchema.index({ mo_no: 1 }, { name: 'idx_mo', unique: true })
 ManufacturingOrderSchema.index({ search_ngrams: 1, mo_no: -1 }, { name: 'mo_search_ngrams_idx' })
-ManufacturingOrderSchema.plugin(orderSearchPlugin, { field: 'mo_no' })
 
 ManufacturingOrderSchema.virtual('daily_inbound_history', {
 	ref: 'DailyMoInventoryLedger',

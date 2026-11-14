@@ -17,7 +17,7 @@ import pick from 'lodash/pick'
 import { AnyBulkWriteOperation } from 'mongoose'
 import { InjectPinoLogger } from 'nestjs-pino'
 import { DataSource } from 'typeorm'
-import { orderSearchGrams } from './order-search-grams'
+import { orderSearchGrams } from './schemas/order-search-grams.plugin'
 
 /**
  * @description - This task is responsible for syncing ERP orders into the system.

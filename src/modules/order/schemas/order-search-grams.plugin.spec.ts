@@ -2,10 +2,10 @@ import mongoose from 'mongoose'
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
 import 'reflect-metadata'
-import { orderSearchFilter, orderSearchGrams } from './order-search-grams'
-import { OrderRepository } from './order.repository'
-import { ManufacturingOrderModel, ManufacturingOrderSchema } from './schemas/manufacturing-order.schema'
-import { PurchaseOrderModel, PurchaseOrderSchema } from './schemas/purchase-order.schema'
+import { OrderRepository } from '../order.repository'
+import { ManufacturingOrderModel, ManufacturingOrderSchema } from './manufacturing-order.schema'
+import { orderSearchFilter, orderSearchGrams } from './order-search-grams.plugin'
+import { PurchaseOrderModel, PurchaseOrderSchema } from './purchase-order.schema'
 
 describe('order search n-grams', () => {
 	it('generates distinct case-insensitive one, two and three character grams', () => {
@@ -38,8 +38,8 @@ describeMongo('order search on local MongoDB', () => {
 			throw new Error('ORDER_SEARCH_TEST_MONGO_URI must point to a local MongoDB server')
 		}
 		connection = await mongoose.createConnection(uri, { dbName: database }).asPromise()
-		mo = connection.model('ManufacturingOrder', ManufacturingOrderSchema)
-		po = connection.model('PurchaseOrder', PurchaseOrderSchema)
+		mo = connection.model('ManufacturingOrder', ManufacturingOrderSchema) as unknown as ManufacturingOrderModel
+		po = connection.model('PurchaseOrder', PurchaseOrderSchema) as unknown as PurchaseOrderModel
 		const orders = Array.from({ length: 20000 }, (_, i) => ({
 			mo_no: `MO-${String(i).padStart(6, '0')}`,
 			brand_name: 'UGG'

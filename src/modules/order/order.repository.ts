@@ -3,15 +3,15 @@ import { DATA_SOURCE_ERP, DATA_WAREHOUSE_CONNECTION } from '@databases/constants
 import { Injectable } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
 import { InjectDataSource } from '@nestjs/typeorm'
-import { LeanDocument, mongo } from 'mongoose'
+import { LeanDocument } from 'mongoose'
 import { DataSource } from 'typeorm'
-import { orderSearchFilter } from './order-search-grams'
 import { IOrderRepository } from './order.repository.interface'
 import {
 	ManufacturingOrder,
 	ManufacturingOrderDocument,
 	ManufacturingOrderModel
 } from './schemas/manufacturing-order.schema'
+import { orderSearchFilter } from './schemas/order-search-grams.plugin'
 import { PurchaseOrder, PurchaseOrderDocument, PurchaseOrderModel } from './schemas/purchase-order.schema'
 import moSizeRunQuery from './sql/manufacturing-order.sql'
 import { SizeRun, TManufacturingOrder } from './types'
@@ -96,24 +96,49 @@ export class OrderRepository implements IOrderRepository {
 
 	public async getManufacturingOrderInventory(
 		manufacturingOrder: string
-	): Promise<Array<{ mo_no: string; size_numcode: string; order_qty: number; accumulated_qty: number }>> {
-		const data = await this.manufacturingOrderModel
-			.findOne({ mo_no: manufacturingOrder })
-			.lean(true)
-			.read('primary' satisfies mongo.ReadPreferenceMode)
-
-		if (!data) return []
-
-		return Object.entries(data.size_ledger).map(([size, balances]) => {
-			const { order_qty, instock_qty } = balances
-
-			return {
-				mo_no: data.mo_no,
-				size_numcode: size,
-				order_qty,
-				accumulated_qty: instock_qty
-			}
-		})
+	): Promise<Array<{ mo_no: string; size_numcode: string; order_qty: number; instock_qty: number }>> {
+		return this.manufacturingOrderModel
+			.aggregate<{
+				mo_no: string
+				size_numcode: string
+				order_qty: number
+				instock_qty: number
+				missing_qty: number
+			}>([
+				{ $match: { mo_no: manufacturingOrder } },
+				{ $project: { _id: 0, mo_no: 1, ledger: { $objectToArray: '$size_ledger' } } },
+				{ $unwind: '$ledger' },
+				{
+					$set: {
+						instock_qty: {
+							$subtract: [
+								{
+									$add: [
+										{ $ifNull: ['$ledger.v.stocked_in_qty', 0] },
+										{ $ifNull: ['$ledger.v.total_return_tx', 0] }
+									]
+								},
+								{
+									$add: [
+										{ $ifNull: ['$ledger.v.total_recall_tx', 0] },
+										{ $ifNull: ['$ledger.v.shipped_out_qty', 0] }
+									]
+								}
+							]
+						}
+					}
+				},
+				{
+					$project: {
+						mo_no: 1,
+						size_numcode: '$ledger.k',
+						order_qty: '$ledger.v.order_qty',
+						instock_qty: 1,
+						missing_qty: { $subtract: ['$ledger.v.order_qty', '$instock_qty'] }
+					}
+				}
+			])
+			.read('primary')
 	}
 
 	public async getOnePurchaseOrder(purchaseOrder: string): Promise<LeanDocument<PurchaseOrderDocument>> {

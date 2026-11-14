@@ -1,7 +1,7 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose'
 import type { HydratedDocument, Model } from 'mongoose'
-import { orderSearchPlugin } from '../order-search-grams'
 import { ShippingMethod } from '../types'
+import { orderSearchPlugin } from './order-search-grams.plugin'
 
 @Schema()
 class PurchaseOrderShippingProgress {
