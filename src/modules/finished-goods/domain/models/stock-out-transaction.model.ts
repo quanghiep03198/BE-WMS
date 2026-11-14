@@ -25,7 +25,7 @@ export class StockOutTransaction extends AggregateRoot {
 			mo_no: string
 			size_numcode: SizeNumber
 			order_qty: number
-			accumulated_qty: number
+			instock_qty: number
 		}>,
 		private readonly id: string
 	) {
@@ -81,13 +81,13 @@ export class StockOutTransaction extends AggregateRoot {
 				return {
 					mo_no: inventory.mo_no,
 					size_numcode: inventory.size_numcode.getValue(),
-					xf_deficit: inventory.accumulated_qty
+					xf_deficit: inventory.instock_qty
 				}
 
 			return {
 				mo_no: inventory.mo_no,
 				size_numcode: inventory.size_numcode.getValue(),
-				xf_deficit: inventory.accumulated_qty - tx.shipped_out_qty
+				xf_deficit: inventory.instock_qty - tx.shipped_out_qty
 			}
 		})
 

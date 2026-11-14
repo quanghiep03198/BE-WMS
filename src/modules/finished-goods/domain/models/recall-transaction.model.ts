@@ -11,7 +11,7 @@ export class RecallFromStockTransaction extends AggregateRoot {
 		public readonly moInventory: Array<{
 			size_numcode: SizeNumber
 			order_qty: number
-			accumulated_qty: number
+			instock_qty: number
 		}> = [],
 		private readonly id: string
 	) {
@@ -37,11 +37,11 @@ export class RecallFromStockTransaction extends AggregateRoot {
 			if (!incomming)
 				return {
 					size_numcode: inboundSizeDetail.size_numcode.getValue(),
-					instock_qty: inboundSizeDetail.accumulated_qty
+					instock_qty: inboundSizeDetail.instock_qty
 				}
 			return {
 				size_numcode: inboundSizeDetail.size_numcode.getValue(),
-				instock_qty: inboundSizeDetail.accumulated_qty - incomming.recall_qty
+				instock_qty: inboundSizeDetail.instock_qty - incomming.recall_qty
 			}
 		})
 

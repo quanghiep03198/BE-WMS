@@ -16,12 +16,12 @@ import {
 	IInventoryAuditRepository,
 	INVENTORY_AUDIT_REPOSITORY
 } from '@modules/inventory/application/ports/inventory-audit.repository.port'
-import { orderSearchGrams } from '@modules/order/order-search-grams'
 import {
 	ManufacturingOrder,
 	ManufacturingOrderDocument,
 	ManufacturingOrderModel
 } from '@modules/order/schemas/manufacturing-order.schema'
+import { orderSearchGrams } from '@modules/order/schemas/order-search-grams.plugin'
 import { PurchaseOrder, PurchaseOrderModel } from '@modules/order/schemas/purchase-order.schema'
 import { InjectTransactionHost, TransactionHost } from '@nestjs-cls/transactional'
 import { TransactionalAdapterMongoose } from '@nestjs-cls/transactional-adapter-mongoose'

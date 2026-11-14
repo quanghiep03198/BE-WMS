@@ -3,5 +3,5 @@ import { StockTransactionType } from '@modules/finished-goods/domain/value-objec
 export const STOCK_TRANSACTION_ID_GENERATOR = Symbol('STOCK_TRANSACTION_ID_GENERATOR')
 
 export interface IStockTransactionIdGenerator {
-	nextId(type: StockTransactionType): Promise<string>
+	nextId(type: StockTransactionType, date?: Date): Promise<string>
 }

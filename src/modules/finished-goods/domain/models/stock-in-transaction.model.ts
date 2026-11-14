@@ -1,3 +1,4 @@
+import { Logger } from '@nestjs/common'
 import { AggregateRoot } from '@nestjs/cqrs'
 import { entries, groupBy } from 'lodash'
 import { StockedInEvent } from '../events/stocked-in/stocked-in.event'
@@ -6,12 +7,14 @@ import { ElectronicProductCode } from '../value-objects/epc.vo'
 import { SizeNumber } from '../value-objects/size-number.vo'
 
 export class StockInTransaction extends AggregateRoot {
+	private readonly logger = new Logger(StockInTransaction.name)
+
 	constructor(
 		private readonly pendingInStockEpcs: Array<ElectronicProductCode>,
 		private readonly moInventory: Array<{
 			size_numcode: SizeNumber
 			order_qty: number
-			accumulated_qty: number
+			instock_qty: number
 		}> = [],
 		private readonly id: string
 	) {
@@ -29,6 +32,7 @@ export class StockInTransaction extends AggregateRoot {
 				inbound_qty: epcs.length
 			})
 		)
+		this.logger.debug(this.moInventory)
 
 		const outstandingOrderQty = this.moInventory.map((inboundSizeDetail) => {
 			const tx = transactionalSizeQty.find((incoming) =>
@@ -37,11 +41,11 @@ export class StockInTransaction extends AggregateRoot {
 			if (!tx)
 				return {
 					size_numcode: inboundSizeDetail.size_numcode.getValue(),
-					missing_qty: inboundSizeDetail.order_qty - inboundSizeDetail.accumulated_qty
+					missing_qty: inboundSizeDetail.order_qty - inboundSizeDetail.instock_qty
 				}
 			return {
 				size_numcode: inboundSizeDetail.size_numcode.getValue(),
-				missing_qty: inboundSizeDetail.order_qty - inboundSizeDetail.accumulated_qty - tx.inbound_qty
+				missing_qty: inboundSizeDetail.order_qty - inboundSizeDetail.instock_qty - tx.inbound_qty
 			}
 		})
 

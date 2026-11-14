@@ -29,7 +29,7 @@ describe('stock transaction identifiers', () => {
 	it('still rejects inbound quantities exceeding the order', () => {
 		const transaction = new StockInTransaction(
 			[epc()],
-			[{ size_numcode: new SizeNumber('8'), order_qty: 1, accumulated_qty: 1 }],
+			[{ size_numcode: new SizeNumber('8'), order_qty: 1, instock_qty: 1 }],
 			'SI-261113-001'
 		)
 		expect(() => transaction.startTransaction()).toThrow(ExcessInboundOrderException)
@@ -38,7 +38,7 @@ describe('stock transaction identifiers', () => {
 	it('still rejects recalls with insufficient inventory', () => {
 		const transaction = new RecallFromStockTransaction(
 			[epc()],
-			[{ size_numcode: new SizeNumber('8'), order_qty: 1, accumulated_qty: 0 }],
+			[{ size_numcode: new SizeNumber('8'), order_qty: 1, instock_qty: 0 }],
 			'RC-261113-001'
 		)
 		expect(() => transaction.startTransaction()).toThrow(InsufficientInventoryException)
@@ -48,10 +48,20 @@ describe('stock transaction identifiers', () => {
 		const transaction = new StockOutTransaction(
 			[epc()],
 			[{ size_numcode: new SizeNumber('8'), order_qty: 1, accumulated_qty: 1 }],
-			[{ mo_no: 'MO', size_numcode: new SizeNumber('8'), order_qty: 1, accumulated_qty: 1 }],
+			[{ mo_no: 'MO', size_numcode: new SizeNumber('8'), order_qty: 1, instock_qty: 1 }],
 			'XF-261113-001'
 		)
 		expect(() => transaction.startTransaction()).toThrow(ExcessOutboundOrderException)
+	})
+
+	it('still rejects stock-out quantities exceeding manufacturing-order inventory', () => {
+		const transaction = new StockOutTransaction(
+			[epc()],
+			[{ size_numcode: new SizeNumber('8'), order_qty: 2, accumulated_qty: 0 }],
+			[{ mo_no: 'MO', size_numcode: new SizeNumber('8'), order_qty: 1, instock_qty: 0 }],
+			'XF-261113-002'
+		)
+		expect(() => transaction.startTransaction()).toThrow(InsufficientInventoryException)
 	})
 })
 

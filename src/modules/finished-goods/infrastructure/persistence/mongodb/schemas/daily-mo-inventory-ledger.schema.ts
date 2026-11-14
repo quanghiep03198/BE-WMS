@@ -39,11 +39,7 @@ export class InventoryLedgerTransaction {
 	@Prop({ type: Boolean, default: false })
 	voided: boolean // * Indicates whether the transaction has been voided or not
 
-	get total_balance() {
-		return this.size_ledger
-			.values()
-			.reduce((acc, curr) => acc + curr.stocked_in_qty - curr.total_recall_tx + curr.total_return_tx, 0)
-	}
+	total_balance: number
 }
 
 const InventoryLedgerTransactionSchema = SchemaFactory.createForClass(InventoryLedgerTransaction)
@@ -52,6 +48,12 @@ InventoryLedgerTransactionSchema.loadClass(InventoryLedgerTransaction)
 
 InventoryLedgerTransactionSchema.plugin(MongooseAutoPopulate)
 InventoryLedgerTransactionSchema.plugin(MongooseLeanVirtuals)
+
+InventoryLedgerTransactionSchema.virtual('total_balance').get(function () {
+	return this.size_ledger
+		.values()
+		.reduce((acc, curr) => acc + curr.stocked_in_qty - curr.total_recall_tx + curr.total_return_tx, 0)
+})
 
 @Schema({
 	collection: DAILY_MO_INVENTORY_LEDGER_COLLECTION,
