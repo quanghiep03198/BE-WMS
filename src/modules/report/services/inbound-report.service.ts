@@ -291,19 +291,6 @@ export class InboundReportService {
 				)
 				const missingQty = normalizedDoc.order_qty - accumulatedInboundQty
 
-				console.log('size_ledger', Object.fromEntries(normalizedDoc.size_ledger))
-
-				console.log(
-					normalizedDoc.daily_inbound_history
-						.filter((item) => {
-							return item.transaction_history
-								.values()
-								.toArray()
-								.some((tx) => !tx.voided)
-						})
-						.map((item) => ({ ...item, transaction_history: item.transaction_history.values().toArray() }))
-				)
-
 				return {
 					...normalizedDoc,
 					size_ledger: Object.fromEntries(normalizedDoc.size_ledger),

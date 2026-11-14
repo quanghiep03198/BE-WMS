@@ -22,8 +22,6 @@ export class CreatedStorageLocationsListener implements IEventListener<CreatedSt
 
 		const warehouse = await this.rmdbsWarehouseRepostory.findOneByName(event.warehouseName)
 
-		console.log('warehouse :>>> ', warehouse)
-
 		await this.rmdbsStorageLocationRepostory.createMany(
 			event.locations.map((location) => ({
 				name: location.name,
