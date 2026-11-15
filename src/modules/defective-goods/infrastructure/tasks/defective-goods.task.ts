@@ -1,3 +1,4 @@
+import { DATA_WAREHOUSE_CONNECTION } from '@databases/constants'
 import {
 	DEFECTIVE_GOODS_REPORT_REPOSITORY,
 	IDefectiveGoodsReportRepository
@@ -16,7 +17,7 @@ export class DefectiveGoodsTask {
 	constructor(
 		@Inject(DEFECTIVE_GOODS_REPORT_REPOSITORY)
 		private readonly defectiveGoodsReportRepository: IDefectiveGoodsReportRepository,
-		@InjectModel(DefectiveGoodsDailyReport.name)
+		@InjectModel(DefectiveGoodsDailyReport.name, DATA_WAREHOUSE_CONNECTION)
 		private readonly defectiveGoodsDailyReportModel: DefectiveGoodsDailyReportModel
 	) {}
 
