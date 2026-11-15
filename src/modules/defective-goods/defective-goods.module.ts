@@ -19,6 +19,10 @@ import { DefectiveGoodsCdcHandlers } from './infrastructure/cdc'
 import { DefectiveGoodsReportRepository } from './infrastructure/persistence/mongodb/repositories/defective-goods-report.repository'
 import { DefectiveGoodsRepository } from './infrastructure/persistence/mongodb/repositories/defective-goods.repository'
 import {
+	DefectiveGoodsDailyReport,
+	DefectiveGoodsDailyReportSchema
+} from './infrastructure/persistence/mongodb/schemas/defective-goods-daily-report.schema'
+import {
 	DefectiveGoods,
 	DefectiveGoodsModel,
 	DefectiveGoodsSchema
@@ -27,6 +31,7 @@ import { DefectiveGoodsEntity } from './infrastructure/persistence/mssql/entitie
 import { DefectiveGoodsCacheRepository } from './infrastructure/persistence/redis/defective-goods-cache.repository'
 import { DEFECTIVE_GOODS_JOB_OPTIONS, DEFECTIVE_GOODS_SYNC_QUEUE } from './infrastructure/queues'
 import { DefectiveGoodsConsumers } from './infrastructure/queues/consumers'
+import { DefectiveGoodsTask } from './infrastructure/tasks/defective-goods.task'
 import { DefectiveGoodsController } from './presentation/controllers/defective-goods.controller'
 
 @Module({
@@ -36,7 +41,10 @@ import { DefectiveGoodsController } from './presentation/controllers/defective-g
 		DepartmentModule,
 		BullModule.registerQueue({ name: DEFECTIVE_GOODS_SYNC_QUEUE, defaultJobOptions: DEFECTIVE_GOODS_JOB_OPTIONS }),
 		MongooseModule.forFeature(
-			[{ name: DefectiveGoods.name, schema: DefectiveGoodsSchema }],
+			[
+				{ name: DefectiveGoods.name, schema: DefectiveGoodsSchema },
+				{ name: DefectiveGoodsDailyReport.name, schema: DefectiveGoodsDailyReportSchema }
+			],
 			DATA_WAREHOUSE_CONNECTION
 		),
 		TypeOrmModule.forFeature([DefectiveGoodsEntity], DATA_SOURCE_DATA_LAKE)
@@ -51,7 +59,7 @@ import { DefectiveGoodsController } from './presentation/controllers/defective-g
 		{ provide: DEFECTIVE_GOODS_REPORT_REPOSITORY, useClass: DefectiveGoodsReportRepository },
 		{ provide: DEFECTIVE_GOODS_CACHE_REPOSITORY, useClass: DefectiveGoodsCacheRepository },
 		DefectiveGoodsSaga,
-		// DefectiveGoodsService,
+		DefectiveGoodsTask,
 		DefectiveGoodsInboundService,
 		DefectiveGoodsOutboundService,
 		DefectiveGoodsInventoryService

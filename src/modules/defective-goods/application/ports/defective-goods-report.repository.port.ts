@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-empty-object-type */
-import { DefectiveGoodsSource } from '@modules/defective-goods/domain/constants'
+import { DefectiveGoodsOutboundPurpose, DefectiveGoodsSource } from '@modules/defective-goods/domain/constants'
 
 export const DEFECTIVE_GOODS_REPORT_REPOSITORY = Symbol('DEFECTIVE_GOODS_REPORT_REPOSITORY')
 
@@ -25,7 +25,7 @@ export interface IDefectiveGoodsReport {
 export interface IDailyInboundDefectiveGoodsReport extends IDefectiveGoodsReport {}
 
 export interface IDailyOutboundDefectiveGoodsReport extends Omit<IDefectiveGoodsReport, 'storage_location'> {
-	outbound_purpose: string
+	outbound_purpose: DefectiveGoodsOutboundPurpose
 }
 
 export interface IDefectiveGoodsReportRepository {

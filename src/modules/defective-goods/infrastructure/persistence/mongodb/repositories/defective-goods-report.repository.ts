@@ -4,15 +4,23 @@ import {
 	IDailyOutboundDefectiveGoodsReport,
 	IDefectiveGoodsReportRepository
 } from '@modules/defective-goods/application/ports/defective-goods-report.repository.port'
+import { StockFlow } from '@modules/finished-goods/domain/types'
 import { Injectable } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
+import { format } from 'date-fns'
+import {
+	DefectiveGoodsDailyReport,
+	DefectiveGoodsDailyReportModel
+} from '../schemas/defective-goods-daily-report.schema'
 import { DefectiveGoods, DefectiveGoodsModel } from '../schemas/defective-goods.schema'
 
 @Injectable()
 export class DefectiveGoodsReportRepository implements IDefectiveGoodsReportRepository {
 	constructor(
 		@InjectModel(DefectiveGoods.name, DATA_WAREHOUSE_CONNECTION)
-		private readonly defectiveGoodsModel: DefectiveGoodsModel
+		private readonly defectiveGoodsModel: DefectiveGoodsModel,
+		@InjectModel(DefectiveGoodsDailyReport.name, DATA_WAREHOUSE_CONNECTION)
+		private readonly defectiveGoodsDailyReportModel: DefectiveGoodsDailyReportModel
 	) {}
 
 	async getDailyInboundReport(date: Date) {
@@ -20,6 +28,13 @@ export class DefectiveGoodsReportRepository implements IDefectiveGoodsReportRepo
 		from.setHours(0, 0, 0, 0)
 		const to = new Date(date)
 		to.setHours(23, 59, 59, 999)
+
+		const isToday = format(date, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd')
+
+		if (!isToday)
+			return await this.defectiveGoodsDailyReportModel
+				.find({ date: format(date, 'yyyy-MM-dd'), type: 'inbound' satisfies StockFlow })
+				.lean<IDailyInboundDefectiveGoodsReport[]>({ virtuals: true })
 
 		return await this.defectiveGoodsModel.aggregateWithDeleted<IDailyInboundDefectiveGoodsReport>([
 			{
@@ -142,6 +157,13 @@ export class DefectiveGoodsReportRepository implements IDefectiveGoodsReportRepo
 		from.setHours(0, 0, 0, 0)
 		const to = new Date(date)
 		to.setHours(23, 59, 59, 999)
+
+		const isToday = format(date, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd')
+
+		if (!isToday)
+			return await this.defectiveGoodsDailyReportModel
+				.find({ date: format(date, 'yyyy-MM-dd'), type: 'outbound' satisfies StockFlow })
+				.lean<IDailyOutboundDefectiveGoodsReport[]>({ virtuals: true })
 
 		return await this.defectiveGoodsModel.aggregateWithDeleted<IDailyOutboundDefectiveGoodsReport>([
 			{
