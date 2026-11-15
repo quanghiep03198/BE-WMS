@@ -34,12 +34,13 @@
 			"@configs/*": ["./src/configs/*"],
 			"@databases/*": ["./src/databases/*"],
 			"@generated/*": ["./src/generated/*"],
+			"@i18n/*": ["./src/i18n/*"],
 			"@modules/*": ["./src/modules/*"],
 			"@redis/*": ["./src/redis/*"],
 			"@tasks/*": ["./src/tasks/*"]
 		},
 		"inlineSources": true
 	},
-	"include": ["src", "test", "global.d.ts"],
-	"exclude": ["node_modules", "dist", "deprecated", ".tmp", "src/**/.tmp/*"]
+	"include": ["src", "migrations", "test"],
+	"exclude": ["node_modules", "dist", ".deprecated", ".tmp", "src/**/{.tmp,.deprecated}/*"]
 }

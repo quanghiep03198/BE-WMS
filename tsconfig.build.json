@@ -4,5 +4,6 @@
 		"rootDir": "./src",
 		"sourceRoot": "./"
 	},
+	"include": ["src", "global.d.ts"],
 	"exclude": ["node_modules", "test", "dist", "**/*spec.ts"]
 }

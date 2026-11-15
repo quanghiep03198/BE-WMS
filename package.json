@@ -18,6 +18,7 @@
 		"format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
 		"lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
 		"test": "jest",
+		"test:migrations": "jest --runInBand --testPathPattern=migrations",
 		"typecheck": "tsgo --noEmit -p tsconfig.build.json",
 		"test:watch": "jest --watch",
 		"test:cov": "jest --coverage",
@@ -166,6 +167,7 @@
 			"^@configs/(.*)$": "<rootDir>/src/configs/$1",
 			"^@databases/(.*)$": "<rootDir>/src/databases/$1",
 			"^@generated/(.*)$": "<rootDir>/src/generated/$1",
+			"^@i18n/(.*)$": "<rootDir>/src/i18n/$1",
 			"^@modules/(.*)$": "<rootDir>/src/modules/$1",
 			"^@redis/(.*)$": "<rootDir>/src/redis/$1",
 			"^@tasks/(.*)$": "<rootDir>/src/tasks/$1"
