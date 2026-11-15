@@ -1,3 +1,8 @@
-export class ExportDailyInboundReportQuery {
-	constructor(public readonly date: string) {}
+import { Query } from '@nestjs/cqrs'
+import { Buffer } from 'exceljs'
+
+export class ExportDailyInboundReportQuery extends Query<Buffer> {
+	constructor(public readonly date: Date) {
+		super()
+	}
 }

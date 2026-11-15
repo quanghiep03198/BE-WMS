@@ -15,7 +15,7 @@ export interface IDefectiveGoodsReport {
 	sewing_line: string
 	assembly_line: string
 	storage_location: string
-	size_data: {
+	size_ledger: {
 		size_numcode: string
 		qty: any
 	}[]

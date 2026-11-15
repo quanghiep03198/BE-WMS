@@ -12,9 +12,6 @@ import { DEFECTIVE_GOODS_REPORT_REPOSITORY } from './application/ports/defective
 import { DEFECTIVE_GOODS_REPOSITORY } from './application/ports/defective-goods.repository.port'
 import { DefectiveGoodsQueryHandlers } from './application/queries'
 import { DefectiveGoodsSaga } from './application/sagas/defective-goods.saga'
-import { DefectiveGoodsInboundService } from './application/services/defective-inbound.service'
-import { DefectiveGoodsInventoryService } from './application/services/defective-inventory.service'
-import { DefectiveGoodsOutboundService } from './application/services/defective-outbound.service'
 import { DefectiveGoodsCdcHandlers } from './infrastructure/cdc'
 import { DefectiveGoodsReportRepository } from './infrastructure/persistence/mongodb/repositories/defective-goods-report.repository'
 import { DefectiveGoodsRepository } from './infrastructure/persistence/mongodb/repositories/defective-goods.repository'
@@ -59,10 +56,7 @@ import { DefectiveGoodsController } from './presentation/controllers/defective-g
 		{ provide: DEFECTIVE_GOODS_REPORT_REPOSITORY, useClass: DefectiveGoodsReportRepository },
 		{ provide: DEFECTIVE_GOODS_CACHE_REPOSITORY, useClass: DefectiveGoodsCacheRepository },
 		DefectiveGoodsSaga,
-		DefectiveGoodsTask,
-		DefectiveGoodsInboundService,
-		DefectiveGoodsOutboundService,
-		DefectiveGoodsInventoryService
+		DefectiveGoodsTask
 	]
 })
 export class DefectiveGoodsModule implements OnModuleInit {

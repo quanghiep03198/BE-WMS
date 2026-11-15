@@ -31,7 +31,7 @@ async function bootstrap() {
 					},
 					useOnlyCustomLevels: true,
 					hooks: {
-						logMethod(args: Array<any>, method) {
+						logMethod(args, method) {
 							// * Skip logging for Prometheus metrics endpoint if disabled
 							const requestLogConfig = args.at(0) as {
 								req: FastifyRequest

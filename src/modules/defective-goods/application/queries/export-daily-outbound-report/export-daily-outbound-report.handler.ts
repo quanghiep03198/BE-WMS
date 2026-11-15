@@ -93,7 +93,7 @@ export class ExportDailyOutboundReportHandler implements IQueryHandler<ExportDai
 					fgColor: { argb: ExcelColorPalette.BG_LIGHT_BLUE }
 				}
 			}
-			for (const subRecord of record.size_data) {
+			for (const subRecord of record.size_ledger) {
 				const row = worksheet.addRow([])
 				row.alignment = { vertical: 'middle', horizontal: 'center' }
 				row.getCell(2).value = subRecord.size_numcode + '#'

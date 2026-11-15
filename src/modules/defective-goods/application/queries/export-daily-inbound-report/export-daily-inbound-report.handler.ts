@@ -6,17 +6,21 @@ import { IQueryHandler, QueryHandler } from '@nestjs/cqrs'
 import { format } from 'date-fns'
 import { Workbook } from 'exceljs'
 import { I18nContext, I18nService } from 'nestjs-i18n'
-import { DEFECTIVE_GOODS_REPORT_REPOSITORY } from '../../ports/defective-goods-report.repository.port'
+import {
+	DEFECTIVE_GOODS_REPORT_REPOSITORY,
+	IDefectiveGoodsReportRepository
+} from '../../ports/defective-goods-report.repository.port'
 import { ExportDailyInboundReportQuery } from './export-daily-inbound-report.query'
 
 @QueryHandler(ExportDailyInboundReportQuery)
 export class ExportDailyInboundReportHandler implements IQueryHandler<ExportDailyInboundReportQuery> {
 	constructor(
 		@Inject(DEFECTIVE_GOODS_REPORT_REPOSITORY)
-		private readonly defectiveGoodsReportRepository: any,
+		private readonly defectiveGoodsReportRepository: IDefectiveGoodsReportRepository,
 		private readonly configService: ConfigService<ProcessEnv>,
 		private readonly i18nService: I18nService
 	) {}
+
 	async execute({ date }: ExportDailyInboundReportQuery) {
 		const factory = this.configService.get<FactoryCode>('APP_TENANCY')
 		const currentLanguage = I18nContext.current()?.lang
@@ -90,7 +94,7 @@ export class ExportDailyInboundReportHandler implements IQueryHandler<ExportDail
 					fgColor: { argb: ExcelColorPalette.BG_LIGHT_BLUE }
 				}
 			}
-			for (const subRecord of record.size_data) {
+			for (const subRecord of record.size_ledger) {
 				const row = worksheet.addRow([])
 				row.alignment = { vertical: 'middle', horizontal: 'center' }
 				row.getCell(2).value = subRecord.size_numcode + '#'
@@ -138,7 +142,7 @@ export class ExportDailyInboundReportHandler implements IQueryHandler<ExportDail
 		worksheet.getCell(`A${footerRow.number}`).value = this.i18nService.t('erp.fields.total_daily_productivity', {
 			lang: currentLanguage
 		})
-		worksheet.getCell(`K${footerRow.number}`).value = data.reduce((acc, curr) => acc + curr.daily_inbound_qty, 0)
+		worksheet.getCell(`K${footerRow.number}`).value = data.reduce((acc, curr) => acc + curr.total_qty, 0)
 		worksheet.getCell(`K${footerRow.number}`).style = {
 			font: { color: { argb: ExcelColorPalette.DESTRUCTIVE_FOREGROUND } }
 		}
