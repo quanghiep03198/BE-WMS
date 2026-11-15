@@ -51,7 +51,7 @@ bun run migrations/run.ts --help
 | `--device-sn-101 <serial>`      | Required inbound RFID device serial                     |
 | `--device-sn-103 <serial>`      | Required outbound RFID device serial                    |
 | `--include-backups`             | Include daily backup scans; off unless specified        |
-| `--creator-username <username>` | `1009006`                                               |
+| `--creator-username <username>` | `quanghiep`                                             |
 | `--output-filename <file>`      | `.tmp/warehouse-sync-<timestamp>.xlsx`                  |
 | `--log-filename <file>`         | `logs/data-migration.log`                               |
 | `--step <collection>`           | Run only the step for the named collection              |

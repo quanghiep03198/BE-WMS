@@ -67,7 +67,8 @@ const defaultDependencies: WarehouseSyncDependencies = {
 		runManufacturingOrderStep(pool, database, config.factoryCode, cutoff),
 	'daily PO progress': ({ pool, database, config, generateId, cutoff }) =>
 		runDailyPoStep(pool, database, config.factoryCode, generateId, cutoff),
-	'RFID devices': ({ pool, database, config }) => runRfidStep(pool, database, config.factoryCode),
+	'RFID devices': ({ pool, database, config }) =>
+		runRfidStep(pool, database, config.factoryCode, config.creatorUsername),
 	'EPC matches': ({ pool, database }) => runEpcMatchStep(pool, database),
 	'finished goods EPCs': ({ pool, database, config }) =>
 		runFinishedGoodsEpcStep(pool, database, {

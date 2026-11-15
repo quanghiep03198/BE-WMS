@@ -15,6 +15,8 @@ integration('runRfidStep', () => {
 			await client.connect()
 			connected = true
 			const database = client.db(databaseName)
+			const fallbackId = new mongoose.mongo.ObjectId()
+			await database.collection('users').insertOne({ _id: fallbackId, username: 'fallback' })
 			let factory = ''
 			let nameVi: string | null = 'VN'
 			let nameEn: string | null = 'EN'
@@ -41,28 +43,29 @@ integration('runRfidStep', () => {
 					cancel: () => true
 				})
 			}
-			expect(await runRfidStep(pool, database, 'VB2')).toEqual({ devices: 1 })
+			expect(await runRfidStep(pool, database, 'VB2', 'fallback')).toEqual({ devices: 1 })
 			expect(factory).toBe('VB2')
 			expect(await database.collection('rfid_devices').findOne({ device_sn: 'SERIAL' })).toMatchObject({
 				station_no: 'CUS_VB2_WH101',
 				tcp_port: '9000',
 				device_name: { vi: 'VN', en: 'EN', cn: 'CN' },
-				device_type: 'antenna'
+				device_type: 'antenna',
+				created_by: fallbackId
 			})
 			nameVi = null
 			nameEn = ''
 			nameCn = 'Changed'
 			const warn = jest.spyOn(console, 'warn').mockImplementation(() => undefined)
 			try {
-				await runRfidStep(pool, database, 'VB2')
+				await runRfidStep(pool, database, 'VB2', 'fallback')
 				expect(await database.collection('rfid_devices').findOne({ device_sn: 'SERIAL' })).toMatchObject({
-					device_name: { vi: 'VN', en: 'EN', cn: 'Changed' }
+					device_name: { vi: 'Unknown', en: 'Unknown', cn: 'Changed' }
 				})
 				await database.collection('rfid_devices').deleteOne({ device_sn: 'SERIAL' })
 				nameCn = null
-				await runRfidStep(pool, database, 'VB2')
+				await runRfidStep(pool, database, 'VB2', 'fallback')
 				expect(await database.collection('rfid_devices').findOne({ device_sn: 'SERIAL' })).toMatchObject({
-					device_name: {}
+					device_name: { vi: 'Unknown', en: 'Unknown', cn: 'Unknown' }
 				})
 			} finally {
 				warn.mockRestore()

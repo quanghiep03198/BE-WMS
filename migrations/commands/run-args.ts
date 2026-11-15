@@ -30,7 +30,7 @@ Options:
   --device-sn-101 <serial>      		Inbound RFID device serial (required)
   --device-sn-103 <serial>     		Outbound RFID device serial (required)
   --include-backups                 Include daily backup scans
-  --creator-username <username>     Creator for warehouse/delivery records and fallback image owner (default: 1009006)
+  --creator-username <username>     Creator for warehouse/delivery records and fallback image owner (default: quanghiep)
   --output-filename <file>          Report file (default: .tmp/warehouse-sync-<timestamp>.xlsx)
   --log-filename <file>             Log file (default: logs/data-migration.log)
   --step <collection>               Run only the selected step

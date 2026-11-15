@@ -229,7 +229,7 @@ export async function runDefectiveGoodsStep(
 	pool: { request(): MssqlStreamRequest },
 	database: mongo.Db,
 	dependencies?: DefectiveDescriptionDependencies,
-	creatorUsername = '1009006'
+	creatorUsername = 'quanghiep'
 ): Promise<{ defectiveGoods: number }> {
 	const { userIds, departmentIds } = await loadReferences(database)
 	const missingUsers = new Set<string>()
