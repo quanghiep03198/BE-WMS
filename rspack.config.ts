@@ -47,6 +47,7 @@ export default defineConfig((): Configuration => {
 				'@configs': path.resolve(import.meta.dirname, 'src/configs'),
 				'@databases': path.resolve(import.meta.dirname, 'src/databases'),
 				'@generated': path.resolve(import.meta.dirname, 'src/generated'),
+				'@i18n': path.resolve(import.meta.dirname, 'src/i18n'),
 				'@modules': path.resolve(import.meta.dirname, 'src/modules'),
 				'@redis': path.resolve(import.meta.dirname, 'src/redis'),
 				'@tasks': path.resolve(import.meta.dirname, 'src/tasks')
