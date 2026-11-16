@@ -37,6 +37,11 @@ export declare global {
 			APP_TENANCY: FactoryCode
 			TZ: TTimezone
 
+			// * File cleanup settings
+			FILES_CLEANUP_CRON: string
+			FILES_PENDING_HOURS: `${number}`
+			FILES_ORPHAN_DAYS: `${number}`
+
 			// * Throttler
 			THROTTLER_TTL: string
 			THROTTLER_LIMIT: string
@@ -89,8 +94,8 @@ export declare global {
 			DECKERS_GL4_CLIENT_SECRET: string
 
 			// * Tenancy - No longer used
-			// TENANT_DEV: string
 			TENANT_CENTRAL: string
+			// TENANT_DEV: string
 			// TENANT_GL1: string
 			// TENANT_GL3: string
 			// TENANT_GL4: string
