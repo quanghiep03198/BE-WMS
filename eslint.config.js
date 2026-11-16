@@ -10,12 +10,14 @@ export default defineConfig(
 		ignores: [
 			'dist',
 			'.tmp',
+			'.mock',
 			'src/**/.tmp/*',
 			'src/**/deprecated/*',
 			'.deprecated',
 			'migrations',
 			'ecosystem.config.js',
 			'src/generated/i18n.generated.ts',
+			'*.mongodb.js',
 			'eslint.config.js',
 			'rspack.config.ts'
 		]
