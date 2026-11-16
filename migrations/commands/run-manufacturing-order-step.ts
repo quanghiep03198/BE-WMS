@@ -2,7 +2,7 @@ import { orderSearchGrams } from '@modules/order/schemas/order-search-grams.plug
 import type { mongo } from 'mongoose'
 import { streamMssqlRows, type MssqlStreamRequest } from '../helpers/mssql-stream'
 import { getVietnamCutoffSqlDate } from './cutoff'
-import { MANUFACTURING_ORDERS_SQL } from './manufacturing-orders.sql'
+import { manufacturingOrdersSql } from './manufacturing-orders.sql'
 import { isEligibleMoNo } from './mo-no'
 
 function requiredText(value: unknown, name: string): string {
@@ -36,19 +36,19 @@ export async function runManufacturingOrderStep(
 	pool: { request(): MssqlStreamRequest },
 	database: mongo.Db,
 	factoryCode: string,
-	cutoff: Date
+	cutoff: Date | undefined
 ): Promise<{ manufacturingOrders: number }> {
 	if (!factoryCode.trim()) throw new Error('Factory code is required')
-	const cutoffDate = getVietnamCutoffSqlDate(cutoff)
+	const cutoffParameters = cutoff === undefined ? {} : { cutoff: getVietnamCutoffSqlDate(cutoff) }
 	const collection = database.collection('manufacturing_orders')
 	await collection.createIndex({ mo_no: 1 }, { name: 'idx_mo', unique: true })
 	await collection.createIndex({ search_ngrams: 1, mo_no: -1 }, { name: 'mo_search_ngrams_idx' })
 	let manufacturingOrders = 0
 	const seen = new Set<string>()
 	let batch: mongo.AnyBulkWriteOperation[] = []
-	for await (const row of streamMssqlRows(pool.request(), MANUFACTURING_ORDERS_SQL, {
+	for await (const row of streamMssqlRows(pool.request(), manufacturingOrdersSql(cutoff !== undefined), {
 		FactoryCode: factoryCode,
-		cutoff: cutoffDate
+		...cutoffParameters
 	})) {
 		if (!row || typeof row !== 'object') throw new Error('Invalid manufacturing order row')
 		if (!(

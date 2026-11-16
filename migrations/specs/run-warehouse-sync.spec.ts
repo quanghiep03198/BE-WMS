@@ -2,7 +2,9 @@ import { StockTransactionIdMongoGenerator } from '@modules/finished-goods/infras
 import { Types } from 'mongoose'
 import { readFile, rm } from 'node:fs/promises'
 import { Readable } from 'node:stream'
+import * as epcStep from '../commands/finished-goods-epcs'
 import * as dailyPoStep from '../commands/run-daily-po-step'
+import * as epcMatchStep from '../commands/run-epc-match-step'
 import * as stepsRunner from '../commands/run-steps'
 import {
 	createWarehouseSyncRunner,
@@ -13,6 +15,8 @@ import {
 } from '../commands/run-warehouse-sync'
 
 jest.mock('../commands/defective-goods', () => ({ runDefectiveGoodsStep: jest.fn() }))
+jest.mock('../commands/run-epc-match-step', () => ({ runEpcMatchStep: jest.fn() }))
+jest.mock('../commands/finished-goods-epcs', () => ({ runFinishedGoodsEpcStep: jest.fn() }))
 jest.mock('../commands/run-steps', () => {
 	const actual = jest.requireActual<typeof import('../commands/run-steps')>('../commands/run-steps')
 	return { ...actual, runSteps: jest.fn(actual.runSteps) }
@@ -59,6 +63,41 @@ function fakeDependencies(runStage: (stage: WarehouseSyncStageName) => Promise<v
 }
 
 describe('runWarehouseSync', () => {
+	it.each([
+		{
+			settings: undefined,
+			expected: { concurrency: 4, batchSize: 1000, chunkSize: 10000, writeMode: 'upsert' as const }
+		},
+		{
+			settings: { concurrency: 8, batchSize: 2000, chunkSize: 4000, writeMode: 'insert' as const },
+			expected: { concurrency: 8, batchSize: 2000, chunkSize: 4000, writeMode: 'insert' as const }
+		}
+	])('runs both EPC stages with matching settings: $expected', async ({ settings, expected }) => {
+		jest.mocked(epcMatchStep.runEpcMatchStep).mockResolvedValue({ epcMatches: 0 })
+		jest.mocked(epcStep.runFinishedGoodsEpcStep).mockResolvedValue({ epcs: 0 })
+		const stepsSpy = jest.mocked(stepsRunner.runSteps).mockImplementation(async (steps) => {
+			for (const step of steps) {
+				if (step.name === 'EPC matches' || step.name === 'finished goods EPCs') await step.run()
+			}
+		})
+		const pool = {} as never
+		const database = {} as never
+		try {
+			await runWarehouseSync(pool, database, { ...config, epcSync: settings })
+			expect(epcMatchStep.runEpcMatchStep).toHaveBeenCalledWith(pool, database, expected)
+			expect(epcStep.runFinishedGoodsEpcStep).toHaveBeenCalledWith(pool, database, {
+				...expected,
+				inboundDeviceSn: 'INBOUND',
+				outboundDeviceSn: 'OUTBOUND',
+				includeBackups: true
+			})
+		} finally {
+			stepsSpy.mockImplementation(
+				jest.requireActual<typeof import('../commands/run-steps')>('../commands/run-steps').runSteps
+			)
+		}
+	})
+
 	it.each([{ step: 'purchase_orders' }, { fromStep: 'purchase_orders' }])(
 		'deletes duplicate backup RFID records immediately before selected purchase orders: %o',
 		async (selection) => {
@@ -319,6 +358,46 @@ describe('runWarehouseSync', () => {
 		try {
 			await runWarehouseSync(pool as never, database as never, config, new Date(instant))
 			expect(cutoffs).toEqual([expectedCutoff, expectedCutoff, expectedCutoff])
+		} finally {
+			warn.mockRestore()
+			stepsSpy.mockImplementation(
+				jest.requireActual<typeof import('../commands/run-steps')>('../commands/run-steps').runSteps
+			)
+		}
+	})
+
+	it('omits cutoff filtering from all three order queries when noCutoff is enabled', async () => {
+		const queries: Array<{ sql: string; parameters: Record<string, string> }> = []
+		const pool = {
+			request: () => {
+				const parameters: Record<string, string> = {}
+				return {
+					input: (name: string, value: string) => {
+						parameters[name] = value
+					},
+					toReadableStream: () => Readable.from([]),
+					query: async (sql: string) => {
+						queries.push({ sql, parameters })
+					},
+					cancel: () => true
+				}
+			}
+		}
+		const database = { collection: () => ({ createIndex: async () => undefined }) }
+		const warn = jest.spyOn(console, 'warn').mockImplementation(() => undefined)
+		const stepsSpy = jest.mocked(stepsRunner.runSteps).mockImplementation(async (steps) => {
+			for (const step of steps) {
+				if (['purchase orders', 'manufacturing orders', 'daily PO progress'].includes(step.name)) await step.run()
+			}
+		})
+		try {
+			await runWarehouseSync(pool as never, database as never, { ...config, noCutoff: true })
+			const orderQueries = queries.filter(({ sql }) => !sql.includes('dvview_invoub'))
+			expect(orderQueries).toHaveLength(3)
+			for (const { sql, parameters } of orderQueries) {
+				expect(sql).not.toMatch(/record_time\s*<\s*@cutoff/i)
+				expect(parameters).not.toHaveProperty('cutoff')
+			}
 		} finally {
 			warn.mockRestore()
 			stepsSpy.mockImplementation(

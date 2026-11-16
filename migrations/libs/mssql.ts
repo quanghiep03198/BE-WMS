@@ -1,28 +1,22 @@
-import { SuperJson } from '@common/utils'
-import 'dotenv/config'
+import { SuperJson } from '@common/utils/json.util'
 import mssql from 'mssql'
+import type { MigrationEnv } from '../helpers/migration-env'
+import { migrationMssqlConfig } from '../helpers/migration-mssql-config'
 import { Logger } from '../utils/logger'
 
 export class MssqlManager {
 	public pool: mssql.ConnectionPool | undefined
 	private readonly logger: Logger = new Logger('MSSQL')
 
-	constructor(private readonly host?: string) {}
+	constructor(
+		private readonly host?: string,
+		private readonly env: MigrationEnv = process.env
+	) {}
 
 	public async connect() {
 		this.logger.info('Connecting to MSSQL ...')
 		this.pool = await mssql.connect({
-			user: process.env.DB_USERNAME,
-			password: process.env.DB_PASSWORD,
-			server: this.host ?? process.env.DB_HOST,
-			port: Number(process.env.DB_PORT) || 1433,
-			database: 'DV_DATA_LAKE',
-			connectionTimeout: 30000,
-			requestTimeout: 2 * 60000,
-			options: {
-				encrypt: true, // for azure
-				trustServerCertificate: true // change to true for local dev / self-signed certs
-			},
+			...migrationMssqlConfig(this.host ?? this.env.DB_HOST, this.env),
 			pool: {
 				max: 24,
 				min: 5,

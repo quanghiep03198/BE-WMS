@@ -1,5 +1,7 @@
 import type { mongo } from 'mongoose'
+import { randomUUID } from 'node:crypto'
 import { performance } from 'node:perf_hooks'
+import { createEpcBatchQueue } from '../helpers/epc-batch-queue'
 import { streamMssqlRows, type MssqlStreamRequest } from '../helpers/mssql-stream'
 import { referenceLookup } from '../helpers/reference-lookup'
 import { isEligibleMoNo } from './mo-no'
@@ -27,7 +29,7 @@ function optionalDate(value: unknown, field: string): Date | null {
 	return requiredDate(value, field)
 }
 
-function sql(includeBackups: boolean): string {
+function sql(includeBackups: boolean, limited: boolean): string {
 	const inboundBackup = includeBackups
 		? /* SQL */ `
 		UNION ALL
@@ -62,7 +64,8 @@ function sql(includeBackups: boolean): string {
 			${inboundBackup}
 		),
 		epcs_at_101_ranked AS (
-			SELECT *, ROW_NUMBER() OVER (PARTITION BY EPC_Code ORDER BY record_time DESC) AS rn
+			SELECT EPC_Code, mo_no, po, rfid_status, storage_location, assembly_line, record_time,
+				ROW_NUMBER() OVER (PARTITION BY EPC_Code ORDER BY record_time DESC) AS rn
 			FROM epcs_at_101_history
 		),
 		epcs_at_101 AS (
@@ -78,7 +81,8 @@ function sql(includeBackups: boolean): string {
 			${outboundBackup}
 		),
 		epcs_at_103_ranked AS (
-			SELECT *, ROW_NUMBER() OVER (PARTITION BY EPC_Code ORDER BY record_time DESC) AS rn
+			SELECT EPC_Code, size_code, mo_no, po, record_time, rfid_status, rfid_use,
+				ROW_NUMBER() OVER (PARTITION BY EPC_Code ORDER BY record_time DESC) AS rn
 			FROM epcs_at_103_history
 		),
 		epcs_at_103 AS (
@@ -86,7 +90,7 @@ function sql(includeBackups: boolean): string {
 			FROM epcs_at_103_ranked
 			WHERE rn = 1
 		)
-		SELECT _101.EPC_Code AS epc, _101.mo_no, _103.po,
+		SELECT ${limited ? 'TOP (CAST(@maxRows AS int)) ' : ''}_101.EPC_Code AS epc, _101.mo_no, _103.po,
 			@inboundDeviceSn AS inbound_device_sn,
 			IIF(_103.EPC_Code IS NOT NULL, @outboundDeviceSn, NULL) AS outbound_device_sn,
 			IIF(_103.record_time > _101.record_time, _103.record_time, _101.record_time) AS last_scanned_at,
@@ -98,6 +102,7 @@ function sql(includeBackups: boolean): string {
 				ELSE 'instock' END AS status
 		FROM epcs_at_101 AS _101
 		LEFT OUTER JOIN epcs_at_103 AS _103 ON _101.EPC_Code = _103.EPC_Code
+		${limited ? 'ORDER BY _101.EPC_Code' : ''}
 	`
 }
 
@@ -257,12 +262,76 @@ function enrichmentPipeline(epcs: string[], references: Awaited<ReturnType<typeo
 	]
 }
 
+interface FinishedGoodsEpcOptions {
+	inboundDeviceSn: string
+	outboundDeviceSn: string
+	includeBackups?: boolean
+	concurrency?: number
+	batchSize?: number
+	chunkSize?: number
+	maxRows?: number
+	writeMode?: 'upsert' | 'insert'
+}
+
 export async function runFinishedGoodsEpcStep(
 	pool: { request(): MssqlStreamRequest },
 	database: mongo.Db,
-	options: { inboundDeviceSn: string; outboundDeviceSn: string; includeBackups?: boolean }
+	options: FinishedGoodsEpcOptions
+): Promise<{ epcs: number }> {
+	const runId = randomUUID()
+	const locks = database.collection<{ _id: string; owner: string; started_at: Date }>('warehouse_sync_locks')
+	try {
+		await locks.insertOne({ _id: 'finished_goods_epcs', owner: runId, started_at: new Date() })
+	} catch (error) {
+		if (error && typeof error === 'object' && 'code' in error && error.code === 11000) {
+			throw new Error('Finished goods EPC sync is already running or has a stale lock', { cause: error })
+		}
+		throw error
+	}
+	let failed = false
+	let originalError: unknown
+	try {
+		return await runFinishedGoodsEpcStepWithLock(pool, database, options, runId)
+	} catch (error) {
+		failed = true
+		originalError = error
+		throw error
+	} finally {
+		try {
+			const released = await locks.deleteOne({ _id: 'finished_goods_epcs', owner: runId })
+			if (released.deletedCount !== 1) throw new Error('Finished goods EPC sync lock was not released')
+		} catch (error) {
+			if (failed) throw new AggregateError([originalError, error], 'Finished goods EPC sync and lock release failed')
+			throw error
+		}
+	}
+}
+
+async function runFinishedGoodsEpcStepWithLock(
+	pool: { request(): MssqlStreamRequest },
+	database: mongo.Db,
+	options: FinishedGoodsEpcOptions,
+	runId: string
 ): Promise<{ epcs: number }> {
 	const startedAt = performance.now()
+	const concurrency = options.concurrency ?? 4
+	const batchSize = options.batchSize ?? BATCH_SIZE
+	const chunkSize = options.chunkSize ?? batchSize
+	if (!Number.isSafeInteger(concurrency) || concurrency < 1) throw new Error('Invalid finished goods EPC concurrency')
+	if (!Number.isSafeInteger(batchSize) || batchSize < 1) throw new Error('Invalid finished goods EPC batch size')
+	if (!Number.isSafeInteger(chunkSize) || chunkSize < batchSize)
+		throw new Error('Invalid finished goods EPC chunk size')
+	if (options.maxRows !== undefined && (!Number.isSafeInteger(options.maxRows) || options.maxRows < 1)) {
+		throw new Error('Invalid finished goods EPC row limit')
+	}
+	if (options.writeMode !== undefined && options.writeMode !== 'upsert' && options.writeMode !== 'insert') {
+		throw new Error('Invalid finished goods EPC write mode')
+	}
+	if (
+		options.writeMode === 'insert' &&
+		(await database.collection('finished_goods_epcs').findOne({}, { projection: { _id: 1 } }))
+	)
+		throw new Error('Finished goods EPC insert mode requires an empty target')
 	const inboundDeviceSn = requiredText(options.inboundDeviceSn, 'inbound device SN')
 	const outboundDeviceSn = requiredText(options.outboundDeviceSn, 'outbound device SN')
 	if (options.includeBackups !== undefined && typeof options.includeBackups !== 'boolean') {
@@ -278,17 +347,19 @@ export async function runFinishedGoodsEpcStep(
 			manufacturingOrders.flatMap(({ mo_no }) => (typeof mo_no === 'string' && isEligibleMoNo(mo_no) ? [mo_no] : []))
 		)
 	]
-	const staging = database.collection<{ _id: string; epc: string }>('finished_goods_epcs_staging')
+	const staging = database.collection<{ _id: string; epc: string; __epc_sync_run?: string }>(
+		'finished_goods_epcs_staging'
+	)
 	const seen = new Set<string>()
 	let operations: mongo.AnyBulkWriteOperation<{ _id: string; epc: string }>[] = []
 	let epcs = 0
 	let batches = 0
 	let mongoBulkWriteMs = 0
-	let references: Awaited<ReturnType<typeof loadReferences>> | undefined
+	let referencesPromise: ReturnType<typeof loadReferences> | undefined
 	let fallbackLocations = 0
 	let fallbackDepartments = 0
 	let missingMatches = 0
-	let targetIndexReady = false
+	let targetIndexPromise: Promise<void> | undefined
 
 	async function dropStaging(): Promise<void> {
 		const exists = await database
@@ -314,15 +385,13 @@ export async function runFinishedGoodsEpcStep(
 		return { epcs: 0 }
 	}
 
-	async function flush(): Promise<void> {
-		if (!operations.length) return
-		const batch = operations
-		operations = []
+	async function flush(batch: mongo.AnyBulkWriteOperation<{ _id: string; epc: string }>[]): Promise<number> {
 		const bulkWriteStartedAt = performance.now()
 		const result = await staging.bulkWrite(batch, { ordered: false })
 		mongoBulkWriteMs += Math.max(0, performance.now() - bulkWriteStartedAt)
 		if (!result.isOk()) throw new Error('Failed finished goods EPC staging bulk write')
-		if (!references) references = await loadReferences(database)
+		referencesPromise ??= loadReferences(database)
+		const references = await referencesPromise
 		const batchEpcs = batch.map((operation) => {
 			if (!('updateOne' in operation) || typeof operation.updateOne.filter._id !== 'string') {
 				throw new Error('Invalid finished goods EPC staging operation')
@@ -346,7 +415,7 @@ export async function runFinishedGoodsEpcStep(
 			matched++
 		}
 		if (matched) {
-			if (!targetIndexReady) {
+			targetIndexPromise ??= (async () => {
 				const collection = database.collection('finished_goods_epcs')
 				const exists = await database.listCollections({ name: 'finished_goods_epcs' }).hasNext()
 				const indexes = exists ? await collection.indexes() : []
@@ -358,59 +427,116 @@ export async function runFinishedGoodsEpcStep(
 						index.key.epc === 1
 				)
 				if (!hasUniqueEpc) await collection.createIndex({ epc: 1 }, { name: 'idx_epc', unique: true })
-				targetIndexReady = true
+			})()
+			await targetIndexPromise
+			if (options.writeMode === 'insert') {
+				const inserts = resolved
+					.filter((row) => row._match)
+					.map((row) => {
+						const { _id, _match, _department, _location, __epc_sync_run, ...document } = row
+						return {
+							insertOne: {
+								document: {
+									...document,
+									factory_shoes_style: requiredText(document.factory_shoes_style, 'factory_shoes_style'),
+									color_sn: requiredText(document.color_sn, 'color_sn'),
+									size_numcode: requiredText(document.size_numcode, 'size_numcode'),
+									created_at: document.updated_at,
+									scannable: true,
+									deleted: false
+								}
+							}
+						}
+					})
+				const result = await database.collection('finished_goods_epcs').bulkWrite(inserts, { ordered: false })
+				if (!result.isOk()) throw new Error('Failed finished goods EPC insert batch')
+			} else {
+				const fields = [
+					'epc',
+					'mo_no',
+					'po',
+					'factory_shoes_style',
+					'color_sn',
+					'size_numcode',
+					'inbound_device_sn',
+					'outbound_device_sn',
+					'last_scanned_at',
+					'inbound_at',
+					'outbound_at',
+					'storage_location',
+					'assembly_line',
+					'inbound_times',
+					'status',
+					'updated_at'
+				]
+				await staging
+					.aggregate([
+						...pipeline,
+						{ $match: { _match: { $exists: true, $ne: null } } },
+						{
+							$set: {
+								factory_shoes_style: { $trim: { input: '$factory_shoes_style' } },
+								color_sn: { $trim: { input: '$color_sn' } },
+								size_numcode: { $trim: { input: '$size_numcode' } }
+							}
+						},
+						{ $set: { created_at: '$updated_at', scannable: true, deleted: false } },
+						{ $unset: ['_id', '_match', '_department', '_location', '__epc_sync_run'] },
+						{
+							$merge: {
+								into: 'finished_goods_epcs',
+								on: 'epc',
+								whenMatched: [{ $set: Object.fromEntries(fields.map((field) => [field, `$$new.${field}`])) }],
+								whenNotMatched: 'insert'
+							}
+						}
+					])
+					.toArray()
 			}
-			const fields = [
-				'epc',
-				'mo_no',
-				'po',
-				'factory_shoes_style',
-				'color_sn',
-				'size_numcode',
-				'inbound_device_sn',
-				'outbound_device_sn',
-				'last_scanned_at',
-				'inbound_at',
-				'outbound_at',
-				'storage_location',
-				'assembly_line',
-				'inbound_times',
-				'status',
-				'updated_at'
-			]
-			await staging
-				.aggregate([
-					...pipeline,
-					{ $match: { _match: { $exists: true, $ne: null } } },
-					{
-						$set: {
-							factory_shoes_style: { $trim: { input: '$factory_shoes_style' } },
-							color_sn: { $trim: { input: '$color_sn' } },
-							size_numcode: { $trim: { input: '$size_numcode' } }
-						}
-					},
-					{ $set: { created_at: '$updated_at', scannable: true, deleted: false } },
-					{ $unset: ['_id', '_match', '_department', '_location'] },
-					{
-						$merge: {
-							into: 'finished_goods_epcs',
-							on: 'epc',
-							whenMatched: [{ $set: Object.fromEntries(fields.map((field) => [field, `$$new.${field}`])) }],
-							whenNotMatched: 'insert'
-						}
-					}
-				])
-				.toArray()
 		}
 		epcs += matched
 		batches++
+		return matched
 	}
 
+	let chunk = 0
+	const queue = createEpcBatchQueue(concurrency, async (batch: typeof operations) => {
+		const chunkNumber = ++chunk
+		const started = performance.now()
+		try {
+			let written = 0
+			for (let offset = 0; offset < batch.length; offset += batchSize) {
+				written += await flush(batch.slice(offset, offset + batchSize))
+			}
+			console.info('Finished goods EPC chunk', {
+				chunk: chunkNumber,
+				rows: batch.length,
+				written,
+				elapsedMs: performance.now() - started,
+				errors: 0
+			})
+		} catch (error) {
+			const errors =
+				error && typeof error === 'object' && 'writeErrors' in error && Array.isArray(error.writeErrors)
+					? error.writeErrors.length
+					: null
+			console.error('Finished goods EPC chunk failed', {
+				chunk: chunkNumber,
+				rows: batch.length,
+				elapsedMs: performance.now() - started,
+				errors,
+				error
+			})
+			throw error
+		}
+	})
+	let rowsRead = 0
 	try {
-		for await (const row of streamMssqlRows(pool.request(), sql(includeBackups), {
+		for await (const row of streamMssqlRows(pool.request(), sql(includeBackups, options.maxRows !== undefined), {
 			inboundDeviceSn,
 			outboundDeviceSn,
-			moNos: JSON.stringify(moNos)
+			moNos: JSON.stringify(moNos),
+			...(options.maxRows !== undefined ? { maxRows: String(options.maxRows) } : {})
 		})) {
 			const epc = mapFinishedGoodsEpc(row)
 			if (seen.has(epc.epc)) throw new Error(`Duplicate finished goods EPC ${epc.epc}`)
@@ -418,19 +544,35 @@ export async function runFinishedGoodsEpcStep(
 			const now = new Date()
 			operations.push({
 				updateOne: {
-					filter: { _id: epc.epc },
+					filter: { _id: epc.epc, __epc_sync_run: { $ne: runId } },
 					update: {
 						$set: {
 							...epc,
+							__epc_sync_run: runId,
 							updated_at: now
 						}
 					},
 					upsert: true
 				}
 			})
-			if (operations.length >= BATCH_SIZE) await flush()
+			rowsRead++
+			if (operations.length >= chunkSize) {
+				await queue.submit(operations)
+				operations = []
+				seen.clear()
+			}
+			if (options.maxRows !== undefined && rowsRead >= options.maxRows) break
 		}
-		await flush()
+		if (operations.length) await queue.submit(operations)
+		await queue.close()
+	} catch (error) {
+		try {
+			await queue.close()
+		} catch (writeError) {
+			if (writeError !== error)
+				throw new AggregateError([error, writeError], 'Finished goods EPC stream and write failed')
+		}
+		throw error
 	} finally {
 		if (missingMatches) console.warn(`Finished goods EPC missing match: ${missingMatches}; not merged`)
 		if (fallbackLocations || fallbackDepartments) {

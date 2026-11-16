@@ -29,34 +29,42 @@ they are skipped.
 From the repository root:
 
 ```powershell
-bun run migrations/run.ts --device-sn-101 INBOUND_DEVICE_SERIAL --device-sn-103 OUTBOUND_DEVICE_SERIAL
+Copy-Item migrations\.env.example migrations\.env
+# Configure migrations\.env before running.
+bun --no-env-file run migrations\run.ts
 ```
 
-Replace both serial placeholders with the actual inbound and outbound RFID
-device serials. Both serial options are required; they have no
-environment-variable fallback. Use `--help` to display the command usage
-without connecting to either database:
+The script requires `migrations/.env` and reads configuration from that file
+only, not the project's root `.env` or inherited environment variables. Fill in
+the MSSQL and MongoDB settings, `APP_TENANCY`, and the two device serials. CLI
+options override file values. Use `--no-env-file` so Bun itself does not load
+other `.env` files before the script starts. Use `--help` without connecting:
 
 ```sh
-bun run migrations/run.ts --help
+bun --no-env-file run migrations/run.ts --help
 ```
 
 ## Options and defaults
 
-| Option                          | Default / behavior                                      |
-| ------------------------------- | ------------------------------------------------------- |
-| `--db-host <host>`              | `DB_HOST` environment variable                          |
-| `--mongo-db-name <name>`        | `MONGO_DB_NAME` environment variable                    |
-| `--factory-code <code>`         | `APP_TENANCY` environment variable                      |
-| `--device-sn-101 <serial>`      | Required inbound RFID device serial                     |
-| `--device-sn-103 <serial>`      | Required outbound RFID device serial                    |
-| `--include-backups`             | Include daily backup scans; off unless specified        |
-| `--creator-username <username>` | `quanghiep`                                             |
-| `--output-filename <file>`      | `.tmp/warehouse-sync-<timestamp>.xlsx`                  |
-| `--log-filename <file>`         | `logs/data-migration.log`                               |
-| `--step <collection>`           | Run only the step for the named collection              |
-| `--from-step <collection>`      | Run from the named collection's step through the report |
-| `--help`                        | Print usage and exit without connecting to databases    |
+| Option                          | Default / behavior                                                                       |
+| ------------------------------- | ---------------------------------------------------------------------------------------- |
+| `--db-host <host>`              | `DB_HOST` environment variable                                                           |
+| `--mongo-db-name <name>`        | `MONGO_DB_NAME` environment variable                                                     |
+| `--factory-code <code>`         | `APP_TENANCY` environment variable                                                       |
+| `--device-sn-101 <serial>`      | `DEVICE_SN_101` from `migrations/.env`                                                   |
+| `--device-sn-103 <serial>`      | `DEVICE_SN_103` from `migrations/.env`                                                   |
+| `--include-backups`             | Include daily backup scans; off unless specified                                         |
+| `--concurrency <n>`             | EPC workers; default 4                                                                   |
+| `--batch-size <1000-5000>`      | EPC write batch size; default 1,000                                                     |
+| `--chunk-size <rows>`           | EPC worker chunk size; default 10,000, at least the batch size                          |
+| `--write-mode <upsert\|insert>` | EPC write mode; default `upsert`                                                        |
+| `--no-cutoff`                   | Disable the scan cutoff for purchase orders, manufacturing orders, and daily PO progress |
+| `--creator-username <username>` | `quanghiep`                                                                              |
+| `--output-filename <file>`      | `.tmp/warehouse-sync-<timestamp>.xlsx`                                                   |
+| `--log-filename <file>`         | `logs/data-migration.log`                                                                |
+| `--step <collection>`           | Run only the step for the named collection                                               |
+| `--from-step <collection>`      | Run from the named collection's step through the report                                  |
+| `--help`                        | Print usage and exit without connecting to databases                                     |
 
 `--step` and `--from-step` cannot be combined. Without either option, all
 steps run in this order:
@@ -92,6 +100,10 @@ workbook and log paths.
 Purchase orders, manufacturing orders, and daily PO progress use the same
 exclusive cutoff: midnight in Vietnam on the day the sync starts. Scans from
 that time onward are excluded from these stages.
+Pass `--no-cutoff` to include scans from all dates, including future-dated scans,
+in these three stages. Other filters still apply, and separately selected steps
+must be rerun to update their data. Without a shared cutoff, changes to source
+data between stages can lead to different results across stages.
 Daily PO progress skips outbound scans whose PO is null or blank and reports
 the number skipped; other invalid scan fields still fail the stage.
 New daily PO and MO transaction IDs use the application's shared MongoDB
@@ -153,8 +165,8 @@ is removed when the sync succeeds. Rerun the step after synchronizing EPC
 matches to merge it.
 The aggregation requires MongoDB 4.2 or later for `$merge` and a unique
 `finished_goods_epcs.epc` index. The step creates the index if needed; duplicate
-destination EPCs must be resolved first. Do not run multiple instances of this
-step concurrently because they share the staging collection.
+destination EPCs must be resolved first. The step acquires a per-database lock
+because instances share the staging collection.
 The aggregation resolves `storage` against `storage_locations.storage_num`
 and `dept_code` against `departments.code`, storing their MongoDB ObjectIds in
 `storage_location` and `assembly_line` respectively.
@@ -172,6 +184,78 @@ success, the stage logs `elapsedMs`, `epcs`,
 (`mongoBulkWriteMs` measures staging writes only); the latter can overlap with
 SQL stream time. `epcs` counts merged records, and `batches` counts staged
 batches, including batches with missing matches.
+
+### Standalone EPC sync and benchmark
+
+The EPC-only command does not run the general warehouse runner. It reads
+`migrations/.env`, including `DB_HOST`, `MONGO_DB_NAME`, `DB_USERNAME`,
+`DB_PASSWORD`, `DB_PORT` (default 1433),
+`DB_CONNECTION_TIMEOUT` (milliseconds; default 30000),
+`DB_TRUST_SERVER_CERTIFICATE` (default `true`), and `MONGO_URI`. CLI options
+can override the host and database name. The SQL database is `DV_DATA_LAKE`;
+use a read-only SQL login.
+
+`MONGO_URI` must point to a single `localhost` or `127.0.0.1` MongoDB server.
+The script forces a direct connection and rejects remote or multi-host URIs.
+For the EPC stage, set `DEVICE_SN_101` and `DEVICE_SN_103` in
+`migrations/.env`, or override them with the corresponding CLI options. Do not commit
+credentials.
+
+```powershell
+bun --no-env-file run migrations/epc-sync.ts --help
+bun --no-env-file run migrations/epc-sync.ts
+bun --no-env-file run migrations/epc-sync.ts --concurrency 4 --batch-size 1000 --chunk-size 10000
+```
+
+By default the command runs the match stage followed by EPC. Use `--stage match`
+or `--stage epc` to select one stage. The target database must already contain
+the required manufacturing orders, storage locations and departments; the EPC
+stage also requires EPC matches. System databases are rejected. The MongoDB
+database named by `--mongo-db` will be modified.
+
+The default write mode is `upsert`, which supports a full rerun. Pass
+`--write-mode insert` only for an exclusively owned empty target; this checks
+emptiness before writing and uses unordered inserts. After an interrupted
+initial load, retry with `upsert`. This is not an incremental sync or a durable
+resume checkpoint. Do not run simultaneous sync instances for the same target.
+The EPC stage rejects another cooperating EPC run using the
+`warehouse_sync_locks` document with `_id: "finished_goods_epcs"`. A forced
+termination can leave this lock behind: verify that no EPC sync is still
+running before manually deleting that specific document. Older implementations
+or other writers that ignore the lock must also be stopped.
+
+Each worker processes one chunk in batches. The CLI defaults to four workers,
+1,000 rows per batch and 10,000 rows per chunk; chunk size must be at least
+batch size, which must be 1,000-5,000. The stream waits for available worker
+capacity. EPC duplicates are tracked in staging per run; the match stage uses
+a uniquely named `finished_goods_epcs_match_seen_<id>` collection so memory
+does not grow with all EPCs. The match tracker is dropped after success and is
+left for diagnosis after failure; it needs disk space proportional to the
+number of source EPCs. Both stages log rows, elapsed time and errors per chunk;
+an unknown failed-row count is logged as `null`, not zero.
+
+The warehouse runner uses these same defaults and tuning options for both EPC
+stages. Its `--write-mode insert` likewise requires each selected EPC target
+collection to be empty; use the default `upsert` when rerunning a partial load.
+
+To benchmark, use a local MongoDB URI and an existing local reference database:
+
+```powershell
+bun --no-env-file run migrations/benchmark-epc-sync.ts --source-mongo-db data_warehouse --mongo-db epc_sync_benchmark_anchor --stage match --batch-size 1000 --chunk-size 1000 --write-mode insert
+bun --no-env-file run migrations/benchmark-epc-sync.ts --source-mongo-db data_warehouse --mongo-db epc_sync_benchmark_anchor --stage epc --batch-size 1000 --chunk-size 1000 --write-mode insert --include-backups
+```
+
+The benchmark picks up to eight eligible MOs from the local reference database,
+uses at most eight chunks of source rows, and runs concurrency 1, 2, 4 and 8
+against separate temporary local databases. Each database is dropped after its
+run; the reference database is read only. The EPC benchmark copies matching
+references into each temporary database before timing. Timings cover SQL
+streaming and Mongo writes, but exclude reference preparation. It compares
+output fingerprints, reports peak sampled process RSS, and declines to estimate
+20 million rows if the sample is incomplete or changes between runs. A plateau
+means a throughput improvement below 10% over the preceding concurrency.
+Small-sample estimates are provisional and exclude reference preparation,
+production topology, retries, and subsequent workflow stages.
 
 Purchase orders insert a `null` shipping method or destination when the source
 has no value; a null source value does not overwrite an existing value.

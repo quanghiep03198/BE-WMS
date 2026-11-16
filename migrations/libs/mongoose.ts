@@ -1,20 +1,23 @@
-import { env } from '@common/utils'
-import 'dotenv/config'
 import mongoose, { Document } from 'mongoose'
+import type { MigrationEnv } from '../helpers/migration-env'
 import { Logger } from '../utils/logger'
 
 export class MongoManager {
 	private client: mongoose.Mongoose = new mongoose.Mongoose({ createInitialConnection: false })
 	private readonly logger = new Logger('MongoDB')
 
-	constructor(private readonly dbName: string = process.env.MONGO_DB_NAME) {}
+	constructor(
+		private readonly dbName: string = process.env.MONGO_DB_NAME,
+		private readonly env: MigrationEnv = process.env
+	) {}
 
 	public async connect() {
 		try {
 			this.logger.info('Connecting to MongoDB...')
-			this.client = await this.client.connect(env('MONGO_URI'), {
+			if (!this.env.MONGO_URI) throw new Error('MONGO_URI is required in migrations/.env')
+			this.client = await this.client.connect(this.env.MONGO_URI, {
 				dbName: this.dbName,
-				replicaSet: 'rs0'
+				replicaSet: this.env.MONGO_REPLICA_SET || 'rs0'
 			})
 			this.logger.info('Connected to MongoDB')
 		} catch (error) {

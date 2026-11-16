@@ -1,3 +1,4 @@
+import { UserRole } from '@modules/user/domain/constants'
 import { compare, hash } from 'bcrypt'
 import { type mongo } from 'mongoose'
 
@@ -6,6 +7,7 @@ export interface UserSource {
 	password: string
 	email: string | null
 	display_name: string | null
+	roles: UserRole[]
 }
 
 export async function syncMongoUsers(

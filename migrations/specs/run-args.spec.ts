@@ -2,6 +2,66 @@ import { existsSync } from 'node:fs'
 import { parseWarehouseSyncArgs, warehouseSyncUsage } from '../commands/run-args'
 
 describe('parseWarehouseSyncArgs', () => {
+	it('accepts the same EPC batching settings as the standalone CLI', () => {
+		const options = parseWarehouseSyncArgs(
+			['--concurrency', '8', '--batch-size', '2000', '--chunk-size', '4000', '--write-mode', 'insert'],
+			{
+				DB_HOST: 'file-host',
+				MONGO_DB_NAME: 'file-db',
+				APP_TENANCY: 'VB2',
+				DEVICE_SN_101: 'in',
+				DEVICE_SN_103: 'out'
+			}
+		)
+		expect(options.epcSync).toEqual({ concurrency: 8, batchSize: 2000, chunkSize: 4000, writeMode: 'insert' })
+	})
+
+	it.each([
+		['--concurrency', '0'],
+		['--batch-size', '999'],
+		['--chunk-size', '999'],
+		['--write-mode', 'replace']
+	])('rejects invalid EPC setting %s %s', (option, value) => {
+		expect(() =>
+			parseWarehouseSyncArgs([option, value], {
+				DB_HOST: 'file-host',
+				MONGO_DB_NAME: 'file-db',
+				APP_TENANCY: 'VB2',
+				DEVICE_SN_101: 'in',
+				DEVICE_SN_103: 'out'
+			})
+		).toThrow()
+	})
+
+	it('uses migration file settings for host, database and device serials', () => {
+		const config = {
+			DB_HOST: 'file-host',
+			MONGO_DB_NAME: 'file-db',
+			APP_TENANCY: 'VB2',
+			DEVICE_SN_101: 'file-in',
+			DEVICE_SN_103: 'file-out'
+		}
+		expect(parseWarehouseSyncArgs([], config)).toMatchObject({
+			dbHost: 'file-host',
+			mongoDbName: 'file-db',
+			inboundDeviceSn: 'file-in',
+			outboundDeviceSn: 'file-out'
+		})
+	})
+
+	it('does not use inherited serials when they are absent from migration configuration', () => {
+		const previous = process.env.DEVICE_SN_101
+		process.env.DEVICE_SN_101 = 'inherited-serial'
+		try {
+			expect(() =>
+				parseWarehouseSyncArgs([], { DB_HOST: 'file-host', MONGO_DB_NAME: 'file-db', APP_TENANCY: 'VB2' })
+			).toThrow(/device-sn-101/i)
+		} finally {
+			if (previous === undefined) delete process.env.DEVICE_SN_101
+			else process.env.DEVICE_SN_101 = previous
+		}
+	})
+
 	const previousEnv = {
 		DB_HOST: process.env.DB_HOST,
 		MONGO_DB_NAME: process.env.MONGO_DB_NAME,
@@ -72,6 +132,14 @@ describe('parseWarehouseSyncArgs', () => {
 		})
 	})
 
+	it('accepts --no-cutoff as a flag and rejects duplicate or valued uses', () => {
+		const args = ['--device-sn-101', 'in', '--device-sn-103', 'out']
+		expect(parseWarehouseSyncArgs(args).noCutoff).toBe(false)
+		expect(parseWarehouseSyncArgs([...args, '--no-cutoff']).noCutoff).toBe(true)
+		expect(() => parseWarehouseSyncArgs([...args, '--no-cutoff', '--no-cutoff'])).toThrow(/duplicate/i)
+		expect(() => parseWarehouseSyncArgs([...args, '--no-cutoff', 'false'])).toThrow(/does not accept a value/i)
+	})
+
 	it('accepts collection names for a single step or a starting step', () => {
 		const args = ['--device-sn-101', 'in', '--device-sn-103', 'out']
 		expect(parseWarehouseSyncArgs([...args, '--step', 'storage_locations']).step).toBe('storage_locations')
@@ -95,7 +163,7 @@ describe('parseWarehouseSyncArgs', () => {
 	})
 
 	it('shows a runnable entry point in the usage instructions', () => {
-		const entryPoint = warehouseSyncUsage.match(/Usage: bun run (\S+)/)?.[1]
+		const entryPoint = warehouseSyncUsage.match(/Usage: bun --no-env-file run (\S+)/)?.[1]
 		expect(entryPoint).toBeDefined()
 		expect(existsSync(entryPoint!)).toBe(true)
 	})

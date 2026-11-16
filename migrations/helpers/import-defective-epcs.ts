@@ -1,3 +1,4 @@
+import 'dotenv/config'
 import { DefectiveCategory, DefectiveGoodsUnit, DefectiveLocation } from '@modules/defective-goods/domain/constants'
 import { EPCGenerator } from '@modules/defective-goods/application/helpers/epc-generator'
 import { DefectiveGoodsDocument } from '@modules/defective-goods/infrastructure/persistence/mongodb/schemas/defective-goods.schema'

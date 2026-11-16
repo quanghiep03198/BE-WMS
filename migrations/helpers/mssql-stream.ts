@@ -4,7 +4,7 @@ export interface MssqlStreamRequest {
 	input(name: string, value: string): unknown
 	toReadableStream(): Readable
 	query(sql: string): Promise<unknown>
-	cancel(): boolean
+	cancel(): void
 }
 
 export async function* streamMssqlRows(

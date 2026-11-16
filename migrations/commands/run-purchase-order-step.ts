@@ -2,7 +2,7 @@ import { orderSearchGrams } from '@modules/order/schemas/order-search-grams.plug
 import type { mongo } from 'mongoose'
 import { streamMssqlRows, type MssqlStreamRequest } from '../helpers/mssql-stream'
 import { getVietnamCutoffSqlDate } from './cutoff'
-import { PURCHASE_ORDERS_SQL } from './purchase-orders.sql'
+import { purchaseOrdersSql } from './purchase-orders.sql'
 
 const OUTSTANDING_PURCHASE_ORDERS_SQL = /* SQL */ `
 	SELECT DISTINCT po, po_qty, outbound_qty, outbound_date, inv_sizes
@@ -68,9 +68,9 @@ function validateProgress(value: unknown, po: string): Record<string, { order_qt
 export async function runPurchaseOrderStep(
 	pool: { request(): MssqlStreamRequest },
 	database: mongo.Db,
-	cutoff: Date
+	cutoff: Date | undefined
 ): Promise<{ purchaseOrders: number }> {
-	const cutoffDate = getVietnamCutoffSqlDate(cutoff)
+	const parameters = cutoff === undefined ? {} : { cutoff: getVietnamCutoffSqlDate(cutoff) }
 	const outstandingOrders = new Set<string>()
 	for await (const row of streamMssqlRows(pool.request(), OUTSTANDING_PURCHASE_ORDERS_SQL)) {
 		if (!row || typeof row !== 'object' || !('po' in row)) throw new Error('Invalid outstanding purchase order row')
@@ -81,7 +81,7 @@ export async function runPurchaseOrderStep(
 	await collection.createIndex({ search_ngrams: 1, po: 1 }, { name: 'po_search_ngrams_idx' })
 	const seen = new Set<string>()
 	let operations: mongo.AnyBulkWriteOperation[] = []
-	for await (const row of streamMssqlRows(pool.request(), PURCHASE_ORDERS_SQL, { cutoff: cutoffDate })) {
+	for await (const row of streamMssqlRows(pool.request(), purchaseOrdersSql(cutoff !== undefined), parameters)) {
 		if (
 			!row ||
 			typeof row !== 'object' ||

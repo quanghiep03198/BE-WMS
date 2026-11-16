@@ -7,6 +7,138 @@ const uri = process.env.WAREHOUSE_SYNC_TEST_MONGO_URI
 const integration = uri ? describe : describe.skip
 
 integration('finished goods EPC staging and merge', () => {
+	it('refuses another EPC run while the target is locked and leaves that lock untouched', async () => {
+		const client = new mongoose.mongo.MongoClient(uri)
+		const databaseName = `warehouse_sync_test_${randomUUID().replaceAll('-', '')}`
+		let connected = false
+		try {
+			await client.connect()
+			connected = true
+			const database = client.db(databaseName)
+			const locks = database.collection<{ _id: string; owner: string }>('warehouse_sync_locks')
+			await locks.insertOne({ _id: 'finished_goods_epcs', owner: 'other-run' })
+			const pool = {
+				request: () => {
+					throw new Error('SQL must not be queried')
+				}
+			}
+			await expect(
+				runFinishedGoodsEpcStep(pool, database, { inboundDeviceSn: 'IN', outboundDeviceSn: 'OUT' })
+			).rejects.toThrow(/already running/i)
+			expect((await locks.findOne({ _id: 'finished_goods_epcs' }))?.owner).toBe('other-run')
+		} finally {
+			if (connected) await client.db(databaseName).dropDatabase()
+			await client.close()
+		}
+	})
+
+	it('uses insert mode only for an empty target and allows later upserts', async () => {
+		const client = new mongoose.mongo.MongoClient(uri)
+		const databaseName = `warehouse_sync_test_${randomUUID().replaceAll('-', '')}`
+		let connected = false
+		const info = jest.spyOn(console, 'info').mockImplementation(() => {})
+		try {
+			await client.connect()
+			connected = true
+			const database = client.db(databaseName)
+			await database.collection('manufacturing_orders').insertOne({ mo_no: '14MO' })
+			await database.collection('storage_locations').insertOne({ storage_num: 'S01' })
+			await database.collection('departments').insertOne({ code: 'D01' })
+			await database.collection('finished_goods_epcs_match').insertOne({
+				epc: 'EPC1',
+				factory_shoes_style: ' STYLE ',
+				color_sn: ' BLACK ',
+				size_numcode: ' 08 '
+			})
+			const scan = {
+				epc: 'EPC1',
+				mo_no: '14MO',
+				po: null,
+				inbound_device_sn: 'IN',
+				outbound_device_sn: null,
+				last_scanned_at: '2026-11-11T03:00:00.000Z',
+				inbound_at: '2026-11-11T03:00:00.000Z',
+				outbound_at: null,
+				storage_location: 'S01',
+				assembly_line: 'D01',
+				status: 'instock'
+			}
+			const pool = {
+				request: () => ({
+					input: () => undefined,
+					toReadableStream: () => Readable.from([scan]),
+					query: async () => undefined,
+					cancel: () => true
+				})
+			}
+			const options = { inboundDeviceSn: 'IN', outboundDeviceSn: 'OUT', writeMode: 'insert' as const }
+			await expect(runFinishedGoodsEpcStep(pool, database, options)).resolves.toEqual({ epcs: 1 })
+			const target = database.collection('finished_goods_epcs')
+			const first = await target.findOne({ epc: 'EPC1' })
+			expect(first).toMatchObject({
+				factory_shoes_style: 'STYLE',
+				color_sn: 'BLACK',
+				size_numcode: '08',
+				scannable: true,
+				deleted: false
+			})
+			expect(first?.created_at).toBeInstanceOf(Date)
+			await expect(runFinishedGoodsEpcStep(pool, database, options)).rejects.toThrow(/empty/i)
+			await runFinishedGoodsEpcStep(pool, database, { inboundDeviceSn: 'IN', outboundDeviceSn: 'OUT' })
+			expect((await target.findOne({ epc: 'EPC1' }))?._id).toEqual(first?._id)
+		} finally {
+			info.mockRestore()
+			if (connected) await client.db(databaseName).dropDatabase()
+			await client.close()
+		}
+	})
+
+	it('rejects duplicate EPCs across concurrent batches but permits a later retry', async () => {
+		const client = new mongoose.mongo.MongoClient(uri)
+		const databaseName = `warehouse_sync_test_${randomUUID().replaceAll('-', '')}`
+		let connected = false
+		const warn = jest.spyOn(console, 'warn').mockImplementation(() => {})
+		const info = jest.spyOn(console, 'info').mockImplementation(() => {})
+		try {
+			await client.connect()
+			connected = true
+			const database = client.db(databaseName)
+			await database.collection('manufacturing_orders').insertOne({ mo_no: '14MO' })
+			await database.collection('storage_locations').insertOne({ storage_num: 'S01' })
+			await database.collection('departments').insertOne({ code: 'D01' })
+			const scan = {
+				mo_no: '14MO',
+				po: null,
+				inbound_device_sn: 'IN',
+				outbound_device_sn: null,
+				last_scanned_at: '2026-11-11T03:00:00.000Z',
+				inbound_at: '2026-11-11T03:00:00.000Z',
+				outbound_at: null,
+				storage_location: 'S01',
+				assembly_line: 'D01',
+				status: 'instock'
+			}
+			let epcs = ['EPC1', 'EPC2', 'EPC1']
+			const pool = {
+				request: () => ({
+					input: () => undefined,
+					toReadableStream: () => Readable.from(epcs.map((epc) => ({ ...scan, epc }))),
+					query: async () => undefined,
+					cancel: () => true
+				})
+			}
+			const options = { inboundDeviceSn: 'IN', outboundDeviceSn: 'OUT', batchSize: 2, concurrency: 2 }
+			await expect(runFinishedGoodsEpcStep(pool, database, options)).rejects.toThrow(/duplicate|E11000/i)
+			epcs = ['EPC1', 'EPC2']
+			await expect(runFinishedGoodsEpcStep(pool, database, options)).resolves.toEqual({ epcs: 0 })
+		} finally {
+			info.mockRestore()
+			warn.mockRestore()
+			if (connected) await client.db(databaseName).dropDatabase()
+			await client.close()
+		}
+	})
+
 	it('enriches raw scans, drops staging after success, and retains staging after a failed run', async () => {
 		const client = new mongoose.mongo.MongoClient(uri)
 		const databaseName = `warehouse_sync_test_${randomUUID().replaceAll('-', '')}`

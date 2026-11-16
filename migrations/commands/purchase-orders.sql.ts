@@ -1,4 +1,5 @@
-export const PURCHASE_ORDERS_SQL = /* SQL */ `
+export function purchaseOrdersSql(useCutoff: boolean): string {
+	return /* SQL */ `
 			WITH     CTE_PO_SOURCE AS
 					(SELECT source.*,
 							ROW_NUMBER() OVER (
@@ -65,11 +66,11 @@ export const PURCHASE_ORDERS_SQL = /* SQL */ `
 						CTE_OUTBOUND_EPCS
 			AS       (SELECT EPC_Code, size_code, po
 						FROM   DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet
-						WHERE  station_suffix = '103' AND record_time < @cutoff
+						WHERE  station_suffix = '103' ${useCutoff ? 'AND record_time < @cutoff' : ''}
 						UNION
 						SELECT EPC_Code, size_code, po
 						FROM   DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet_backup_Daily
-						WHERE  station_suffix = '103' AND record_time < @cutoff),
+						WHERE  station_suffix = '103' ${useCutoff ? 'AND record_time < @cutoff' : ''}),
 						CTE_OUTBOUND_PROGRESS
 			AS       (SELECT   po,
 									size_code AS size_numcode,
@@ -101,3 +102,6 @@ export const PURCHASE_ORDERS_SQL = /* SQL */ `
 						ON prg.po = pk.po
 			GROUP BY pk.po, pk.order_qty, pk.shipping_method, pk.shipping_destination, pk.brand_name, pk.factory_shoes_style, pk.cust_shoes_style, pk.color_sn;
 		`
+}
+
+export const PURCHASE_ORDERS_SQL = purchaseOrdersSql(true)

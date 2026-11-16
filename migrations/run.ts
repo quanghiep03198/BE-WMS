@@ -3,6 +3,7 @@ import { createInterface } from 'node:readline/promises'
 import { fileURLToPath } from 'node:url'
 import { parseWarehouseSyncArgs, warehouseSyncUsage, type WarehouseSyncCliOptions } from './commands/run-args'
 import { runWarehouseSync, type WarehouseSyncPool } from './commands/run-warehouse-sync'
+import { loadMigrationEnv, type MigrationEnv } from './helpers/migration-env'
 import { MongoManager } from './libs/mongoose'
 import { MssqlManager } from './libs/mssql'
 
@@ -20,7 +21,8 @@ export interface WarehouseSyncManagers {
 }
 
 export type WarehouseSyncManagerFactory = (
-	options: WarehouseSyncCliOptions
+	options: WarehouseSyncCliOptions,
+	config: MigrationEnv
 ) => WarehouseSyncManagers | Promise<WarehouseSyncManagers>
 
 export async function askContinueAfterFailure(
@@ -51,11 +53,14 @@ export async function askContinueAfterFailure(
 
 export async function runWarehouseSyncCli(
 	argv: string[],
-	createManagers: WarehouseSyncManagerFactory
+	createManagers: WarehouseSyncManagerFactory,
+	loadConfig: () => MigrationEnv = loadMigrationEnv
 ): Promise<number> {
 	let options: WarehouseSyncCliOptions
+	let config: MigrationEnv
 	try {
-		options = parseWarehouseSyncArgs(argv)
+		config = argv.length === 1 && argv[0] === '--help' ? {} : loadConfig()
+		options = parseWarehouseSyncArgs(argv, config)
 	} catch (error) {
 		console.error(`Warehouse sync argument error: ${error instanceof Error ? error.message : String(error)}`)
 		return 1
@@ -71,7 +76,7 @@ export async function runWarehouseSyncCli(
 	let mongoConnectAttempted = false
 	let result = 0
 	try {
-		managers = await createManagers(options)
+		managers = await createManagers(options, config)
 		mssqlConnectAttempted = true
 		await managers.mssql.connect()
 		mongoConnectAttempted = true
@@ -112,9 +117,9 @@ export async function runWarehouseSyncCli(
 const isEntrypoint = process.argv[1] !== undefined && resolve(process.argv[1]) === fileURLToPath(import.meta.url)
 
 if (isEntrypoint) {
-	const createManagers: WarehouseSyncManagerFactory = (options) => ({
-		mssql: new MssqlManager(options.dbHost),
-		mongo: new MongoManager(options.mongoDbName)
+	const createManagers: WarehouseSyncManagerFactory = (options, config) => ({
+		mssql: new MssqlManager(options.dbHost, config),
+		mongo: new MongoManager(options.mongoDbName, config)
 	})
 	void runWarehouseSyncCli(process.argv.slice(2), createManagers)
 		.then((result) => {

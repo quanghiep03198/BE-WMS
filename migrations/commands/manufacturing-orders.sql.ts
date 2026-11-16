@@ -1,4 +1,5 @@
-export const MANUFACTURING_ORDERS_SQL = /* SQL */ `
+export function manufacturingOrdersSql(useCutoff: boolean): string {
+	return /* SQL */ `
 	-- Order size run
 	WITH     target_mo
 	AS       (SELECT DISTINCT a.mo_no
@@ -48,7 +49,7 @@ export const MANUFACTURING_ORDERS_SQL = /* SQL */ `
 						record_time
 				FROM   DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet a  WITH (NOLOCK)
 				INNER JOIN target_mo b ON a.mo_no = b.mo_no
-				WHERE a.record_time < @cutoff
+				${useCutoff ? 'WHERE a.record_time < @cutoff' : ''}
 				UNION
 				SELECT EPC_Code,
 						a.mo_no,
@@ -59,7 +60,7 @@ export const MANUFACTURING_ORDERS_SQL = /* SQL */ `
 						record_time
 				FROM   DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet_backup_Daily a  WITH (NOLOCK)
 				INNER JOIN target_mo b ON a.mo_no = b.mo_no
-				WHERE a.record_time < @cutoff),
+				${useCutoff ? 'WHERE a.record_time < @cutoff' : ''}),
 	-- In/outbound progress
 				epcs
 	AS       (SELECT r.mo_no,
@@ -169,3 +170,4 @@ export const MANUFACTURING_ORDERS_SQL = /* SQL */ `
 				AND a.isactive = 'Y'
 	ORDER BY a.mo_no
 			`
+}

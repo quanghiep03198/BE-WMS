@@ -1,10 +1,14 @@
 import { ConnectionPool } from 'mssql'
 import { PassThrough } from 'node:stream'
-import { askContinueAfterFailure, runWarehouseSyncCli, type WarehouseSyncManagers } from '../run'
 import { runWarehouseSync } from '../commands/run-warehouse-sync'
+import { askContinueAfterFailure, runWarehouseSyncCli, type WarehouseSyncManagers } from '../run'
 
 jest.mock('../commands/run-warehouse-sync', () => ({
 	runWarehouseSync: jest.fn()
+}))
+
+jest.mock('../helpers/migration-env', () => ({
+	loadMigrationEnv: () => ({ ...process.env })
 }))
 
 describe('runWarehouseSyncCli', () => {
@@ -61,6 +65,34 @@ describe('runWarehouseSyncCli', () => {
 		await expect(runWarehouseSyncCli([], createManagers)).resolves.toBe(1)
 		expect(createManagers).not.toHaveBeenCalled()
 		expect(errorSpy).toHaveBeenCalled()
+	})
+
+	it('uses migration configuration without requiring connection and serial arguments', async () => {
+		const config = {
+			DB_HOST: 'migration-host',
+			MONGO_DB_NAME: 'migration-db',
+			APP_TENANCY: 'VB2',
+			DEVICE_SN_101: 'migration-in',
+			DEVICE_SN_103: 'migration-out'
+		}
+		await expect(runWarehouseSyncCli([], createManagers, () => config)).resolves.toBe(0)
+		expect(createManagers).toHaveBeenCalledWith(
+			expect.objectContaining({ dbHost: 'migration-host', mongoDbName: 'migration-db' }),
+			config
+		)
+		expect(jest.mocked(runWarehouseSync).mock.calls[0][2]).toMatchObject({
+			inboundDeviceSn: 'migration-in',
+			outboundDeviceSn: 'migration-out'
+		})
+	})
+
+	it('stops before connecting when the migration environment is missing', async () => {
+		await expect(
+			runWarehouseSyncCli([], createManagers, () => {
+				throw new Error('Missing migrations/.env')
+			})
+		).resolves.toBe(1)
+		expect(createManagers).not.toHaveBeenCalled()
 	})
 
 	it('rejects the removed MO prefix option before connecting', async () => {

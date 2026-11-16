@@ -8,7 +8,7 @@ export async function runDailyPoStep(
 	database: mongo.Db,
 	tenant: string,
 	generateId: (date: string) => string | Promise<string>,
-	cutoff: Date
+	cutoff: Date | undefined
 ) {
 	return syncMongoDailyPoProgress(database, readMssqlOutboundScans(pool.request(), tenant, cutoff), generateId)
 }

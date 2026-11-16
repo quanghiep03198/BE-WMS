@@ -31,7 +31,8 @@ async function* readUsers(request: MssqlStreamRequest): AsyncGenerator<UserSourc
 			username: row.username,
 			password: row.password,
 			email: nullableText(row.email),
-			display_name: nullableText(row.display_name)
+			display_name: nullableText(row.display_name),
+			roles: []
 		}
 	}
 }

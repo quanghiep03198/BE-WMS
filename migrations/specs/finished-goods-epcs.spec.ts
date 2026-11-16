@@ -42,7 +42,8 @@ function harness(
 	manufacturingOrders: Array<{ mo_no?: unknown }> = [{ mo_no: '15MO-1' }],
 	manufacturingOrdersError?: Error,
 	stagingDropError?: Error,
-	stagingExistsInitially = false
+	stagingExistsInitially = false,
+	onStagingWrite?: () => Promise<void>
 ) {
 	const parameters: Record<string, string> = {}
 	let sql = ''
@@ -75,6 +76,12 @@ function harness(
 	}
 	const database = {
 		collection: (name: string) => {
+			if (name === 'warehouse_sync_locks') {
+				return {
+					insertOne: async () => ({ acknowledged: true }),
+					deleteOne: async () => ({ deletedCount: 1 })
+				}
+			}
 			if (name === 'manufacturing_orders') {
 				return {
 					find: () => ({
@@ -108,6 +115,7 @@ function harness(
 				bulkWrite: async (batch: Array<{ updateOne: { filter: { _id: string }; update: { $set: object } } }>) => {
 					if (writeError) throw writeError
 					stagingExists = true
+					await onStagingWrite?.()
 					for (const { updateOne } of batch) staged.set(updateOne.filter._id, updateOne.update.$set)
 					return { isOk: () => true }
 				},
@@ -149,6 +157,7 @@ function harness(
 							delete value._match
 							delete value._location
 							delete value._department
+							delete value.__epc_sync_run
 							operations.push({
 								updateOne: {
 									filter: { epc: value.epc },
@@ -188,6 +197,99 @@ function harness(
 }
 
 describe('runFinishedGoodsEpcStep', () => {
+	it('bounds concurrent staging batches while allowing writes to overlap', async () => {
+		let active = 0
+		let peak = 0
+		const rows = Array.from({ length: 5 }, (_, index) => ({ ...inbound, epc: `epc-${index}` }))
+		const fake = harness(rows, undefined, undefined, undefined, undefined, undefined, undefined, false, async () => {
+			active++
+			peak = Math.max(peak, active)
+			await new Promise((resolve) => setTimeout(resolve, 5))
+			active--
+		})
+		await expect(
+			runFinishedGoodsEpcStep(fake.pool, fake.database as never, {
+				inboundDeviceSn: 'INBOUND-DEVICE',
+				outboundDeviceSn: 'OUTBOUND-DEVICE',
+				batchSize: 2,
+				concurrency: 2
+			})
+		).resolves.toEqual({ epcs: 5 })
+		expect(peak).toBe(2)
+		expect(fake.operations).toHaveLength(5)
+	})
+
+	it('writes chunks as smaller batches and overlaps separate chunks', async () => {
+		let active = 0
+		let peak = 0
+		const rows = Array.from({ length: 9 }, (_, index) => ({ ...inbound, epc: `epc-${index}` }))
+		const fake = harness(rows, undefined, undefined, undefined, undefined, undefined, undefined, false, async () => {
+			active++
+			peak = Math.max(peak, active)
+			await new Promise((resolve) => setTimeout(resolve, 5))
+			active--
+		})
+		const info = jest.spyOn(console, 'info').mockImplementation(() => {})
+		try {
+			await runFinishedGoodsEpcStep(fake.pool, fake.database as never, {
+				inboundDeviceSn: 'INBOUND-DEVICE',
+				outboundDeviceSn: 'OUTBOUND-DEVICE',
+				batchSize: 2,
+				chunkSize: 4,
+				concurrency: 2
+			})
+			expect(peak).toBe(2)
+			expect(
+				info.mock.calls
+					.filter(([message]) => message === 'Finished goods EPC chunk')
+					.map(([, value]) => value.rows)
+					.sort()
+			).toEqual([1, 4, 4])
+		} finally {
+			info.mockRestore()
+		}
+	})
+
+	it('reports per-batch row counts and elapsed time', async () => {
+		const fake = harness([
+			{ ...inbound, epc: 'epc-1' },
+			{ ...inbound, epc: 'epc-2' }
+		])
+		const info = jest.spyOn(console, 'info').mockImplementation(() => {})
+		try {
+			await runFinishedGoodsEpcStep(fake.pool, fake.database as never, {
+				inboundDeviceSn: 'INBOUND-DEVICE',
+				outboundDeviceSn: 'OUTBOUND-DEVICE',
+				batchSize: 1
+			})
+			const chunks = info.mock.calls.filter(([message]) => message === 'Finished goods EPC chunk')
+			expect(chunks).toHaveLength(2)
+			for (const [, metrics] of chunks) {
+				expect(metrics).toMatchObject({ rows: 1, written: 1, errors: 0 })
+				expect(metrics.elapsedMs).toBeGreaterThanOrEqual(0)
+			}
+		} finally {
+			info.mockRestore()
+		}
+	})
+
+	it('stops after the configured benchmark row limit', async () => {
+		const rows = Array.from({ length: 5 }, (_, index) => ({ ...inbound, epc: `epc-${index}` }))
+		const fake = harness(rows)
+		await expect(
+			runFinishedGoodsEpcStep(fake.pool, fake.database as never, {
+				inboundDeviceSn: 'INBOUND-DEVICE',
+				outboundDeviceSn: 'OUTBOUND-DEVICE',
+				batchSize: 2,
+				maxRows: 3
+			})
+		).resolves.toEqual({ epcs: 3 })
+		expect(fake.operations).toHaveLength(3)
+		expect(fake.sql).toMatch(/SELECT TOP \(CAST\(@maxRows AS int\)\) _101\.EPC_Code/i)
+		expect(fake.sql).toMatch(/ORDER BY _101\.EPC_Code/i)
+		expect(fake.parameters.maxRows).toBe('3')
+	})
+
 	it('filters Mongo MO values and joins them into every scan source before ranking', async () => {
 		const fake = harness([], undefined, undefined, undefined, [
 			{ mo_no: '13MO-1' },
@@ -228,6 +330,7 @@ describe('runFinishedGoodsEpcStep', () => {
 		expect(fake.sql.slice(outboundRanking)).not.toMatch(/INNER JOIN eligible_mos AS/)
 		expect(fake.sql).not.toContain('dv_rfidmatchmst_cust')
 		expect(fake.sql).toContain('OPENJSON(@moNos)')
+		expect(fake.sql).not.toMatch(/\bSELECT\s+\*/i)
 	})
 
 	it('skips MSSQL and reports zero metrics when Mongo has no eligible MOs', async () => {
@@ -506,12 +609,13 @@ describe('runFinishedGoodsEpcStep', () => {
 				})
 			).resolves.toEqual({ epcs: 1001 })
 
-			expect(info).toHaveBeenCalledTimes(1)
 			expect(info).toHaveBeenCalledWith(
 				'Finished goods EPC sync metrics',
 				expect.objectContaining({ epcs: 1001, batches: 2 })
 			)
-			const metrics = info.mock.calls[0][1] as Record<string, unknown>
+			const metrics = info.mock.calls.find(
+				([message]) => message === 'Finished goods EPC sync metrics'
+			)?.[1] as Record<string, unknown>
 			for (const field of ['elapsedMs', 'epcsPerSecond', 'mongoBulkWriteMs']) {
 				expect(typeof metrics[field]).toBe('number')
 				expect(Number.isFinite(metrics[field])).toBe(true)

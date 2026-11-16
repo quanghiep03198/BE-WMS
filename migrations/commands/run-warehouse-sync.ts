@@ -5,6 +5,7 @@ import type { MssqlStreamRequest } from '../helpers/mssql-stream'
 import { getVietnamDayCutoff } from './cutoff'
 import { runDailyMoInventoryLedgerStep } from './daily-mo-inventory-ledger'
 import { runDefectiveGoodsStep } from './defective-goods'
+import { DEFAULT_EPC_SYNC_SETTINGS, type EpcSyncSettings } from './epc-sync-settings'
 import { exportWarehouseSyncReport } from './export-warehouse-sync-report'
 import { runFinishedGoodsEpcStep } from './finished-goods-epcs'
 import { runMoInventoryAuditStep } from './mo-inventory-audit'
@@ -28,6 +29,8 @@ export interface WarehouseSyncConfig {
 	inboundDeviceSn: string
 	outboundDeviceSn: string
 	includeBackups: boolean
+	noCutoff?: boolean
+	epcSync?: EpcSyncSettings
 	creatorUsername: string
 	outputFilename: string
 	logFilename: string
@@ -46,7 +49,7 @@ export interface WarehouseSyncContext {
 	database: mongo.Db
 	config: WarehouseSyncConfig
 	now: Date
-	cutoff: Date
+	cutoff: Date | undefined
 	generateId: (date: string) => Promise<string>
 	generateLedgerId: (date: string) => Promise<string>
 }
@@ -69,9 +72,11 @@ const defaultDependencies: WarehouseSyncDependencies = {
 		runDailyPoStep(pool, database, config.factoryCode, generateId, cutoff),
 	'RFID devices': ({ pool, database, config }) =>
 		runRfidStep(pool, database, config.factoryCode, config.creatorUsername),
-	'EPC matches': ({ pool, database }) => runEpcMatchStep(pool, database),
+	'EPC matches': ({ pool, database, config }) =>
+		runEpcMatchStep(pool, database, config.epcSync ?? DEFAULT_EPC_SYNC_SETTINGS),
 	'finished goods EPCs': ({ pool, database, config }) =>
 		runFinishedGoodsEpcStep(pool, database, {
+			...(config.epcSync ?? DEFAULT_EPC_SYNC_SETTINGS),
 			inboundDeviceSn: config.inboundDeviceSn,
 			outboundDeviceSn: config.outboundDeviceSn,
 			includeBackups: config.includeBackups
@@ -106,7 +111,7 @@ export function createWarehouseSyncRunner(
 			database,
 			config,
 			now,
-			cutoff: getVietnamDayCutoff(now),
+			cutoff: config.noCutoff ? undefined : getVietnamDayCutoff(now),
 			generateId: (date) => nextId('stock_out', date),
 			generateLedgerId: (date) => nextId('stock_in', date)
 		}
