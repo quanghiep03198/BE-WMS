@@ -33,17 +33,10 @@ export class ReportController {
 	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF, UserRole.INDUSTRIAL_ENGINEERING_STAFF)
 	async getInboundReportByDate(
 		@Query('date:eq', new DefaultValuePipe(format(new Date(), 'yyyy-MM-dd')))
-		dateQuery: any
+		date: string
 	) {
-		return await this.inboundReportService.getDailyInventoryLedger(dateQuery)
+		return await this.inboundReportService.getDailyInventoryLedger(date)
 	}
-
-	// @RouteHandler({ endpoint: 'inbound-history/:mo', method: HttpMethod.GET })
-	// @Version('1')
-	// @RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF, UserRole.INDUSTRIAL_ENGINEERING_STAFF)
-	// async getLegacyInboundHistory(@Param('mo') manufacturingOrder: string) {
-	// 	return await this.inboundReportService.getLegacyInboundHistory(manufacturingOrder)
-	// }
 
 	@RouteHandler({ endpoint: 'inbound-history/:mo', method: HttpMethod.GET })
 	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF, UserRole.INDUSTRIAL_ENGINEERING_STAFF)

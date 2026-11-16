@@ -39,8 +39,10 @@ export class InboundReportService {
 	) {}
 
 	public async getDailyInventoryLedger(date: string): Promise<IInboundReportResponse> {
+		this.logger.debug(date)
+
 		const docs = await this.dailyMoInventoryLedgerModel
-			.find({ date: date })
+			.find({ date })
 			.populate([
 				{
 					path: 'mo_specification',
@@ -66,11 +68,12 @@ export class InboundReportService {
 						acc + fluctuation.stocked_in_qty - fluctuation.total_recall_tx + fluctuation.total_return_tx,
 					0
 				)
-				const totalDailyInboundQty = Object.values(doc.size_ledger).reduce(
-					(acc, fluctuation) =>
-						acc + fluctuation.stocked_in_qty - fluctuation.total_recall_tx + fluctuation.total_return_tx,
-					0
-				)
+				const totalDailyInboundQty = Object.values(doc.size_ledger).reduce((acc, fluctuation) => {
+					fluctuation.stocked_in_qty ??= 0
+					fluctuation.total_recall_tx ??= 0
+					fluctuation.total_return_tx ??= 0
+					return acc + fluctuation.stocked_in_qty - fluctuation.total_recall_tx + fluctuation.total_return_tx
+				}, 0)
 
 				return {
 					mo_no: doc.mo_no,
