@@ -1,4 +1,5 @@
 import { StockTransactionIdMongoGenerator } from '@modules/finished-goods/infrastructure/persistence/mongodb/repositories/stock-transaction-id-mongo.generator'
+import { Types } from 'mongoose'
 import { readFile, rm } from 'node:fs/promises'
 import { Readable } from 'node:stream'
 import * as dailyPoStep from '../commands/run-daily-po-step'
@@ -352,7 +353,14 @@ describe('runWarehouseSync', () => {
 			})
 		}
 		const database = {
-			collection: () => ({
+			collection: (name: string) => ({
+				find: () => ({
+					toArray: async () => [
+						name === 'departments'
+							? { _id: new Types.ObjectId('000000000000000000000001'), code: 'Line A' }
+							: { _id: new Types.ObjectId('000000000000000000000002'), storage_num: 'WH A' }
+					]
+				}),
 				findOne: async () => null,
 				bulkWrite: async (
 					operations: Array<{ updateOne: { update: { $set: { transaction_history: object } } } }>

@@ -78,7 +78,7 @@ const MO_INVENTORY_AUDIT_SQL = /* SQL */ `
 	LEFT OUTER JOIN size_ledger AS sl
 		ON sl.mo_no = a.mo_no AND sl.inv_yearmonth = a.inv_yearmonth
 		AND sl.brand_name = a.brand_name AND sl.inv_type = a.inv_type
-	WHERE LEFT(a.mo_no, 2) >= '15'
+	WHERE LEFT(a.mo_no, 2) >= '14'
 	ORDER BY a.inv_yearmonth ASC
 	OPTION (OPTIMIZE FOR UNKNOWN);
 `

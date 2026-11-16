@@ -10,6 +10,9 @@ interface LedgerRow {
 	transaction_history: string
 }
 
+const defaultDepartmentId = new Types.ObjectId('000000000000000000000010')
+const defaultLocationId = new Types.ObjectId('000000000000000000000020')
+
 function createPool(rows: LedgerRow[]) {
 	const parameters: Record<string, string> = {}
 	const queries: string[] = []
@@ -34,8 +37,8 @@ function createPool(rows: LedgerRow[]) {
 function createDatabase() {
 	const documents = new Map<string, Record<string, unknown>>()
 	const lookupDocuments = new Map<string, Map<string, Record<string, unknown>>>([
-		['departments', new Map()],
-		['storage_locations', new Map()]
+		['departments', new Map([[defaultDepartmentId.toHexString(), { code: 'Line A-1', name: 'Line A-1' }]])],
+		['storage_locations', new Map([[defaultLocationId.toHexString(), { storage_num: 'WH A', name: 'WH A' }]])]
 	])
 	const lookupErrors = new Map<string, Error>()
 	let bulkWrites = 0
@@ -43,6 +46,13 @@ function createDatabase() {
 		collection: (name: string) => {
 			if (name !== 'daily_mo_inventory_ledger') {
 				return {
+					find: () => ({
+						toArray: async () =>
+							Array.from(lookupDocuments.get(name)?.entries() ?? [], ([id, document]) => ({
+								_id: new Types.ObjectId(id),
+								...document
+							}))
+					}),
 					findOne: async (filter: { _id: Types.ObjectId }) => {
 						const error = lookupErrors.get(name)
 						if (error) throw error
@@ -95,6 +105,156 @@ function row(overrides: Partial<LedgerRow> = {}): LedgerRow {
 }
 
 describe('runDailyMoInventoryLedgerStep', () => {
+	it('writes matched ObjectIds and uses the smallest reference IDs for unmatched codes', async () => {
+		const target = createDatabase()
+		target.lookupDocuments.get('departments')?.clear()
+		target.lookupDocuments.get('storage_locations')?.clear()
+		const department = new Types.ObjectId('000000000000000000000010')
+		const fallbackDepartment = new Types.ObjectId('000000000000000000000001')
+		const location = new Types.ObjectId('000000000000000000000020')
+		const fallbackLocation = new Types.ObjectId('000000000000000000000002')
+		target.lookupDocuments.get('departments')?.set(department.toHexString(), { code: 'BA-01' })
+		target.lookupDocuments.get('departments')?.set(fallbackDepartment.toHexString(), { code: 'OTHER' })
+		target.lookupDocuments.get('storage_locations')?.set(location.toHexString(), { storage_num: 'S01' })
+		target.lookupDocuments.get('storage_locations')?.set(fallbackLocation.toHexString(), { storage_num: 'OTHER' })
+		const transaction = {
+			time: '10:24',
+			assembly_line: 'BA-01',
+			storage_location: 'S01',
+			size_ledger: { '07': { stocked_in_qty: 2 } }
+		}
+		const source = createPool([
+			row({
+				transaction_history: JSON.stringify([
+					transaction,
+					{ ...transaction, time: '10:25', assembly_line: 'UNKNOWN-CODE', storage_location: 'MISSING' }
+				])
+			})
+		])
+		let counter = 0
+		const generateId = jest.fn(() => `tx-${++counter}`)
+
+		await runDailyMoInventoryLedgerStep(source.pool, target.database, generateId)
+		await runDailyMoInventoryLedgerStep(source.pool, target.database, generateId)
+
+		expect(target.documents.get('14ABC:2026-11-11')?.transaction_history).toEqual({
+			'tx-1': { ...transaction, assembly_line: department, storage_location: location, voided: false },
+			'tx-2': {
+				...transaction,
+				time: '10:25',
+				assembly_line: fallbackDepartment,
+				storage_location: fallbackLocation,
+				voided: false
+			}
+		})
+		expect(generateId).toHaveBeenCalledTimes(2)
+		expect(source.queries[0]).toMatch(/s\.dept_code\s+AS\s+assembly_line/i)
+		expect(source.queries[0]).toMatch(/s\.storage\s+AS\s+storage_location/i)
+		expect(source.queries[0]).not.toMatch(/dept_name|dv_warehouseccodedet/i)
+	})
+
+	it('keeps distinct transactions and their IDs when multiple unknown codes resolve to the same fallback', async () => {
+		const target = createDatabase()
+		const transaction = {
+			time: '10:24',
+			assembly_line: 'MISSING-1',
+			storage_location: 'MISSING-1',
+			size_ledger: { '07': { stocked_in_qty: 2 } }
+		}
+		const source = createPool([
+			row({
+				transaction_history: JSON.stringify([
+					transaction,
+					{ ...transaction, assembly_line: 'MISSING-2', storage_location: 'MISSING-2' }
+				])
+			})
+		])
+		let counter = 0
+		const generateId = jest.fn(() => `tx-${++counter}`)
+
+		await runDailyMoInventoryLedgerStep(source.pool, target.database, generateId)
+		await runDailyMoInventoryLedgerStep(source.pool, target.database, generateId)
+
+		const history = target.documents.get('14ABC:2026-11-11')?.transaction_history as Record<string, unknown>
+		expect(Object.keys(history)).toEqual(['tx-1', 'tx-2'])
+		expect(history['tx-1']).toEqual(history['tx-2'])
+		expect(generateId).toHaveBeenCalledTimes(2)
+	})
+
+	it('retains a legacy string-based transaction ID when source codes resolve to its department and location names', async () => {
+		const target = createDatabase()
+		target.lookupDocuments.get('departments')?.set(defaultDepartmentId.toHexString(), {
+			code: 'BA-01',
+			name: { en: 'Line A-1' }
+		})
+		target.lookupDocuments.get('storage_locations')?.set(defaultLocationId.toHexString(), {
+			storage_num: 'S01',
+			name: 'WH A'
+		})
+		const legacy = JSON.parse(row().transaction_history)[0]
+		target.documents.set('14ABC:2026-11-11', { transaction_history: { 'legacy-id': legacy } })
+		const source = createPool([
+			row({
+				transaction_history: JSON.stringify([{ ...legacy, assembly_line: 'BA-01', storage_location: 's01' }])
+			})
+		])
+		const generateId = jest.fn(() => 'new-id')
+
+		await runDailyMoInventoryLedgerStep(source.pool, target.database, generateId)
+
+		expect(target.documents.get('14ABC:2026-11-11')?.transaction_history).toEqual({
+			'legacy-id': {
+				...legacy,
+				assembly_line: defaultDepartmentId,
+				storage_location: defaultLocationId,
+				voided: false
+			}
+		})
+		expect(generateId).not.toHaveBeenCalled()
+	})
+
+	it.each(['departments', 'storage_locations'])('fails without writing if %s is empty', async (collection) => {
+		const target = createDatabase()
+		target.lookupDocuments.get(collection)?.clear()
+		await expect(
+			runDailyMoInventoryLedgerStep(createPool([row()]).pool, target.database, () => 'tx')
+		).rejects.toThrow(`Empty ${collection} reference collection`)
+		expect(target.getBulkWrites()).toBe(0)
+	})
+
+	it('falls back for null codes even when a department code is UNKNOWN', async () => {
+		const target = createDatabase()
+		target.lookupDocuments.get('departments')?.set('000000000000000000000030', { code: 'UNKNOWN' })
+		const transaction = {
+			time: '10:24',
+			assembly_line: null,
+			storage_location: '',
+			size_ledger: { '07': { stocked_in_qty: 2 } }
+		}
+		await runDailyMoInventoryLedgerStep(
+			createPool([row({ transaction_history: JSON.stringify([transaction]) })]).pool,
+			target.database,
+			() => 'tx'
+		)
+		expect(target.documents.get('14ABC:2026-11-11')?.transaction_history).toEqual({
+			tx: { ...transaction, assembly_line: defaultDepartmentId, storage_location: defaultLocationId, voided: false }
+		})
+	})
+
+	it('reuses IDs when fallback reference documents have no code or name', async () => {
+		const target = createDatabase()
+		target.lookupDocuments.get('departments')?.set(defaultDepartmentId.toHexString(), {})
+		target.lookupDocuments.get('storage_locations')?.set(defaultLocationId.toHexString(), {})
+		const generateId = jest.fn(() => 'tx')
+		const source = createPool([row()])
+
+		await runDailyMoInventoryLedgerStep(source.pool, target.database, generateId)
+		await runDailyMoInventoryLedgerStep(source.pool, target.database, generateId)
+
+		expect(generateId).toHaveBeenCalledTimes(1)
+		expect(Object.keys(target.documents.get('14ABC:2026-11-11')?.transaction_history as object)).toEqual(['tx'])
+	})
+
 	it('allocates asynchronous transaction IDs using the ledger date across documents', async () => {
 		const source = createPool([row(), row({ mo_no: '14DEF' }), row({ mo_no: '14GHI', date: '2026-11-12' })])
 		const target = createDatabase()
@@ -145,8 +305,8 @@ describe('runDailyMoInventoryLedgerStep', () => {
 			transaction_history: {
 				'tx-1': {
 					time: '10:24',
-					assembly_line: 'LineA1',
-					storage_location: 'WH A',
+					assembly_line: defaultDepartmentId,
+					storage_location: defaultLocationId,
 					size_ledger: { '07': { stocked_in_qty: 2 } },
 					voided: false
 				}
@@ -179,21 +339,26 @@ describe('runDailyMoInventoryLedgerStep', () => {
 			await runDailyMoInventoryLedgerStep(source.pool, target.database, generateId)
 
 			expect(target.documents.get('14ABC:2026-11-11')?.transaction_history).toEqual({
-				'tx-1': { ...transaction, assembly_line: 'UNKNOWN', voided: false }
+				'tx-1': {
+					...transaction,
+					assembly_line: defaultDepartmentId,
+					storage_location: defaultLocationId,
+					voided: false
+				}
 			})
 			expect(generateId).toHaveBeenCalledTimes(1)
 		}
 	)
 
-	it('normalizes null assembly lines before grouping and includes null JSON values', async () => {
+	it('selects raw reference codes and includes null JSON values', async () => {
 		const source = createPool([])
 		await runDailyMoInventoryLedgerStep(source.pool, createDatabase().database, () => 'unused')
 
-		expect(source.queries[0]).toMatch(/COALESCE\(s\.dept_name,\s*'UNKNOWN'\)\s+AS\s+assembly_line/i)
+		expect(source.queries[0]).toMatch(/s\.dept_code\s+AS\s+assembly_line/i)
 		expect(source.queries[0]).toMatch(/FOR JSON PATH,\s*INCLUDE_NULL_VALUES/i)
 	})
 
-	it.each(['', '---', 123])('rejects invalid non-null assembly lines: %p', async (assemblyLine) => {
+	it.each([123])('rejects invalid non-null assembly lines: %p', async (assemblyLine) => {
 		const transaction = {
 			time: '10:24',
 			assembly_line: assemblyLine,
@@ -256,8 +421,8 @@ describe('runDailyMoInventoryLedgerStep', () => {
 		expect(target.documents.get('14ABC:2026-11-11')?.transaction_history).toEqual({
 			'stable-id': {
 				time: '10:24',
-				assembly_line: 'LineA1',
-				storage_location: 'WH A',
+				assembly_line: defaultDepartmentId,
+				storage_location: defaultLocationId,
 				size_ledger: { '07': { stocked_in_qty: 2 } },
 				voided: false
 			}
@@ -318,7 +483,9 @@ describe('runDailyMoInventoryLedgerStep', () => {
 			code: 'GL3BA01',
 			name: { cn: '成型A', en: 'Line A-1', vi: 'Chuyền A' }
 		})
-		target.lookupDocuments.get('storage_locations')?.set(locationId.toHexString(), { name: 'WH A' })
+		target.lookupDocuments
+			.get('storage_locations')
+			?.set(locationId.toHexString(), { name: 'WH A', storage_num: 'S01' })
 		target.documents.set('14ABC:2026-11-11', {
 			transaction_history: {
 				'legacy-object-id': {
@@ -330,7 +497,16 @@ describe('runDailyMoInventoryLedgerStep', () => {
 		})
 		const generateId = jest.fn(() => 'new-id')
 
-		await runDailyMoInventoryLedgerStep(createPool([row()]).pool, target.database, generateId)
+		const sourceTransaction = {
+			...JSON.parse(row().transaction_history)[0],
+			assembly_line: 'GL3BA01',
+			storage_location: 'S01'
+		}
+		await runDailyMoInventoryLedgerStep(
+			createPool([row({ transaction_history: JSON.stringify([sourceTransaction]) })]).pool,
+			target.database,
+			generateId
+		)
 
 		expect(Object.keys(target.documents.get('14ABC:2026-11-11')?.transaction_history as object)).toEqual([
 			'legacy-object-id'
@@ -340,6 +516,7 @@ describe('runDailyMoInventoryLedgerStep', () => {
 
 	it('matches ObjectId department references against normalized department codes', async () => {
 		const target = createDatabase()
+		target.lookupDocuments.get('departments')?.clear()
 		const departmentId = new Types.ObjectId()
 		target.lookupDocuments.get('departments')?.set(departmentId.toHexString(), {
 			code: 'Line A-1',

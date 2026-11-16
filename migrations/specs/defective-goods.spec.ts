@@ -34,6 +34,8 @@ function memoryDatabase(seed: Record<string, Document[]> = {}) {
 			}
 			return {
 				createIndex: async () => 'idx_defective_goods_source_keyid',
+				aggregate: () => ({ toArray: async () => [], next: async () => null, close: async () => undefined }),
+				drop: async () => true,
 				find: () => ({ toArray: async () => [...documents.values()] }),
 				findOne: async (filter: Document) =>
 					[...documents.values()].find((document) =>
@@ -573,8 +575,9 @@ describe('runDefectiveGoodsStep', () => {
 
 		expect(documents('defective_goods')).toHaveLength(1)
 		expect(documents('defective_goods')[0]._id).toEqual(id)
-		expect(writes.map(({ filter }) => filter)).toEqual([{ _id: id }, { _id: id }])
-		expect(writes.every(({ options }) => options.upsert === true)).toBe(true)
+		const goodsWrites = writes.filter((write) => write.collection === 'defective_goods')
+		expect(goodsWrites.map(({ filter }) => filter)).toEqual([{ _id: id }, { _id: id }])
+		expect(goodsWrites.every(({ options }) => options.upsert === true)).toBe(true)
 	})
 
 	it.each([
@@ -596,7 +599,12 @@ describe('runDefectiveGoodsStep', () => {
 
 		const replacementId = documents('defective_goods').find((document) => document.source_keyid === 2)?._id
 		expect(replacementId).toBeInstanceOf(Types.ObjectId)
-		expect(writes.map(({ filter }) => filter._id)).toEqual([oldId, replacementId, oldId, replacementId])
+		expect(writes.filter((write) => write.collection === 'defective_goods').map(({ filter }) => filter._id)).toEqual([
+			oldId,
+			replacementId,
+			oldId,
+			replacementId
+		])
 		expect(documents('defective_goods')).toEqual(
 			expect.arrayContaining([
 				expect.objectContaining({ _id: oldId, epc, deleted: true }),

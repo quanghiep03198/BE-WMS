@@ -98,7 +98,8 @@ New daily PO and MO transaction IDs use the application's shared MongoDB
 sequence collection: stock-out IDs start with `XF` and stock-in IDs with `SI`,
 followed by the source date and a per-type, per-day increasing sequence.
 Existing matching transaction IDs are retained on reruns, including older ID
-formats; this sync does not replace them or migrate their references. Deleting
+formats. The daily MO ledger sync replaces transaction references with ObjectIds.
+Deleting
 ledger data does not reset the shared sequences, and failed writes may leave
 gaps in the sequence.
 Manufacturing orders and the daily MO inventory ledger include only rows whose
@@ -113,8 +114,13 @@ the RFID-based per-size quantities. An empty list marks all synchronized
 orders complete; a failed or invalid lookup stops the step before PO writes.
 The lookup is not cutoff-filtered and uses SQL Server `NOLOCK`, so it is a
 current, potentially uncommitted view rather than a snapshot at the cutoff.
-Daily MO inventory transactions use `UNKNOWN` for a null assembly line.
-Null assembly lines and an actual source line named `UNKNOWN` share a group.
+Daily MO inventory transactions resolve `dept_code` against `departments.code`
+and `storage` against `storage_locations.storage_num`, storing their ObjectIds.
+Missing or unmatched codes use the smallest ObjectId in the respective collection;
+an empty reference collection fails the step. Storage codes are matched
+case-insensitively, and duplicate codes use the smallest matching ObjectId.
+Distinct transactions can resolve to identical references when codes are missing;
+their IDs are reused in source order, so removing one may shift the remaining IDs.
 
 For duplicate source usernames (after trimming), the user sync keeps the active
 `ts_user` row with the smallest `keyid`. If that row joins multiple employee
@@ -212,6 +218,21 @@ Invalid images stop the step. File references and the
 document are updated in a MongoDB transaction, requiring a replica set.
 Unchanged source descriptions reuse existing images and preserve later edits;
 unattached uploads from interrupted runs are handled by the file cleanup job.
+
+After defective goods are imported successfully, the step rebuilds inbound
+and outbound daily reports in `defective_goods_daily_report` for every UTC
+date present in the synchronized data, using the same grouping and filters as
+the application reports, including soft-deleted goods. Each date and type is
+replaced in a MongoDB transaction, including clearing a report if its dated
+goods no longer qualify; other dates are left unchanged. If a date disappears
+entirely from the synchronized data, its existing report is not removed.
+The step keeps a temporary snapshot to protect historical reports from the
+defective-goods outbound TTL during the import, and drops it when the step
+finishes or fails. An abrupt process termination can leave a
+`defective_goods_report_staging_<id>` collection that must be removed after
+confirming its owning sync is no longer running. Do not run overlapping
+defective-goods syncs or the daily report task concurrently with this step:
+they can replace or insert reports for the same dates.
 
 Truckload delivery signatures are uploaded to the `dispatch_order_signatures`
 GridFS bucket before the delivery is written. Empty signatures become null;

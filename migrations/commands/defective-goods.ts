@@ -14,6 +14,7 @@ import { escapeRegExp } from 'lodash'
 import mongoose, { Types, type ClientSession, type mongo } from 'mongoose'
 import { createHash } from 'node:crypto'
 import { streamMssqlRows, type MssqlStreamRequest } from '../helpers/mssql-stream'
+import { rebuildDefectiveGoodsDailyReports } from './defective-goods-daily-report'
 
 // LIKE also prioritizes inactive flags surrounded by whitespace accepted by trim(); invalid flags are rejected later.
 const DEFECTIVE_GOODS_SQL = /* SQL */ `
@@ -246,122 +247,138 @@ export async function runDefectiveGoodsStep(
 	const sanitizer = new HtmlSanitizerService()
 	let defectiveGoods = 0
 
-	for await (const source of streamMssqlRows(pool.request(), DEFECTIVE_GOODS_SQL)) {
-		const row = rowObject(source)
-		if (typeof row.keyid !== 'number' || !Number.isSafeInteger(row.keyid) || row.keyid <= 0) {
-			throw new Error('Invalid defective goods keyid')
-		}
-		const existing = await collection.findOne({ source_keyid: row.keyid })
-		const _id = existing?._id ?? new Types.ObjectId()
-		const epc = requiredText(row.epc, 'epc')
-		if (epc.length !== 24) throw new Error('Invalid defective goods epc')
-		const factoryShoesStyle = requiredText(row.factory_shoes_style, 'factory_shoes_style').toUpperCase()
-		const custShoesStyle = requiredText(row.cust_shoes_style, 'cust_shoes_style')
-		const colorSn = requiredText(row.color_sn, 'color_sn')
-		const sizeNumcode = requiredText(row.size_code, 'size_code')
-		const defectiveCategory = enumValue(row.defective_category, DefectiveCategory, 'defective_category')
-		const defectiveLocation = enumValue(row.defective_location, DefectiveLocation, 'defective_location')
-		if (
-			(typeof row.defective_description !== 'string' || !row.defective_description.trim()) &&
-			(!Buffer.isBuffer(row.defective_description) || !row.defective_description.length)
-		) {
-			throw new Error('Invalid defective goods defective_description')
-		}
-		const defectiveDescription = row.defective_description
-		const combinationStrategy = enumValue(row.ri_type, CombinationStrategy, 'ri_type')
-		const unit = enumValue(row.unit, DefectiveGoodsUnit, 'unit')
-		const shoeSource =
-			row.shoe_source === null
-				? DefectiveGoodsSource.FINAL_INSPECTION
-				: enumValue(row.shoe_source, DefectiveGoodsSource, 'shoe_source')
-		const outboundPurpose =
-			row.outbound_purpose === null
-				? null
-				: enumValue(row.outbound_purpose, DefectiveGoodsOutboundPurpose, 'outbound_purpose')
-		const isActive = requiredText(row.isactive, 'isactive').toUpperCase()
-		if (isActive !== 'Y' && isActive !== 'N') throw new Error('Invalid defective goods isactive')
-		const assemblyLine = resolveDepartment(row.assembly_line, 'assembly_line')
-		const sewingLine = resolveDepartment(row.sewing_line, 'sewing_line')
-		const deleted = isCancelled(row.ri_cancel) || isActive === 'N'
-		const now = new Date()
-		const update = {
-			$set: {
-				epc,
-				brand_name: optionalText(row.brand_name, 'brand_name')?.toUpperCase() ?? null,
-				mo_no: optionalText(row.mo_no, 'mo_no')?.toUpperCase() ?? null,
-				po: optionalText(row.po, 'po')?.toUpperCase() ?? null,
-				factory_shoes_style: factoryShoesStyle,
-				cust_shoes_style: custShoesStyle,
-				color_sn: colorSn,
-				size_numcode: sizeNumcode,
-				defective_category: defectiveCategory,
-				shoe_source: shoeSource,
-				...(assemblyLine && { assembly_line: assemblyLine }),
-				...(sewingLine && { sewing_line: sewingLine }),
-				combination_strategy: combinationStrategy,
-				defective_location: defectiveLocation,
-				unit,
-				storage_location: optionalText(row.storage_location, 'storage_location')?.toUpperCase() ?? null,
-				inbound_at: nullableDate(row.inbound_date, 'inbound_date'),
-				outbound_at: nullableDate(row.outbound_date, 'outbound_date'),
-				outbound_purpose: outboundPurpose,
-				created_by: resolveReference(row.user_code_created, userIds, 'user_code_created', missingUsers),
-				updated_by: resolveReference(row.user_code_updated, userIds, 'user_code_updated', missingUsers),
-				deleted,
-				deleted_at: deleted ? now : null,
-				updated_at: now
-			},
-			$setOnInsert: { created_at: now, source_keyid: row.keyid }
-		}
-		const sourceHash = createHash('sha256').update(defectiveDescription).digest('hex')
-		const alreadyMigrated = (document: typeof existing) =>
-			document?.description_legacy_hash === sourceHash &&
-			typeof document.defective_description === 'string' &&
-			Array.isArray(document.description_image_ids)
-		dependencies ??= descriptionDependencies(database)
-		let description: Awaited<ReturnType<typeof migrateLegacyDescription>> | undefined
-		if (!alreadyMigrated(existing)) {
-			try {
-				description = await migrateLegacyDescription(
-					defectiveDescription,
-					update.$set.created_by ?? userIds.get(creatorUsername) ?? null,
-					dependencies.files,
-					sanitizer
-				)
-			} catch (error) {
-				if (error instanceof Error && error.message === 'Missing image owner') {
-					throw new Error(
-						`Missing image owner for defective goods ${row.keyid}: fallback user ${creatorUsername} not found`,
-						{
-							cause: error
-						}
+	const stagingName = `defective_goods_report_staging_${new Types.ObjectId().toHexString()}`
+	await collection.aggregate([{ $out: stagingName }]).toArray()
+	const staging = database.collection(stagingName)
+	try {
+		await staging.createIndex(
+			{ source_keyid: 1 },
+			{ unique: true, partialFilterExpression: { source_keyid: { $exists: true } } }
+		)
+		for await (const source of streamMssqlRows(pool.request(), DEFECTIVE_GOODS_SQL)) {
+			const row = rowObject(source)
+			if (typeof row.keyid !== 'number' || !Number.isSafeInteger(row.keyid) || row.keyid <= 0) {
+				throw new Error('Invalid defective goods keyid')
+			}
+			const existing = await collection.findOne({ source_keyid: row.keyid })
+			const _id = existing?._id ?? new Types.ObjectId()
+			const epc = requiredText(row.epc, 'epc')
+			if (epc.length !== 24) throw new Error('Invalid defective goods epc')
+			const factoryShoesStyle = requiredText(row.factory_shoes_style, 'factory_shoes_style').toUpperCase()
+			const custShoesStyle = requiredText(row.cust_shoes_style, 'cust_shoes_style')
+			const colorSn = requiredText(row.color_sn, 'color_sn')
+			const sizeNumcode = requiredText(row.size_code, 'size_code')
+			const defectiveCategory = enumValue(row.defective_category, DefectiveCategory, 'defective_category')
+			const defectiveLocation = enumValue(row.defective_location, DefectiveLocation, 'defective_location')
+			if (
+				(typeof row.defective_description !== 'string' || !row.defective_description.trim()) &&
+				(!Buffer.isBuffer(row.defective_description) || !row.defective_description.length)
+			) {
+				throw new Error('Invalid defective goods defective_description')
+			}
+			const defectiveDescription = row.defective_description
+			const combinationStrategy = enumValue(row.ri_type, CombinationStrategy, 'ri_type')
+			const unit = enumValue(row.unit, DefectiveGoodsUnit, 'unit')
+			const shoeSource =
+				row.shoe_source === null
+					? DefectiveGoodsSource.FINAL_INSPECTION
+					: enumValue(row.shoe_source, DefectiveGoodsSource, 'shoe_source')
+			const outboundPurpose =
+				row.outbound_purpose === null
+					? null
+					: enumValue(row.outbound_purpose, DefectiveGoodsOutboundPurpose, 'outbound_purpose')
+			const isActive = requiredText(row.isactive, 'isactive').toUpperCase()
+			if (isActive !== 'Y' && isActive !== 'N') throw new Error('Invalid defective goods isactive')
+			const assemblyLine = resolveDepartment(row.assembly_line, 'assembly_line')
+			const sewingLine = resolveDepartment(row.sewing_line, 'sewing_line')
+			const deleted = isCancelled(row.ri_cancel) || isActive === 'N'
+			const now = new Date()
+			const update = {
+				$set: {
+					epc,
+					brand_name: optionalText(row.brand_name, 'brand_name')?.toUpperCase() ?? null,
+					mo_no: optionalText(row.mo_no, 'mo_no')?.toUpperCase() ?? null,
+					po: optionalText(row.po, 'po')?.toUpperCase() ?? null,
+					factory_shoes_style: factoryShoesStyle,
+					cust_shoes_style: custShoesStyle,
+					color_sn: colorSn,
+					size_numcode: sizeNumcode,
+					defective_category: defectiveCategory,
+					shoe_source: shoeSource,
+					...(assemblyLine && { assembly_line: assemblyLine }),
+					...(sewingLine && { sewing_line: sewingLine }),
+					combination_strategy: combinationStrategy,
+					defective_location: defectiveLocation,
+					unit,
+					storage_location: optionalText(row.storage_location, 'storage_location')?.toUpperCase() ?? null,
+					inbound_at: nullableDate(row.inbound_date, 'inbound_date'),
+					outbound_at: nullableDate(row.outbound_date, 'outbound_date'),
+					outbound_purpose: outboundPurpose,
+					created_by: resolveReference(row.user_code_created, userIds, 'user_code_created', missingUsers),
+					updated_by: resolveReference(row.user_code_updated, userIds, 'user_code_updated', missingUsers),
+					deleted,
+					deleted_at: deleted ? now : null,
+					updated_at: now
+				},
+				$setOnInsert: { created_at: now, source_keyid: row.keyid }
+			}
+			const sourceHash = createHash('sha256').update(defectiveDescription).digest('hex')
+			const alreadyMigrated = (document: typeof existing) =>
+				document?.description_legacy_hash === sourceHash &&
+				typeof document.defective_description === 'string' &&
+				Array.isArray(document.description_image_ids)
+			dependencies ??= descriptionDependencies(database)
+			let description: Awaited<ReturnType<typeof migrateLegacyDescription>> | undefined
+			if (!alreadyMigrated(existing)) {
+				try {
+					description = await migrateLegacyDescription(
+						defectiveDescription,
+						update.$set.created_by ?? userIds.get(creatorUsername) ?? null,
+						dependencies.files,
+						sanitizer
 					)
+				} catch (error) {
+					if (error instanceof Error && error.message === 'Missing image owner') {
+						throw new Error(
+							`Missing image owner for defective goods ${row.keyid}: fallback user ${creatorUsername} not found`,
+							{
+								cause: error
+							}
+						)
+					}
+					throw error
 				}
-				throw error
 			}
+			await dependencies.withTransaction(async (session) => {
+				const current = await collection.findOne({ _id }, { session })
+				const set: Record<string, unknown> = { ...update.$set }
+				if (!alreadyMigrated(current)) {
+					if (!description) throw new Error(`Description changed during sync for ${_id}`)
+					await dependencies.files.syncImageRefs(
+						`defective-goods:${_id}`,
+						current?.description_image_ids ?? [],
+						description.imageIds,
+						session
+					)
+					Object.assign(set, {
+						defective_description: description.html,
+						description_image_ids: description.imageIds,
+						description_legacy_hash: sourceHash
+					})
+				}
+				const result = await collection.updateOne({ _id }, { ...update, $set: set }, { upsert: true, session })
+				if (!result.acknowledged) throw new Error(`Unacknowledged defective goods write for ${_id}`)
+				const staged = await staging.updateOne({ source_keyid: row.keyid }, update, { upsert: true, session })
+				if (!staged.acknowledged) throw new Error(`Unacknowledged defective goods staging write for ${_id}`)
+			})
+			defectiveGoods++
 		}
-		await dependencies.withTransaction(async (session) => {
-			const current = await collection.findOne({ _id }, { session })
-			const set: Record<string, unknown> = { ...update.$set }
-			if (!alreadyMigrated(current)) {
-				if (!description) throw new Error(`Description changed during sync for ${_id}`)
-				await dependencies.files.syncImageRefs(
-					`defective-goods:${_id}`,
-					current?.description_image_ids ?? [],
-					description.imageIds,
-					session
-				)
-				Object.assign(set, {
-					defective_description: description.html,
-					description_image_ids: description.imageIds,
-					description_legacy_hash: sourceHash
-				})
-			}
-			const result = await collection.updateOne({ _id }, { ...update, $set: set }, { upsert: true, session })
-			if (!result.acknowledged) throw new Error(`Unacknowledged defective goods write for ${_id}`)
-		})
-		defectiveGoods++
-	}
 
-	return { defectiveGoods }
+		dependencies ??= descriptionDependencies(database)
+		await rebuildDefectiveGoodsDailyReports(database, dependencies.withTransaction, stagingName)
+
+		return { defectiveGoods }
+	} finally {
+		await staging.drop()
+	}
 }
