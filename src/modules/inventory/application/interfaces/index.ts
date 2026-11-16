@@ -1,5 +1,5 @@
-export type IInventoryReportResponse = {
-	values: Array<{
+export interface IInventoryReportResponse {
+	values: ReadonlyArray<{
 		mo_no: string
 		order_qty: number
 		storage_locations: Array<string>

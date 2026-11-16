@@ -253,10 +253,14 @@ export class InventoryAuditRepository implements IInventoryAuditRepository {
 		update: Record<
 			`size_ledger.${string}.supplemental_stocked_in_qty` | `size_ledger.${string}.supplemental_shipped_out_qty`,
 			number
-		>
+		>,
+		updatedBy: Types.ObjectId
 	): Promise<void> {
 		await this.moInventoryAuditModel
-			.updateOne({ ...filterQuery, inventory_closure_status: 'pending' }, { $set: update })
+			.updateOne(
+				{ ...filterQuery, inventory_closure_status: 'pending' },
+				{ $set: { ...update, updated_by: updatedBy } }
+			)
 			.exec()
 	}
 

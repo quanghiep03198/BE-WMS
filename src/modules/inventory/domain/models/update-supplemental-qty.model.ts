@@ -1,9 +1,13 @@
+import { IUser } from '@modules/user/domain/interfaces'
 import { AggregateRoot } from '@nestjs/cqrs'
 import { flatten } from 'flat'
+import { UpdatedInventorySupplementalQtyEvent } from '../events/updated-inventory-supplemental-qty/updated-inventory-supplemental-qty.event'
 import { SupplementalQtyExcessException } from '../exceptions'
 
 export class UpdateSupplementalQtyModel extends AggregateRoot {
 	constructor(
+		private readonly yearMonth: string,
+		private readonly manufacturingOrder: string,
 		private readonly fluctuation: Array<{
 			size_numcode: string
 			order_qty: number
@@ -18,7 +22,8 @@ export class UpdateSupplementalQtyModel extends AggregateRoot {
 			size_numcode: string
 			supplemental_stocked_in_qty: number
 			supplemental_shipped_out_qty: number
-		}>
+		}>,
+		public readonly updatedBy: Pick<IUser, 'username' | 'display_name'>
 	) {
 		super()
 	}
@@ -45,7 +50,16 @@ export class UpdateSupplementalQtyModel extends AggregateRoot {
 
 		if (isOrderExcessed) throw new SupplementalQtyExcessException()
 
-		return flatten({
+		const updatedSupplementalQty = flatten<
+			Record<
+				'size_ledger',
+				Record<string, { supplemental_stocked_in_qty: number; supplemental_shipped_out_qty: number }>
+			>,
+			Record<
+				`size_ledger.${string}.supplemental_stocked_in_qty` | `size_ledger.${string}.supplemental_shipped_out_qty`,
+				number
+			>
+		>({
 			size_ledger: updateExpression.reduce((acc, curr) => {
 				return {
 					...acc,
@@ -56,5 +70,11 @@ export class UpdateSupplementalQtyModel extends AggregateRoot {
 				}
 			}, {})
 		})
+
+		this.apply(
+			new UpdatedInventorySupplementalQtyEvent(this.yearMonth, this.manufacturingOrder, this.update, this.updatedBy)
+		)
+
+		return updatedSupplementalQty
 	}
 }

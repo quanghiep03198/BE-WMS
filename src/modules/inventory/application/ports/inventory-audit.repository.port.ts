@@ -20,7 +20,8 @@ export interface IInventoryAuditRepository {
 		update: Record<
 			`size_ledger.${string}.supplemental_stocked_in_qty` | `size_ledger.${string}.supplemental_shipped_out_qty`,
 			number
-		>
+		>,
+		updatedBy: TObjectId
 	): Promise<void>
 
 	checkoutInventoryAudit(month: string): Promise<any[]>

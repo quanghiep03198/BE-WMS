@@ -18,7 +18,7 @@ export class InventoryAuditEntity extends BaseAbstractEntity {
 	factory_code: string
 
 	@Column({ name: 'inv_yearmonth', type: 'nvarchar', length: 20 })
-	inv_year_month: string
+	year_month: string
 
 	@Column({ name: 'custbrand_id', type: 'nvarchar', length: 100 })
 	cust_brand_id: string
@@ -57,10 +57,10 @@ export class InventoryAuditEntity extends BaseAbstractEntity {
 	outstock_qty: number
 
 	@Column({ name: 'inv_manualqty', type: 'numeric', precision: 16, scale: 4 })
-	actual_instock_qty: number
+	supplemental_stocked_in_qty: number
 
 	@Column({ name: 'inv_manualqtyout', type: 'numeric', precision: 16, scale: 4 })
-	actual_outstock_qty: number
+	supplemental_shipped_out_qty: number
 
 	@Column({ name: 'inv_finalqty', type: 'numeric', precision: 16, scale: 4 })
 	final_stock_qty: number

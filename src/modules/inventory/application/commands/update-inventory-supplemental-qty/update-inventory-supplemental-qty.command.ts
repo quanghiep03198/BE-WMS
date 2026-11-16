@@ -1,3 +1,4 @@
+import { TRequestUser } from '@common/decorators'
 import { Command } from '@nestjs/cqrs'
 
 export class UpdateInventorySupplementalQtyCommand extends Command<void> {
@@ -7,7 +8,8 @@ export class UpdateInventorySupplementalQtyCommand extends Command<void> {
 			size_numcode: string
 			supplemental_stocked_in_qty: number
 			supplemental_shipped_out_qty: number
-		}>
+		}>,
+		public readonly updatedBy: TRequestUser
 	) {
 		super()
 	}

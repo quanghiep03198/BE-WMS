@@ -1,5 +1,12 @@
 import { CommonRequestHeader } from '@common/constants'
-import { HttpMethod, RequireAuthorized, ResponseMessage, RouteHandler } from '@common/decorators'
+import {
+	HttpMethod,
+	RequestUser,
+	RequireAuthorized,
+	ResponseMessage,
+	RouteHandler,
+	TRequestUser
+} from '@common/decorators'
 import { HttpExceptionFilter } from '@common/filters'
 import { ZodValidationPipe } from '@common/pipes'
 import { UserRole } from '@modules/user/domain/constants'
@@ -81,9 +88,10 @@ export class InventoryController {
 	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF)
 	async updateInventoryReport(
 		@Query(new ZodValidationPipe(updateInventoryReportQuery)) filterQuery: UpdateInventoryReportQueryDTO,
-		@Body(new ZodValidationPipe(bulkUpdateInventoryAuditPayload)) update: BulkUpdateInventoryReportDTO
+		@Body(new ZodValidationPipe(bulkUpdateInventoryAuditPayload)) update: BulkUpdateInventoryReportDTO,
+		@RequestUser() updatedBy: TRequestUser
 	) {
-		await this.commandBus.execute(new UpdateInventorySupplementalQtyCommand(filterQuery, update))
+		await this.commandBus.execute(new UpdateInventorySupplementalQtyCommand(filterQuery, update, updatedBy))
 		return filterQuery
 	}
 
