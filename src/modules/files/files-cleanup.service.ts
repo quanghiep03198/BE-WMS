@@ -25,7 +25,7 @@ export function cleanupEligibility(now: Date, pendingHours: number, orphanDays: 
 export class FilesCleanupScheduler implements OnModuleInit {
 	constructor(
 		@InjectQueue(FILES_CLEANUP_QUEUE) private readonly queue: Queue,
-		private readonly config: ConfigService
+		private readonly config: ConfigService<ProcessEnv>
 	) {}
 
 	async onModuleInit() {
@@ -44,7 +44,7 @@ export class FilesCleanupProcessor extends WorkerHost {
 	constructor(
 		@InjectConnection(DATA_WAREHOUSE_CONNECTION) private readonly connection: Connection,
 		@InjectModel(StoredFile.name, DATA_WAREHOUSE_CONNECTION) private readonly files: Model<StoredFile>,
-		private readonly config: ConfigService
+		private readonly config: ConfigService<ProcessEnv>
 	) {
 		super()
 	}
