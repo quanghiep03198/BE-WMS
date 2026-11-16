@@ -55,7 +55,7 @@ export async function syncMongoUsers(
 					deleted: false,
 					updated_at: now
 				},
-				$setOnInsert: { created_at: now }
+				$setOnInsert: { created_at: now, roles: [] }
 			},
 			{ upsert: true }
 		)
