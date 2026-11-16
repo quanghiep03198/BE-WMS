@@ -13,6 +13,7 @@ import {
 	DefectiveGoodsDailyReportModel
 } from '../schemas/defective-goods-daily-report.schema'
 import { DefectiveGoods, DefectiveGoodsModel } from '../schemas/defective-goods.schema'
+import { defectiveGoodsDailyReportPipeline } from './defective-goods-report.pipeline'
 
 @Injectable()
 export class DefectiveGoodsReportRepository implements IDefectiveGoodsReportRepository {
@@ -33,123 +34,15 @@ export class DefectiveGoodsReportRepository implements IDefectiveGoodsReportRepo
 
 		if (!isToday)
 			return await this.defectiveGoodsDailyReportModel
-				.find({ date: format(date, 'yyyy-MM-dd'), type: 'inbound' satisfies StockFlow })
+				.find({
+					date: format(date, 'yyyy-MM-dd'),
+					type: 'inbound' satisfies StockFlow
+				})
 				.lean<IDailyInboundDefectiveGoodsReport[]>({ virtuals: true })
 
-		return await this.defectiveGoodsModel.aggregateWithDeleted<IDailyInboundDefectiveGoodsReport>([
-			{
-				$match: {
-					storage_location: { $ne: null },
-					inbound_at: { $gte: from, $lt: to }
-				}
-			},
-			{
-				$addFields: {
-					inbound_date_str: {
-						$dateToString: {
-							format: '%Y-%m-%d',
-							date: '$inbound_at'
-						}
-					}
-				}
-			},
-			{
-				$group: {
-					_id: {
-						inbound_at: '$inbound_date_str',
-						brand_name: '$brand_name',
-						po: '$po',
-						mo_no: '$mo_no',
-						cust_shoes_style: '$cust_shoes_style',
-						factory_shoes_style: '$factory_shoes_style',
-						color_sn: '$color_sn',
-						sewing_line: '$sewing_line',
-						assembly_line: '$assembly_line',
-						defective_category: '$defective_category',
-						shoe_source: '$shoe_source',
-						storage_location: '$storage_location',
-						size_numcode: '$size_numcode'
-					},
-					qty: { $sum: 1 }
-				}
-			},
-			{
-				$group: {
-					_id: {
-						inbound_at: '$_id.inbound_at',
-						brand_name: '$_id.brand_name',
-						po: '$_id.po',
-						mo_no: '$_id.mo_no',
-						cust_shoes_style: '$_id.cust_shoes_style',
-						factory_shoes_style: '$_id.factory_shoes_style',
-						color_sn: '$_id.color_sn',
-						sewing_line: '$_id.sewing_line',
-						assembly_line: '$_id.assembly_line',
-						defective_category: '$_id.defective_category',
-						shoe_source: '$_id.shoe_source',
-						storage_location: '$_id.storage_location'
-					},
-					size_ledger: {
-						$push: {
-							size_numcode: '$_id.size_numcode',
-							qty: '$qty'
-						}
-					},
-					total_qty: {
-						$sum: '$qty'
-					}
-				}
-			},
-			{
-				$lookup: {
-					from: 'departments',
-					localField: '_id.assembly_line',
-					foreignField: '_id',
-					as: 'assembly_line_info'
-				}
-			},
-			{
-				$lookup: {
-					from: 'departments',
-					localField: '_id.sewing_line',
-					foreignField: '_id',
-					as: 'sewing_line_info'
-				}
-			},
-			{
-				$addFields: {
-					assembly_line_info: { $first: '$assembly_line_info' },
-					sewing_line_info: { $first: '$sewing_line_info' }
-				}
-			},
-			{
-				$project: {
-					_id: 0,
-					date: '$_id.inbound_at',
-					brand_name: '$_id.brand_name',
-					po: '$_id.po',
-					mo_no: '$_id.mo_no',
-					cust_shoes_style: '$_id.cust_shoes_style',
-					factory_shoes_style: '$_id.factory_shoes_style',
-					color_sn: '$_id.color_sn',
-					defective_category: '$_id.defective_category',
-					sewing_line: '$sewing_line_info',
-					assembly_line: '$assembly_line_info',
-					shoe_source: '$_id.shoe_source',
-					storage_location: '$_id.storage_location',
-					size_ledger: 1,
-					total_qty: 1
-				}
-			},
-			{
-				$sort: {
-					date: 1,
-					brand_name: 1,
-					po: 1,
-					mo_no: 1
-				}
-			}
-		])
+		return await this.defectiveGoodsModel.aggregateWithDeleted<IDailyInboundDefectiveGoodsReport>(
+			defectiveGoodsDailyReportPipeline('inbound', { from, to })
+		)
 	}
 
 	async getDailyOutboundReport(date: Date) {
@@ -165,115 +58,9 @@ export class DefectiveGoodsReportRepository implements IDefectiveGoodsReportRepo
 				.find({ date: format(date, 'yyyy-MM-dd'), type: 'outbound' satisfies StockFlow })
 				.lean<IDailyOutboundDefectiveGoodsReport[]>({ virtuals: true })
 
-		return await this.defectiveGoodsModel.aggregateWithDeleted<IDailyOutboundDefectiveGoodsReport>([
-			{
-				$match: {
-					outbound_at: { $gte: from, $lt: to },
-					outbound_purpose: { $ne: null }
-				}
-			},
-			{
-				$addFields: {
-					outbound_date_str: {
-						$dateToString: {
-							format: '%Y-%m-%d',
-							date: '$outbound_at'
-						}
-					}
-				}
-			},
-			{
-				$group: {
-					_id: {
-						outbound_at: '$outbound_date_str',
-						brand_name: '$brand_name',
-						po: '$po',
-						mo_no: '$mo_no',
-						cust_shoes_style: '$cust_shoes_style',
-						factory_shoes_style: '$factory_shoes_style',
-						color_sn: '$color_sn',
-						sewing_line: '$sewing_line',
-						assembly_line: '$assembly_line',
-						defective_category: '$defective_category',
-						size_numcode: '$size_numcode',
-						shoe_source: '$shoe_source',
-						outbound_purpose: '$outbound_purpose'
-					},
-					qty: { $sum: 1 }
-				}
-			},
-			{
-				$group: {
-					_id: {
-						outbound_at: '$_id.outbound_at',
-						brand_name: '$_id.brand_name',
-						po: '$_id.po',
-						mo_no: '$_id.mo_no',
-						cust_shoes_style: '$_id.cust_shoes_style',
-						factory_shoes_style: '$_id.factory_shoes_style',
-						color_sn: '$_id.color_sn',
-						sewing_line: '$_id.sewing_line',
-						assembly_line: '$_id.assembly_line',
-						defective_category: '$_id.defective_category',
-						shoe_source: '$_id.shoe_source',
-						outbound_purpose: '$_id.outbound_purpose'
-					},
-					size_ledger: {
-						$push: {
-							size_numcode: '$_id.size_numcode',
-							qty: '$qty'
-						}
-					}
-				}
-			},
-			{
-				$lookup: {
-					from: 'departments',
-					localField: '_id.assembly_line',
-					foreignField: '_id',
-					as: 'assembly_line_info'
-				}
-			},
-			{
-				$lookup: {
-					from: 'departments',
-					localField: '_id.sewing_line',
-					foreignField: '_id',
-					as: 'sewing_line_info'
-				}
-			},
-			{
-				$addFields: {
-					assembly_line_info: { $first: '$assembly_line_info' },
-					sewing_line_info: { $first: '$sewing_line_info' }
-				}
-			},
-			{
-				$project: {
-					_id: 0,
-					date: '$_id.outbound_at',
-					brand_name: '$_id.brand_name',
-					po: '$_id.po',
-					mo_no: '$_id.mo_no',
-					cust_shoes_style: '$_id.cust_shoes_style',
-					factory_shoes_style: '$_id.factory_shoes_style',
-					color_sn: '$_id.color_sn',
-					assembly_line: '$assembly_line_info',
-					sewing_line: '$sewing_line_info',
-					defective_category: '$_id.defective_category',
-					shoe_source: '$_id.shoe_source',
-					outbound_purpose: '$_id.outbound_purpose',
-					size_ledger: 1
-				}
-			},
-			{
-				$sort: {
-					brand_name: 1,
-					po: 1,
-					mo_no: 1
-				}
-			}
-		])
+		return await this.defectiveGoodsModel.aggregateWithDeleted<IDailyOutboundDefectiveGoodsReport>(
+			defectiveGoodsDailyReportPipeline('outbound', { from, to })
+		)
 	}
 
 	async getInventoryReport() {
