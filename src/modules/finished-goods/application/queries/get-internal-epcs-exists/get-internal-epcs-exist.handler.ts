@@ -1,4 +1,5 @@
 import { DATA_WAREHOUSE_CONNECTION } from '@databases/constants'
+import { FinishedGoodsEpcStatus } from '@modules/finished-goods/domain/constants'
 import {
 	FinishedGoodsEpc,
 	FinishedGoodsEpcModel
@@ -16,9 +17,10 @@ export class GetInternalEpcsExistsHandler implements IQueryHandler<GetInternalEp
 
 	public async execute({ deviceSerialNumber }: GetInternalEpcsExistsQuery) {
 		const existedRecord = await this.finishedGoodsEpcModel
-			.exists({
+			.findOne({
 				scannable: true,
 				deleted: false,
+				status: FinishedGoodsEpcStatus.SCANNING,
 				inbound_device_sn: deviceSerialNumber,
 				epc: { $regex: /^E28/ }
 			})

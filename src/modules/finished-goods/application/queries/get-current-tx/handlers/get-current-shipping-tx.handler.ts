@@ -12,7 +12,6 @@ import { format } from 'date-fns'
 import Redis from 'ioredis'
 import { isEqual } from 'lodash'
 import pick from 'lodash/pick'
-import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
 import { ISizeLedgerFluctuation } from '../../../ports/inventory-ledger.repository.port'
 import { IInoutboundTransaction } from '../../../types'
 import { GetCurrentShippingTxQuery } from '../impl/get-current-shipping-tx.query'
@@ -20,7 +19,6 @@ import { GetCurrentShippingTxQuery } from '../impl/get-current-shipping-tx.query
 @QueryHandler(GetCurrentShippingTxQuery)
 export class GetCurrentShippingTxHandler implements IQueryHandler<GetCurrentShippingTxQuery> {
 	constructor(
-		@InjectPinoLogger(GetCurrentShippingTxHandler.name) private readonly logger: PinoLogger,
 		@InjectRedisClient() private readonly redisClient: Redis,
 		@InjectModel(FinishedGoodsEpc.name, DATA_WAREHOUSE_CONNECTION)
 		private readonly finishedGoodsEpcModel: FinishedGoodsEpcModel
@@ -39,6 +37,8 @@ export class GetCurrentShippingTxHandler implements IQueryHandler<GetCurrentShip
 		}>([
 			{
 				$match: {
+					scnnable: false,
+					deleted: false,
 					status: FinishedGoodsEpcStatus.SHIPPED,
 					$expr: {
 						$eq: [

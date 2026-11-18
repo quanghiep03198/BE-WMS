@@ -48,7 +48,7 @@ export class GetScanningEpcsHandler implements IQueryHandler<GetScanningEpcsQuer
 			customLabels: { docs: 'data' },
 			select: 'epc mo_no',
 			options: {
-				readPreference: 'secondary' satisfies mongo.ReadPreferenceMode,
+				readPreference: 'primary' satisfies mongo.ReadPreferenceMode,
 				hint: respectQueryHint[stockFlow]
 			}
 		})
