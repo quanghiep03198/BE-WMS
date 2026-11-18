@@ -42,7 +42,20 @@ export class InboundReportService {
 		this.logger.debug(date)
 
 		const docs = await this.dailyMoInventoryLedgerModel
-			.find({ date })
+			.find({
+				date,
+				$expr: {
+					$anyElementTrue: [
+						{
+							$map: {
+								input: { $objectToArray: { $ifNull: ['$transaction_history', {}] } },
+								as: 'transaction',
+								in: { $eq: ['$$transaction.v.voided', false] }
+							}
+						}
+					]
+				}
+			})
 			.populate([
 				{
 					path: 'mo_specification',
