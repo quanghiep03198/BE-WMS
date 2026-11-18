@@ -1,11 +1,13 @@
 # backup-mongo.ps1
 param(
-    [string]$BackupRoot = ""
+    [string]$BackupRoot = "",
+    [string]$DbHost = "rs0/localhost:27017,localhost:27018,localhost:27019",
+    [string]$DbName = "data_warehouse"
 )
 
 $projectRoot = Split-Path -Parent $PSScriptRoot
 if ([string]::IsNullOrWhiteSpace($BackupRoot)) {
-    $BackupRoot = Join-Path $projectRoot "backup\mongodb"
+    $BackupRoot = Join-Path $projectRoot ".backup\mongodb"
 }
 
 $timestamp  = Get-Date -Format "yyyy-MM-dd_HH-mm"
@@ -15,8 +17,8 @@ $logFile    = Join-Path $projectRoot "logs\backup.log"
 New-Item -ItemType Directory -Path $BackupRoot -Force | Out-Null
 New-Item -ItemType Directory -Path (Split-Path -Parent $logFile) -Force | Out-Null
 
-$mongohost  = "rs0/localhost:27017,localhost:27018,localhost:27019"
-$db         = "data_warehouse"
+$mongohost  = $DbHost
+$db         = $DbName
 
 function Resolve-MongodumpPath {
     $cmd = Get-Command mongodump -ErrorAction SilentlyContinue

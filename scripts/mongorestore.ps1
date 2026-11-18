@@ -1,12 +1,12 @@
 param(
 	[string]$BackupRoot = "",
-	[string]$MongoHost = "rs0/localhost:27017,localhost:27018,localhost:27019",
+	[string]$DbHost = "rs0/localhost:27017,localhost:27018,localhost:27019",
 	[switch]$Drop
 )
 
 $projectRoot = Split-Path -Parent $PSScriptRoot
 if ([string]::IsNullOrWhiteSpace($BackupRoot)) {
-	$BackupRoot = Join-Path $projectRoot "backup\mongodb"
+	$BackupRoot = Join-Path $projectRoot ".backup\mongodb"
 }
 
 $logFile = Join-Path $projectRoot "logs\restore.log"
@@ -82,12 +82,12 @@ try {
 
 	if ($Drop.IsPresent) {
 		& $mongorestorePath `
-			--host $MongoHost `
+			--host $DbHost `
 			--drop `
 			--dir $dumpRoot
 	} else {
 		& $mongorestorePath `
-			--host $MongoHost `
+			--host $DbHost `
 			--dir $dumpRoot
 	}
 
