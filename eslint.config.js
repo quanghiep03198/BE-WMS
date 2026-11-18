@@ -14,6 +14,7 @@ export default defineConfig(
 			'src/**/.tmp/*',
 			'src/**/deprecated/*',
 			'.deprecated',
+			'scripts/*',
 			'migrations',
 			'ecosystem.config.js',
 			'src/generated/i18n.generated.ts',
