@@ -14,7 +14,7 @@ export class MssqlManager {
 	) {}
 
 	public async connect() {
-		this.logger.info('Connecting to MSSQL ...')
+		this.logger.info(`Establishing connection to MSSQL server ${this.host ?? this.env.DB_HOST} ...`)
 		this.pool = await mssql.connect({
 			...migrationMssqlConfig(this.host ?? this.env.DB_HOST, this.env),
 			pool: {

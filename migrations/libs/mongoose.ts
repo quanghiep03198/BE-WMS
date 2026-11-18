@@ -13,7 +13,7 @@ export class MongoManager {
 
 	public async connect() {
 		try {
-			this.logger.info('Connecting to MongoDB...')
+			this.logger.info(`Establishing connection to MongoDB at ${this.env.MONGO_URI} ...`)
 			if (!this.env.MONGO_URI) throw new Error('MONGO_URI is required in migrations/.env')
 			this.client = await this.client.connect(this.env.MONGO_URI, {
 				dbName: this.dbName,

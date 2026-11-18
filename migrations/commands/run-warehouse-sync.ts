@@ -93,7 +93,6 @@ const defaultDependencies: WarehouseSyncDependencies = {
 
 export function createWarehouseSyncRunner(
 	dependencies: WarehouseSyncDependencies,
-	writeTerminal?: (line: string) => void,
 	shouldContinue?: (step: WarehouseSyncStep, error: unknown) => Promise<boolean>
 ): (pool: WarehouseSyncPool, database: mongo.Db, config: WarehouseSyncConfig, now?: Date) => Promise<void> {
 	return async (pool, database, config, now = new Date()) => {
@@ -117,12 +116,13 @@ export function createWarehouseSyncRunner(
 		}
 		const steps: WarehouseSyncStep[] = selectWarehouseSyncStages(config.step, config.fromStep).flatMap((name) => {
 			const step: WarehouseSyncStep = { name, run: () => dependencies[name](context).then(() => undefined) }
-			if (name !== 'purchase orders') return [step]
-			return [
-				{
-					name: 'deduplicate RFID backup records',
-					run: async () => {
-						await pool.request().query(/* SQL */ `
+
+			if (name === 'purchase orders')
+				return [
+					{
+						name: 'deduplicate RFID backup records',
+						run: async () => {
+							await pool.request().query(/* SQL */ `
 							WITH CTE AS (
 								SELECT EPC_Code, keyid, record_time,
 									ROW_NUMBER() OVER (
@@ -134,12 +134,31 @@ export function createWarehouseSyncRunner(
 							DELETE CTE
 							WHERE row_num > 1;
 						`)
-					}
-				},
-				step
-			]
+						}
+					},
+					step
+				]
+			else if (name === 'inventory audit')
+				return [
+					{
+						name: 'import mo inventory audit',
+						run: async () => {
+							const lastDayOfPreviousMonth = format(new Date(now.getFullYear(), now.getMonth(), 0), 'yyyy-MM-dd')
+							const today = format(now, 'yyyy-MM-dd')
+
+							pool.request().query(/* SQL */ `
+							DECLARE @lastDayOfPreviousMonth DATETIME = CAST('${lastDayOfPreviousMonth}' AS DATETIME);
+							DECLARE @today DATETIME = CAST('${today}' AS DATETIME);
+							EXEC DV_DATA_LAKE.dbo.sp_import_invprod_VER2 @lastDayOfPreviousMonth;
+							EXEC DV_DATA_LAKE.dbo.sp_import_invprod_VER2 @today;
+						`)
+						}
+					},
+					step
+				]
+			else return [step]
 		})
-		await runSteps(steps, config.logFilename, writeTerminal, shouldContinue)
+		await runSteps(steps, config.logFilename, shouldContinue)
 	}
 }
 
@@ -150,5 +169,5 @@ export async function runWarehouseSync(
 	now?: Date,
 	shouldContinue?: (step: WarehouseSyncStep, error: unknown) => Promise<boolean>
 ): Promise<void> {
-	await createWarehouseSyncRunner(defaultDependencies, undefined, shouldContinue)(pool, database, config, now)
+	await createWarehouseSyncRunner(defaultDependencies, shouldContinue)(pool, database, config, now)
 }

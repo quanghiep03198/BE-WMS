@@ -1,6 +1,6 @@
 import type { mongo } from 'mongoose'
 import { streamMssqlRows, type MssqlStreamRequest } from '../helpers/mssql-stream'
-import { PRODUCT_SPECIFICATIONS_SQL } from './product-specifications.sql'
+import { PRODUCT_SPECIFICATIONS_SQL } from '../sql/product-specifications.sql'
 
 interface ProductSpecification {
 	brand_name: string
@@ -42,13 +42,15 @@ export async function runProductSpecificationStep(
 		const variants: unknown = JSON.parse(row.product_variants)
 		if (!Array.isArray(variants) || variants.length === 0) throw new Error(`Invalid product variants for ${key}`)
 		for (const variant of variants) {
-			if (!variant || typeof variant !== 'object' || !('color_sn' in variant && 'sizes' in variant)) {
-				throw new Error(`Invalid product variant for ${key}`)
-			}
+			if (
+				!variant ||
+				typeof variant !== 'object' ||
+				!variant.color_sn ||
+				!Array.isArray(variant.sizes) ||
+				variant.sizes.length === 0
+			)
+				continue
 			const color = requiredText(variant.color_sn, 'color_sn')
-			if (!Array.isArray(variant.sizes)) {
-				throw new Error(`Invalid product sizes for ${key}`)
-			}
 			let sizes = specification.variants.get(color)
 			if (!sizes) {
 				sizes = new Set()

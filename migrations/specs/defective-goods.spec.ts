@@ -440,18 +440,29 @@ describe('runDefectiveGoodsStep', () => {
 		})
 	})
 
+	it('matches a numbered department name when the source includes 組 before its suffix', async () => {
+		const sewingLineId = new Types.ObjectId('650000000000000000000022')
+		const { database, documents } = memoryDatabase({
+			...references(),
+			departments: [{ _id: sewingLineId, name: { cn: '針車6_B02' } }]
+		})
+		await runDefectiveGoodsStep(
+			memoryPool([defectiveGoodsRow({ assembly_line: null, sewing_line: '針車6組_B02' })]).pool,
+			database
+		)
+		expect(documents('defective_goods')[0].sewing_line).toEqual(sewingLineId)
+	})
+
 	it('does not match a shorter numeric line as a prefix of a different line', async () => {
-		const { database, writes } = memoryDatabase({
+		const { database, documents } = memoryDatabase({
 			...references(),
 			departments: [
 				{ _id: new Types.ObjectId('650000000000000000000021'), name: { cn: 'Assembly A' } },
 				{ _id: new Types.ObjectId('650000000000000000000022'), name: { cn: '針車1' } }
 			]
 		})
-		await expect(
-			runDefectiveGoodsStep(memoryPool([defectiveGoodsRow({ sewing_line: '針車10組' })]).pool, database)
-		).rejects.toThrow('Unresolved defective goods sewing_line 針車10組')
-		expect(writes).toHaveLength(0)
+		await runDefectiveGoodsStep(memoryPool([defectiveGoodsRow({ sewing_line: '針車10組' })]).pool, database)
+		expect(documents('defective_goods')[0].sewing_line).toBeNull()
 	})
 
 	it('treats regex characters in department names literally', async () => {
@@ -542,12 +553,16 @@ describe('runDefectiveGoodsStep', () => {
 		}
 	})
 
-	it('continues to reject non-null unmatched department names before writing', async () => {
-		const { database, writes } = memoryDatabase(references())
-		await expect(
-			runDefectiveGoodsStep(memoryPool([defectiveGoodsRow({ sewing_line: 'Unknown' })]).pool, database)
-		).rejects.toThrow('Unresolved defective goods sewing_line Unknown')
-		expect(writes).toHaveLength(0)
+	it('sets unmatched non-null department names to null and warns', async () => {
+		const warn = jest.spyOn(console, 'warn').mockImplementation(() => undefined)
+		try {
+			const { database, documents } = memoryDatabase(references())
+			await runDefectiveGoodsStep(memoryPool([defectiveGoodsRow({ sewing_line: 'Unknown' })]).pool, database)
+			expect(documents('defective_goods')[0].sewing_line).toBeNull()
+			expect(warn).toHaveBeenCalledWith('Unresolved defective goods sewing_line Unknown; using null')
+		} finally {
+			warn.mockRestore()
+		}
 	})
 
 	it('preserves deleted state from the legacy source flags', async () => {

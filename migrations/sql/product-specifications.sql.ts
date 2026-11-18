@@ -43,6 +43,5 @@ export const PRODUCT_SPECIFICATIONS_SQL = /* SQL */ `
                   AND cl.product_variants IS NOT NULL
                   AND shoestyle_codecust IS NOT NULL
                   AND c.brand_code IN ('UG', 'TV', 'KB')
-						-- AND (a.created >= CAST(DATEADD(DAY, -7, GETDATE()) AS DATE) OR a.updated >= CAST(DATEADD(DAY, -7, GETDATE()) AS DATE))
          ORDER BY brand_name ASC;
 			`

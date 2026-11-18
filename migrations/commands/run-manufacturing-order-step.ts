@@ -1,8 +1,8 @@
 import { orderSearchGrams } from '@modules/order/schemas/order-search-grams.plugin'
 import type { mongo } from 'mongoose'
 import { streamMssqlRows, type MssqlStreamRequest } from '../helpers/mssql-stream'
+import { manufacturingOrdersSql } from '../sql/manufacturing-orders.sql'
 import { getVietnamCutoffSqlDate } from './cutoff'
-import { manufacturingOrdersSql } from './manufacturing-orders.sql'
 import { isEligibleMoNo } from './mo-no'
 
 function requiredText(value: unknown, name: string): string {

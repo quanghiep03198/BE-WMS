@@ -1,3 +1,4 @@
+import { EPCGenerator } from '@modules/defective-goods/application/helpers/epc-generator'
 import {
 	CombinationStrategy,
 	DefectiveCategory,
@@ -14,6 +15,7 @@ import { escapeRegExp } from 'lodash'
 import mongoose, { Types, type ClientSession, type mongo } from 'mongoose'
 import { createHash } from 'node:crypto'
 import { streamMssqlRows, type MssqlStreamRequest } from '../helpers/mssql-stream'
+import { Logger } from '../utils/logger'
 import { rebuildDefectiveGoodsDailyReports } from './defective-goods-daily-report'
 
 // LIKE also prioritizes inactive flags surrounded by whitespace accepted by trim(); invalid flags are rejected later.
@@ -171,11 +173,12 @@ function resolveReference(
 	field: string,
 	missingUsers: Set<string>
 ): Types.ObjectId | null {
+	const logger = new Logger('Data Migration')
 	const username = optionalText(value, field)
 	if (username === null) return null
 	const id = ids.get(username)
 	if (!id && !missingUsers.has(username)) {
-		console.warn(`Unresolved defective goods user ${username}; using null`)
+		logger.warn(`Unresolved defective goods user "${username}"; using null`)
 		missingUsers.add(username)
 	}
 	return id ?? null
@@ -185,18 +188,23 @@ function createDepartmentResolver(ids: Map<string, Types.ObjectId>) {
 	const patterns = [...ids].map(([name, id]) => ({
 		name,
 		id,
-		pattern: new RegExp(`${escapeRegExp(name)}${/\d$/.test(name) ? '(?![0-9])' : ''}`)
+		pattern: new RegExp(`${escapeRegExp(name).replace(/(\d)(?=_)/g, '$1組?')}${/\d$/.test(name) ? '(?![0-9])' : ''}`)
 	}))
-	const cache = new Map<string, Types.ObjectId>()
-	return (value: unknown, field: string): Types.ObjectId | undefined => {
+	const cache = new Map<string, Types.ObjectId | null>()
+	return (value: unknown, field: string): Types.ObjectId | null | undefined => {
 		const name = optionalText(value, field)
 		if (name === null) return undefined
-		const exact = ids.get(name) ?? cache.get(name)
+		const exact = ids.get(name)
 		if (exact) return exact
+		if (cache.has(name)) return cache.get(name) ?? null
 		const matches = patterns.filter((candidate) => candidate.pattern.test(name))
 		matches.sort((a, b) => b.name.length - a.name.length || a.id.toHexString().localeCompare(b.id.toHexString()))
 		const match = matches[0]
-		if (!match) throw new Error(`Unresolved defective goods ${field} ${name}`)
+		if (!match) {
+			console.warn(`Unresolved defective goods ${field} ${name}; using null`)
+			cache.set(name, null)
+			return null
+		}
 		if (matches.length > 1) {
 			console.warn(`Ambiguous defective goods department ${name}; using ${match.name} (${match.id})`)
 		}
@@ -250,20 +258,26 @@ export async function runDefectiveGoodsStep(
 	const stagingName = `defective_goods_report_staging_${new Types.ObjectId().toHexString()}`
 	await collection.aggregate([{ $out: stagingName }]).toArray()
 	const staging = database.collection(stagingName)
+	const logger = new Logger('Data Migration')
 	try {
 		await staging.createIndex(
 			{ source_keyid: 1 },
 			{ unique: true, partialFilterExpression: { source_keyid: { $exists: true } } }
 		)
+		const epcGenerator = new EPCGenerator()
 		for await (const source of streamMssqlRows(pool.request(), DEFECTIVE_GOODS_SQL)) {
 			const row = rowObject(source)
 			if (typeof row.keyid !== 'number' || !Number.isSafeInteger(row.keyid) || row.keyid <= 0) {
+				logger.warn(`Invalid defective goods keyid. Skipping row with EPC: ${row.epc}`)
 				throw new Error('Invalid defective goods keyid')
 			}
 			const existing = await collection.findOne({ source_keyid: row.keyid })
 			const _id = existing?._id ?? new Types.ObjectId()
-			const epc = requiredText(row.epc, 'epc')
-			if (epc.length !== 24) throw new Error('Invalid defective goods epc')
+			const epc =
+				requiredText(row.epc, 'epc') && String(row.epc).startsWith('E28')
+					? String(row.epc)
+					: epcGenerator.generate()
+
 			const factoryShoesStyle = requiredText(row.factory_shoes_style, 'factory_shoes_style').toUpperCase()
 			const custShoesStyle = requiredText(row.cust_shoes_style, 'cust_shoes_style')
 			const colorSn = requiredText(row.color_sn, 'color_sn')
@@ -305,8 +319,8 @@ export async function runDefectiveGoodsStep(
 					size_numcode: sizeNumcode,
 					defective_category: defectiveCategory,
 					shoe_source: shoeSource,
-					...(assemblyLine && { assembly_line: assemblyLine }),
-					...(sewingLine && { sewing_line: sewingLine }),
+					...(assemblyLine !== undefined && { assembly_line: assemblyLine }),
+					...(sewingLine !== undefined && { sewing_line: sewingLine }),
 					combination_strategy: combinationStrategy,
 					defective_location: defectiveLocation,
 					unit,
@@ -318,7 +332,8 @@ export async function runDefectiveGoodsStep(
 					updated_by: resolveReference(row.user_code_updated, userIds, 'user_code_updated', missingUsers),
 					deleted,
 					deleted_at: deleted ? now : null,
-					updated_at: now
+					updated_at: now,
+					legacy_epc: requiredText(row.epc, 'epc')
 				},
 				$setOnInsert: { created_at: now, source_keyid: row.keyid }
 			}

@@ -1,8 +1,8 @@
 import { orderSearchGrams } from '@modules/order/schemas/order-search-grams.plugin'
 import type { mongo } from 'mongoose'
 import { streamMssqlRows, type MssqlStreamRequest } from '../helpers/mssql-stream'
+import { purchaseOrdersSql } from '../sql/purchase-orders.sql'
 import { getVietnamCutoffSqlDate } from './cutoff'
-import { purchaseOrdersSql } from './purchase-orders.sql'
 
 const OUTSTANDING_PURCHASE_ORDERS_SQL = /* SQL */ `
 	SELECT DISTINCT po, po_qty, outbound_qty, outbound_date, inv_sizes

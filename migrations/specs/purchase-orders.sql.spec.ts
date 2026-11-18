@@ -1,4 +1,4 @@
-import { PURCHASE_ORDERS_SQL } from '../commands/purchase-orders.sql'
+import { PURCHASE_ORDERS_SQL } from '../sql/purchase-orders.sql'
 
 describe('purchase order source SQL', () => {
 	it('selects one preferred source row per PO before joining order sizes', () => {
