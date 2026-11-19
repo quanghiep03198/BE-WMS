@@ -90,7 +90,6 @@ export class TruckloadDeliveryRepository implements ITruckloadDeliveryRepository
 				security_2_signature: { $ne: null },
 				$or: [{ license_plate_image: null }, { license_plate_capture_time: null }]
 			})
-			.read('secondary' satisfies mongo.ReadPreferenceMode)
 			.lean<LeanDocument<TruckloadDeliveryDocument>[]>()
 		return docs.map((row) => DispatchOrderModel.fromPersistence(this.toProps(row)))
 	}
@@ -237,7 +236,6 @@ export class TruckloadDeliveryRepository implements ITruckloadDeliveryRepository
 		const docs = await this.truckloadDeliveryModel
 			.find(buildDispatchOrderFilter(query.where))
 			.sort(buildDispatchOrderSort(query.sort))
-			.read('secondary' satisfies mongo.ReadPreferenceMode)
 			.lean<LeanDocument<TruckloadDeliveryDocument>[]>({ autopopulate: true, virtuals: true })
 
 		return docs.map((doc) => {
@@ -256,14 +254,12 @@ export class TruckloadDeliveryRepository implements ITruckloadDeliveryRepository
 	async sumDispatchedQtyByPo(pos: string[]): Promise<Map<string, number>> {
 		if (pos.length === 0) return new Map()
 
-		const rows = await this.truckloadDeliveryModel
-			.aggregate<{ _id: string; dispatched_outbound_qty: number }>([
-				{ $match: { 'packing.po': { $in: pos } } },
-				{ $unwind: '$packing' },
-				{ $match: { 'packing.po': { $in: pos } } },
-				{ $group: { _id: '$packing.po', dispatched_outbound_qty: { $sum: '$packing.outbound_qty' } } }
-			])
-			.read('secondaryPreferred')
+		const rows = await this.truckloadDeliveryModel.aggregate<{ _id: string; dispatched_outbound_qty: number }>([
+			{ $match: { 'packing.po': { $in: pos } } },
+			{ $unwind: '$packing' },
+			{ $match: { 'packing.po': { $in: pos } } },
+			{ $group: { _id: '$packing.po', dispatched_outbound_qty: { $sum: '$packing.outbound_qty' } } }
+		])
 
 		return new Map(rows.map((row) => [row._id, row.dispatched_outbound_qty]))
 	}
