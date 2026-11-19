@@ -82,6 +82,7 @@ export class FinishedGoodsEpcMatchCdcHandler implements ICdcHandler {
 					}>([
 						{
 							$match: {
+								scannable: { $in: [true, false] },
 								epc: { $in: change.data.map((row) => row.epc) },
 								status: { $ne: FinishedGoodsEpcStatus.SHIPPED }
 							}
