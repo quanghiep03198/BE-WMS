@@ -23,7 +23,12 @@ export interface IDefectiveGoodsRepository extends IBaseRepository<IDefectiveGoo
 	find(
 		filter?: Partial<IDefectiveGoods> | Record<string, any>,
 		projection?: Nullish<Record<string, any> | string>,
-		options?: Partial<{ read: 'primary' | 'secondary'; limit: number; skip: number; sort: any }>
+		options?: Partial<{
+			read: 'primary' | 'primaryPreferred' | 'secondary' | 'secondaryPreferred'
+			limit: number
+			skip: number
+			sort: any
+		}>
 	): Promise<DefectiveGoodsDomainModel[]>
 	findOne(filter?: Partial<IDefectiveGoods> | Record<string, any>): Promise<IDefectiveGoods>
 	findById(id: string | TObjectId, session?: ClientSession): Promise<DefectiveGoodsDomainModel>
