@@ -52,7 +52,7 @@ export class MongoQueryBuilder<T extends Record<string, any>> {
 	// ==================== Internal helpers ====================
 
 	private isPresent(value: unknown): boolean {
-		return !isNil(value)
+		return !isNil(value) && value !== ''
 	}
 
 	/** Escapes special characters so the string is safe to use in a RegExp (prevents regex injection) */
