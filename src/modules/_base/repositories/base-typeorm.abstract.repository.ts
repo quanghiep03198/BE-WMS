@@ -1,6 +1,13 @@
 import { Injectable } from '@nestjs/common'
-import { DeepPartial, DeleteResult, FindManyOptions, FindOptionsWhere, Repository, UpdateResult } from 'typeorm'
-import { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity'
+import {
+	DeepPartial,
+	DeleteResult,
+	FindManyOptions,
+	FindOptionsWhere,
+	QueryDeepPartialEntity,
+	Repository,
+	UpdateResult
+} from 'typeorm'
 import { BaseAbstractEntity } from '../base.abstract.entity'
 import { PaginationDTO } from '../dto/pagination.dto'
 import { IBaseTypeOrmRepository } from '../interfaces/base-typeorm.repository.interface'

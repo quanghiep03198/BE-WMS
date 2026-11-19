@@ -1,4 +1,3 @@
-import { CommonRequestHeader } from '@common/constants'
 import {
 	FlushCache,
 	HttpMethod,
@@ -50,7 +49,6 @@ import {
 	Body,
 	Controller,
 	DefaultValuePipe,
-	Headers,
 	HttpStatus,
 	Param,
 	ParseDatePipe,
@@ -60,7 +58,6 @@ import {
 } from '@nestjs/common'
 import { CommandBus, QueryBus } from '@nestjs/cqrs'
 import { ParseObjectIdPipe } from '@nestjs/mongoose'
-import { format } from 'date-fns'
 import { FastifyReply } from 'fastify'
 import isEmpty from 'lodash/isEmpty'
 import isNil from 'lodash/isNil'
@@ -222,12 +219,11 @@ export class DefectiveGoodsController {
 	})
 	@RequireAuthorized(UserRole.MANAGER, UserRole.DG_WAREHOUSE_STAFF, UserRole.INDUSTRIAL_ENGINEERING_STAFF)
 	async exportDailyOutboundReport(
-		@Query('date:eq', new ZodValidationPipe(z.coerce.date().transform((value) => format(value, 'yyyy-MM-dd'))))
-		date: string,
-		@Headers(CommonRequestHeader.FACTORY_CODE) factoryCode: string,
+		@Query('date:eq', new ZodValidationPipe(z.coerce.date()))
+		date: Date,
 		@Res() reply: FastifyReply
 	) {
-		const buffer = await this.queryBus.execute(new ExportDailyInboundReportQuery(date, factoryCode))
+		const buffer = await this.queryBus.execute(new ExportDailyInboundReportQuery(date))
 		return reply.send(buffer)
 	}
 	// #endregion

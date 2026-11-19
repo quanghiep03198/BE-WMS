@@ -1,21 +1,15 @@
-import { Logger } from '@nestjs/common'
 import { AggregateRoot } from '@nestjs/cqrs'
 import { entries, groupBy } from 'lodash'
 import { StockedInEvent } from '../events/stocked-in/stocked-in.event'
 import { ExcessInboundOrderException } from '../exceptions/excess-order.exception'
 import { ElectronicProductCode } from '../value-objects/epc.vo'
 import { SizeNumber } from '../value-objects/size-number.vo'
+import { isValidMoSizeProgress, type MoSizeProgress } from './mo-size-progress'
 
 export class StockInTransaction extends AggregateRoot {
-	private readonly logger = new Logger(StockInTransaction.name)
-
 	constructor(
 		private readonly pendingInStockEpcs: Array<ElectronicProductCode>,
-		private readonly moInventory: Array<{
-			size_numcode: SizeNumber
-			order_qty: number
-			instock_qty: number
-		}> = [],
+		private readonly moInventory: MoSizeProgress[] = [],
 		private readonly id: string
 	) {
 		super()
@@ -32,28 +26,21 @@ export class StockInTransaction extends AggregateRoot {
 				inbound_qty: epcs.length
 			})
 		)
-		this.logger.debug(this.moInventory)
+		const excessedOrderSizes = transactionalSizeQty.flatMap(({ size_numcode, inbound_qty }) => {
+			const progress = this.moInventory.find((item) => item.size_numcode.isEqual(size_numcode))
+			if (isValidMoSizeProgress(progress, inbound_qty)) return []
 
-		const outstandingOrderQty = this.moInventory.map((inboundSizeDetail) => {
-			const tx = transactionalSizeQty.find((incoming) =>
-				inboundSizeDetail.size_numcode.isEqual(incoming.size_numcode)
-			)
-			if (!tx)
-				return {
-					size_numcode: inboundSizeDetail.size_numcode.getValue(),
-					missing_qty: inboundSizeDetail.order_qty - inboundSizeDetail.instock_qty
+			return [
+				{
+					size_numcode: size_numcode.getValue(),
+					missing_qty:
+						progress && Number.isFinite(progress.order_qty)
+							? progress.order_qty - progress.instock_qty - progress.shipped_out_qty - inbound_qty
+							: -inbound_qty
 				}
-			return {
-				size_numcode: inboundSizeDetail.size_numcode.getValue(),
-				missing_qty: inboundSizeDetail.order_qty - inboundSizeDetail.instock_qty - tx.inbound_qty
-			}
+			]
 		})
-
-		const excessedOrderSizes = outstandingOrderQty.filter((size) => size.missing_qty < 0)
-
-		const isOrderExcessed = excessedOrderSizes.length > 0
-
-		if (isOrderExcessed) throw new ExcessInboundOrderException('', { cause: excessedOrderSizes })
+		if (excessedOrderSizes.length) throw new ExcessInboundOrderException('', { cause: excessedOrderSizes })
 
 		this.apply(new StockedInEvent(this.pendingInStockEpcs))
 

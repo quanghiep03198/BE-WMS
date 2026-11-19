@@ -146,7 +146,7 @@ export function createWarehouseSyncRunner(
 							const lastDayOfPreviousMonth = format(new Date(now.getFullYear(), now.getMonth(), 0), 'yyyy-MM-dd')
 							const today = format(now, 'yyyy-MM-dd')
 
-							pool.request().query(/* SQL */ `
+							await pool.request().query(/* SQL */ `
 							DECLARE @lastDayOfPreviousMonth DATETIME = CAST('${lastDayOfPreviousMonth}' AS DATETIME);
 							DECLARE @today DATETIME = CAST('${today}' AS DATETIME);
 							EXEC DV_DATA_LAKE.dbo.sp_import_invprod_VER2 @lastDayOfPreviousMonth;

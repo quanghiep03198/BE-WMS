@@ -59,9 +59,10 @@ export class RFIDDeviceController {
 	@RequireAuthorized(UserRole.MANAGER)
 	async createRFIDDevice(
 		@Body(new ZodValidationPipe(createRFIDDeviceValidator)) payload: CreateRFIDDeviceDTO,
+		@RequestUser('_id') userId: Types.ObjectId,
 		@RequestUser('username') username: string
 	) {
-		const createdDevice = await this.rfidDeviceRepository.createOne({ ...payload, created_by: username })
+		const createdDevice = await this.rfidDeviceRepository.createOne({ ...payload, created_by: userId })
 		this.eventEmitter.emit(
 			CREATED_RFID_DEVICE_EVENT,
 			new CreatedRFIDDeviceEvent(
@@ -87,11 +88,12 @@ export class RFIDDeviceController {
 	async updateRFIDDevice(
 		@Param('id', ParseObjectIdPipe) id: Types.ObjectId,
 		@Body(new ZodValidationPipe(updateRFIDDeviceValidator)) payload: UpdateRFIDDeviceDTO,
+		@RequestUser('_id') userId: Types.ObjectId,
 		@RequestUser('username') username: string
 	) {
 		const { prev, update } = await this.rfidDeviceRepository.findOneAndUpdate(id, {
 			...payload,
-			updated_by: username
+			updated_by: userId
 		})
 		this.eventEmitter.emit(
 			UPDATED_RFID_DEVICE_EVENT,

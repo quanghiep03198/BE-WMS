@@ -4,12 +4,15 @@ import {
 	IPendingInventoryFluctuation
 } from '@modules/finished-goods/application/ports/inventory-ledger.repository.port'
 import { FinishedGoodsEpcStatus } from '@modules/finished-goods/domain/constants'
+import { ExcessInboundOrderException } from '@modules/finished-goods/domain/exceptions/excess-order.exception'
+import { InsufficientInventoryException } from '@modules/finished-goods/domain/exceptions/insufficient-inventory.exception'
+import { StockTransactionNotRollbackableException } from '@modules/finished-goods/domain/exceptions/stock-transaction-not-rollbackable.exception'
 import { ElectronicProductCode } from '@modules/finished-goods/domain/value-objects/epc.vo'
 import { Inject, Injectable } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
 import { flatten, unflatten } from 'flat'
 import { omitBy, pick, pickBy } from 'lodash'
-import { mongo } from 'mongoose'
+import { mongo, type FilterQuery } from 'mongoose'
 
 import { IInoutboundTransaction } from '@modules/finished-goods/application/types'
 import {
@@ -21,7 +24,6 @@ import {
 	ManufacturingOrderDocument,
 	ManufacturingOrderModel
 } from '@modules/order/schemas/manufacturing-order.schema'
-import { orderSearchGrams } from '@modules/order/schemas/order-search-grams.plugin'
 import { PurchaseOrder, PurchaseOrderModel } from '@modules/order/schemas/purchase-order.schema'
 import { InjectTransactionHost, TransactionHost } from '@nestjs-cls/transactional'
 import { TransactionalAdapterMongoose } from '@nestjs-cls/transactional-adapter-mongoose'
@@ -74,6 +76,45 @@ export class InventoryLedgerRepository implements IInventoryLedgerRepository {
 				decrementExpression[field] = -decrementExpression[field]
 		}
 		return decrementExpression
+	}
+
+	private createManufacturingOrderQuantityConditions(
+		delta: Record<InventoryFluctuationIncrementKey, mongo.NumericType>
+	) {
+		const sizes = new Set(Object.keys(delta).map((path) => path.split('.')[1]))
+		return Array.from(sizes, (size) => {
+			const sizePath = `size_ledger.${size}` as const
+			const after = (field: 'stocked_in_qty' | 'total_return_tx' | 'total_recall_tx' | 'shipped_out_qty') => {
+				const path = `${sizePath}.${field}` as const
+				return { $add: [{ $ifNull: [`$${path}`, 0] }, delta[path] ?? 0] }
+			}
+			const effectiveInbound = {
+				$subtract: [{ $add: [after('stocked_in_qty'), after('total_return_tx')] }, after('total_recall_tx')]
+			}
+			const shippedOut = after('shipped_out_qty')
+			const orderQty = `$${sizePath}.order_qty`
+			return {
+				$and: [
+					{ $isNumber: orderQty },
+					{ $gte: [shippedOut, 0] },
+					{ $lte: [shippedOut, effectiveInbound] },
+					{ $lte: [effectiveInbound, orderQty] }
+				]
+			}
+		})
+	}
+
+	private createManufacturingOrderGuardFilter(
+		change: IPendingInventoryFluctuation,
+		delta: Record<InventoryFluctuationIncrementKey, mongo.NumericType>
+	): FilterQuery<ManufacturingOrderDocument> {
+		return {
+			mo_no: change.mo_no,
+			factory_code_produce: change.factory_code_produce,
+			factory_shoes_style: change.factory_shoes_style,
+			color_sn: change.color_sn,
+			$expr: { $and: this.createManufacturingOrderQuantityConditions(delta) }
+		}
 	}
 
 	public async getPendingInventoryFluctuation(
@@ -204,6 +245,14 @@ export class InventoryLedgerRepository implements IInventoryLedgerRepository {
 		for (const size in txSizeLedger) {
 			delete txSizeLedger[size].shipped_out_qty
 		}
+		const inventoryUpdate = await this.manufacturingOrderModel.updateOne(
+			this.createManufacturingOrderGuardFilter(pendingInventoryFluctuation, incrementExpression),
+			{ $inc: incrementExpression },
+			{ session: this.txHost.tx }
+		)
+		if (inventoryUpdate.matchedCount !== 1)
+			throw new ExcessInboundOrderException('Inbound order exceeded the persisted manufacturing-order limit')
+
 		await this.dailyMoInventoryLedgerModel.updateOne(
 			pick(pendingInventoryFluctuation, ['mo_no']),
 			{
@@ -211,17 +260,13 @@ export class InventoryLedgerRepository implements IInventoryLedgerRepository {
 				$inc: omitBy(incrementExpression, (_, key) => key.endsWith('shipped_out_qty')),
 				[`transaction_history.${transactionId}`]: {
 					time: format(new Date(), 'HH:mm'),
+					tx_type: 'stock_in',
 					assembly_line: pendingStockInEpcs.at(0).getAssemblyLine('id'),
 					storage_location: pendingStockInEpcs.at(0).getStorageLocation('id'),
 					size_ledger: txSizeLedger,
 					voided: false
 				}
 			},
-			{ upsert: true, session: this.txHost.tx }
-		)
-		await this.manufacturingOrderModel.updateOne(
-			pick(pendingInventoryFluctuation, ['mo_no', 'factory_code_produce', 'factory_shoes_style', 'color_sn']),
-			{ $inc: incrementExpression },
 			{ upsert: true, session: this.txHost.tx }
 		)
 		await this.inventoryAuditRepository.updateInventoryAuditFluctuation(pendingInventoryFluctuation)
@@ -250,23 +295,21 @@ export class InventoryLedgerRepository implements IInventoryLedgerRepository {
 				})
 				return {
 					updateOne: {
-						filter: {
-							mo_no: mo.mo_no,
-							factory_code_produce: mo.factory_code_produce,
-							factory_shoes_style: mo.factory_shoes_style,
-							color_sn: mo.color_sn
-						},
+						filter: this.createManufacturingOrderGuardFilter(mo, incrementExpression),
 						update: {
-							$inc: incrementExpression,
-							$setOnInsert: { search_ngrams: orderSearchGrams(mo.mo_no) }
-						},
-						upsert: true
+							$inc: incrementExpression
+						}
 					}
 				}
 			}
 		)
 
-		await this.manufacturingOrderModel.bulkWrite(bulkWriteMasterFluctuationOperator, bulkWriteConcernSettings)
+		const inventoryUpdate = await this.manufacturingOrderModel.bulkWrite(
+			bulkWriteMasterFluctuationOperator,
+			bulkWriteConcernSettings
+		)
+		if (inventoryUpdate.matchedCount !== fluctuation.length)
+			throw new InsufficientInventoryException('Insufficient manufacturing-order inventory for ship-out')
 
 		await this.inventoryAuditRepository.updateInventoryAuditFluctuation(fluctuation)
 
@@ -290,6 +333,15 @@ export class InventoryLedgerRepository implements IInventoryLedgerRepository {
 			delete txSizeLedger[size].shipped_out_qty
 		}
 
+		const recallIncrement = pickBy(incrementExpression, (_, key) => key.endsWith('total_recall_tx'))
+		const inventoryUpdate = await this.manufacturingOrderModel.updateOne(
+			this.createManufacturingOrderGuardFilter(pendingInventoryFluctuation, recallIncrement),
+			{ $inc: recallIncrement },
+			{ session: this.txHost.tx }
+		)
+		if (inventoryUpdate.matchedCount !== 1)
+			throw new InsufficientInventoryException('Insufficient manufacturing-order inventory for recall')
+
 		await this.dailyMoInventoryLedgerModel.updateOne(
 			{ mo_no: pendingInventoryFluctuation.mo_no, date },
 			{
@@ -298,6 +350,7 @@ export class InventoryLedgerRepository implements IInventoryLedgerRepository {
 				[`transaction_history.${transactionId}`]: {
 					date,
 					time: format(new Date(), 'HH:mm'),
+					tx_type: 'recall',
 					size_ledger: txSizeLedger,
 					voided: false
 				}
@@ -305,34 +358,137 @@ export class InventoryLedgerRepository implements IInventoryLedgerRepository {
 			{ session: this.txHost.tx, upsert: true }
 		)
 
-		await this.manufacturingOrderModel.updateOne(
-			pick(pendingInventoryFluctuation, ['mo_no', 'factory_code_produce', 'factory_shoes_style', 'color_sn']),
-			{ $inc: pickBy(incrementExpression, (_, key) => key.endsWith('total_recall_tx')) },
-			{ session: this.txHost.tx }
-		)
-
 		await this.inventoryAuditRepository.updateInventoryAuditFluctuation(pendingInventoryFluctuation)
 
 		return pendingInventoryFluctuation
 	}
 
-	async rollbackInboundFluctuation({ id, mo_no, changes }: IInoutboundTransaction<'inbound'>) {
+	async getInboundTransactionHistory(
+		transactionId: string
+	): Promise<(IInoutboundTransaction<'inbound'> & { date: string }) | undefined> {
+		const ledger = await this.dailyMoInventoryLedgerModel
+			.findOne({ [`transaction_history.${transactionId}`]: { $exists: true } })
+			.read('primary')
+			.session(this.txHost.tx)
+			.exec()
+		if (!ledger) return undefined
+
+		const history = ledger.transaction_history.get(transactionId)
+		if (!history) return undefined
+
+		const changes = Object.fromEntries(
+			Array.from(history.size_ledger, ([size, fluctuation]) => [
+				size,
+				{
+					stocked_in_qty: fluctuation.stocked_in_qty ?? 0,
+					total_recall_tx: fluctuation.total_recall_tx ?? 0,
+					total_return_tx: fluctuation.total_return_tx ?? 0,
+					shipped_out_qty: 0
+				}
+			])
+		)
+		const tx_type =
+			history.tx_type ??
+			(Object.values(changes).some((size) => size.stocked_in_qty > 0 || size.total_return_tx > 0)
+				? 'stock_in'
+				: 'recall')
+		const qty = Object.values(changes).reduce(
+			(sum, size) =>
+				sum + (tx_type === 'stock_in' ? size.stocked_in_qty + size.total_return_tx : size.total_recall_tx),
+			0
+		)
+
+		return {
+			id: transactionId,
+			mo_no: ledger.mo_no,
+			qty,
+			tx_at: `${ledger.date} ${history.time}:00`,
+			tx_type,
+			changes,
+			voided: history.voided ?? false,
+			date: ledger.date
+		}
+	}
+
+	async getOutboundTransactionHistory(
+		transactionId: string
+	): Promise<(IInoutboundTransaction<'outbound'> & { date: string }) | undefined> {
+		const ledger = await this.dailyPoShippingProgressModel
+			.findOne({ [`transaction_history.${transactionId}`]: { $exists: true } })
+			.read('primary')
+			.session(this.txHost.tx)
+			.exec()
+		if (!ledger) return undefined
+
+		const history = ledger.transaction_history.get(transactionId)
+		if (!history) return undefined
+
+		const changes = Object.entries(history.packing).map(([mo_no, packing]) => ({
+			mo_no,
+			size_ledger: Object.fromEntries(
+				Object.entries(packing).map(([size, shipped_out_qty]) => [size, { shipped_out_qty }])
+			)
+		}))
+		const qty = changes.reduce(
+			(sum, change) =>
+				sum + Object.values(change.size_ledger).reduce((sizeSum, item) => sizeSum + item.shipped_out_qty, 0),
+			0
+		)
+
+		return {
+			id: transactionId,
+			po: ledger.po,
+			qty,
+			tx_at: `${ledger.date} ${history.time}:00`,
+			tx_type: 'stock_out',
+			changes,
+			voided: history.voided ?? false,
+			date: ledger.date
+		}
+	}
+
+	private createRollbackCounterConditions(
+		decrementExpression: Record<string, mongo.NumericType>
+	): Array<Record<string, unknown>> {
+		return Object.entries(decrementExpression).map(([path, decrement]) => ({
+			$gte: [{ $ifNull: [`$${path}`, 0] }, -Number(decrement)]
+		}))
+	}
+
+	async rollbackInboundFluctuation({ id, mo_no, changes, tx_at }: IInoutboundTransaction<'inbound'>) {
 		const decrementExpression = this.createInventoryDecrementExpression({
 			mo_no,
 			size_ledger: changes
 		})
+		const date = tx_at.slice(0, 10)
+		const decrementConditions = this.createRollbackCounterConditions(decrementExpression)
 
-		await this.dailyMoInventoryLedgerModel.updateOne(
-			{ mo_no, date: format(new Date(), 'yyyy-MM-dd') },
-			{ $inc: decrementExpression, [`transaction_history.${id}.voided`]: true },
+		const dailyLedgerUpdate = await this.dailyMoInventoryLedgerModel.updateOne(
+			{
+				mo_no,
+				date,
+				[`transaction_history.${id}`]: { $exists: true },
+				[`transaction_history.${id}.voided`]: { $ne: true },
+				$expr: { $and: decrementConditions }
+			},
+			{ $inc: decrementExpression, $set: { [`transaction_history.${id}.voided`]: true } },
 			{ session: this.txHost.tx }
 		)
+		if (dailyLedgerUpdate.matchedCount !== 1)
+			throw new StockTransactionNotRollbackableException('Inbound transaction counters are no longer rollbackable')
 
-		await this.manufacturingOrderModel.updateOne(
-			{ mo_no },
+		const manufacturingOrderUpdate = await this.manufacturingOrderModel.updateOne(
+			{
+				mo_no,
+				$expr: {
+					$and: [...decrementConditions, ...this.createManufacturingOrderQuantityConditions(decrementExpression)]
+				}
+			},
 			{ $inc: decrementExpression },
 			{ session: this.txHost.tx }
 		)
+		if (manufacturingOrderUpdate.matchedCount !== 1)
+			throw new StockTransactionNotRollbackableException('Manufacturing-order counters are no longer rollbackable')
 
 		await this.inventoryAuditRepository.updateInventoryAuditFluctuation({
 			mo_no,
@@ -340,7 +496,8 @@ export class InventoryLedgerRepository implements IInventoryLedgerRepository {
 		})
 	}
 
-	public async rollbackOutboundFluctuation({ id, po, changes }: IInoutboundTransaction<'outbound'>) {
+	public async rollbackOutboundFluctuation({ id, po, changes, tx_at }: IInoutboundTransaction<'outbound'>) {
+		const date = tx_at.slice(0, 10)
 		const decrementExpressionMap = new Map(
 			changes.map((change) => [
 				change.mo_no,
@@ -352,54 +509,73 @@ export class InventoryLedgerRepository implements IInventoryLedgerRepository {
 			])
 		)
 
-		await this.dailyPoShippingProgressModel.bulkWrite(
-			changes.map((change) => {
-				const decrementExpression: Record<`${string}.${string}`, mongo.NumericType> = Object.entries(
-					change.size_ledger
-				).reduce((acc, [size, { shipped_out_qty }]) => {
-					acc[`shipping_progress.${change.mo_no}.${size}`] = -shipped_out_qty
-					return acc
-				}, {})
-
-				return {
-					updateOne: {
-						filter: { po, date: format(new Date(), 'yyyy-MM-dd') },
-						update: { $inc: decrementExpression, [`transaction_history.${id}.voided`]: true }
-					}
-				}
-			}),
-			{ session: this.txHost.tx, ordered: false }
-		)
-
-		await this.purchaseOrderModel.updateOne(
-			{ po },
+		const dailyDecrementExpression = changes.reduce<Record<string, mongo.NumericType>>((acc, change) => {
+			for (const [size, { shipped_out_qty }] of Object.entries(change.size_ledger))
+				acc[`shipping_progress.${change.mo_no}.${size}`] =
+					Number(acc[`shipping_progress.${change.mo_no}.${size}`] ?? 0) - shipped_out_qty
+			return acc
+		}, {})
+		const dailyConditions = Object.entries(dailyDecrementExpression).map(([path, decrement]) => ({
+			$gte: [{ $ifNull: [`$${path}`, 0] }, -Number(decrement)]
+		}))
+		const dailyLedgerUpdate = await this.dailyPoShippingProgressModel.updateOne(
 			{
-				$inc: changes.reduce((acc, change) => {
-					Object.entries(change.size_ledger).forEach(([size, { shipped_out_qty }]) => {
-						acc[`shipping_progress.${size}.shipped_out_qty`] =
-							(acc[`shipping_progress.${size}.shipped_out_qty`] ?? 0) - shipped_out_qty
-					})
-					return acc
-				}, {})
+				po,
+				date,
+				[`transaction_history.${id}`]: { $exists: true },
+				[`transaction_history.${id}.voided`]: { $ne: true },
+				$expr: { $and: dailyConditions }
 			},
+			{ $inc: dailyDecrementExpression, $set: { [`transaction_history.${id}.voided`]: true } },
 			{ session: this.txHost.tx }
 		)
+		if (dailyLedgerUpdate.matchedCount !== 1)
+			throw new StockTransactionNotRollbackableException('Outbound transaction history is no longer rollbackable')
 
-		await this.manufacturingOrderModel.bulkWrite(
+		const purchaseOrderDecrementExpression = changes.reduce<Record<string, mongo.NumericType>>((acc, change) => {
+			for (const [size, { shipped_out_qty }] of Object.entries(change.size_ledger))
+				acc[`shipping_progress.${size}.shipped_out_qty`] =
+					Number(acc[`shipping_progress.${size}.shipped_out_qty`] ?? 0) - shipped_out_qty
+			return acc
+		}, {})
+		const purchaseOrderConditions = Object.entries(purchaseOrderDecrementExpression).map(([path, decrement]) => ({
+			$gte: [{ $ifNull: [`$${path}`, 0] }, -Number(decrement)]
+		}))
+		const purchaseOrderUpdate = await this.purchaseOrderModel.updateOne(
+			{ po, $expr: { $and: purchaseOrderConditions } },
+			{ $inc: purchaseOrderDecrementExpression },
+			{ session: this.txHost.tx }
+		)
+		if (purchaseOrderUpdate.matchedCount !== 1)
+			throw new StockTransactionNotRollbackableException('Purchase-order counters are no longer rollbackable')
+
+		const manufacturingOrderUpdates = await this.manufacturingOrderModel.bulkWrite(
 			Array.from(decrementExpressionMap, ([manufacturingOrder, decrementExpression]) => ({
 				updateOne: {
-					filter: { mo_no: manufacturingOrder },
+					filter: {
+						mo_no: manufacturingOrder,
+						$expr: {
+							$and: [
+								...this.createRollbackCounterConditions(decrementExpression),
+								...this.createManufacturingOrderQuantityConditions(decrementExpression)
+							]
+						}
+					},
 					update: { $inc: decrementExpression }
 				}
 			})),
 			{ session: this.txHost.tx, ordered: false }
 		)
+		if (manufacturingOrderUpdates.matchedCount !== decrementExpressionMap.size)
+			throw new StockTransactionNotRollbackableException('Manufacturing-order counters are no longer rollbackable')
 
-		decrementExpressionMap.forEach(async (decrementExpression, manufacturingOrder) => {
-			await this.inventoryAuditRepository.updateInventoryAuditFluctuation({
-				mo_no: manufacturingOrder,
-				...unflatten(decrementExpression, { object: true })
+		await Promise.all(
+			Array.from(decrementExpressionMap, async ([manufacturingOrder, decrementExpression]) => {
+				await this.inventoryAuditRepository.updateInventoryAuditFluctuation({
+					mo_no: manufacturingOrder,
+					...unflatten(decrementExpression, { object: true })
+				})
 			})
-		})
+		)
 	}
 }

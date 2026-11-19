@@ -4,15 +4,12 @@ import { RecalledFromStockEvent } from '../events/recalled-from-stock/recalled-f
 import { InsufficientInventoryException } from '../exceptions/insufficient-inventory.exception'
 import { ElectronicProductCode } from '../value-objects/epc.vo'
 import { SizeNumber } from '../value-objects/size-number.vo'
+import { isValidMoSizeProgress, type MoSizeProgress } from './mo-size-progress'
 
 export class RecallFromStockTransaction extends AggregateRoot {
 	constructor(
 		public readonly pendingRecallEpcs: Array<ElectronicProductCode>,
-		public readonly moInventory: Array<{
-			size_numcode: SizeNumber
-			order_qty: number
-			instock_qty: number
-		}> = [],
+		public readonly moInventory: MoSizeProgress[] = [],
 		private readonly id: string
 	) {
 		super()
@@ -30,26 +27,16 @@ export class RecallFromStockTransaction extends AggregateRoot {
 			})
 		)
 
-		const inStockQty = this.moInventory.map((inboundSizeDetail) => {
-			const incomming = transactionalSizeQty.find((incoming) =>
-				inboundSizeDetail.size_numcode.isEqual(incoming.size_numcode)
-			)
-			if (!incomming)
-				return {
-					size_numcode: inboundSizeDetail.size_numcode.getValue(),
-					instock_qty: inboundSizeDetail.instock_qty
-				}
-			return {
-				size_numcode: inboundSizeDetail.size_numcode.getValue(),
-				instock_qty: inboundSizeDetail.instock_qty - incomming.recall_qty
-			}
+		const invalidSizes = transactionalSizeQty.flatMap(({ size_numcode, recall_qty }) => {
+			const progress = this.moInventory.find((item) => item.size_numcode.isEqual(size_numcode))
+			if (isValidMoSizeProgress(progress, -recall_qty)) return []
+
+			return [{ size_numcode: size_numcode.getValue(), instock_qty: (progress?.instock_qty ?? 0) - recall_qty }]
 		})
 
-		const isInventoryInsufficient = inStockQty.some((size) => size.instock_qty < 0)
-
-		if (isInventoryInsufficient)
-			throw new InsufficientInventoryException('Insufficient inventory for recall', {
-				cause: inStockQty.filter((size) => size.instock_qty < 0)
+		if (invalidSizes.length)
+			throw new InsufficientInventoryException('MO size inventory or order limit violated for recall', {
+				cause: invalidSizes
 			})
 
 		this.apply(new RecalledFromStockEvent(this.pendingRecallEpcs))

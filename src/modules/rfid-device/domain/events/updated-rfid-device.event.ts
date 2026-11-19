@@ -1,7 +1,8 @@
 import { RFIDDeviceType } from '../constants'
+import type { IRFIDDevice } from '../interfaces/rfid-device.interface'
 
 type RFIDDeviceSnapshot = {
-	name: { vi: string; en: string; cn: string }
+	name: IRFIDDevice['device_name']
 	station_no: string
 	tcp_ip: string
 	type: RFIDDeviceType

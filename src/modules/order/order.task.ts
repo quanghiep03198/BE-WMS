@@ -261,8 +261,8 @@ export class OrderTask {
 		)
 
 		const bulkWriteOperators = purchaseOrders.map<AnyBulkWriteOperation<PurchaseOrderDocument>>((item) => {
-			item.shipping_progress = SuperJson.isValid(item.shipping_progress)
-				? SuperJson.parse<PurchaseOrder['shipping_progress']>(item.shipping_progress)
+			const shippingProgress = SuperJson.isValid(item.shipping_progress)
+				? SuperJson.parse<Record<string, { order_qty: number }>>(item.shipping_progress)
 				: {}
 
 			item.packing = SuperJson.isValid(item.packing) ? SuperJson.parse<PurchaseOrder['packing']>(item.packing) : {}
@@ -283,10 +283,10 @@ export class OrderTask {
 						},
 						$set: {
 							search_ngrams: orderSearchGrams(item.po),
-							...flatten(pick(item, 'shipping_progress')),
+							...flatten({ shipping_progress: shippingProgress }),
 							...flatten(pick(item, 'packing'))
 						},
-						$inc: Object.keys(item.shipping_progress).reduce(
+						$inc: Object.keys(shippingProgress).reduce(
 							(acc, size) => ({ ...acc, [`shipping_progress.${size}.shipped_out_qty`]: 0 }),
 							{}
 						)

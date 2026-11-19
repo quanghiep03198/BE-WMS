@@ -5,6 +5,7 @@ import {
 	ExcessOutboundOrderException
 } from '@modules/finished-goods/domain/exceptions/excess-order.exception'
 import { InsufficientInventoryException } from '@modules/finished-goods/domain/exceptions/insufficient-inventory.exception'
+import { StockTransactionNotRollbackableException } from '@modules/finished-goods/domain/exceptions/stock-transaction-not-rollbackable.exception'
 import { ArgumentsHost, Catch, ExceptionFilter, HttpStatus, UnauthorizedException } from '@nestjs/common'
 import { HttpAdapterHost } from '@nestjs/core'
 import { JsonWebTokenError, TokenExpiredError } from '@nestjs/jwt'
@@ -46,6 +47,12 @@ export class StockExceptionFilter implements ExceptionFilter {
 			case exception instanceof InsufficientInventoryException: {
 				message = i18n.t('inoutbound.notification.insufficient_inventory', { lang: i18n.lang })
 				statusCode = HttpStatus.BAD_REQUEST
+				cause = exception.cause
+				break
+			}
+			case exception instanceof StockTransactionNotRollbackableException: {
+				message = exception.message
+				statusCode = HttpStatus.CONFLICT
 				cause = exception.cause
 				break
 			}
