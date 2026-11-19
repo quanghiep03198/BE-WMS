@@ -14,6 +14,6 @@ export class GetProductionInventoryHandler implements IQueryHandler<GetProductio
 	) {}
 
 	public async execute(query: GetProductionInventoryQuery) {
-		return this.productionInventoryRepository.getProductionInventory(query)
+		return await this.productionInventoryRepository.getProductionInventory(query)
 	}
 }
