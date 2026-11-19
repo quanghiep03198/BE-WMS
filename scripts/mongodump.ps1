@@ -63,7 +63,7 @@ Log "Using mongodump: $mongodumpPath"
     --host        $mongohost `
     --db          $db `
     --out         $backupPath `
-    --readPreference "secondaryPreferred"
+    --readPreference "primary"
 
 if ($LASTEXITCODE -eq 0) {
     Log "SUCCESS: $backupPath"
@@ -74,17 +74,37 @@ if ($LASTEXITCODE -eq 0) {
 
 # --- Nén folder backup vừa tạo ---
 $zipPath = "$backupPath.zip"
-if (Test-Path $zipPath) {
-    Remove-Item $zipPath -Force
-}
-Compress-Archive -Path $backupPath -DestinationPath $zipPath
-if ($LASTEXITCODE -eq 0) {
-    Remove-Item $backupPath -Recurse -Force
-    Log "COMPRESSED: $zipPath"
-} else {
-    Log "ERROR: compress backup failed"
+$tempZipPath = "$zipPath.$([guid]::NewGuid().ToString('N')).tmp"
+try {
+    Add-Type -AssemblyName System.IO.Compression.FileSystem -ErrorAction Stop
+    $sourcePath = (Get-Item -LiteralPath $backupPath -ErrorAction Stop).FullName
+    $tempZipFullPath = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($tempZipPath)
+    [System.IO.Compression.ZipFile]::CreateFromDirectory(
+        $sourcePath,
+        $tempZipFullPath,
+        [System.IO.Compression.CompressionLevel]::Optimal,
+        $true
+    )
+    Move-Item -LiteralPath $tempZipPath -Destination $zipPath -ErrorAction Stop
+} catch {
+    Log "ERROR: compress backup failed: $($_.Exception.Message)"
+    if (Test-Path -LiteralPath $tempZipPath) {
+        try {
+            Remove-Item -LiteralPath $tempZipPath -Force -ErrorAction Stop
+        } catch {
+            Log "ERROR: could not remove incomplete archive ${tempZipPath}: $($_.Exception.Message)"
+        }
+    }
     exit 1
 }
+
+try {
+    Remove-Item -LiteralPath $backupPath -Recurse -Force -ErrorAction Stop
+} catch {
+    Log "ERROR: could not remove dump directory ${backupPath}: $($_.Exception.Message)"
+    exit 1
+}
+Log "COMPRESSED: $zipPath"
 
 # --- Chỉ giữ lại bản backup mới nhất ---
 Get-ChildItem -Path $BackupRoot -Filter "*.zip" -File |
