@@ -270,6 +270,43 @@ integration('StockTransactionMongoRepository rollback with MongoDB', () => {
 		expect((await finishedGoodsEpcModel.findOne({ epc }).lean()).status).toBe(FinishedGoodsEpcStatus.IN_STOCK)
 	})
 
+	it.each([0, 1])('restores a scanning EPC after recall rollback with inbound_times=%i', async (inboundTimes) => {
+		const moNo = id('MO')
+		const transactionId = id('RC')
+		const epc = epcId()
+		await createMo(moNo, { orderQty: 1, stockedInQty: 1 })
+		await createEpc(epc, moNo, FinishedGoodsEpcStatus.SCANNING, inboundTimes)
+		await stockTransactionRepository.recallFromStock(transactionId, [recallEpc(epc, moNo)])
+
+		await stockTransactionRepository.rollbackInboundTransaction(transactionId)
+
+		expect(await finishedGoodsEpcModel.findOne({ epc }).lean()).toMatchObject({
+			status: FinishedGoodsEpcStatus.SCANNING,
+			inbound_times: inboundTimes
+		})
+	})
+
+	it('rejects legacy recall rollback when the prior EPC status is unknown', async () => {
+		const mo_no = id('MO')
+		const transactionId = id('RC')
+		const epc = epcId()
+		await createMo(mo_no, { orderQty: 1, stockedInQty: 1 })
+		await createEpc(epc, mo_no, FinishedGoodsEpcStatus.SCANNING, 1)
+		await stockTransactionRepository.recallFromStock(transactionId, [recallEpc(epc, mo_no)])
+		await finishedGoodsEpcModel.updateOne({ epc }, { $unset: { status_before_recall: 1 } })
+		const ledgerBefore = await dailyMoInventoryLedgerModel.findOne({ mo_no }).lean()
+		const orderBefore = await manufacturingOrderModel.findOne({ mo_no }).lean()
+		const epcBefore = await finishedGoodsEpcModel.findOne({ epc }).lean()
+
+		await expect(stockTransactionRepository.rollbackInboundTransaction(transactionId)).rejects.toBeInstanceOf(
+			StockTransactionNotRollbackableException
+		)
+
+		expect(await dailyMoInventoryLedgerModel.findOne({ mo_no }).lean()).toEqual(ledgerBefore)
+		expect(await manufacturingOrderModel.findOne({ mo_no }).lean()).toEqual(orderBefore)
+		expect(await finishedGoodsEpcModel.findOne({ epc }).lean()).toEqual(epcBefore)
+	})
+
 	it('rejects recall rollback when its freed size capacity has been filled', async () => {
 		const mo_no = id('MO')
 		const recallId = id('RC')

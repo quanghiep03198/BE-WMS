@@ -90,6 +90,9 @@ export class FinishedGoodsEpc {
 	@Prop({ type: String, enum: Object.values(FinishedGoodsEpcStatus), default: FinishedGoodsEpcStatus.SCANNING })
 	status: FinishedGoodsEpcStatus
 
+	@Prop({ type: String, enum: [FinishedGoodsEpcStatus.SCANNING, FinishedGoodsEpcStatus.IN_STOCK] })
+	status_before_recall?: FinishedGoodsEpcStatus.SCANNING | FinishedGoodsEpcStatus.IN_STOCK
+
 	@Prop({ type: String })
 	last_tx: string
 }

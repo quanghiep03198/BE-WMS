@@ -30,6 +30,7 @@ type RollbackEpc = {
 	scannable: boolean
 	deleted: boolean
 	inbound_times?: number
+	status_before_recall?: FinishedGoodsEpcStatus.SCANNING | FinishedGoodsEpcStatus.IN_STOCK
 }
 
 type RollbackResult = {
@@ -239,12 +240,17 @@ export class StockTransactionMongoRepository implements IStockTransactionReposit
 				status: { $in: [FinishedGoodsEpcStatus.SCANNING, FinishedGoodsEpcStatus.IN_STOCK] },
 				epc: { $in: pendingRecallEpcs.map((e) => e.getStockKeepingUnit()) }
 			},
-			{
-				recalled_at: new Date(),
-				status: FinishedGoodsEpcStatus.RECALLED,
-				storage_location: null,
-				last_tx: transactionId
-			},
+			[
+				{
+					$set: {
+						status_before_recall: '$status',
+						recalled_at: '$$NOW',
+						status: FinishedGoodsEpcStatus.RECALLED,
+						storage_location: null,
+						last_tx: { $literal: transactionId }
+					}
+				}
+			],
 			{ session: this.txHost.tx }
 		)
 		if (epcUpdate.matchedCount !== pendingRecallEpcs.length)
@@ -306,7 +312,8 @@ export class StockTransactionMongoRepository implements IStockTransactionReposit
 					size_numcode: 1,
 					scannable: 1,
 					deleted: 1,
-					inbound_times: 1
+					inbound_times: 1,
+					status_before_recall: 1
 				},
 				{ lean: true, session: this.txHost.tx, readPreference: 'primary' }
 			)
@@ -335,7 +342,7 @@ export class StockTransactionMongoRepository implements IStockTransactionReposit
 						status: {
 							$cond: [
 								{ $eq: ['$status', FinishedGoodsEpcStatus.RECALLED] },
-								FinishedGoodsEpcStatus.IN_STOCK,
+								'$status_before_recall',
 								FinishedGoodsEpcStatus.SCANNING
 							]
 						},
@@ -346,7 +353,8 @@ export class StockTransactionMongoRepository implements IStockTransactionReposit
 							$cond: [{ $eq: ['$status', FinishedGoodsEpcStatus.IN_STOCK] }, null, '$assembly_line']
 						}
 					}
-				}
+				},
+				{ $unset: 'status_before_recall' }
 			],
 			{ session: this.txHost.tx }
 		)
@@ -432,6 +440,12 @@ export class StockTransactionMongoRepository implements IStockTransactionReposit
 				(transaction.tx_type === 'stock_in' && (epc.inbound_times ?? 0) < 1)
 			)
 				throw new StockTransactionNotRollbackableException('Inbound EPC state no longer matches its transaction')
+			if (
+				transaction.tx_type === 'recall' &&
+				epc.status_before_recall !== FinishedGoodsEpcStatus.SCANNING &&
+				epc.status_before_recall !== FinishedGoodsEpcStatus.IN_STOCK
+			)
+				throw new StockTransactionNotRollbackableException('EPC status before recall is unknown')
 		}
 
 		if (expected.size === 0 || !this.haveSameCounts(expected, actual))

@@ -178,6 +178,8 @@ Kết quả mong đợi: các guard và rollback idempotent qua trên replica se
 
 ## Ghi chú bàn giao
 
+Rollback recall khôi phục trạng thái EPC đã ghi ngay trước lúc thu hồi. Nếu giao dịch cũ không lưu trạng thái của một EPC, rollback bị từ chối toàn bộ và không thay đổi EPC hay sổ kho. Số lần nhập kho không đủ để phân biệt `SCANNING` và `IN_STOCK`.
+
 **Bổ sung về hạn mức MO/size:** Mỗi size được cập nhật phải thỏa `0 <= shipped_out_qty <= stocked_in_qty + total_return_tx - total_recall_tx <= order_qty` trên chính document `manufacturing_orders`. Xuất không giải phóng hạn mức nhập; recall giải phóng hạn mức, nên EPC đã nhập lại hợp lệ có thể được thu hồi lần nữa. Stock-out vẫn phải thỏa thêm hạn mức PO/size. MongoDB kiểm trạng thái sau ghi trong cùng transaction với EPC và ledger, kể cả khi rollback. MO đặt 60 EPC size 05 và 40 EPC size 06 phải từ chối lô 50/50 và chấp nhận lô 60/40 nếu toàn bộ hạn mức còn trống.
 
 Domain check trong bộ nhớ tiếp tục giúp từ chối sớm và đưa lỗi nghiệp vụ phù hợp; atomic predicate trên MongoDB là lớp bảo vệ cuối cùng trước race condition. Không dùng mutex trong một process hoặc Redis lock, nhờ đó nhiều instance ứng dụng và nhiều kho cùng được bảo vệ. Không đưa các file inventory đang thay đổi ngoài phạm vi vào commit này.
