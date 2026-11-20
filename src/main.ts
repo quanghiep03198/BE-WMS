@@ -105,7 +105,10 @@ async function bootstrap() {
 		await app.register(import('@fastify/multipart'), {
 			limits: { files: 500, fieldSize: 1024 * 1024, fileSize: 10 * 1024 * 1024 }
 		})
-		await app.register(import('@fastify/helmet'), { global: true })
+		await app.register(import('@fastify/helmet'), {
+			global: true,
+			crossOriginResourcePolicy: { policy: 'cross-origin' }
+		})
 		await app.register(import('@fastify/compress'), {
 			global: true,
 			encodings: ['br', 'gzip', 'deflate'],
