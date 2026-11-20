@@ -63,11 +63,13 @@ UserSchema.pre('save', function (next) {
 
 UserSchema.virtual('avatar').get(function () {
 	const BASE_AVATAR_URL = 'https://api.dicebear.com'
-	const avatarURL = new URL(`/10.x/voxel-bot/svg`, BASE_AVATAR_URL)
+	const avatarURL = new URL(`/10.x/initials/svg`, BASE_AVATAR_URL)
 
-	avatarURL.searchParams.set('backgroundColor', 'e4e4e7')
-	avatarURL.searchParams.set('tags', 'animation')
+	const backgroundColors = ['6b705c', 'a5a58d', 'b98b73', '7c9082', '8e9aaf', '9c6b58']
+	const randomColor = backgroundColors[Math.floor(Math.random() * backgroundColors.length)]
+
 	avatarURL.searchParams.set('seed', this.display_name || this.username)
+	avatarURL.searchParams.set('backgroundColor', randomColor)
 
 	// backgroundColor=0f0f12&bodyColor=e9ecef,ced4da&accentColor=23262b&screenColor=07070a&glowColor=ff2e88,00e5ff,7cff00,ffe600,b400ff
 
