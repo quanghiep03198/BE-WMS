@@ -7,6 +7,6 @@ import { GetDefectiveGoodsQuery } from './get-defective-goods.query'
 export class GetDefectiveGoodsHandler implements IQueryHandler<GetDefectiveGoodsQuery> {
 	constructor(@Inject(DEFECTIVE_GOODS_REPOSITORY) private readonly repository: IDefectiveGoodsRepository) {}
 	async execute({ filter, page, limit }: GetDefectiveGoodsQuery) {
-		return await this.repository.paginate(filter, { page, limit })
+		return await this.repository.paginate(filter as Record<string, any>, { page, limit })
 	}
 }

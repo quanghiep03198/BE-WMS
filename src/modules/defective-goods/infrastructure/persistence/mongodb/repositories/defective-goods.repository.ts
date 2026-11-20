@@ -111,6 +111,8 @@ export class DefectiveGoodsRepository
 			.whereEqual('size_numcode')
 			.whereEqual('sewing_line')
 			.whereEqual('assembly_line')
+			.whereEqual('mo_no')
+			.whereEqual('po')
 			.whereDateEqual('created_at')
 			.build()
 

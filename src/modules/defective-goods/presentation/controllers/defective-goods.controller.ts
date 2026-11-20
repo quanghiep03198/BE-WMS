@@ -59,9 +59,6 @@ import {
 import { CommandBus, QueryBus } from '@nestjs/cqrs'
 import { ParseObjectIdPipe } from '@nestjs/mongoose'
 import { FastifyReply } from 'fastify'
-import isEmpty from 'lodash/isEmpty'
-import isNil from 'lodash/isNil'
-import omitBy from 'lodash/omitBy'
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
 import z from 'zod'
 import { DefectiveGoodsExceptionFilter } from '../filters/defective-goods-exception.filter'
@@ -85,13 +82,7 @@ export class DefectiveGoodsController {
 		filterQueries: FilterQueryDTO,
 		@Query('page', new DefaultValuePipe(1), new ParseIntPipe()) page: number
 	) {
-		return await this.queryBus.execute(
-			new GetDefectiveGoodsQuery(
-				omitBy(filterQueries, (value) => isNil(value) || isEmpty(value)),
-				page,
-				10
-			)
-		)
+		return await this.queryBus.execute(new GetDefectiveGoodsQuery(filterQueries, page, 10))
 	}
 
 	@RouteHandler({
