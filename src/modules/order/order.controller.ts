@@ -55,6 +55,10 @@ export class OrderController {
 		return await this.orderRepository.getOnePurchaseOrder(po)
 	}
 
+	/**
+	 * @description Retrieves a manufacturing order in the application's database (MongoDB)
+	 * @param mo
+	 */
 	@RouteHandler({
 		endpoint: '/manufacturing-order/:mo',
 		method: HttpMethod.GET
@@ -65,7 +69,25 @@ export class OrderController {
 		UserRole.DG_WAREHOUSE_STAFF,
 		UserRole.INDUSTRIAL_ENGINEERING_STAFF
 	)
-	async getOrderDetail(@Param('mo') mo: string) {
+	async getOneManufacturingOrder(@Param('mo') mo: string) {
+		return await this.orderRepository.getOneManufacturingOrder(mo)
+	}
+
+	/**
+	 * @description Retrieves a manufacturing order in MSSQL
+	 * @param mo
+	 */
+	@RouteHandler({
+		endpoint: '/manufacturing-order/raw/:mo',
+		method: HttpMethod.GET
+	})
+	@RequireAuthorized(
+		UserRole.MANAGER,
+		UserRole.FG_WAREHOUSE_STAFF,
+		UserRole.DG_WAREHOUSE_STAFF,
+		UserRole.INDUSTRIAL_ENGINEERING_STAFF
+	)
+	async getOneRawManufacturingOrder(@Param('mo') mo: string) {
 		return await this.orderRepository.getOneRawManufacturingOrder(mo)
 	}
 }
