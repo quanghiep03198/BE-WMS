@@ -106,6 +106,7 @@ export class DailyMoInventoryLedger {
 export const DailyMoInventoryLedgerSchema = SchemaFactory.createForClass(DailyMoInventoryLedger)
 
 DailyMoInventoryLedgerSchema.index({ date: 1, mo_no: 1 }, { name: 'idx_date_mo', unique: true })
+DailyMoInventoryLedgerSchema.index({ mo_no: 1 }, { name: 'idx_mo' })
 
 DailyMoInventoryLedgerSchema.plugin(MongooseLeanVirtuals)
 

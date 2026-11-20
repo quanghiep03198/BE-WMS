@@ -31,7 +31,7 @@ import { ShippingProgressMongoRepository } from './infrastructure/persistence/mo
 import {
 	StockHistoryOutboxRepository,
 	StockHistoryOutboxWorker
-} from './infrastructure/persistence/mongodb/repositories/stock-history-outbox'
+} from './infrastructure/persistence/mongodb/repositories/stock-history-outbox.repository'
 import { StockTransactionIdMongoGenerator } from './infrastructure/persistence/mongodb/repositories/stock-transaction-id-mongo.generator'
 import { StockTransactionMongoRepository } from './infrastructure/persistence/mongodb/repositories/stock-transaction-mongo.repository'
 import {

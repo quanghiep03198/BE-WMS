@@ -1,7 +1,10 @@
 import mongoose from 'mongoose'
 import { randomUUID } from 'node:crypto'
-import { StockTransactionSequence, StockTransactionSequenceSchema } from '../schemas/stock-transaction-sequence.schema'
-import { StockTransactionIdMongoGenerator } from './stock-transaction-id-mongo.generator'
+import {
+	StockTransactionSequence,
+	StockTransactionSequenceSchema
+} from '../../schemas/stock-transaction-sequence.schema'
+import { StockTransactionIdMongoGenerator } from '../stock-transaction-id-mongo.generator'
 
 const uri = process.env.STOCK_TX_TEST_MONGO_URI
 const integration = uri ? describe : describe.skip

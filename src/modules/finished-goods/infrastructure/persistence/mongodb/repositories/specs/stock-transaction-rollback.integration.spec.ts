@@ -10,14 +10,14 @@ import { TransactionalAdapterMongoose } from '@nestjs-cls/transactional-adapter-
 import Redis from 'ioredis'
 import mongoose, { Types } from 'mongoose'
 import { randomUUID } from 'node:crypto'
-import { DailyMoInventoryLedger, DailyMoInventoryLedgerSchema } from '../schemas/daily-mo-inventory-ledger.schema'
-import { DailyPoShippingProgress, DailyPoShippingProgressSchema } from '../schemas/daily-po-shipping-progress.schema'
-import { FinishedGoodsEpc, FinishedGoodsEpcSchema } from '../schemas/finished-goods-epc.schema'
-import { StockHistoryOutbox, StockHistoryOutboxSchema } from '../schemas/stock-history-outbox.schema'
-import { InventoryLedgerRepository } from './inventory-ledger.repository'
-import { ShippingProgressMongoRepository } from './shipping-progress-mongo.repository'
-import { StockHistoryOutboxRepository, StockHistoryOutboxWorker } from './stock-history-outbox'
-import { StockTransactionMongoRepository } from './stock-transaction-mongo.repository'
+import { DailyMoInventoryLedger, DailyMoInventoryLedgerSchema } from '../../schemas/daily-mo-inventory-ledger.schema'
+import { DailyPoShippingProgress, DailyPoShippingProgressSchema } from '../../schemas/daily-po-shipping-progress.schema'
+import { FinishedGoodsEpc, FinishedGoodsEpcSchema } from '../../schemas/finished-goods-epc.schema'
+import { StockHistoryOutbox, StockHistoryOutboxSchema } from '../../schemas/stock-history-outbox.schema'
+import { InventoryLedgerRepository } from '../inventory-ledger.repository'
+import { ShippingProgressMongoRepository } from '../shipping-progress-mongo.repository'
+import { StockHistoryOutboxRepository, StockHistoryOutboxWorker } from '../stock-history-outbox.repository'
+import { StockTransactionMongoRepository } from '../stock-transaction-mongo.repository'
 
 const uri = process.env.STOCK_TX_TEST_MONGO_URI
 const integration = uri ? describe : describe.skip

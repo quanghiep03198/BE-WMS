@@ -17,7 +17,7 @@ import { AnyBulkWriteOperation, mongo, type MongooseBulkWriteOptions } from 'mon
 import { FinishedGoodsEpc, FinishedGoodsEpcDocument, FinishedGoodsEpcModel } from '../schemas/finished-goods-epc.schema'
 import { InventoryLedgerRepository } from './inventory-ledger.repository'
 import { ShippingProgressMongoRepository } from './shipping-progress-mongo.repository'
-import { StockHistoryOutboxRepository } from './stock-history-outbox'
+import { StockHistoryOutboxRepository } from './stock-history-outbox.repository'
 
 type RollbackEpc = {
 	epc: string

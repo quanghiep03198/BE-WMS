@@ -1,4 +1,4 @@
-import { StockTransactionIdMongoGenerator } from './stock-transaction-id-mongo.generator'
+import { StockTransactionIdMongoGenerator } from '../stock-transaction-id-mongo.generator'
 
 describe('StockTransactionIdMongoGenerator', () => {
 	const counters = new Map<string, number>()
