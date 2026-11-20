@@ -67,18 +67,5 @@ export class OrderController {
 	)
 	async getOrderDetail(@Param('mo') mo: string) {
 		return await this.orderRepository.getOneRawManufacturingOrder(mo)
-
-		// const [orders, sizes] = await Promise.all([
-		// 	this.orderService.getCustOrderByCommandNumber(commandNumber),
-		// 	this.orderService.getSizeRunByCommandNumber(commandNumber)
-		// ])
-		// if (orders.length === 0) {
-		// 	return { orders: [], sizes: [] }
-		// }
-		// const groupedOrders = groupBy(orders, 'mo_no')
-		// return {
-		// 	orders: groupedOrders[commandNumber],
-		// 	sizes: sizes
-		// }
 	}
 }
