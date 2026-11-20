@@ -10,8 +10,10 @@ import { ClientSession, Model } from 'mongoose'
 import { randomUUID } from 'node:crypto'
 import { StockHistoryDirection, StockHistoryOutbox } from '../schemas/stock-history-outbox.schema'
 
-// Operate on the current list by transaction ID, not on an index from an earlier read.
-const PROJECT_HISTORY = `
+/**
+ * @description Operate on the current list by transaction ID, not on an index from an earlier read.
+ */
+const PROJECT_HISTORY = /* lua */ `
 local deadline = tonumber(ARGV[4])
 if tonumber(redis.call('TIME')[1]) >= deadline then return 0 end
 for index, value in ipairs(redis.call('LRANGE', KEYS[1], 0, -1)) do

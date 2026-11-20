@@ -44,7 +44,7 @@ export class StockTransactionMongoRepository implements IStockTransactionReposit
 		private readonly shippingProgressMongoRepository: ShippingProgressMongoRepository,
 		@InjectTransactionHost(DATA_WAREHOUSE_CONNECTION)
 		private readonly txHost: TransactionHost<TransactionalAdapterMongoose>,
-		private readonly stockHistoryOutbox: StockHistoryOutboxRepository
+		private readonly stockHistoryOutboxRepository: StockHistoryOutboxRepository
 	) {}
 
 	@Transactional<TransactionalAdapterMongoose>(DATA_WAREHOUSE_CONNECTION)
@@ -135,7 +135,7 @@ export class StockTransactionMongoRepository implements IStockTransactionReposit
 			pendingStockInEpcs
 		)
 
-		await this.stockHistoryOutbox.enqueue(
+		await this.stockHistoryOutboxRepository.enqueue(
 			'inbound',
 			{
 				id: transactionId,
@@ -190,7 +190,7 @@ export class StockTransactionMongoRepository implements IStockTransactionReposit
 		const balances = await this.inventoryLedgerMongoRepository.commitInventoryLedgerOnStockOut(pendingShipOutEpcs)
 		await this.shippingProgressMongoRepository.applyShippingProgressForStockOut(transactionId, balances)
 
-		await this.stockHistoryOutbox.enqueue(
+		await this.stockHistoryOutboxRepository.enqueue(
 			'outbound',
 			{
 				id: transactionId,
@@ -247,7 +247,7 @@ export class StockTransactionMongoRepository implements IStockTransactionReposit
 			pendingRecallEpcs
 		)
 
-		await this.stockHistoryOutbox.enqueue(
+		await this.stockHistoryOutboxRepository.enqueue(
 			'inbound',
 			{
 				id: transactionId,
@@ -341,7 +341,7 @@ export class StockTransactionMongoRepository implements IStockTransactionReposit
 			throw new StockTransactionNotRollbackableException('Inbound EPCs changed before rollback could complete')
 
 		await this.inventoryLedgerMongoRepository.rollbackInboundFluctuation(transaction)
-		await this.stockHistoryOutbox.enqueueVoid('inbound', transactionId, this.txHost.tx)
+		await this.stockHistoryOutboxRepository.enqueueVoid('inbound', transactionId, this.txHost.tx)
 		return epcs.map(({ epc, last_tx, status }) => ({ epc, last_tx, status }))
 	}
 
@@ -382,7 +382,7 @@ export class StockTransactionMongoRepository implements IStockTransactionReposit
 			throw new StockTransactionNotRollbackableException('Outbound EPCs changed before rollback could complete')
 
 		await this.inventoryLedgerMongoRepository.rollbackOutboundFluctuation(transaction)
-		await this.stockHistoryOutbox.enqueueVoid('outbound', transactionId, this.txHost.tx)
+		await this.stockHistoryOutboxRepository.enqueueVoid('outbound', transactionId, this.txHost.tx)
 		return epcs.map(({ epc, last_tx, status }) => ({ epc, last_tx, status }))
 	}
 
