@@ -28,9 +28,9 @@ export class ProductInventoryRepository implements IProductionInventoryRepositor
 	public async getProductionInventory(query: GetProductionInventoryQuery) {
 		const filterQueries = await this.buildFilterQueries(query)
 
-		const [inbound] = await Promise.all([
-			this.getInstockManufacturingOrders(query, filterQueries)
-			// this.getInstockSizes(filterQueries)
+		const [inbound, outbound] = await Promise.all([
+			this.getInstockManufacturingOrders(query, filterQueries),
+			this.getOutboundPurchaseOrders(filterQueries)
 		])
 
 		const sizes: Array<{ size_numcode: string; qty: number }> = Object.entries(
@@ -44,7 +44,7 @@ export class ProductInventoryRepository implements IProductionInventoryRepositor
 
 		return {
 			inbound,
-			outbound: [],
+			outbound,
 			sizes
 		}
 	}
@@ -69,8 +69,6 @@ export class ProductInventoryRepository implements IProductionInventoryRepositor
 			.whereFieldsAreEqual('brand_name', 'factory_shoes_style', 'color_sn', 'year_month')
 			.build()
 
-		console.log(`Filter Queries: ${JSON.stringify(filterQueries)}`)
-
 		return filterQueries
 	}
 
@@ -83,9 +81,7 @@ export class ProductInventoryRepository implements IProductionInventoryRepositor
 
 		return await this.moInventoryAuditModel.aggregate<{
 			mo_no: string
-			brand_name: string
-			factory_shoes_style: string
-			color_sn: string
+			last_inbound_date: string | null
 			order_qty: number
 			instock_qty: number
 			size_ledger: Array<{ size_numcode: string; qty: number }>
@@ -200,11 +196,8 @@ export class ProductInventoryRepository implements IProductionInventoryRepositor
 					mo_no: 1,
 					last_inbound_date: 1,
 					order_qty: 1,
-					brand_name: 1,
-					factory_shoes_style: 1,
-					color_sn: 1,
-					size_ledger: 1,
-					instock_qty: 1
+					instock_qty: 1,
+					size_ledger: 1
 				}
 			},
 
@@ -212,322 +205,67 @@ export class ProductInventoryRepository implements IProductionInventoryRepositor
 		])
 	}
 
-	private async getIncompletePurchaseOrders(query: GetProductionInventoryQuery) {
-		const filterQueries = await this.buildFilterQueries(query)
-
+	private async getOutboundPurchaseOrders(filterQueries: FilterQuery<MoInventoryAuditDocument>) {
 		return await this.purchaseOrderModel.aggregate<{
 			po: string
 			order_qty: number
-			outbound_qty: number
-			last_outbound_date: Date
+			shipped_out_qty: number
+			last_outbound_date: string | null
 			size_ledger: Array<{ size_numcode: string; qty: number }>
 		}>([
 			{
-				$match: filterQueries
+				$match: omit(filterQueries, 'year_month')
 			},
-
 			{
-				$addFields: {
-					shipping_items: { $objectToArray: '$shipping_progress' }
+				$set: {
+					shipping_items: { $objectToArray: { $ifNull: ['$shipping_progress', {}] } }
 				}
 			},
 			{
-				$addFields: {
+				$set: {
 					size_ledger: {
 						$map: {
 							input: '$shipping_items',
-							as: 's',
+							as: 'item',
 							in: {
-								size_numcode: '$$s.k',
-								qty: {
-									$subtract: [{ $ifNull: ['$$s.v.order_qty', 0] }, { $ifNull: ['$$s.v.shipped_out_qty', 0] }]
-								}
+								size_numcode: '$$item.k',
+								qty: { $ifNull: ['$$item.v.shipped_out_qty', 0] }
 							}
 						}
 					}
-				}
-			},
-			{
-				$addFields: {
-					has_unshipped_size: {
-						$gt: [
-							{
-								$size: {
-									$filter: {
-										input: '$size_ledger',
-										as: 'x',
-										cond: { $gt: ['$$x.qty', 0] }
-									}
-								}
-							},
-							0
-						]
-					},
-					outbound_qty: {
-						$sum: {
-							$map: {
-								input: '$shipping_items',
-								as: 's',
-								in: {
-									$subtract: [{ $ifNull: ['$$s.v.order_qty', 0] }, { $ifNull: ['$$s.v.shipped_out_qty', 0] }]
-								}
-							}
-						}
-					}
-				}
-			},
-			{
-				$match: {
-					has_unshipped_size: true
 				}
 			},
 			{
 				$lookup: {
 					from: 'daily_po_shipping_progress',
-					let: { po: '$po' },
+					localField: 'po',
+					foreignField: 'po',
 					pipeline: [
-						{
-							$match: {
-								$expr: { $eq: ['$po', '$$po'] }
-							}
-						},
-						{
-							$sort: { date: -1 }
-						},
-						{
-							$limit: 1
-						},
-						{
-							$project: {
-								_id: 0,
-								last_outbound_date: '$date'
-							}
-						}
+						{ $match: { date: { $gte: format(new Date(), 'yyyy-MM-dd') } } },
+						{ $sort: { date: -1 } },
+						{ $limit: 1 },
+						{ $project: { _id: 0, date: 1 } }
 					],
 					as: 'last_outbound_doc'
 				}
 			},
 			{
-				$addFields: {
-					last_outbound_date: {
-						$first: '$last_outbound_doc.last_outbound_date'
-					},
-					order_qty: {
-						$sum: {
-							$map: {
-								input: '$shipping_items',
-								as: 's',
-								in: { $ifNull: ['$$s.v.order_qty', 0] }
-							}
-						}
-					}
+				$set: {
+					last_outbound_date: { $ifNull: [{ $first: '$last_outbound_doc.date' }, null] },
+					shipped_out_qty: { $sum: '$size_ledger.qty' }
 				}
 			},
+			{ $match: { $or: [{ 'last_outbound_doc.0': { $exists: true } }, { shipped_out_qty: 0 }] } },
 			{
 				$project: {
 					_id: 0,
 					po: 1,
 					last_outbound_date: 1,
 					order_qty: 1,
-					outbound_qty: 1,
+					shipped_out_qty: 1,
 					size_ledger: 1
 				}
 			}
 		])
 	}
-
-	// return await this.manufacturingOrderModel.aggregate<{
-	// 	mo_no: string
-	// 	last_inbound_date?: Date
-	// 	order_qty: number
-	// 	instock_qty: number
-	// 	size_ledger: Array<{ size_numcode: string; qty: number }>
-	// }>([
-	// 	{ $match: filterQueries },
-	// 	{
-	// 		$addFields: {
-	// 			size_items: { $objectToArray: '$size_ledger' }
-	// 		}
-	// 	},
-	// 	{
-	// 		$addFields: {
-	// 			size_ledger: {
-	// 				$map: {
-	// 					input: '$size_items',
-	// 					as: 's',
-	// 					in: {
-	// 						size_numcode: '$$s.k',
-	// 						qty: {
-	// 							$subtract: [
-	// 								{
-	// 									$add: [
-	// 										{ $ifNull: ['$$s.v.stocked_in_qty', 0] },
-	// 										{ $ifNull: ['$$s.v.total_return_tx', 0] }
-	// 									]
-	// 								},
-	// 								{
-	// 									$add: [
-	// 										{ $ifNull: ['$$s.v.shipped_out_qty', 0] },
-	// 										{ $ifNull: ['$$s.v.total_recall_tx', 0] }
-	// 									]
-	// 								}
-	// 							]
-	// 						}
-	// 					}
-	// 				}
-	// 			}
-	// 		}
-	// 	},
-	// 	{
-	// 		$addFields: {
-	// 			has_positive_size: {
-	// 				$gt: [
-	// 					{
-	// 						$size: {
-	// 							$filter: {
-	// 								input: '$size_ledger',
-	// 								as: 'x',
-	// 								cond: { $gt: ['$$x.qty', 0] }
-	// 							}
-	// 						}
-	// 					},
-	// 					0
-	// 				]
-	// 			},
-	// 			instock_qty: {
-	// 				$sum: {
-	// 					$map: {
-	// 						input: '$size_items',
-	// 						as: 's',
-	// 						in: {
-	// 							$subtract: [
-	// 								{
-	// 									$add: [
-	// 										{ $ifNull: ['$$s.v.stocked_in_qty', 0] },
-	// 										{ $ifNull: ['$$s.v.total_return_tx', 0] }
-	// 									]
-	// 								},
-	// 								{
-	// 									$add: [
-	// 										{ $ifNull: ['$$s.v.shipped_out_qty', 0] },
-	// 										{ $ifNull: ['$$s.v.total_recall_tx', 0] }
-	// 									]
-	// 								}
-	// 							]
-	// 						}
-	// 					}
-	// 				}
-	// 			}
-	// 		}
-	// 	},
-	// 	{
-	// 		$match: {
-	// 			has_positive_size: true
-	// 		}
-	// 	},
-	// 	{
-	// 		$lookup: {
-	// 			from: 'daily_mo_inventory_ledger',
-	// 			let: { mo: '$mo_no' },
-	// 			pipeline: [
-	// 				{
-	// 					$match: {
-	// 						$expr: { $eq: ['$mo_no', '$$mo'] }
-	// 					}
-	// 				},
-	// 				{
-	// 					$sort: { date: -1 }
-	// 				},
-	// 				{
-	// 					$limit: 1
-	// 				},
-	// 				{
-	// 					$project: {
-	// 						_id: 0,
-	// 						last_inbound_date: '$date'
-	// 					}
-	// 				}
-	// 			],
-	// 			as: 'last_inbound'
-	// 		}
-	// 	},
-	// 	{
-	// 		$addFields: {
-	// 			last_inbound_date: {
-	// 				$first: '$last_inbound.last_inbound_date'
-	// 			}
-	// 		}
-	// 	},
-	// 	{
-	// 		$project: {
-	// 			_id: 0,
-	// 			mo_no: 1,
-	// 			last_inbound_date: 1,
-	// 			order_qty: 1,
-	// 			instock_qty: 1,
-	// 			size_ledger: 1
-	// 		}
-	// 	},
-	// 	{
-	// 		$match: {
-	// 			instock_qty: { $gte: 0 }
-	// 		}
-	// 	},
-	// 	{ $sort: { mo_no: -1 } }
-	// ])
-
-	// private async getInstockSizes(query: FilterQuery<MoInventoryAuditDocument>) {
-	// 	// const filterQueries = await this.buildFilterQueries(query)
-
-	// 	return await this.moInventoryAuditModel.aggregate<{ size_numcode: string; qty: number }>([
-	// 		{
-	// 			$match: pick(query, 'year_month')
-	// 		},
-	// 		{
-	// 			$lookup: {
-	// 				from : 'manufacturing_orders',
-
-	// 			}
-	// 		}
-	// 		{
-	// 			$project: {
-	// 				size_ledger_arr: {
-	// 					$objectToArray: { $ifNull: ['$size_ledger', {}] }
-	// 				}
-	// 			}
-	// 		},
-	// 		{ $unwind: '$size_ledger_arr' },
-	// 		{
-	// 			$group: {
-	// 				_id: '$size_ledger_arr.k',
-	// 				instock_qty: {
-	// 					$sum: {
-	// 						$let: {
-	// 							vars: {
-	// 								v: '$size_ledger_arr.v'
-	// 							},
-	// 							in: {
-	// 								$add: [
-	// 									{ $ifNull: ['$$v.beginning_inventory_qty', 0] },
-	// 									{ $ifNull: ['$$v.stocked_in_qty', 0] },
-	// 									{ $multiply: [{ $ifNull: ['$$v.shipped_out_qty', 0] }, -1] },
-	// 									{ $ifNull: ['$$v.supplemental_stocked_in_qty', 0] },
-	// 									{ $multiply: [{ $ifNull: ['$$v.supplemental_shipped_out_qty', 0] }, -1] }
-	// 								]
-	// 							}
-	// 						}
-	// 					}
-	// 				}
-	// 			}
-	// 		},
-	// 		{
-	// 			$project: {
-	// 				_id: 0,
-	// 				size_numcode: '$_id',
-	// 				qty: '$instock_qty'
-	// 			}
-	// 		},
-	// 		{ $sort: { size: 1 } }
-	// 	])
-	// }
 }

@@ -4,7 +4,7 @@ import { GetProductionInventoryQuery } from '../queries/get-production-inventory
 export interface IProductionInventory {
 	inbound: Array<{
 		mo_no: string
-		last_inbound_date?: Date
+		last_inbound_date: string | null
 		order_qty: number
 		instock_qty: number
 		size_ledger: Array<{
@@ -15,8 +15,8 @@ export interface IProductionInventory {
 	outbound: Array<{
 		po: string
 		order_qty: number
-		outbound_qty: number
-		last_outbound_date: Date
+		shipped_out_qty: number
+		last_outbound_date: string | null
 		size_ledger: Array<{
 			size_numcode: string
 			qty: number
@@ -33,7 +33,7 @@ export interface IProductionInventoryRepository {
 	getInstockManufacturingOrders(query: GetProductionInventoryQuery | ExportProductionInventoryQuery): Promise<
 		{
 			mo_no: string
-			last_inbound_date?: Date
+			last_inbound_date: string | null
 			order_qty: number
 			instock_qty: number
 			size_ledger: Array<{
