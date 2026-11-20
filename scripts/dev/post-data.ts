@@ -32,7 +32,7 @@ const deviceMap: ReadonlyMap<TDevice, string> = new Map([
 	['GL1_103', 'X600000000009626'],
 	['GL3_101', 'c6a307dc'],
 	['GL3_103', '4233521261'],
-	['GL4_103', 'ca6bd3d3'],
+	['GL4_101', 'ca6bd3d3'],
 	['GL4_103', 'X600000000009479']
 ])
 
@@ -86,8 +86,8 @@ class Faker {
 // type StockFlow = 'inbound' | 'outbound'
 const args = getArgs({
 	flow: { type: 'string', short: 'f' },
-	device: { type: 'string', short: 'd' }
-	// mo: { type: 'string', short: 'm' }
+	device: { type: 'string', short: 'd' },
+	mo: { type: 'string', short: 'm' }
 })
 
 async function main() {
@@ -99,8 +99,8 @@ async function main() {
 	}
 
 	const { disconnect, model, Schema } = await mongoose
-		.connect('mongodb://10.30.201.201:27017,10.30.201.201:27018,10.30.201.201:27019', {
-			dbName: 'data_warehouse',
+		.connect('mongodb://127.0.0.1:27017,127.0.0.1:27018,127.0.0.1:27019', {
+			dbName: 'GL4_data_warehouse',
 			replicaSet: 'rs0'
 		})
 		.catch((error) => {
@@ -109,12 +109,12 @@ async function main() {
 		})
 
 	const FinishedGoodsEpc = model(
-		'epcs_inbound',
+		'finished_goods_epcs_match',
 		new Schema(
 			{
-				epc: { type: String },
-				recorded_at: { type: Date },
-				stored_at: { type: Date }
+				epc: { type: String }
+				// recorded_at: { type: Date },
+				// stored_at: { type: Date }
 				// status: { type: String },
 				// mo_no: { type: String },
 				// po: { type: String },
@@ -134,7 +134,7 @@ async function main() {
 				// storage_location: { type: mongoose.Types.ObjectId },
 				// assembly_line: { type: mongoose.Types.ObjectId }
 			},
-			{ collection: 'epcs_inbound', strict: false }
+			{ collection: 'finished_goods_epcs_match', strict: false }
 		)
 	)
 
@@ -146,17 +146,11 @@ async function main() {
 
 		if (args.flow === 'inbound') {
 			epcs = await FinishedGoodsEpc.distinct('epc', {
-				scannable: true,
-				record_time: { $gte: todayMidnoon },
-				stored_at: { $ne: null }
+				mo_no: { $in: args.mo?.split(',') }
 			})
 			console.log(epcs)
 		}
-		if (args.flow === 'outbound')
-			epcs = await FinishedGoodsEpc.distinct('epc', {
-				// mo_no: { $in: args.mo?.split(',') },
-				// status: 'instock'
-			})
+		// if (args.flow === 'outbound') epcs = await FinishedGoodsEpc.distinct('epc', {})
 
 		const { payload } = new Faker(args.device as TDevice, epcs)
 
