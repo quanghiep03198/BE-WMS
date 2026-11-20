@@ -16,27 +16,15 @@ export class FlushCacheInterceptor implements NestInterceptor {
 		@InjectRedisClient() private readonly redis: Redis
 	) {}
 
-	intercept(context: ExecutionContext, next: CallHandler): Observable<unknown> {
+	async intercept(context: ExecutionContext, next: CallHandler): Promise<Observable<unknown>> {
 		const patterns = this.reflector.getAllAndOverride<string[]>(FLUSH_CACHE_PATTERNS, [
 			context.getHandler(),
 			context.getClass()
 		])
 
-		if (!patterns?.length || context.getType() !== 'http') {
-			return next.handle()
+		if (patterns?.length && context.getType() === 'http') {
+			await this.flushPatterns(patterns)
 		}
-
-		const res = context.switchToHttp().getResponse()
-		// Get the raw ServerResponse object (Fastify: reply.raw, Express: res)
-		const raw = res.raw ?? res
-
-		raw.once('finish', () => {
-			// If the response indicates an error (4xx/5xx), the data has not changed -> no need to flush cache
-			if (raw.statusCode >= 400) return
-
-			// ! Do not await: run in background, does not affect response
-			void this.flushPatterns(patterns)
-		})
 
 		return next.handle()
 	}
