@@ -85,7 +85,7 @@ export class DefectiveGoodsController {
 		filterQueries: FilterQueryDTO,
 		@Query('page', new DefaultValuePipe(1), new ParseIntPipe()) page: number
 	) {
-		return this.queryBus.execute(
+		return await this.queryBus.execute(
 			new GetDefectiveGoodsQuery(
 				omitBy(filterQueries, (value) => isNil(value) || isEmpty(value)),
 				page,
@@ -140,7 +140,7 @@ export class DefectiveGoodsController {
 		@Param('id', ParseObjectIdPipe) id: string,
 		@Body(new ZodValidationPipe(updateDefectiveGoodsDTO)) payload: UpdateDefectiveGoodsDTO
 	) {
-		return this.commandBus.execute(new UpdateDefectiveGoodsCommand(id, payload, updatedBy))
+		return await this.commandBus.execute(new UpdateDefectiveGoodsCommand(id, payload, updatedBy))
 	}
 
 	@RouteHandler({
@@ -152,7 +152,7 @@ export class DefectiveGoodsController {
 	@FlushCache('cached:total:defective_goods:*')
 	@RequireAuthorized(UserRole.DG_WAREHOUSE_STAFF)
 	public async deleteOne(@RequestUser() user: TRequestUser, @Param('id', new ParseObjectIdPipe()) id: string) {
-		return this.commandBus.execute(new DeleteOneDefectiveGoodsCommand(id, user.username))
+		return await this.commandBus.execute(new DeleteOneDefectiveGoodsCommand(id, user.username))
 	}
 
 	@RouteHandler({
@@ -167,7 +167,7 @@ export class DefectiveGoodsController {
 		@RequestUser() user: TRequestUser,
 		@Body(new ZodValidationPipe(deleteManyDefectiveGoodsDTO)) queries: DeleteManyDefectiveGoodsDTO
 	) {
-		return this.commandBus.execute(new DeleteManyDefectiveGoodsCommand(queries, user.username))
+		return await this.commandBus.execute(new DeleteManyDefectiveGoodsCommand(queries, user.username))
 	}
 	// #endregion
 
@@ -196,7 +196,7 @@ export class DefectiveGoodsController {
 		@Query() filters: Partial<IDefectiveGoods>,
 		@Query('take', new ParseIntPipe({ optional: true })) take: number
 	) {
-		return this.commandBus.execute(new StockInDefectiveGoodsCommand(data, updatedBy, filters, take))
+		return await this.commandBus.execute(new StockInDefectiveGoodsCommand(data, updatedBy, filters, take))
 	}
 
 	@RouteHandler({
@@ -209,7 +209,7 @@ export class DefectiveGoodsController {
 		@Query('date:eq', new ZodValidationPipe(z.coerce.date()), new ParseDatePipe())
 		date: Date
 	) {
-		return this.queryBus.execute(new GetDailyInboundReportQuery(date))
+		return await this.queryBus.execute(new GetDailyInboundReportQuery(date))
 	}
 
 	@RouteHandler({
@@ -242,7 +242,7 @@ export class DefectiveGoodsController {
 		@Query() filters: Partial<IDefectiveGoods>,
 		@Query('take', new ParseIntPipe({ optional: true })) take: number
 	) {
-		return this.commandBus.execute(new StockOutDefectiveGoodsCommand(data, updatedBy, filters, take))
+		return await this.commandBus.execute(new StockOutDefectiveGoodsCommand(data, updatedBy, filters, take))
 	}
 
 	@RouteHandler({
@@ -255,7 +255,7 @@ export class DefectiveGoodsController {
 		@Query('date:eq', new ZodValidationPipe(z.coerce.date()), new ParseDatePipe())
 		date: Date
 	) {
-		return this.queryBus.execute(new GetDailyOutboundReportQuery(date))
+		return await this.queryBus.execute(new GetDailyOutboundReportQuery(date))
 	}
 
 	@RouteHandler({
@@ -283,7 +283,7 @@ export class DefectiveGoodsController {
 	})
 	@RequireAuthorized(UserRole.MANAGER, UserRole.DG_WAREHOUSE_STAFF, UserRole.INDUSTRIAL_ENGINEERING_STAFF)
 	async getDefectiveGoodsInventory() {
-		return this.queryBus.execute(new GetDefectiveGoodsInventoryQuery())
+		return await this.queryBus.execute(new GetDefectiveGoodsInventoryQuery())
 	}
 
 	@RouteHandler({
