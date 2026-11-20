@@ -49,7 +49,9 @@ export interface IOrderRepository {
 	 */
 	getManufacturingOrderInventory(
 		manufacturingOrder: string
-	): Promise<Array<{ mo_no: string; size_numcode: string; order_qty: number; instock_qty: number }>>
+	): Promise<
+		Array<{ mo_no: string; size_numcode: string; order_qty: number; instock_qty: number; shipped_out_qty: number }>
+	>
 
 	/**
 	 * @description Get multiple purchase orders by their identifiers from MongoDB.

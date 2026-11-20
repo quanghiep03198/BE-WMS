@@ -2,7 +2,7 @@ import { Module, OnModuleInit } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { MongooseModule, MongooseModuleOptions } from '@nestjs/mongoose'
 import { TypeOrmModule } from '@nestjs/typeorm'
-import { SqlServerConnectionOptions } from 'typeorm/driver/sqlserver/SqlServerConnectionOptions'
+import type { DataSourceOptions } from 'typeorm'
 import {
 	DATA_SOURCE_DATA_LAKE,
 	DATA_SOURCE_DATA_LAKE_CENTRAL,
@@ -13,6 +13,8 @@ import {
 	DATABASE_ERP,
 	DATABASE_SYSCLOUD
 } from './constants'
+
+type SqlServerConnectionOptions = Extract<DataSourceOptions, { type: 'mssql' }>
 
 // * Entities
 import { IApplicationConfigFactory, MONGODB_CONFIG_TOKEN, MSSQL_CONFIG_TOKEN } from '@configs/index'

@@ -188,7 +188,11 @@
 					}
 				}
 			]
-		}
+		},
+		"transformIgnorePatterns": [
+			"node_modules/.pnpm/(?!(flat)@)",
+			"node_modules/(?!.pnpm|flat)"
+		]
 	},
 	"lint-staged": {
 		"*.ts": [

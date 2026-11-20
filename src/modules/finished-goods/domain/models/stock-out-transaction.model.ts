@@ -6,6 +6,7 @@ import { ExcessOutboundOrderException } from '../exceptions/excess-order.excepti
 import { InsufficientInventoryException } from '../exceptions/insufficient-inventory.exception'
 import { ElectronicProductCode } from '../value-objects/epc.vo'
 import { SizeNumber } from '../value-objects/size-number.vo'
+import { isValidMoSizeProgress, type MoSizeProgress } from './mo-size-progress'
 
 /**
  * Represents a transaction for shipping out goods, ensuring that the quantities being shipped do not exceed the purchase order requirements and that there is sufficient inventory available for the specified manufacturing orders.
@@ -21,12 +22,7 @@ export class StockOutTransaction extends AggregateRoot {
 			order_qty: number
 			accumulated_qty: number
 		}> = [],
-		private readonly moInventories: Array<{
-			mo_no: string
-			size_numcode: SizeNumber
-			order_qty: number
-			instock_qty: number
-		}>,
+		private readonly moInventories: Array<MoSizeProgress & { mo_no: string }>,
 		private readonly id: string
 	) {
 		super()
@@ -55,9 +51,15 @@ export class StockOutTransaction extends AggregateRoot {
 				shipped_out_qty: epcs.length
 			}
 		})
+		const transactionalPoSizeQty = entries(groupBy(this.pendingShipOutEpcs, (epc) => epc.getSize())).map(
+			([size, epcs]) => ({
+				size_numcode: new SizeNumber(size),
+				shipped_out_qty: epcs.length
+			})
+		)
 
 		const outstandingPurchaseOrderQty = this.poOutboundProgress.map((outboundSizeDetail) => {
-			const tx = transactionalSizeQty.find((incoming) =>
+			const tx = transactionalPoSizeQty.find((incoming) =>
 				outboundSizeDetail.size_numcode.isEqual(incoming.size_numcode)
 			)
 
@@ -72,23 +74,19 @@ export class StockOutTransaction extends AggregateRoot {
 			}
 		})
 
-		const outStandingManufaturingOrderQty = this.moInventories.map((inventory) => {
-			const tx = transactionalSizeQty.find((incoming) => {
-				return inventory.mo_no === incoming.mo_no && inventory.size_numcode.isEqual(incoming.size_numcode)
-			})
+		const invalidMoSizes = transactionalSizeQty.flatMap(({ mo_no, size_numcode, shipped_out_qty }) => {
+			const inventory = this.moInventories.find(
+				(item) => item.mo_no === mo_no && item.size_numcode.isEqual(size_numcode)
+			)
+			if (isValidMoSizeProgress(inventory, 0, shipped_out_qty)) return []
 
-			if (!tx)
-				return {
-					mo_no: inventory.mo_no,
-					size_numcode: inventory.size_numcode.getValue(),
-					xf_deficit: inventory.instock_qty
+			return [
+				{
+					mo_no,
+					size_numcode: size_numcode.getValue(),
+					xf_deficit: (inventory?.instock_qty ?? 0) - shipped_out_qty
 				}
-
-			return {
-				mo_no: inventory.mo_no,
-				size_numcode: inventory.size_numcode.getValue(),
-				xf_deficit: inventory.instock_qty - tx.shipped_out_qty
-			}
+			]
 		})
 
 		const excessedSizingOrder = outstandingPurchaseOrderQty.filter((size) => size.missing_qty < 0)
@@ -98,10 +96,9 @@ export class StockOutTransaction extends AggregateRoot {
 		if (isOrderExcessed)
 			throw new ExcessOutboundOrderException('Outbound order already excessed', { cause: excessedSizingOrder })
 
-		const isInventoryInsufficient = outStandingManufaturingOrderQty.some((size) => size.xf_deficit < 0)
-		if (isInventoryInsufficient)
-			throw new InsufficientInventoryException('Insufficient inventory for ship-out', {
-				cause: outStandingManufaturingOrderQty.filter((size) => size.xf_deficit < 0)
+		if (invalidMoSizes.length)
+			throw new InsufficientInventoryException('MO size inventory or order limit violated for ship-out', {
+				cause: invalidMoSizes
 			})
 
 		this.apply(new StockedOutEvent(this.pendingShipOutEpcs))

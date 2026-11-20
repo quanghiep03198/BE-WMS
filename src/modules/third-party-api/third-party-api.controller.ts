@@ -1,4 +1,4 @@
-import { CommonRequestHeader } from '@common/constants'
+import { CommonRequestHeader, FALLBACK_VALUE } from '@common/constants'
 import { HttpMethod, Public, RequireAuthorized, RouteHandler } from '@common/decorators'
 import { DATA_WAREHOUSE_CONNECTION } from '@databases/constants'
 import { UserRole } from '@modules/user/domain/constants'
@@ -9,7 +9,6 @@ import { Queue } from 'bullmq'
 import { FastifyRequest } from 'fastify'
 import { uniqBy } from 'lodash'
 import { PaginateModel } from 'mongoose'
-import { FALLBACK_VALUE } from '../finished-goods/domain/constants'
 import {
 	FinishedGoodsEpc,
 	FinishedGoodsEpcDocument

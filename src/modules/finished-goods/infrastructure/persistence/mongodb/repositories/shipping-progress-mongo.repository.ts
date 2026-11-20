@@ -1,5 +1,6 @@
 import { DATA_WAREHOUSE_CONNECTION } from '@databases/constants'
 import { IShippingProgressRepository } from '@modules/finished-goods/application/ports/shipping-progress.repository.port'
+import { ExcessOutboundOrderException } from '@modules/finished-goods/domain/exceptions/excess-order.exception'
 import { ElectronicProductCode } from '@modules/finished-goods/domain/value-objects/epc.vo'
 import { PurchaseOrder, PurchaseOrderDocument, PurchaseOrderModel } from '@modules/order/schemas/purchase-order.schema'
 import { InjectTransactionHost, Transactional, TransactionHost } from '@nestjs-cls/transactional'
@@ -7,7 +8,7 @@ import { TransactionalAdapterMongoose } from '@nestjs-cls/transactional-adapter-
 import { Injectable } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
 import { format } from 'date-fns'
-import { type AnyBulkWriteOperation, mongo, type MongooseBulkWriteOptions } from 'mongoose'
+import { type AnyBulkWriteOperation, type FilterQuery, mongo, type MongooseBulkWriteOptions } from 'mongoose'
 import {
 	DailyPoShippingProgress,
 	DailyPoShippingProgressDocument,
@@ -88,25 +89,66 @@ export class ShippingProgressMongoRepository implements IShippingProgressReposit
 			size_ledger: Record<string, { shipped_out_qty: number }>
 		}>
 	): Promise<void> {
-		const poShippingProgressBulkWriteOperator: AnyBulkWriteOperation<PurchaseOrderDocument>[] =
-			pendingInventoryFluctuation.map((change) => {
+		const progressByPo = new Map<
+			string,
+			{
+				source: (typeof pendingInventoryFluctuation)[number]
+				size_ledger: Record<string, { shipped_out_qty: number }>
+			}
+		>()
+		for (const change of pendingInventoryFluctuation) {
+			if (!change.po) throw new ExcessOutboundOrderException('Stock-out requires a purchase order')
+
+			let progress = progressByPo.get(change.po)
+			if (!progress) {
+				progress = { source: change, size_ledger: {} }
+				progressByPo.set(change.po, progress)
+			}
+
+			for (const [size, fluctuation] of Object.entries(change.size_ledger)) {
+				progress.size_ledger[size] = {
+					shipped_out_qty: (progress.size_ledger[size]?.shipped_out_qty ?? 0) + fluctuation.shipped_out_qty
+				}
+			}
+		}
+
+		for (const [po, progress] of progressByPo) {
+			const conditions = Object.entries(progress.size_ledger).map(([size, fluctuation]) => {
+				const sizePath = `$shipping_progress.${size}`
 				return {
-					updateOne: {
-						filter: { po: change.po },
-						update: { $inc: this.createShippingProgressIncrementExpression(change) }
-					}
+					$lte: [
+						{
+							$add: [{ $ifNull: [`${sizePath}.shipped_out_qty`, 0] }, fluctuation.shipped_out_qty]
+						},
+						`${sizePath}.order_qty`
+					]
 				}
 			})
+			const filter = {
+				po,
+				$expr: { $and: conditions }
+			} as FilterQuery<PurchaseOrderDocument>
+			const incrementExpression = this.createShippingProgressIncrementExpression({
+				...progress.source,
+				size_ledger: progress.size_ledger
+			})
+			const result = await this.poShippingProgress.updateOne(
+				filter,
+				{ $inc: incrementExpression },
+				{ session: this.txHost.tx }
+			)
+
+			if (result.matchedCount !== 1)
+				throw new ExcessOutboundOrderException('Outbound order exceeded the persisted purchase-order limit')
+		}
+
+		const date = format(new Date(), 'yyyy-MM-dd')
 
 		const bulkWriteOptions: mongo.BulkWriteOptions & MongooseBulkWriteOptions = {
 			session: this.txHost.tx,
 			ordered: false,
 			timestamps: true
 		}
-
-		await this.poShippingProgress.bulkWrite(poShippingProgressBulkWriteOperator, bulkWriteOptions)
-
-		const date = format(new Date(), 'yyyy-MM-dd')
 
 		const dailyShippingBulkWriteOperator: AnyBulkWriteOperation<DailyPoShippingProgressDocument>[] =
 			pendingInventoryFluctuation.map((change) => {

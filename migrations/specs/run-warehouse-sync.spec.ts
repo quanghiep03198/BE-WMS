@@ -139,7 +139,7 @@ describe('runWarehouseSync', () => {
 			)
 			expect(calls).toEqual([])
 			expect(await readFile(config.logFilename, 'utf8')).toContain(
-				'FAIL deduplicate RFID backup records: delete failed'
+				'[FAIL] deduplicate RFID backup records: delete failed'
 			)
 		} finally {
 			await rm(config.logFilename, { force: true })
@@ -229,22 +229,19 @@ describe('runWarehouseSync', () => {
 
 	it('runs every stage in order and writes the Excel report last', async () => {
 		const calls: WarehouseSyncStageName[] = []
-		const terminal: string[] = []
 		const runner = createWarehouseSyncRunner(
 			fakeDependencies(async (stage) => {
 				calls.push(stage)
-			}),
-			(line) => terminal.push(line)
+			})
 		)
 		try {
 			await runner(successfulCleanupPool as never, {} as never, config, new Date('2026-11-12T00:00:00.000Z'))
 			expect(calls).toEqual(stageNames)
 			expect(calls.at(-1)).toBe('Excel report')
-			expect(terminal.some((line) => line.endsWith('START Excel report'))).toBe(true)
-			expect(terminal.some((line) => line.endsWith('DONE Excel report'))).toBe(true)
 			const fileLog = await readFile(config.logFilename, 'utf8')
-			expect(fileLog).toContain('START users')
-			expect(fileLog).toContain('DONE Excel report')
+			expect(fileLog).toContain('[START] users')
+			expect(fileLog).toContain('[START] Excel report')
+			expect(fileLog).toContain('[DONE] Excel report')
 		} finally {
 			await rm(config.logFilename, { force: true })
 		}
@@ -255,8 +252,7 @@ describe('runWarehouseSync', () => {
 		const runner = createWarehouseSyncRunner(
 			fakeDependencies(async (stage) => {
 				calls.push(stage)
-			}),
-			() => {}
+			})
 		)
 		try {
 			await runner({} as never, {} as never, { ...config, step: 'storage_locations' })
@@ -266,17 +262,25 @@ describe('runWarehouseSync', () => {
 		}
 	})
 
-	it('runs from a selected collection step through the report', async () => {
+	it('stops before the selected audit stage when the SQL import fails', async () => {
 		const calls: WarehouseSyncStageName[] = []
 		const runner = createWarehouseSyncRunner(
 			fakeDependencies(async (stage) => {
 				calls.push(stage)
-			}),
-			() => {}
+			})
 		)
 		try {
-			await runner({} as never, {} as never, { ...config, fromStep: 'mo_inventory_audit' })
-			expect(calls).toEqual(stageNames.slice(stageNames.indexOf('inventory audit')))
+			const rejectedImport = Promise.reject(new Error('audit import failed'))
+			void rejectedImport.catch(() => {})
+			const query = jest.fn(() => rejectedImport)
+			await expect(
+				runner({ request: () => ({ query }) } as never, {} as never, {
+					...config,
+					fromStep: 'mo_inventory_audit'
+				})
+			).rejects.toThrow('audit import failed')
+			expect(query).toHaveBeenCalledTimes(1)
+			expect(calls).toEqual([])
 		} finally {
 			await rm(config.logFilename, { force: true })
 		}
@@ -289,7 +293,6 @@ describe('runWarehouseSync', () => {
 				calls.push(stage)
 				if (stage === 'defective goods') throw new Error('sync failed')
 			}),
-			() => {},
 			async () => true
 		)
 		try {
@@ -304,24 +307,20 @@ describe('runWarehouseSync', () => {
 
 	it('stops at the first failure, logs it, and marks subsequent stages NOT RUN', async () => {
 		const calls: WarehouseSyncStageName[] = []
-		const terminal: string[] = []
 		const runner = createWarehouseSyncRunner(
 			fakeDependencies(async (stage) => {
 				calls.push(stage)
 				if (stage === 'RFID devices') throw new Error('device sync failed')
-			}),
-			(line) => terminal.push(line)
+			})
 		)
 		try {
 			await expect(
 				runner(successfulCleanupPool as never, {} as never, config, new Date('2026-11-12T00:00:00.000Z'))
 			).rejects.toThrow('device sync failed')
 			expect(calls).toEqual(stageNames.slice(0, stageNames.indexOf('RFID devices') + 1))
-			expect(terminal.some((line) => line.endsWith('FAIL RFID devices: device sync failed'))).toBe(true)
-			expect(terminal.some((line) => line.endsWith('NOT RUN Excel report'))).toBe(true)
 			const fileLog = await readFile(config.logFilename, 'utf8')
-			expect(fileLog).toContain('FAIL RFID devices: device sync failed')
-			expect(fileLog).toContain('NOT RUN Excel report')
+			expect(fileLog).toContain('[FAIL] RFID devices: device sync failed')
+			expect(fileLog).toContain('[NOT RUN] Excel report')
 		} finally {
 			await rm(config.logFilename, { force: true })
 		}

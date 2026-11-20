@@ -56,33 +56,33 @@ export class ExportMonthlyInventoryAuditHandler implements IQueryHandler<ExportM
 			},
 			{
 				header: this.i18nService.t('erp.fields.total_init_qty', { lang: currentLanguage }),
-				key: 'init_inv_qty'
+				key: 'beginning_inventory_qty'
 			},
 			{
 				header: this.i18nService.t('erp.fields.inbound_qty', { lang: currentLanguage }),
-				key: 'stocked_in_qty'
+				key: 'total_stocked_in_qty'
 			},
 			{
 				header: this.i18nService.t('erp.fields.outbound_qty', { lang: currentLanguage }),
-				key: 'shipped_out_qty'
+				key: 'total_shipped_out_qty'
 			},
 			{
 				header: this.i18nService.t('erp.fields.actual_inventory_qty', { lang: currentLanguage }),
-				key: 'supplemental_qty'
+				key: 'total_supplemental_qty'
 			},
 			{
 				header: this.i18nService.t('erp.fields.final_inventory_qty', { lang: currentLanguage }),
-				key: 'final_inv_qty'
+				key: 'final_inventory_qty'
 			}
 		].map((item) => ({ ...item, alignment: { vertical: 'middle', horizontal: 'center' } }))
 
-		const data = await this.inventoryAuditRepository.getMonthlyInventoryAudit(
+		const { values } = await this.inventoryAuditRepository.getMonthlyInventoryAudit(
 			format(new Date(month), 'yyyy-MM'),
 			manufacturingOrders
 		)
 
 		// * Add data to worksheet
-		const filteredData = data.filter(
+		const filteredData = values.filter(
 			(item) =>
 				item.beginning_inventory_qty > 0 ||
 				item.total_stocked_in_qty > 0 ||
@@ -91,7 +91,7 @@ export class ExportMonthlyInventoryAuditHandler implements IQueryHandler<ExportM
 				item.final_inventory_qty > 0
 		)
 		for (const record of filteredData) {
-			const row = worksheet.addRow(record)
+			const row = worksheet.addRow({ ...record, storage: record.storage_locations.join(', ') })
 			row.height = 30
 			for (let i = 1; i <= worksheet.columns.length; i++) {
 				row.getCell(i).fill = {

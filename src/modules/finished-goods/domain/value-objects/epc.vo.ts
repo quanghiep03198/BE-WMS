@@ -87,6 +87,8 @@ export class ElectronicProductCode {
 		return this.attributes?.po ?? FALLBACK_VALUE
 	}
 
+	public getAssemblyLine(prop: 'id', format?: 'original' | 'sanitized'): TObjectId
+	public getAssemblyLine(prop: 'code' | 'name', format?: 'original' | 'sanitized'): string
 	public getAssemblyLine(prop: 'id' | 'code' | 'name', format: 'original' | 'sanitized' = 'original') {
 		const value = this.attributes?.assembly_line
 
@@ -101,6 +103,8 @@ export class ElectronicProductCode {
 		return assemblyLine[prop]
 	}
 
+	public getStorageLocation(prop: 'id'): TObjectId
+	public getStorageLocation(prop: 'name'): string
 	public getStorageLocation(prop: 'id' | 'name') {
 		const value = this.attributes?.storage_location
 		if (!value) return FALLBACK_VALUE

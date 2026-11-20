@@ -96,13 +96,14 @@ export class OrderRepository implements IOrderRepository {
 
 	public async getManufacturingOrderInventory(
 		manufacturingOrder: string
-	): Promise<Array<{ mo_no: string; size_numcode: string; order_qty: number; instock_qty: number }>> {
+	): ReturnType<IOrderRepository['getManufacturingOrderInventory']> {
 		return this.manufacturingOrderModel
 			.aggregate<{
 				mo_no: string
 				size_numcode: string
 				order_qty: number
 				instock_qty: number
+				shipped_out_qty: number
 				missing_qty: number
 			}>([
 				{ $match: { mo_no: manufacturingOrder } },
@@ -134,6 +135,7 @@ export class OrderRepository implements IOrderRepository {
 						size_numcode: '$ledger.k',
 						order_qty: '$ledger.v.order_qty',
 						instock_qty: 1,
+						shipped_out_qty: { $ifNull: ['$ledger.v.shipped_out_qty', 0] },
 						missing_qty: { $subtract: ['$ledger.v.order_qty', '$instock_qty'] }
 					}
 				}

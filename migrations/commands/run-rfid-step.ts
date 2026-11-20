@@ -74,7 +74,7 @@ export async function runRfidStep(
 			if (typeof value !== 'string') throw new Error(`Invalid RFID ${key} for ${deviceSn}`)
 			localizedNames[`device_name.${language}`] = value.trim()
 		}
-		const createdBy = await resolveCreator(text(row, 'user_code_created'), deviceSn)
+		const createdBy = await resolveCreator('user_code_created' in row ? row.user_code_created : undefined, deviceSn)
 		const now = new Date()
 		const result = await collection.updateOne(
 			{ device_sn: deviceSn },

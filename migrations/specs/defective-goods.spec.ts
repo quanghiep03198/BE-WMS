@@ -331,7 +331,8 @@ describe('runDefectiveGoodsStep', () => {
 		expect(queries[0]).not.toMatch(/\b(?:MERGE|INSERT|UPDATE|DELETE)\b/i)
 		expect(documents('defective_goods')[0]).toMatchObject({
 			_id: expect.any(Types.ObjectId),
-			epc: '123456789012345678901234',
+			epc: expect.stringMatching(/^E28[0-9A-F]{21}$/),
+			legacy_epc: '123456789012345678901234',
 			combination_strategy: 'uhf',
 			unit: 'prs',
 			size_numcode: '42',
@@ -622,15 +623,16 @@ describe('runDefectiveGoodsStep', () => {
 		])
 		expect(documents('defective_goods')).toEqual(
 			expect.arrayContaining([
-				expect.objectContaining({ _id: oldId, epc, deleted: true }),
-				expect.objectContaining({ _id: replacementId, epc, deleted: false })
+				expect.objectContaining({ _id: oldId, legacy_epc: epc, deleted: true }),
+				expect.objectContaining({ _id: replacementId, legacy_epc: epc, deleted: false })
 			])
 		)
 		expect(documents('defective_goods')).toHaveLength(2)
+		expect(new Set(documents('defective_goods').map((doc) => doc.epc)).size).toBe(2)
 	})
 
 	it('rejects invalid source enums and keyids instead of writing them', async () => {
-		for (const overrides of [{ defective_category: 'UNKNOWN' }, { keyid: 'bad' }, { epc: 'short' }]) {
+		for (const overrides of [{ defective_category: 'UNKNOWN' }, { keyid: 'bad' }, { epc: ' ' }]) {
 			const { database, writes } = memoryDatabase(references())
 			const { pool } = memoryPool([defectiveGoodsRow(overrides)])
 

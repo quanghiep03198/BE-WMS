@@ -12,6 +12,9 @@ export class InventoryLedgerTransaction {
 	@Prop({ type: String, required: true })
 	time: string
 
+	@Prop({ type: String, enum: ['stock_in', 'recall'] })
+	tx_type?: 'stock_in' | 'recall'
+
 	@Prop({ type: Types.ObjectId, required: true, ref: 'Department', autopopulate: true })
 	assembly_line: Types.ObjectId | Pick<LeanDocument<DepartmentDocument>, 'name'>
 
