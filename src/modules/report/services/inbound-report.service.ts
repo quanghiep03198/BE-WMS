@@ -10,7 +10,11 @@ import {
 	FinishedGoodsEpc,
 	FinishedGoodsEpcModel
 } from '@modules/finished-goods/infrastructure/persistence/mongodb/schemas/finished-goods-epc.schema'
-import { ManufacturingOrder, ManufacturingOrderModel } from '@modules/order/schemas/manufacturing-order.schema'
+import {
+	ManufacturingOrder,
+	ManufacturingOrderDocument,
+	ManufacturingOrderModel
+} from '@modules/order/schemas/manufacturing-order.schema'
 import { Injectable } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
 import { InjectDataSource } from '@nestjs/typeorm'
@@ -278,7 +282,7 @@ export class InboundReportService {
 	}
 
 	public async getInboundHistory(manufacturingOrder: string) {
-		return await this.manufacturingOrderModel
+		const doc = await this.manufacturingOrderModel
 			.findOne({ mo_no: manufacturingOrder })
 			.populate([
 				{
@@ -297,36 +301,37 @@ export class InboundReportService {
 				}
 			])
 			.exec()
-			.then((doc) => {
-				if (!doc) return null
-				const normalizedDoc = doc.toObject()
 
-				const accumulatedInboundQty = Object.values(normalizedDoc.size_ledger).reduce(
-					(acc, curr) => acc + curr.stocked_in_qty - curr.total_recall_tx + curr.total_return_tx,
-					0
-				)
-				const missingQty = normalizedDoc.order_qty - accumulatedInboundQty
+		if (!doc) return null
 
-				return {
-					...normalizedDoc,
-					size_ledger: Object.fromEntries(normalizedDoc.size_ledger),
-					accumulated_inbound_qty: accumulatedInboundQty,
-					missing_qty: missingQty,
-					daily_inbound_history: normalizedDoc.daily_inbound_history
-						.filter((item) => {
-							return item.transaction_history
-								.values()
-								.toArray()
-								.some((tx) => !tx.voided)
-						})
-						.map((item) => ({
-							...item,
-							size_ledger: Object.fromEntries(item.size_ledger),
-							transaction_history: item.transaction_history.values().toArray()
-						})),
-					progress: ((accumulatedInboundQty / normalizedDoc.order_qty) * 100).toFixed(2) + '%'
-				}
-			})
+		const normalizedDoc = doc.toObject<LeanDocument<ManufacturingOrderDocument>>()
+
+		const accumulatedInboundQty = doc.size_ledger
+			.values()
+			.toArray()
+			.reduce((acc, curr) => acc + curr.instock_qty, 0)
+
+		const missingQty = doc.order_qty - accumulatedInboundQty
+
+		return {
+			...normalizedDoc,
+			size_ledger: Object.fromEntries(normalizedDoc.size_ledger),
+			accumulated_inbound_qty: accumulatedInboundQty,
+			missing_qty: missingQty,
+			daily_inbound_history: normalizedDoc.daily_inbound_history
+				.filter((item) => {
+					return item.transaction_history
+						.values()
+						.toArray()
+						.some((tx) => !tx.voided)
+				})
+				.map((item) => ({
+					...item,
+					size_ledger: Object.fromEntries(item.size_ledger),
+					transaction_history: item.transaction_history.values().toArray()
+				})),
+			progress: ((accumulatedInboundQty / normalizedDoc.order_qty) * 100).toFixed(2) + '%'
+		}
 	}
 
 	async exportDailyInboundToExcel(
