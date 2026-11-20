@@ -16,7 +16,7 @@ export default defineConfig(
 			'.deprecated',
 			'scripts/*',
 			'migrations',
-			'ecosystem.config.js',
+			'ecosystem.config.cjs',
 			'src/generated/i18n.generated.ts',
 			'*.mongodb.js',
 			'eslint.config.js',

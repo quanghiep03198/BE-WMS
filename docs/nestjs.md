@@ -293,7 +293,7 @@ Vậy làm thế nào để vừa chia tách được các khía cạnh theo t�
 │   ├── main.ts
 │   └── ...
 ├── .env.example
-├── ecosystem.config.js
+├── ecosystem.config.cjs
 ├── package.json
 └── ...
 ```

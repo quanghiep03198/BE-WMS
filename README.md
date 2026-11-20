@@ -134,7 +134,7 @@ If you are confusing about NestJS (A progressive NodeJS Framework), we already w
 ├── commitlint.config.js
 ├── docker-compose.yaml
 ├── Dockerfile
-├── ecosystem.config.js
+├── ecosystem.config.cjs
 ├── nest-cli.json
 ├── package.json
 ├── pnpm-lock.yaml
@@ -226,6 +226,13 @@ pnpm start:dev
 ```
 
 The API will now be available at http://localhost:3001.
+
+To run the production build with Bun under PM2, make sure `bun` and `pm2` are on `PATH` for the account running PM2 (including self-hosted deployment runners):
+
+```bash
+pnpm build
+pnpm start:pm2
+```
 
 ### Show documentation for the Application
 

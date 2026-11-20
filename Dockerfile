@@ -21,10 +21,10 @@ FROM base
 # Copy built files and ecosystem config from development stage
 COPY --from=prod-deps /app/node_modules /app/node_modules
 COPY --from=build /app/dist /app/dist
-COPY --from=base /app/ecosystem.config.js ./ecosystem.config.js
+COPY --from=base /app/ecosystem.config.cjs ./ecosystem.config.cjs
 
 EXPOSE 3001
 
-# CMD ["pm2-runtime", "ecosystem.config.js"]
+# CMD ["pm2-runtime", "ecosystem.config.cjs"]
 CMD ["pnpm", "start:prod"]
 

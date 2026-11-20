@@ -97,7 +97,7 @@ Organise by **modules/feature first**, not by technical layer.
 ├── commitlint.config.js
 ├── docker-compose.yaml
 ├── Dockerfile
-├── ecosystem.config.js
+├── ecosystem.config.cjs
 ├── nest-cli.json
 ├── package.json
 ├── pnpm-lock.yaml

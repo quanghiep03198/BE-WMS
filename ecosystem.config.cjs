@@ -16,6 +16,7 @@ module.exports = {
 			max_memory_restart: '2G',
 			increment_var: 'PORT',
 			exp_backoff_restart_delay: 5000,
+			interpreter: 'bun',
 			env: {
 				NODE_ENV: process.env.NODE_ENV,
 				PORT: process.env.PORT,

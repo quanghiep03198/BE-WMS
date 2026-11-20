@@ -51,7 +51,7 @@ jobs:
 
       - name: Restart and save PM2 process
         run: |
-          pm2 restart ecosystem.config.js --update-env
+          pm2 restart ecosystem.config.cjs --update-env
           pm2 save
 
   deploy-server-201:
@@ -80,7 +80,7 @@ jobs:
 
       - name: Restart and save PM2 process
         run: |
-          pm2 restart ecosystem.config.js --update-env
+          pm2 restart ecosystem.config.cjs --update-env
           pm2 save
 
   deploy-server-5251:
@@ -110,5 +110,5 @@ jobs:
 
       - name: Restart and save PM2 process
         run: |
-          pm2 restart ecosystem.config.js --update-env
+          pm2 restart ecosystem.config.cjs --update-env
           pm2 save
