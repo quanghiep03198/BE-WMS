@@ -16,8 +16,10 @@ import { randomUUID } from 'node:crypto'
 import { DailyMoInventoryLedger, DailyMoInventoryLedgerSchema } from '../schemas/daily-mo-inventory-ledger.schema'
 import { DailyPoShippingProgress, DailyPoShippingProgressSchema } from '../schemas/daily-po-shipping-progress.schema'
 import { FinishedGoodsEpc, FinishedGoodsEpcSchema } from '../schemas/finished-goods-epc.schema'
+import { StockHistoryOutbox, StockHistoryOutboxSchema } from '../schemas/stock-history-outbox.schema'
 import { InventoryLedgerRepository } from './inventory-ledger.repository'
 import { ShippingProgressMongoRepository } from './shipping-progress-mongo.repository'
+import { StockHistoryOutboxRepository } from './stock-history-outbox'
 import { StockTransactionMongoRepository } from './stock-transaction-mongo.repository'
 
 const uri = process.env.STOCK_TX_TEST_MONGO_URI
@@ -66,12 +68,13 @@ integration('StockTransactionMongoRepository concurrent stock flows with MongoDB
 			dailyPoShippingProgressModel,
 			txHost
 		)
+		const outboxModel = connection.model(StockHistoryOutbox.name, StockHistoryOutboxSchema)
 		stockTransactionRepository = new StockTransactionMongoRepository(
 			finishedGoodsEpcModel,
 			inventoryLedgerRepository,
 			shippingProgressRepository,
 			txHost,
-			{ lpush: async () => 1, ttl: async () => 1, expireat: async () => 1 } as never
+			new StockHistoryOutboxRepository(outboxModel)
 		)
 
 		await Promise.all([
@@ -79,7 +82,8 @@ integration('StockTransactionMongoRepository concurrent stock flows with MongoDB
 			manufacturingOrderModel.init(),
 			purchaseOrderModel.init(),
 			dailyMoInventoryLedgerModel.init(),
-			dailyPoShippingProgressModel.init()
+			dailyPoShippingProgressModel.init(),
+			outboxModel.init()
 		])
 	}, 30000)
 

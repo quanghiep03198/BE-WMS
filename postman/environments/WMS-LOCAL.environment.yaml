@@ -30,4 +30,22 @@ values:
     secret: true
   - key: client_id
     value: ''
+  - key: stock_tenant_id
+    value: ""
+  - key: stock_factory_code
+    value: ""
+  - key: stock_mo_no
+    value: ""
+  - key: stock_device_sn
+    value: ""
+  - key: stock_assembly_line_id
+    value: ""
+  - key: stock_warehouse
+    value: ""
+  - key: stock_storage_location_id
+    value: ""
+  - key: stock_po
+    value: ""
+  - key: stock_transaction_id
+    value: ""
 color: 120

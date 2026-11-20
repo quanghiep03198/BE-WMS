@@ -1,0 +1,14 @@
+$kind: http-request
+description: |-
+  Set stock_transaction_id to an ID from Current stock transactions. Use inbound
+  for stock-in or recall, or outbound for stock-out. A 204 response has no body.
+  Poll history for voided: true; MongoDB decides rollback eligibility, not Redis.
+url: "{{base_url}}/finished-goods/transactions/:stockFlow/:transactionId"
+method: DELETE
+headers:
+  X-Tenant-Id: "{{stock_tenant_id}}"
+pathVariables:
+  stockFlow: inbound
+  transactionId: "{{stock_transaction_id}}"
+settings: {}
+order: 7100

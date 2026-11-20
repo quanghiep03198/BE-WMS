@@ -178,6 +178,10 @@ Kết quả mong đợi: các guard và rollback idempotent qua trên replica se
 
 ## Ghi chú bàn giao
 
+**Transactional outbox cho lịch sử Redis:** Stock-in, stock-out, recall và rollback ghi ý định đồng bộ vào `stock_history_outbox` bằng cùng MongoDB session với EPC và ledger. Worker đọc bản ghi đã commit trên primary và đồng bộ danh sách `transactions:inbound` / `transactions:outbound` theo chu kỳ một giây; lịch sử hiển thị có thể trễ khi có backlog hoặc Redis lỗi. Worker thử lại sau lỗi, không yêu cầu gọi lại lệnh kho. Redis áp dụng theo ID giao dịch trong một Lua script nguyên tử; gửi lại không tạo bản sao hoặc đổi `voided` về `false`. Worker chỉ xóa đúng phiên bản đã gửi, không xóa nhầm rollback mới hơn. Outbox phục vụ lịch sử tạm thời: bản ghi quá hạn không được đưa lại vào Redis. Mốc hết hạn là 23:00 kế tiếp theo giờ ứng dụng, để giao dịch sau giờ chốt không hết hạn ngay. Lịch sử MongoDB vẫn là nguồn quyết định rollback.
+
+Kiểm thử MongoDB replica set: `pnpm test --runInBand --testPathPattern 'stock-transaction-(rollback|concurrency).integration'` với `STOCK_TX_TEST_MONGO_URI`. Đặt thêm `STOCK_TX_TEST_REDIS_URI` trỏ đến Redis thử nghiệm để chạy Lua thật; nếu không đặt, bộ test rollback dùng Redis giả lập. Khi triển khai, thay toàn bộ instance chạy phiên bản cũ để không còn instance ghi Redis trực tiếp trước commit.
+
 Rollback recall khôi phục trạng thái EPC đã ghi ngay trước lúc thu hồi. Nếu giao dịch cũ không lưu trạng thái của một EPC, rollback bị từ chối toàn bộ và không thay đổi EPC hay sổ kho. Số lần nhập kho không đủ để phân biệt `SCANNING` và `IN_STOCK`.
 
 **Bổ sung về hạn mức MO/size:** Mỗi size được cập nhật phải thỏa `0 <= shipped_out_qty <= stocked_in_qty + total_return_tx - total_recall_tx <= order_qty` trên chính document `manufacturing_orders`. Xuất không giải phóng hạn mức nhập; recall giải phóng hạn mức, nên EPC đã nhập lại hợp lệ có thể được thu hồi lần nữa. Stock-out vẫn phải thỏa thêm hạn mức PO/size. MongoDB kiểm trạng thái sau ghi trong cùng transaction với EPC và ledger, kể cả khi rollback. MO đặt 60 EPC size 05 và 40 EPC size 06 phải từ chối lô 50/50 và chấp nhận lô 60/40 nếu toàn bộ hạn mức còn trống.

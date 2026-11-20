@@ -1,26 +1,24 @@
 $kind: http-request
-url: "{{base_url}}/rfid/inbound/update-stock/:orderCode"
+description: |-
+  Imports eligible EPCs already scanned for the MO and device. Use test data.
+  The API returns 201 after MongoDB commits. Redis-backed history can appear later.
+  Exceeding any MO size limit rejects the entire batch, even when the MO total fits.
+url: "{{base_url}}/finished-goods/stock-in"
 method: PUT
 headers:
-  X-Database-Host: 10.30.80.2
-pathVariables:
-  orderCode: ""
+  X-User-Factory: "{{stock_factory_code}}"
+  X-Tenant-Id: "{{stock_tenant_id}}"
 body:
   type: json
-  content: "{\r
-
-    \t\"rfid_status\": \"\",\r
-
-    \t\"rfid_use\": \"\",\r
-
-    \t\"dept_code\": \"\",\r
-
-    \t\"dept_name\": \"\",\r
-
-    \t\"storage\": \"\",\r
-
-    \t\"quantity\": 0\r
-
-    }"
+  content: |-
+    {
+      "mo_no": "{{stock_mo_no}}",
+      "inbound_device_sn": "{{stock_device_sn}}",
+      "action": "A",
+      "purpose": "A",
+      "assembly_line": "{{stock_assembly_line_id}}",
+      "warehouse": "{{stock_warehouse}}",
+      "storage_location": "{{stock_storage_location_id}}"
+    }
 settings: {}
 order: 7000

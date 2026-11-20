@@ -1,0 +1,14 @@
+$kind: http-request
+description: |-
+  Use inbound for stock-in and recall, or outbound for stock-out. Poll this GET
+  after a successful mutation if the entry or voided flag has not appeared yet:
+  the outbox updates Redis asynchronously. Do not retry the mutation just because
+  the entry is not yet visible. Copy the entry's id to stock_transaction_id for rollback.
+url: "{{base_url}}/finished-goods/transactions/:stockFlow"
+method: GET
+headers:
+  X-Tenant-Id: "{{stock_tenant_id}}"
+pathVariables:
+  stockFlow: inbound
+settings: {}
+order: 7000

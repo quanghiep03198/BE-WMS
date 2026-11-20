@@ -1,20 +1,21 @@
 $kind: http-request
-url: "{{base_url}}/rfid/outbound/update-stock"
+description: |-
+  Ships eligible EPCs for the specified MO and PO, subject to MO and PO size limits.
+  Adjust sizes and quantities to match your test fixture. A 201 response means
+  MongoDB committed; use Current stock transactions to check Redis-backed history.
+url: "{{base_url}}/finished-goods/stock-out"
 method: PUT
 headers:
-  X-Tenant-Id: tenant-lianying-primary
+  X-Tenant-Id: "{{stock_tenant_id}}"
 body:
   type: json
-  content: "{\r
-
-    \    \"rfid_status\":\"A\",\r
-
-    \    \"rfid_use\":\"A\",\r
-
-    \    \"storage\": \"VA1B01\",\r
-
-    \    \"dept_code\": \"VA1BA100\"\r
-
-    }"
+  content: |-
+    {
+      "mo_no": "{{stock_mo_no}}",
+      "po": "{{stock_po}}",
+      "sizes": [
+        { "size_numcode": "05", "qty": 1 }
+      ]
+    }
 settings: {}
 order: 7000

@@ -28,6 +28,10 @@ import { MongoEpcChangeStreamFactory } from './infrastructure/persistence/mongod
 import { FinishedGoodsEpcRepository } from './infrastructure/persistence/mongodb/repositories/finished-goods-epc.repository'
 import { InventoryLedgerRepository } from './infrastructure/persistence/mongodb/repositories/inventory-ledger.repository'
 import { ShippingProgressMongoRepository } from './infrastructure/persistence/mongodb/repositories/shipping-progress-mongo.repository'
+import {
+	StockHistoryOutboxRepository,
+	StockHistoryOutboxWorker
+} from './infrastructure/persistence/mongodb/repositories/stock-history-outbox'
 import { StockTransactionIdMongoGenerator } from './infrastructure/persistence/mongodb/repositories/stock-transaction-id-mongo.generator'
 import { StockTransactionMongoRepository } from './infrastructure/persistence/mongodb/repositories/stock-transaction-mongo.repository'
 import {
@@ -54,6 +58,10 @@ import {
 	FinishedGoodsEpcModel,
 	FinishedGoodsEpcSchema
 } from './infrastructure/persistence/mongodb/schemas/finished-goods-epc.schema'
+import {
+	StockHistoryOutbox,
+	StockHistoryOutboxSchema
+} from './infrastructure/persistence/mongodb/schemas/stock-history-outbox.schema'
 import {
 	STOCK_TRANSACTION_SEQUENCE_COLLECTION,
 	StockTransactionSequence,
@@ -143,6 +151,10 @@ import { FinishedGoodsGateway } from './presentation/gateways/finished-goods.gat
 					name: StockTransactionSequence.name,
 					collection: STOCK_TRANSACTION_SEQUENCE_COLLECTION,
 					schema: StockTransactionSequenceSchema
+				},
+				{
+					name: StockHistoryOutbox.name,
+					schema: StockHistoryOutboxSchema
 				}
 			],
 			DATA_WAREHOUSE_CONNECTION
@@ -150,6 +162,8 @@ import { FinishedGoodsGateway } from './presentation/gateways/finished-goods.gat
 	],
 	controllers: FinishedGoodsControllers,
 	providers: [
+		StockHistoryOutboxRepository,
+		StockHistoryOutboxWorker,
 		...FinishedGoodsConsumers,
 		// ...FinishedGoodsListeners,
 		...FinishedGoodsQueryHandlers,

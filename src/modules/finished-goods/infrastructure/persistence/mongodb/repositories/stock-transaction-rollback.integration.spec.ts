@@ -7,13 +7,16 @@ import { ManufacturingOrder, ManufacturingOrderSchema } from '@modules/order/sch
 import { PurchaseOrder, PurchaseOrderSchema } from '@modules/order/schemas/purchase-order.schema'
 import { TransactionHost } from '@nestjs-cls/transactional'
 import { TransactionalAdapterMongoose } from '@nestjs-cls/transactional-adapter-mongoose'
+import Redis from 'ioredis'
 import mongoose, { Types } from 'mongoose'
 import { randomUUID } from 'node:crypto'
 import { DailyMoInventoryLedger, DailyMoInventoryLedgerSchema } from '../schemas/daily-mo-inventory-ledger.schema'
 import { DailyPoShippingProgress, DailyPoShippingProgressSchema } from '../schemas/daily-po-shipping-progress.schema'
 import { FinishedGoodsEpc, FinishedGoodsEpcSchema } from '../schemas/finished-goods-epc.schema'
+import { StockHistoryOutbox, StockHistoryOutboxSchema } from '../schemas/stock-history-outbox.schema'
 import { InventoryLedgerRepository } from './inventory-ledger.repository'
 import { ShippingProgressMongoRepository } from './shipping-progress-mongo.repository'
+import { StockHistoryOutboxRepository, StockHistoryOutboxWorker } from './stock-history-outbox'
 import { StockTransactionMongoRepository } from './stock-transaction-mongo.repository'
 
 const uri = process.env.STOCK_TX_TEST_MONGO_URI
@@ -27,31 +30,53 @@ integration('StockTransactionMongoRepository rollback with MongoDB', () => {
 	let dailyMoInventoryLedgerModel: mongoose.Model<any>
 	let dailyPoShippingProgressModel: mongoose.Model<any>
 	let stockTransactionRepository: StockTransactionMongoRepository
+	let txHost: TransactionHost<TransactionalAdapterMongoose>
+	let outboxModel: mongoose.Model<StockHistoryOutbox>
+	let worker: StockHistoryOutboxWorker
+	let liveRedis: Redis | undefined
 	const redisLists = new Map<string, string[]>()
 	let failNextRedisSet = false
 
 	const redisClient = {
 		lpush: async (key: string, value: string) => {
+			if (liveRedis) return liveRedis.lpush(key, value)
 			const list = redisLists.get(key) ?? []
 			list.unshift(value)
 			redisLists.set(key, list)
 			return list.length
 		},
-		lrange: async (key: string) => redisLists.get(key) ?? [],
-		eval: async (_script: string, _keyCount: number, key: string, entry: string, value: string) => {
+		lrange: async (key: string) => (liveRedis ? liveRedis.lrange(key, 0, -1) : [...(redisLists.get(key) ?? [])]),
+		eval: async (
+			script: string,
+			keyCount: number,
+			key: string,
+			id: string,
+			voided: string,
+			payload: string,
+			deadline: number
+		) => {
 			if (failNextRedisSet) {
 				failNextRedisSet = false
 				throw new Error('Redis write failed')
 			}
+			if (liveRedis) return liveRedis.eval(script, keyCount, key, id, voided, payload, deadline)
+			if (Date.now() >= deadline * 1000) return 0
 			const list = redisLists.get(key) ?? []
-			const index = list.indexOf(entry)
-			if (index >= 0) list[index] = value
-		},
-		ttl: async () => 1,
-		expireat: async () => 1
+			const index = list.findIndex((entry) => JSON.parse(entry).id === id)
+			if (index >= 0 && voided === '1') list[index] = JSON.stringify({ ...JSON.parse(list[index]), voided: true })
+			if (index < 0 && payload) await redisClient.lpush(key, payload)
+			return 1
+		}
 	}
 
 	beforeAll(async () => {
+		if (process.env.STOCK_TX_TEST_REDIS_URI) {
+			liveRedis = new Redis(process.env.STOCK_TX_TEST_REDIS_URI, {
+				keyPrefix: `stock-outbox-test:${randomUUID()}:`,
+				maxRetriesPerRequest: 1
+			})
+			await liveRedis.ping()
+		}
 		connection = await mongoose
 			.createConnection(uri, { dbName: `stock_flow_rollback_${randomUUID().replaceAll('-', '')}` })
 			.asPromise()
@@ -63,9 +88,11 @@ integration('StockTransactionMongoRepository rollback with MongoDB', () => {
 		purchaseOrderModel = connection.model(PurchaseOrder.name, PurchaseOrderSchema)
 		dailyMoInventoryLedgerModel = connection.model(DailyMoInventoryLedger.name, DailyMoInventoryLedgerSchema)
 		dailyPoShippingProgressModel = connection.model(DailyPoShippingProgress.name, DailyPoShippingProgressSchema)
+		outboxModel = connection.model(StockHistoryOutbox.name, StockHistoryOutboxSchema)
+		worker = new StockHistoryOutboxWorker(outboxModel, redisClient as Pick<Redis, 'eval'> as Redis)
 
 		const adapter = new TransactionalAdapterMongoose({ mongooseConnectionToken: DATA_WAREHOUSE_CONNECTION })
-		const txHost = new TransactionHost({
+		txHost = new TransactionHost({
 			connectionName: DATA_WAREHOUSE_CONNECTION,
 			...adapter.optionsFactory(connection)
 		} as never)
@@ -89,7 +116,7 @@ integration('StockTransactionMongoRepository rollback with MongoDB', () => {
 			inventoryLedgerRepository,
 			shippingProgressRepository,
 			txHost,
-			redisClient as never
+			new StockHistoryOutboxRepository(outboxModel)
 		)
 
 		await Promise.all([
@@ -97,23 +124,33 @@ integration('StockTransactionMongoRepository rollback with MongoDB', () => {
 			manufacturingOrderModel.init(),
 			purchaseOrderModel.init(),
 			dailyMoInventoryLedgerModel.init(),
-			dailyPoShippingProgressModel.init()
+			dailyPoShippingProgressModel.init(),
+			outboxModel.init()
 		])
 	}, 30000)
 
 	beforeEach(async () => {
 		redisLists.clear()
+		await liveRedis?.del('transactions:inbound', 'transactions:outbound')
 		failNextRedisSet = false
 		await Promise.all([
 			finishedGoodsEpcModel.deleteMany({}),
 			manufacturingOrderModel.deleteMany({}),
 			purchaseOrderModel.deleteMany({}),
 			dailyMoInventoryLedgerModel.deleteMany({}),
-			dailyPoShippingProgressModel.deleteMany({})
+			dailyPoShippingProgressModel.deleteMany({}),
+			outboxModel.deleteMany({})
 		])
 	})
 
 	afterAll(async () => {
+		if (liveRedis) {
+			try {
+				await liveRedis.del('transactions:inbound', 'transactions:outbound')
+			} finally {
+				liveRedis.disconnect()
+			}
+		}
 		if (!connection) return
 		await connection.dropDatabase()
 		await connection.close()
@@ -175,17 +212,41 @@ integration('StockTransactionMongoRepository rollback with MongoDB', () => {
 			{ mo_no: moNo },
 			{ $unset: { [`transaction_history.${transactionId}.tx_type`]: '' } }
 		)
-		const cached = JSON.parse(redisLists.get('transactions:inbound')[0])
-		redisLists.set('transactions:inbound', [JSON.stringify({ ...cached, voided: true })])
+		await redisClient.lpush('transactions:inbound', JSON.stringify({ id: transactionId, voided: true }))
 
 		const rolledBack = await stockTransactionRepository.rollbackInboundTransaction(transactionId)
 		const repeatedRollback = await stockTransactionRepository.rollbackInboundTransaction(transactionId)
+		await worker.flush()
 
 		expect(rolledBack).toEqual([{ epc, last_tx: transactionId, status: FinishedGoodsEpcStatus.IN_STOCK }])
 		expect(repeatedRollback).toEqual([])
 		expect((await manufacturingOrderModel.findOne({ mo_no: moNo }).lean()).size_ledger['8'].stocked_in_qty).toBe(0)
 		expect((await finishedGoodsEpcModel.findOne({ epc }).lean()).status).toBe(FinishedGoodsEpcStatus.SCANNING)
-		expect(JSON.parse(redisLists.get('transactions:inbound')[0]).voided).toBe(true)
+		expect((await redisClient.lrange('transactions:inbound')).map((entry) => JSON.parse(entry))).toEqual([
+			{ id: transactionId, voided: true }
+		])
+	})
+
+	it('does not expose a stock transaction that aborts after stock-in returns', async () => {
+		const mo_no = id('MO')
+		const transactionId = id('SI')
+		const epc = epcId()
+		await createMo(mo_no, { orderQty: 1, stockedInQty: 0 })
+		await createEpc(epc, mo_no, FinishedGoodsEpcStatus.SCANNING, 0)
+
+		await expect(
+			txHost.withTransaction(async () => {
+				await stockTransactionRepository.stockIn(transactionId, [stockInEpc(epc, mo_no)])
+				await worker.flush()
+				expect(await redisClient.lrange('transactions:inbound')).toEqual([])
+				throw new Error('forced outer abort')
+			})
+		).rejects.toThrow('forced outer abort')
+
+		expect((await manufacturingOrderModel.findOne({ mo_no }).lean()).size_ledger['8'].stocked_in_qty).toBe(0)
+		expect(await outboxModel.countDocuments({ transactionId })).toBe(0)
+		await worker.flush()
+		expect(await redisClient.lrange('transactions:inbound')).toEqual([])
 	})
 
 	it('marks only the rolled-back history entry when a concurrent push shifts Redis list indexes', async () => {
@@ -197,15 +258,17 @@ integration('StockTransactionMongoRepository rollback with MongoDB', () => {
 		await createMo(mo, { orderQty: 1, stockedInQty: 0 })
 		await createEpc(epc, mo, FinishedGoodsEpcStatus.SCANNING, 0)
 		await stockTransactionRepository.stockIn(target, [stockInEpc(epc, mo)])
+		await worker.flush()
 
-		const read = jest.spyOn(redisClient, 'lrange').mockImplementationOnce(async () => {
-			const snapshot = [...redisLists.get(key)]
+		const project = redisClient.eval
+		const read = jest.spyOn(redisClient, 'eval').mockImplementationOnce(async (...args) => {
 			await redisClient.lpush(key, JSON.stringify({ id: concurrent, voided: false }))
-			return snapshot
+			return project(...args)
 		})
 		try {
 			await stockTransactionRepository.rollbackInboundTransaction(target)
-			expect(redisLists.get(key).map((entry) => JSON.parse(entry))).toEqual([
+			await worker.flush()
+			expect((await redisClient.lrange(key)).map((entry) => JSON.parse(entry))).toEqual([
 				{ id: concurrent, voided: false },
 				expect.objectContaining({ id: target, voided: true })
 			])
@@ -244,9 +307,13 @@ integration('StockTransactionMongoRepository rollback with MongoDB', () => {
 
 		const rolledBack = await stockTransactionRepository.rollbackOutboundTransaction(transactionId)
 		const repeatedRollback = await stockTransactionRepository.rollbackOutboundTransaction(transactionId)
+		await worker.flush()
 
 		expect(rolledBack).toEqual([{ epc, last_tx: transactionId, status: FinishedGoodsEpcStatus.SHIPPED }])
 		expect(repeatedRollback).toEqual([])
+		expect((await redisClient.lrange('transactions:outbound')).map((entry) => JSON.parse(entry))).toEqual([
+			expect.objectContaining({ id: transactionId, tx_type: 'stock_out', voided: true })
+		])
 		expect((await manufacturingOrderModel.findOne({ mo_no: moNo }).lean()).size_ledger['8'].shipped_out_qty).toBe(0)
 		expect((await purchaseOrderModel.findOne({ po }).lean()).shipping_progress['8'].shipped_out_qty).toBe(0)
 		expect((await finishedGoodsEpcModel.findOne({ epc }).lean()).status).toBe(FinishedGoodsEpcStatus.SCANNING)
@@ -259,6 +326,10 @@ integration('StockTransactionMongoRepository rollback with MongoDB', () => {
 		await createMo(moNo, { orderQty: 1, stockedInQty: 1 })
 		await createEpc(epc, moNo, FinishedGoodsEpcStatus.IN_STOCK, 1)
 		await stockTransactionRepository.recallFromStock(transactionId, [recallEpc(epc, moNo)])
+		await worker.flush()
+		expect((await redisClient.lrange('transactions:inbound')).map((entry) => JSON.parse(entry))).toEqual([
+			expect.objectContaining({ id: transactionId, tx_type: 'recall', voided: false })
+		])
 
 		const rolledBack = await stockTransactionRepository.rollbackInboundTransaction(transactionId)
 
@@ -352,11 +423,12 @@ integration('StockTransactionMongoRepository rollback with MongoDB', () => {
 		await createMo(moNo, { orderQty: 1, stockedInQty: 0 })
 		await createEpc(epc, moNo, FinishedGoodsEpcStatus.SCANNING, 0)
 		await stockTransactionRepository.stockIn(transactionId, [stockInEpc(epc, moNo)])
+		await worker.flush()
 		failNextRedisSet = true
 
-		await expect(stockTransactionRepository.rollbackInboundTransaction(transactionId)).rejects.toThrow(
-			'Redis write failed'
-		)
+		await expect(stockTransactionRepository.rollbackInboundTransaction(transactionId)).resolves.toEqual([
+			{ epc, last_tx: transactionId, status: FinishedGoodsEpcStatus.IN_STOCK }
+		])
 
 		expect((await manufacturingOrderModel.findOne({ mo_no: moNo }).lean()).size_ledger['8'].stocked_in_qty).toBe(0)
 		expect((await finishedGoodsEpcModel.findOne({ epc }).lean()).status).toBe(FinishedGoodsEpcStatus.SCANNING)
@@ -364,7 +436,94 @@ integration('StockTransactionMongoRepository rollback with MongoDB', () => {
 			(await dailyMoInventoryLedgerModel.findOne({ mo_no: moNo }).lean()).transaction_history[transactionId].voided
 		).toBe(true)
 
+		await worker.flush()
+		expect(await outboxModel.countDocuments({ transactionId, voided: true })).toBe(1)
+		expect(JSON.parse((await redisClient.lrange('transactions:inbound'))[0]).voided).toBe(false)
 		await expect(stockTransactionRepository.rollbackInboundTransaction(transactionId)).resolves.toEqual([])
+		await outboxModel.updateOne({ transactionId }, { $set: { nextAttemptAt: new Date(0) } })
+		await worker.flush()
+		expect(JSON.parse((await redisClient.lrange('transactions:inbound'))[0]).voided).toBe(true)
+		expect(await outboxModel.countDocuments({ transactionId })).toBe(0)
+	})
+
+	it('does not duplicate or unvoid a transaction when a stale worker resumes after rollback', async () => {
+		const mo_no = id('MO')
+		const transactionId = id('SI')
+		const epc = epcId()
+		await createMo(mo_no, { orderQty: 1, stockedInQty: 0 })
+		await createEpc(epc, mo_no, FinishedGoodsEpcStatus.SCANNING, 0)
+		await stockTransactionRepository.stockIn(transactionId, [stockInEpc(epc, mo_no)])
+		expect(await redisClient.lrange('transactions:inbound')).toEqual([])
+
+		const project = redisClient.eval
+		const paused = jest.spyOn(redisClient, 'eval').mockImplementationOnce(async (...args) => {
+			await stockTransactionRepository.rollbackInboundTransaction(transactionId)
+			await worker.flush()
+			return project(...args)
+		})
+		try {
+			await worker.flush()
+		} finally {
+			paused.mockRestore()
+		}
+		expect((await redisClient.lrange('transactions:inbound')).map((entry) => JSON.parse(entry))).toEqual([
+			expect.objectContaining({ id: transactionId, voided: true })
+		])
+		expect(await outboxModel.countDocuments({ transactionId })).toBe(0)
+	})
+
+	it('retries an uncertain Redis write without duplicating history', async () => {
+		const mo_no = id('MO')
+		const transactionId = id('SI')
+		const epc = epcId()
+		await createMo(mo_no, { orderQty: 1, stockedInQty: 0 })
+		await createEpc(epc, mo_no, FinishedGoodsEpcStatus.SCANNING, 0)
+		await stockTransactionRepository.stockIn(transactionId, [stockInEpc(epc, mo_no)])
+
+		const project = redisClient.eval
+		const disconnect = jest.spyOn(redisClient, 'eval').mockImplementationOnce(async (...args) => {
+			await project(...args)
+			throw new Error('lost Redis response after write')
+		})
+		try {
+			await worker.flush()
+		} finally {
+			disconnect.mockRestore()
+		}
+		expect(await outboxModel.countDocuments({ transactionId })).toBe(1)
+		await outboxModel.updateOne({ transactionId }, { $set: { nextAttemptAt: new Date(0) } })
+		await worker.flush()
+		expect((await redisClient.lrange('transactions:inbound')).map((entry) => JSON.parse(entry))).toEqual([
+			expect.objectContaining({ id: transactionId, tx_type: 'stock_in', voided: false })
+		])
+		expect(await outboxModel.countDocuments({ transactionId })).toBe(0)
+	})
+
+	it('preserves a pending rollback when the worker acknowledges an older outbox revision', async () => {
+		const mo_no = id('MO')
+		const transactionId = id('SI')
+		const epc = epcId()
+		await createMo(mo_no, { orderQty: 1, stockedInQty: 0 })
+		await createEpc(epc, mo_no, FinishedGoodsEpcStatus.SCANNING, 0)
+		await stockTransactionRepository.stockIn(transactionId, [stockInEpc(epc, mo_no)])
+
+		const project = redisClient.eval
+		const paused = jest.spyOn(redisClient, 'eval').mockImplementationOnce(async (...args) => {
+			const result = await project(...args)
+			await stockTransactionRepository.rollbackInboundTransaction(transactionId)
+			return result
+		})
+		try {
+			await worker.flush()
+		} finally {
+			paused.mockRestore()
+		}
+		expect(await outboxModel.countDocuments({ transactionId, voided: true })).toBe(1)
+		await worker.flush()
+		expect((await redisClient.lrange('transactions:inbound')).map((entry) => JSON.parse(entry))).toEqual([
+			expect.objectContaining({ id: transactionId, voided: true })
+		])
+		expect(await outboxModel.countDocuments({ transactionId })).toBe(0)
 	})
 
 	it('does not overwrite a newer stock flow when rollback races with recall', async () => {

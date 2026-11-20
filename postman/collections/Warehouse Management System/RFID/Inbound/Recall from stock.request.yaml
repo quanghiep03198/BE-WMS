@@ -1,0 +1,20 @@
+$kind: http-request
+description: |-
+  Recalls eligible EPCs scanned for the specified MO and device. A 201 response
+  means MongoDB committed; the inbound history entry can appear later.
+url: "{{base_url}}/finished-goods/recall"
+method: PUT
+headers:
+  X-User-Factory: "{{stock_factory_code}}"
+  X-Tenant-Id: "{{stock_tenant_id}}"
+body:
+  type: json
+  content: |-
+    {
+      "mo_no": "{{stock_mo_no}}",
+      "inbound_device_sn": "{{stock_device_sn}}",
+      "action": "B",
+      "purpose": "B"
+    }
+settings: {}
+order: 7100

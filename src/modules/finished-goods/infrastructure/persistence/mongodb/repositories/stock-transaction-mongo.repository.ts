@@ -1,4 +1,3 @@
-import { SuperJson } from '@common/utils'
 import { DATA_WAREHOUSE_CONNECTION } from '@databases/constants'
 import { INVENTORY_LEDGER_REPOSITORY } from '@modules/finished-goods/application/ports/inventory-ledger.repository.port'
 import { SHIPPING_PROGRESS_REPOSITORY } from '@modules/finished-goods/application/ports/shipping-progress.repository.port'
@@ -13,13 +12,12 @@ import { InjectTransactionHost, Transactional, TransactionHost } from '@nestjs-c
 import { TransactionalAdapterMongoose } from '@nestjs-cls/transactional-adapter-mongoose'
 import { Inject, Injectable } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
-import { InjectRedisClient } from '@redis/decorators'
 import { format } from 'date-fns'
-import Redis from 'ioredis'
 import { AnyBulkWriteOperation, mongo, type MongooseBulkWriteOptions } from 'mongoose'
 import { FinishedGoodsEpc, FinishedGoodsEpcDocument, FinishedGoodsEpcModel } from '../schemas/finished-goods-epc.schema'
 import { InventoryLedgerRepository } from './inventory-ledger.repository'
 import { ShippingProgressMongoRepository } from './shipping-progress-mongo.repository'
+import { StockHistoryOutboxRepository } from './stock-history-outbox'
 
 type RollbackEpc = {
 	epc: string
@@ -33,10 +31,7 @@ type RollbackEpc = {
 	status_before_recall?: FinishedGoodsEpcStatus.SCANNING | FinishedGoodsEpcStatus.IN_STOCK
 }
 
-type RollbackResult = {
-	epcs: Array<{ epc: string; status: FinishedGoodsEpcStatus; last_tx: string }>
-	syncRedisHistory: boolean
-}
+type RollbackResult = Array<{ epc: string; status: FinishedGoodsEpcStatus; last_tx: string }>
 
 @Injectable()
 export class StockTransactionMongoRepository implements IStockTransactionRepository {
@@ -49,8 +44,7 @@ export class StockTransactionMongoRepository implements IStockTransactionReposit
 		private readonly shippingProgressMongoRepository: ShippingProgressMongoRepository,
 		@InjectTransactionHost(DATA_WAREHOUSE_CONNECTION)
 		private readonly txHost: TransactionHost<TransactionalAdapterMongoose>,
-		@InjectRedisClient()
-		private readonly redisClient: Redis
+		private readonly stockHistoryOutbox: StockHistoryOutboxRepository
 	) {}
 
 	@Transactional<TransactionalAdapterMongoose>(DATA_WAREHOUSE_CONNECTION)
@@ -141,9 +135,9 @@ export class StockTransactionMongoRepository implements IStockTransactionReposit
 			pendingStockInEpcs
 		)
 
-		await this.redisClient.lpush(
-			`transactions:inbound`,
-			SuperJson.stringify({
+		await this.stockHistoryOutbox.enqueue(
+			'inbound',
+			{
 				id: transactionId,
 				mo_no: balances.mo_no,
 				qty: Object.values(balances.size_ledger).reduce((sum, item) => {
@@ -154,13 +148,9 @@ export class StockTransactionMongoRepository implements IStockTransactionReposit
 				tx_at: format(new Date(), 'yyyy-MM-dd HH:mm:ss'),
 				tx_type: 'stock_in',
 				voided: false
-			} satisfies IInoutboundTransaction<'inbound'>)
+			},
+			this.txHost.tx
 		)
-
-		// * Apply expiry after writes to avoid missing TTL when key is first created by RPUSH.
-		const expiryTime = Math.floor(new Date().setHours(23, 0, 0, 0) / 1000)
-		const inboundTtl = await this.redisClient.ttl('transactions:inbound')
-		if (inboundTtl < 0) await this.redisClient.expireat('transactions:inbound', expiryTime)
 	}
 
 	@Transactional<TransactionalAdapterMongoose>(DATA_WAREHOUSE_CONNECTION)
@@ -200,9 +190,9 @@ export class StockTransactionMongoRepository implements IStockTransactionReposit
 		const balances = await this.inventoryLedgerMongoRepository.commitInventoryLedgerOnStockOut(pendingShipOutEpcs)
 		await this.shippingProgressMongoRepository.applyShippingProgressForStockOut(transactionId, balances)
 
-		await this.redisClient.lpush(
-			`transactions:outbound`,
-			SuperJson.stringify({
+		await this.stockHistoryOutbox.enqueue(
+			'outbound',
+			{
 				id: transactionId,
 				po: purchaseOrder,
 				qty: balances.reduce(
@@ -222,13 +212,9 @@ export class StockTransactionMongoRepository implements IStockTransactionReposit
 				tx_at: format(new Date(), 'yyyy-MM-dd HH:mm:ss'),
 				tx_type: 'stock_out',
 				voided: false
-			} satisfies IInoutboundTransaction<'outbound'>)
+			},
+			this.txHost.tx
 		)
-
-		// * Apply expiry after writes to avoid missing TTL when key is first created by RPUSH.
-		const expiryTime = Math.floor(new Date().setHours(23, 0, 0, 0) / 1000)
-		const outboundTtl = await this.redisClient.ttl('transactions:outbound')
-		if (outboundTtl < 0) await this.redisClient.expireat('transactions:outbound', expiryTime)
 	}
 
 	@Transactional<TransactionalAdapterMongoose>(DATA_WAREHOUSE_CONNECTION)
@@ -261,9 +247,9 @@ export class StockTransactionMongoRepository implements IStockTransactionReposit
 			pendingRecallEpcs
 		)
 
-		await this.redisClient.lpush(
-			`transactions:inbound`,
-			SuperJson.stringify({
+		await this.stockHistoryOutbox.enqueue(
+			'inbound',
+			{
 				id: transactionId,
 				mo_no: balances.mo_no,
 				qty: Object.values(balances.size_ledger).reduce((sum, item) => sum + item.total_recall_tx, 0),
@@ -271,32 +257,25 @@ export class StockTransactionMongoRepository implements IStockTransactionReposit
 				tx_at: format(new Date(), 'yyyy-MM-dd HH:mm:ss'),
 				tx_type: 'recall',
 				voided: false
-			} satisfies IInoutboundTransaction<'inbound'>)
+			},
+			this.txHost.tx
 		)
-
-		// * Apply expiry after writes to avoid missing TTL when key is first created by RPUSH.
-		const expiryTime = Math.floor(new Date().setHours(23, 0, 0, 0) / 1000)
-		const inboundTtl = await this.redisClient.ttl('transactions:inbound')
-		if (inboundTtl < 0) await this.redisClient.expireat('transactions:inbound', expiryTime)
 	}
 
 	public async rollbackInboundTransaction(
 		transactionId: string
 	): Promise<Array<{ epc: string; status: FinishedGoodsEpcStatus }>> {
-		const result = await this.rollbackInboundTransactionInMongo(transactionId).catch(async (error: unknown) => {
+		return this.rollbackInboundTransactionInMongo(transactionId).catch(async (error: unknown) => {
 			const persisted = await this.inventoryLedgerMongoRepository.getInboundTransactionHistory(transactionId)
-			if (persisted?.voided) return { epcs: [], syncRedisHistory: true }
+			if (persisted?.voided) return []
 			throw error
 		})
-		if (result.syncRedisHistory) await this.syncRedisTransactionVoid('transactions:inbound', transactionId)
-		return result.epcs
 	}
 
 	@Transactional<TransactionalAdapterMongoose>(DATA_WAREHOUSE_CONNECTION)
 	private async rollbackInboundTransactionInMongo(transactionId: string): Promise<RollbackResult> {
 		const transaction = await this.inventoryLedgerMongoRepository.getInboundTransactionHistory(transactionId)
-		if (!transaction) return { epcs: [], syncRedisHistory: false }
-		if (transaction.voided) return { epcs: [], syncRedisHistory: true }
+		if (!transaction || transaction.voided) return []
 
 		const expectedStatus =
 			transaction.tx_type === 'recall' ? FinishedGoodsEpcStatus.RECALLED : FinishedGoodsEpcStatus.IN_STOCK
@@ -362,27 +341,22 @@ export class StockTransactionMongoRepository implements IStockTransactionReposit
 			throw new StockTransactionNotRollbackableException('Inbound EPCs changed before rollback could complete')
 
 		await this.inventoryLedgerMongoRepository.rollbackInboundFluctuation(transaction)
-		return {
-			epcs: epcs.map(({ epc, last_tx, status }) => ({ epc, last_tx, status })),
-			syncRedisHistory: true
-		}
+		await this.stockHistoryOutbox.enqueueVoid('inbound', transactionId, this.txHost.tx)
+		return epcs.map(({ epc, last_tx, status }) => ({ epc, last_tx, status }))
 	}
 
 	public async rollbackOutboundTransaction(transactionId: string) {
-		const result = await this.rollbackOutboundTransactionInMongo(transactionId).catch(async (error: unknown) => {
+		return this.rollbackOutboundTransactionInMongo(transactionId).catch(async (error: unknown) => {
 			const persisted = await this.inventoryLedgerMongoRepository.getOutboundTransactionHistory(transactionId)
-			if (persisted?.voided) return { epcs: [], syncRedisHistory: true }
+			if (persisted?.voided) return []
 			throw error
 		})
-		if (result.syncRedisHistory) await this.syncRedisTransactionVoid('transactions:outbound', transactionId)
-		return result.epcs
 	}
 
 	@Transactional<TransactionalAdapterMongoose>(DATA_WAREHOUSE_CONNECTION)
 	private async rollbackOutboundTransactionInMongo(transactionId: string): Promise<RollbackResult> {
 		const transaction = await this.inventoryLedgerMongoRepository.getOutboundTransactionHistory(transactionId)
-		if (!transaction) return { epcs: [], syncRedisHistory: false }
-		if (transaction.voided) return { epcs: [], syncRedisHistory: true }
+		if (!transaction || transaction.voided) return []
 
 		const epcs = (await this.finishedGoodsEpcModel
 			.find(
@@ -408,10 +382,8 @@ export class StockTransactionMongoRepository implements IStockTransactionReposit
 			throw new StockTransactionNotRollbackableException('Outbound EPCs changed before rollback could complete')
 
 		await this.inventoryLedgerMongoRepository.rollbackOutboundFluctuation(transaction)
-		return {
-			epcs: epcs.map(({ epc, last_tx, status }) => ({ epc, last_tx, status })),
-			syncRedisHistory: true
-		}
+		await this.stockHistoryOutbox.enqueueVoid('outbound', transactionId, this.txHost.tx)
+		return epcs.map(({ epc, last_tx, status }) => ({ epc, last_tx, status }))
 	}
 
 	private assertInboundEpcsMatchTransaction(
@@ -479,26 +451,5 @@ export class StockTransactionMongoRepository implements IStockTransactionReposit
 
 	private haveSameCounts(expected: Map<string, number>, actual: Map<string, number>): boolean {
 		return expected.size === actual.size && Array.from(expected).every(([key, count]) => actual.get(key) === count)
-	}
-
-	private async syncRedisTransactionVoid(listKey: string, transactionId: string): Promise<void> {
-		const transactionHistory = await this.redisClient.lrange(listKey, 0, -1)
-		const entry = transactionHistory.find((item) => {
-			const transaction = SuperJson.parse<{ id: string; voided: boolean }>(item)
-			return transaction.id === transactionId
-		})
-		if (!entry) return
-
-		const transaction = SuperJson.parse<{ id: string; voided: boolean }>(entry)
-		if (transaction.voided) return
-
-		await this.redisClient.eval(
-			`local index = redis.call('LPOS', KEYS[1], ARGV[1])
-			if index then redis.call('LSET', KEYS[1], index, ARGV[2]) end`,
-			1,
-			listKey,
-			entry,
-			SuperJson.stringify({ ...transaction, voided: true })
-		)
 	}
 }
