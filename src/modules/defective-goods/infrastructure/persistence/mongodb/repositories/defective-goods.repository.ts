@@ -166,12 +166,16 @@ export class DefectiveGoodsRepository
 				'color_sn',
 				'size_numcode',
 				'sewing_line',
-				'assembly_line'
+				'assembly_line',
+				'mo_no',
+				'po'
 			)
 			.whereDateEqual('created_at')
 			.when(Array.isArray(filter.including_ids), (qb) => qb.whereIn('_id', filter.including_ids as string[]))
 			.when(Array.isArray(filter.excluding_ids), (qb) => qb.whereNotIn('_id', filter.excluding_ids))
 			.build()
+
+		console.log(filterQuery)
 
 		const pendingDeleteItems = await this.defectiveGoodsModel
 			.find(filterQuery, {
@@ -179,6 +183,8 @@ export class DefectiveGoodsRepository
 			})
 			.lean<IDefectiveGoodsProps[]>(true)
 			.then((docs) => docs.map((item) => new DefectiveGoodsDomainModel(item)))
+
+		console.log('pendingDeleteItems.length :>>>', pendingDeleteItems.length)
 
 		const chunks = chunk(pendingDeleteItems, 100)
 		await Promise.all(
