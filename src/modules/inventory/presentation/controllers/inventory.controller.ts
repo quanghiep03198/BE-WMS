@@ -70,11 +70,16 @@ export class InventoryController {
 	@RequireAuthorized(UserRole.MANAGER, UserRole.FG_WAREHOUSE_STAFF, UserRole.INDUSTRIAL_ENGINEERING_STAFF)
 	async exportMonthlyInventoryReport(
 		@Query('month:eq', new DefaultValuePipe(format(new Date(), 'yyyy-MM'))) month: string,
-		@Query('mo_no:in', new DefaultValuePipe([]), new ParseArrayPipe({ items: String, separator: ',' }))
+		@Query(
+			'mo_no:in',
+			{ transform: (value: unknown) => (value == null || value === '' ? [] : value) },
+			new ParseArrayPipe({ items: String, separator: ',' })
+		)
 		manufacturingOrders: string[],
 		@Headers(CommonRequestHeader.FACTORY_CODE) factory: string,
 		@Res() reply: FastifyReply
 	) {
+		console.log('manufacturingOrders:>> ', manufacturingOrders)
 		const buffer = await this.queryBus.execute(
 			new ExportMonthlyInventoryAuditQuery(month, factory, manufacturingOrders)
 		)
