@@ -28,7 +28,8 @@ const DEFECTIVE_GOODS_COLLECTION: Readonly<string> = 'defective_goods'
 	// strict: true,
 	strictQuery: false,
 	readConcern: { level: 'majority' },
-	writeConcern: { w: 'majority' }
+	writeConcern: { w: 'majority' },
+	read: 'primary'
 })
 export class DefectiveGoods {
 	@Prop({ type: String, required: true, length: 24, immutable: true })

@@ -6,10 +6,6 @@ import { BaseMongoRepository } from '@modules/_base/repositories/base-mongo.abst
 import { DeleteManyDefectiveGoodsDTO } from '@modules/defective-goods/application/dto/defective-goods.dto'
 import { InoutboundEpcQueryDTO } from '@modules/defective-goods/application/dto/filter-query.dto'
 import {
-	DEFECTIVE_GOODS_CACHE_REPOSITORY,
-	IDefectiveGoodsCacheRepository
-} from '@modules/defective-goods/application/ports/defective-goods-cache.port'
-import {
 	IDefectiveGoodsRepository,
 	IKeysetPagination,
 	IKeysetParams
@@ -22,7 +18,7 @@ import {
 	IDefectiveGoodsProps
 } from '@modules/defective-goods/domain/models/defective-goods.model'
 import { decodeDescription } from '@modules/files/description-codec'
-import { Inject, Injectable, Logger } from '@nestjs/common'
+import { Injectable, Logger } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
 import chunk from 'lodash/chunk'
 import {
@@ -45,9 +41,7 @@ export class DefectiveGoodsRepository
 
 	constructor(
 		@InjectModel(DefectiveGoods.name, DATA_WAREHOUSE_CONNECTION)
-		private readonly defectiveGoodsModel: DefectiveGoodsModel,
-		@Inject(DEFECTIVE_GOODS_CACHE_REPOSITORY)
-		private readonly defectiveGoodsCacheRepository: IDefectiveGoodsCacheRepository
+		private readonly defectiveGoodsModel: DefectiveGoodsModel
 	) {
 		super(defectiveGoodsModel)
 	}
@@ -117,10 +111,7 @@ export class DefectiveGoodsRepository
 			.build()
 
 		const countDocuments = async (): Promise<number> => {
-			const cachedCount = await this.defectiveGoodsCacheRepository.getCount(filter)
-			if (typeof cachedCount === 'number') return cachedCount
-			const totalDocs = await this.defectiveGoodsModel.countDocuments(filterQuery)
-			return await this.defectiveGoodsCacheRepository.setCount(filter, totalDocs)
+			return await this.defectiveGoodsModel.countDocuments(filterQuery)
 		}
 
 		const result = await this.defectiveGoodsModel.paginate(filterQuery, {
@@ -175,8 +166,6 @@ export class DefectiveGoodsRepository
 			.when(Array.isArray(filter.excluding_ids), (qb) => qb.whereNotIn('_id', filter.excluding_ids))
 			.build()
 
-		console.log(filterQuery)
-
 		const pendingDeleteItems = await this.defectiveGoodsModel
 			.find(filterQuery, {
 				readPreference: 'primary' satisfies mongo.ReadPreferenceMode
@@ -184,12 +173,8 @@ export class DefectiveGoodsRepository
 			.lean<IDefectiveGoodsProps[]>(true)
 			.then((docs) => docs.map((item) => new DefectiveGoodsDomainModel(item)))
 
-		console.log('pendingDeleteItems.length :>>>', pendingDeleteItems.length)
-
-		const chunks = chunk(pendingDeleteItems, 100)
-		await Promise.all(
-			chunks.map(async (chunk) => await super.softDeleteManyByIds(chunk.map((item) => item.id.toString())))
-		)
+		const chunks = chunk(pendingDeleteItems, 5000)
+		await Promise.all(chunks.map((chunk) => super.softDeleteManyByIds(chunk.map((item) => item.id.toString()))))
 
 		return pendingDeleteItems
 	}
@@ -238,10 +223,7 @@ export class DefectiveGoodsRepository
 		 * * In case `take` is available and less than the cached count, use `take` primarily (Frontend will likely request fewer items than the total count).
 		 */
 		const countDocuments = async (): Promise<number> => {
-			const cachedCount = await this.defectiveGoodsCacheRepository.getCount(filterQueries)
-			if (typeof cachedCount === 'number') return take && take < cachedCount ? take : cachedCount
 			const totalDocs = await this.defectiveGoodsModel.countDocuments(filterQueries)
-			await this.defectiveGoodsCacheRepository.setCount(filterQueries, totalDocs)
 			return take && take < totalDocs ? take : totalDocs
 		}
 

@@ -12,7 +12,7 @@ export class DefectiveGoodsCacheRepository implements IDefectiveGoodsCacheReposi
 
 	async setCount(filter: Partial<IDefectiveGoodsProps>, count: number) {
 		const key = generateCacheKey(filter)
-		await this.redis.set(`cached:total:defective_goods:${key}`, count, 'EX', 60)
+		await this.redis.set(`cached:total:defective_goods:${key}`, count, 'EX', 5)
 		return count
 	}
 

@@ -7,7 +7,6 @@ import { CqrsModule } from '@nestjs/cqrs'
 import { InjectModel, MongooseModule } from '@nestjs/mongoose'
 import { TypeOrmModule } from '@nestjs/typeorm'
 import { DefectiveGoodsCommandHandlers } from './application/commands'
-import { DEFECTIVE_GOODS_CACHE_REPOSITORY } from './application/ports/defective-goods-cache.port'
 import { DEFECTIVE_GOODS_REPORT_REPOSITORY } from './application/ports/defective-goods-report.repository.port'
 import { DEFECTIVE_GOODS_REPOSITORY } from './application/ports/defective-goods.repository.port'
 import { DefectiveGoodsQueryHandlers } from './application/queries'
@@ -25,7 +24,6 @@ import {
 	DefectiveGoodsSchema
 } from './infrastructure/persistence/mongodb/schemas/defective-goods.schema'
 import { DefectiveGoodsEntity } from './infrastructure/persistence/mssql/entities/defective-goods.entity'
-import { DefectiveGoodsCacheRepository } from './infrastructure/persistence/redis/defective-goods-cache.repository'
 import { DEFECTIVE_GOODS_JOB_OPTIONS, DEFECTIVE_GOODS_SYNC_QUEUE } from './infrastructure/queues'
 import { DefectiveGoodsConsumers } from './infrastructure/queues/consumers'
 import { DefectiveGoodsTask } from './infrastructure/tasks/defective-goods.task'
@@ -54,7 +52,6 @@ import { DefectiveGoodsController } from './presentation/controllers/defective-g
 		...DefectiveGoodsConsumers,
 		{ provide: DEFECTIVE_GOODS_REPOSITORY, useClass: DefectiveGoodsRepository },
 		{ provide: DEFECTIVE_GOODS_REPORT_REPOSITORY, useClass: DefectiveGoodsReportRepository },
-		{ provide: DEFECTIVE_GOODS_CACHE_REPOSITORY, useClass: DefectiveGoodsCacheRepository },
 		DefectiveGoodsSaga,
 		DefectiveGoodsTask
 	]

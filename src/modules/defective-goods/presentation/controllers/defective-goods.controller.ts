@@ -1,12 +1,4 @@
-import {
-	FlushCache,
-	HttpMethod,
-	RequestUser,
-	RequireAuthorized,
-	RouteHandler,
-	StrictRoles,
-	TRequestUser
-} from '@common/decorators'
+import { HttpMethod, RequestUser, RequireAuthorized, RouteHandler, StrictRoles, TRequestUser } from '@common/decorators'
 import { ZodValidationPipe } from '@common/pipes'
 import { CreateDefectiveGoodsCommand } from '@modules/defective-goods/application/commands/create/create-defective-goods.command'
 import { DeleteManyDefectiveGoodsCommand } from '@modules/defective-goods/application/commands/delete-many/delete-many-defective-goods.command'
@@ -91,7 +83,6 @@ export class DefectiveGoodsController {
 		statusCode: HttpStatus.CREATED,
 		exceptionFilter: DefectiveGoodsExceptionFilter
 	})
-	@FlushCache('cached:total:defective_goods:*')
 	@StrictRoles()
 	@RequireAuthorized(UserRole.DG_WAREHOUSE_STAFF)
 	public async create(
@@ -140,7 +131,6 @@ export class DefectiveGoodsController {
 		statusCode: HttpStatus.NO_CONTENT
 	})
 	@StrictRoles()
-	@FlushCache('cached:total:defective_goods:*')
 	@RequireAuthorized(UserRole.DG_WAREHOUSE_STAFF)
 	public async deleteOne(@RequestUser() user: TRequestUser, @Param('id', new ParseObjectIdPipe()) id: string) {
 		return await this.commandBus.execute(new DeleteOneDefectiveGoodsCommand(id, user.username))
@@ -152,7 +142,6 @@ export class DefectiveGoodsController {
 		statusCode: HttpStatus.NO_CONTENT
 	})
 	@StrictRoles()
-	@FlushCache('cached:total:defective_goods:*')
 	@RequireAuthorized(UserRole.DG_WAREHOUSE_STAFF)
 	public async deleteMany(
 		@RequestUser() user: TRequestUser,

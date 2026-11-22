@@ -32,7 +32,7 @@ export class CreateDefectiveGoodsHandler implements ICommandHandler<CreateDefect
 			created_by: createdBy
 		} as FirstParameter<typeof DefectiveGoodsDomainModel.create>)
 
-		for (const part of chunk(defectiveGoods)) {
+		for (const part of chunk(defectiveGoods, 5000)) {
 			const session = await this.connection.startSession()
 			let created: DefectiveGoodsDomainModel[] = []
 			try {
