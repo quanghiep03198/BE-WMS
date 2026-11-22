@@ -79,7 +79,6 @@ export class InventoryController {
 		@Headers(CommonRequestHeader.FACTORY_CODE) factory: string,
 		@Res() reply: FastifyReply
 	) {
-		console.log('manufacturingOrders:>> ', manufacturingOrders)
 		const buffer = await this.queryBus.execute(
 			new ExportMonthlyInventoryAuditQuery(month, factory, manufacturingOrders)
 		)
