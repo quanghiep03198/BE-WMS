@@ -1,6 +1,5 @@
 import { SuperJson } from '@common/utils'
 import { DATA_WAREHOUSE_CONNECTION } from '@databases/constants'
-import { FinishedGoodsEpcStatus } from '@modules/finished-goods/domain/constants'
 import {
 	FinishedGoodsEpc,
 	FinishedGoodsEpcModel
@@ -8,7 +7,6 @@ import {
 import { IQueryHandler, QueryHandler } from '@nestjs/cqrs'
 import { InjectModel } from '@nestjs/mongoose'
 import { InjectRedisClient } from '@redis/decorators'
-import { format } from 'date-fns'
 import Redis from 'ioredis'
 import isEqual from 'lodash/isEqual'
 import pick from 'lodash/pick'
@@ -26,6 +24,12 @@ export class GetCurrentStockTxHandler implements IQueryHandler<GetCurrentStockTx
 
 	public async execute(): Promise<IInoutboundTransaction<'inbound'>[]> {
 		const currentStockTx = await this.redisClient.lrange(`transactions:inbound`, 0, -1)
+		const from = new Date()
+		from.setHours(0, 0, 0, 0)
+		const to = new Date()
+		to.setHours(23, 59, 59, 999)
+
+		const start = performance.now()
 
 		const persistedCurrentTx = await this.finishedGoodsEpcModel.aggregate<{
 			id: string
@@ -37,25 +41,24 @@ export class GetCurrentStockTxHandler implements IQueryHandler<GetCurrentStockTx
 				$match: {
 					scannable: true,
 					deleted: false,
-					status: { $in: [FinishedGoodsEpcStatus.IN_STOCK, FinishedGoodsEpcStatus.RECALLED] },
+					status: { $in: ['instock', 'recalled'] },
 					inbound_times: { $gte: 1 },
-					$expr: {
-						$eq: [
-							{
-								$dateToString: {
-									date: {
-										$cond: {
-											if: { $eq: ['$status', FinishedGoodsEpcStatus.IN_STOCK] },
-											then: '$inbound_at',
-											else: '$recalled_at'
-										}
-									},
-									format: '%Y-%m-%d'
-								}
-							},
-							format(new Date(), 'yyyy-MM-dd')
-						]
-					}
+					$or: [
+						{
+							status: 'instock',
+							inbound_at: {
+								$gte: from,
+								$lt: to
+							}
+						},
+						{
+							status: 'recalled',
+							recalled_at: {
+								$gte: from,
+								$lt: to
+							}
+						}
+					]
 				}
 			},
 			{
@@ -127,12 +130,13 @@ export class GetCurrentStockTxHandler implements IQueryHandler<GetCurrentStockTx
 					id: '$_id.last_tx',
 					tx_type: '$_id.tx_type',
 					mo_no: '$_id.mo_no',
-					changes: {
-						$arrayToObject: '$size_ledger'
-					}
+					changes: { $arrayToObject: '$size_ledger' }
 				}
 			}
 		])
+
+		const end = performance.now()
+		console.log(`Query execution time: ${end - start} ms`)
 
 		const persistedCurrentTxMap = new Map(persistedCurrentTx.map((item) => [item.id, item]))
 

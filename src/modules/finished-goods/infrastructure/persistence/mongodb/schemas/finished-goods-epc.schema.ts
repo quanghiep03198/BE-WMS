@@ -102,11 +102,11 @@ export const FinishedGoodsEpcSchema = SchemaFactory.createForClass(FinishedGoods
 // * Indexes
 FinishedGoodsEpcSchema.index({ epc: 1 }, { unique: true, name: 'idx_epc' })
 FinishedGoodsEpcSchema.index(
-	{ scannable: 1, deleted: 1, status: 1, inbound_device_sn: 1, storage_location: 1 },
+	{ scannable: 1, deleted: 1, status: 1, inbound_device_sn: 1, storage_location: 1, inbound_at: 1, recalled_at: 1 },
 	{ name: 'idx_inbound_active' }
 )
 FinishedGoodsEpcSchema.index(
-	{ scannable: 1, deleted: 1, status: 1, outbound_device_sn: 1, storage_location: 1 },
+	{ scannable: 1, deleted: 1, status: 1, outbound_device_sn: 1, storage_location: 1, outbound_at: 1 },
 	{ name: 'idx_outbound_active' }
 )
 FinishedGoodsEpcSchema.index(
