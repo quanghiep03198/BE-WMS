@@ -1,0 +1,34 @@
+{
+	"notification": {
+		"exchange_mo_failed": "មានកំហុសកើតឡើងខណៈពេលប្តូរ SKU ពីលំដាប់ផលិតកម្ម {sourceMo} ទៅលំដាប់ផលិតកម្ម {targetMo}។",
+		"exchange_mo_success": "បានប្តូរ SKU ពីលំដាប់ផលិតកម្ម {sourceMo} ទៅលំដាប់ផលិតកម្ម {targetMo} ដោយជោគជ័យ។",
+		"insufficient_inventory": "សារពើភណ្ឌមិនគ្រប់គ្រាន់សម្រាប់អនុវត្តប្រតិបត្តិការនេះទេ។",
+		"mismatching_mo_specs": "SKU ដែលបានជ្រើសមានលក្ខណៈបច្ចេកទេសមិនត្រូវគ្នា។ សូមពិនិត្យម្តងទៀត។",
+		"mismatching_size_number": "SKU ដែលបានជ្រើសមានទំហំមិនត្រូវគ្នា។ សូមពិនិត្យម្តងទៀត។",
+		"no_exchangable_sku": "មិនមាន SKU សម្រាប់ប្តូរទេ។",
+		"not_inbound_yet": "មិនអាចបន្តការបញ្ចេញបានទេ ព្រោះមានស្លាកមិនទាន់ទទួលចូល។",
+		"over_inbound_limit": "លំដាប់ទទួលចូលលើសចំនួនកំណត់ ឬបានទទួលគ្រប់ចំនួនហើយ។ អ្នកមិនអាចបន្ថែមទៀតបានទេ។ សូមពិនិត្យប្រវត្តិទទួលចូលនៃលំដាប់ផលិតកម្មនេះ។",
+		"over_outbound_limit": "លំដាប់ទិញលើសចំនួនកំណត់ ឬបានដឹកជញ្ជូនគ្រប់ចំនួនហើយ។ អ្នកមិនអាចបន្ថែមទៀតបានទេ។ សូមពិនិត្យប្រវត្តិបញ្ចេញនៃលំដាប់ទិញនេះ។",
+		"recalled_from_stock": "បានដកត្រឡប់ពីស្តុកដោយជោគជ័យ។",
+		"recalled_from_stock_failed": "មានកំហុសកើតឡើងខណៈពេលដកត្រឡប់ពីស្តុក។",
+		"stock_in_failed": "មានកំហុសកើតឡើងខណៈពេលទទួលផលិតផលចូលស្តុក។",
+		"stock_in_success": "បានទទួលផលិតផលចូលស្តុកដោយជោគជ័យ។",
+		"stock_out_failed": "មានកំហុសកើតឡើងខណៈពេលបញ្ចេញផលិតផលពីស្តុក។",
+		"stock_out_success": "បានបញ្ចេញផលិតផលពីស្តុកដោយជោគជ័យ។"
+	},
+	"outbound_purpose": {
+		"ELIMINATE": "កែច្នៃឡើងវិញ",
+		"GIVEAWAY": "ផ្តល់ជូន",
+		"SELL": "លក់"
+	},
+	"titles": {
+		"daily_assembly_productivity_report": "របាយការណ៍ផលិតភាពដំឡើងប្រចាំថ្ងៃ {factory} - {date}",
+		"daily_defective_gooods_inbound_report": "របាយការណ៍ទទួលទំនិញខូចចូលប្រចាំថ្ងៃ {factory} - {date}",
+		"daily_defective_gooods_outbound_report": "របាយការណ៍បញ្ចេញទំនិញខូចប្រចាំថ្ងៃ {factory} - {date}",
+		"daily_inbound_report": "របាយការណ៍ទទួលផលិតផលសម្រេចចូលប្រចាំថ្ងៃ {factory} - {date}",
+		"daily_outbound_report": "របាយការណ៍បញ្ចេញផលិតផលសម្រេចប្រចាំថ្ងៃ {factory} - {date}",
+		"file_monthly_inventory_report": "របាយការណ៍សារពើភណ្ឌប្រចាំខែ {factory} - {month}",
+		"production_inventory_summary": "សេចក្តីសង្ខេបសារពើភណ្ឌផលិតកម្ម - {factory}",
+		"truckload_delivery_report": "របាយការណ៍ដឹកជញ្ជូនតាមរថយន្តពេញរបស់ឃ្លាំង - {factory}"
+	}
+}

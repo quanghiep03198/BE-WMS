@@ -1,0 +1,31 @@
+{
+	"fields": {
+		"actual_avg_weight": "ទម្ងន់មធ្យមជាក់ស្តែង (kg)",
+		"actual_outstock_qty": "បរិមាណបញ្ចេញពីស្តុកជាក់ស្តែង",
+		"actual_weight": "ទម្ងន់ជាក់ស្តែង (kg)",
+		"packing_standard": "ស្តង់ដារវេចខ្ចប់",
+		"scan_id": "លេខសម្គាល់ស្កេន",
+		"series_number": "លេខស៊េរី",
+		"standard_weight": "ទម្ងន់ស្តង់ដារ (kg)",
+		"target_box_qty": "ចំនួនប្រអប់គោលដៅ",
+		"target_item_qty": "ចំនួនទំនិញគោលដៅ",
+		"unweighed_box_qty": "ចំនួនប្រអប់មិនទាន់ថ្លឹង",
+		"weighed_box_qty": "ចំនួនប្រអប់ដែលបានថ្លឹង",
+		"weighing_time": "ពេលថ្លឹង"
+	},
+	"status": {
+		"completed": "បានបញ្ចប់",
+		"in_progress": "កំពុងដំណើរការ",
+		"not_weighed": "មិនទាន់ថ្លឹង",
+		"weighed": "បានថ្លឹង"
+	},
+	"summary": {
+		"completion_rate": "អត្រាបញ្ចប់",
+		"remaining_boxes": "ចំនួនប្រអប់នៅសល់",
+		"total_progress": "វឌ្ឍនភាព៖ {weighed}/{total} ប្រអប់ ({percentage}%)"
+	},
+	"titles": {
+		"daily_weighing_report": "របាយការណ៍ទម្ងន់វេចខ្ចប់ {factory} - {date}",
+		"manifest_report": "របាយការណ៍បញ្ជីវេចខ្ចប់ {factory} - {date}"
+	}
+}

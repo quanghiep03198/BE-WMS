@@ -1,30 +1,30 @@
 {
-	"ok": "Ok",
+	"conflict": "Xung đột dữ liệu",
 	"created": "Tạo mới thành công",
-	"updated": "Cập nhật thành công",
 	"deleted": "Đã xóa thành công",
 	"exported": "Xuất dữ liệu thành công",
-	"not_found": "Bản ghi không tồn tại",
-	"unprocessable_entity": "Dữ liệu không hợp lệ",
-	"unauthorized": "Xác thực tài khoản thất bại",
-	"forbidden": "Không có quyền truy cập",
-	"conflict": "Xung đột dữ liệu",
-	"internal_server_error": "Lỗi Server",
-	"unavailable_service": "Tính năng không khả dụng",
-	"truckload_delivery": {
-		"exceptions": {
-			"dispatch_order_not_found": "Không tìm thấy đơn giao hàng.",
-			"purchase_order_not_found": "Không tìm thấy đơn mua hàng trong đơn giao hàng này.",
-			"conflict": "Đơn giao hàng đã tồn tại hoặc vừa được cập nhật đồng thời. Vui lòng thử lại.",
-			"sequence_exhausted": "Đã hết số thứ tự đơn giao hàng trong ngày.",
-			"empty_dispatch_order": "Đơn giao hàng phải có ít nhất một đơn mua hàng.",
-			"duplicate_purchase_order": "Mỗi đơn mua hàng chỉ được xuất hiện một lần trong đơn giao hàng."
-		}
-	},
 	"fields": {
 		"date": "Ngày",
 		"remark": "Ghi chú",
-		"total": "Tổng cộng",
-		"summary": "Tóm tắt"
-	}
+		"summary": "Tóm tắt",
+		"total": "Tổng cộng"
+	},
+	"forbidden": "Không có quyền truy cập",
+	"internal_server_error": "Lỗi Server",
+	"not_found": "Bản ghi không tồn tại",
+	"ok": "Ok",
+	"truckload_delivery": {
+		"exceptions": {
+			"conflict": "Đơn giao hàng đã tồn tại hoặc vừa được cập nhật đồng thời. Vui lòng thử lại.",
+			"dispatch_order_not_found": "Không tìm thấy đơn giao hàng.",
+			"duplicate_purchase_order": "Mỗi đơn mua hàng chỉ được xuất hiện một lần trong đơn giao hàng.",
+			"empty_dispatch_order": "Đơn giao hàng phải có ít nhất một đơn mua hàng.",
+			"purchase_order_not_found": "Không tìm thấy đơn mua hàng trong đơn giao hàng này.",
+			"sequence_exhausted": "Đã hết số thứ tự đơn giao hàng trong ngày."
+		}
+	},
+	"unauthorized": "Xác thực tài khoản thất bại",
+	"unavailable_service": "Tính năng không khả dụng",
+	"unprocessable_entity": "Dữ liệu không hợp lệ",
+	"updated": "Cập nhật thành công"
 }

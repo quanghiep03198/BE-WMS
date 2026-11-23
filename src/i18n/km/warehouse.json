@@ -1,0 +1,39 @@
+{
+	"errors": {
+		"storage_location_conflict": "ទីតាំងផ្ទុកដែលមានឈ្មោះដូចគ្នាមានរួចហើយ",
+		"warehouse_name_conflict": "ឃ្លាំងដែលមានឈ្មោះដូចគ្នាមានរួចហើយ"
+	},
+	"fields": {
+		"allocation_warehouse": "ឃ្លាំងបែងចែក",
+		"area": "ផ្ទៃក្រឡា (m²)",
+		"is_default": "លំនាំដើម",
+		"is_disable": "បានបិទ",
+		"manager": "អ្នកគ្រប់គ្រង",
+		"new_storage_location": "ទីតាំងផ្ទុកថ្មី",
+		"new_warehouse": "ឃ្លាំងថ្មី",
+		"original_storage_location": "ទីតាំងផ្ទុកដើម",
+		"original_warehouse": "ឃ្លាំងដើម",
+		"storage_name": "ឈ្មោះទីតាំងផ្ទុក",
+		"storage_num": "លេខកូដទីតាំងផ្ទុក",
+		"storage_position": "ទីតាំងផ្ទុក",
+		"transfered_warehouse": "ឃ្លាំងដែលបានផ្ទេរទៅ",
+		"type_storage": "ប្រភេទទីតាំងផ្ទុក",
+		"type_warehouse": "ប្រភេទឃ្លាំង",
+		"warehouse_name": "ឈ្មោះឃ្លាំង",
+		"warehouse_num": "លេខកូដឃ្លាំង"
+	},
+	"storage_types": {
+		"finished_production_area": "តំបន់ផលិតផលសម្រេច",
+		"inbound_staging_area": "តំបន់រង់ចាំទទួលចូល",
+		"inspection_holding_area": "តំបន់រង់ចាំត្រួតពិនិត្យផលិតផល",
+		"main_area": "តំបន់សំខាន់",
+		"outbound_staging_area": "តំបន់រង់ចាំបញ្ចេញ"
+	},
+	"warehouse_types": {
+		"finished_production_warehouse": "ឃ្លាំងផលិតផលសម្រេច",
+		"half_finished_production": "ឃ្លាំងផលិតផលពាក់កណ្តាលសម្រេច",
+		"material_warehouse": "ឃ្លាំងវត្ថុធាតុដើម",
+		"production_warehouse": "ឃ្លាំងផលិតកម្ម",
+		"scrap_production_warehouse": "ឃ្លាំងសំណល់ផលិតកម្ម"
+	}
+}

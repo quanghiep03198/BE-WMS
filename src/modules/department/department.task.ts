@@ -88,7 +88,7 @@ export class DepartmentTask {
 									})
 									return acc
 								},
-								{} as Record<'vi' | 'en' | 'cn', string>
+								{} as Record<Languages, string>
 							)
 						}
 					},

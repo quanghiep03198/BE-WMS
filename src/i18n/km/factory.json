@@ -1,0 +1,11 @@
+{
+	"CA1": "KHRU",
+	"departments": {
+		"assembly": "ផ្នែកដំឡើង {name}",
+		"sewing": "ផ្នែកដេរ {name}"
+	},
+	"factory": "រោងចក្រ",
+	"VA1": "Lian Ying",
+	"VB1": "Lian Shun 1",
+	"VB2": "Lian Shun 2"
+}

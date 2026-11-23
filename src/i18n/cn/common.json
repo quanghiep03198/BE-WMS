@@ -1,30 +1,30 @@
 {
-	"ok": "Ok",
+	"conflict": "冲突",
 	"created": "已创建",
-	"updated": "已更新",
 	"deleted": "已删除",
 	"exported": "導出成功",
-	"not_found": "记录未找到",
-	"unprocessable_entity": "无法处理的实体",
-	"unauthorized": "未授权",
-	"forbidden": "禁止",
-	"conflict": "冲突",
-	"internal_server_error": "内部服务器错误",
-	"unavailable_service": "服务不可用",
-	"truckload_delivery": {
-		"exceptions": {
-			"dispatch_order_not_found": "未找到整车配送单。",
-			"purchase_order_not_found": "未在此配送单中找到采购订单。",
-			"conflict": "配送单已存在或刚刚被并发修改，请重试。",
-			"sequence_exhausted": "当天的配送单序号已用尽。",
-			"empty_dispatch_order": "配送单必须至少包含一个采购订单。",
-			"duplicate_purchase_order": "同一采购订单在配送单中只能出现一次。"
-		}
-	},
 	"fields": {
 		"date": "日期",
 		"remark": "备注",
-		"total": "总计",
-		"summary": "摘要"
-	}
+		"summary": "摘要",
+		"total": "总计"
+	},
+	"forbidden": "禁止",
+	"internal_server_error": "内部服务器错误",
+	"not_found": "记录未找到",
+	"ok": "Ok",
+	"truckload_delivery": {
+		"exceptions": {
+			"conflict": "配送单已存在或刚刚被并发修改，请重试。",
+			"dispatch_order_not_found": "未找到整车配送单。",
+			"duplicate_purchase_order": "同一采购订单在配送单中只能出现一次。",
+			"empty_dispatch_order": "配送单必须至少包含一个采购订单。",
+			"purchase_order_not_found": "未在此配送单中找到采购订单。",
+			"sequence_exhausted": "当天的配送单序号已用尽。"
+		}
+	},
+	"unauthorized": "未授权",
+	"unavailable_service": "服务不可用",
+	"unprocessable_entity": "无法处理的实体",
+	"updated": "已更新"
 }

@@ -1,31 +1,31 @@
 {
+	"fields": {
+		"actual_avg_weight": "Actual Average Weight (kg)",
+		"actual_outstock_qty": "Actual outstock quantity",
+		"actual_weight": "Actual Weight (kg)",
+		"packing_standard": "Packing Standard",
+		"scan_id": "Scan ID",
+		"series_number": "Series Number",
+		"standard_weight": "Standard Weight (kg)",
+		"target_box_qty": "Target Boxes",
+		"target_item_qty": "Target Items",
+		"unweighed_box_qty": "Unweighed Boxes",
+		"weighed_box_qty": "Weighed Boxes",
+		"weighing_time": "Weighing Time"
+	},
+	"status": {
+		"completed": "Completed",
+		"in_progress": "In Progress",
+		"not_weighed": "Not Weighed",
+		"weighed": "Weighed"
+	},
+	"summary": {
+		"completion_rate": "Completion Rate",
+		"remaining_boxes": "Remaining Boxes",
+		"total_progress": "Progress: {weighed}/{total} boxes ({percentage}%)"
+	},
 	"titles": {
 		"daily_weighing_report": "Packing Weight Report {factory} - {date}",
 		"manifest_report": "Packing Manifest Report {factory} - {date}"
-	},
-	"fields": {
-		"packing_standard": "Packing Standard",
-		"standard_weight": "Standard Weight (kg)",
-		"actual_weight": "Actual Weight (kg)",
-		"actual_avg_weight": "Actual Average Weight (kg)",
-		"actual_outstock_qty": "Actual outstock quantity",
-		"target_box_qty": "Target Boxes",
-		"target_item_qty": "Target Items",
-		"weighed_box_qty": "Weighed Boxes",
-		"unweighed_box_qty": "Unweighed Boxes",
-		"scan_id": "Scan ID",
-		"series_number": "Series Number",
-		"weighing_time": "Weighing Time"
-	},
-	"summary": {
-		"total_progress": "Progress: {weighed}/{total} boxes ({percentage}%)",
-		"completion_rate": "Completion Rate",
-		"remaining_boxes": "Remaining Boxes"
-	},
-	"status": {
-		"weighed": "Weighed",
-		"not_weighed": "Not Weighed",
-		"in_progress": "In Progress",
-		"completed": "Completed"
 	}
 }

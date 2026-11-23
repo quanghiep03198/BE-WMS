@@ -28,6 +28,7 @@ export class Department extends BaseAbstractSchema {
 	name: {
 		cn: string
 		en: string
+		km: string
 		vi: string
 	}
 }

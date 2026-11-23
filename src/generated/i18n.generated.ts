@@ -8,51 +8,51 @@ export type I18nTranslations = {
     "auth": {
         "deactivated_account": string;
         "incorrect_password": string;
-        "user_not_found": string;
         "user_exists": string;
+        "user_not_found": string;
     };
     "common": {
-        "ok": string;
+        "conflict": string;
         "created": string;
-        "updated": string;
         "deleted": string;
         "exported": string;
-        "not_found": string;
-        "unprocessable_entity": string;
-        "unauthorized": string;
-        "forbidden": string;
-        "conflict": string;
-        "internal_server_error": string;
-        "unavailable_service": string;
-        "truckload_delivery": {
-            "exceptions": {
-                "dispatch_order_not_found": string;
-                "purchase_order_not_found": string;
-                "conflict": string;
-                "sequence_exhausted": string;
-                "empty_dispatch_order": string;
-                "duplicate_purchase_order": string;
-            };
-        };
         "fields": {
             "date": string;
             "remark": string;
-            "total": string;
             "summary": string;
+            "total": string;
         };
+        "forbidden": string;
+        "internal_server_error": string;
+        "not_found": string;
+        "ok": string;
+        "truckload_delivery": {
+            "exceptions": {
+                "conflict": string;
+                "dispatch_order_not_found": string;
+                "duplicate_purchase_order": string;
+                "empty_dispatch_order": string;
+                "purchase_order_not_found": string;
+                "sequence_exhausted": string;
+            };
+        };
+        "unauthorized": string;
+        "unavailable_service": string;
+        "unprocessable_entity": string;
+        "updated": string;
     };
     "defective-goods": {
-        "defective_goods_inventory_report": string;
         "categories": {
             "B": string;
             "C": string;
             "RD": string;
         };
+        "defective_goods_inventory_report": string;
         "exceptions": {
             "active_epcs_recombination_conflict": string;
-            "not_found": string;
             "no_defective_goods_to_stock_in": string;
             "no_defective_goods_to_stock_out": string;
+            "not_found": string;
             "not_stocked_in_yet": string;
         };
         "active_epcs_recombination_conflict": string;
@@ -61,18 +61,22 @@ export type I18nTranslations = {
         "fields": {
             "accumulated_qty": string;
             "active_date": string;
-            "actual_inventory_qty": string;
+            "actual_departure_time": string;
             "actual_instock_qty": string;
+            "actual_inventory_qty": string;
             "actual_outstock_qty": string;
-            "sewing_line": string;
+            "assembly_dept_code": string;
+            "assembly_dept_name": string;
             "assembly_line": string;
             "brand_name": string;
             "category": string;
+            "color_sn": string;
             "container_number": string;
             "container_order_code": string;
+            "container_sealing_time": string;
             "conversion_rate": string;
-            "customer_order": string;
             "cust_shoes_style": string;
+            "customer_order": string;
             "daily_inbound_qty": string;
             "daily_outbound_qty": string;
             "daily_productivity": string;
@@ -80,13 +84,10 @@ export type I18nTranslations = {
             "dept_name": string;
             "employee_name": string;
             "export_num": string;
-            "factory_entrance_time": string;
             "factory_departure_time": string;
-            "actual_departure_time": string;
+            "factory_entrance_time": string;
             "final_inventory_qty": string;
-            "punctured_container": string;
-            "smelling_container": string;
-            "moist_container": string;
+            "ie_signature": string;
             "inbound_date": string;
             "inbound_qty": string;
             "inspected_qty": string;
@@ -95,13 +96,13 @@ export type I18nTranslations = {
             "kg_nostart": string;
             "license_plate": string;
             "mat_code": string;
-            "color_sn": string;
             "missing_qty": string;
             "mo_no": string;
             "mo_no_actual": string;
             "mo_noseq": string;
             "mo_qty": string;
             "mo_size_qty": string;
+            "moist_container": string;
             "no_crates_in_stock": string;
             "no_pair_in_stock": string;
             "or_custpo": string;
@@ -110,25 +111,23 @@ export type I18nTranslations = {
             "or_qtyperpacking": string;
             "or_totalqty": string;
             "order_qty": string;
-            "outbound_purpose": string;
             "outbound_date": string;
+            "outbound_purpose": string;
             "outbound_qty": string;
             "packaging_code": string;
             "po": string;
             "prod_color": string;
-            "ie_signature": string;
-            "warehouse_officer_signature": string;
-            "security_guard_signature": string;
-            "container_sealing_time": string;
+            "punctured_container": string;
             "required_date": string;
             "returned_qty": string;
-            "assembly_dept_code": string;
-            "assembly_dept_name": string;
+            "security_guard_signature": string;
+            "sewing_line": string;
             "ship_order": string;
-            "shipping_destination": string;
             "shipment_confirm_date": string;
+            "shipping_destination": string;
             "shoes_type_b": string;
             "shoestyle_codefactory": string;
+            "smelling_container": string;
             "sno_car_number": string;
             "sno_container": string;
             "sno_date": string;
@@ -144,12 +143,13 @@ export type I18nTranslations = {
             "status_approve": string;
             "target_box_qty": string;
             "target_item_qty": string;
-            "total_init_qty": string;
             "total_daily_productivity": string;
+            "total_init_qty": string;
             "trans_num": string;
             "transfer_order_code": string;
             "uninspected_qty": string;
             "unweighed_box_qty": string;
+            "warehouse_officer_signature": string;
             "weighed_box_qty": string;
             "customer_branch_id": string;
             "size": string;
@@ -161,91 +161,91 @@ export type I18nTranslations = {
             "outbound_shipment_receipt": string;
         };
         "rfid_match_craft_form": {
-            "title": string;
             "description": string;
+            "title": string;
         };
     };
     "factory": {
-        "factory": string;
-        "VB1": string;
-        "VA1": string;
-        "VB2": string;
         "CA1": string;
         "departments": {
             "assembly": string;
             "sewing": string;
         };
+        "factory": string;
+        "VA1": string;
+        "VB1": string;
+        "VB2": string;
     };
     "inoutbound": {
+        "notification": {
+            "exchange_mo_failed": string;
+            "exchange_mo_success": string;
+            "insufficient_inventory": string;
+            "mismatching_mo_specs": string;
+            "mismatching_size_number": string;
+            "no_exchangable_sku": string;
+            "not_inbound_yet": string;
+            "over_inbound_limit": string;
+            "over_outbound_limit": string;
+            "recalled_from_stock": string;
+            "recalled_from_stock_failed": string;
+            "stock_in_failed": string;
+            "stock_in_success": string;
+            "stock_out_failed": string;
+            "stock_out_success": string;
+        };
+        "outbound_purpose": {
+            "ELIMINATE": string;
+            "GIVEAWAY": string;
+            "SELL": string;
+        };
         "titles": {
             "daily_assembly_productivity_report": string;
-            "daily_inbound_report": string;
-            "daily_outbound_report": string;
             "daily_defective_gooods_inbound_report": string;
             "daily_defective_gooods_outbound_report": string;
+            "daily_inbound_report": string;
+            "daily_outbound_report": string;
             "file_monthly_inventory_report": string;
             "production_inventory_summary": string;
             "truckload_delivery_report": string;
         };
-        "notification": {
-            "exchange_mo_success": string;
-            "exchange_mo_failed": string;
-            "insufficient_inventory": string;
-            "over_inbound_limit": string;
-            "over_outbound_limit": string;
-            "not_inbound_yet": string;
-            "no_exchangable_sku": string;
-            "mismatching_mo_specs": string;
-            "mismatching_size_number": string;
-            "recalled_from_stock": string;
-            "recalled_from_stock_failed": string;
-            "stock_in_success": string;
-            "stock_in_failed": string;
-            "stock_out_success": string;
-            "stock_out_failed": string;
-        };
-        "outbound_purpose": {
-            "SELL": string;
-            "ELIMINATE": string;
-            "GIVEAWAY": string;
-        };
     };
     "inventory": {
         "exceptions": {
-            "time_not_elapsed": string;
             "already_checkout": string;
             "supplemental_qty_excess": string;
+            "time_not_elapsed": string;
         };
     };
     "packing": {
-        "titles": {
-            "daily_weighing_report": string;
-            "manifest_report": string;
-        };
         "fields": {
-            "packing_standard": string;
-            "standard_weight": string;
-            "actual_weight": string;
             "actual_avg_weight": string;
-            "target_box_qty": string;
-            "target_item_qty": string;
-            "weighed_box_qty": string;
-            "unweighed_box_qty": string;
+            "actual_weight": string;
+            "packing_standard": string;
             "scan_id": string;
             "series_number": string;
+            "standard_weight": string;
+            "target_box_qty": string;
+            "target_item_qty": string;
+            "unweighed_box_qty": string;
+            "weighed_box_qty": string;
             "weighing_time": string;
             "actual_outstock_qty": string;
         };
+        "status": {
+            "completed": string;
+            "in_progress": string;
+            "not_weighed": string;
+            "weighed": string;
+        };
         "summary": {
-            "total_progress": string;
             "completion_rate": string;
             "remaining_boxes": string;
+            "total_progress": string;
         };
-        "status": {
-            "weighed": string;
-            "not_weighed": string;
-            "in_progress": string;
-            "completed": string;
+        "titles": {
+            "daily_weighing_report": string;
+            "manifest_report": string;
         };
     };
     "rfid": {
@@ -255,41 +255,41 @@ export type I18nTranslations = {
     };
     "warehouse": {
         "errors": {
-            "warehouse_name_conflict": string;
             "storage_location_conflict": string;
+            "warehouse_name_conflict": string;
         };
         "fields": {
-            "warehouse_num": string;
-            "warehouse_name": string;
-            "type_warehouse": string;
-            "storage_position": string;
-            "is_disable": string;
-            "is_default": string;
-            "area": string;
-            "manager": string;
-            "storage_num": string;
-            "storage_name": string;
-            "type_storage": string;
-            "original_warehouse": string;
-            "original_storage_location": string;
-            "transfered_warehouse": string;
-            "new_warehouse": string;
-            "new_storage_location": string;
             "allocation_warehouse": string;
-        };
-        "warehouse_types": {
-            "production_warehouse": string;
-            "material_warehouse": string;
-            "half_finished_production": string;
-            "finished_production_warehouse": string;
-            "scrap_production_warehouse": string;
+            "area": string;
+            "is_default": string;
+            "is_disable": string;
+            "manager": string;
+            "new_storage_location": string;
+            "new_warehouse": string;
+            "original_storage_location": string;
+            "original_warehouse": string;
+            "storage_name": string;
+            "storage_num": string;
+            "storage_position": string;
+            "transfered_warehouse": string;
+            "type_storage": string;
+            "type_warehouse": string;
+            "warehouse_name": string;
+            "warehouse_num": string;
         };
         "storage_types": {
-            "main_area": string;
             "finished_production_area": string;
-            "inspection_holding_area": string;
-            "outbound_staging_area": string;
             "inbound_staging_area": string;
+            "inspection_holding_area": string;
+            "main_area": string;
+            "outbound_staging_area": string;
+        };
+        "warehouse_types": {
+            "finished_production_warehouse": string;
+            "half_finished_production": string;
+            "material_warehouse": string;
+            "production_warehouse": string;
+            "scrap_production_warehouse": string;
         };
     };
 };

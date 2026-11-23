@@ -1,34 +1,34 @@
 {
+	"notification": {
+		"exchange_mo_failed": "将 SKU 从指令 {sourceMo} 转换到指令 {targetMo} 时发生错误.",
+		"exchange_mo_success": "已成功将 SKU 从指令 {sourceMo} 转换到指令 {targetMo}.",
+		"insufficient_inventory": "库存不足, 无法执行此操作.",
+		"mismatching_mo_specs": "所选 SKU 的规格不一致，请重新检查.",
+		"mismatching_size_number": "所选 SKU 的尺码不一致，请重新检查.",
+		"no_exchangable_sku": "没有可交换的 SKU.",
+		"not_inbound_yet": "无法出货, 发现有标签尚未入库!",
+		"over_inbound_limit": "此订单已入满, 无法继续入库! 请检查此订单的入库历史!",
+		"over_outbound_limit": "此订单已出满, 无法继续出货! 请检查此订单的出库历史!",
+		"recalled_from_stock": "已成功从库存中召回产品.",
+		"recalled_from_stock_failed": "召回库存时发生错误.",
+		"stock_in_failed": "入库时发生错误.",
+		"stock_in_success": "已成功入库个产品.",
+		"stock_out_failed": "出库时发生错误.",
+		"stock_out_success": "已成功出库个产品."
+	},
+	"outbound_purpose": {
+		"ELIMINATE": "破坏",
+		"GIVEAWAY": "給客人",
+		"SELL": "出貨"
+	},
 	"titles": {
 		"daily_assembly_productivity_report": "{factory}成型产量报表 - {date}",
-		"daily_inbound_report": "{factory}成品倉入庫報表 - {date}",
-		"daily_outbound_report": "{factory}成品倉出庫報表 - {date}",
 		"daily_defective_gooods_inbound_report": "{factory}二級品每日入庫報表 - {date}",
 		"daily_defective_gooods_outbound_report": "{factory}二級品每日出庫報表 - {date}",
+		"daily_inbound_report": "{factory}成品倉入庫報表 - {date}",
+		"daily_outbound_report": "{factory}成品倉出庫報表 - {date}",
 		"file_monthly_inventory_report": "{factory}库存报表 - {month}",
 		"production_inventory_summary": "{factory} - 成品库存总表",
 		"truckload_delivery_report": "{factory}成品仓按车辆出货报告"
-	},
-	"notification": {
-		"exchange_mo_success": "已成功将 SKU 从指令 {sourceMo} 转换到指令 {targetMo}.",
-		"exchange_mo_failed": "将 SKU 从指令 {sourceMo} 转换到指令 {targetMo} 时发生错误.",
-		"insufficient_inventory": "库存不足, 无法执行此操作.",
-		"over_inbound_limit": "此订单已入满, 无法继续入库! 请检查此订单的入库历史!",
-		"over_outbound_limit": "此订单已出满, 无法继续出货! 请检查此订单的出库历史!",
-		"not_inbound_yet": "无法出货, 发现有标签尚未入库!",
-		"no_exchangable_sku": "没有可交换的 SKU.",
-		"mismatching_mo_specs": "所选 SKU 的规格不一致，请重新检查.",
-		"mismatching_size_number": "所选 SKU 的尺码不一致，请重新检查.",
-		"recalled_from_stock": "已成功从库存中召回产品.",
-		"recalled_from_stock_failed": "召回库存时发生错误.",
-		"stock_in_success": "已成功入库个产品.",
-		"stock_in_failed": "入库时发生错误.",
-		"stock_out_success": "已成功出库个产品.",
-		"stock_out_failed": "出库时发生错误."
-	},
-	"outbound_purpose": {
-		"SELL": "出貨",
-		"ELIMINATE": "破坏",
-		"GIVEAWAY": "給客人"
 	}
 }

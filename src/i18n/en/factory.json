@@ -1,11 +1,11 @@
 {
-	"factory": "Factory",
-	"VB1": "Lian Shun 1",
-	"VA1": "Lian Ying",
-	"VB2": "Lian Shun 2",
 	"CA1": "KHRU",
 	"departments": {
 		"assembly": "Assembly {name}",
 		"sewing": "Sewing {name}"
-	}
+	},
+	"factory": "Factory",
+	"VA1": "Lian Ying",
+	"VB1": "Lian Shun 1",
+	"VB2": "Lian Shun 2"
 }

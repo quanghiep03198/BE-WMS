@@ -1,39 +1,39 @@
 {
 	"errors": {
-		"warehouse_name_conflict": "Kho với tên giống nhau đã tồn tại",
-		"storage_location_conflict": "Vị trí lưu kho với tên giống nhau đã tồn tại"
+		"storage_location_conflict": "Vị trí lưu kho với tên giống nhau đã tồn tại",
+		"warehouse_name_conflict": "Kho với tên giống nhau đã tồn tại"
 	},
 	"fields": {
-		"warehouse_num": "Mã kho",
-		"warehouse_name": "Tên kho",
-		"type_warehouse": "Loại kho",
-		"storage_position": "Vị trí",
-		"is_disable": "Đã hủy",
-		"is_default": "Đánh dấu là mặc định",
+		"allocation_warehouse": "Kho phân bổ",
 		"area": "Diện tích (m²)",
+		"is_default": "Đánh dấu là mặc định",
+		"is_disable": "Đã hủy",
 		"manager": "Người quản lý",
-		"storage_num": "Mã vị trí lưu kho",
-		"storage_name": "Vị trí lưu kho",
-		"type_storage": "Loại hình lưu kho",
-		"original_warehouse": "Kho gốc",
-		"original_storage_location": "Vị trí lưu kho gốc",
-		"transfered_warehouse": "Kho chuyển phát",
-		"new_warehouse": "Kho mới",
 		"new_storage_location": "Vị trí lưu kho mới",
-		"allocation_warehouse": "Kho phân bổ"
-	},
-	"warehouse_types": {
-		"production_warehouse": "Kho hàng gia công",
-		"material_warehouse": "Kho nguyên liệu",
-		"half_finished_production": "Kho bán thành phẩm",
-		"finished_production_warehouse": "Kho thành phẩm",
-		"scrap_production_warehouse": "Kho phế phẩm"
+		"new_warehouse": "Kho mới",
+		"original_storage_location": "Vị trí lưu kho gốc",
+		"original_warehouse": "Kho gốc",
+		"storage_name": "Vị trí lưu kho",
+		"storage_num": "Mã vị trí lưu kho",
+		"storage_position": "Vị trí",
+		"transfered_warehouse": "Kho chuyển phát",
+		"type_storage": "Loại hình lưu kho",
+		"type_warehouse": "Loại kho",
+		"warehouse_name": "Tên kho",
+		"warehouse_num": "Mã kho"
 	},
 	"storage_types": {
-		"main_area": "Khu vực bãi chính",
 		"finished_production_area": "Khu vực thành phẩm",
+		"inbound_staging_area": "Khu vực chờ hàng nhập",
 		"inspection_holding_area": "Khu vực đợi kiểm tra",
-		"outbound_staging_area": "Khu vực chờ hàng xuất",
-		"inbound_staging_area": "Khu vực chờ hàng nhập"
+		"main_area": "Khu vực bãi chính",
+		"outbound_staging_area": "Khu vực chờ hàng xuất"
+	},
+	"warehouse_types": {
+		"finished_production_warehouse": "Kho thành phẩm",
+		"half_finished_production": "Kho bán thành phẩm",
+		"material_warehouse": "Kho nguyên liệu",
+		"production_warehouse": "Kho hàng gia công",
+		"scrap_production_warehouse": "Kho phế phẩm"
 	}
 }

@@ -1,34 +1,34 @@
 {
+	"notification": {
+		"exchange_mo_failed": "An error occurred while exchanging SKUs from manufacturing order {sourceMo} to manufacturing order {targetMo}.",
+		"exchange_mo_success": "Successfully exchanged SKUs from manufacturing order {sourceMo} to manufacturing order {targetMo}.",
+		"insufficient_inventory": "Insufficient inventory to perform this operation.",
+		"mismatching_mo_specs": "The selected SKUs have mismatching specifications. Please check again.",
+		"mismatching_size_number": "The selected SKUs have mismatching sizes. Please check again.",
+		"no_exchangable_sku": "There are no SKUs available for exchange.",
+		"not_inbound_yet": "Cannot proceed with outbound, as there are tags that have not been inbounded yet.",
+		"over_inbound_limit": "The inbound order has been excessed or fully received, you cannot add more. Please check the inbound history of this manufacturing order.",
+		"over_outbound_limit": "The purchase order has been excessed or fully shipped, you cannot add more. Please check the outbound history of this purchase order.",
+		"recalled_from_stock": "Successfully recalled from stock.",
+		"recalled_from_stock_failed": "An error occurred while recalling from stock.",
+		"stock_in_failed": "An error occurred while stocking in products.",
+		"stock_in_success": "Successfully stocked in .",
+		"stock_out_failed": "An error occurred while stocking out products.",
+		"stock_out_success": "Successfully stocked out products."
+	},
+	"outbound_purpose": {
+		"ELIMINATE": "Recycle",
+		"GIVEAWAY": "Giveaway",
+		"SELL": "Sell"
+	},
 	"titles": {
 		"daily_assembly_productivity_report": "Assembly Productivity Report {factory} - {date}",
-		"daily_inbound_report": "Daily Finished Goods Inbound Report {factory} - {date}",
-		"daily_outbound_report": "Daily Finished Goods Outbound Report {factory} - {date}",
 		"daily_defective_gooods_inbound_report": "Daily Defective Goods Inbound Report {factory} - {date}",
 		"daily_defective_gooods_outbound_report": "Daily Defective Goods Outbound Report {factory} - {date}",
+		"daily_inbound_report": "Daily Finished Goods Inbound Report {factory} - {date}",
+		"daily_outbound_report": "Daily Finished Goods Outbound Report {factory} - {date}",
 		"file_monthly_inventory_report": "Monthly Inventory Report {factory} - {month}",
 		"production_inventory_summary": "Production Inventory Summary - {factory}",
 		"truckload_delivery_report": "Warehouse Truckload Delivery Report - {factory}"
-	},
-	"notification": {
-		"exchange_mo_success": "Successfully exchanged SKUs from manufacturing order {sourceMo} to manufacturing order {targetMo}.",
-		"exchange_mo_failed": "An error occurred while exchanging SKUs from manufacturing order {sourceMo} to manufacturing order {targetMo}.",
-		"insufficient_inventory": "Insufficient inventory to perform this operation.",
-		"over_inbound_limit": "The inbound order has been excessed or fully received, you cannot add more. Please check the inbound history of this manufacturing order.",
-		"over_outbound_limit": "The purchase order has been excessed or fully shipped, you cannot add more. Please check the outbound history of this purchase order.",
-		"no_exchangable_sku": "There are no SKUs available for exchange.",
-		"not_inbound_yet": "Cannot proceed with outbound, as there are tags that have not been inbounded yet.",
-		"mismatching_mo_specs": "The selected SKUs have mismatching specifications. Please check again.",
-		"mismatching_size_number": "The selected SKUs have mismatching sizes. Please check again.",
-		"recalled_from_stock": "Successfully recalled from stock.",
-		"recalled_from_stock_failed": "An error occurred while recalling from stock.",
-		"stock_in_success": "Successfully stocked in .",
-		"stock_in_failed": "An error occurred while stocking in products.",
-		"stock_out_success": "Successfully stocked out products.",
-		"stock_out_failed": "An error occurred while stocking out products."
-	},
-	"outbound_purpose": {
-		"SELL": "Sell",
-		"ELIMINATE": "Recycle",
-		"GIVEAWAY": "Giveaway"
 	}
 }

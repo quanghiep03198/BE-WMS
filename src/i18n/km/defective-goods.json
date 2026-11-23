@@ -1,0 +1,16 @@
+{
+	"active_epcs_recombination_conflict": "មិនអាចផ្គូផ្គង EPC ដែលកំពុងប្រើប្រាស់ និងមានក្នុងប្រព័ន្ធឡើងវិញបានទេ",
+	"categories": {
+		"B": "ថ្នាក់ B",
+		"C": "ថ្នាក់ C",
+		"RD": "គំរូស្រាវជ្រាវ និងអភិវឌ្ឍន៍"
+	},
+	"defective_goods_inventory_report": "របាយការណ៍សារពើភណ្ឌទំនិញខូច",
+	"exceptions": {
+		"active_epcs_recombination_conflict": "មិនអាចផ្គូផ្គង EPC ដែលកំពុងប្រើប្រាស់ និងមានក្នុងប្រព័ន្ធឡើងវិញបានទេ",
+		"no_defective_goods_to_stock_in": "មិនមានទំនិញខូចសម្រាប់ទទួលចូលស្តុកទេ",
+		"no_defective_goods_to_stock_out": "មិនមានទំនិញខូចសម្រាប់បញ្ចេញពីស្តុកទេ",
+		"not_found": "រកមិនឃើញទំនិញខូចទេ",
+		"not_stocked_in_yet": "ទំនិញខូចមិនទាន់បានទទួលចូលស្តុកទេ"
+	}
+}
