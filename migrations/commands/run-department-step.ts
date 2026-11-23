@@ -1,5 +1,6 @@
 import cn from '@i18n/cn/factory.json'
 import en from '@i18n/en/factory.json'
+import km from '@i18n/km/factory.json'
 import vi from '@i18n/vi/factory.json'
 import { type mongo } from 'mongoose'
 import { streamMssqlRows, type MssqlStreamRequest } from '../helpers/mssql-stream'
@@ -60,7 +61,8 @@ export async function runDepartmentStep(
 		const localizedName = {
 			cn: cn.departments[key].replaceAll('{name}', name),
 			en: en.departments[key].replaceAll('{name}', name),
-			vi: vi.departments[key].replaceAll('{name}', name)
+			vi: vi.departments[key].replaceAll('{name}', name),
+			km: km.departments[key].replaceAll('{name}', name)
 		}
 		const now = new Date()
 		const result = await collection.updateOne(
