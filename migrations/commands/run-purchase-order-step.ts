@@ -1,4 +1,6 @@
 import { orderSearchGrams } from '@modules/order/schemas/order-search-grams.plugin'
+import { format, isValid, parse } from 'date-fns'
+import { vi } from 'date-fns/locale'
 import type { mongo } from 'mongoose'
 import { streamMssqlRows, type MssqlStreamRequest } from '../helpers/mssql-stream'
 import { purchaseOrdersSql } from '../sql/purchase-orders.sql'
@@ -14,6 +16,12 @@ const OUTSTANDING_PURCHASE_ORDERS_SQL = /* SQL */ `
 function text(value: unknown, name: string): string {
 	if (typeof value !== 'string' || !value.trim()) throw new Error(`Invalid purchase order ${name}`)
 	return value.trim()
+}
+
+function date(value: unknown, name: string): Date {
+	if (!isValid(parse(String(value), 'yyyy-MM-dd', new Date(), { locale: vi })))
+		throw new Error(`Invalid purchase order ${name}`)
+	return value as Date
 }
 
 function parseMap(value: unknown, name: string): Record<string, unknown> {
@@ -95,7 +103,8 @@ export async function runPurchaseOrderStep(
 				'cust_shoes_style' in row &&
 				'color_sn' in row &&
 				'packing' in row &&
-				'shipping_progress' in row
+				'shipping_progress' in row &&
+				'xf_date' in row
 			)
 		) {
 			throw new Error('Invalid purchase order row')
@@ -127,6 +136,7 @@ export async function runPurchaseOrderStep(
 						brand_name: brandName,
 						factory_shoes_style: text(row.factory_shoes_style, 'factory_shoes_style'),
 						cust_shoes_style: text(row.cust_shoes_style, 'cust_shoes_style'),
+						xf_date: date(row.xf_date, 'xf_date') ? format(new Date(String(row.xf_date)), 'yyyy-MM-dd') : null,
 						color_sn: text(row.color_sn, 'color_sn'),
 						packing: validatePacking(row.packing, po),
 						shipping_progress: progress,

@@ -27,7 +27,7 @@ export function purchaseOrdersSql(useCutoff: boolean): string {
 								orp05.shoestyle_codefactory AS factory_shoes_style,
 								CONCAT(orp05.shoestyle_codecust, '/', orp05.shoestyle_namecust) AS cust_shoes_style,
 								orp05.color_sn,
-								orp05.XF_Date,
+								IIF(orp05.XF_Date IS NULL, NULL, CONVERT(CHAR(10), orp05.XF_Date, 126)) AS xf_date,
 								wuerp_vnrd.dbo.NORMALIZE_SIZE_NUMBER(sr.size_numcode) AS size_numcode,
 								sr.size_qty
 						FROM   wuerp_vnrd.dbo.ta_ordermst AS ord
@@ -54,9 +54,10 @@ export function purchaseOrdersSql(useCutoff: boolean): string {
 									factory_shoes_style,
 									cust_shoes_style,
 									color_sn,
+									xf_date,
 									CONCAT('"', mo_no, '":{', STRING_AGG(CAST (CONCAT('"', size_numcode, '":', CAST (size_qty AS INT)) AS NVARCHAR (MAX)), ',') WITHIN GROUP (ORDER BY CAST (size_numcode AS FLOAT) ASC), '}') AS mo_packing
 						FROM     CTE
-						GROUP BY po, po_type, mo_no, order_qty, shipping_method, shipping_destination, brand_name, factory_shoes_style, cust_shoes_style, color_sn),
+						GROUP BY po, po_type, mo_no, order_qty, shipping_method, shipping_destination, brand_name, factory_shoes_style, cust_shoes_style, color_sn, xf_date),
 						CTE_SIZE_LEDGER
 			AS       (SELECT   po,
 									size_numcode,
@@ -94,13 +95,14 @@ export function purchaseOrdersSql(useCutoff: boolean): string {
 						pk.factory_shoes_style,
 						pk.cust_shoes_style,
 						pk.color_sn,
+						pk.xf_date,
 						CONCAT('{', STRING_AGG(pk.mo_packing, ','), '}') AS packing,
 						MAX(prg.shipping_progress) AS shipping_progress
 			FROM     CTE_PACKING AS pk
 						INNER JOIN
 						CTE_PROGRESS AS prg
 						ON prg.po = pk.po
-			GROUP BY pk.po, pk.order_qty, pk.shipping_method, pk.shipping_destination, pk.brand_name, pk.factory_shoes_style, pk.cust_shoes_style, pk.color_sn;
+			GROUP BY pk.po, pk.order_qty, pk.shipping_method, pk.shipping_destination, pk.brand_name, pk.factory_shoes_style, pk.cust_shoes_style, pk.color_sn, pk.xf_date;
 		`
 }
 
