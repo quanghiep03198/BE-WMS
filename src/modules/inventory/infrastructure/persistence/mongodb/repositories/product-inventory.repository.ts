@@ -262,6 +262,7 @@ export class ProductInventoryRepository implements IProductionInventoryRepositor
 					po: 1,
 					last_outbound_date: 1,
 					order_qty: 1,
+					xf_date: 1,
 					shipped_out_qty: 1,
 					size_ledger: 1
 				}
