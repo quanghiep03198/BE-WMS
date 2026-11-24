@@ -95,7 +95,7 @@ export class TruckloadDeliveryRepository implements ITruckloadDeliveryRepository
 	}
 
 	async insert(model: DispatchOrderModel): Promise<void> {
-		const { revision, created_at, ...props } = model.toProps()
+		const props = model.toProps()
 		const document = {
 			...props,
 			packing: props.packing.map((line) => ({
@@ -116,7 +116,7 @@ export class TruckloadDeliveryRepository implements ITruckloadDeliveryRepository
 	}
 
 	async save(model: DispatchOrderModel): Promise<void> {
-		const { dispatch_order, revision, created_at, ...props } = model.toProps()
+		const { dispatch_order, revision, ...props } = model.toProps()
 		const update = {
 			...props,
 			created_by: props.user_code_created,
