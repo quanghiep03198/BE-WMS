@@ -6,11 +6,12 @@ export const MONGODB_CONFIG_TOKEN = Symbol('mongodb')
 
 export default registerAs(MONGODB_CONFIG_TOKEN, (): MongooseModuleOptions => ({
 	uri: env('MONGO_URI', { fallbackValue: 'mongodb://127.0.0.1:27017,127.0.0.1:27018,127.0.0.1:27019' }),
+	connectTimeoutMS: 5000,
 	dbName: env('MONGO_DB_NAME', { fallbackValue: 'data_warehouse' }),
 	replicaSet: env('MONGO_REPLICA_SET', { fallbackValue: 'rs0' }),
 	maxPoolSize: 24,
-	connectTimeoutMS: 10000,
 	readPreference: 'secondaryPreferred', // * Prefer reading from secondary nodes in a replica set.
+	sanitizeFilter: true,
 	writeConcern: {
 		/**
 		 * * Yêu cầu dữ liệu phải được ghi thành công trên đa số các node có quyền bỏ phiếu trong cụm.
@@ -23,5 +24,6 @@ export default registerAs(MONGODB_CONFIG_TOKEN, (): MongooseModuleOptions => ({
 		 */
 		journal: true
 	}
+
 	// autoIndex: env<RuntimeEnvironment>('NODE_ENV') === 'development'
 }))

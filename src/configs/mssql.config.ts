@@ -1,4 +1,4 @@
-import { env } from '@common/utils'
+import { env, stringToBoolean } from '@common/utils'
 import { DATABASE_SCHEMA } from '@databases/constants'
 import { InvDefectiveGoods1757390824605 } from '@databases/migrations/1757390824605-inv_defective_goods'
 import { TruckloadDelivery1762756390180 } from '@databases/migrations/1762756390180-truckload-delivery'
@@ -28,6 +28,7 @@ export default registerAs(MSSQL_CONFIG_TOKEN, (): TypeOrmModuleOptions => ({
 	autoLoadEntities: true,
 	synchronize: false,
 	logging: ['error'],
+	connectionTimeout: 5000,
 	requestTimeout: 30000,
 	cache: {
 		type: 'ioredis',
@@ -58,9 +59,7 @@ export default registerAs(MSSQL_CONFIG_TOKEN, (): TypeOrmModuleOptions => ({
 		acquireTimeoutMillis: 30000
 	},
 	options: {
-		trustServerCertificate: env('DB_TRUST_SERVER_CERTIFICATE', {
-			serialize: (value): boolean => value === 'true'
-		}),
+		trustServerCertificate: env('DB_TRUST_SERVER_CERTIFICATE', { serialize: stringToBoolean }),
 		encrypt: false,
 		enableArithAbort: true,
 		connectTimeout: env('DB_CONNECTION_TIMEOUT', { serialize: (value): number => Number.parseInt(value) }),
@@ -68,8 +67,6 @@ export default registerAs(MSSQL_CONFIG_TOKEN, (): TypeOrmModuleOptions => ({
 		isolation: 'SNAPSHOT' // * Đặt mức độ cô lập mặc định cho các giao dịch. SNAPSHOT giúp giảm khả năng bị deadlock và cải thiện hiệu suất trong các môi trường có nhiều giao dịch đồng thời.
 	},
 	extra: {
-		connectionLimit: 100,
-		connectTimeout: 30000,
-		acquireTimeout: 30000
+		acquireTimeout: 30000 // * Thời gian tối đa (tính bằng ms) mà pool sẽ chờ để có được một kết nối trước khi ném ra lỗi.
 	}
 }))
