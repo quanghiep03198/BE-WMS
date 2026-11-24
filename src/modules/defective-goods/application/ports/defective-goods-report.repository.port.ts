@@ -3,6 +3,11 @@ import { DefectiveGoodsOutboundPurpose, DefectiveGoodsSource } from '@modules/de
 
 export const DEFECTIVE_GOODS_REPORT_REPOSITORY = Symbol('DEFECTIVE_GOODS_REPORT_REPOSITORY')
 
+export interface IDefectiveGoodsReportDepartment {
+	_id: TObjectId
+	name: Record<string, string>
+}
+
 export interface IDefectiveGoodsReport {
 	brand_name: string
 	po: string
@@ -12,12 +17,12 @@ export interface IDefectiveGoodsReport {
 	color_sn: string
 	defective_category: string
 	shoe_source: DefectiveGoodsSource
-	sewing_line: string
-	assembly_line: string
+	sewing_line: IDefectiveGoodsReportDepartment | null
+	assembly_line: IDefectiveGoodsReportDepartment | null
 	storage_location: string
 	size_ledger: {
 		size_numcode: string
-		qty: any
+		qty: number
 	}[]
 	total_qty: number
 }

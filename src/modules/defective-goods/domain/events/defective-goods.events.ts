@@ -1,4 +1,5 @@
 import { IEvent } from '@nestjs/cqrs'
+import type { IDefectiveGoodsProps } from '../models/defective-goods.model'
 
 export class DefectiveGoodsCreatedEvent implements IEvent {
 	constructor(
@@ -21,7 +22,15 @@ export class DefectiveGoodsDeletedManyEvent implements IEvent {
 export class DefectiveGoodsStockedInEvent implements IEvent {
 	constructor(
 		public readonly ids: Array<string>,
+		public readonly reportData: IDefectiveGoodsProps,
 		public readonly audit: { userCodeCreated?: string; userCodeUpdated?: string } = {}
+	) {}
+}
+
+export class DefectiveGoodsStockedOutEvent implements IEvent {
+	constructor(
+		public readonly ids: Array<string>,
+		public readonly reportData: IDefectiveGoodsProps
 	) {}
 }
 

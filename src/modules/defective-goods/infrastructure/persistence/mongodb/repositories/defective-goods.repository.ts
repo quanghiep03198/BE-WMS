@@ -8,7 +8,8 @@ import { InoutboundEpcQueryDTO } from '@modules/defective-goods/application/dto/
 import {
 	IDefectiveGoodsRepository,
 	IKeysetPagination,
-	IKeysetParams
+	IKeysetParams,
+	PendingStockEpcFilter
 } from '@modules/defective-goods/application/ports/defective-goods.repository.port'
 import { CombinationStrategy } from '@modules/defective-goods/domain/constants'
 import { ActiveEpcsRecombinationException } from '@modules/defective-goods/domain/exceptions'
@@ -89,6 +90,41 @@ export class DefectiveGoodsRepository
 			autopopulate: true
 		})
 		return documents.map((document: IDefectiveGoodsProps) => new DefectiveGoodsDomainModel(document))
+	}
+
+	public async findPendingStockIn(filters: PendingStockEpcFilter, epcs: string[], take?: number) {
+		return this.findPendingStockEpcs(filters, epcs, take, 'inbound')
+	}
+
+	public async findPendingStockOut(filters: PendingStockEpcFilter, epcs: string[], take?: number) {
+		return this.findPendingStockEpcs(filters, epcs, take, 'outbound')
+	}
+
+	private async findPendingStockEpcs(
+		filters: PendingStockEpcFilter,
+		epcs: string[],
+		take: number | undefined,
+		flow: 'inbound' | 'outbound'
+	) {
+		const useVirtualEpcs = filters.combination_strategy === CombinationStrategy.MANUALLY
+		const builder = MongoQueryBuilder.from(filters)
+			.whereEqual('combination_strategy')
+			.when(flow === 'inbound', (qb) => qb.whereFieldsAreNull('inbound_at', 'storage_location'))
+			.when(flow === 'outbound', (qb) => qb.whereFieldsAreNotNull('inbound_at', 'storage_location'))
+			.when(!useVirtualEpcs, (qb) => qb.whereIn('epc', epcs))
+			.when(useVirtualEpcs, (qb) =>
+				qb
+					.whereEqual('brand_name')
+					.whereEqual('defective_category')
+					.whereEqual('epc')
+					.whereEqual('po')
+					.whereEqual('mo_no')
+					.whereEqual('factory_shoes_style')
+					.whereEqual('color_sn')
+					.whereEqual('size_numcode')
+			)
+
+		return this.find(builder.build(), null, useVirtualEpcs ? { limit: take } : {})
 	}
 
 	override async paginate(
@@ -259,7 +295,7 @@ export class DefectiveGoodsRepository
 
 		const totalPages = Math.ceil(totalDocs / _limit)
 		const hasNextPage = page < totalPages
-		const data = hasNextPage ? rows.slice(0, _limit) : rows
+		const data = rows.slice(0, _limit)
 		const hasPrevPage = isPrev ? page < totalPages && page > 1 : !!cursor
 
 		if (isPrev) data.reverse() // reverse to maintain correct display order for previous page
@@ -274,8 +310,8 @@ export class DefectiveGoodsRepository
 			prevPage: hasPrevPage ? Math.max(page - 1, 1) : null,
 			totalDocs,
 			totalPages,
-			nextCursor: hasNextPage && data.length ? this.encodeCursor(data[data.length - 1]._id) : null,
-			prevCursor: hasPrevPage && data.length ? this.encodeCursor(data[0]._id) : null
+			nextCursor: hasNextPage && rows.length ? this.encodeCursor(rows[rows.length - 1]._id) : null,
+			prevCursor: hasPrevPage && rows.length ? this.encodeCursor(rows[0]._id) : null
 		} satisfies IKeysetPagination<ArrayElement<typeof rows>>
 	}
 
@@ -334,25 +370,35 @@ export class DefectiveGoodsRepository
 		return result
 	}
 
-	public async stockIn(models: DefectiveGoodsDomainModel[]) {
-		await this.defectiveGoodsModel.bulkWrite(
+	public async stockIn(models: DefectiveGoodsDomainModel[], session?: ClientSession) {
+		const result = await this.defectiveGoodsModel.bulkWrite(
 			models.map((m) => ({
 				updateOne: {
-					filter: { epc: m.epc, deleted: false },
+					filter: {
+						epc: m.epc,
+						deleted: false,
+						inbound_at: null,
+						storage_location: null,
+						updated_at: m.toProps('updated_at').updated_at
+					},
 					update: m.toProps('storage_location', 'inbound_at', 'updated_by')
 				}
-			}))
+			})),
+			{ session }
 		)
+		if (result.matchedCount !== models.length) throw new Error('Some defective goods changed before stock in')
 	}
 
-	public async stockOut(models: DefectiveGoodsDomainModel[]) {
-		await this.defectiveGoodsModel.bulkWrite(
+	public async stockOut(models: DefectiveGoodsDomainModel[], session?: ClientSession) {
+		const result = await this.defectiveGoodsModel.bulkWrite(
 			models.map((m) => ({
 				updateOne: {
-					filter: { epc: m.epc, deleted: false },
-					update: m.toProps('outbound_purpose', 'outbound_at', 'po', 'deleted', 'updated_by')
+					filter: { epc: m.epc, deleted: false, updated_at: m.toProps('updated_at').updated_at },
+					update: m.toProps('outbound_purpose', 'outbound_at', 'po', 'deleted', 'updated_by', 'defective_category')
 				}
-			}))
+			})),
+			{ session }
 		)
+		if (result.matchedCount !== models.length) throw new Error('Some defective goods changed before stock out')
 	}
 }

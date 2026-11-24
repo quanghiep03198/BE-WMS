@@ -3,9 +3,9 @@ import { applyCommonStyles, AutoFitColumnOptions, autoFitColumns } from '@common
 import { Inject } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { IQueryHandler, QueryHandler } from '@nestjs/cqrs'
-import { format } from 'date-fns'
 import { Workbook } from 'exceljs'
 import { I18nContext, I18nService } from 'nestjs-i18n'
+import { formatReportDate } from '../../helpers/format-report-date'
 import {
 	DEFECTIVE_GOODS_REPORT_REPOSITORY,
 	IDefectiveGoodsReportRepository
@@ -26,9 +26,7 @@ export class ExportDailyInboundReportHandler implements IQueryHandler<ExportDail
 		const currentLanguage = I18nContext.current()?.lang
 		const workbook = new Workbook()
 		const worksheet = workbook.addWorksheet(
-			this.i18nService.t(`factory.${factory}`, { lang: currentLanguage }) +
-				' - ' +
-				format(new Date(date), 'yyyy-MM-dd')
+			this.i18nService.t(`factory.${factory}`, { lang: currentLanguage }) + ' - ' + formatReportDate(date)
 		)
 		worksheet.columns = [
 			{
@@ -81,6 +79,9 @@ export class ExportDailyInboundReportHandler implements IQueryHandler<ExportDail
 		for (const record of data) {
 			const row = worksheet.addRow({
 				...record,
+				sewing_line: currentLanguage ? record.sewing_line?.name[currentLanguage] : undefined,
+				assembly_line: currentLanguage ? record.assembly_line?.name[currentLanguage] : undefined,
+				daily_inbound_qty: record.total_qty,
 				defective_category: this.i18nService.t(`defective-goods.categories.${record.defective_category}`, {
 					lang: currentLanguage
 				})
@@ -131,7 +132,7 @@ export class ExportDailyInboundReportHandler implements IQueryHandler<ExportDail
 		worksheet.getCell('A1').value = this.i18nService.t('inoutbound.titles.daily_defective_gooods_inbound_report', {
 			args: {
 				factory: this.i18nService.t(`factory.${factory}`, { lang: currentLanguage }),
-				date: format(new Date(date), 'yyyy-MM-dd')
+				date: formatReportDate(date)
 			},
 			lang: currentLanguage
 		})

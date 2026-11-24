@@ -3,9 +3,9 @@ import { applyCommonStyles, AutoFitColumnOptions, autoFitColumns } from '@common
 import { Inject } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { IQueryHandler, QueryHandler } from '@nestjs/cqrs'
-import { format } from 'date-fns'
 import { Workbook } from 'exceljs'
 import { I18nContext, I18nService } from 'nestjs-i18n'
+import { formatReportDate } from '../../helpers/format-report-date'
 import {
 	DEFECTIVE_GOODS_REPORT_REPOSITORY,
 	IDefectiveGoodsReportRepository
@@ -25,9 +25,7 @@ export class ExportDailyOutboundReportHandler implements IQueryHandler<ExportDai
 		const currentLanguage = I18nContext.current()?.lang
 		const workbook = new Workbook()
 		const worksheet = workbook.addWorksheet(
-			this.i18nService.t(`factory.${factoryCode}`, { lang: currentLanguage }) +
-				' - ' +
-				format(new Date(date), 'yyyy-MM-dd')
+			this.i18nService.t(`factory.${factoryCode}`, { lang: currentLanguage }) + ' - ' + formatReportDate(date)
 		)
 		worksheet.columns = [
 			{
@@ -56,31 +54,37 @@ export class ExportDailyOutboundReportHandler implements IQueryHandler<ExportDai
 			},
 			{
 				header: this.i18nService.t('erp.fields.sewing_line', { lang: currentLanguage }),
-				key: `sewing_line.name.${currentLanguage}`
+				key: 'sewing_line'
 			},
 			{
 				header: this.i18nService.t('erp.fields.assembly_line', { lang: currentLanguage }),
-				key: `assembly_line.name.${currentLanguage}`
+				key: 'assembly_line'
 			},
 			{
 				header: this.i18nService.t('erp.fields.category', { lang: currentLanguage }),
 				key: 'defective_category'
 			},
 			{
-				header: this.i18nService.t('warehouse.fields.storage_name', { lang: currentLanguage }),
-				key: 'storage_location'
+				header: this.i18nService.t('erp.fields.outbound_purpose', { lang: currentLanguage }),
+				key: 'outbound_purpose'
 			},
 			{
-				header: this.i18nService.t('erp.fields.daily_inbound_qty', { lang: currentLanguage }),
-				key: 'daily_inbound_qty'
+				header: this.i18nService.t('erp.fields.daily_outbound_qty', { lang: currentLanguage }),
+				key: 'daily_outbound_qty'
 			}
 		].map((item) => ({ ...item, alignment: { vertical: 'middle', horizontal: 'center' } }))
-		const data = await this.repository.getDailyInboundReport(date)
+		const data = await this.repository.getDailyOutboundReport(date)
 
 		for (const record of data) {
 			const row = worksheet.addRow({
 				...record,
+				sewing_line: currentLanguage ? record.sewing_line?.name[currentLanguage] : undefined,
+				assembly_line: currentLanguage ? record.assembly_line?.name[currentLanguage] : undefined,
+				daily_outbound_qty: record.total_qty,
 				defective_category: this.i18nService.t(`defective-goods.categories.${record.defective_category}`, {
+					lang: currentLanguage
+				}),
+				outbound_purpose: this.i18nService.t(`inoutbound.outbound_purpose.${record.outbound_purpose}`, {
 					lang: currentLanguage
 				})
 			})
@@ -127,10 +131,10 @@ export class ExportDailyOutboundReportHandler implements IQueryHandler<ExportDai
 			fgColor: { argb: ExcelColorPalette.BG_LIGHT_NEUTRAL }
 		}
 		worksheet.getCell('A1').font = { bold: true, size: 16 }
-		worksheet.getCell('A1').value = this.i18nService.t('inoutbound.titles.daily_defective_gooods_inbound_report', {
+		worksheet.getCell('A1').value = this.i18nService.t('inoutbound.titles.daily_defective_gooods_outbound_report', {
 			args: {
 				factory: this.i18nService.t(`factory.${factoryCode}`, { lang: currentLanguage }),
-				date: format(new Date(date), 'yyyy-MM-dd')
+				date: formatReportDate(date)
 			},
 			lang: currentLanguage
 		})

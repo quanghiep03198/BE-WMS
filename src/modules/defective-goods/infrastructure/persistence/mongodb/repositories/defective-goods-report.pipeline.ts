@@ -2,7 +2,8 @@ import type { PipelineStage } from 'mongoose'
 
 export function defectiveGoodsDailyReportPipeline(
 	type: 'inbound' | 'outbound',
-	range?: { from: Date; to: Date }
+	range?: { from: Date; to: Date },
+	timezone = 'UTC'
 ): PipelineStage[] {
 	const inbound = type === 'inbound'
 	const dateField = inbound ? 'inbound_at' : 'outbound_at'
@@ -34,7 +35,7 @@ export function defectiveGoodsDailyReportPipeline(
 				[inbound ? 'storage_location' : 'outbound_purpose']: { $ne: null }
 			}
 		},
-		{ $addFields: { date_str: { $dateToString: { format: '%Y-%m-%d', date: `$${dateField}` } } } },
+		{ $addFields: { date_str: { $dateToString: { format: '%Y-%m-%d', date: `$${dateField}`, timezone } } } },
 		{
 			$group: {
 				_id: { date: '$date_str', ...firstGroup, size_numcode: '$size_numcode' },

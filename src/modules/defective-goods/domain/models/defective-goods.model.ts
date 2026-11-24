@@ -10,8 +10,16 @@ import {
 	DefectiveGoodsUnit,
 	DefectiveLocation
 } from '../constants'
-import { DefectiveGoodsChangedEvent } from '../events/defective-goods.events'
-import { NotStockedInYetException, StockInDeactivatedException } from '../exceptions'
+import {
+	DefectiveGoodsChangedEvent,
+	DefectiveGoodsStockedInEvent,
+	DefectiveGoodsStockedOutEvent
+} from '../events/defective-goods.events'
+import {
+	NoDefectiveGoodsToStockInException,
+	NotStockedInYetException,
+	StockInDeactivatedException
+} from '../exceptions'
 import { IDefectiveGoods } from '../interfaces'
 
 export interface IDefectiveGoodsProps extends Omit<IDefectiveGoods, 'assembly_line' | 'sewing_line'> {
@@ -117,12 +125,15 @@ export class DefectiveGoodsDomainModel extends AggregateRoot {
 
 	stockIn(storageLocation: string, updatedBy: TObjectId) {
 		if (this.state.deleted) throw new StockInDeactivatedException()
+		if (this.state.inbound_at != null || this.state.storage_location != null)
+			throw new NoDefectiveGoodsToStockInException()
 
 		this.state.storage_location = storageLocation
 		this.state.updated_by = updatedBy
 		this.state.inbound_at = new Date()
 
 		this.apply(new DefectiveGoodsChangedEvent(this.id))
+		this.apply(new DefectiveGoodsStockedInEvent([this.id], { ...this.state }))
 	}
 
 	stockOut(outboundPurpose: DefectiveGoodsOutboundPurpose, po: Nullish<string>, updatedBy: TObjectId) {
@@ -142,6 +153,7 @@ export class DefectiveGoodsDomainModel extends AggregateRoot {
 		this.state.deleted = shouldDeactivate // Only deactivate if outbound purpose is not `DOWNGRADE`
 		this.state.updated_by = updatedBy
 		this.apply(new DefectiveGoodsChangedEvent(this.id))
+		if (shouldDeactivate) this.apply(new DefectiveGoodsStockedOutEvent([this.id], { ...this.state }))
 	}
 
 	delete(deletedBy: TObjectId) {

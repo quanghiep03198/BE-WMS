@@ -91,7 +91,7 @@ export class DefectiveGoodsExceptionFilter implements ExceptionFilter {
 			path: httpAdapter.getRequestUrl(ctx.getRequest())
 		}
 
-		if (statusCode >= HttpStatus.INTERNAL_SERVER_ERROR) this.logger.error({ exception, responseBody })
+		if (statusCode >= HttpStatus.INTERNAL_SERVER_ERROR) this.logger.error({ err: exception, responseBody })
 		httpAdapter.reply(ctx.getResponse(), responseBody, statusCode)
 	}
 }

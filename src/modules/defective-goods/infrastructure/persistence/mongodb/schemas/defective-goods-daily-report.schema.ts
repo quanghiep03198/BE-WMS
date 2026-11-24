@@ -23,6 +23,9 @@ export const DEFECTIVE_GOODS_DAILY_REPORT_COLLECTION = 'defective_goods_daily_re
 	writeConcern: { w: 'majority' }
 })
 export class DefectiveGoodsDailyReport {
+	@Prop({ type: String })
+	report_key?: string
+
 	@Prop({ type: String, required: true })
 	date: string
 
@@ -62,16 +65,20 @@ export class DefectiveGoodsDailyReport {
 	@Prop({ type: String })
 	assembly_line: string
 
-	@Prop({ type: String, required: true })
-	storage_location: string
+	@Prop({ type: String })
+	storage_location?: string
 
 	@Prop({ type: Array, required: true })
-	size_ledger: Array<{ size_numcode: string; qty: any }>
+	size_ledger: Array<{ size_numcode: string; qty: number }>
 }
 
 export const DefectiveGoodsDailyReportSchema = SchemaFactory.createForClass(DefectiveGoodsDailyReport)
 
 DefectiveGoodsDailyReportSchema.index({ date: 1, type: 1 })
+DefectiveGoodsDailyReportSchema.index(
+	{ report_key: 1 },
+	{ unique: true, partialFilterExpression: { report_key: { $type: 'string' } } }
+)
 
 DefectiveGoodsDailyReportSchema.virtual('total_qty').get(function () {
 	return this.size_ledger.reduce((sum, item) => sum + item.qty, 0)

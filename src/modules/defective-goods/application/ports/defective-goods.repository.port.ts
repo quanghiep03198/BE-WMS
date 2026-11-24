@@ -18,6 +18,8 @@ export interface IKeysetPagination<T> extends Pagination<T> {
 	prevCursor: Nullish<string>
 }
 
+export type PendingStockEpcFilter = Partial<IDefectiveGoods> & Pick<IDefectiveGoods, 'combination_strategy'>
+
 export interface IDefectiveGoodsRepository extends IBaseRepository<IDefectiveGoods, string | TObjectId> {
 	create(payload: DefectiveGoodsDomainModel[], session?: ClientSession): Promise<DefectiveGoodsDomainModel[]>
 	find(
@@ -31,6 +33,16 @@ export interface IDefectiveGoodsRepository extends IBaseRepository<IDefectiveGoo
 		}>
 	): Promise<DefectiveGoodsDomainModel[]>
 	findOne(filter?: Partial<IDefectiveGoods> | Record<string, any>): Promise<IDefectiveGoods>
+	findPendingStockIn(
+		filters: PendingStockEpcFilter,
+		epcs: string[],
+		take?: number
+	): Promise<DefectiveGoodsDomainModel[]>
+	findPendingStockOut(
+		filters: PendingStockEpcFilter,
+		epcs: string[],
+		take?: number
+	): Promise<DefectiveGoodsDomainModel[]>
 	findById(id: string | TObjectId, session?: ClientSession): Promise<DefectiveGoodsDomainModel>
 	updateById(
 		id: string | TObjectId,
