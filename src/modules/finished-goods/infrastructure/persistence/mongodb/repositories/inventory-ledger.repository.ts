@@ -253,10 +253,12 @@ export class InventoryLedgerRepository implements IInventoryLedgerRepository {
 		if (inventoryUpdate.matchedCount !== 1)
 			throw new ExcessInboundOrderException('Inbound order exceeded the persisted manufacturing-order limit')
 
+		const date = format(new Date(), 'yyyy-MM-dd')
+
 		await this.dailyMoInventoryLedgerModel.updateOne(
-			pick(pendingInventoryFluctuation, ['mo_no']),
+			{ date, mo_no: pendingInventoryFluctuation.mo_no },
 			{
-				$setOnInsert: { mo_no: pendingInventoryFluctuation.mo_no, date: format(new Date(), 'yyyy-MM-dd') },
+				$setOnInsert: { mo_no: pendingInventoryFluctuation.mo_no, date },
 				$inc: omitBy(incrementExpression, (_, key) => key.endsWith('shipped_out_qty')),
 				[`transaction_history.${transactionId}`]: {
 					time: format(new Date(), 'HH:mm'),
