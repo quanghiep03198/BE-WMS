@@ -15,7 +15,7 @@ export interface IBaseRepository<
 > {
 	createOne(payload: Partial<Omit<TEntity, '_id' | 'id'>>): Promise<TEntity>
 	insertMany(payload: Partial<Omit<TEntity, '_id' | 'id'>>[]): Promise<TCreateManyResult>
-	findAll(): Promise<TEntity[]>
+	findAll(...args: unknown[]): Promise<TEntity[]>
 	findOne(filter: TFilter): Promise<TEntity | null>
 	findOneById(id: TId): Promise<TEntity | null>
 	updateOneById(id: TId, payload: Partial<TEntity>): Promise<TUpdateResult>
