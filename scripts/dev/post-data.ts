@@ -108,33 +108,25 @@ async function main() {
 			process.exit(1)
 		})
 
-	const FinishedGoodsEpc = model(
+	const FinishedGoodsMatchEpc = model(
 		'finished_goods_epcs_match',
 		new Schema(
 			{
 				epc: { type: String }
-				// recorded_at: { type: Date },
-				// stored_at: { type: Date }
-				// status: { type: String },
-				// mo_no: { type: String },
-				// po: { type: String },
-				// factory_shoes_style: { type: String },
-				// cust_shoes_style: { type: String },
-				// color_sn: { type: String },
-				// size_numcode: { type: String },
-				// factory_code_produce: { type: String },
-				// inbound_times: { type: Number },
-				// inbound_device_sn: { type: String },
-				// outbound_device_sn: { type: String },
-				// inbound_at: { type: Date },
-				// outbound_at: { type: Date },
-				// last_scanned_at: { type: Date },
-				// created_at: { type: Date },
-				// updated_at: { type: Date },
-				// storage_location: { type: mongoose.Types.ObjectId },
-				// assembly_line: { type: mongoose.Types.ObjectId }
 			},
 			{ collection: 'finished_goods_epcs_match', strict: false }
+		)
+	)
+
+	const FinishedGoodsEpc = model(
+		'finished_goods_epcs',
+		new Schema(
+			{
+				epc: { type: String },
+				mo_no: { type: String },
+				status: { type: String, enum: ['scanning', 'instock', 'shipped', 'recalled'] }
+			},
+			{ collection: 'finished_goods_epcs', strict: false }
 		)
 	)
 
@@ -145,12 +137,16 @@ async function main() {
 		todayMidnoon.setHours(12, 0, 0, 0)
 
 		if (args.flow === 'inbound') {
-			epcs = await FinishedGoodsEpc.distinct('epc', {
+			epcs = await FinishedGoodsMatchEpc.distinct('epc', {
 				mo_no: { $in: args.mo?.split(',') }
 			})
 			console.log(epcs)
 		}
-		// if (args.flow === 'outbound') epcs = await FinishedGoodsEpc.distinct('epc', {})
+		if (args.flow === 'outbound')
+			epcs = await FinishedGoodsEpc.distinct('epc', {
+				mo_no: { $in: args.mo?.split(',') },
+				status: 'instock'
+			})
 
 		const { payload } = new Faker(args.device as TDevice, epcs)
 
