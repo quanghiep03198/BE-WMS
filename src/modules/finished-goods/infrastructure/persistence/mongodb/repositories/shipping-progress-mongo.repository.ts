@@ -1,9 +1,8 @@
 import { DATA_WAREHOUSE_CONNECTION } from '@databases/constants'
 import { IShippingProgressRepository } from '@modules/finished-goods/application/ports/shipping-progress.repository.port'
 import { ExcessOutboundOrderException } from '@modules/finished-goods/domain/exceptions/excess-order.exception'
-import { ElectronicProductCode } from '@modules/finished-goods/domain/value-objects/epc.vo'
 import { PurchaseOrder, PurchaseOrderDocument, PurchaseOrderModel } from '@modules/order/schemas/purchase-order.schema'
-import { InjectTransactionHost, Transactional, TransactionHost } from '@nestjs-cls/transactional'
+import { InjectTransactionHost, TransactionHost } from '@nestjs-cls/transactional'
 import { TransactionalAdapterMongoose } from '@nestjs-cls/transactional-adapter-mongoose'
 import { Injectable } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
@@ -45,20 +44,6 @@ export class ShippingProgressMongoRepository implements IShippingProgressReposit
 			},
 			{}
 		)
-	}
-
-	@Transactional<TransactionalAdapterMongoose>(DATA_WAREHOUSE_CONNECTION)
-	public async getPendingShippingFluctuation(scannedEpcs: Array<ElectronicProductCode>): Promise<
-		Array<{
-			mo_no: string
-			po: string | null | undefined
-			factory_code_produce: string
-			factory_shoes_style: string
-			color_sn: string
-			size_ledger: Record<string, { shipped_out_qty: number }>
-		}>
-	> {
-		return []
 	}
 
 	public async getPoOutboundProgress(
