@@ -61,6 +61,14 @@ WarehouseSchema.virtual('storage_locations', {
 	justOne: false
 })
 
+WarehouseSchema.virtual('total_storage_location', {
+	ref: 'StorageLocation',
+	localField: '_id',
+	foreignField: 'warehouse',
+	match: { deleted: false },
+	count: true
+})
+
 // * Addon plugins
 WarehouseSchema.plugin(MongoosePaginate)
 WarehouseSchema.plugin(MongooseDelete, { overrideMethods: true })
@@ -71,7 +79,12 @@ WarehouseSchema.loadClass(Warehouse)
 
 export type WarehouseDocument = HydratedDocument<
 	Warehouse,
-	{ created_at: Date; updated_at?: Date; storage_locations?: Array<StorageLocation> }
+	{
+		created_at: Date
+		updated_at?: Date
+		storage_locations?: Array<StorageLocation>
+		total_storage_location?: number
+	}
 >
 
 export type WarehouseModel = PaginateModel<WarehouseDocument> & SoftDeleteModel<WarehouseDocument>

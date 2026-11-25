@@ -12,7 +12,7 @@ import { ConflictException, Injectable } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { InjectModel } from '@nestjs/mongoose'
 import { padStart } from 'lodash'
-import type { LeanDocument, Types } from 'mongoose'
+import type { FilterQuery, LeanDocument, ProjectionType, QueryOptions, Types } from 'mongoose'
 import { I18nContext, I18nService } from 'nestjs-i18n'
 
 @Injectable()
@@ -23,6 +23,19 @@ export class WarehouseRepository extends BaseMongoRepository<WarehouseDocument> 
 		private readonly configService: ConfigService<ProcessEnv>
 	) {
 		super(warehouseModel)
+	}
+
+	public override async findAll(
+		filter: FilterQuery<WarehouseDocument> = {},
+		projection?: ProjectionType<WarehouseDocument>,
+		options?: QueryOptions<WarehouseDocument>,
+		withDeleted = false
+	): Promise<WarehouseDocument[]> {
+		const query = withDeleted
+			? this.warehouseModel.findWithDeleted(filter, projection, options)
+			: this.warehouseModel.find(filter, projection, options)
+
+		return await query.populate('total_storage_location')
 	}
 
 	public override async findOneById(id: string): Promise<Nullish<LeanDocument<WarehouseDocument>>> {

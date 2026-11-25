@@ -9,4 +9,5 @@ export interface IWarehouse {
 	created_at: Date
 	updated_at?: Date
 	storage_locations?: Array<{ name: string; warehouse?: TObjectId | Partial<IWarehouse> }>
+	total_storage_location?: number
 }
