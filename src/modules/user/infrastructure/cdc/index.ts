@@ -30,7 +30,6 @@ export class UserCdcHandler implements ICdcHandler<{
 
 	@Transactional<TransactionalAdapterMongoose>(DATA_WAREHOUSE_CONNECTION)
 	async handle({
-		table,
 		changes
 	}: CdcChangeContext<{
 		usercode: string
