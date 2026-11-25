@@ -67,7 +67,7 @@ Expected: PASS.
 Run: `pnpm typecheck`
 Expected: PASS with no type errors. Current run is blocked by the unrelated missing `@modules/defective-goods/application/ports/defective-goods-cache.port` import in defective-goods code; no changed warehouse files were reported.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add docs/superpowers/specs/2026-11-25-warehouse-storage-location-count-design.md docs/superpowers/plans/2026-11-25-warehouse-storage-location-count.md src/modules/warehouse/infrastructure/persistence/mongodb/schemas/warehouse.schema.ts src/modules/warehouse/infrastructure/persistence/mongodb/repositories/warehouse.repository.ts src/modules/warehouse/domain/interfaces/warehouse.interface.ts src/modules/warehouse/infrastructure/persistence/mongodb/repositories/specs/warehouse.repository.spec.ts
