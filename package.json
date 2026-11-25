@@ -190,8 +190,8 @@
 			]
 		},
 		"transformIgnorePatterns": [
-			"node_modules/.pnpm/(?!(flat)@)",
-			"node_modules/(?!.pnpm|flat)"
+			"node_modules/.pnpm/(?!(flat|nanoid)@)",
+			"node_modules/(?!.pnpm|flat|nanoid)"
 		]
 	},
 	"lint-staged": {

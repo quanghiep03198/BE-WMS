@@ -41,6 +41,6 @@
 		},
 		"inlineSources": true
 	},
-	"include": ["src", "migrations", "test", "scripts/.tmp/reset-instock.ts", "scripts/.tmp/reset-outstock.ts"],
-	"exclude": ["node_modules", "dist", ".deprecated", ".tmp", "src/**/{.tmp,.deprecated}/*"]
+	"include": ["src", "migrations", "test"],
+	"exclude": ["node_modules", "scripts", "dist", ".deprecated", ".tmp", "src/**/{.tmp,.deprecated}/*"]
 }
