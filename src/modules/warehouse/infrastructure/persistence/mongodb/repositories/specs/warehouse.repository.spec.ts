@@ -1,3 +1,4 @@
+import { Mongoose } from 'mongoose'
 import { WarehouseSchema } from '../../schemas/warehouse.schema'
 import { WarehouseRepository } from '../warehouse.repository'
 
@@ -10,6 +11,14 @@ describe('warehouse repository storage-location count', () => {
 			match: { deleted: false },
 			count: true
 		})
+	})
+
+	it('includes the populated count virtual in serialized warehouse JSON', () => {
+		const model = new Mongoose().model('WarehouseCountSerializationTest', WarehouseSchema)
+		const warehouse = new model({ _id: 'warehouse-id' })
+		warehouse.set('total_storage_location', 3)
+
+		expect(warehouse.toJSON()).toHaveProperty('total_storage_location', 3)
 	})
 
 	it('populates the count when listing warehouses and forwards the query arguments', async () => {

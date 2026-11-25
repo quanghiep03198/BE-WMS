@@ -21,6 +21,7 @@ export const WAREHOUSE_COLLECTION = 'warehouses'
 	suppressReservedKeysWarning: false,
 	strict: false,
 	strictQuery: false,
+	toJSON: { virtuals: true },
 	readConcern: { level: 'majority' },
 	writeConcern: { w: 'majority' }
 })

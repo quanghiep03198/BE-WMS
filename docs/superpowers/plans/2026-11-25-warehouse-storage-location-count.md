@@ -15,6 +15,7 @@
 - The virtual must match `deleted: false`.
 - The virtual must join `Warehouse._id` to `StorageLocation.warehouse`.
 - Populate the count for the warehouse-list query only.
+- Serialize the populated virtual in the warehouse-list JSON response.
 - Do not change the existing `storage_locations` virtual or the warehouse detail response.
 - Do not change pagination, filtering, or storage-location deletion behavior.
 
@@ -24,6 +25,7 @@
 - Soft-deleted locations must not contribute; assert the virtual match is exactly `{ deleted: false }`.
 - Locations assigned to another warehouse must not contribute; assert the local and foreign fields are `_id` and `warehouse`.
 - The list query must request the count for every returned warehouse; assert `findAll` populates `total_storage_location`.
+- The warehouse-list JSON must include the populated count; assert a Warehouse document serializes the virtual.
 - Detail queries must retain their existing behavior; assert `findOneById` continues populating `storage_locations` without requesting the count.
 
 ---
@@ -47,6 +49,7 @@
 In `warehouse.repository.spec.ts`, add tests that:
 
 - inspect the `WarehouseSchema` virtual options and assert `count: true`, `localField: '_id'`, `foreignField: 'warehouse'`, and `match: { deleted: false }`;
+- assert a populated `total_storage_location` is present in `Warehouse` JSON serialization;
 - assert `WarehouseRepository.findAll()` populates `total_storage_location` while forwarding its filter, projection, options, and `withDeleted` behavior;
 - assert `findOneById()` still populates only the existing `storage_locations` virtual.
 
@@ -57,7 +60,7 @@ Expected: FAIL because the count virtual and list population are not implemented
 
 - [x] **Step 3: Implement the virtual, list population, and result typing**
 
-Add the `total_storage_location` count virtual and its optional numeric type to the warehouse document and `IWarehouse` result interface. Override `WarehouseRepository.findAll` using the existing base-repository signature and query semantics, populating `total_storage_location` on list results only.
+Add the `total_storage_location` count virtual and its optional numeric type to the warehouse document and `IWarehouse` result interface. Enable virtuals in warehouse JSON serialization so the populated count reaches the list response. Override `WarehouseRepository.findAll` using the existing base-repository signature and query semantics, populating `total_storage_location` on list results only.
 
 - [x] **Step 4: Run focused tests and type checking**
 
