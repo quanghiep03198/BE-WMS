@@ -181,42 +181,6 @@ pnpm migration:run
 
 This will create the necessary tables and relationships in SQL Server.
 
-### Description images and legacy migration
-
-`defective_description` is HTML. Authenticated clients can upload a PNG, JPEG, WebP or GIF
-(maximum 5 MiB) as `file` to `POST /uploads/images`. The returned URL is `/files/<id>`.
-`GET /files/<id>` requires the existing access-token cookie and uses private immutable caching.
-Configure the frontend's origin and cookies so that the browser sends credentials for images.
-The defective-goods list continues to include descriptions until a detail API is introduced.
-
-The cleanup scheduler uses `TZ` and the following optional settings:
-
-| Variable | Default | Meaning |
-| --- | --- | --- |
-| `FILES_CLEANUP_CRON` | `0 2 * * *` | BullMQ cron schedule |
-| `FILES_PENDING_HOURS` | `24` | Age before an unattached upload is eligible |
-| `FILES_ORPHAN_DAYS` | `7` | Grace period after the last reference is removed |
-
-MongoDB must be a replica set to update descriptions and references atomically. Cleanup also
-reconciles references to documents removed by the existing MongoDB TTL index. It does not remove
-references just because a document is soft-deleted.
-
-Back up MongoDB and SQL Server before migrating. Deploy the new backend and stop old writers that
-still send gzip before running the migration. Ensure MongoDB and Redis configuration in `.env`
-points to the intended environment, and run:
-
-```bash
-pnpm migrate:descriptions --dry-run
-pnpm migrate:descriptions
-```
-
-The script skips already migrated documents, and queues SQL Server synchronization. Run it again
-after an interruption to resume pending work. If a record containing embedded images lacks
-`created_by`, provide `--owner-id=<24-character MongoDB user id>`. Invalid, unsupported or larger
-than 5 MiB embedded images stop the migration without silently discarding them; resolve the
-reported record before rerunning. New legacy-encoded CDC changes to an already migrated record
-are rejected rather than overwriting its image references.
-
 ### Running the Application
 
 To start the development server:
