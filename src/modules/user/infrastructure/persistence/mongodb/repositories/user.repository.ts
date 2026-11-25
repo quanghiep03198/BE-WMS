@@ -32,7 +32,7 @@ export class UserRepository extends BaseMongoRepository<UserDocument> implements
 	}
 
 	public async updatePassword(id: Types.ObjectId, newPassword: string) {
-		const user = await super.findOneById(id)
+		const user = await this.userModel.findById(id)
 		if (!user) throw new NotFoundException('User not found')
 		user.password = newPassword
 		return await user.save()

@@ -13,7 +13,9 @@ import { CREATED_USER_EVENT, CreatedUserEvent } from '@modules/user/domain/event
 import { UPDATED_USER_EVENT, UpdatedUserEvent } from '@modules/user/domain/events/updated-user.event'
 import { Body, Controller, HttpStatus, Inject, Param } from '@nestjs/common'
 import { EventEmitter2 } from '@nestjs/event-emitter'
+import { ParseObjectIdPipe } from '@nestjs/mongoose'
 import { Types } from 'mongoose'
+import { customAlphabet } from 'nanoid'
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino'
 import {
 	ChangePasswordDTO,
@@ -25,6 +27,8 @@ import {
 	UpdateUserDTO,
 	updateUserValidator
 } from '../../application/dto/user.dto'
+
+const generateResetPassword = customAlphabet('ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789', 6)
 
 @Controller('user')
 export class UserController {
@@ -96,6 +100,22 @@ export class UserController {
 	@RequireAuthorized(UserRole.ADMIN)
 	async getUsers() {
 		return await this.userRepository.findAll()
+	}
+
+	@RouteHandler({
+		endpoint: 'reset-password/:id',
+		method: HttpMethod.PATCH,
+		message: { i18nKey: 'common.updated' }
+	})
+	@RequireAuthorized(UserRole.ADMIN)
+	async resetPassword(
+		@Param('id', new ParseObjectIdPipe())
+		id: TObjectId
+	) {
+		const password = generateResetPassword()
+		const updatedUser = await this.userRepository.updatePassword(id, password)
+		this.eventEmitter.emit(UPDATED_USER_EVENT, new UpdatedUserEvent(updatedUser.username, { password }))
+		return { password }
 	}
 
 	// #region Self-Service Profile Management
