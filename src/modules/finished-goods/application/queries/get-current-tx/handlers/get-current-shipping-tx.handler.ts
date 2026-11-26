@@ -8,7 +8,6 @@ import {
 import { IQueryHandler, QueryHandler } from '@nestjs/cqrs'
 import { InjectModel } from '@nestjs/mongoose'
 import { InjectRedisClient } from '@redis/decorators'
-import { format } from 'date-fns'
 import Redis from 'ioredis'
 import { isEqual } from 'lodash'
 import pick from 'lodash/pick'
@@ -29,6 +28,11 @@ export class GetCurrentShippingTxHandler implements IQueryHandler<GetCurrentShip
 
 		if (!currentStockTx.length) return []
 
+		const from = new Date()
+		const to = new Date()
+		from.setHours(0, 0, 0, 0)
+		to.setHours(23, 59, 59, 999)
+
 		const persistedCurrentTx = await this.finishedGoodsEpcModel.aggregate<{
 			last_tx: string
 			po: string
@@ -37,14 +41,12 @@ export class GetCurrentShippingTxHandler implements IQueryHandler<GetCurrentShip
 		}>([
 			{
 				$match: {
-					scnnable: false,
+					scannable: false,
 					deleted: false,
 					status: FinishedGoodsEpcStatus.SHIPPED,
-					$expr: {
-						$eq: [
-							{ $dateToString: { date: '$outbound_at', format: '%Y-%m-%d' } },
-							format(new Date(), 'yyyy-MM-dd')
-						]
+					outbound_at: {
+						$gte: from,
+						$lte: to
 					}
 				}
 			},
