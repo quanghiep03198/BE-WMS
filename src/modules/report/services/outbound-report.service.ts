@@ -108,7 +108,7 @@ export class OutboundReportService {
 					return {
 						date,
 						data: items
-							.filter((transactions) => transactions.transaction_history.values().every((item) => !item.voided))
+							.filter((transactions) => transactions.transaction_history.values().some((item) => !item.voided))
 							.flatMap((i) =>
 								Object.entries(i.shipping_progress).map(([mo_no, sizes]) => ({
 									mo_no,
