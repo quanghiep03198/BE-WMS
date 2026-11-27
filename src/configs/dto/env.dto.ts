@@ -6,7 +6,7 @@ import { z } from 'zod'
 export const envConfigDTO = z.object({
 	// * Application
 	NODE_ENV: z.enum(Environment),
-	HOST: z.ipv4(),
+	HOST: z.ipv4().or(z.literal('localhost')),
 	PORT: z
 		.string()
 		.trim()
