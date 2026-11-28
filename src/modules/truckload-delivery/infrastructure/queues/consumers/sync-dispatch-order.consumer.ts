@@ -1,3 +1,5 @@
+import { DATA_SOURCE_DATA_LAKE } from '@databases/constants'
+import { MssqlQueueGuard } from '@databases/mssql-availability/mssql-queue-guard.service'
 import { Processor, WorkerHost } from '@nestjs/bullmq'
 import { Inject } from '@nestjs/common'
 import { Job } from 'bullmq'
@@ -19,24 +21,28 @@ export class SyncDispatchOrderConsumer extends WorkerHost {
 		@InjectPinoLogger(SyncDispatchOrderConsumer.name) private readonly logger: PinoLogger,
 		@Inject(TRUCKLOAD_DELIVERY_REPOSITORY) private readonly truckloadDeliveryRepository: ITruckloadDeliveryRepository,
 		@Inject(TRUCKLOAD_DELIVERY_AUDIT_REPOSITORY)
-		private readonly rmdbsTruckloadDeliveryRepository: ITruckloadDeliveryAuditRepository
+		private readonly rmdbsTruckloadDeliveryRepository: ITruckloadDeliveryAuditRepository,
+		private readonly guard: MssqlQueueGuard
 	) {
 		super()
 	}
 
-	async process({ data }: Job<{ dispatchOrder: string }>): Promise<void> {
-		// * Always sync the latest state, never the state carried by the event
-		const model = await this.truckloadDeliveryRepository.findByDispatchOrder(data.dispatchOrder)
-		const snapshot = model?.toProps() ?? null
-		if (snapshot) {
-			snapshot.packing = snapshot.packing.map((line) => {
-				delete line.created_by
-				delete line.updated_by
+	async process(job: Job<{ dispatchOrder: string }>, token?: string): Promise<void> {
+		return this.guard.run(DATA_SOURCE_DATA_LAKE, job, token, async () => {
+			const { data } = job
+			// * Always sync the latest state, never the state carried by the event
+			const model = await this.truckloadDeliveryRepository.findByDispatchOrder(data.dispatchOrder)
+			const snapshot = model?.toProps() ?? null
+			if (snapshot) {
+				snapshot.packing = snapshot.packing.map((line) => {
+					delete line.created_by
+					delete line.updated_by
 
-				return line
-			})
-		}
-		await this.rmdbsTruckloadDeliveryRepository.reconcileDispatchOrder(data.dispatchOrder, snapshot)
-		this.logger.info(`Synced dispatch order ${data.dispatchOrder} to MSSQL`)
+					return line
+				})
+			}
+			await this.rmdbsTruckloadDeliveryRepository.reconcileDispatchOrder(data.dispatchOrder, snapshot)
+			this.logger.info(`Synced dispatch order ${data.dispatchOrder} to MSSQL`)
+		})
 	}
 }

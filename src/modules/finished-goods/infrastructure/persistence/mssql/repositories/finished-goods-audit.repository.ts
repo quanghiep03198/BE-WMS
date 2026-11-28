@@ -7,7 +7,7 @@ import { TransactionalAdapterTypeOrm } from '@nestjs-cls/transactional-adapter-t
 import { Injectable } from '@nestjs/common'
 import { format } from 'date-fns'
 import { chunk } from 'lodash'
-import { In } from 'typeorm'
+import { In, Not } from 'typeorm'
 import { RFIDMatchEntity } from '../entities/rfid-match.entity'
 import upsertEpcsMatchQuery from '../sql/upsert-epcs-match.sql'
 import upsertInboundQuery from '../sql/upsert-inbound.sql'
@@ -66,7 +66,7 @@ export class FinishedGoodsAuditRepository implements IFinishedGoodsAuditReposito
 		await Promise.all(
 			chunk(exchangeSkus, 2000).map(async (skus) => {
 				return await this.txHostDL.tx.getRepository(RFIDMatchEntity).update(
-					{ epc: In(skus) },
+					{ epc: In(skus), mo_no: Not(targetMo) },
 					{
 						mo_no: targetMo,
 						actual_mo_no: () => 'mo_no',

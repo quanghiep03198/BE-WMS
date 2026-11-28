@@ -1,4 +1,5 @@
 import { DATA_SOURCE_DATA_LAKE } from '@databases/constants'
+import { MssqlQueueGuard } from '@databases/mssql-availability/mssql-queue-guard.service'
 import { FinishedGoodsEpcStatus } from '@modules/finished-goods/domain/constants'
 import { InjectTransactionHost, TransactionHost } from '@nestjs-cls/transactional'
 import { TransactionalAdapterTypeOrm } from '@nestjs-cls/transactional-adapter-typeorm'
@@ -10,31 +11,36 @@ import { ROLLBACK_STOCK_TX_QUEUE } from '..'
 export class RollbackStockTxConsumer extends WorkerHost {
 	constructor(
 		@InjectTransactionHost(DATA_SOURCE_DATA_LAKE)
-		private readonly txHostDL: TransactionHost<TransactionalAdapterTypeOrm>
+		private readonly txHostDL: TransactionHost<TransactionalAdapterTypeOrm>,
+		private readonly guard: MssqlQueueGuard
 	) {
 		super()
 	}
 
-	public async process(job: Job<Array<{ epc: string; status: FinishedGoodsEpcStatus }>>): Promise<void> {
-		const statusMap: Map<
-			FinishedGoodsEpcStatus,
-			{ status: 'A'; station: '101' } | { status: 'B'; station: '101' | '103' }
-		> = new Map([
-			[FinishedGoodsEpcStatus.IN_STOCK, { status: 'A', station: '101' }],
-			[FinishedGoodsEpcStatus.RECALLED, { status: 'B', station: '101' }],
-			[FinishedGoodsEpcStatus.SHIPPED, { status: 'B', station: '103' }]
-		])
+	public async process(
+		job: Job<Array<{ epc: string; status: FinishedGoodsEpcStatus }>>,
+		token?: string
+	): Promise<void> {
+		return this.guard.run(DATA_SOURCE_DATA_LAKE, job, token, async () => {
+			const statusMap: Map<
+				FinishedGoodsEpcStatus,
+				{ status: 'A'; station: '101' } | { status: 'B'; station: '101' | '103' }
+			> = new Map([
+				[FinishedGoodsEpcStatus.IN_STOCK, { status: 'A', station: '101' }],
+				[FinishedGoodsEpcStatus.RECALLED, { status: 'B', station: '101' }],
+				[FinishedGoodsEpcStatus.SHIPPED, { status: 'B', station: '103' }]
+			])
 
-		const paramter = JSON.stringify(
-			job.data.map((item) => ({
-				epc: item.epc,
-				status: statusMap.get(item.status).status,
-				station: statusMap.get(item.status).station
-			}))
-		)
+			const paramter = JSON.stringify(
+				job.data.map((item) => ({
+					epc: item.epc,
+					status: statusMap.get(item.status).status,
+					station: statusMap.get(item.status).station
+				}))
+			)
 
-		await this.txHostDL.tx.query(
-			/* SQL */ `
+			await this.txHostDL.tx.query(
+				/* SQL */ `
          DELETE a
          FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet AS a
          INNER JOIN (
@@ -47,11 +53,11 @@ export class RollbackStockTxConsumer extends WorkerHost {
             AND a.rfid_status = b.rfid_status 
             AND a.station_suffix = b.station_suffix
          `,
-			[paramter]
-		)
+				[paramter]
+			)
 
-		await this.txHostDL.tx.query(
-			/* SQL */ `
+			await this.txHostDL.tx.query(
+				/* SQL */ `
          DELETE a
          FROM DV_DATA_LAKE.dbo.dv_InvRFIDrecorddet_backup_Daily AS a
          INNER JOIN (
@@ -65,7 +71,8 @@ export class RollbackStockTxConsumer extends WorkerHost {
             AND a.station_suffix = b.station_suffix
          WHERE CAST(a.record_time AS DATE) = CAST(GETDATE() AS DATE)
          `,
-			[paramter]
-		)
+				[paramter]
+			)
+		})
 	}
 }

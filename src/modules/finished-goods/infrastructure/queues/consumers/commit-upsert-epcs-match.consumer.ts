@@ -1,5 +1,6 @@
 import { CdcEchoRegistryService } from '@databases/cdc/services/cdc-echo-registery.service'
 import { DATA_SOURCE_DATA_LAKE } from '@databases/constants'
+import { MssqlQueueGuard } from '@databases/mssql-availability/mssql-queue-guard.service'
 import {
 	FINISHED_GOODS_RMDBS_REPOSITORY,
 	IFinishedGoodsAuditRepository
@@ -15,19 +16,22 @@ export class CommitUpsertEpcsMatchConsumer extends WorkerHost {
 	constructor(
 		@Inject(FINISHED_GOODS_RMDBS_REPOSITORY)
 		private readonly repository: IFinishedGoodsAuditRepository,
-		private readonly cdcEchoRegisterService: CdcEchoRegistryService
+		private readonly cdcEchoRegisterService: CdcEchoRegistryService,
+		private readonly guard: MssqlQueueGuard
 	) {
 		super()
 	}
 
-	public async process(job: Job<UpsertEpcsMatchData>): Promise<void> {
-		this.cdcEchoRegisterService.registerOrigin(
-			DATA_SOURCE_DATA_LAKE,
-			'dbo',
-			'dv_rfidmatchmst_cust',
-			job.id.toString(),
-			60_000
-		)
-		await this.repository.upsertEpcsMatch(job.data, false)
+	public async process(job: Job<UpsertEpcsMatchData>, token?: string): Promise<void> {
+		return this.guard.run(DATA_SOURCE_DATA_LAKE, job, token, async () => {
+			await this.cdcEchoRegisterService.registerOrigin(
+				DATA_SOURCE_DATA_LAKE,
+				'dbo',
+				'dv_rfidmatchmst_cust',
+				job.id.toString(),
+				60_000
+			)
+			await this.repository.upsertEpcsMatch(job.data, false)
+		})
 	}
 }

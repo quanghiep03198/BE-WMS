@@ -43,7 +43,7 @@ import { RedisModule } from './redis/redis.module'
 import { AllExceptionsFilter } from '@common/filters'
 import { BULLMQ_CONFIG_TOKEN, LOGGER_CONFIG_TOKEN } from '@configs/index'
 import { getConnectionToken } from '@nestjs/mongoose'
-import { CdcModule, DatabaseModule } from './databases'
+import { CdcModule, DatabaseModule, MssqlAvailabilityModule } from './databases'
 import {
 	DATA_SOURCE_DATA_LAKE,
 	DATA_SOURCE_ERP,
@@ -74,6 +74,7 @@ import { ScheduleTasks } from './tasks'
 		RedisModule.forRoot(),
 		DatabaseModule,
 		MetricsModule,
+		MssqlAvailabilityModule,
 		CdcModule.registerAsync({
 			inject: [ConfigService<IApplicationConfigFactory>],
 			useFactory: (configService) => configService.getOrThrow(CDC_CONFIG_TOKEN)

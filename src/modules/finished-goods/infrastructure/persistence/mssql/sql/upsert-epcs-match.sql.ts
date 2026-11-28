@@ -24,7 +24,7 @@ USING (
 ON target.EPC_Code = source.EPC_Code
 WHEN MATCHED AND @1 = 0 THEN 
    UPDATE SET
-   target.mo_no_actual = target.mo_no,
+   target.mo_no_actual = CASE WHEN target.mo_no = source.mo_no THEN target.mo_no_actual ELSE target.mo_no END,
       target.mo_no = source.mo_no, 
       target.remark = source.remark,
       target.sync_id = source.sync_id

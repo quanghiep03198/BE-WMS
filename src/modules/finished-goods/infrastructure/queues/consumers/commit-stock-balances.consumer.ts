@@ -1,3 +1,5 @@
+import { DATA_SOURCE_DATA_LAKE } from '@databases/constants'
+import { MssqlQueueGuard } from '@databases/mssql-availability/mssql-queue-guard.service'
 import {
 	FINISHED_GOODS_RMDBS_REPOSITORY,
 	IFinishedGoodsAuditRepository
@@ -10,7 +12,10 @@ import { StationNO } from '../../../domain/utils'
 
 @Processor(COMMIT_STOCK_BALANCES_QUEUE)
 export class CommitStockBalancesConsumer extends WorkerHost {
-	constructor(@Inject(FINISHED_GOODS_RMDBS_REPOSITORY) private readonly repository: IFinishedGoodsAuditRepository) {
+	constructor(
+		@Inject(FINISHED_GOODS_RMDBS_REPOSITORY) private readonly repository: IFinishedGoodsAuditRepository,
+		private readonly guard: MssqlQueueGuard
+	) {
 		super()
 	}
 
@@ -31,8 +36,9 @@ export class CommitStockBalancesConsumer extends WorkerHost {
 				}>
 			>,
 			void
-		>
+		>,
+		token?: string
 	) {
-		await this.repository.commitStockFluctuation(job.data)
+		return this.guard.run(DATA_SOURCE_DATA_LAKE, job, token, () => this.repository.commitStockFluctuation(job.data))
 	}
 }

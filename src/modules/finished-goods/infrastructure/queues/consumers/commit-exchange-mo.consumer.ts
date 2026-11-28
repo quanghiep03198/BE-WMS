@@ -1,3 +1,5 @@
+import { DATA_SOURCE_DATA_LAKE } from '@databases/constants'
+import { MssqlQueueGuard } from '@databases/mssql-availability/mssql-queue-guard.service'
 import {
 	FINISHED_GOODS_RMDBS_REPOSITORY,
 	IFinishedGoodsAuditRepository
@@ -11,13 +13,16 @@ import { COMMIT_EXCHANGE_MO_QUEUE } from '..'
 export class CommitExchangeMoConsumer extends WorkerHost {
 	constructor(
 		@Inject(FINISHED_GOODS_RMDBS_REPOSITORY)
-		private readonly repository: IFinishedGoodsAuditRepository
+		private readonly repository: IFinishedGoodsAuditRepository,
+		private readonly guard: MssqlQueueGuard
 	) {
 		super()
 	}
 
-	public async process(job: Job<{ pendingExchangeEpcs: string[]; targetMo: string }>): Promise<void> {
-		const { pendingExchangeEpcs, targetMo } = job.data
-		await this.repository.exchangeManufacturingOrder(pendingExchangeEpcs, targetMo)
+	public async process(job: Job<{ pendingExchangeEpcs: string[]; targetMo: string }>, token?: string): Promise<void> {
+		return this.guard.run(DATA_SOURCE_DATA_LAKE, job, token, async () => {
+			const { pendingExchangeEpcs, targetMo } = job.data
+			await this.repository.exchangeManufacturingOrder(pendingExchangeEpcs, targetMo)
+		})
 	}
 }
