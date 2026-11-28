@@ -8,6 +8,31 @@ export class DefectiveGoodsSeeder implements Seeder {
 
 	public async run(dataSource: DataSource, _factoryManager: SeederFactoryManager): Promise<any> {
 		const repository = dataSource.getRepository(DefectiveGoodsEntity)
+
+		const DESCRIPTION = /* html */ `
+            <h3>1. Detected Defect Types</h3>
+            <ul data-type="taskList">
+                <li data-type="taskItem" data-checked="false">Scratches on leather/fabric surface</li>
+                <li data-type="taskItem" data-checked="false">Glue peeling / open glue</li>
+                <li data-type="taskItem" data-checked="false">Wrong color / color fading</li>
+                <li data-type="taskItem" data-checked="false">Sewing defects (misaligned, loose thread, excess thread)</li>
+                <li data-type="taskItem" data-checked="false">Dirty, stains that cannot be cleaned</li>
+                <li data-type="taskItem" data-checked="false">Shape defects (misaligned form, distorted, unbalanced)</li>
+                <li data-type="taskItem" data-checked="false">Sole defects (dented, cracked, chipped)</li>
+                <li data-type="taskItem" data-checked="false">Others: ...</li>
+            </ul>
+
+            <h3>2. Detailed Defect Description</h3>
+            <ul data-type="bulletList">
+                <li data-type="listItem">..............................................................................................................</li>
+                <li data-type="listItem">..............................................................................................................</li>
+                <li data-type="listItem">..............................................................................................................</li>
+            </ul>
+            
+            <h3>3. Illustrative Images</h3>
+            <p class="my-1"><span style="color:rgb(163, 163, 163)">(Insert illustrative image)</span></p>
+        `
+
 		await repository.query(/* SQL */ `
             INSERT INTO DV_DATA_LAKE.dbo.dv_defective_goods
             (
@@ -40,7 +65,7 @@ export class DefectiveGoodsSeeder implements Seeder {
                 'A' defective_location,
                 DATEADD(MONTH, -2, GETDATE()) AS inbound_date,
                 'A1' AS storage_location,
-                'H4sIAAAAAAAAA+2YQW/TMBSA/8ojEmhITdJuO5U0EpyYGCcmLlM1uY7bmDqJFTtdy43TxIEDJw4IQdkBTQJpEpOQ2gOHoP2P/BNe0pS167RNgnJKKyWx3/PLs9/nZzuOvwVUEKVaRjcKtdmJhAeaDbXZjWLWi6Mk9Ay3YcFulE3GHEQ2fcdB+ulYg8+z6VHo2P6W6yRibkZwpc0wChlIs26ARzQx9UiylqGJ6u+i1HAdwefqgVmH/XskkA8OZLu5UBKkw0S7KQWhzKToG0P3KF5YfKUK1yxQlxTQomDE42HPjJkgQ+YtSIjgvdAMuOcJBl3BhjAz0SGKCY7+L7/FN7tcz+t4KBO9X3SL+oz2O9Gw3W7ikAXmvHyTKk1UM849q99aM+p2FdM3NSiiR6jmA3a9YhCbm9drFOG/GLSrle4o/pKZ22WoCwHzECciFFuJ/w4OcR7/fExdpzAIM+ncIkqVJKHr2OWt1PX4wHXkH2xGZsNw9+Js8mUEw/PTbPqeQiebvoIgm/zQ+Fp7kE2OuWNLNFG0tQWvwKvA+yfgPYrCHvRZBDb42fRj/liRVpG2BtKeEQ5B+ilB0kREkLq8ULFWsbYG1naLzd2vt/ly+iFHjYxgA3d8R9SvQSfBGorZ7nUNvPPT2eP9isSKxHWsr9nkJETO0m+hD7iR+6lxc4dV0PfTM+RQkKTk9JhWCFYIri0Z5sOOGI6RuTIT4uE3Cmq4DJ9EtTmONP0cVqmw4nCdizImQdgI0u+yRC/Mpie6Biq/5YfeaQVgBeA6AHzip2PaBMuyLgNmJ9jkVh8QNy14mp6BzibHuHHkoHmxphdfE6/8gOhxRVfNLCB9SQYItbHiuvVff7PhWZ55lZt/7+btMduy4HH6FbeMyBleA44XPKa8ITPGuryXxGxxtsxqsKs86IGKacvwtZaqadskxL+yBqF9KOeZ0U4knsE9Zcs4Onj4vF5vNLYPNq0XsmcAEbpl7ASkh9PxkHvabxmNev1uLsAMiDOvyJkGUCI1j7BijymNUiUZ1THBOmxgFD6WKkuxKVNu8RwkmnlL/c5tOfZFU7coYM9WYpiP6m9okIyA9BcAAA==' AS defective_description
+                '${DESCRIPTION}' AS defective_description
 
             FROM DV_DATA_LAKE.dbo.dv_rfidmatchmst a
             INNER JOIN wuerp_vnrd.dbo.ta_manufacturmst b ON a.mo_no = b.mo_no
